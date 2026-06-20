@@ -31,8 +31,8 @@ jobs:
           set -e
           cd _kettu_build
 
-          if [ -f "../cloudcord-favicon.png" ]; then
-            cp "../cloudcord-favicon.png" "src/assets/icons/kettu.png"
+          if [ -f "../assets/cloudcord-favicon.png" ]; then
+            cp "../assets/cloudcord-favicon.png" "src/assets/icons/kettu.png"
           fi
 
           python3 - <<'PY'
@@ -164,17 +164,24 @@ jobs:
           cd _kettu_build
           bun run build -- --build-minify
 
-          cp dist/kettu.js ../cloudcord.js
-          cp dist/kettu.min.js ../cc.js
-          cp dist/kettu.min.js ../cloudcord.min.js
+          mkdir -p ../dist
+          cp dist/kettu.js ../dist/cloudcord.js
+          cp dist/kettu.min.js ../dist/cc.js
+          cp dist/kettu.min.js ../dist/cloudcord.min.js
 
       - name: Commit runtime files
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add cc.js cloudcord.js cloudcord.min.js
-          git commit -m "Build CloudCord v0.1 runtime" || exit 0
+          git add dist/cc.js dist/cloudcord.js dist/cloudcord.min.js
+
+          if git diff --cached --quiet; then
+            echo "No runtime changes to commit."
+            exit 0
+          fi
+
+          git commit -m "Build CloudCord v0.1 runtime"
           git push
 
       - name: Upload runtime artifact
@@ -182,6 +189,6 @@ jobs:
         with:
           name: cloudcord-runtime
           path: |
-            cc.js
-            cloudcord.js
-            cloudcord.min.js
+            dist/cc.js
+            dist/cloudcord.js
+            dist/cloudcord.min.js
