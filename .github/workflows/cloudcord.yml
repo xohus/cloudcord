@@ -39,14 +39,19 @@ jobs:
           from pathlib import Path
           import re
 
+          CLOUD_SYNC_URL = "https://revenge.nexpid.xyz/cloud-sync"
+          DISCORD_URL = "https://discord.gg/5naTPJYemX"
+          GITHUB_URL = "https://github.com/xohus/cloudcord"
+
           replacements = {
               "KettuTweak": "CloudCord",
               "Kettu Enhancements": "CloudCord Enhancements",
               "Kettu": "CloudCord",
-              "https://github.com/C0C0B01/CloudCord": "https://github.com/BypassHub-EX/cloudcord",
-              "https://github.com/C0C0B01/Kettu": "https://github.com/BypassHub-EX/cloudcord",
-              "https://codeberg.org/cocobo1/CloudCord": "https://github.com/BypassHub-EX/cloudcord",
-              "https://codeberg.org/cocobo1/Kettu": "https://github.com/BypassHub-EX/cloudcord",
+              "https://github.com/C0C0B01/CloudCord": GITHUB_URL,
+              "https://github.com/C0C0B01/Kettu": GITHUB_URL,
+              "https://github.com/BypassHub-EX/cloudcord": GITHUB_URL,
+              "https://codeberg.org/cocobo1/CloudCord": GITHUB_URL,
+              "https://codeberg.org/cocobo1/Kettu": GITHUB_URL,
               "Load Kettu without loading add-ons": "Load CloudCord without loading add-ons",
               "Failed to load Kettu!": "Failed to load CloudCord!"
           }
@@ -72,7 +77,7 @@ jobs:
 
               text = re.sub(
                   r'export const DISCORD_SERVER = ".*?";',
-                  'export const DISCORD_SERVER = "https://discord.gg/5naTPJYemX";',
+                  f'export const DISCORD_SERVER = "{DISCORD_URL}";',
                   text
               )
 
@@ -84,7 +89,13 @@ jobs:
 
               text = re.sub(
                   r'export const GITHUB = ".*?";',
-                  'export const GITHUB = "https://github.com/BypassHub-EX/cloudcord";',
+                  f'export const GITHUB = "{GITHUB_URL}";',
+                  text
+              )
+
+              text = re.sub(
+                  r'\nexport const CLOUD_SYNC = ".*?";\n?',
+                  '\n',
                   text
               )
 
@@ -97,7 +108,8 @@ jobs:
               text = text.replace('"PUPU": "Kettu"', '"PUPU": "CloudCord"')
               text = text.replace('"PUPU_URL": "Kettu URL"', '"PUPU_URL": "CloudCord URL"')
               text = text.replace('"CODEBERG": "Codeberg"', '"CODEBERG": ""')
-              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', '"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"')
+              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', f'"URL_PLACEHOLDER": "{GITHUB_URL}"')
+              text = text.replace('"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"', f'"URL_PLACEHOLDER": "{GITHUB_URL}"')
 
               strings.write_text(text, encoding="utf-8")
 
@@ -107,6 +119,11 @@ jobs:
 
               text = text.replace(
                   'import { DISCORD_SERVER, GITHUB, CODEBERG } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
+              )
+
+              text = text.replace(
+                  'import { DISCORD_SERVER, GITHUB, CLOUD_SYNC } from "@lib/utils/constants";',
                   'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
               )
 
@@ -131,6 +148,12 @@ jobs:
                   text
               )
 
+              text = re.sub(
+                  r'\n\s*<TableRow\s+arrow=\{true\}\s+label=\{"Cloud Sync"\}[\s\S]*?onPress=\{\(\) => Linking\.openURL\(CLOUD_SYNC\)\}\s*/>',
+                  '',
+                  text
+              )
+
               if "Linking.openURL(DISCORD_SERVER)" not in text:
                   text = text.replace(
                       '<TableRowGroup title={Strings.LINKS}>',
@@ -145,10 +168,48 @@ jobs:
 
               general.write_text(text, encoding="utf-8")
 
+          settings_index = Path("src/core/ui/settings/index.ts")
+          if settings_index.exists():
+              text = settings_index.read_text(encoding="utf-8", errors="ignore")
+
+              if 'import { Linking } from "react-native";' not in text:
+                  text = text.replace(
+                      'import { version } from "bunny-build-info";',
+                      'import { version } from "bunny-build-info";\nimport { Linking } from "react-native";'
+                  )
+
+              text = re.sub(
+                  r'\n\s*\{\s*key:\s*"CLOUD_SYNC"[\s\S]*?Linking\.openURL\([^)]*\)\s*\}\s*,',
+                  '',
+                  text
+              )
+
+              marker = '''            {
+                  key: "KETTU",
+                  title: () => Strings.PUPU,
+                  icon: { uri: PupuIcon },
+                  render: () => import("@core/ui/settings/pages/General"),
+                  useTrailing: () => `(${version})`
+              },'''
+
+              cloud_sync_item = f'''            {{
+                  key: "CLOUD_SYNC",
+                  title: () => "Cloud Sync",
+                  icon: findAssetId("img_account_sync_github_white"),
+                  onPress: () => Linking.openURL("{CLOUD_SYNC_URL}")
+              }},'''
+
+              if marker in text and 'key: "CLOUD_SYNC"' not in text:
+                  text = text.replace(marker, marker + "\n" + cloud_sync_item)
+
+              settings_index.write_text(text, encoding="utf-8")
+
           build = Path("scripts/build.mjs")
           if build.exists():
               text = build.read_text(encoding="utf-8", errors="ignore")
               text = text.replace('version: `"v1.4.2"`', 'version: `"v0.1"`')
+              text = text.replace('version: `"v1.4.1"`', 'version: `"v0.1"`')
+              text = text.replace('version: `"v1.4.0"`', 'version: `"v0.1"`')
               build.write_text(text, encoding="utf-8")
           PY
 
