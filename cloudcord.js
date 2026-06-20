@@ -2214,7 +2214,7 @@
       init_promiseAllSettled();
       DISCORD_SERVER = "https://discord.gg/5naTPJYemX";
       CODEBERG = "";
-      GITHUB = "https://github.com/BypassHub-EX/cloudcord";
+      GITHUB = "https://github.com/xohus/cloudcord";
       HTTP_REGEX = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&/=]*)$/;
       HTTP_REGEX_MULTI = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
       BUNNY_PROXY_PREFIX = "https://bn-plugins.github.io/vd-proxy";
@@ -4627,7 +4627,7 @@
         UH_OH: "Uh Oh",
         UNINSTALL: "Uninstall",
         UNINSTALL_TITLE: "Uninstall {title}",
-        URL_PLACEHOLDER: "https://github.com/BypassHub-EX/cloudcord",
+        URL_PLACEHOLDER: "https://github.com/xohus/cloudcord",
         VERSION: "Version",
         VERSIONS: "Versions"
       };
