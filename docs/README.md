@@ -1,90 +1,91 @@
-<p align="center">
-  <img src="../assets/cloudcord-logo.png" width="420" alt="CloudCord">
-</p>
+# CloudCord
 
-<h1 align="center">CloudCord</h1>
+CloudCord is a custom Discord iOS client build with CloudCord branding, a patched runtime, and support for plugins and themes.
 
-<p align="center">
-  A Discord iOS mod built from a RainTweak-style native loader and a Kettu-based runtime.
-</p>
+This is a beta project. Some things can break after Discord updates or runtime changes.
 
-<p align="center">
-  <a href="https://github.com/BypassHub-EX/cloudcord/actions/workflows/cloudcord.yml">
-    <img alt="Build" src="https://img.shields.io/github/actions/workflow/status/BypassHub-EX/cloudcord/cloudcord.yml?branch=main&label=build&logo=github">
-  </a>
-  <a href="../runtime/LICENSE">
-    <img alt="License" src="https://img.shields.io/badge/license-BSD--3--Clause-blue">
-  </a>
-  <img alt="Platform" src="https://img.shields.io/badge/platform-iOS-lightgrey?logo=apple">
-  <img alt="Runtime" src="https://img.shields.io/badge/runtime-Bun-black?logo=bun">
-</p>
+## Version
 
-<p align="center">
-  <img src="../assets/cloudcord-favicon.png" width="88" alt="CloudCord icon">
-</p>
+v0.1 beta
 
-## What this is
+## What it includes
 
-CloudCord bundles the pieces needed to build and test a branded Discord iOS mod:
+- CloudCord branding
+- CloudCord runtime
+- Plugin/runtime support
+- Theme and font support when supported by the loader
+- GitHub Actions runtime builder
+- Unsigned IPA builds for iOS
 
-- `native-ios/` - Theos tweak and native loader files
-- `runtime/` - JavaScript runtime, settings UI, patches, plugin loader, and build scripts
-- `cloudcord-official-plugins/` - bundled plugin source and manifests
-- `dist/` - checked-in runtime bundles
-- `assets/` - CloudCord icons and branding assets
-- `manifests/` - CloudCord manifest files
-- `docs/` - extra notes, credits, and iOS build details
+## Installation
 
-It is source code, not a prebuilt IPA.
+Download the latest IPA from the Releases tab.
 
-## Included plugins
+The IPA is unsigned, so you need to sign it before installing it.
 
-The official plugin pack currently includes:
+Basic install flow:
 
-- FakeProfile
-- NoTrack
-- MessageFix
-- QuickInstall
-- CloudCord Enhancements
-- Badges
+1. Download the latest CloudCord IPA from Releases.
+2. Sign it with your own certificate or signing service.
+3. Install it on your device.
+4. Open CloudCord.
 
-Plugin sources live in `cloudcord-official-plugins/builds/`.
+## Links
 
-## Build runtime
+GitHub: https://github.com/xohus/cloudcord
 
-```sh
-cd runtime
-bun install
-bun run build
+Discord Server: https://discord.gg/5naTPJYemX
+
+## Runtime
+
+The runtime files are built through GitHub Actions.
+
+Main runtime files:
+
+```txt
+cc.js
+cloudcord.js
+cloudcord.min.js
 ```
 
-For local testing, serve the runtime bundle:
+To rebuild the runtime:
 
-```sh
-cd runtime
-bun run serve
+1. Open the Actions tab.
+2. Select Build CloudCord Runtime.
+3. Click Run workflow.
+4. Wait for the green check.
+5. The runtime files will be updated in the repo.
+
+## Releases
+
+IPA builds should be uploaded through GitHub Releases.
+
+Recommended release tag:
+
+```txt
+v0.1
 ```
 
-Then enable the custom runtime URL in the app's developer settings and point it at the served bundle.
+Recommended release title:
 
-## Build iOS tweak
-
-```sh
-cd native-ios
-make package
+```txt
+CloudCord v0.1 Beta
 ```
 
-You need a working Theos setup and your own signing/sideloading flow. See `docs/BUILD-iOS.md` for the rough end-to-end build notes.
+## Notes
 
-<details>
-<summary>iOS sideloading notes</summary>
+CloudCord is still being worked on. If something breaks, try a clean reinstall before reporting an issue.
 
-Some Discord features depend on entitlements and bundle identifiers that a sideloaded app may not have. If something behaves differently from the App Store build, check your signing profile, bundle ID, and entitlements first.
-
-</details>
+If the app shows an old runtime or old branding, delete the app fully and reinstall it.
 
 ## Credits
 
-CloudCord is based on work from the RainTweak and Kettu projects, with CloudCord-specific branding, assets, packaging, and plugin sources layered on top.
+CloudCord uses work from existing open-source Discord iOS modding projects.
 
-See `docs/CREDITS.md` and `credits/CREDITS.md` for attribution.
+Credits go to the original developers and maintainers of the tools and runtime this project is based on.
+
+## Disclaimer
+
+CloudCord is not affiliated with Discord Inc.
+
+Use it at your own risk. This is a personal/community project, not an official Discord app.
