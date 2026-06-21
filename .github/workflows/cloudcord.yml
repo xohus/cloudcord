@@ -219,6 +219,101 @@ jobs:
           }
           TSX
 
+          cat > src/lib/addons/themes/colors/patches/background.tsx <<'TSX'
+          import { colorsPref } from "@lib/addons/themes/colors/preferences";
+          import { _colorRef } from "@lib/addons/themes/colors/updater";
+          import { after } from "@lib/api/patcher";
+          import { useObservable } from "@lib/api/storage";
+          import { findInReactTree } from "@lib/utils";
+          import { logger } from "@lib/utils/logger";
+          import { findByFilePathLazy } from "@metro";
+          import chroma from "chroma-js";
+          import { ImageBackground, StyleSheet, View } from "react-native";
+
+          const Messages = findByFilePathLazy("modules/messages/native/Messages.tsx", true);
+
+          function getBackground() {
+              const bg = _colorRef.current?.background;
+              if (!bg || colorsPref.customBackground === "hidden") return null;
+
+              const url = bg.url;
+              if (!url || typeof url !== "string") return null;
+
+              const blur = typeof bg.blur === "number" ? bg.blur : Number(bg.blur) || 0;
+              const opacity = typeof bg.opacity === "number" ? bg.opacity : Number(bg.opacity) || 1;
+
+              return { url, blur, opacity };
+          }
+
+          function ThemeBackground({ children }: { children: React.ReactNode; }) {
+              useObservable([colorsPref]);
+
+              const bg = getBackground();
+              if (!bg) return children;
+
+              return (
+                  <ImageBackground
+                      key={bg.url}
+                      style={{ flex: 1, width: "100%", height: "100%" }}
+                      source={{ uri: bg.url }}
+                      blurRadius={bg.blur}
+                      resizeMode="cover"
+                  >
+                      <View style={{ flex: 1, backgroundColor: "transparent" }}>
+                          {children}
+                      </View>
+                  </ImageBackground>
+              );
+          }
+
+          export default function patchChatBackground() {
+              try {
+                  const patches = [
+                      after("render", Messages, (_, ret) => {
+                          const bg = getBackground();
+                          if (!bg) return;
+
+                          const messagesComponent = findInReactTree(
+                              ret,
+                              x => x?.props?.style && (
+                                  "HACK_fixModalInteraction" in x.props
+                                  || Array.isArray(x.props.children)
+                                  || x.props.children
+                              )
+                          );
+
+                          if (messagesComponent) {
+                              const flattened = StyleSheet.flatten(messagesComponent.props.style ?? {});
+                              const baseColor = flattened.backgroundColor || "black";
+
+                              let backgroundColor = "transparent";
+
+                              try {
+                                  backgroundColor = chroma(baseColor)
+                                      .alpha(1 - bg.opacity)
+                                      .hex();
+                              } catch {
+                                  backgroundColor = "transparent";
+                              }
+
+                              messagesComponent.props.style = StyleSheet.flatten([
+                                  messagesComponent.props.style,
+                                  { backgroundColor }
+                              ]);
+                          }
+
+                          return <ThemeBackground>{ret}</ThemeBackground>;
+                      })
+                  ];
+
+                  return () => patches.forEach(x => x());
+              } catch (e) {
+                  logger.error("Failed to patch chat background.", e);
+                  return () => {};
+              }
+          }
+          TSX
+
           python3 - <<'PY'
           from pathlib import Path
           import re
@@ -284,13 +379,60 @@ jobs:
           if strings.exists():
               text = strings.read_text(encoding="utf-8", errors="ignore")
 
-              text = text.replace('"PUPU": "Kettu"', '"PUPU": "CloudCord"')
-              text = text.replace('"PUPU_URL": "Kettu URL"', '"PUPU_URL": "CloudCord URL"')
+              text = text.replace('"PUPU": "CloudCord"', '"PUPU": "CloudCord"')
+              text = text.replace('"PUPU_URL": "CloudCord URL"', '"PUPU_URL": "CloudCord URL"')
               text = text.replace('"CODEBERG": "Codeberg"', '"CODEBERG": ""')
-              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', f'"URL_PLACEHOLDER": "{GITHUB_URL}"')
+              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/CloudCord"', f'"URL_PLACEHOLDER": "{GITHUB_URL}"')
               text = text.replace('"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"', f'"URL_PLACEHOLDER": "{GITHUB_URL}"')
 
               strings.write_text(text, encoding="utf-8")
+
+          parser = Path("src/lib/addons/themes/colors/parser.ts")
+          if parser.exists():
+              text = parser.read_text(encoding="utf-8", errors="ignore")
+
+              if "function normalizeBackgroundDefinition" not in text:
+                  text = text.replace(
+                      'const tokenRef = findByProps("SemanticColor");',
+                      '''const tokenRef = findByProps("SemanticColor");
+
+          function normalizeBackgroundDefinition(bg: any): InternalColorDefinition["background"] | undefined {
+              if (!bg) return undefined;
+
+              const url = bg.url || bg.image || bg.source;
+              if (!url || typeof url !== "string") return undefined;
+
+              return {
+                  url,
+                  blur: typeof bg.blur === "number" ? bg.blur : Number(bg.blur) || 0,
+                  opacity: typeof bg.opacity === "number" ? bg.opacity : typeof bg.alpha === "number" ? bg.alpha : Number(bg.opacity ?? bg.alpha) || 1
+              };
+          }
+
+          function getThemeBackground(manifest: any): InternalColorDefinition["background"] | undefined {
+              const fromMain = manifest && manifest.main ? manifest.main.background : undefined;
+              const fromRoot = manifest ? manifest.background : undefined;
+              return normalizeBackgroundDefinition(fromMain || fromRoot);
+          }'''
+                  )
+
+              text = text.replace(
+                  "background: manifest.main.background,",
+                  "background: getThemeBackground(manifest),"
+              )
+
+              text = re.sub(
+                  r'const background: InternalColorDefinition\["background"\] \| undefined = manifest\.background \? \{\n\s*\.\.\.omit\(manifest\.background, \["alpha"\]\),\n\s*opacity: manifest\.background\.alpha\n\s*\} : undefined;',
+                  'const background: InternalColorDefinition["background"] | undefined = getThemeBackground(manifest);',
+                  text
+              )
+
+              text = text.replace(
+                  "background: manifest.background",
+                  "background: getThemeBackground(manifest)"
+              )
+
+              parser.write_text(text, encoding="utf-8")
 
           general = Path("src/core/ui/settings/pages/General/index.tsx")
           if general.exists():
