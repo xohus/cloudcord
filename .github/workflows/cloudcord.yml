@@ -26,7 +26,7 @@ jobs:
           rm -rf _kettu_build
           git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _kettu_build
 
-      - name: Apply CloudCord branding and CloudSync tab
+      - name: Apply CloudCord branding and Cloud Sync tab
         run: |
           set -e
           cd _kettu_build
@@ -42,271 +42,96 @@ jobs:
           mkdir -p src/core/ui/settings/pages/CloudSync
 
           cat > src/core/ui/settings/pages/CloudSync/index.tsx <<'TSX'
+          import { VdPluginManager } from "@core/vendetta/plugins";
           import { useProxy } from "@core/vendetta/storage";
-          import {
-              disablePlugin,
-              enablePlugin,
-              installPlugin,
-              pluginRepositories,
-              pluginSettings,
-              registeredPlugins,
-              updateRepository
-          } from "@lib/addons/plugins";
-          import { installTheme, selectTheme, themes } from "@lib/addons/themes";
-          import { fonts, installFont, selectFont } from "@lib/addons/fonts";
           import { findAssetId } from "@lib/api/assets";
-          import { settings } from "@lib/api/settings";
           import { showToast } from "@lib/ui/toasts";
-          import { clipboard } from "@metro/common";
-          import { Stack, TableRow, TableRowGroup, Text } from "@metro/common/components";
+          import { Button, Card, Stack, TableRow, TableRowGroup, Text } from "@metro/common/components";
           import { useState } from "react";
-          import { Linking, ScrollView, View } from "react-native";
+          import { ScrollView, View } from "react-native";
 
-          const API_BASE = "https://revenge.nexpid.xyz/api";
-          const AUTH_PAGE = "https://revenge.nexpid.xyz/cloud-sync";
-          const ICON_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
-
-          type CloudSyncState = {
-              token?: string;
-              lastSync?: string;
-          };
-
-          type CloudUserData = {
-              plugins: Record<string, { enabled: boolean; storage?: string }>;
-              themes: Record<string, { enabled: boolean }>;
-              fonts: {
-                  installed: Record<string, { enabled: boolean }>;
-                  custom: Record<string, any>[];
-              };
-          };
-
-          function getCloudState(): CloudSyncState {
-              const s = settings as any;
-              s.cloudSync ??= {};
-              return s.cloudSync;
-          }
-
-          function cleanRepoUrl(url: string) {
-              return url.endsWith("/") ? url : `${url}/`;
-          }
-
-          function getPluginCloudUrl(repoUrl: string, pluginId: string) {
-              return `${cleanRepoUrl(repoUrl)}#${encodeURIComponent(pluginId)}`;
-          }
-
-          function splitPluginCloudUrl(url: string) {
-              const parsed = new URL(url);
-              const id = decodeURIComponent(parsed.hash.replace(/^#/, ""));
-              parsed.hash = "";
-              return {
-                  repoUrl: parsed.toString(),
-                  id
-              };
-          }
-
-          function buildCloudData(): CloudUserData {
-              const out: CloudUserData = {
-                  plugins: {},
-                  themes: {},
-                  fonts: {
-                      installed: {},
-                      custom: []
-                  }
-              };
-
-              for (const [pluginId, state] of Object.entries(pluginSettings as any)) {
-                  const manifest = registeredPlugins.get(pluginId) as any;
-                  const repoUrl = manifest?.parentRepository;
-
-                  if (!repoUrl || typeof repoUrl !== "string") continue;
-
-                  out.plugins[getPluginCloudUrl(repoUrl, pluginId)] = {
-                      enabled: Boolean((state as any)?.enabled)
-                  };
-              }
-
-              for (const [themeUrl, theme] of Object.entries(themes as any)) {
-                  if (!themeUrl || themeUrl.startsWith("__")) continue;
-
-                  out.themes[themeUrl] = {
-                      enabled: Boolean((theme as any)?.selected)
-                  };
-              }
-
-              for (const [fontName, font] of Object.entries(fonts as any)) {
-                  if (fontName === "__selected") continue;
-
-                  const fontData = font as any;
-                  const source = fontData?.source;
-
-                  if (source && typeof source === "string") {
-                      out.fonts.installed[source] = {
-                          enabled: (fonts as any).__selected === fontName
-                      };
-                  } else if (fontData && typeof fontData === "object") {
-                      out.fonts.custom.push(fontData);
-                  }
-              }
-
-              return out;
-          }
-
-          async function cloudRequest(path: string, init: RequestInit = {}) {
-              const cloud = getCloudState();
-              const token = cloud.token?.trim();
-
-              if (!token) throw new Error("Not connected. Paste your Cloud Sync token first.");
-
-              const res = await fetch(`${API_BASE}${path}`, {
-                  ...init,
-                  headers: {
-                      Authorization: token,
-                      "Content-Type": "application/json",
-                      ...(init.headers ?? {})
-                  }
-              });
-
-              if (!res.ok) {
-                  const text = await res.text().catch(() => "");
-                  throw new Error(text || `Cloud Sync request failed: ${res.status}`);
-              }
-
-              return res;
-          }
-
-          async function pushToCloud() {
-              const data = buildCloudData();
-
-              await cloudRequest("/data", {
-                  method: "PUT",
-                  body: JSON.stringify(data)
-              });
-
-              const cloud = getCloudState();
-              cloud.lastSync = new Date().toISOString();
-
-              showToast("Cloud Sync: pushed to cloud", findAssetId("Check"));
-          }
-
-          async function pullFromCloud() {
-              const res = await cloudRequest("/data", {
-                  method: "GET"
-              });
-
-              const json = await res.json();
-              const data = json?.data ?? json;
-
-              if (!data || typeof data !== "object") {
-                  throw new Error("Cloud Sync returned invalid data.");
-              }
-
-              for (const [cloudUrl, state] of Object.entries(data.plugins ?? {})) {
-                  try {
-                      const { repoUrl, id } = splitPluginCloudUrl(cloudUrl);
-                      if (!repoUrl || !id) continue;
-
-                      await updateRepository(repoUrl);
-
-                      if (!(pluginSettings as any)[id]) {
-                          await installPlugin(id, Boolean((state as any).enabled));
-                      } else if ((state as any).enabled) {
-                          await enablePlugin(id, true);
-                      } else {
-                          disablePlugin(id);
-                      }
-                  } catch (e) {
-                      console.warn("[CloudSync] Failed to restore plugin", cloudUrl, e);
-                  }
-              }
-
-              for (const [themeUrl, state] of Object.entries(data.themes ?? {})) {
-                  try {
-                      if (!(themes as any)[themeUrl]) {
-                          await installTheme(themeUrl);
-                      }
-
-                      if ((state as any).enabled) {
-                          await selectTheme((themes as any)[themeUrl]);
-                      }
-                  } catch (e) {
-                      console.warn("[CloudSync] Failed to restore theme", themeUrl, e);
-                  }
-              }
-
-              for (const [fontUrl, state] of Object.entries(data.fonts?.installed ?? {})) {
-                  try {
-                      const alreadyInstalled = Object.values(fonts as any).some(
-                          (font: any) => font?.source === fontUrl
-                      );
-
-                      if (!alreadyInstalled) {
-                          await installFont(fontUrl, Boolean((state as any).enabled));
-                      }
-
-                      if ((state as any).enabled) {
-                          const selectedName = Object.keys(fonts as any).find(
-                              name => name !== "__selected" && (fonts as any)[name]?.source === fontUrl
-                          );
-
-                          if (selectedName) await selectFont(selectedName);
-                      }
-                  } catch (e) {
-                      console.warn("[CloudSync] Failed to restore font", fontUrl, e);
-                  }
-              }
-
-              const cloud = getCloudState();
-              cloud.lastSync = new Date().toISOString();
-
-              showToast("Cloud Sync: pulled from cloud", findAssetId("Check"));
-          }
-
-          async function pasteToken() {
-              const token = (await clipboard.getString()).trim();
-
-              if (!token) {
-                  showToast("Clipboard is empty");
-                  return;
-              }
-
-              const cloud = getCloudState();
-              cloud.token = token;
-
-              showToast("Cloud Sync token saved", findAssetId("Check"));
-          }
-
-          function disconnect() {
-              const cloud = getCloudState();
-              delete cloud.token;
-              delete cloud.lastSync;
-
-              showToast("Cloud Sync disconnected");
-          }
+          const PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
+          const CLOUDSYNC_ICON = "https://github.com/nexpid/CloudSync/raw/main/assets/icon-bright.svg";
 
           export default function CloudSync() {
-              useProxy(settings as any);
-              useProxy(pluginSettings as any);
-              useProxy(pluginRepositories as any);
-              useProxy(themes as any);
-              useProxy(fonts as any);
+              useProxy(VdPluginManager.plugins);
 
               const [busy, setBusy] = useState(false);
-              const cloud = getCloudState();
-              const connected = Boolean(cloud.token);
+              const [refresh, setRefresh] = useState(0);
 
-              async function run(label: string, fn: () => Promise<void> | void) {
+              const plugin = VdPluginManager.plugins[PLUGIN_URL];
+              const SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
+
+              async function installOrStart() {
                   if (busy) return;
 
                   setBusy(true);
 
                   try {
-                      await fn();
-                  } catch (e: any) {
-                      console.error(`[CloudSync] ${label} failed`, e);
-                      showToast(`Cloud Sync: ${e?.message ?? "failed"}`);
+                      if (!VdPluginManager.plugins[PLUGIN_URL]) {
+                          await VdPluginManager.installPlugin(PLUGIN_URL, true);
+                          showToast("Cloud Sync installed", findAssetId("Check"));
+                      } else if (!VdPluginManager.plugins[PLUGIN_URL].enabled) {
+                          await VdPluginManager.startPlugin(PLUGIN_URL);
+                          showToast("Cloud Sync started", findAssetId("Check"));
+                      } else {
+                          showToast("Cloud Sync is already enabled", findAssetId("Check"));
+                      }
+
+                      setRefresh(x => x + 1);
+                  } catch (error: any) {
+                      console.error("[CloudCord] Cloud Sync install/start failed", error);
+                      showToast(error?.message ?? "Cloud Sync failed");
                   } finally {
                       setBusy(false);
                   }
+              }
+
+              async function refetchPlugin() {
+                  if (busy) return;
+
+                  setBusy(true);
+
+                  try {
+                      if (VdPluginManager.plugins[PLUGIN_URL]?.enabled) {
+                          VdPluginManager.stopPlugin(PLUGIN_URL, false);
+                      }
+
+                      await VdPluginManager.fetchPlugin(PLUGIN_URL);
+                      await VdPluginManager.startPlugin(PLUGIN_URL);
+
+                      showToast("Cloud Sync refreshed", findAssetId("Check"));
+                      setRefresh(x => x + 1);
+                  } catch (error: any) {
+                      console.error("[CloudCord] Cloud Sync refresh failed", error);
+                      showToast(error?.message ?? "Cloud Sync refresh failed");
+                  } finally {
+                      setBusy(false);
+                  }
+              }
+
+              async function removePlugin() {
+                  if (busy) return;
+
+                  setBusy(true);
+
+                  try {
+                      if (VdPluginManager.plugins[PLUGIN_URL]) {
+                          await VdPluginManager.removePlugin(PLUGIN_URL);
+                      }
+
+                      showToast("Cloud Sync removed");
+                      setRefresh(x => x + 1);
+                  } catch (error: any) {
+                      console.error("[CloudCord] Cloud Sync remove failed", error);
+                      showToast(error?.message ?? "Cloud Sync remove failed");
+                  } finally {
+                      setBusy(false);
+                  }
+              }
+
+              if (SettingsComponent) {
+                  return <SettingsComponent key={`cloud-sync-settings-${refresh}`} />;
               }
 
               return (
@@ -314,54 +139,50 @@ jobs:
                       <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
                           <TableRowGroup title="Cloud Sync">
                               <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
-                                  <Text variant="text-md/medium" color="text-normal">
-                                      {connected ? "Connected" : "Not connected"}
+                                  <Text variant="heading-md/semibold" color="text-normal">
+                                      Cloud Sync
                                   </Text>
                                   <Text variant="text-sm/medium" color="text-muted">
-                                      {cloud.lastSync ? `Last sync: ${cloud.lastSync}` : "Sync plugins, themes, and fonts with Cloud Sync."}
+                                      Install the official Cloud Sync plugin to connect, sync, add backup files, and save backups to your device.
                                   </Text>
                               </View>
 
                               <TableRow
                                   arrow
-                                  label="Open Auth"
-                                  subLabel="Opens the Cloud Sync auth flow"
-                                  icon={<TableRow.Icon source={{ uri: ICON_URL }} />}
-                                  onPress={() => Linking.openURL(AUTH_PAGE)}
+                                  label={plugin ? "Start Cloud Sync" : "Install Cloud Sync"}
+                                  subLabel={busy ? "Please wait..." : "Loads the official Cloud Sync plugin UI"}
+                                  icon={<TableRow.Icon source={{ uri: CLOUDSYNC_ICON }} />}
+                                  onPress={installOrStart}
                               />
 
-                              <TableRow
-                                  arrow
-                                  label="Paste Token"
-                                  subLabel="Copy the token after auth, then tap this"
-                                  icon={<TableRow.Icon source={findAssetId("ClipboardListIcon")!} />}
-                                  onPress={() => run("paste token", pasteToken)}
-                              />
+                              {plugin && (
+                                  <TableRow
+                                      arrow
+                                      label="Refresh Cloud Sync"
+                                      subLabel="Refetches the official plugin"
+                                      icon={<TableRow.Icon source={findAssetId("RetryIcon")!} />}
+                                      onPress={refetchPlugin}
+                                  />
+                              )}
 
-                              <TableRow
-                                  arrow
-                                  label="Pull from Cloud"
-                                  subLabel="Download plugins, themes, and fonts"
-                                  icon={<TableRow.Icon source={findAssetId("DownloadIcon") ?? findAssetId("RetryIcon")!} />}
-                                  onPress={() => run("pull", pullFromCloud)}
-                              />
-
-                              <TableRow
-                                  arrow
-                                  label="Push to Cloud"
-                                  subLabel="Upload current plugins, themes, and fonts"
-                                  icon={<TableRow.Icon source={findAssetId("UploadIcon") ?? findAssetId("RetryIcon")!} />}
-                                  onPress={() => run("push", pushToCloud)}
-                              />
-
-                              <TableRow
-                                  arrow
-                                  label="Disconnect"
-                                  subLabel="Remove saved Cloud Sync token"
-                                  icon={<TableRow.Icon source={findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")!} />}
-                                  onPress={() => run("disconnect", disconnect)}
-                              />
+                              {plugin && (
+                                  <TableRow
+                                      arrow
+                                      label="Remove Cloud Sync"
+                                      subLabel="Uninstalls the Cloud Sync plugin"
+                                      icon={<TableRow.Icon source={findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")!} />}
+                                      onPress={removePlugin}
+                                  />
+                              )}
                           </TableRowGroup>
+
+                          <Card border="strong">
+                              <View style={{ padding: 12 }}>
+                                  <Text variant="text-sm/medium" color="text-muted">
+                                      This tab uses the official Cloud Sync plugin. The plugin itself handles OAuth, sync, backups, and files.
+                                  </Text>
+                              </View>
+                          </Card>
                       </Stack>
                   </ScrollView>
               );
@@ -374,7 +195,8 @@ jobs:
 
           DISCORD_URL = "https://discord.gg/5naTPJYemX"
           GITHUB_URL = "https://github.com/xohus/cloudcord"
-          ICON_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
+          CLOUDCORD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
+          CLOUDSYNC_ICON = "https://github.com/nexpid/CloudSync/raw/main/assets/icon-bright.svg"
 
           replacements = {
               "KettuTweak": "CloudCord",
@@ -490,7 +312,7 @@ jobs:
 
               text = text.replace(
                   'icon: { uri: PupuIcon },',
-                  f'icon: {{ uri: "{ICON_URL}" }},'
+                  f'icon: {{ uri: "{CLOUDCORD_ICON}" }},'
               )
 
               text = re.sub(
@@ -502,7 +324,7 @@ jobs:
               cloud_sync_item = f'''            {{
                   key: "CLOUD_SYNC",
                   title: () => "Cloud Sync",
-                  icon: {{ uri: "{ICON_URL}" }},
+                  icon: {{ uri: "{CLOUDSYNC_ICON}" }},
                   render: () => import("@core/ui/settings/pages/CloudSync")
               }},'''
 
