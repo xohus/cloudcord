@@ -6890,33 +6890,22 @@
 
   // src/core/ui/settings/components/ScaledPluginSettings.tsx
   function ScaledPluginSettings({ component: Component }) {
-    var width = Math.max(import_react_native18.Dimensions.get("window").width, 980);
     return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
-      horizontal: true,
       style: {
         flex: 1
       },
       contentContainerStyle: {
-        minWidth: width + 96,
-        paddingRight: 96
+        paddingBottom: 90,
+        paddingHorizontal: 12
       },
-      showsHorizontalScrollIndicator: true,
-      children: /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
+      showsVerticalScrollIndicator: true,
+      children: /* @__PURE__ */ jsx(import_react_native18.View, {
         style: {
-          width: width + 96
+          width: "100%",
+          paddingRight: 24,
+          overflow: "visible"
         },
-        contentContainerStyle: {
-          paddingBottom: 90,
-          paddingRight: 96
-        },
-        showsVerticalScrollIndicator: true,
-        children: /* @__PURE__ */ jsx(import_react_native18.View, {
-          style: {
-            width,
-            paddingRight: 96
-          },
-          children: /* @__PURE__ */ jsx(Component, {})
-        })
+        children: /* @__PURE__ */ jsx(Component, {})
       })
     });
   }
@@ -13251,7 +13240,7 @@ Type: ${asset.type}`,
   });
 
   // src/core/vendetta/api.tsx
-  var import_react12, import_react_native36, initVendettaObject;
+  var import_react12, import_react_native36, makeIcon, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -13283,6 +13272,37 @@ Type: ${asset.type}`,
       import_react12 = __toESM(require_react());
       import_react_native36 = __toESM(require_react_native());
       init_plugins();
+      makeIcon = (leading) => leading;
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react12.createElement)(TableRow, {
+        label: props.label,
+        subLabel: props.subLabel,
+        icon: makeIcon(props.leading),
+        trailing: props.trailing,
+        onPress: props.onPress,
+        disabled: props.disabled,
+        arrow: props.arrow
+      });
+      PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow.Icon;
+      PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow.Arrow;
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react12.createElement)(TableSwitchRow, {
+        label: props.label,
+        subLabel: props.subLabel,
+        icon: makeIcon(props.leading),
+        value: !!props.value,
+        onValueChange: props.onValueChange,
+        disabled: props.disabled
+      });
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react12.createElement)(TableRowGroup, {
+        title: props.title,
+        ...props
+      }, props.children);
+      PatchedForms = {
+        ...Forms,
+        FormRow: PatchedFormRow,
+        FormSwitchRow: PatchedFormSwitchRow,
+        FormSection: PatchedFormSection,
+        FormDivider: () => null
+      };
       initVendettaObject = () => {
         var createStackBasedFilter = (fn) => {
           return (filter) => {
@@ -13383,7 +13403,7 @@ Type: ${asset.type}`,
           },
           ui: {
             components: {
-              Forms,
+              Forms: PatchedForms,
               General: ReactNative,
               Alert: LegacyAlert,
               Button: CompatButton,
