@@ -47,7 +47,7 @@ jobs:
           import { ScrollView, View } from "react-native";
 
           export default function ScaledPluginSettings({ component: Component }: { component: ComponentType<any> }) {
-              const scale = 0.8;
+              const scale = 0.60;
 
               return (
                   <ScrollView
