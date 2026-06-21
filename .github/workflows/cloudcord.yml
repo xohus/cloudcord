@@ -26,7 +26,7 @@ jobs:
           rm -rf _kettu_build
           git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _kettu_build
 
-      - name: Apply CloudCord branding
+      - name: Apply CloudCord branding and CloudSync tab
         run: |
           set -e
           cd _kettu_build
@@ -39,11 +39,339 @@ jobs:
             cp "../assets/cloudcord-logo.png" "src/assets/icons/kettu.png"
           fi
 
+          mkdir -p src/core/ui/settings/pages/CloudSync
+
+          cat > src/core/ui/settings/pages/CloudSync/index.tsx <<'TSX'
+          import { useProxy } from "@core/vendetta/storage";
+          import {
+              disablePlugin,
+              enablePlugin,
+              installPlugin,
+              pluginRepositories,
+              pluginSettings,
+              registeredPlugins,
+              updateRepository
+          } from "@lib/addons/plugins";
+          import { installTheme, selectTheme, themes } from "@lib/addons/themes";
+          import { fonts, installFont, selectFont } from "@lib/addons/fonts";
+          import { findAssetId } from "@lib/api/assets";
+          import { settings } from "@lib/api/settings";
+          import { showToast } from "@lib/ui/toasts";
+          import { clipboard } from "@metro/common";
+          import { Stack, TableRow, TableRowGroup, Text } from "@metro/common/components";
+          import { useState } from "react";
+          import { Linking, ScrollView, View } from "react-native";
+
+          const API_BASE = "https://revenge.nexpid.xyz/api";
+          const AUTH_PAGE = "https://revenge.nexpid.xyz/cloud-sync";
+          const ICON_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+
+          type CloudSyncState = {
+              token?: string;
+              lastSync?: string;
+          };
+
+          type CloudUserData = {
+              plugins: Record<string, { enabled: boolean; storage?: string }>;
+              themes: Record<string, { enabled: boolean }>;
+              fonts: {
+                  installed: Record<string, { enabled: boolean }>;
+                  custom: Record<string, any>[];
+              };
+          };
+
+          function getCloudState(): CloudSyncState {
+              const s = settings as any;
+              s.cloudSync ??= {};
+              return s.cloudSync;
+          }
+
+          function cleanRepoUrl(url: string) {
+              return url.endsWith("/") ? url : `${url}/`;
+          }
+
+          function getPluginCloudUrl(repoUrl: string, pluginId: string) {
+              return `${cleanRepoUrl(repoUrl)}#${encodeURIComponent(pluginId)}`;
+          }
+
+          function splitPluginCloudUrl(url: string) {
+              const parsed = new URL(url);
+              const id = decodeURIComponent(parsed.hash.replace(/^#/, ""));
+              parsed.hash = "";
+              return {
+                  repoUrl: parsed.toString(),
+                  id
+              };
+          }
+
+          function buildCloudData(): CloudUserData {
+              const out: CloudUserData = {
+                  plugins: {},
+                  themes: {},
+                  fonts: {
+                      installed: {},
+                      custom: []
+                  }
+              };
+
+              for (const [pluginId, state] of Object.entries(pluginSettings as any)) {
+                  const manifest = registeredPlugins.get(pluginId) as any;
+                  const repoUrl = manifest?.parentRepository;
+
+                  if (!repoUrl || typeof repoUrl !== "string") continue;
+
+                  out.plugins[getPluginCloudUrl(repoUrl, pluginId)] = {
+                      enabled: Boolean((state as any)?.enabled)
+                  };
+              }
+
+              for (const [themeUrl, theme] of Object.entries(themes as any)) {
+                  if (!themeUrl || themeUrl.startsWith("__")) continue;
+
+                  out.themes[themeUrl] = {
+                      enabled: Boolean((theme as any)?.selected)
+                  };
+              }
+
+              for (const [fontName, font] of Object.entries(fonts as any)) {
+                  if (fontName === "__selected") continue;
+
+                  const fontData = font as any;
+                  const source = fontData?.source;
+
+                  if (source && typeof source === "string") {
+                      out.fonts.installed[source] = {
+                          enabled: (fonts as any).__selected === fontName
+                      };
+                  } else if (fontData && typeof fontData === "object") {
+                      out.fonts.custom.push(fontData);
+                  }
+              }
+
+              return out;
+          }
+
+          async function cloudRequest(path: string, init: RequestInit = {}) {
+              const cloud = getCloudState();
+              const token = cloud.token?.trim();
+
+              if (!token) throw new Error("Not connected. Paste your Cloud Sync token first.");
+
+              const res = await fetch(`${API_BASE}${path}`, {
+                  ...init,
+                  headers: {
+                      Authorization: token,
+                      "Content-Type": "application/json",
+                      ...(init.headers ?? {})
+                  }
+              });
+
+              if (!res.ok) {
+                  const text = await res.text().catch(() => "");
+                  throw new Error(text || `Cloud Sync request failed: ${res.status}`);
+              }
+
+              return res;
+          }
+
+          async function pushToCloud() {
+              const data = buildCloudData();
+
+              await cloudRequest("/data", {
+                  method: "PUT",
+                  body: JSON.stringify(data)
+              });
+
+              const cloud = getCloudState();
+              cloud.lastSync = new Date().toISOString();
+
+              showToast("Cloud Sync: pushed to cloud", findAssetId("Check"));
+          }
+
+          async function pullFromCloud() {
+              const res = await cloudRequest("/data", {
+                  method: "GET"
+              });
+
+              const json = await res.json();
+              const data = json?.data ?? json;
+
+              if (!data || typeof data !== "object") {
+                  throw new Error("Cloud Sync returned invalid data.");
+              }
+
+              for (const [cloudUrl, state] of Object.entries(data.plugins ?? {})) {
+                  try {
+                      const { repoUrl, id } = splitPluginCloudUrl(cloudUrl);
+                      if (!repoUrl || !id) continue;
+
+                      await updateRepository(repoUrl);
+
+                      if (!(pluginSettings as any)[id]) {
+                          await installPlugin(id, Boolean((state as any).enabled));
+                      } else if ((state as any).enabled) {
+                          await enablePlugin(id, true);
+                      } else {
+                          disablePlugin(id);
+                      }
+                  } catch (e) {
+                      console.warn("[CloudSync] Failed to restore plugin", cloudUrl, e);
+                  }
+              }
+
+              for (const [themeUrl, state] of Object.entries(data.themes ?? {})) {
+                  try {
+                      if (!(themes as any)[themeUrl]) {
+                          await installTheme(themeUrl);
+                      }
+
+                      if ((state as any).enabled) {
+                          await selectTheme((themes as any)[themeUrl]);
+                      }
+                  } catch (e) {
+                      console.warn("[CloudSync] Failed to restore theme", themeUrl, e);
+                  }
+              }
+
+              for (const [fontUrl, state] of Object.entries(data.fonts?.installed ?? {})) {
+                  try {
+                      const alreadyInstalled = Object.values(fonts as any).some(
+                          (font: any) => font?.source === fontUrl
+                      );
+
+                      if (!alreadyInstalled) {
+                          await installFont(fontUrl, Boolean((state as any).enabled));
+                      }
+
+                      if ((state as any).enabled) {
+                          const selectedName = Object.keys(fonts as any).find(
+                              name => name !== "__selected" && (fonts as any)[name]?.source === fontUrl
+                          );
+
+                          if (selectedName) await selectFont(selectedName);
+                      }
+                  } catch (e) {
+                      console.warn("[CloudSync] Failed to restore font", fontUrl, e);
+                  }
+              }
+
+              const cloud = getCloudState();
+              cloud.lastSync = new Date().toISOString();
+
+              showToast("Cloud Sync: pulled from cloud", findAssetId("Check"));
+          }
+
+          async function pasteToken() {
+              const token = (await clipboard.getString()).trim();
+
+              if (!token) {
+                  showToast("Clipboard is empty");
+                  return;
+              }
+
+              const cloud = getCloudState();
+              cloud.token = token;
+
+              showToast("Cloud Sync token saved", findAssetId("Check"));
+          }
+
+          function disconnect() {
+              const cloud = getCloudState();
+              delete cloud.token;
+              delete cloud.lastSync;
+
+              showToast("Cloud Sync disconnected");
+          }
+
+          export default function CloudSync() {
+              useProxy(settings as any);
+              useProxy(pluginSettings as any);
+              useProxy(pluginRepositories as any);
+              useProxy(themes as any);
+              useProxy(fonts as any);
+
+              const [busy, setBusy] = useState(false);
+              const cloud = getCloudState();
+              const connected = Boolean(cloud.token);
+
+              async function run(label: string, fn: () => Promise<void> | void) {
+                  if (busy) return;
+
+                  setBusy(true);
+
+                  try {
+                      await fn();
+                  } catch (e: any) {
+                      console.error(`[CloudSync] ${label} failed`, e);
+                      showToast(`Cloud Sync: ${e?.message ?? "failed"}`);
+                  } finally {
+                      setBusy(false);
+                  }
+              }
+
+              return (
+                  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
+                      <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
+                          <TableRowGroup title="Cloud Sync">
+                              <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
+                                  <Text variant="text-md/medium" color="text-normal">
+                                      {connected ? "Connected" : "Not connected"}
+                                  </Text>
+                                  <Text variant="text-sm/medium" color="text-muted">
+                                      {cloud.lastSync ? `Last sync: ${cloud.lastSync}` : "Sync plugins, themes, and fonts with Cloud Sync."}
+                                  </Text>
+                              </View>
+
+                              <TableRow
+                                  arrow
+                                  label="Open Auth"
+                                  subLabel="Opens the Cloud Sync auth flow"
+                                  icon={<TableRow.Icon source={{ uri: ICON_URL }} />}
+                                  onPress={() => Linking.openURL(AUTH_PAGE)}
+                              />
+
+                              <TableRow
+                                  arrow
+                                  label="Paste Token"
+                                  subLabel="Copy the token after auth, then tap this"
+                                  icon={<TableRow.Icon source={findAssetId("ClipboardListIcon")!} />}
+                                  onPress={() => run("paste token", pasteToken)}
+                              />
+
+                              <TableRow
+                                  arrow
+                                  label="Pull from Cloud"
+                                  subLabel="Download plugins, themes, and fonts"
+                                  icon={<TableRow.Icon source={findAssetId("DownloadIcon") ?? findAssetId("RetryIcon")!} />}
+                                  onPress={() => run("pull", pullFromCloud)}
+                              />
+
+                              <TableRow
+                                  arrow
+                                  label="Push to Cloud"
+                                  subLabel="Upload current plugins, themes, and fonts"
+                                  icon={<TableRow.Icon source={findAssetId("UploadIcon") ?? findAssetId("RetryIcon")!} />}
+                                  onPress={() => run("push", pushToCloud)}
+                              />
+
+                              <TableRow
+                                  arrow
+                                  label="Disconnect"
+                                  subLabel="Remove saved Cloud Sync token"
+                                  icon={<TableRow.Icon source={findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")!} />}
+                                  onPress={() => run("disconnect", disconnect)}
+                              />
+                          </TableRowGroup>
+                      </Stack>
+                  </ScrollView>
+              );
+          }
+          TSX
+
           python3 - <<'PY'
           from pathlib import Path
           import re
 
-          CLOUD_SYNC_URL = "https://revenge.nexpid.xyz/cloud-sync"
           DISCORD_URL = "https://discord.gg/5naTPJYemX"
           GITHUB_URL = "https://github.com/xohus/cloudcord"
           ICON_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
@@ -98,12 +426,6 @@ jobs:
                   text
               )
 
-              text = re.sub(
-                  r'\nexport const CLOUD_SYNC = ".*?";\n?',
-                  '\n',
-                  text
-              )
-
               constants.write_text(text, encoding="utf-8")
 
           strings = Path("src/core/i18n/default.json")
@@ -128,11 +450,6 @@ jobs:
               )
 
               text = text.replace(
-                  'import { DISCORD_SERVER, GITHUB, CLOUD_SYNC } from "@lib/utils/constants";',
-                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
-              )
-
-              text = text.replace(
                   'import { GITHUB, CODEBERG } from "@lib/utils/constants";',
                   'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
               )
@@ -149,12 +466,6 @@ jobs:
 
               text = re.sub(
                   r'\n\s*<TableRow\s+arrow=\{true\}\s+label=\{Strings\.CODEBERG\}[\s\S]*?onPress=\{\(\) => Linking\.openURL\(CODEBERG\)\}\s*/>',
-                  '',
-                  text
-              )
-
-              text = re.sub(
-                  r'\n\s*<TableRow\s+arrow=\{true\}\s+label=\{"Cloud Sync"\}[\s\S]*?onPress=\{\(\) => Linking\.openURL\(CLOUD_SYNC\)\}\s*/>',
                   '',
                   text
               )
@@ -177,19 +488,13 @@ jobs:
           if settings_index.exists():
               text = settings_index.read_text(encoding="utf-8", errors="ignore")
 
-              if 'import { Linking } from "react-native";' not in text:
-                  text = text.replace(
-                      'import { version } from "bunny-build-info";',
-                      'import { version } from "bunny-build-info";\nimport { Linking } from "react-native";'
-                  )
-
               text = text.replace(
                   'icon: { uri: PupuIcon },',
                   f'icon: {{ uri: "{ICON_URL}" }},'
               )
 
               text = re.sub(
-                  r'\n\s*\{\s*key:\s*"CLOUD_SYNC"[\s\S]*?onPress:\s*\(\) => Linking\.openURL\([^)]*\)\s*\n\s*\},',
+                  r'\n\s*\{\s*key:\s*"CLOUD_SYNC"[\s\S]*?(?:render:\s*\(\) => import\("[^"]+"\)|onPress:\s*\(\) => [^\n]+)[\s\S]*?\n\s*\},',
                   '',
                   text
               )
@@ -198,7 +503,7 @@ jobs:
                   key: "CLOUD_SYNC",
                   title: () => "Cloud Sync",
                   icon: {{ uri: "{ICON_URL}" }},
-                  onPress: () => Linking.openURL("{CLOUD_SYNC_URL}")
+                  render: () => import("@core/ui/settings/pages/CloudSync")
               }},'''
 
               plugin_row_pattern = r'(\n\s*\{\s*key:\s*"BUNNY_PLUGINS",)'
@@ -244,7 +549,7 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add cc.js cloudcord.js cloudcord.min.js
-          git commit -m "Build CloudCord v0.1 runtime" || exit 0
+          git commit -m "Build CloudCord v0.1 runtime with Cloud Sync" || exit 0
           git push
 
       - name: Upload runtime artifact
