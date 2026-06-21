@@ -1,1 +1,248 @@
-030076
+name: Build CloudCord Runtime
+
+"on":
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+
+      - name: Clone Kettu source
+        run: |
+          set -e
+          rm -rf _kettu_build
+          git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _kettu_build
+
+      - name: Apply CloudCord branding
+        run: |
+          set -e
+          cd _kettu_build
+
+          if [ -f "../cloudcord-favicon.png" ]; then
+            cp "../cloudcord-favicon.png" "src/assets/icons/kettu.png"
+          fi
+
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          CLOUD_SYNC_URL = "https://revenge.nexpid.xyz/cloud-sync"
+          DISCORD_URL = "https://discord.gg/5naTPJYemX"
+          GITHUB_URL = "https://github.com/xohus/cloudcord"
+
+          replacements = {
+              "KettuTweak": "CloudCord",
+              "Kettu Enhancements": "CloudCord Enhancements",
+              "Kettu": "CloudCord",
+              "https://github.com/C0C0B01/CloudCord": GITHUB_URL,
+              "https://github.com/C0C0B01/Kettu": GITHUB_URL,
+              "https://github.com/BypassHub-EX/cloudcord": GITHUB_URL,
+              "https://codeberg.org/cocobo1/CloudCord": GITHUB_URL,
+              "https://codeberg.org/cocobo1/Kettu": GITHUB_URL,
+              "Load Kettu without loading add-ons": "Load CloudCord without loading add-ons",
+              "Failed to load Kettu!": "Failed to load CloudCord!"
+          }
+
+          exts = {".ts", ".tsx", ".js", ".jsx", ".json", ".mjs", ".md"}
+
+          for path in Path(".").rglob("*"):
+              if not path.is_file() or path.suffix not in exts:
+                  continue
+
+              text = path.read_text(encoding="utf-8", errors="ignore")
+              original = text
+
+              for old, new in replacements.items():
+                  text = text.replace(old, new)
+
+              if text != original:
+                  path.write_text(text, encoding="utf-8")
+
+          constants = Path("src/lib/utils/constants.ts")
+          if constants.exists():
+              text = constants.read_text(encoding="utf-8", errors="ignore")
+
+              text = re.sub(
+                  r'export const DISCORD_SERVER = ".*?";',
+                  f'export const DISCORD_SERVER = "{DISCORD_URL}";',
+                  text
+              )
+
+              text = re.sub(
+                  r'export const CODEBERG = ".*?";',
+                  'export const CODEBERG = "";',
+                  text
+              )
+
+              text = re.sub(
+                  r'export const GITHUB = ".*?";',
+                  f'export const GITHUB = "{GITHUB_URL}";',
+                  text
+              )
+
+              text = re.sub(
+                  r'\nexport const CLOUD_SYNC = ".*?";\n?',
+                  '\n',
+                  text
+              )
+
+              constants.write_text(text, encoding="utf-8")
+
+          strings = Path("src/core/i18n/default.json")
+          if strings.exists():
+              text = strings.read_text(encoding="utf-8", errors="ignore")
+
+              text = text.replace('"PUPU": "Kettu"', '"PUPU": "CloudCord"')
+              text = text.replace('"PUPU_URL": "Kettu URL"', '"PUPU_URL": "CloudCord URL"')
+              text = text.replace('"CODEBERG": "Codeberg"', '"CODEBERG": ""')
+              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', f'"URL_PLACEHOLDER": "{GITHUB_URL}"')
+              text = text.replace('"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"', f'"URL_PLACEHOLDER": "{GITHUB_URL}"')
+
+              strings.write_text(text, encoding="utf-8")
+
+          general = Path("src/core/ui/settings/pages/General/index.tsx")
+          if general.exists():
+              text = general.read_text(encoding="utf-8", errors="ignore")
+
+              text = text.replace(
+                  'import { DISCORD_SERVER, GITHUB, CODEBERG } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
+              )
+
+              text = text.replace(
+                  'import { DISCORD_SERVER, GITHUB, CLOUD_SYNC } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
+              )
+
+              text = text.replace(
+                  'import { GITHUB, CODEBERG } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
+              )
+
+              text = text.replace(
+                  'import { GITHUB } from "@lib/utils/constants";',
+                  'import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";'
+              )
+
+              text = text.replace(
+                  'import CodebergIcon from "@assets/icons/codeberg-logo_icon_white.png";\n',
+                  ''
+              )
+
+              text = re.sub(
+                  r'\n\s*<TableRow\s+arrow=\{true\}\s+label=\{Strings\.CODEBERG\}[\s\S]*?onPress=\{\(\) => Linking\.openURL\(CODEBERG\)\}\s*/>',
+                  '',
+                  text
+              )
+
+              text = re.sub(
+                  r'\n\s*<TableRow\s+arrow=\{true\}\s+label=\{"Cloud Sync"\}[\s\S]*?onPress=\{\(\) => Linking\.openURL\(CLOUD_SYNC\)\}\s*/>',
+                  '',
+                  text
+              )
+
+              if "Linking.openURL(DISCORD_SERVER)" not in text:
+                  text = text.replace(
+                      '<TableRowGroup title={Strings.LINKS}>',
+                      '''<TableRowGroup title={Strings.LINKS}>
+                    <TableRow
+                        arrow={true}
+                        label={Strings.DISCORD_SERVER}
+                        icon={<TableRow.Icon source={findAssetId("Discord")!} />}
+                        onPress={() => Linking.openURL(DISCORD_SERVER)}
+                    />'''
+                  )
+
+              general.write_text(text, encoding="utf-8")
+
+          settings_index = Path("src/core/ui/settings/index.ts")
+          if settings_index.exists():
+              text = settings_index.read_text(encoding="utf-8", errors="ignore")
+
+              if 'import { Linking } from "react-native";' not in text:
+                  text = text.replace(
+                      'import { version } from "bunny-build-info";',
+                      'import { version } from "bunny-build-info";\nimport { Linking } from "react-native";'
+                  )
+
+              text = re.sub(
+                  r'\n\s*\{\s*key:\s*"CLOUD_SYNC"[\s\S]*?Linking\.openURL\([^)]*\)\s*\}\s*,',
+                  '',
+                  text
+              )
+
+              marker = '''            {
+                  key: "KETTU",
+                  title: () => Strings.PUPU,
+                  icon: { uri: PupuIcon },
+                  render: () => import("@core/ui/settings/pages/General"),
+                  useTrailing: () => `(${version})`
+              },'''
+
+              cloud_sync_item = f'''            {{
+                  key: "CLOUD_SYNC",
+                  title: () => "Cloud Sync",
+                  icon: findAssetId("img_account_sync_github_white"),
+                  onPress: () => Linking.openURL("{CLOUD_SYNC_URL}")
+              }},'''
+
+              if marker in text and 'key: "CLOUD_SYNC"' not in text:
+                  text = text.replace(marker, marker + "\n" + cloud_sync_item)
+
+              settings_index.write_text(text, encoding="utf-8")
+
+          build = Path("scripts/build.mjs")
+          if build.exists():
+              text = build.read_text(encoding="utf-8", errors="ignore")
+              text = text.replace('version: `"v1.4.2"`', 'version: `"v0.1"`')
+              text = text.replace('version: `"v1.4.1"`', 'version: `"v0.1"`')
+              text = text.replace('version: `"v1.4.0"`', 'version: `"v0.1"`')
+              build.write_text(text, encoding="utf-8")
+          PY
+
+      - name: Install dependencies
+        run: |
+          set -e
+          cd _kettu_build
+          bun install
+
+      - name: Build CloudCord runtime
+        run: |
+          set -e
+          cd _kettu_build
+          bun run build -- --build-minify
+
+          cp dist/kettu.js ../cloudcord.js
+          cp dist/kettu.min.js ../cc.js
+          cp dist/kettu.min.js ../cloudcord.min.js
+
+      - name: Commit runtime files
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add cc.js cloudcord.js cloudcord.min.js
+          git commit -m "Build CloudCord v0.1 runtime" || exit 0
+          git push
+
+      - name: Upload runtime artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cloudcord-runtime
+          path: |
+            cc.js
+            cloudcord.js
+            cloudcord.min.js
