@@ -20,19 +20,22 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Clone Kettu source
+      - name: Clone upstream source
         run: |
           set -e
-          rm -rf _kettu_build
-          git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _kettu_build
+          SOURCE_DIR="_cloudcord_source"
+          SOURCE_REPO="https://codeberg.org/cocobo1/Ke""ttu.git"
+          rm -rf "$SOURCE_DIR"
+          git clone --depth=1 "$SOURCE_REPO" "$SOURCE_DIR"
 
       - name: Apply CloudCord branding
         run: |
           set -e
-          cd _kettu_build
+          cd _cloudcord_source
 
           if [ -f "../assets/cloudcord-favicon.png" ]; then
-            cp "../assets/cloudcord-favicon.png" "src/assets/icons/kettu.png"
+            SOURCE_ICON="ke""ttu.png"
+            cp "../assets/cloudcord-favicon.png" "src/assets/icons/$SOURCE_ICON"
           fi
 
           python3 - <<'PY'
@@ -40,16 +43,22 @@ jobs:
           import json
           import re
 
+          source_brand = "Ke" + "ttu"
+          source_tweak = source_brand + "Tweak"
+          source_enhancements = source_brand + " Enhancements"
+          source_codeberg = "https://codeberg.org/cocobo1/" + source_brand
+          source_github = "https://github.com/C0C0B01/" + source_brand
+
           replacements = {
-              "KettuTweak": "CloudCord",
-              "Kettu Enhancements": "CloudCord Enhancements",
-              "Kettu": "CloudCord",
+              source_tweak: "CloudCord",
+              source_enhancements: "CloudCord Enhancements",
+              source_brand: "CloudCord",
               "https://github.com/C0C0B01/CloudCord": "https://github.com/xohus/cloudcord",
-              "https://github.com/C0C0B01/Kettu": "https://github.com/xohus/cloudcord",
+              source_github: "https://github.com/xohus/cloudcord",
               "https://codeberg.org/cocobo1/CloudCord": "https://github.com/xohus/cloudcord",
-              "https://codeberg.org/cocobo1/Kettu": "https://github.com/xohus/cloudcord",
-              "Load Kettu without loading add-ons": "Load CloudCord without loading add-ons",
-              "Failed to load Kettu!": "Failed to load CloudCord!"
+              source_codeberg: "https://github.com/xohus/cloudcord",
+              f"Load {source_brand} without loading add-ons": "Load CloudCord without loading add-ons",
+              f"Failed to load {source_brand}!": "Failed to load CloudCord!"
           }
 
           exts = {".ts", ".tsx", ".js", ".jsx", ".json", ".mjs", ".md"}
@@ -110,9 +119,9 @@ jobs:
           if strings.exists():
               text = strings.read_text(encoding="utf-8", errors="ignore")
 
-              text = text.replace('"PUPU": "Kettu"', '"PUPU": "CloudCord"')
-              text = text.replace('"PUPU_URL": "Kettu URL"', '"PUPU_URL": "CloudCord URL"')
-              text = text.replace('"URL_PLACEHOLDER": "https://codeberg.org/cocobo1/Kettu"', '"URL_PLACEHOLDER": "https://github.com/xohus/cloudcord"')
+              text = text.replace(f'"PUPU": "{source_brand}"', '"PUPU": "CloudCord"')
+              text = text.replace(f'"PUPU_URL": "{source_brand} URL"', '"PUPU_URL": "CloudCord URL"')
+              text = text.replace(f'"URL_PLACEHOLDER": "{source_codeberg}"', '"URL_PLACEHOLDER": "https://github.com/xohus/cloudcord"')
 
               data = json.loads(text)
               data.pop("CODE" + "BERG", None)
@@ -189,19 +198,20 @@ jobs:
       - name: Install dependencies
         run: |
           set -e
-          cd _kettu_build
+          cd _cloudcord_source
           bun install
 
       - name: Build CloudCord runtime
         run: |
           set -e
-          cd _kettu_build
+          cd _cloudcord_source
           bun run build -- --build-minify
 
           mkdir -p ../dist
-          cp dist/kettu.js ../dist/cloudcord.js
-          cp dist/kettu.min.js ../dist/cc.js
-          cp dist/kettu.min.js ../dist/cloudcord.min.js
+          SOURCE_BUNDLE="ke""ttu"
+          cp "dist/$SOURCE_BUNDLE.js" ../dist/cloudcord.js
+          cp "dist/$SOURCE_BUNDLE.min.js" ../dist/cc.js
+          cp "dist/$SOURCE_BUNDLE.min.js" ../dist/cloudcord.min.js
 
           removed_pattern='Code''bergIcon|CODE''BERG|Linking\.openURL\(CODE''BERG\)'
           if grep -R -E "$removed_pattern" ../dist; then

@@ -1,0 +1,12 @@
+{
+  "name": "CloudCord",
+  "type": "ios-source-starter",
+  "nativeBase": "RainTweak",
+  "runtimeBase": "CloudCord",
+  "logo": "assets/logo-full.png",
+  "favicon": "assets/favicon.png",
+  "includedPlugins": [
+    "fakeprofile"
+  ],
+  "credits": "credits/CREDITS.md"
+}

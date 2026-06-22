@@ -1,1 +1,0 @@
-{"name":"MessageFix","description":"Kettu built-in message fix plugin source.","authors":[{"name":"Kettu contributors"}],"main":"index.ts","vendetta":{"icon":"ic_profile_24px"},"hash":"f344e87d43ff2b661b695531a65be568e61cd665f3f8325e588e1e94f5b44247","cloudcord":{"id":"messagefix","kind":"source"}}

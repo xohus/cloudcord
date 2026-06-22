@@ -1,0 +1,21 @@
+{
+  "name": "CloudCord",
+  "layout": "root-flat-no-folders",
+  "bases": [
+    "RainTweak",
+    "CloudCord"
+  ],
+  "assets": [
+    "cloudcord-logo.png",
+    "cloudcord-favicon.png"
+  ],
+  "officialPlugins": [
+    "fakeprofile",
+    "notrack",
+    "messagefix",
+    "quickinstall",
+    "cloudcord-enhancements",
+    "badges"
+  ],
+  "notes": "All source files flattened into root using double underscores."
+}

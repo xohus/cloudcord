@@ -1,0 +1,10 @@
+{
+  "$meta": {
+    "name": "CloudCord Official Plugins",
+    "description": "Starter plugin source for CloudCord."
+  },
+  "fakeprofile": {
+    "version": "1.0.0",
+    "alwaysFetch": true
+  }
+}

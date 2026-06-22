@@ -1,1 +1,0 @@
-{"name":"QuickInstall","description":"Kettu built-in quick install plugin source.","authors":[{"name":"Kettu contributors"}],"main":"index.ts","vendetta":{"icon":"ic_profile_24px"},"hash":"c8d1d5349f214809d72b633c38f6b69b6a5d252a592cddfd427f3714aa8353ce","cloudcord":{"id":"quickinstall","kind":"source"}}

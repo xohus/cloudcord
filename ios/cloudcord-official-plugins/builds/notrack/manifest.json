@@ -1,0 +1,1 @@
+{"name":"NoTrack","description":"CloudCord built-in tracking/analytics reduction plugin source.","authors":[{"name":"CloudCord contributors"}],"main":"index.ts","vendetta":{"icon":"ic_profile_24px"},"hash":"10342534dbda2c3e044a9077280f9c23185ff98e87fc508215134b8e001ee04f","cloudcord":{"id":"notrack","kind":"source"}}

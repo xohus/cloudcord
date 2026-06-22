@@ -1,1 +1,0 @@
-{"name":"BadgeTools","description":"Kettu built-in badges source included for CloudCord.","authors":[{"name":"Kettu contributors"}],"main":"index.tsx","vendetta":{"icon":"ic_profile_24px"},"hash":"9617dbda4e35bb4f35c97e34095996cd575252249c45dc729266d6e0f4b996c4","cloudcord":{"id":"badges","kind":"source"}}
