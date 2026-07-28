@@ -8126,9 +8126,9 @@
         replaceBadges: false,
         selectedBadges: {}
       };
+      preview = rootSettings.fakeProfile;
       preview.nitroMonths ??= 0;
       preview.boostMonths ??= 0;
-      preview = rootSettings.fakeProfile;
       diagnostics = {
         patches: 0,
         userStore: false,
