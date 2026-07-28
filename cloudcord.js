@@ -6996,67 +6996,6 @@
   function renderedUserId(props) {
     return props?.userId || props?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
   }
-  function sourceUri(source) {
-    if (typeof source === "string")
-      return source;
-    if (Array.isArray(source)) {
-      for (var item of source) {
-        var uri = sourceUri(item);
-        if (uri)
-          return uri;
-      }
-      return "";
-    }
-    return String(source?.uri || source?.src || "");
-  }
-  function connectChatAvatarRenderer() {
-    for (var component of [
-      "Avatar",
-      "MessageAvatar",
-      "GuildMemberAvatar"
-    ]) {
-      try {
-        onJsxCreate(component, (_component, rendered) => {
-          var props = rendered?.props;
-          var uri = mediaUri("avatarMedia");
-          var id = renderedUserId(props);
-          if (!preview.enabled || !uri || !id || !isCurrentUser(id))
-            return;
-          props.source = {
-            uri
-          };
-          props.avatarSource = {
-            uri
-          };
-          props.avatarSrc = uri;
-          props.resizeMode = "cover";
-          props.contentFit = "cover";
-          if (props.user)
-            props.user = cloneObject(props.user, "user");
-        });
-        diagnostics.patches += 1;
-      } catch (e) {
-      }
-    }
-    for (var component1 of [
-      "Image",
-      "FastImage"
-    ]) {
-      try {
-        onJsxCreate(component1, (_component, rendered) => {
-          var props = rendered?.props;
-          var uri = mediaUri("avatarMedia");
-          var renderedUri = sourceUri(props?.source) || String(props?.src || "");
-          if (!preview.enabled || !uri || renderedUri !== uri)
-            return;
-          props.resizeMode = "cover";
-          props.contentFit = "cover";
-        });
-        diagnostics.patches += 1;
-      } catch (e) {
-      }
-    }
-  }
   function connectMediaRenderer() {
     var avatarComponents = [
       "UserHeaderAvatar",
@@ -7222,7 +7161,6 @@
       });
     }
     connectBadgeRenderer();
-    connectChatAvatarRenderer();
     connectMediaRenderer();
     var bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
     addAfterPatch("getBanner", bannerComposer, (args, result) => {
@@ -7281,20 +7219,20 @@
   }
   function normalizeMedia(key, asset) {
     return _async_to_generator(function* () {
-      var sourceUri2 = asset?.fileCopyUri || asset?.uri;
+      var sourceUri = asset?.fileCopyUri || asset?.uri;
       var name = String(asset?.fileName || asset?.name || "Selected image");
       var type = String(asset?.type || "").toLowerCase();
-      if (!sourceUri2)
+      if (!sourceUri)
         throw new Error("No image was selected.");
       if (type && !type.startsWith("image/"))
         throw new Error("Choose a picture or GIF.");
-      var animated = type.includes("gif") || /\.gif(?:$|\?)/i.test(name) || /\.gif(?:$|\?)/i.test(sourceUri2);
+      var animated = type.includes("gif") || /\.gif(?:$|\?)/i.test(name) || /\.gif(?:$|\?)/i.test(sourceUri);
       var size = {
         width: Number(asset?.width || 0),
         height: Number(asset?.height || 0)
       };
       try {
-        size = yield getImageSize(sourceUri2, asset);
+        size = yield getImageSize(sourceUri, asset);
       } catch (e) {
       }
       var target = key === "bannerMedia" ? {
@@ -7306,7 +7244,7 @@
       };
       var sourceRatio = size.width && size.height ? size.width / size.height : target.width / target.height;
       var targetRatio = target.width / target.height;
-      var uri = sourceUri2;
+      var uri = sourceUri;
       var normalized = Math.abs(sourceRatio - targetRatio) < 0.01;
       if (!animated && size.width > 0 && size.height > 0 && !normalized) {
         var crop = sourceRatio > targetRatio ? {
@@ -7330,7 +7268,7 @@
         };
         try {
           var editor = findByProps("cropImage");
-          var result = yield editor?.cropImage?.(sourceUri2, {
+          var result = yield editor?.cropImage?.(sourceUri, {
             ...crop,
             displaySize: target,
             resizeMode: "cover"
@@ -7345,7 +7283,7 @@
         if (!normalized) {
           try {
             var manipulator = findByProps("manipulateAsync");
-            var result1 = yield manipulator?.manipulateAsync?.(sourceUri2, [
+            var result1 = yield manipulator?.manipulateAsync?.(sourceUri, [
               {
                 crop: {
                   originX: crop.offset.x,
