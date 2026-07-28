@@ -323,6 +323,7 @@ jobs:
           
           let initialized = false;
           let currentUserId: string | null = null;
+          let realCurrentUser: any = null;
           let userCache = new WeakMap<object, any>();
           let profileCache = new WeakMap<object, any>();
           
@@ -602,16 +603,22 @@ jobs:
           
               const userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
               diagnostics.userStore = !!userStore;
-              try { currentUserId = userStore?.getCurrentUser?.()?.id || null; } catch {}
+              try {
+                  realCurrentUser = userStore?.getCurrentUser?.() || null;
+                  currentUserId = realCurrentUser?.id || null;
+              } catch {}
           
               addPatch("getCurrentUser", userStore, (args, original) => {
                   const user = original(...args);
+                  realCurrentUser = user || realCurrentUser;
                   currentUserId = user?.id || currentUserId;
                   return cloneObject(user, "user");
               });
               addPatch("getUser", userStore, (args, original) => {
                   if (!isCurrentUser(args?.[0])) return original(...args);
-                  return cloneObject(original(...args), "user");
+                  const user = original(...args);
+                  realCurrentUser = user || realCurrentUser;
+                  return cloneObject(user, "user");
               });
           
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
@@ -691,7 +698,9 @@ jobs:
               try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
               setTimeout(() => {
                   try {
-                      if (currentUserId) FluxDispatcher.dispatch({ type: "USER_UPDATE", user: { id: currentUserId } });
+                      if (currentUserId && realCurrentUser) {
+                          FluxDispatcher.dispatch({ type: "USER_UPDATE", user: realCurrentUser });
+                      }
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Preview saved; reopen the profile to refresh";
                   }
@@ -873,7 +882,7 @@ jobs:
                       clearCache();
                       diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
                       redraw();
-                      setTimeout(refreshPreview, 0);
+                      refreshPreview();
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Could not clear the image";
                       redraw();
