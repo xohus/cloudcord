@@ -307,10 +307,10 @@ jobs:
               selectedBadges: {}
           } satisfies PreviewSettings;
 
+          const preview = rootSettings.fakeProfile as PreviewSettings;
           preview.nitroMonths ??= 0;
           preview.boostMonths ??= 0;
-          
-          const preview = rootSettings.fakeProfile as PreviewSettings;
+
           const diagnostics = {
               patches: 0,
               userStore: false,
