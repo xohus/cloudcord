@@ -6873,60 +6873,137 @@
     useProxy(VdPluginManager.plugins);
     var [busy, setBusy] = (0, import_react3.useState)(false);
     var [refresh, setRefresh] = (0, import_react3.useState)(0);
+    var [lastError, setLastError] = (0, import_react3.useState)(null);
     var plugin = VdPluginManager.plugins[PLUGIN_URL];
     var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
-    function installOrStart(quiet = false) {
+    function runAction(action, success) {
       return _async_to_generator(function* () {
         if (busy)
           return;
         setBusy(true);
+        setLastError(null);
         try {
-          if (!VdPluginManager.plugins[PLUGIN_URL]) {
-            yield VdPluginManager.installPlugin(PLUGIN_URL, true);
-          } else if (!VdPluginManager.plugins[PLUGIN_URL].enabled) {
-            yield VdPluginManager.startPlugin(PLUGIN_URL);
-          }
-          if (!quiet)
-            showToast("FakeProfile is ready", findAssetId("Check"));
+          yield action();
+          showToast(success, findAssetId("Check"));
           setRefresh((value) => value + 1);
         } catch (error) {
-          console.error("[CloudCord] FakeProfile failed", error);
-          if (!quiet)
-            showToast(error?.message ?? "FakeProfile failed");
+          var message = error?.cause?.message ?? error?.message ?? "Unknown plugin error";
+          console.error("[CloudCord] FakeProfile action failed", error);
+          setLastError(message);
+          showToast(message);
         } finally {
           setBusy(false);
         }
       })();
+    }
+    function installOrStart() {
+      return runAction(() => _async_to_generator(function* () {
+        if (!VdPluginManager.plugins[PLUGIN_URL]) {
+          yield VdPluginManager.installPlugin(PLUGIN_URL, true);
+        } else if (!VdPluginManager.plugins[PLUGIN_URL].enabled) {
+          yield VdPluginManager.startPlugin(PLUGIN_URL);
+        }
+      })(), "FakeProfile is ready");
     }
     function refetchPlugin() {
-      return _async_to_generator(function* () {
-        if (busy)
-          return;
-        setBusy(true);
-        try {
-          if (VdPluginManager.plugins[PLUGIN_URL]?.enabled) {
-            VdPluginManager.stopPlugin(PLUGIN_URL, false);
-          }
-          yield VdPluginManager.fetchPlugin(PLUGIN_URL);
-          yield VdPluginManager.startPlugin(PLUGIN_URL);
-          showToast("FakeProfile refreshed", findAssetId("Check"));
-          setRefresh((value) => value + 1);
-        } catch (error) {
-          console.error("[CloudCord] FakeProfile refresh failed", error);
-          showToast(error?.message ?? "FakeProfile refresh failed");
-        } finally {
-          setBusy(false);
+      return runAction(() => _async_to_generator(function* () {
+        if (VdPluginManager.plugins[PLUGIN_URL]?.enabled) {
+          VdPluginManager.stopPlugin(PLUGIN_URL, false);
         }
-      })();
+        yield VdPluginManager.fetchPlugin(PLUGIN_URL);
+        yield VdPluginManager.startPlugin(PLUGIN_URL);
+      })(), "FakeProfile refreshed");
     }
-    (0, import_react3.useEffect)(() => {
-      if (!plugin?.enabled)
-        void installOrStart(true);
-    }, []);
+    function removePlugin() {
+      return runAction(() => _async_to_generator(function* () {
+        if (VdPluginManager.plugins[PLUGIN_URL]) {
+          yield VdPluginManager.removePlugin(PLUGIN_URL);
+        }
+      })(), "FakeProfile removed");
+    }
     if (SettingsComponent) {
-      return /* @__PURE__ */ jsx(ScaledPluginSettings, {
-        component: SettingsComponent
-      }, `fake-profile-settings-${refresh}`);
+      return /* @__PURE__ */ jsxs(import_react_native18.View, {
+        style: {
+          flex: 1
+        },
+        children: [
+          /* @__PURE__ */ jsxs(import_react_native18.View, {
+            style: {
+              marginHorizontal: 12,
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 14,
+              backgroundColor: "rgba(88, 101, 242, 0.14)",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10
+            },
+            children: [
+              /* @__PURE__ */ jsx(import_react_native18.Image, {
+                source: {
+                  uri: ICON_URL
+                },
+                style: {
+                  width: 42,
+                  height: 42,
+                  borderRadius: 10
+                }
+              }),
+              /* @__PURE__ */ jsxs(import_react_native18.View, {
+                style: {
+                  flex: 1
+                },
+                children: [
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "heading-sm/semibold",
+                    color: "text-normal",
+                    children: "FakeProfile"
+                  }),
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "text-xs/medium",
+                    color: "text-muted",
+                    children: "Enabled \xB7 Local preview only"
+                  })
+                ]
+              }),
+              /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+                disabled: busy,
+                onPress: refetchPlugin,
+                style: {
+                  backgroundColor: "#5865f2",
+                  paddingHorizontal: 12,
+                  paddingVertical: 8,
+                  borderRadius: 8
+                },
+                children: /* @__PURE__ */ jsx(Text, {
+                  variant: "text-xs/bold",
+                  style: {
+                    color: "#fff"
+                  },
+                  children: busy ? "Working\u2026" : "Refresh"
+                })
+              })
+            ]
+          }),
+          lastError && /* @__PURE__ */ jsx(import_react_native18.View, {
+            style: {
+              marginHorizontal: 12,
+              marginTop: 8,
+              padding: 10,
+              borderRadius: 10,
+              backgroundColor: "rgba(242, 63, 67, 0.15)"
+            },
+            children: /* @__PURE__ */ jsx(Text, {
+              variant: "text-xs/medium",
+              color: "text-danger",
+              children: lastError
+            })
+          }),
+          /* @__PURE__ */ jsx(ScaledPluginSettings, {
+            component: SettingsComponent
+          }, `fake-profile-settings-${refresh}`)
+        ]
+      });
     }
     return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
       style: {
@@ -6937,19 +7014,30 @@
       },
       children: /* @__PURE__ */ jsxs(Stack, {
         style: {
-          paddingVertical: 24,
+          paddingVertical: 20,
           paddingHorizontal: 12
         },
-        spacing: 20,
+        spacing: 18,
         children: [
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native18.View, {
               style: {
                 padding: 16,
-                gap: 6
+                alignItems: "center",
+                gap: 8
               },
               children: [
+                /* @__PURE__ */ jsx(import_react_native18.Image, {
+                  source: {
+                    uri: ICON_URL
+                  },
+                  style: {
+                    width: 92,
+                    height: 92,
+                    borderRadius: 22
+                  }
+                }),
                 /* @__PURE__ */ jsx(Text, {
                   variant: "heading-lg/semibold",
                   color: "text-normal",
@@ -6958,39 +7046,101 @@
                 /* @__PURE__ */ jsx(Text, {
                   variant: "text-sm/medium",
                   color: "text-muted",
-                  children: "Build a local profile preview with a custom name, badges, profile picture, and animated banner. Nothing is sent to Discord."
+                  style: {
+                    textAlign: "center"
+                  },
+                  children: "Preview a custom name, badges, profile picture, and animated banner on this device. Nothing is sent to Discord."
                 })
               ]
             })
           }),
           /* @__PURE__ */ jsxs(TableRowGroup, {
-            title: "Plugin",
+            title: "Setup",
             children: [
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
-                label: plugin ? "Start FakeProfile" : "Set up FakeProfile",
-                subLabel: busy ? "Please wait..." : "Opens the preview editor",
+                label: plugin ? "Start FakeProfile" : "Install FakeProfile",
+                subLabel: busy ? "Please wait\u2026" : plugin ? "Opens the local preview editor" : "Installs only after you tap this row",
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                  source: findAssetId("ic_profile_24px")
+                  source: {
+                    uri: ICON_URL
+                  }
                 }),
-                onPress: () => installOrStart()
+                onPress: installOrStart
               }),
               plugin && /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
-                label: "Refresh FakeProfile",
-                subLabel: "Downloads the latest editor",
+                label: "Refresh plugin",
+                subLabel: "Downloads a clean copy and starts it",
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("RetryIcon")
                 }),
                 onPress: refetchPlugin
+              }),
+              plugin && /* @__PURE__ */ jsx(TableRow, {
+                arrow: true,
+                label: "Remove plugin",
+                subLabel: "Removes FakeProfile and its local settings",
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")
+                }),
+                onPress: removePlugin
               })
             ]
+          }),
+          /* @__PURE__ */ jsx(Card, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native18.View, {
+              style: {
+                padding: 14,
+                gap: 6
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-sm/semibold",
+                  color: "text-normal",
+                  children: "Diagnostics"
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Installed: ",
+                    plugin ? "Yes" : "No"
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Enabled: ",
+                    plugin?.enabled ? "Yes" : "No"
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Editor loaded: ",
+                    SettingsComponent ? "Yes" : "No"
+                  ]
+                }),
+                lastError && /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-danger",
+                  children: [
+                    "Last error: ",
+                    lastError
+                  ]
+                })
+              ]
+            })
           })
         ]
       })
     });
   }
-  var import_react3, import_react_native18, PLUGIN_URL;
+  var import_react3, import_react_native18, PLUGIN_URL, ICON_URL;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -7007,6 +7157,7 @@
       import_react3 = __toESM(require_react());
       import_react_native18 = __toESM(require_react_native());
       PLUGIN_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/ios/cloudcord-official-plugins/builds/fakeprofile/";
+      ICON_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/ios/assets/fakeprofile-icon.jpg";
     }
   });
 
@@ -13243,7 +13394,9 @@ Type: ${asset.type}`,
         {
           key: "FAKE_PROFILE",
           title: () => "FakeProfile",
-          icon: findAssetId("ic_profile_24px"),
+          icon: {
+            uri: "https://raw.githubusercontent.com/xohus/cloudcord/main/ios/assets/fakeprofile-icon.jpg"
+          },
           render: () => Promise.resolve().then(() => (init_FakeProfile(), FakeProfile_exports))
         },
         {
