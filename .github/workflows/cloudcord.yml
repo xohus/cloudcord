@@ -370,7 +370,7 @@ jobs:
           function addRenderedBadge(result: any[], id: string, description: string, icon: string) {
               if (!icon || result.some(item => item?.id === id)) return;
               badgeRenderProps.set(id, { id, source: { uri: icon }, label: description });
-              result.unshift({ id, description, icon: " _" });
+              result.push({ id, description, icon: " _" });
           }
 
           function selectedBadgeObjects(existing: any) {
@@ -379,16 +379,16 @@ jobs:
                   if (!preview.selectedBadges?.[id]) continue;
                   const badgeId = `fakeprofile-${id}`;
                   if (!result.some(item => item?.id === badgeId)) {
-                      result.unshift({ id: badgeId, description, icon: " _", iconSrc: icon, source: { uri: icon } });
+                      result.push({ id: badgeId, description, icon: " _", iconSrc: icon, source: { uri: icon } });
                   }
               }
               if (preview.nitroMonths > 0) {
                   const icon = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
-                  result.unshift({ id: "fakeprofile-nitro", description: `Nitro ${durationLabel(preview.nitroMonths)}`, icon: " _", iconSrc: icon, source: { uri: icon } });
+                  result.push({ id: "fakeprofile-nitro", description: `Nitro ${durationLabel(preview.nitroMonths)}`, icon: " _", iconSrc: icon, source: { uri: icon } });
               }
               if (preview.boostMonths > 0) {
                   const icon = milestoneIcon(preview.boostMonths, BOOST_ICONS);
-                  result.unshift({ id: "fakeprofile-boost", description: `Server Booster ${durationLabel(preview.boostMonths)}`, icon: " _", iconSrc: icon, source: { uri: icon } });
+                  result.push({ id: "fakeprofile-boost", description: `Server Booster ${durationLabel(preview.boostMonths)}`, icon: " _", iconSrc: icon, source: { uri: icon } });
               }
               return result;
           }
@@ -516,6 +516,82 @@ jobs:
                   } catch {}
               }
           }
+
+          function addAfterPatch(method: string, parent: any, handler: (args: any[], result: any) => any) {
+              if (!parent?.[method]) return;
+              try {
+                  after(method, parent, handler as any);
+                  diagnostics.patches += 1;
+              } catch (error: any) {
+                  diagnostics.last = error?.message || `Could not connect ${method}`;
+              }
+          }
+
+          function requestIsCurrent(args: any[]) {
+              if (!currentUserId) return true;
+              return args.some(value => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
+          }
+
+          function renderedUserId(props: any) {
+              return props?.userId
+                  || props?.user?.id
+                  || props?.displayProfile?.userId
+                  || props?.displayProfile?.user?.id
+                  || props?.profile?.userId
+                  || props?.profile?.user?.id;
+          }
+
+          function connectMediaRenderer() {
+              const avatarComponents = ["UserHeaderAvatar", "ProfileAvatar", "UserProfileAvatar"];
+              const bannerComponents = ["UserBanner", "ProfileBanner", "UserProfileBanner"];
+
+              for (const component of avatarComponents) {
+                  try {
+                      onJsxCreate(component, (_component, rendered) => {
+                          const props = rendered?.props;
+                          const uri = mediaUri("avatarMedia");
+                          const id = renderedUserId(props);
+                          if (!preview.enabled || !uri || !id || !isCurrentUser(id)) return;
+                          props.source = { uri };
+                          props.avatarSource = { uri };
+                          props.avatarSrc = uri;
+                          props.avatarURL = uri;
+                          if (props.user) props.user = cloneObject(props.user, "user");
+                      });
+                      diagnostics.patches += 1;
+                  } catch {}
+              }
+
+              for (const component of bannerComponents) {
+                  try {
+                      onJsxCreate(component, (_component, rendered) => {
+                          const props = rendered?.props;
+                          const uri = mediaUri("bannerMedia");
+                          const id = renderedUserId(props);
+                          if (!preview.enabled || !uri || !id || !isCurrentUser(id)) return;
+                          props.source = { uri };
+                          props.bannerSource = { uri };
+                          props.bannerSrc = uri;
+                          props.bannerURL = uri;
+                          if (props.displayProfile) props.displayProfile = decorateProfileResult(props.displayProfile, id);
+                          if (props.profile) props.profile = decorateProfileResult(props.profile, id);
+                      });
+                      diagnostics.patches += 1;
+                  } catch {}
+              }
+
+              try {
+                  onJsxCreate("UserProfileHeader", (_component, rendered) => {
+                      const props = rendered?.props;
+                      const id = renderedUserId(props);
+                      if (!preview.enabled || !id || !isCurrentUser(id)) return;
+                      if (props.user) props.user = cloneObject(props.user, "user");
+                      if (props.displayProfile) props.displayProfile = decorateProfileResult(props.displayProfile, id);
+                      if (props.profile) props.profile = decorateProfileResult(props.profile, id);
+                  });
+                  diagnostics.patches += 1;
+              } catch {}
+          }
           
           function ensurePatches() {
               if (initialized) return;
@@ -562,24 +638,35 @@ jobs:
               diagnostics.avatarResolver = !!avatarResolver;
               diagnostics.bannerResolver = !!bannerResolver;
           
-              for (const method of ["getUserAvatarURL", "getAvatarURL"]) {
+              for (const method of ["getUserAvatarURL", "getAvatarURL", "getGuildMemberAvatarURL", "getGuildMemberAvatarURLSimple"]) {
                   addPatch(method, avatarResolver, (args, original) => {
                       const uri = mediaUri("avatarMedia");
-                      const subject = args?.[0];
-                      const id = typeof subject === "string" ? subject : subject?.id;
-                      return preview.enabled && uri && isCurrentUser(id) ? uri : original(...args);
+                      return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
                   });
               }
-              for (const method of ["getUserBannerURL", "getBannerURL"]) {
+              for (const method of ["getUserAvatarSource", "getGuildMemberAvatarSource"]) {
+                  addPatch(method, avatarResolver, (args, original) => {
+                      const uri = mediaUri("avatarMedia");
+                      return preview.enabled && uri && requestIsCurrent(args) ? { uri } : original(...args);
+                  });
+              }
+              for (const method of ["getUserBannerURL", "getBannerURL", "getGuildMemberBannerURL"]) {
                   addPatch(method, bannerResolver, (args, original) => {
                       const uri = mediaUri("bannerMedia");
-                      const subject = args?.[0];
-                      const id = typeof subject === "string" ? subject : subject?.id;
-                      return preview.enabled && uri && isCurrentUser(id) ? uri : original(...args);
+                      return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
                   });
               }
 
               connectBadgeRenderer();
+              connectMediaRenderer();
+
+              const bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
+              addAfterPatch("getBanner", bannerComposer, (args, result) => {
+                  const uri = mediaUri("bannerMedia");
+                  const id = args?.[0]?.displayProfile?.userId || args?.[0]?.userId;
+                  if (!preview.enabled || !uri || !result || !id || !isCurrentUser(id)) return;
+                  return { ...result, bannerSrc: uri, source: { uri } };
+              });
           
               diagnostics.last = `Connected ${diagnostics.patches} preview hooks`;
           }
