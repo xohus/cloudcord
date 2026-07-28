@@ -6903,6 +6903,7 @@
       setOwnValue(cloned, "bannerURL", banner);
       setOwnValue(cloned, "bannerUrl", banner);
       setOwnValue(cloned, "getBannerURL", () => banner);
+      setOwnValue(cloned, "getPreviewBanner", () => banner);
     }
     try {
       cache.set(original, cloned);
@@ -6920,6 +6921,8 @@
       setOwnValue(decorated, "userProfile", cloneObject(original.userProfile, "profile"));
     if (original.guildMemberProfile)
       setOwnValue(decorated, "guildMemberProfile", cloneObject(original.guildMemberProfile, "profile"));
+    if (original.displayProfile)
+      setOwnValue(decorated, "displayProfile", cloneObject(original.displayProfile, "profile"));
     if (original.profile)
       setOwnValue(decorated, "profile", cloneObject(original.profile, "profile"));
     return decorated;
@@ -7110,6 +7113,16 @@
       diagnostics.patches += 1;
     } catch (error) {
       diagnostics.last = error?.message || "Could not connect profile view";
+    }
+    try {
+      after("default", useDisplayProfileModule, (args, result) => {
+        var subject = args?.[0];
+        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+        return isCurrentUser(id) ? cloneObject(result, "profile") : result;
+      });
+      diagnostics.patches += 1;
+    } catch (error) {
+      diagnostics.last = error?.message || "Could not connect profile banner";
     }
     var avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
     var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
@@ -8030,7 +8043,7 @@
       })
     });
   }
-  var import_react3, import_react_native17, BADGES, useBadgesModule, useUserProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, preview, diagnostics, initialized, currentUserId, userCache, profileCache;
+  var import_react3, import_react_native17, BADGES, useBadgesModule, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, preview, diagnostics, initialized, currentUserId, userCache, profileCache;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -8112,6 +8125,7 @@
       ];
       useBadgesModule = findByNameLazy("useBadges", false);
       useUserProfileModule = findByNameLazy("useUserProfile", false);
+      useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
       badgeRenderProps = /* @__PURE__ */ new Map();
       simpleSheets = findByProps("showSimpleActionSheet");
       overriddenKeys = /* @__PURE__ */ new Set([
@@ -8129,6 +8143,7 @@
         "bannerURL",
         "bannerUrl",
         "getBannerURL",
+        "getPreviewBanner",
         "hasFlag",
         "premiumType",
         "premiumSince",
@@ -8136,6 +8151,7 @@
         "user",
         "userProfile",
         "guildMemberProfile",
+        "displayProfile",
         "profile"
       ]);
       NITRO_DURATIONS = [
