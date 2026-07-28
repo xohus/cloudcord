@@ -544,52 +544,6 @@ jobs:
                   || props?.profile?.user?.id;
           }
 
-          function sourceUri(source: any) {
-              if (typeof source === "string") return source;
-              if (Array.isArray(source)) {
-                  for (const item of source) {
-                      const uri = sourceUri(item);
-                      if (uri) return uri;
-                  }
-                  return "";
-              }
-              return String(source?.uri || source?.src || "");
-          }
-
-          function connectChatAvatarRenderer() {
-              for (const component of ["Avatar", "MessageAvatar", "GuildMemberAvatar"]) {
-                  try {
-                      onJsxCreate(component, (_component, rendered) => {
-                          const props = rendered?.props;
-                          const uri = mediaUri("avatarMedia");
-                          const id = renderedUserId(props);
-                          if (!preview.enabled || !uri || !id || !isCurrentUser(id)) return;
-                          props.source = { uri };
-                          props.avatarSource = { uri };
-                          props.avatarSrc = uri;
-                          props.resizeMode = "cover";
-                          props.contentFit = "cover";
-                          if (props.user) props.user = cloneObject(props.user, "user");
-                      });
-                      diagnostics.patches += 1;
-                  } catch {}
-              }
-
-              for (const component of ["Image", "FastImage"]) {
-                  try {
-                      onJsxCreate(component, (_component, rendered) => {
-                          const props = rendered?.props;
-                          const uri = mediaUri("avatarMedia");
-                          const renderedUri = sourceUri(props?.source) || String(props?.src || "");
-                          if (!preview.enabled || !uri || renderedUri !== uri) return;
-                          props.resizeMode = "cover";
-                          props.contentFit = "cover";
-                      });
-                      diagnostics.patches += 1;
-                  } catch {}
-              }
-          }
-
           function connectMediaRenderer() {
               const avatarComponents = ["UserHeaderAvatar", "ProfileAvatar", "UserProfileAvatar"];
               const bannerComponents = ["UserBanner", "ProfileBanner", "UserProfileBanner"];
@@ -718,7 +672,6 @@ jobs:
               }
 
               connectBadgeRenderer();
-              connectChatAvatarRenderer();
               connectMediaRenderer();
 
               const bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
