@@ -230,9 +230,9 @@ jobs:
           import { findByProps, findByStoreName } from "@metro";
           import { Card, Stack, Text } from "@metro/common/components";
           import { useEffect, useReducer } from "react";
-          import { Alert, Image, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
+          import { Alert, Image, Pressable, ScrollView, TextInput, View } from "react-native";
           
-          type MediaValue = { uri: string; name: string; type: string } | null;
+          type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
           type PreviewSettings = {
               enabled: boolean;
               displayName: string;
@@ -433,14 +433,62 @@ jobs:
               } catch {}
           }
           
-          function saveMedia(key: "avatarMedia" | "bannerMedia", asset: any) {
-              const uri = asset?.fileCopyUri || asset?.uri;
+          async function getImageSize(uri: string, asset: any) {
+              if (asset?.width && asset?.height) return { width: Number(asset.width), height: Number(asset.height) };
+              return await new Promise<{ width: number; height: number }>((resolve, reject) => {
+                  Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+              });
+          }
+
+          async function normalizeMedia(key: "avatarMedia" | "bannerMedia", asset: any) {
+              const sourceUri = asset?.fileCopyUri || asset?.uri;
               const name = String(asset?.fileName || asset?.name || "Selected image");
               const type = String(asset?.type || "").toLowerCase();
-              if (!uri) throw new Error("No image was selected.");
+              if (!sourceUri) throw new Error("No image was selected.");
               if (type && !type.startsWith("image/")) throw new Error("Choose a picture or GIF.");
-              preview[key] = { uri, name, type };
-              diagnostics.last = `${key === "avatarMedia" ? "Profile picture" : "Banner"} selected: ${name}`;
+
+              const animated = type.includes("gif") || /\.gif(?:$|\?)/i.test(name) || /\.gif(?:$|\?)/i.test(sourceUri);
+              let size = { width: Number(asset?.width || 0), height: Number(asset?.height || 0) };
+              try { size = await getImageSize(sourceUri, asset); } catch {}
+
+              const target = key === "bannerMedia" ? { width: 600, height: 240 } : { width: 512, height: 512 };
+              const sourceRatio = size.width && size.height ? size.width / size.height : target.width / target.height;
+              const targetRatio = target.width / target.height;
+              let uri = sourceUri;
+              let normalized = Math.abs(sourceRatio - targetRatio) < 0.01;
+
+              if (!animated && size.width > 0 && size.height > 0 && !normalized) {
+                  const crop = sourceRatio > targetRatio
+                      ? { offset: { x: Math.round((size.width - size.height * targetRatio) / 2), y: 0 }, size: { width: Math.round(size.height * targetRatio), height: size.height } }
+                      : { offset: { x: 0, y: Math.round((size.height - size.width / targetRatio) / 2) }, size: { width: size.width, height: Math.round(size.width / targetRatio) } };
+                  try {
+                      const editor = findByProps("cropImage") as any;
+                      const result = await editor?.cropImage?.(sourceUri, { ...crop, displaySize: target, resizeMode: "cover" });
+                      const output = typeof result === "string" ? result : result?.uri;
+                      if (output) { uri = output; normalized = true; }
+                  } catch {}
+
+                  if (!normalized) {
+                      try {
+                          const manipulator = findByProps("manipulateAsync") as any;
+                          const result = await manipulator?.manipulateAsync?.(sourceUri, [
+                              { crop: { originX: crop.offset.x, originY: crop.offset.y, width: crop.size.width, height: crop.size.height } },
+                              { resize: target }
+                          ]);
+                          if (result?.uri) { uri = result.uri; normalized = true; }
+                      } catch {}
+                  }
+              }
+
+              const label = key === "bannerMedia" ? "Banner" : "Profile picture";
+              diagnostics.last = animated
+                  ? `${label} animation preserved and fitted in preview`
+                  : normalized ? `${label} resized to ${target.width} × ${target.height}` : `${label} fitted to ${target.width} × ${target.height} in preview`;
+              return { uri, name, type, width: target.width, height: target.height, normalized };
+          }
+
+          async function saveMedia(key: "avatarMedia" | "bannerMedia", asset: any) {
+              preview[key] = await normalizeMedia(key, asset);
               refreshPreview();
           }
           
@@ -453,7 +501,7 @@ jobs:
                       mode: "import",
                       copyTo: "documentDirectory"
                   });
-                  if (asset) saveMedia(key, asset);
+                  if (asset) await saveMedia(key, asset);
                   return !!asset;
               } catch (error) {
                   if (picker.isCancel?.(error)) return false;
@@ -478,14 +526,28 @@ jobs:
               if (result?.didCancel) return false;
               if (result?.errorCode) throw new Error(result.errorMessage || "The photo picker failed.");
               const asset = result?.assets?.[0];
-              if (asset) saveMedia(key, asset);
+              if (asset) await saveMedia(key, asset);
               return !!asset;
           }
           
           function ActionButton({ label, onPress, muted = false }: { label: string; onPress: () => void; muted?: boolean }) {
               return (
-                  <Pressable onPress={onPress} style={{ flex: 1, padding: 11, borderRadius: 9, backgroundColor: muted ? "#35373c" : "#5865f2" }}>
-                      <Text variant="text-sm/bold" style={{ color: "#fff", textAlign: "center" }}>{label}</Text>
+                  <Pressable onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 48, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: muted ? "#243c46" : "#50fa9b", opacity: pressed ? 0.72 : 1 })}>
+                      <Text variant="text-sm/bold" style={{ color: muted ? "#78e7ff" : "#10251a", textAlign: "center" }}>{label}</Text>
+                  </Pressable>
+              );
+          }
+
+          function ToggleRow({ label, subLabel, value, onPress, accent = false }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {
+              return (
+                  <Pressable onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 58, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 11, backgroundColor: pressed ? "rgba(80,250,155,0.16)" : "rgba(255,255,255,0.04)", opacity: pressed ? 0.8 : 1 })}>
+                      <View style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
+                          <Text variant="text-sm/bold" style={{ color: accent ? "#50fa9b" : "#f0f3f6" }}>{label}</Text>
+                          {subLabel ? <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>{subLabel}</Text> : null}
+                      </View>
+                      <View style={{ width: 48, height: 28, borderRadius: 14, padding: 3, alignItems: value ? "flex-end" : "flex-start", backgroundColor: value ? "#50fa9b" : "#4b4f58" }}>
+                          <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: value ? "#10251a" : "#d4d7dc" }} />
+                      </View>
                   </Pressable>
               );
           }
@@ -519,15 +581,18 @@ jobs:
               const MediaEditor = ({ label, field, banner = false }: { label: string; field: "avatarMedia" | "bannerMedia"; banner?: boolean }) => {
                   const value = preview[field];
                   return (
-                      <View style={{ gap: 9, marginBottom: 16 }}>
-                          <Text variant="text-sm/bold" color="text-normal">{label}</Text>
-                          <View style={{ flexDirection: "row", gap: 10 }}>
+                      <View style={{ width: "100%", gap: 9, marginBottom: 16 }}>
+                          <Text variant="heading-sm/semibold" style={{ color: "#50fa9b" }}>{label}</Text>
+                          <Text variant="text-xs/medium" style={{ color: "#78e7ff" }}>{banner ? "Automatically fitted to 600 × 240" : "Automatically fitted to a square"}</Text>
+                          <View style={{ width: "100%", gap: 8 }}>
                               <ActionButton label="Choose picture" onPress={() => void choose(field, "photo")} />
-                              <ActionButton label="Choose file" muted onPress={() => void choose(field, "file")} />
+                              <ActionButton label="Choose file or GIF" muted onPress={() => void choose(field, "file")} />
                           </View>
                           {value?.uri && (
-                              <View style={{ borderRadius: 12, overflow: "hidden", backgroundColor: "#1f2023" }}>
-                                  <Image source={{ uri: value.uri }} resizeMode="cover" style={banner ? { width: "100%", height: 112 } : { width: 90, height: 90, borderRadius: 45, alignSelf: "center", marginVertical: 12 }} />
+                              <View style={{ width: "100%", borderRadius: 12, overflow: "hidden", backgroundColor: "#1f2023" }}>
+                                  <View style={banner ? { width: "100%", aspectRatio: 2.5, overflow: "hidden" } : { width: 104, height: 104, borderRadius: 52, overflow: "hidden", alignSelf: "center", marginVertical: 12 }}>
+                                      <Image source={{ uri: value.uri }} resizeMode="cover" style={{ width: "100%", height: "100%" }} />
+                                  </View>
                                   <View style={{ flexDirection: "row", alignItems: "center", padding: 10, gap: 8 }}>
                                       <Text variant="text-xs/medium" color="text-muted" numberOfLines={1} style={{ flex: 1 }}>{value.name}</Text>
                                       <Pressable onPress={() => update(field, null, true)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 7, backgroundColor: "#4a2024" }}>
@@ -544,11 +609,11 @@ jobs:
               const banner = mediaUri("bannerMedia");
           
               return (
-                  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 16, paddingBottom: 80 }}>
-                      <Stack spacing={16}>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                              <Image source={{ uri: FakeProfileIcon }} style={{ width: 48, height: 48, borderRadius: 12 }} />
-                              <View style={{ flex: 1 }}>
+                  <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator>
+                      <Stack spacing={16} style={{ width: "100%" }}>
+                          <View style={{ width: "100%", flexDirection: "row", alignItems: "center", gap: 12 }}>
+                              <View style={{ width: 52, height: 52, alignItems: "center", justifyContent: "center" }}><Image source={{ uri: FakeProfileIcon }} style={{ width: 48, height: 48, resizeMode: "contain" }} /></View>
+                              <View style={{ flex: 1, minWidth: 0 }}>
                                   <Text variant="heading-lg/semibold" color="text-normal">FakeProfile</Text>
                                   <Text variant="text-sm/medium" color="text-muted">Built-in local profile preview</Text>
                               </View>
@@ -568,13 +633,13 @@ jobs:
           
                           <Card border="strong">
                               <View style={{ padding: 14, gap: 14 }}>
-                                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                                      <View style={{ flex: 1 }}>
-                                          <Text variant="text-md/bold" color="text-normal">Show preview in the client</Text>
-                                          <Text variant="text-xs/medium" color="text-muted">Affects only what you see on this device</Text>
-                                      </View>
-                                      <Switch value={preview.enabled} onValueChange={value => update("enabled", value, true)} />
-                                  </View>
+                                  <ToggleRow
+                                      label="Show preview in the client"
+                                      subLabel="Affects only what you see on this device"
+                                      value={preview.enabled}
+                                      accent
+                                      onPress={() => update("enabled", !preview.enabled, true)}
+                                  />
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Display name</Text>
                                       <TextInput defaultValue={preview.displayName} placeholder="Preview Name" placeholderTextColor="#777" onChangeText={value => update("displayName", value)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
@@ -591,18 +656,20 @@ jobs:
           
                           <Card border="strong">
                               <View style={{ padding: 14, gap: 10 }}>
-                                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                                      <View style={{ flex: 1 }}>
-                                          <Text variant="text-md/bold" color="text-normal">Replace visible badges</Text>
-                                          <Text variant="text-xs/medium" color="text-muted">Show only the badges selected below</Text>
-                                      </View>
-                                      <Switch value={preview.replaceBadges} onValueChange={value => update("replaceBadges", value, true)} />
-                                  </View>
+                                  <Text variant="heading-md/semibold" style={{ color: "#50fa9b" }}>Choose badges</Text>
+                                  <ToggleRow
+                                      label="Replace visible badges"
+                                      subLabel="Show only the badges selected below"
+                                      value={preview.replaceBadges}
+                                      onPress={() => update("replaceBadges", !preview.replaceBadges, true)}
+                                  />
                                   {BADGES.map(([id, label]) => (
-                                      <Pressable key={id} onPress={() => update("selectedBadges", { ...preview.selectedBadges, [id]: !preview.selectedBadges?.[id] }, true)} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8 }}>
-                                          <Text variant="text-sm/medium" color="text-normal" style={{ flex: 1 }}>{label}</Text>
-                                          <Switch value={!!preview.selectedBadges?.[id]} onValueChange={() => update("selectedBadges", { ...preview.selectedBadges, [id]: !preview.selectedBadges?.[id] }, true)} />
-                                      </Pressable>
+                                      <ToggleRow
+                                          key={id}
+                                          label={label}
+                                          value={!!preview.selectedBadges?.[id]}
+                                          onPress={() => update("selectedBadges", { ...preview.selectedBadges, [id]: !preview.selectedBadges?.[id] }, true)}
+                                      />
                                   ))}
                               </View>
                           </Card>
