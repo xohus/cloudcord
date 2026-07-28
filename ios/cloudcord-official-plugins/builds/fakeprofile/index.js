@@ -66,6 +66,13 @@
   let myId = null;
   let userCache = new WeakMap();
   let profileCache = new WeakMap();
+  const debugState = {
+    userStore: false,
+    profileStore: false,
+    avatarResolver: false,
+    bannerResolver: false,
+    last: "Ready"
+  };
 
   function clearFakeCache() {
     userCache = new WeakMap();
@@ -96,6 +103,7 @@
     if (type && !type.startsWith("image/")) throw new Error("Choose an image or GIF.");
 
     storage[key] = { uri, name, type };
+    debugState.last = `${key === "avatarMedia" ? "Profile picture" : "Banner"} selected: ${name}`;
     clearFakeCache();
     refreshDiscord();
   }
@@ -335,6 +343,8 @@
 
     const avatarModule = metro.findByProps?.("getUserAvatarURL") || metro.findByProps?.("getAvatarURL", "getDefaultAvatarURL");
     const bannerModule = metro.findByProps?.("getUserBannerURL") || metro.findByProps?.("getBannerURL");
+    debugState.avatarResolver = !!avatarModule;
+    debugState.bannerResolver = !!bannerModule;
 
     patch(avatarModule, "getUserAvatarURL", "avatarMedia");
     patch(avatarModule, "getAvatarURL", "avatarMedia");
@@ -344,6 +354,7 @@
 
   function patchStores() {
     const UserStore = safeStore("UserStore") || metro.findByProps?.("getCurrentUser", "getUser");
+    debugState.userStore = !!UserStore;
 
     if (UserStore) {
       try { myId = UserStore.getCurrentUser?.()?.id || myId; } catch {}
@@ -373,6 +384,7 @@
     }
 
     const ProfileStore = safeStore("UserProfileStore") || metro.findByProps?.("getUserProfile", "getGuildMemberProfile");
+    debugState.profileStore = !!ProfileStore;
 
     if (ProfileStore) {
       try {
@@ -462,7 +474,9 @@
         try {
           if (await picker(keyName)) forceUpdate();
         } catch (error) {
-          try { RN.Alert.alert("FakeProfile", error?.message || "Could not open the picker."); } catch {}
+          debugState.last = error?.message || "Could not open the picker.";
+          forceUpdate();
+          try { RN.Alert.alert("FakeProfile", debugState.last); } catch {}
         }
       };
 
@@ -502,6 +516,53 @@
       );
     };
 
+    const PreviewCard = () => {
+      const avatar = mediaUri("avatarMedia");
+      const banner = mediaUri("bannerMedia");
+      const display = storage.displayName || "Badge Collector";
+      const username = storage.username || "badgecollector";
+
+      return React.createElement(RN.View, { style: { backgroundColor: "#1f2023", borderRadius: 16, overflow: "hidden", marginBottom: 16, borderWidth: 1, borderColor: "#34363c" } },
+        banner
+          ? React.createElement(RN.Image, { source: { uri: banner }, resizeMode: "cover", style: { width: "100%", height: 112, backgroundColor: "#111" } })
+          : React.createElement(RN.View, { style: { height: 112, backgroundColor: "#5865f2" } }),
+        React.createElement(RN.View, { style: { paddingHorizontal: 16, paddingBottom: 16 } },
+          avatar
+            ? React.createElement(RN.Image, { source: { uri: avatar }, style: { width: 78, height: 78, borderRadius: 39, marginTop: -39, borderWidth: 5, borderColor: "#1f2023", backgroundColor: "#111" } })
+            : React.createElement(RN.View, { style: { width: 78, height: 78, borderRadius: 39, marginTop: -39, borderWidth: 5, borderColor: "#1f2023", backgroundColor: "#35373c", alignItems: "center", justifyContent: "center" } },
+                React.createElement(RN.Text, { style: { color: "#fff", fontSize: 28, fontWeight: "900" } }, display.slice(0, 1).toUpperCase())
+              ),
+          React.createElement(RN.View, { style: { flexDirection: "row", alignItems: "center", marginTop: 8 } },
+            React.createElement(RN.View, { style: { flex: 1 } },
+              React.createElement(RN.Text, { style: { color: "#fff", fontSize: 19, fontWeight: "900" } }, display),
+              React.createElement(RN.Text, { style: { color: "#aaa", fontSize: 13, marginTop: 2 } }, `@${username}`)
+            ),
+            React.createElement(RN.View, { style: { paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10, backgroundColor: storage.enabled ? "#285c38" : "#3b3d44" } },
+              React.createElement(RN.Text, { style: { color: "#fff", fontSize: 11, fontWeight: "800" } }, storage.enabled ? "PREVIEW ON" : "PREVIEW OFF")
+            )
+          ),
+          React.createElement(RN.Text, { style: { color: "#8e9297", fontSize: 12, marginTop: 10 } }, "Only you can see these preview changes on this device.")
+        )
+      );
+    };
+
+    const DiagnosticsCard = () => React.createElement(RN.View, { style: { backgroundColor: "#1f2023", borderRadius: 12, padding: 14, marginBottom: 18, borderWidth: 1, borderColor: "#34363c" } },
+      React.createElement(RN.Text, { style: { color: "#fff", fontSize: 16, fontWeight: "900", marginBottom: 8 } }, "Diagnostics"),
+      React.createElement(RN.Text, { style: { color: "#bbb", fontSize: 12, lineHeight: 18 } }, `Runtime patches: ${unpatches.length}`),
+      React.createElement(RN.Text, { style: { color: "#bbb", fontSize: 12, lineHeight: 18 } }, `User store: ${debugState.userStore ? "Found" : "Missing"}`),
+      React.createElement(RN.Text, { style: { color: "#bbb", fontSize: 12, lineHeight: 18 } }, `Profile store: ${debugState.profileStore ? "Found" : "Missing"}`),
+      React.createElement(RN.Text, { style: { color: "#bbb", fontSize: 12, lineHeight: 18 } }, `Avatar resolver: ${debugState.avatarResolver ? "Found" : "Missing"}`),
+      React.createElement(RN.Text, { style: { color: "#bbb", fontSize: 12, lineHeight: 18 } }, `Banner resolver: ${debugState.bannerResolver ? "Found" : "Missing"}`),
+      React.createElement(RN.Text, { style: { color: "#8e9297", fontSize: 12, marginTop: 7 } }, debugState.last),
+      React.createElement(RN.Pressable, {
+        onPress: () => {
+          debugState.last = `Preview check passed at ${new Date().toLocaleTimeString()}`;
+          apply();
+        },
+        style: { backgroundColor: "#35373c", padding: 10, borderRadius: 8, marginTop: 10 }
+      }, React.createElement(RN.Text, { style: { color: "#fff", textAlign: "center", fontWeight: "800", fontSize: 12 } }, "Run preview check"))
+    );
+
     const toggleFlag = id => {
       storage.selectedFlags = { ...(storage.selectedFlags || {}), [id]: !storage.selectedFlags?.[id] };
       clearFakeCache();
@@ -531,6 +592,7 @@
     };
 
     return React.createElement(RN.ScrollView, { style: { flex: 1 }, contentContainerStyle: { padding: 16 } },
+      React.createElement(PreviewCard),
       React.createElement(Toggle, { label: "Enabled", sub: "Local-only changes", value: !!storage.enabled, onPress: () => { set("enabled", !storage.enabled); refreshDiscord(); } }),
       React.createElement(Toggle, { label: "Replace Mode / Hide Owned", sub: "ON = hides all real owned badges and only shows selected badges", value: !!storage.replaceMode, onPress: () => { set("replaceMode", !storage.replaceMode); refreshDiscord(); } }),
       React.createElement(Toggle, { label: "Nitro / Boost Dates", sub: "72-month Nitro + 24-month boost", value: !!storage.nitroEnabled, onPress: () => { set("nitroEnabled", !storage.nitroEnabled); refreshDiscord(); } }),
@@ -538,9 +600,10 @@
       React.createElement(Field, { label: "Username", keyName: "username", placeholder: "badgecollector" }),
       React.createElement(MediaField, { label: "Profile picture", keyName: "avatarMedia" }),
       React.createElement(MediaField, { label: "Profile banner", keyName: "bannerMedia", banner: true }),
-      React.createElement(RN.Pressable, { onPress: apply, style: { backgroundColor: "#5865f2", padding: 13, borderRadius: 10, marginBottom: 16 } },
-        React.createElement(RN.Text, { style: { color: "#fff", textAlign: "center", fontWeight: "800" } }, "Apply / Refresh")
+      React.createElement(RN.Pressable, { onPress: () => { debugState.last = "Preview refreshed"; apply(); }, style: { backgroundColor: "#5865f2", padding: 13, borderRadius: 10, marginBottom: 16 } },
+        React.createElement(RN.Text, { style: { color: "#fff", textAlign: "center", fontWeight: "800" } }, "Apply preview")
       ),
+      React.createElement(DiagnosticsCard),
 
       React.createElement(RN.Text, { style: { color: "#fff", fontSize: 16, fontWeight: "900", marginBottom: 8 } }, "Add Public Badge Flags"),
       ...FLAG_BADGES.map(([id, label]) => React.createElement(Toggle, { key: "add-flag-" + id, label, value: !!storage.selectedFlags?.[id], onPress: () => toggleFlag(id) })),
@@ -562,6 +625,7 @@
     onLoad() {
       patchStores();
       patchMediaResolvers();
+      debugState.last = `Loaded with ${unpatches.length} runtime patches`;
     },
     onUnload() {
       for (const unpatch of unpatches) try { unpatch?.(); } catch {}

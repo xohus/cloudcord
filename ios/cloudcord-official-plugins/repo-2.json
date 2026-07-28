@@ -4,8 +4,8 @@
     "description": "Starter plugin source for CloudCord."
   },
   "fakeprofile": {
-    "version": "1.1.0",
+    "version": "1.2.0",
     "alwaysFetch": true,
-    "icon": "ic_profile_24px"
+    "icon": "https://raw.githubusercontent.com/xohus/cloudcord/main/ios/assets/fakeprofile-icon.jpg"
   }
 }
