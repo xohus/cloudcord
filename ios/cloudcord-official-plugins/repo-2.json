@@ -4,7 +4,8 @@
     "description": "Starter plugin source for CloudCord."
   },
   "fakeprofile": {
-    "version": "1.0.0",
-    "alwaysFetch": true
+    "version": "1.1.0",
+    "alwaysFetch": true,
+    "icon": "ic_profile_24px"
   }
 }

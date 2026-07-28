@@ -4,9 +4,10 @@
     "description": "Official CloudCord plugin source pack."
   },
   "fakeprofile": {
-    "version": "1.0.0",
+    "version": "1.1.0",
     "alwaysFetch": true,
-    "kind": "bundled"
+    "kind": "bundled",
+    "icon": "ic_profile_24px"
   },
   "notrack": {
     "version": "1.0.0",

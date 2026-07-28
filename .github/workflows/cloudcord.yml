@@ -40,6 +40,7 @@ jobs:
           fi
 
           mkdir -p src/core/ui/settings/pages/CloudSync
+          mkdir -p src/core/ui/settings/pages/FakeProfile
           mkdir -p src/core/ui/settings/components
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
@@ -219,6 +220,113 @@ jobs:
           }
           TSX
 
+
+          cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'
+          import { VdPluginManager } from "@core/vendetta/plugins";
+          import { useProxy } from "@core/vendetta/storage";
+          import ScaledPluginSettings from "@core/ui/settings/components/ScaledPluginSettings";
+          import { findAssetId } from "@lib/api/assets";
+          import { showToast } from "@lib/ui/toasts";
+          import { Card, Stack, TableRow, TableRowGroup, Text } from "@metro/common/components";
+          import { useEffect, useState } from "react";
+          import { ScrollView, View } from "react-native";
+
+          const PLUGIN_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/ios/cloudcord-official-plugins/builds/fakeprofile/";
+
+          export default function FakeProfile() {
+              useProxy(VdPluginManager.plugins);
+
+              const [busy, setBusy] = useState(false);
+              const [refresh, setRefresh] = useState(0);
+              const plugin = VdPluginManager.plugins[PLUGIN_URL];
+              const SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
+
+              async function installOrStart(quiet = false) {
+                  if (busy) return;
+                  setBusy(true);
+
+                  try {
+                      if (!VdPluginManager.plugins[PLUGIN_URL]) {
+                          await VdPluginManager.installPlugin(PLUGIN_URL, true);
+                      } else if (!VdPluginManager.plugins[PLUGIN_URL].enabled) {
+                          await VdPluginManager.startPlugin(PLUGIN_URL);
+                      }
+
+                      if (!quiet) showToast("FakeProfile is ready", findAssetId("Check"));
+                      setRefresh(value => value + 1);
+                  } catch (error: any) {
+                      console.error("[CloudCord] FakeProfile failed", error);
+                      if (!quiet) showToast(error?.message ?? "FakeProfile failed");
+                  } finally {
+                      setBusy(false);
+                  }
+              }
+
+              async function refetchPlugin() {
+                  if (busy) return;
+                  setBusy(true);
+
+                  try {
+                      if (VdPluginManager.plugins[PLUGIN_URL]?.enabled) {
+                          VdPluginManager.stopPlugin(PLUGIN_URL, false);
+                      }
+
+                      await VdPluginManager.fetchPlugin(PLUGIN_URL);
+                      await VdPluginManager.startPlugin(PLUGIN_URL);
+                      showToast("FakeProfile refreshed", findAssetId("Check"));
+                      setRefresh(value => value + 1);
+                  } catch (error: any) {
+                      console.error("[CloudCord] FakeProfile refresh failed", error);
+                      showToast(error?.message ?? "FakeProfile refresh failed");
+                  } finally {
+                      setBusy(false);
+                  }
+              }
+
+              useEffect(() => {
+                  if (!plugin?.enabled) void installOrStart(true);
+              }, []);
+
+              if (SettingsComponent) {
+                  return <ScaledPluginSettings key={`fake-profile-settings-${refresh}`} component={SettingsComponent} />;
+              }
+
+              return (
+                  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
+                      <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={20}>
+                          <Card border="strong">
+                              <View style={{ padding: 16, gap: 6 }}>
+                                  <Text variant="heading-lg/semibold" color="text-normal">FakeProfile</Text>
+                                  <Text variant="text-sm/medium" color="text-muted">
+                                      Build a local profile preview with a custom name, badges, profile picture, and animated banner. Nothing is sent to Discord.
+                                  </Text>
+                              </View>
+                          </Card>
+
+                          <TableRowGroup title="Plugin">
+                              <TableRow
+                                  arrow
+                                  label={plugin ? "Start FakeProfile" : "Set up FakeProfile"}
+                                  subLabel={busy ? "Please wait..." : "Opens the preview editor"}
+                                  icon={<TableRow.Icon source={findAssetId("ic_profile_24px")!} />}
+                                  onPress={() => installOrStart()}
+                              />
+                              {plugin && (
+                                  <TableRow
+                                      arrow
+                                      label="Refresh FakeProfile"
+                                      subLabel="Downloads the latest editor"
+                                      icon={<TableRow.Icon source={findAssetId("RetryIcon")!} />}
+                                      onPress={refetchPlugin}
+                                  />
+                              )}
+                          </TableRowGroup>
+                      </Stack>
+                  </ScrollView>
+              );
+          }
+          TSX
+
           cat > src/lib/addons/themes/colors/patches/background.tsx <<'TSX'
           export default function patchChatBackground() {
               return () => {};
@@ -364,12 +472,25 @@ jobs:
                   render: () => import("@core/ui/settings/pages/CloudSync")
               }},'''
 
+              fake_profile_item = '''            {
+                  key: "FAKE_PROFILE",
+                  title: () => "FakeProfile",
+                  icon: findAssetId("ic_profile_24px"),
+                  render: () => import("@core/ui/settings/pages/FakeProfile")
+              },'''
+
               plugin_row_pattern = r'(\n\s*\{\s*key:\s*"BUNNY_PLUGINS",)'
 
+              items = []
+              if 'key: "FAKE_PROFILE"' not in text:
+                  items.append(fake_profile_item)
               if 'key: "CLOUD_SYNC"' not in text:
+                  items.append(cloud_sync_item)
+
+              if items:
                   text = re.sub(
                       plugin_row_pattern,
-                      lambda match: "\n" + cloud_sync_item + match.group(1),
+                      lambda match: "\n" + "\n".join(items) + match.group(1),
                       text,
                       count=1
                   )

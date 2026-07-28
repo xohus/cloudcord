@@ -39,7 +39,6 @@
     ["vdev_icon", "Verified Developer", "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"],
     ["mod_icon", "Former Moderator", "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"],
     ["active_icon", "Active Developer", "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png"],
-
     ["old_username", "Originally Known As", "https://cdn.discordapp.com/badge-icons/6de6d34650760ba5551a79732e98ed60.png"],
     ["quest", "Completed a Quest", "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png"],
     ["orbs", "Orbs Apprentice", "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png"],
@@ -65,6 +64,13 @@
 
   let unpatches = [];
   let myId = null;
+  let userCache = new WeakMap();
+  let profileCache = new WeakMap();
+
+  function clearFakeCache() {
+    userCache = new WeakMap();
+    profileCache = new WeakMap();
+  }
 
   function safeStore(name) {
     try { return metro.findByStoreName?.(name) || metro.findByStoreNameLazy?.(name); }
@@ -75,6 +81,72 @@
     const d = new Date();
     d.setMonth(d.getMonth() - months);
     return d;
+  }
+
+  function mediaUri(key) {
+    return String(storage[key]?.uri || "");
+  }
+
+  function saveMedia(key, asset) {
+    const uri = asset?.fileCopyUri || asset?.uri;
+    const name = String(asset?.fileName || asset?.name || "Selected image");
+    const type = String(asset?.type || "").toLowerCase();
+
+    if (!uri) throw new Error("No image was selected.");
+    if (type && !type.startsWith("image/")) throw new Error("Choose an image or GIF.");
+
+    storage[key] = { uri, name, type };
+    clearFakeCache();
+    refreshDiscord();
+  }
+
+  async function pickFile(key) {
+    let picker;
+    try { picker = metro.findByProps?.("pickSingle", "isCancel"); } catch {}
+    if (!picker?.pickSingle) throw new Error("The system file picker is unavailable.");
+
+    try {
+      const asset = await picker.pickSingle({
+        type: picker.types?.images || "image/*",
+        mode: "import",
+        copyTo: "documentDirectory"
+      });
+      if (!asset) return false;
+      saveMedia(key, asset);
+      return true;
+    } catch (error) {
+      if (picker.isCancel?.(error)) return false;
+      throw error;
+    }
+  }
+
+  async function pickPhoto(key) {
+    let picker;
+    try { picker = metro.findByProps?.("launchImageLibrary"); } catch {}
+    if (!picker?.launchImageLibrary) return pickFile(key);
+
+    const result = await new Promise((resolve, reject) => {
+      let returned;
+      try {
+        returned = picker.launchImageLibrary({
+          mediaType: "photo",
+          selectionLimit: 1,
+          includeBase64: false,
+          assetRepresentationMode: "current"
+        }, resolve);
+      } catch (error) {
+        reject(error);
+        return;
+      }
+      if (returned?.then) returned.then(resolve, reject);
+    });
+    if (result?.didCancel) return false;
+    if (result?.errorCode) throw new Error(result.errorMessage || "The photo picker failed.");
+
+    const asset = result?.assets?.[0];
+    if (!asset) return false;
+    saveMedia(key, asset);
+    return true;
   }
 
   function selectedFlagMask() {
@@ -123,96 +195,224 @@
     return out;
   }
 
+  function setOwnValue(obj, key, value) {
+    try {
+      const oldDesc = Object.getOwnPropertyDescriptor(obj, key);
+      const enumerable = oldDesc ? !!oldDesc.enumerable : true;
+
+      if (!oldDesc || oldDesc.configurable) {
+        Object.defineProperty(obj, key, {
+          value,
+          writable: true,
+          enumerable,
+          configurable: true
+        });
+        return;
+      }
+
+      if (oldDesc.writable) {
+        obj[key] = value;
+      }
+    } catch {
+      try { obj[key] = value; } catch {}
+    }
+  }
+
   function applyFake(obj, original) {
     if (!obj || !storage.enabled) return obj;
 
     const display = storage.displayName || original?.globalName || original?.displayName || original?.username || "Badge Collector";
     const username = storage.username || original?.username || "badgecollector";
+    const flags = withBadges(original?.publicFlags ?? original?.flags ?? obj.publicFlags ?? obj.flags);
 
-    try { obj.username = username; } catch {}
-    try { obj.globalName = display; } catch {}
-    try { obj.displayName = display; } catch {}
-    try { obj.publicFlags = withBadges(original?.publicFlags ?? obj.publicFlags); } catch {}
-    try { obj.flags = withBadges(original?.flags ?? obj.flags); } catch {}
-    try { obj.badges = extraBadgeObjects(original?.badges ?? obj.badges); } catch {}
-    try { obj.profileBadges = extraBadgeObjects(original?.profileBadges ?? obj.profileBadges); } catch {}
+    setOwnValue(obj, "username", username);
+    setOwnValue(obj, "globalName", display);
+    setOwnValue(obj, "displayName", display);
+    setOwnValue(obj, "publicFlags", flags);
+    setOwnValue(obj, "flags", flags);
+    setOwnValue(obj, "badges", extraBadgeObjects(original?.badges ?? obj.badges));
+    setOwnValue(obj, "profileBadges", extraBadgeObjects(original?.profileBadges ?? obj.profileBadges));
 
-    if (storage.nitroEnabled) {
-      try { obj.premiumType = 2; } catch {}
-      try { obj.premiumSince = oldDate(72); } catch {}
-      try { obj.premiumGuildSince = oldDate(24); } catch {}
+    const avatar = mediaUri("avatarMedia");
+    const banner = mediaUri("bannerMedia");
+
+    if (avatar) {
+      setOwnValue(obj, "avatarURL", avatar);
+      setOwnValue(obj, "avatarUrl", avatar);
+      setOwnValue(obj, "getAvatarURL", () => avatar);
     }
 
-    try {
-      Object.defineProperty(obj, "username", { get: () => username, configurable: true });
-      Object.defineProperty(obj, "globalName", { get: () => display, configurable: true });
-      Object.defineProperty(obj, "displayName", { get: () => display, configurable: true });
-      Object.defineProperty(obj, "publicFlags", { get: () => withBadges(original?.publicFlags), configurable: true });
-      Object.defineProperty(obj, "flags", { get: () => withBadges(original?.flags), configurable: true });
-      Object.defineProperty(obj, "badges", { get: () => extraBadgeObjects(original?.badges), configurable: true });
-      Object.defineProperty(obj, "profileBadges", { get: () => extraBadgeObjects(original?.profileBadges), configurable: true });
-      if (storage.nitroEnabled) {
-        Object.defineProperty(obj, "premiumType", { get: () => 2, configurable: true });
-        Object.defineProperty(obj, "premiumSince", { get: () => oldDate(72), configurable: true });
-        Object.defineProperty(obj, "premiumGuildSince", { get: () => oldDate(24), configurable: true });
-      }
-    } catch {}
+    if (banner) {
+      setOwnValue(obj, "banner", banner);
+      setOwnValue(obj, "bannerURL", banner);
+      setOwnValue(obj, "bannerUrl", banner);
+      setOwnValue(obj, "getBannerURL", () => banner);
+    }
 
-    try { obj.hasFlag = flag => !!(withBadges(original?.publicFlags || original?.flags || 0) & flag); } catch {}
+    if (storage.nitroEnabled) {
+      setOwnValue(obj, "premiumType", 2);
+      setOwnValue(obj, "premiumSince", oldDate(72));
+      setOwnValue(obj, "premiumGuildSince", oldDate(24));
+    }
+
+    try { obj.hasFlag = flag => !!(flags & flag); } catch {}
+
     return obj;
   }
 
-  function cloneObject(original) {
-    if (!original || !storage.enabled) return original;
+  function cloneWithDescriptors(original) {
     try {
       const clone = Object.create(Object.getPrototypeOf(original));
+
       for (const key of Reflect.ownKeys(original)) {
         try {
           const desc = Object.getOwnPropertyDescriptor(original, key);
           if (desc) Object.defineProperty(clone, key, desc);
         } catch {}
       }
-      return applyFake(clone, original);
+
+      return clone;
     } catch {
-      return applyFake({ ...original }, original);
+      try { return { ...original }; }
+      catch { return original; }
     }
+  }
+
+  function cloneObject(original, type) {
+    if (!original || !storage.enabled) return original;
+
+    const cache = type === "profile" ? profileCache : userCache;
+
+    try {
+      const cached = cache.get(original);
+      if (cached) return cached;
+    } catch {}
+
+    const fake = applyFake(cloneWithDescriptors(original), original);
+
+    try { cache.set(original, fake); } catch {}
+
+    return fake;
   }
 
   function cloneUser(user) {
     if (!user || !storage.enabled) return user;
-    try { if (myId && user.id !== myId) return user; } catch {}
-    return cloneObject(user);
+
+    try {
+      if (myId && user.id !== myId) return user;
+    } catch {}
+
+    return cloneObject(user, "user");
   }
 
   function cloneProfile(profile, userId) {
     if (!profile || !storage.enabled) return profile;
-    try { if (myId && userId && userId !== myId) return profile; } catch {}
-    return cloneObject(profile);
+
+    try {
+      if (myId && userId && userId !== myId) return profile;
+    } catch {}
+
+    return cloneObject(profile, "profile");
+  }
+
+  function patchMediaResolvers() {
+    const patch = (module, method, key) => {
+      if (!module?.[method]) return;
+
+      try {
+        unpatches.push(api.patcher.instead(method, module, (args, original) => {
+          const uri = mediaUri(key);
+          if (!storage.enabled || !uri) return original(...args);
+
+          const subject = args?.[0];
+          const subjectId = typeof subject === "string" ? subject : subject?.id;
+          if (myId && subjectId && subjectId !== myId) return original(...args);
+
+          return uri;
+        }));
+      } catch {}
+    };
+
+    const avatarModule = metro.findByProps?.("getUserAvatarURL") || metro.findByProps?.("getAvatarURL", "getDefaultAvatarURL");
+    const bannerModule = metro.findByProps?.("getUserBannerURL") || metro.findByProps?.("getBannerURL");
+
+    patch(avatarModule, "getUserAvatarURL", "avatarMedia");
+    patch(avatarModule, "getAvatarURL", "avatarMedia");
+    patch(bannerModule, "getUserBannerURL", "bannerMedia");
+    patch(bannerModule, "getBannerURL", "bannerMedia");
   }
 
   function patchStores() {
     const UserStore = safeStore("UserStore") || metro.findByProps?.("getCurrentUser", "getUser");
+
     if (UserStore) {
       try { myId = UserStore.getCurrentUser?.()?.id || myId; } catch {}
-      try { if (UserStore.getCurrentUser) unpatches.push(api.patcher.instead("getCurrentUser", UserStore, (a, o) => cloneUser(o(...a)))); } catch {}
-      try { if (UserStore.getUser) unpatches.push(api.patcher.instead("getUser", UserStore, (a, o) => cloneUser(o(...a)))); } catch {}
+
+      try {
+        if (UserStore.getCurrentUser) {
+          unpatches.push(api.patcher.instead("getCurrentUser", UserStore, (a, o) => {
+            const user = o(...a);
+            try { myId = user?.id || myId; } catch {}
+            return cloneUser(user);
+          }));
+        }
+      } catch {}
+
+      try {
+        if (UserStore.getUser) {
+          unpatches.push(api.patcher.instead("getUser", UserStore, (a, o) => {
+            const wantedId = a?.[0];
+
+            if (wantedId && myId && wantedId !== myId) return o(...a);
+            if (wantedId && !myId) return o(...a);
+
+            return cloneUser(o(...a));
+          }));
+        }
+      } catch {}
     }
 
     const ProfileStore = safeStore("UserProfileStore") || metro.findByProps?.("getUserProfile", "getGuildMemberProfile");
+
     if (ProfileStore) {
-      try { if (ProfileStore.getUserProfile) unpatches.push(api.patcher.instead("getUserProfile", ProfileStore, (a, o) => cloneProfile(o(...a), a?.[0]))); } catch {}
-      try { if (ProfileStore.getGuildMemberProfile) unpatches.push(api.patcher.instead("getGuildMemberProfile", ProfileStore, (a, o) => cloneProfile(o(...a), a?.[0]))); } catch {}
+      try {
+        if (ProfileStore.getUserProfile) {
+          unpatches.push(api.patcher.instead("getUserProfile", ProfileStore, (a, o) => {
+            const userId = a?.[0];
+
+            if (userId && myId && userId !== myId) return o(...a);
+            if (userId && !myId) return o(...a);
+
+            return cloneProfile(o(...a), userId);
+          }));
+        }
+      } catch {}
+
+      try {
+        if (ProfileStore.getGuildMemberProfile) {
+          unpatches.push(api.patcher.instead("getGuildMemberProfile", ProfileStore, (a, o) => {
+            const userId = a?.[0];
+
+            if (userId && myId && userId !== myId) return o(...a);
+            if (userId && !myId) return o(...a);
+
+            return cloneProfile(o(...a), userId);
+          }));
+        }
+      } catch {}
     }
   }
 
   function refreshDiscord() {
+    clearFakeCache();
+
     try { (safeStore("UserStore") || metro.findByProps?.("getCurrentUser", "getUser"))?.emitChange?.(); } catch {}
     try { (safeStore("UserProfileStore") || metro.findByProps?.("getUserProfile", "getGuildMemberProfile"))?.emitChange?.(); } catch {}
+
     try {
       const Dispatcher = metro.findByProps?.("dispatch", "subscribe");
-      Dispatcher?.dispatch?.({ type: "USER_UPDATE", user: {} });
-      Dispatcher?.dispatch?.({ type: "USER_PROFILE_UPDATE", userId: myId });
       Dispatcher?.dispatch?.({ type: "CURRENT_USER_UPDATE" });
+      if (myId) Dispatcher?.dispatch?.({ type: "USER_PROFILE_UPDATE", userId: myId });
     } catch {}
   }
 
@@ -221,10 +421,12 @@
 
     const set = (key, value) => {
       storage[key] = value;
+      clearFakeCache();
       forceUpdate();
     };
 
     const apply = () => {
+      clearFakeCache();
       forceUpdate();
       refreshDiscord();
     };
@@ -243,7 +445,10 @@
         defaultValue: String(storage[keyName] ?? ""),
         placeholder,
         placeholderTextColor: "#777",
-        onChangeText: text => { storage[keyName] = text; },
+        onChangeText: text => {
+          storage[keyName] = text;
+          clearFakeCache();
+        },
         autoCorrect: false,
         autoCapitalize: "none",
         editable: true,
@@ -251,26 +456,76 @@
       })
     );
 
+    const MediaField = ({ label, keyName, banner }) => {
+      const uri = mediaUri(keyName);
+      const choose = async picker => {
+        try {
+          if (await picker(keyName)) forceUpdate();
+        } catch (error) {
+          try { RN.Alert.alert("FakeProfile", error?.message || "Could not open the picker."); } catch {}
+        }
+      };
+
+      return React.createElement(RN.View, { style: { marginBottom: 14 } },
+        React.createElement(RN.Text, { style: { color: "#fff", fontSize: 14, fontWeight: "700", marginBottom: 8 } }, label),
+        React.createElement(RN.View, { style: { flexDirection: "row" } },
+          React.createElement(RN.Pressable, {
+            onPress: () => choose(pickPhoto),
+            style: { flex: 1, backgroundColor: "#5865f2", padding: 11, borderRadius: 8, marginRight: 6 }
+          }, React.createElement(RN.Text, { style: { color: "#fff", textAlign: "center", fontWeight: "800" } }, "Choose picture")),
+          React.createElement(RN.Pressable, {
+            onPress: () => choose(pickFile),
+            style: { flex: 1, backgroundColor: "#35373c", padding: 11, borderRadius: 8, marginLeft: 6 }
+          }, React.createElement(RN.Text, { style: { color: "#fff", textAlign: "center", fontWeight: "800" } }, "Choose file"))
+        ),
+        uri ? React.createElement(RN.View, { style: { marginTop: 9, backgroundColor: "#1f1f1f", borderRadius: 8, overflow: "hidden" } },
+          React.createElement(RN.Image, {
+            source: { uri },
+            resizeMode: "cover",
+            style: banner
+              ? { width: "100%", height: 110, backgroundColor: "#111" }
+              : { width: 88, height: 88, borderRadius: 44, alignSelf: "center", marginVertical: 10, backgroundColor: "#111" }
+          }),
+          React.createElement(RN.View, { style: { flexDirection: "row", alignItems: "center", padding: 9 } },
+            React.createElement(RN.Text, { numberOfLines: 1, style: { color: "#ddd", flex: 1, fontSize: 12 } }, storage[keyName]?.name || "Selected image"),
+            React.createElement(RN.Pressable, {
+              onPress: () => {
+                storage[keyName] = null;
+                clearFakeCache();
+                forceUpdate();
+                refreshDiscord();
+              },
+              style: { backgroundColor: "#4a2024", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 6 }
+            }, React.createElement(RN.Text, { style: { color: "#ff7b84", fontWeight: "800", fontSize: 12 } }, "Clear"))
+          )
+        ) : null
+      );
+    };
+
     const toggleFlag = id => {
       storage.selectedFlags = { ...(storage.selectedFlags || {}), [id]: !storage.selectedFlags?.[id] };
+      clearFakeCache();
       forceUpdate();
       refreshDiscord();
     };
 
     const toggleExtra = id => {
       storage.selectedExtras = { ...(storage.selectedExtras || {}), [id]: !storage.selectedExtras?.[id] };
+      clearFakeCache();
       forceUpdate();
       refreshDiscord();
     };
 
     const toggleHiddenFlag = id => {
       storage.hiddenFlags = { ...(storage.hiddenFlags || {}), [id]: !storage.hiddenFlags?.[id] };
+      clearFakeCache();
       forceUpdate();
       refreshDiscord();
     };
 
     const toggleHiddenExtra = id => {
       storage.hiddenExtras = { ...(storage.hiddenExtras || {}), [id]: !storage.hiddenExtras?.[id] };
+      clearFakeCache();
       forceUpdate();
       refreshDiscord();
     };
@@ -281,6 +536,8 @@
       React.createElement(Toggle, { label: "Nitro / Boost Dates", sub: "72-month Nitro + 24-month boost", value: !!storage.nitroEnabled, onPress: () => { set("nitroEnabled", !storage.nitroEnabled); refreshDiscord(); } }),
       React.createElement(Field, { label: "Display name", keyName: "displayName", placeholder: "Badge Collector" }),
       React.createElement(Field, { label: "Username", keyName: "username", placeholder: "badgecollector" }),
+      React.createElement(MediaField, { label: "Profile picture", keyName: "avatarMedia" }),
+      React.createElement(MediaField, { label: "Profile banner", keyName: "bannerMedia", banner: true }),
       React.createElement(RN.Pressable, { onPress: apply, style: { backgroundColor: "#5865f2", padding: 13, borderRadius: 10, marginBottom: 16 } },
         React.createElement(RN.Text, { style: { color: "#fff", textAlign: "center", fontWeight: "800" } }, "Apply / Refresh")
       ),
@@ -302,10 +559,14 @@
   }
 
   const index = {
-    onLoad() { patchStores(); refreshDiscord(); },
+    onLoad() {
+      patchStores();
+      patchMediaResolvers();
+    },
     onUnload() {
       for (const unpatch of unpatches) try { unpatch?.(); } catch {}
       unpatches = [];
+      clearFakeCache();
       refreshDiscord();
     },
     settings: Settings
@@ -314,4 +575,11 @@
   exports.default = index;
   Object.defineProperty(exports, "__esModule", { value: true });
   return exports;
-})({}, bunny.metro, bunny.metro.common, bunny.utils.lazy, bunny.api, vendetta.plugin);
+})(
+  {},
+  typeof bunny !== "undefined" && bunny.metro ? bunny.metro : vendetta.metro,
+  typeof bunny !== "undefined" && bunny.metro?.common ? bunny.metro.common : vendetta.metro.common,
+  typeof bunny !== "undefined" ? bunny.utils?.lazy : undefined,
+  typeof bunny !== "undefined" && bunny.api?.patcher ? bunny.api : vendetta,
+  vendetta.plugin
+);
