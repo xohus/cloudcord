@@ -2,10 +2,5 @@
   "$meta": {
     "name": "CloudCord Official Plugins",
     "description": "Starter plugin source for CloudCord."
-  },
-  "fakeprofile": {
-    "version": "1.2.0",
-    "alwaysFetch": true,
-    "icon": "https://raw.githubusercontent.com/xohus/cloudcord/main/ios/assets/fakeprofile-icon.jpg"
   }
 }

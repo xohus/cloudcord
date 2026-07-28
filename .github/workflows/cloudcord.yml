@@ -42,6 +42,7 @@ jobs:
           mkdir -p src/core/ui/settings/pages/CloudSync
           mkdir -p src/core/ui/settings/pages/FakeProfile
           mkdir -p src/core/ui/settings/components
+          cp "../ios/assets/fakeprofile-icon.png" "src/assets/icons/fakeprofile.png"
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
           import type { ComponentType } from "react";
@@ -222,159 +223,399 @@ jobs:
 
 
           cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'
-          import { VdPluginManager } from "@core/vendetta/plugins";
+          import FakeProfileIcon from "@assets/icons/fakeprofile.png";
           import { useProxy } from "@core/vendetta/storage";
-          import ScaledPluginSettings from "@core/ui/settings/components/ScaledPluginSettings";
-          import { findAssetId } from "@lib/api/assets";
-          import { showToast } from "@lib/ui/toasts";
-          import { Card, Stack, TableRow, TableRowGroup, Text } from "@metro/common/components";
-          import { useState } from "react";
-          import { Image, Pressable, ScrollView, View } from "react-native";
-
-          const PLUGIN_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/ios/cloudcord-official-plugins/builds/fakeprofile/";
-          const ICON_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/ios/assets/fakeprofile-icon.jpg";
-
-          export default function FakeProfile() {
-              useProxy(VdPluginManager.plugins);
-
-              const [busy, setBusy] = useState(false);
-              const [refresh, setRefresh] = useState(0);
-              const [lastError, setLastError] = useState<string | null>(null);
-              const plugin = VdPluginManager.plugins[PLUGIN_URL];
-              const SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
-
-              async function runAction(action: () => Promise<void>, success: string) {
-                  if (busy) return;
-                  setBusy(true);
-                  setLastError(null);
-
-                  try {
-                      await action();
-                      showToast(success, findAssetId("Check"));
-                      setRefresh(value => value + 1);
-                  } catch (error: any) {
-                      const message = error?.cause?.message ?? error?.message ?? "Unknown plugin error";
-                      console.error("[CloudCord] FakeProfile action failed", error);
-                      setLastError(message);
-                      showToast(message);
-                  } finally {
-                      setBusy(false);
+          import { instead } from "@lib/api/patcher";
+          import { settings } from "@lib/api/settings";
+          import { findByProps, findByStoreName } from "@metro";
+          import { Card, Stack, Text } from "@metro/common/components";
+          import { useEffect, useReducer } from "react";
+          import { Alert, Image, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
+          
+          type MediaValue = { uri: string; name: string; type: string } | null;
+          type PreviewSettings = {
+              enabled: boolean;
+              displayName: string;
+              username: string;
+              avatarMedia: MediaValue;
+              bannerMedia: MediaValue;
+              replaceBadges: boolean;
+              selectedBadges: Record<string, boolean>;
+          };
+          
+          const BADGES: Array<[string, string, number]> = [
+              ["hypesquad", "HypeSquad Events", 4],
+              ["bug1", "Bug Hunter 1", 8],
+              ["bravery", "HypeSquad Bravery", 64],
+              ["brilliance", "HypeSquad Brilliance", 128],
+              ["balance", "HypeSquad Balance", 256],
+              ["early", "Early Supporter", 512],
+              ["bug2", "Bug Hunter 2", 16384],
+              ["vdev", "Verified Developer", 131072],
+              ["mod", "Former Moderator", 262144],
+              ["active", "Active Developer", 4194304]
+          ];
+          
+          const rootSettings = settings as any;
+          rootSettings.fakeProfile ??= {
+              enabled: false,
+              displayName: "Preview Name",
+              username: "preview",
+              avatarMedia: null,
+              bannerMedia: null,
+              replaceBadges: false,
+              selectedBadges: {}
+          } satisfies PreviewSettings;
+          
+          const preview = rootSettings.fakeProfile as PreviewSettings;
+          const diagnostics = {
+              patches: 0,
+              userStore: false,
+              profileStore: false,
+              avatarResolver: false,
+              bannerResolver: false,
+              last: "Ready"
+          };
+          
+          let initialized = false;
+          let currentUserId: string | null = null;
+          let userCache = new WeakMap<object, any>();
+          let profileCache = new WeakMap<object, any>();
+          
+          function clearCache() {
+              userCache = new WeakMap();
+              profileCache = new WeakMap();
+          }
+          
+          function mediaUri(key: "avatarMedia" | "bannerMedia") {
+              return String(preview[key]?.uri || "");
+          }
+          
+          function safeStore(name: string) {
+              try { return findByStoreName(name) as any; }
+              catch { return null; }
+          }
+          
+          function setOwnValue(target: any, key: string, value: any) {
+              if (!target) return;
+              try {
+                  Object.defineProperty(target, key, { configurable: true, enumerable: true, writable: true, value });
+              } catch {
+                  try { target[key] = value; } catch {}
+              }
+          }
+          
+          function cloneObject(original: any, kind: "user" | "profile") {
+              if (!original || !preview.enabled) return original;
+              const cache = kind === "profile" ? profileCache : userCache;
+              try {
+                  const cached = cache.get(original);
+                  if (cached) return cached;
+              } catch {}
+          
+              let cloned: any;
+              try {
+                  cloned = Object.create(Object.getPrototypeOf(original));
+                  for (const key of Reflect.ownKeys(original)) {
+                      const descriptor = Object.getOwnPropertyDescriptor(original, key);
+                      if (descriptor) Object.defineProperty(cloned, key, descriptor);
                   }
+              } catch {
+                  try { cloned = { ...original }; }
+                  catch { return original; }
               }
-
-              function installOrStart() {
-                  return runAction(async () => {
-                      if (!VdPluginManager.plugins[PLUGIN_URL]) {
-                          await VdPluginManager.installPlugin(PLUGIN_URL, true);
-                      } else if (!VdPluginManager.plugins[PLUGIN_URL].enabled) {
-                          await VdPluginManager.startPlugin(PLUGIN_URL);
-                      }
-                  }, "FakeProfile is ready");
+          
+              const displayName = preview.displayName || original.globalName || original.displayName || original.username;
+              const username = preview.username || original.username;
+              const avatar = mediaUri("avatarMedia");
+              const banner = mediaUri("bannerMedia");
+              let selectedFlags = 0;
+              for (const [id, , flag] of BADGES) if (preview.selectedBadges?.[id]) selectedFlags |= flag;
+              const flags = preview.replaceBadges ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
+          
+              setOwnValue(cloned, "username", username);
+              setOwnValue(cloned, "globalName", displayName);
+              setOwnValue(cloned, "displayName", displayName);
+              setOwnValue(cloned, "publicFlags", flags);
+              setOwnValue(cloned, "flags", flags);
+              if (avatar) {
+                  setOwnValue(cloned, "avatarURL", avatar);
+                  setOwnValue(cloned, "avatarUrl", avatar);
+                  setOwnValue(cloned, "getAvatarURL", () => avatar);
               }
-
-              function refetchPlugin() {
-                  return runAction(async () => {
-                      if (VdPluginManager.plugins[PLUGIN_URL]?.enabled) {
-                          VdPluginManager.stopPlugin(PLUGIN_URL, false);
-                      }
-
-                      await VdPluginManager.fetchPlugin(PLUGIN_URL);
-                      await VdPluginManager.startPlugin(PLUGIN_URL);
-                  }, "FakeProfile refreshed");
+              if (banner) {
+                  setOwnValue(cloned, "banner", banner);
+                  setOwnValue(cloned, "bannerURL", banner);
+                  setOwnValue(cloned, "bannerUrl", banner);
+                  setOwnValue(cloned, "getBannerURL", () => banner);
               }
-
-              function removePlugin() {
-                  return runAction(async () => {
-                      if (VdPluginManager.plugins[PLUGIN_URL]) {
-                          await VdPluginManager.removePlugin(PLUGIN_URL);
-                      }
-                  }, "FakeProfile removed");
+          
+              try { cache.set(original, cloned); } catch {}
+              return cloned;
+          }
+          
+          function isCurrentUser(id?: string) {
+              return !id || !currentUserId || id === currentUserId;
+          }
+          
+          function addPatch(method: string, parent: any, handler: (args: any[], original: Function) => any) {
+              if (!parent?.[method]) return;
+              try {
+                  instead(method, parent, handler as any);
+                  diagnostics.patches += 1;
+              } catch (error: any) {
+                  diagnostics.last = error?.message || `Could not connect ${method}`;
               }
-
-              if (SettingsComponent) {
+          }
+          
+          function ensurePatches() {
+              if (initialized) return;
+              initialized = true;
+          
+              const userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
+              diagnostics.userStore = !!userStore;
+              try { currentUserId = userStore?.getCurrentUser?.()?.id || null; } catch {}
+          
+              addPatch("getCurrentUser", userStore, (args, original) => {
+                  const user = original(...args);
+                  currentUserId = user?.id || currentUserId;
+                  return cloneObject(user, "user");
+              });
+              addPatch("getUser", userStore, (args, original) => {
+                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  return cloneObject(original(...args), "user");
+              });
+          
+              const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
+              diagnostics.profileStore = !!profileStore;
+              addPatch("getUserProfile", profileStore, (args, original) => {
+                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  return cloneObject(original(...args), "profile");
+              });
+              addPatch("getGuildMemberProfile", profileStore, (args, original) => {
+                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  return cloneObject(original(...args), "profile");
+              });
+          
+              const avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
+              const bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
+              diagnostics.avatarResolver = !!avatarResolver;
+              diagnostics.bannerResolver = !!bannerResolver;
+          
+              for (const method of ["getUserAvatarURL", "getAvatarURL"]) {
+                  addPatch(method, avatarResolver, (args, original) => {
+                      const uri = mediaUri("avatarMedia");
+                      const subject = args?.[0];
+                      const id = typeof subject === "string" ? subject : subject?.id;
+                      return preview.enabled && uri && isCurrentUser(id) ? uri : original(...args);
+                  });
+              }
+              for (const method of ["getUserBannerURL", "getBannerURL"]) {
+                  addPatch(method, bannerResolver, (args, original) => {
+                      const uri = mediaUri("bannerMedia");
+                      const subject = args?.[0];
+                      const id = typeof subject === "string" ? subject : subject?.id;
+                      return preview.enabled && uri && isCurrentUser(id) ? uri : original(...args);
+                  });
+              }
+          
+              diagnostics.last = `Connected ${diagnostics.patches} preview hooks`;
+          }
+          
+          function refreshPreview() {
+              clearCache();
+              try { safeStore("UserStore")?.emitChange?.(); } catch {}
+              try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
+              try {
+                  const dispatcher = findByProps("dispatch", "subscribe") as any;
+                  dispatcher?.dispatch?.({ type: "CURRENT_USER_UPDATE" });
+                  if (currentUserId) dispatcher?.dispatch?.({ type: "USER_PROFILE_UPDATE", userId: currentUserId });
+              } catch {}
+          }
+          
+          function saveMedia(key: "avatarMedia" | "bannerMedia", asset: any) {
+              const uri = asset?.fileCopyUri || asset?.uri;
+              const name = String(asset?.fileName || asset?.name || "Selected image");
+              const type = String(asset?.type || "").toLowerCase();
+              if (!uri) throw new Error("No image was selected.");
+              if (type && !type.startsWith("image/")) throw new Error("Choose a picture or GIF.");
+              preview[key] = { uri, name, type };
+              diagnostics.last = `${key === "avatarMedia" ? "Profile picture" : "Banner"} selected: ${name}`;
+              refreshPreview();
+          }
+          
+          async function pickFile(key: "avatarMedia" | "bannerMedia") {
+              const picker = findByProps("pickSingle", "isCancel") as any;
+              if (!picker?.pickSingle) throw new Error("The system file picker is unavailable.");
+              try {
+                  const asset = await picker.pickSingle({
+                      type: picker.types?.images || "image/*",
+                      mode: "import",
+                      copyTo: "documentDirectory"
+                  });
+                  if (asset) saveMedia(key, asset);
+                  return !!asset;
+              } catch (error) {
+                  if (picker.isCancel?.(error)) return false;
+                  throw error;
+              }
+          }
+          
+          async function pickPhoto(key: "avatarMedia" | "bannerMedia") {
+              const picker = findByProps("launchImageLibrary") as any;
+              if (!picker?.launchImageLibrary) return pickFile(key);
+              const result: any = await new Promise((resolve, reject) => {
+                  try {
+                      const returned = picker.launchImageLibrary({
+                          mediaType: "photo",
+                          selectionLimit: 1,
+                          includeBase64: false,
+                          assetRepresentationMode: "current"
+                      }, resolve);
+                      if (returned?.then) returned.then(resolve, reject);
+                  } catch (error) { reject(error); }
+              });
+              if (result?.didCancel) return false;
+              if (result?.errorCode) throw new Error(result.errorMessage || "The photo picker failed.");
+              const asset = result?.assets?.[0];
+              if (asset) saveMedia(key, asset);
+              return !!asset;
+          }
+          
+          function ActionButton({ label, onPress, muted = false }: { label: string; onPress: () => void; muted?: boolean }) {
+              return (
+                  <Pressable onPress={onPress} style={{ flex: 1, padding: 11, borderRadius: 9, backgroundColor: muted ? "#35373c" : "#5865f2" }}>
+                      <Text variant="text-sm/bold" style={{ color: "#fff", textAlign: "center" }}>{label}</Text>
+                  </Pressable>
+              );
+          }
+          
+          export default function FakeProfile() {
+              useProxy(settings);
+              const [, redraw] = useReducer(value => value + 1, 0);
+          
+              useEffect(() => {
+                  ensurePatches();
+                  redraw();
+              }, []);
+          
+              const update = (key: keyof PreviewSettings, value: any, refresh = false) => {
+                  (preview as any)[key] = value;
+                  clearCache();
+                  if (refresh) refreshPreview();
+                  redraw();
+              };
+          
+              const choose = async (key: "avatarMedia" | "bannerMedia", source: "photo" | "file") => {
+                  try {
+                      if (await (source === "photo" ? pickPhoto(key) : pickFile(key))) redraw();
+                  } catch (error: any) {
+                      diagnostics.last = error?.message || "Could not open the picker.";
+                      redraw();
+                      Alert.alert("FakeProfile", diagnostics.last);
+                  }
+              };
+          
+              const MediaEditor = ({ label, field, banner = false }: { label: string; field: "avatarMedia" | "bannerMedia"; banner?: boolean }) => {
+                  const value = preview[field];
                   return (
-                      <View style={{ flex: 1 }}>
-                          <View style={{
-                              marginHorizontal: 12,
-                              marginTop: 12,
-                              padding: 12,
-                              borderRadius: 14,
-                              backgroundColor: "rgba(88, 101, 242, 0.14)",
-                              flexDirection: "row",
-                              alignItems: "center",
-                              gap: 10
-                          }}>
-                              <Image source={{ uri: ICON_URL }} style={{ width: 42, height: 42, borderRadius: 10 }} />
-                              <View style={{ flex: 1 }}>
-                                  <Text variant="heading-sm/semibold" color="text-normal">FakeProfile</Text>
-                                  <Text variant="text-xs/medium" color="text-muted">Enabled · Local preview only</Text>
-                              </View>
-                              <Pressable
-                                  disabled={busy}
-                                  onPress={refetchPlugin}
-                                  style={{ backgroundColor: "#5865f2", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
-                              >
-                                  <Text variant="text-xs/bold" style={{ color: "#fff" }}>{busy ? "Working…" : "Refresh"}</Text>
-                              </Pressable>
+                      <View style={{ gap: 9, marginBottom: 16 }}>
+                          <Text variant="text-sm/bold" color="text-normal">{label}</Text>
+                          <View style={{ flexDirection: "row", gap: 10 }}>
+                              <ActionButton label="Choose picture" onPress={() => void choose(field, "photo")} />
+                              <ActionButton label="Choose file" muted onPress={() => void choose(field, "file")} />
                           </View>
-                          {lastError && (
-                              <View style={{ marginHorizontal: 12, marginTop: 8, padding: 10, borderRadius: 10, backgroundColor: "rgba(242, 63, 67, 0.15)" }}>
-                                  <Text variant="text-xs/medium" color="text-danger">{lastError}</Text>
+                          {value?.uri && (
+                              <View style={{ borderRadius: 12, overflow: "hidden", backgroundColor: "#1f2023" }}>
+                                  <Image source={{ uri: value.uri }} resizeMode="cover" style={banner ? { width: "100%", height: 112 } : { width: 90, height: 90, borderRadius: 45, alignSelf: "center", marginVertical: 12 }} />
+                                  <View style={{ flexDirection: "row", alignItems: "center", padding: 10, gap: 8 }}>
+                                      <Text variant="text-xs/medium" color="text-muted" numberOfLines={1} style={{ flex: 1 }}>{value.name}</Text>
+                                      <Pressable onPress={() => update(field, null, true)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 7, backgroundColor: "#4a2024" }}>
+                                          <Text variant="text-xs/bold" style={{ color: "#ff7b84" }}>Clear</Text>
+                                      </Pressable>
+                                  </View>
                               </View>
                           )}
-                          <ScaledPluginSettings key={`fake-profile-settings-${refresh}`} component={SettingsComponent} />
                       </View>
                   );
-              }
-
+              };
+          
+              const avatar = mediaUri("avatarMedia");
+              const banner = mediaUri("bannerMedia");
+          
               return (
-                  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
-                      <Stack style={{ paddingVertical: 20, paddingHorizontal: 12 }} spacing={18}>
-                          <Card border="strong">
-                              <View style={{ padding: 16, alignItems: "center", gap: 8 }}>
-                                  <Image source={{ uri: ICON_URL }} style={{ width: 92, height: 92, borderRadius: 22 }} />
+                  <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 12, paddingVertical: 16, paddingBottom: 80 }}>
+                      <Stack spacing={16}>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                              <Image source={{ uri: FakeProfileIcon }} style={{ width: 48, height: 48, borderRadius: 12 }} />
+                              <View style={{ flex: 1 }}>
                                   <Text variant="heading-lg/semibold" color="text-normal">FakeProfile</Text>
-                                  <Text variant="text-sm/medium" color="text-muted" style={{ textAlign: "center" }}>
-                                      Preview a custom name, badges, profile picture, and animated banner on this device. Nothing is sent to Discord.
-                                  </Text>
+                                  <Text variant="text-sm/medium" color="text-muted">Built-in local profile preview</Text>
+                              </View>
+                          </View>
+          
+                          <Card border="strong">
+                              <View style={{ borderRadius: 14, overflow: "hidden" }}>
+                                  {banner ? <Image source={{ uri: banner }} resizeMode="cover" style={{ width: "100%", height: 118 }} /> : <View style={{ height: 118, backgroundColor: "#5865f2" }} />}
+                                  <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+                                      {avatar ? <Image source={{ uri: avatar }} style={{ width: 82, height: 82, borderRadius: 41, marginTop: -41, borderWidth: 5, borderColor: "#1f2023" }} /> : <View style={{ width: 82, height: 82, borderRadius: 41, marginTop: -41, borderWidth: 5, borderColor: "#1f2023", backgroundColor: "#777" }} />}
+                                      <Text variant="heading-md/semibold" color="text-normal" style={{ marginTop: 10 }}>{preview.displayName || "Preview Name"}</Text>
+                                      <Text variant="text-sm/medium" color="text-muted">@{preview.username || "preview"}</Text>
+                                      <Text variant="text-xs/bold" style={{ color: "#7ee787", marginTop: 8 }}>LOCAL PREVIEW ONLY</Text>
+                                  </View>
                               </View>
                           </Card>
-
-                          <TableRowGroup title="Setup">
-                              <TableRow
-                                  arrow
-                                  label={plugin ? "Start FakeProfile" : "Install FakeProfile"}
-                                  subLabel={busy ? "Please wait…" : plugin ? "Opens the local preview editor" : "Installs only after you tap this row"}
-                                  icon={<TableRow.Icon source={{ uri: ICON_URL }} />}
-                                  onPress={installOrStart}
-                              />
-                              {plugin && (
-                                  <TableRow
-                                      arrow
-                                      label="Refresh plugin"
-                                      subLabel="Downloads a clean copy and starts it"
-                                      icon={<TableRow.Icon source={findAssetId("RetryIcon")!} />}
-                                      onPress={refetchPlugin}
-                                  />
-                              )}
-                              {plugin && (
-                                  <TableRow
-                                      arrow
-                                      label="Remove plugin"
-                                      subLabel="Removes FakeProfile and its local settings"
-                                      icon={<TableRow.Icon source={findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")!} />}
-                                      onPress={removePlugin}
-                                  />
-                              )}
-                          </TableRowGroup>
-
+          
                           <Card border="strong">
-                              <View style={{ padding: 14, gap: 6 }}>
+                              <View style={{ padding: 14, gap: 14 }}>
+                                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                      <View style={{ flex: 1 }}>
+                                          <Text variant="text-md/bold" color="text-normal">Show preview in the client</Text>
+                                          <Text variant="text-xs/medium" color="text-muted">Affects only what you see on this device</Text>
+                                      </View>
+                                      <Switch value={preview.enabled} onValueChange={value => update("enabled", value, true)} />
+                                  </View>
+                                  <View style={{ gap: 8 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Display name</Text>
+                                      <TextInput defaultValue={preview.displayName} placeholder="Preview Name" placeholderTextColor="#777" onChangeText={value => update("displayName", value)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                  </View>
+                                  <View style={{ gap: 8 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Username</Text>
+                                      <TextInput defaultValue={preview.username} placeholder="preview" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                  </View>
+                                  <MediaEditor label="Profile picture" field="avatarMedia" />
+                                  <MediaEditor label="Banner" field="bannerMedia" banner />
+                                  <ActionButton label="Apply preview" onPress={() => { diagnostics.last = "Preview refreshed"; refreshPreview(); redraw(); }} />
+                              </View>
+                          </Card>
+          
+                          <Card border="strong">
+                              <View style={{ padding: 14, gap: 10 }}>
+                                  <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                      <View style={{ flex: 1 }}>
+                                          <Text variant="text-md/bold" color="text-normal">Replace visible badges</Text>
+                                          <Text variant="text-xs/medium" color="text-muted">Show only the badges selected below</Text>
+                                      </View>
+                                      <Switch value={preview.replaceBadges} onValueChange={value => update("replaceBadges", value, true)} />
+                                  </View>
+                                  {BADGES.map(([id, label]) => (
+                                      <Pressable key={id} onPress={() => update("selectedBadges", { ...preview.selectedBadges, [id]: !preview.selectedBadges?.[id] }, true)} style={{ flexDirection: "row", alignItems: "center", paddingVertical: 8 }}>
+                                          <Text variant="text-sm/medium" color="text-normal" style={{ flex: 1 }}>{label}</Text>
+                                          <Switch value={!!preview.selectedBadges?.[id]} onValueChange={() => update("selectedBadges", { ...preview.selectedBadges, [id]: !preview.selectedBadges?.[id] }, true)} />
+                                      </Pressable>
+                                  ))}
+                              </View>
+                          </Card>
+          
+                          <Card border="strong">
+                              <View style={{ padding: 14, gap: 5 }}>
                                   <Text variant="heading-sm/semibold" color="text-normal">Diagnostics</Text>
-                                  <Text variant="text-xs/medium" color="text-muted">Installed: {plugin ? "Yes" : "No"}</Text>
-                                  <Text variant="text-xs/medium" color="text-muted">Enabled: {plugin?.enabled ? "Yes" : "No"}</Text>
-                                  <Text variant="text-xs/medium" color="text-muted">Editor loaded: {SettingsComponent ? "Yes" : "No"}</Text>
-                                  {lastError && <Text variant="text-xs/medium" color="text-danger">Last error: {lastError}</Text>}
+                                  <Text variant="text-xs/medium" color="text-muted">Preview hooks: {diagnostics.patches}</Text>
+                                  <Text variant="text-xs/medium" color="text-muted">User source: {diagnostics.userStore ? "Connected" : "Unavailable"}</Text>
+                                  <Text variant="text-xs/medium" color="text-muted">Profile source: {diagnostics.profileStore ? "Connected" : "Unavailable"}</Text>
+                                  <Text variant="text-xs/medium" color="text-muted">Profile picture resolver: {diagnostics.avatarResolver ? "Connected" : "Unavailable"}</Text>
+                                  <Text variant="text-xs/medium" color="text-muted">Banner resolver: {diagnostics.bannerResolver ? "Connected" : "Unavailable"}</Text>
+                                  <Text variant="text-xs/medium" color="text-muted">Last action: {diagnostics.last}</Text>
                               </View>
                           </Card>
                       </Stack>
@@ -397,7 +638,6 @@ jobs:
           GITHUB_URL = "https://github.com/xohus/cloudcord"
           CLOUDCORD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
           CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png"
-          FAKEPROFILE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/ios/assets/fakeprofile-icon.jpg"
 
           replacements = {
               "KettuTweak": "CloudCord",
@@ -511,6 +751,9 @@ jobs:
           if settings_index.exists():
               text = settings_index.read_text(encoding="utf-8", errors="ignore")
 
+              if 'import FakeProfileIcon from "@assets/icons/fakeprofile.png";' not in text:
+                  text = 'import FakeProfileIcon from "@assets/icons/fakeprofile.png";\n' + text
+
               text = text.replace(
                   'icon: { uri: PupuIcon },',
                   f'icon: {{ uri: "{CLOUDCORD_ICON}" }},'
@@ -532,7 +775,7 @@ jobs:
               fake_profile_item = f'''            {{
                   key: "FAKE_PROFILE",
                   title: () => "FakeProfile",
-                  icon: {{ uri: "{FAKEPROFILE_ICON}" }},
+                  icon: {{ uri: FakeProfileIcon }},
                   render: () => import("@core/ui/settings/pages/FakeProfile")
               }},'''
 

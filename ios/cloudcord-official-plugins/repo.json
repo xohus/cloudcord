@@ -3,12 +3,6 @@
     "name": "CloudCord Official Plugins",
     "description": "Official CloudCord plugin source pack."
   },
-  "fakeprofile": {
-    "version": "1.2.0",
-    "alwaysFetch": true,
-    "kind": "bundled",
-    "icon": "https://raw.githubusercontent.com/xohus/cloudcord/main/ios/assets/fakeprofile-icon.jpg"
-  },
   "notrack": {
     "version": "1.0.0",
     "alwaysFetch": true,
