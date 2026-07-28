@@ -262,12 +262,13 @@ jobs:
 
           const useBadgesModule = findByNameLazy("useBadges", false);
           const useUserProfileModule = findByNameLazy("useUserProfile", false);
+          const useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
           const badgeRenderProps = new Map<string, Record<string, any>>();
           const simpleSheets = findByProps("showSimpleActionSheet") as any;
           const overriddenKeys = new Set([
               "username", "globalName", "displayName", "publicFlags", "flags", "badges", "profileBadges",
-              "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "hasFlag",
-              "premiumType", "premiumSince", "premiumGuildSince", "user", "userProfile", "guildMemberProfile", "profile"
+              "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "getPreviewBanner", "hasFlag",
+              "premiumType", "premiumSince", "premiumGuildSince", "user", "userProfile", "guildMemberProfile", "displayProfile", "profile"
           ]);
 
           const NITRO_DURATIONS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
@@ -445,6 +446,7 @@ jobs:
                   setOwnValue(cloned, "bannerURL", banner);
                   setOwnValue(cloned, "bannerUrl", banner);
                   setOwnValue(cloned, "getBannerURL", () => banner);
+                  setOwnValue(cloned, "getPreviewBanner", () => banner);
               }
           
               try { cache.set(original, cloned); } catch {}
@@ -457,6 +459,7 @@ jobs:
               if (original.user) setOwnValue(decorated, "user", cloneObject(original.user, "user"));
               if (original.userProfile) setOwnValue(decorated, "userProfile", cloneObject(original.userProfile, "profile"));
               if (original.guildMemberProfile) setOwnValue(decorated, "guildMemberProfile", cloneObject(original.guildMemberProfile, "profile"));
+              if (original.displayProfile) setOwnValue(decorated, "displayProfile", cloneObject(original.displayProfile, "profile"));
               if (original.profile) setOwnValue(decorated, "profile", cloneObject(original.profile, "profile"));
               return decorated;
           }
@@ -631,6 +634,17 @@ jobs:
                   diagnostics.patches += 1;
               } catch (error: any) {
                   diagnostics.last = error?.message || "Could not connect profile view";
+              }
+
+              try {
+                  after("default", useDisplayProfileModule as any, (args, result) => {
+                      const subject = args?.[0];
+                      const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+                      return isCurrentUser(id) ? cloneObject(result, "profile") : result;
+                  });
+                  diagnostics.patches += 1;
+              } catch (error: any) {
+                  diagnostics.last = error?.message || "Could not connect profile banner";
               }
           
               const avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
