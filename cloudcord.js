@@ -4361,6 +4361,1643 @@
     }
   });
 
+  // src/assets/icons/fakeprofile.png
+  var fakeprofile_default;
+  var init_fakeprofile = __esm({
+    "src/assets/icons/fakeprofile.png"() {
+      fakeprofile_default = "data:image/png;base64,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";
+    }
+  });
+
+  // src/lib/api/react/jsx.ts
+  var jsx_exports = {};
+  __export(jsx_exports, {
+    deleteJsxCreate: () => deleteJsxCreate,
+    onJsxCreate: () => onJsxCreate,
+    patchJsx: () => patchJsx
+  });
+  function onJsxCreate(Component, callback) {
+    if (!callbacks.has(Component))
+      callbacks.set(Component, []);
+    callbacks.get(Component).push(callback);
+  }
+  function deleteJsxCreate(Component, callback) {
+    if (!callbacks.has(Component))
+      return;
+    var cbs = callbacks.get(Component);
+    cbs.splice(cbs.indexOf(callback), 1);
+    if (cbs.length === 0)
+      callbacks.delete(Component);
+  }
+  function patchJsx() {
+    var callback = ([Component], ret) => {
+      if (typeof ret.type === "undefined") {
+        ret.type = "RCTView";
+        return ret;
+      }
+      if (typeof Component === "function" && callbacks.has(Component.name)) {
+        var cbs = callbacks.get(Component.name);
+        for (var cb of cbs) {
+          var _ret = cb(Component, ret);
+          if (_ret !== void 0)
+            ret = _ret;
+        }
+        return ret;
+      }
+    };
+    var patches3 = [
+      after("jsx", jsxRuntime2, callback),
+      after("jsxs", jsxRuntime2, callback)
+    ];
+    return () => patches3.forEach((unpatch) => unpatch());
+  }
+  var callbacks, jsxRuntime2;
+  var init_jsx = __esm({
+    "src/lib/api/react/jsx.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_patcher();
+      init_metro();
+      callbacks = /* @__PURE__ */ new Map();
+      jsxRuntime2 = findByPropsLazy("jsx", "jsxs");
+    }
+  });
+
+  // globals:react
+  var require_react = __commonJS({
+    "globals:react"(exports, module) {
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      module.exports = require_depsModule()["react"];
+    }
+  });
+
+  // src/core/ui/settings/pages/FakeProfile/index.tsx
+  var FakeProfile_exports = {};
+  __export(FakeProfile_exports, {
+    default: () => FakeProfile,
+    initializeFakeProfile: () => initializeFakeProfile
+  });
+  function clearCache() {
+    userCache = /* @__PURE__ */ new WeakMap();
+    profileCache = /* @__PURE__ */ new WeakMap();
+  }
+  function mediaUri(key) {
+    return String(preview[key]?.uri || "");
+  }
+  function safeStore(name) {
+    try {
+      return findByStoreName(name);
+    } catch (e) {
+      return null;
+    }
+  }
+  function setOwnValue(target, key, value) {
+    if (!target)
+      return;
+    try {
+      Object.defineProperty(target, key, {
+        configurable: true,
+        enumerable: true,
+        writable: true,
+        value
+      });
+    } catch (e) {
+      try {
+        target[key] = value;
+      } catch (e2) {
+      }
+    }
+  }
+  function monthsAgo(months) {
+    var date = /* @__PURE__ */ new Date();
+    date.setMonth(date.getMonth() - months);
+    return date;
+  }
+  function durationLabel(months) {
+    if (!months)
+      return "None";
+    if (months % 12 === 0) {
+      var years = months / 12;
+      return `${years} ${years === 1 ? "year" : "years"}`;
+    }
+    return `${months} ${months === 1 ? "month" : "months"}`;
+  }
+  function milestoneIcon(months, values) {
+    return values.find(([minimum]) => months >= minimum)?.[1] || "";
+  }
+  function addRenderedBadge(result, id, description, icon) {
+    if (!icon || result.some((item) => item?.id === id))
+      return;
+    badgeRenderProps.set(id, {
+      id,
+      source: {
+        uri: icon
+      },
+      label: description
+    });
+    result.push({
+      id,
+      description,
+      icon: " _"
+    });
+  }
+  function selectedBadgeObjects(existing) {
+    var _loop2 = function(id2, description2, icon3) {
+      if (!preview.selectedBadges?.[id2])
+        return "continue";
+      var badgeId = `fakeprofile-${id2}`;
+      if (!result.some((item) => item?.id === badgeId)) {
+        result.push({
+          id: badgeId,
+          description: description2,
+          icon: " _",
+          iconSrc: icon3,
+          source: {
+            uri: icon3
+          }
+        });
+      }
+    };
+    var result = preview.replaceBadges ? [] : Array.isArray(existing) ? [
+      ...existing
+    ] : [];
+    for (var [id, description, , icon] of BADGES)
+      _loop2(id, description, icon);
+    if (preview.nitroMonths > 0) {
+      var icon1 = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
+      result.push({
+        id: "fakeprofile-nitro",
+        description: `Nitro ${durationLabel(preview.nitroMonths)}`,
+        icon: " _",
+        iconSrc: icon1,
+        source: {
+          uri: icon1
+        }
+      });
+    }
+    if (preview.boostMonths > 0) {
+      var icon2 = milestoneIcon(preview.boostMonths, BOOST_ICONS);
+      result.push({
+        id: "fakeprofile-boost",
+        description: `Server Booster ${durationLabel(preview.boostMonths)}`,
+        icon: " _",
+        iconSrc: icon2,
+        source: {
+          uri: icon2
+        }
+      });
+    }
+    return result;
+  }
+  function cloneObject(original, kind) {
+    if (!original || !preview.enabled)
+      return original;
+    var cache = kind === "profile" ? profileCache : userCache;
+    try {
+      var cached = cache.get(original);
+      if (cached)
+        return cached;
+    } catch (e) {
+    }
+    var cloned;
+    try {
+      cloned = Object.create(Object.getPrototypeOf(original));
+      for (var key of Reflect.ownKeys(original)) {
+        if (overriddenKeys.has(String(key)))
+          continue;
+        var descriptor = Object.getOwnPropertyDescriptor(original, key);
+        if (descriptor)
+          Object.defineProperty(cloned, key, descriptor);
+      }
+    } catch (e) {
+      try {
+        cloned = {
+          ...original
+        };
+      } catch (e2) {
+        return original;
+      }
+    }
+    var displayName = preview.displayName || original.globalName || original.displayName || original.username;
+    var username = preview.username || original.username;
+    var avatar = mediaUri("avatarMedia");
+    var banner = mediaUri("bannerMedia");
+    var selectedFlags = 0;
+    for (var [id, , flag] of BADGES)
+      if (preview.selectedBadges?.[id])
+        selectedFlags |= flag;
+    var flags = preview.replaceBadges ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
+    setOwnValue(cloned, "username", username);
+    setOwnValue(cloned, "globalName", displayName);
+    setOwnValue(cloned, "displayName", displayName);
+    setOwnValue(cloned, "publicFlags", flags);
+    setOwnValue(cloned, "flags", flags);
+    setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
+    setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
+    setOwnValue(cloned, "hasFlag", (flag2) => !!(flags & flag2));
+    if (preview.nitroMonths > 0) {
+      setOwnValue(cloned, "premiumType", 2);
+      setOwnValue(cloned, "premiumSince", monthsAgo(preview.nitroMonths));
+    }
+    if (preview.boostMonths > 0)
+      setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
+    if (avatar) {
+      setOwnValue(cloned, "avatarURL", avatar);
+      setOwnValue(cloned, "avatarUrl", avatar);
+      setOwnValue(cloned, "getAvatarURL", () => avatar);
+    }
+    if (banner) {
+      setOwnValue(cloned, "banner", banner);
+      setOwnValue(cloned, "bannerURL", banner);
+      setOwnValue(cloned, "bannerUrl", banner);
+      setOwnValue(cloned, "getBannerURL", () => banner);
+      setOwnValue(cloned, "getPreviewBanner", () => banner);
+    }
+    try {
+      cache.set(original, cloned);
+    } catch (e) {
+    }
+    return cloned;
+  }
+  function decorateProfileResult(original, userId) {
+    if (!original || !preview.enabled || !isCurrentUser(userId))
+      return original;
+    var decorated = cloneObject(original, "profile");
+    if (original.user)
+      setOwnValue(decorated, "user", cloneObject(original.user, "user"));
+    if (original.userProfile)
+      setOwnValue(decorated, "userProfile", cloneObject(original.userProfile, "profile"));
+    if (original.guildMemberProfile)
+      setOwnValue(decorated, "guildMemberProfile", cloneObject(original.guildMemberProfile, "profile"));
+    if (original.displayProfile)
+      setOwnValue(decorated, "displayProfile", cloneObject(original.displayProfile, "profile"));
+    if (original.profile)
+      setOwnValue(decorated, "profile", cloneObject(original.profile, "profile"));
+    return decorated;
+  }
+  function isCurrentUser(id) {
+    return !id || !currentUserId || id === currentUserId;
+  }
+  function addPatch(method, parent, handler) {
+    if (!parent?.[method])
+      return;
+    try {
+      instead(method, parent, handler);
+      diagnostics.patches += 1;
+    } catch (error) {
+      diagnostics.last = error?.message || `Could not connect ${method}`;
+    }
+  }
+  function connectBadgeRenderer() {
+    try {
+      after("default", useBadgesModule, ([user], result) => {
+        if (!preview.enabled || !Array.isArray(result))
+          return;
+        var id = user?.userId || user?.id;
+        if (!isCurrentUser(id))
+          return;
+        if (preview.replaceBadges)
+          result.splice(0, result.length);
+        for (var [badgeId, description, , icon] of BADGES) {
+          if (!preview.selectedBadges?.[badgeId])
+            continue;
+          var id1 = `fakeprofile-${badgeId}`;
+          addRenderedBadge(result, id1, description, icon);
+        }
+        addRenderedBadge(result, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
+        addRenderedBadge(result, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
+      });
+      diagnostics.patches += 1;
+    } catch (error) {
+      diagnostics.last = error?.message || "Could not connect badge list";
+    }
+    for (var component of [
+      "ProfileBadge",
+      "RenderedBadge"
+    ]) {
+      try {
+        onJsxCreate(component, (_component, rendered) => {
+          var props = badgeRenderProps.get(rendered?.props?.id);
+          if (props)
+            Object.assign(rendered.props, props);
+        });
+        diagnostics.patches += 1;
+      } catch (e) {
+      }
+    }
+  }
+  function addAfterPatch(method, parent, handler) {
+    if (!parent?.[method])
+      return;
+    try {
+      after(method, parent, handler);
+      diagnostics.patches += 1;
+    } catch (error) {
+      diagnostics.last = error?.message || `Could not connect ${method}`;
+    }
+  }
+  function requestIsCurrent(args) {
+    if (!currentUserId)
+      return true;
+    return args.some((value) => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
+  }
+  function renderedUserId(props) {
+    return props?.userId || props?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
+  }
+  function connectMediaRenderer() {
+    var avatarComponents = [
+      "UserHeaderAvatar",
+      "ProfileAvatar",
+      "UserProfileAvatar"
+    ];
+    var bannerComponents = [
+      "UserBanner",
+      "ProfileBanner",
+      "UserProfileBanner"
+    ];
+    for (var component of avatarComponents) {
+      try {
+        onJsxCreate(component, (_component, rendered) => {
+          var props = rendered?.props;
+          var uri = mediaUri("avatarMedia");
+          var id = renderedUserId(props);
+          if (!preview.enabled || !uri || !id || !isCurrentUser(id))
+            return;
+          props.source = {
+            uri
+          };
+          props.avatarSource = {
+            uri
+          };
+          props.avatarSrc = uri;
+          props.avatarURL = uri;
+          if (props.user)
+            props.user = cloneObject(props.user, "user");
+        });
+        diagnostics.patches += 1;
+      } catch (e) {
+      }
+    }
+    for (var component1 of bannerComponents) {
+      try {
+        onJsxCreate(component1, (_component, rendered) => {
+          var props = rendered?.props;
+          var uri = mediaUri("bannerMedia");
+          var id = renderedUserId(props);
+          if (!preview.enabled || !uri || !id || !isCurrentUser(id))
+            return;
+          props.source = {
+            uri
+          };
+          props.bannerSource = {
+            uri
+          };
+          props.bannerSrc = uri;
+          props.bannerURL = uri;
+          if (props.displayProfile)
+            props.displayProfile = decorateProfileResult(props.displayProfile, id);
+          if (props.profile)
+            props.profile = decorateProfileResult(props.profile, id);
+        });
+        diagnostics.patches += 1;
+      } catch (e) {
+      }
+    }
+    try {
+      onJsxCreate("UserProfileHeader", (_component, rendered) => {
+        var props = rendered?.props;
+        var id = renderedUserId(props);
+        if (!preview.enabled || !id || !isCurrentUser(id))
+          return;
+        if (props.user)
+          props.user = cloneObject(props.user, "user");
+        if (props.displayProfile)
+          props.displayProfile = decorateProfileResult(props.displayProfile, id);
+        if (props.profile)
+          props.profile = decorateProfileResult(props.profile, id);
+      });
+      diagnostics.patches += 1;
+    } catch (e) {
+    }
+  }
+  function ensurePatches() {
+    if (initialized)
+      return;
+    initialized = true;
+    var userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
+    diagnostics.userStore = !!userStore;
+    try {
+      currentUserId = userStore?.getCurrentUser?.()?.id || null;
+    } catch (e) {
+    }
+    addPatch("getCurrentUser", userStore, (args, original) => {
+      var user = original(...args);
+      currentUserId = user?.id || currentUserId;
+      return cloneObject(user, "user");
+    });
+    addPatch("getUser", userStore, (args, original) => {
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
+      return cloneObject(original(...args), "user");
+    });
+    var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
+    diagnostics.profileStore = !!profileStore;
+    addPatch("getUserProfile", profileStore, (args, original) => {
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
+      return decorateProfileResult(original(...args), args?.[0]);
+    });
+    addPatch("getGuildMemberProfile", profileStore, (args, original) => {
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
+      return decorateProfileResult(original(...args), args?.[0]);
+    });
+    try {
+      after("default", useUserProfileModule, (args, result) => {
+        var subject = args?.[0];
+        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+        return decorateProfileResult(result, id);
+      });
+      diagnostics.patches += 1;
+    } catch (error) {
+      diagnostics.last = error?.message || "Could not connect profile view";
+    }
+    try {
+      after("default", useDisplayProfileModule, (args, result) => {
+        var subject = args?.[0];
+        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+        return isCurrentUser(id) ? cloneObject(result, "profile") : result;
+      });
+      diagnostics.patches += 1;
+    } catch (error) {
+      diagnostics.last = error?.message || "Could not connect profile banner";
+    }
+    var avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
+    var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
+    diagnostics.avatarResolver = !!avatarResolver;
+    diagnostics.bannerResolver = !!bannerResolver;
+    for (var method of [
+      "getUserAvatarURL",
+      "getAvatarURL",
+      "getGuildMemberAvatarURL",
+      "getGuildMemberAvatarURLSimple"
+    ]) {
+      addPatch(method, avatarResolver, (args, original) => {
+        var uri = mediaUri("avatarMedia");
+        return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
+      });
+    }
+    for (var method1 of [
+      "getUserAvatarSource",
+      "getGuildMemberAvatarSource"
+    ]) {
+      addPatch(method1, avatarResolver, (args, original) => {
+        var uri = mediaUri("avatarMedia");
+        return preview.enabled && uri && requestIsCurrent(args) ? {
+          uri
+        } : original(...args);
+      });
+    }
+    for (var method2 of [
+      "getUserBannerURL",
+      "getBannerURL",
+      "getGuildMemberBannerURL"
+    ]) {
+      addPatch(method2, bannerResolver, (args, original) => {
+        var uri = mediaUri("bannerMedia");
+        return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
+      });
+    }
+    connectBadgeRenderer();
+    connectMediaRenderer();
+    var bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
+    addAfterPatch("getBanner", bannerComposer, (args, result) => {
+      var uri = mediaUri("bannerMedia");
+      var id = args?.[0]?.displayProfile?.userId || args?.[0]?.userId;
+      if (!preview.enabled || !uri || !result || !id || !isCurrentUser(id))
+        return;
+      return {
+        ...result,
+        bannerSrc: uri,
+        source: {
+          uri
+        }
+      };
+    });
+    diagnostics.last = `Connected ${diagnostics.patches} preview hooks`;
+  }
+  function refreshPreview() {
+    clearCache();
+    try {
+      safeStore("UserStore")?.emitChange?.();
+    } catch (e) {
+    }
+    try {
+      safeStore("UserProfileStore")?.emitChange?.();
+    } catch (e) {
+    }
+    setTimeout(() => {
+      try {
+        if (currentUserId)
+          FluxDispatcher.dispatch({
+            type: "USER_UPDATE",
+            user: {
+              id: currentUserId
+            }
+          });
+      } catch (error) {
+        diagnostics.last = error?.message || "Preview saved; reopen the profile to refresh";
+      }
+    }, 0);
+  }
+  function initializeFakeProfile() {
+    try {
+      ensurePatches();
+      if (preview.enabled)
+        refreshPreview();
+    } catch (error) {
+      diagnostics.last = error?.message || "FakeProfile will retry from settings";
+    }
+  }
+  function getImageSize(uri, asset) {
+    return _async_to_generator(function* () {
+      if (asset?.width && asset?.height)
+        return {
+          width: Number(asset.width),
+          height: Number(asset.height)
+        };
+      return yield new Promise((resolve, reject) => {
+        import_react_native5.Image.getSize(uri, (width, height) => resolve({
+          width,
+          height
+        }), reject);
+      });
+    })();
+  }
+  function normalizeMedia(key, asset) {
+    return _async_to_generator(function* () {
+      var sourceUri = asset?.fileCopyUri || asset?.uri;
+      var name = String(asset?.fileName || asset?.name || "Selected image");
+      var type = String(asset?.type || "").toLowerCase();
+      if (!sourceUri)
+        throw new Error("No image was selected.");
+      if (type && !type.startsWith("image/"))
+        throw new Error("Choose a picture or GIF.");
+      var animated = type.includes("gif") || /\.gif(?:$|\?)/i.test(name) || /\.gif(?:$|\?)/i.test(sourceUri);
+      var size = {
+        width: Number(asset?.width || 0),
+        height: Number(asset?.height || 0)
+      };
+      try {
+        size = yield getImageSize(sourceUri, asset);
+      } catch (e) {
+      }
+      var target = key === "bannerMedia" ? {
+        width: 600,
+        height: 240
+      } : {
+        width: 512,
+        height: 512
+      };
+      var sourceRatio = size.width && size.height ? size.width / size.height : target.width / target.height;
+      var targetRatio = target.width / target.height;
+      var uri = sourceUri;
+      var normalized = Math.abs(sourceRatio - targetRatio) < 0.01;
+      if (!animated && size.width > 0 && size.height > 0 && !normalized) {
+        var crop = sourceRatio > targetRatio ? {
+          offset: {
+            x: Math.round((size.width - size.height * targetRatio) / 2),
+            y: 0
+          },
+          size: {
+            width: Math.round(size.height * targetRatio),
+            height: size.height
+          }
+        } : {
+          offset: {
+            x: 0,
+            y: Math.round((size.height - size.width / targetRatio) / 2)
+          },
+          size: {
+            width: size.width,
+            height: Math.round(size.width / targetRatio)
+          }
+        };
+        try {
+          var editor = findByProps("cropImage");
+          var result = yield editor?.cropImage?.(sourceUri, {
+            ...crop,
+            displaySize: target,
+            resizeMode: "cover"
+          });
+          var output = typeof result === "string" ? result : result?.uri;
+          if (output) {
+            uri = output;
+            normalized = true;
+          }
+        } catch (e) {
+        }
+        if (!normalized) {
+          try {
+            var manipulator = findByProps("manipulateAsync");
+            var result1 = yield manipulator?.manipulateAsync?.(sourceUri, [
+              {
+                crop: {
+                  originX: crop.offset.x,
+                  originY: crop.offset.y,
+                  width: crop.size.width,
+                  height: crop.size.height
+                }
+              },
+              {
+                resize: target
+              }
+            ]);
+            if (result1?.uri) {
+              uri = result1.uri;
+              normalized = true;
+            }
+          } catch (e) {
+          }
+        }
+      }
+      var label = key === "bannerMedia" ? "Banner" : "Profile picture";
+      diagnostics.last = animated ? `${label} animation preserved and fitted in preview` : normalized ? `${label} resized to ${target.width} \xD7 ${target.height}` : `${label} fitted to ${target.width} \xD7 ${target.height} in preview`;
+      return {
+        uri,
+        name,
+        type,
+        width: target.width,
+        height: target.height,
+        normalized
+      };
+    })();
+  }
+  function saveMedia(key, asset) {
+    return _async_to_generator(function* () {
+      preview[key] = yield normalizeMedia(key, asset);
+      refreshPreview();
+    })();
+  }
+  function pickFile(key) {
+    return _async_to_generator(function* () {
+      var picker = findByProps("pickSingle", "isCancel");
+      if (!picker?.pickSingle)
+        throw new Error("The system file picker is unavailable.");
+      try {
+        var asset = yield picker.pickSingle({
+          type: picker.types?.images || "image/*",
+          mode: "import",
+          copyTo: "documentDirectory"
+        });
+        if (asset)
+          yield saveMedia(key, asset);
+        return !!asset;
+      } catch (error) {
+        if (picker.isCancel?.(error))
+          return false;
+        throw error;
+      }
+    })();
+  }
+  function pickPhoto(key) {
+    return _async_to_generator(function* () {
+      var picker = findByProps("launchImageLibrary");
+      if (!picker?.launchImageLibrary)
+        return pickFile(key);
+      var result = yield new Promise((resolve, reject) => {
+        try {
+          var returned = picker.launchImageLibrary({
+            mediaType: "photo",
+            selectionLimit: 1,
+            includeBase64: false,
+            assetRepresentationMode: "current"
+          }, resolve);
+          if (returned?.then)
+            returned.then(resolve, reject);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      if (result?.didCancel)
+        return false;
+      if (result?.errorCode)
+        throw new Error(result.errorMessage || "The photo picker failed.");
+      var asset = result?.assets?.[0];
+      if (asset)
+        yield saveMedia(key, asset);
+      return !!asset;
+    })();
+  }
+  function ActionButton({ label, onPress, muted = false }) {
+    return /* @__PURE__ */ jsx(import_react_native5.Pressable, {
+      onPress,
+      style: ({ pressed }) => ({
+        width: "100%",
+        minHeight: 48,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        borderRadius: 11,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: muted ? "#243c46" : "#50fa9b",
+        opacity: pressed ? 0.72 : 1
+      }),
+      children: /* @__PURE__ */ jsx(Text, {
+        variant: "text-sm/bold",
+        style: {
+          color: muted ? "#78e7ff" : "#10251a",
+          textAlign: "center"
+        },
+        children: label
+      })
+    });
+  }
+  function ToggleRow({ label, subLabel, value, onPress, accent = false }) {
+    return /* @__PURE__ */ jsxs(import_react_native5.Pressable, {
+      onPress,
+      style: ({ pressed }) => ({
+        width: "100%",
+        minHeight: 58,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 11,
+        backgroundColor: pressed ? "rgba(80,250,155,0.16)" : "rgba(255,255,255,0.04)",
+        opacity: pressed ? 0.8 : 1
+      }),
+      children: [
+        /* @__PURE__ */ jsxs(import_react_native5.View, {
+          style: {
+            flex: 1,
+            minWidth: 0,
+            paddingRight: 10
+          },
+          children: [
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/bold",
+              style: {
+                color: accent ? "#50fa9b" : "#f0f3f6"
+              },
+              children: label
+            }),
+            subLabel ? /* @__PURE__ */ jsx(Text, {
+              variant: "text-xs/medium",
+              color: "text-muted",
+              style: {
+                marginTop: 3
+              },
+              children: subLabel
+            }) : null
+          ]
+        }),
+        /* @__PURE__ */ jsx(import_react_native5.View, {
+          style: {
+            width: 48,
+            height: 28,
+            borderRadius: 14,
+            padding: 3,
+            alignItems: value ? "flex-end" : "flex-start",
+            backgroundColor: value ? "#50fa9b" : "#4b4f58"
+          },
+          children: /* @__PURE__ */ jsx(import_react_native5.View, {
+            style: {
+              width: 22,
+              height: 22,
+              borderRadius: 11,
+              backgroundColor: value ? "#10251a" : "#d4d7dc"
+            }
+          })
+        })
+      ]
+    });
+  }
+  function DurationSelect({ label, value, onPress }) {
+    return /* @__PURE__ */ jsxs(import_react_native5.Pressable, {
+      onPress,
+      style: ({ pressed }) => ({
+        width: "100%",
+        minHeight: 58,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 11,
+        backgroundColor: pressed ? "rgba(120,231,255,0.16)" : "rgba(255,255,255,0.04)"
+      }),
+      children: [
+        /* @__PURE__ */ jsxs(import_react_native5.View, {
+          style: {
+            flex: 1,
+            minWidth: 0,
+            paddingRight: 12
+          },
+          children: [
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/bold",
+              style: {
+                color: "#50fa9b"
+              },
+              children: label
+            }),
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-xs/medium",
+              color: "text-muted",
+              style: {
+                marginTop: 3
+              },
+              children: "Client-only profile appearance"
+            })
+          ]
+        }),
+        /* @__PURE__ */ jsxs(import_react_native5.View, {
+          style: {
+            maxWidth: "48%",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 7,
+            paddingHorizontal: 10,
+            paddingVertical: 7,
+            borderRadius: 9,
+            backgroundColor: "#243c46"
+          },
+          children: [
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-xs/bold",
+              style: {
+                color: "#78e7ff"
+              },
+              numberOfLines: 1,
+              children: durationLabel(value)
+            }),
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/bold",
+              style: {
+                color: "#78e7ff"
+              },
+              children: "\u2304"
+            })
+          ]
+        })
+      ]
+    });
+  }
+  function FakeProfile() {
+    useProxy(settings);
+    var [, redraw] = (0, import_react.useReducer)((value) => value + 1, 0);
+    (0, import_react.useEffect)(() => {
+      initializeFakeProfile();
+      redraw();
+    }, []);
+    var update = (key, value, refresh = false) => {
+      preview[key] = value;
+      clearCache();
+      if (refresh)
+        refreshPreview();
+      redraw();
+    };
+    var choose = (key, source) => _async_to_generator(function* () {
+      try {
+        if (yield source === "photo" ? pickPhoto(key) : pickFile(key))
+          redraw();
+      } catch (error) {
+        diagnostics.last = error?.message || "Could not open the picker.";
+        redraw();
+        import_react_native5.Alert.alert("FakeProfile", diagnostics.last);
+      }
+    })();
+    var clearMedia = (field) => {
+      try {
+        preview[field] = null;
+        clearCache();
+        diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
+        redraw();
+        setTimeout(refreshPreview, 0);
+      } catch (error) {
+        diagnostics.last = error?.message || "Could not clear the image";
+        redraw();
+      }
+    };
+    var chooseDuration = (field, title, values) => {
+      var key = field === "nitroMonths" ? "FakeProfileNitroDuration" : "FakeProfileBoostDuration";
+      try {
+        simpleSheets.showSimpleActionSheet({
+          key,
+          header: {
+            title,
+            onClose: () => simpleSheets.hideActionSheet?.(key)
+          },
+          options: values.map((months) => ({
+            label: durationLabel(months),
+            onPress: () => {
+              update(field, months, true);
+              diagnostics.last = `${title}: ${durationLabel(months)}`;
+              simpleSheets.hideActionSheet?.(key);
+            }
+          }))
+        });
+      } catch (error) {
+        diagnostics.last = error?.message || `Could not open ${title.toLowerCase()}`;
+        redraw();
+      }
+    };
+    var MediaEditor = ({ label, field, banner: banner2 = false }) => {
+      var value = preview[field];
+      return /* @__PURE__ */ jsxs(import_react_native5.View, {
+        style: {
+          width: "100%",
+          gap: 9,
+          marginBottom: 16
+        },
+        children: [
+          /* @__PURE__ */ jsx(Text, {
+            variant: "heading-sm/semibold",
+            style: {
+              color: "#50fa9b"
+            },
+            children: label
+          }),
+          /* @__PURE__ */ jsx(Text, {
+            variant: "text-xs/medium",
+            style: {
+              color: "#78e7ff"
+            },
+            children: banner2 ? "Automatically fitted to 600 \xD7 240" : "Automatically fitted to a square"
+          }),
+          /* @__PURE__ */ jsxs(import_react_native5.View, {
+            style: {
+              width: "100%",
+              gap: 8
+            },
+            children: [
+              /* @__PURE__ */ jsx(ActionButton, {
+                label: "Choose picture",
+                onPress: () => void choose(field, "photo")
+              }),
+              /* @__PURE__ */ jsx(ActionButton, {
+                label: "Choose file or GIF",
+                muted: true,
+                onPress: () => void choose(field, "file")
+              })
+            ]
+          }),
+          value?.uri && /* @__PURE__ */ jsxs(import_react_native5.View, {
+            style: {
+              width: "100%",
+              borderRadius: 12,
+              overflow: "hidden",
+              backgroundColor: "#1f2023"
+            },
+            children: [
+              /* @__PURE__ */ jsx(import_react_native5.View, {
+                style: banner2 ? {
+                  width: "100%",
+                  aspectRatio: 2.5,
+                  overflow: "hidden"
+                } : {
+                  width: 104,
+                  height: 104,
+                  borderRadius: 52,
+                  overflow: "hidden",
+                  alignSelf: "center",
+                  marginVertical: 12
+                },
+                children: /* @__PURE__ */ jsx(import_react_native5.Image, {
+                  source: {
+                    uri: value.uri
+                  },
+                  resizeMode: "cover",
+                  style: {
+                    width: "100%",
+                    height: "100%"
+                  }
+                })
+              }),
+              /* @__PURE__ */ jsxs(import_react_native5.View, {
+                style: {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  padding: 10,
+                  gap: 8
+                },
+                children: [
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "text-xs/medium",
+                    color: "text-muted",
+                    numberOfLines: 1,
+                    style: {
+                      flex: 1
+                    },
+                    children: value.name
+                  }),
+                  /* @__PURE__ */ jsx(import_react_native5.Pressable, {
+                    onPress: () => clearMedia(field),
+                    style: {
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      borderRadius: 7,
+                      backgroundColor: "#4a2024"
+                    },
+                    children: /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/bold",
+                      style: {
+                        color: "#ff7b84"
+                      },
+                      children: "Clear"
+                    })
+                  })
+                ]
+              })
+            ]
+          })
+        ]
+      });
+    };
+    var avatar = mediaUri("avatarMedia");
+    var banner = mediaUri("bannerMedia");
+    return /* @__PURE__ */ jsx(import_react_native5.ScrollView, {
+      style: {
+        flex: 1,
+        width: "100%"
+      },
+      contentContainerStyle: {
+        width: "100%",
+        maxWidth: 640,
+        alignSelf: "center",
+        paddingHorizontal: 16,
+        paddingTop: 16,
+        paddingBottom: 110
+      },
+      keyboardShouldPersistTaps: "handled",
+      nestedScrollEnabled: true,
+      showsVerticalScrollIndicator: true,
+      children: /* @__PURE__ */ jsxs(Stack, {
+        spacing: 16,
+        style: {
+          width: "100%"
+        },
+        children: [
+          /* @__PURE__ */ jsxs(import_react_native5.View, {
+            style: {
+              width: "100%",
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 12
+            },
+            children: [
+              /* @__PURE__ */ jsx(import_react_native5.View, {
+                style: {
+                  width: 52,
+                  height: 52,
+                  alignItems: "center",
+                  justifyContent: "center"
+                },
+                children: /* @__PURE__ */ jsx(import_react_native5.Image, {
+                  source: {
+                    uri: fakeprofile_default
+                  },
+                  style: {
+                    width: 48,
+                    height: 48,
+                    resizeMode: "contain"
+                  }
+                })
+              }),
+              /* @__PURE__ */ jsxs(import_react_native5.View, {
+                style: {
+                  flex: 1,
+                  minWidth: 0
+                },
+                children: [
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "heading-lg/semibold",
+                    color: "text-normal",
+                    children: "FakeProfile"
+                  }),
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "text-sm/medium",
+                    color: "text-muted",
+                    children: "Built-in local profile preview"
+                  })
+                ]
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsx(Card, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native5.View, {
+              style: {
+                borderRadius: 14,
+                overflow: "hidden"
+              },
+              children: [
+                banner ? /* @__PURE__ */ jsx(import_react_native5.Image, {
+                  source: {
+                    uri: banner
+                  },
+                  resizeMode: "cover",
+                  style: {
+                    width: "100%",
+                    height: 118
+                  }
+                }) : /* @__PURE__ */ jsx(import_react_native5.View, {
+                  style: {
+                    height: 118,
+                    backgroundColor: "#5865f2"
+                  }
+                }),
+                /* @__PURE__ */ jsxs(import_react_native5.View, {
+                  style: {
+                    paddingHorizontal: 16,
+                    paddingBottom: 16
+                  },
+                  children: [
+                    avatar ? /* @__PURE__ */ jsx(import_react_native5.Image, {
+                      source: {
+                        uri: avatar
+                      },
+                      style: {
+                        width: 82,
+                        height: 82,
+                        borderRadius: 41,
+                        marginTop: -41,
+                        borderWidth: 5,
+                        borderColor: "#1f2023"
+                      }
+                    }) : /* @__PURE__ */ jsx(import_react_native5.View, {
+                      style: {
+                        width: 82,
+                        height: 82,
+                        borderRadius: 41,
+                        marginTop: -41,
+                        borderWidth: 5,
+                        borderColor: "#1f2023",
+                        backgroundColor: "#777"
+                      }
+                    }),
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "heading-md/semibold",
+                      color: "text-normal",
+                      style: {
+                        marginTop: 10
+                      },
+                      children: preview.displayName || "Preview Name"
+                    }),
+                    /* @__PURE__ */ jsxs(Text, {
+                      variant: "text-sm/medium",
+                      color: "text-muted",
+                      children: [
+                        "@",
+                        preview.username || "preview"
+                      ]
+                    }),
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/bold",
+                      style: {
+                        color: "#7ee787",
+                        marginTop: 8
+                      },
+                      children: "LOCAL PREVIEW ONLY"
+                    })
+                  ]
+                })
+              ]
+            })
+          }),
+          /* @__PURE__ */ jsx(Card, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native5.View, {
+              style: {
+                padding: 14,
+                gap: 14
+              },
+              children: [
+                /* @__PURE__ */ jsx(ToggleRow, {
+                  label: "Show preview in the client",
+                  subLabel: "Affects only what you see on this device",
+                  value: preview.enabled,
+                  accent: true,
+                  onPress: () => update("enabled", !preview.enabled, true)
+                }),
+                /* @__PURE__ */ jsxs(import_react_native5.View, {
+                  style: {
+                    gap: 8
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "Display name"
+                    }),
+                    /* @__PURE__ */ jsx(import_react_native5.TextInput, {
+                      defaultValue: preview.displayName,
+                      placeholder: "Preview Name",
+                      placeholderTextColor: "#777",
+                      onChangeText: (value) => update("displayName", value),
+                      style: {
+                        color: "#fff",
+                        backgroundColor: "#1f2023",
+                        borderRadius: 9,
+                        padding: 12
+                      }
+                    })
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(import_react_native5.View, {
+                  style: {
+                    gap: 8
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "Username"
+                    }),
+                    /* @__PURE__ */ jsx(import_react_native5.TextInput, {
+                      defaultValue: preview.username,
+                      placeholder: "preview",
+                      placeholderTextColor: "#777",
+                      autoCapitalize: "none",
+                      autoCorrect: false,
+                      onChangeText: (value) => update("username", value),
+                      style: {
+                        color: "#fff",
+                        backgroundColor: "#1f2023",
+                        borderRadius: 9,
+                        padding: 12
+                      }
+                    })
+                  ]
+                }),
+                /* @__PURE__ */ jsx(DurationSelect, {
+                  label: "Nitro duration",
+                  value: preview.nitroMonths,
+                  onPress: () => chooseDuration("nitroMonths", "Choose Nitro duration", NITRO_DURATIONS)
+                }),
+                /* @__PURE__ */ jsx(DurationSelect, {
+                  label: "Server booster duration",
+                  value: preview.boostMonths,
+                  onPress: () => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)
+                }),
+                /* @__PURE__ */ jsx(MediaEditor, {
+                  label: "Profile picture",
+                  field: "avatarMedia"
+                }),
+                /* @__PURE__ */ jsx(MediaEditor, {
+                  label: "Banner",
+                  field: "bannerMedia",
+                  banner: true
+                }),
+                /* @__PURE__ */ jsx(ActionButton, {
+                  label: "Apply preview",
+                  onPress: () => {
+                    diagnostics.last = "Preview refreshed";
+                    refreshPreview();
+                    redraw();
+                  }
+                })
+              ]
+            })
+          }),
+          /* @__PURE__ */ jsx(Card, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native5.View, {
+              style: {
+                padding: 14,
+                gap: 10
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-md/semibold",
+                  style: {
+                    color: "#50fa9b"
+                  },
+                  children: "Choose badges"
+                }),
+                /* @__PURE__ */ jsx(ToggleRow, {
+                  label: "Replace visible badges",
+                  subLabel: "Show only the badges selected below",
+                  value: preview.replaceBadges,
+                  onPress: () => update("replaceBadges", !preview.replaceBadges, true)
+                }),
+                BADGES.map(([id, label]) => /* @__PURE__ */ jsx(ToggleRow, {
+                  label,
+                  value: !!preview.selectedBadges?.[id],
+                  onPress: () => update("selectedBadges", {
+                    ...preview.selectedBadges,
+                    [id]: !preview.selectedBadges?.[id]
+                  }, true)
+                }, id))
+              ]
+            })
+          }),
+          /* @__PURE__ */ jsx(Card, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native5.View, {
+              style: {
+                padding: 14,
+                gap: 5
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-sm/semibold",
+                  color: "text-normal",
+                  children: "Diagnostics"
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Preview hooks: ",
+                    diagnostics.patches
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "User source: ",
+                    diagnostics.userStore ? "Connected" : "Unavailable"
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Profile source: ",
+                    diagnostics.profileStore ? "Connected" : "Unavailable"
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Profile picture resolver: ",
+                    diagnostics.avatarResolver ? "Connected" : "Unavailable"
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Banner resolver: ",
+                    diagnostics.bannerResolver ? "Connected" : "Unavailable"
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Last action: ",
+                    diagnostics.last
+                  ]
+                })
+              ]
+            })
+          })
+        ]
+      })
+    });
+  }
+  var import_react, import_react_native5, BADGES, useBadgesModule, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, preview, diagnostics, initialized, currentUserId, userCache, profileCache;
+  var init_FakeProfile = __esm({
+    "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_jsxRuntime();
+      init_fakeprofile();
+      init_storage();
+      init_patcher();
+      init_jsx();
+      init_settings();
+      init_metro();
+      init_common();
+      init_components();
+      import_react = __toESM(require_react());
+      import_react_native5 = __toESM(require_react_native());
+      BADGES = [
+        [
+          "hypesquad",
+          "HypeSquad Events",
+          4,
+          "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png"
+        ],
+        [
+          "bug1",
+          "Bug Hunter 1",
+          8,
+          "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"
+        ],
+        [
+          "bravery",
+          "HypeSquad Bravery",
+          64,
+          "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png"
+        ],
+        [
+          "brilliance",
+          "HypeSquad Brilliance",
+          128,
+          "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png"
+        ],
+        [
+          "balance",
+          "HypeSquad Balance",
+          256,
+          "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png"
+        ],
+        [
+          "early",
+          "Early Supporter",
+          512,
+          "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"
+        ],
+        [
+          "bug2",
+          "Bug Hunter 2",
+          16384,
+          "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"
+        ],
+        [
+          "vdev",
+          "Verified Developer",
+          131072,
+          "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"
+        ],
+        [
+          "mod",
+          "Former Moderator",
+          262144,
+          "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"
+        ],
+        [
+          "active",
+          "Active Developer",
+          4194304,
+          "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png"
+        ]
+      ];
+      useBadgesModule = findByNameLazy("useBadges", false);
+      useUserProfileModule = findByNameLazy("useUserProfile", false);
+      useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
+      badgeRenderProps = /* @__PURE__ */ new Map();
+      simpleSheets = findByProps("showSimpleActionSheet");
+      overriddenKeys = /* @__PURE__ */ new Set([
+        "username",
+        "globalName",
+        "displayName",
+        "publicFlags",
+        "flags",
+        "badges",
+        "profileBadges",
+        "avatarURL",
+        "avatarUrl",
+        "getAvatarURL",
+        "banner",
+        "bannerURL",
+        "bannerUrl",
+        "getBannerURL",
+        "getPreviewBanner",
+        "hasFlag",
+        "premiumType",
+        "premiumSince",
+        "premiumGuildSince",
+        "user",
+        "userProfile",
+        "guildMemberProfile",
+        "displayProfile",
+        "profile"
+      ]);
+      NITRO_DURATIONS = [
+        0,
+        1,
+        2,
+        3,
+        6,
+        12,
+        24,
+        36,
+        72
+      ];
+      BOOST_DURATIONS = [
+        0,
+        1,
+        2,
+        3,
+        6,
+        9,
+        12,
+        15,
+        18,
+        24
+      ];
+      NITRO_ICONS = [
+        [
+          72,
+          "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png"
+        ],
+        [
+          36,
+          "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png"
+        ],
+        [
+          24,
+          "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png"
+        ],
+        [
+          12,
+          "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png"
+        ],
+        [
+          6,
+          "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png"
+        ],
+        [
+          3,
+          "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png"
+        ],
+        [
+          2,
+          "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png"
+        ],
+        [
+          1,
+          "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png"
+        ]
+      ];
+      BOOST_ICONS = [
+        [
+          24,
+          "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png"
+        ],
+        [
+          18,
+          "https://cdn.discordapp.com/badge-icons/7142225d31238f6387d9f09efaa02759.png"
+        ],
+        [
+          15,
+          "https://cdn.discordapp.com/badge-icons/cb3ae83c15e970e8f3d410bc62cb8b99.png"
+        ],
+        [
+          12,
+          "https://cdn.discordapp.com/badge-icons/991c9f39ee33d7537d9f408c3e53141e.png"
+        ],
+        [
+          9,
+          "https://cdn.discordapp.com/badge-icons/996b3e870e8a22ce519b3a50e6bdd52f.png"
+        ],
+        [
+          6,
+          "https://cdn.discordapp.com/badge-icons/df199d2050d3ed4ebf84d64ae83989f8.png"
+        ],
+        [
+          3,
+          "https://cdn.discordapp.com/badge-icons/72bed924410c304dbe3d00a6e593ff59.png"
+        ],
+        [
+          2,
+          "https://cdn.discordapp.com/badge-icons/0e4080d1d333bc7ad29ef6528b6f2fb7.png"
+        ],
+        [
+          1,
+          "https://cdn.discordapp.com/badge-icons/51040c70d4f20a921ad6674ff86fc95c.png"
+        ]
+      ];
+      rootSettings = settings;
+      rootSettings.fakeProfile ??= {
+        enabled: false,
+        displayName: "Preview Name",
+        username: "preview",
+        avatarMedia: null,
+        bannerMedia: null,
+        nitroMonths: 0,
+        boostMonths: 0,
+        replaceBadges: false,
+        selectedBadges: {}
+      };
+      preview = rootSettings.fakeProfile;
+      preview.nitroMonths ??= 0;
+      preview.boostMonths ??= 0;
+      diagnostics = {
+        patches: 0,
+        userStore: false,
+        profileStore: false,
+        avatarResolver: false,
+        bannerResolver: false,
+        last: "Ready"
+      };
+      initialized = false;
+      currentUserId = null;
+      userCache = /* @__PURE__ */ new WeakMap();
+      profileCache = /* @__PURE__ */ new WeakMap();
+    }
+  });
+
   // src/core/ui/reporter/utils/isStack.tsx
   function isComponentStack(error) {
     return "componentStack" in error && typeof error.componentStack === "string";
@@ -4946,7 +6583,7 @@
     if (devTools?.connectToDevTools) {
       devTools.connectToDevTools({
         websocket: ws,
-        resolveRNStyle: import_react_native5.StyleSheet.flatten
+        resolveRNStyle: import_react_native6.StyleSheet.flatten
       });
     }
   }
@@ -4977,7 +6614,7 @@
     var hermesProps = globalThis.HermesInternal.getRuntimeProperties();
     var hermesVer = hermesProps["OSS Release Version"];
     var padding = "for RN ";
-    var PlatformConstants = import_react_native5.Platform.constants;
+    var PlatformConstants = import_react_native6.Platform.constants;
     var rnVer = PlatformConstants.reactNativeVersion;
     return {
       vendetta: {
@@ -5004,7 +6641,7 @@
         buildType: hermesProps.Build,
         bytecodeVersion: hermesProps["Bytecode Version"]
       },
-      ...import_react_native5.Platform.select({
+      ...import_react_native6.Platform.select({
         android: {
           os: {
             name: "Android",
@@ -5019,7 +6656,7 @@
           }
         }
       }),
-      ...import_react_native5.Platform.select({
+      ...import_react_native6.Platform.select({
         android: {
           device: {
             manufacturer: PlatformConstants.Manufacturer,
@@ -5057,7 +6694,7 @@
       }
     }
   }
-  var import_react_native5, socket2, originalConsoleLog2, originalConsoleError2, originalConsoleWarn2, originalLoggerLog2, originalLoggerError2, originalLoggerWarn2, VERSION2, rdtPort, rdtClient, rdtConnected, changeHooks, versionHash;
+  var import_react_native6, socket2, originalConsoleLog2, originalConsoleError2, originalConsoleWarn2, originalLoggerLog2, originalLoggerError2, originalLoggerWarn2, VERSION2, rdtPort, rdtClient, rdtConnected, changeHooks, versionHash;
   var init_debug = __esm({
     "src/lib/api/debug.ts"() {
       "use strict";
@@ -5072,7 +6709,7 @@
       init_settings();
       init_logger();
       init_toasts();
-      import_react_native5 = __toESM(require_react_native());
+      import_react_native6 = __toESM(require_react_native());
       VERSION2 = 1;
       rdtPort = 8097;
       rdtClient = null;
@@ -5086,7 +6723,7 @@
   function AlertModal2(props) {
     var forwardFailedModal = findByFilePath("modules/forwarding/native/ForwardFailedAlertModal.tsx");
     if (!forwardFailedModal && "extraContent" in props) {
-      props.content = /* @__PURE__ */ jsxs(import_react_native6.View, {
+      props.content = /* @__PURE__ */ jsxs(import_react_native7.View, {
         style: {
           gap: 16
         },
@@ -5096,7 +6733,7 @@
             color: "text-muted",
             children: props.content
           }),
-          /* @__PURE__ */ jsx(import_react_native6.View, {
+          /* @__PURE__ */ jsx(import_react_native7.View, {
             children: props.extraContent
           })
         ]
@@ -5107,7 +6744,7 @@
       ...props
     });
   }
-  var import_react_native6, _AlertModal, _AlertActionButton, AlertActionButton2;
+  var import_react_native7, _AlertModal, _AlertActionButton, AlertActionButton2;
   var init_AlertModal = __esm({
     "src/lib/ui/components/wrappers/AlertModal.tsx"() {
       "use strict";
@@ -5117,7 +6754,7 @@
       init_lazy();
       init_metro();
       init_components();
-      import_react_native6 = __toESM(require_react_native());
+      import_react_native7 = __toESM(require_react_native());
       ({ AlertModal: _AlertModal, AlertActionButton: _AlertActionButton } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
       AlertActionButton2 = _AlertActionButton;
     }
@@ -5178,7 +6815,7 @@
   }
   function createThemedStyleSheet(sheet) {
     for (var key in sheet) {
-      sheet[key] = new Proxy(import_react_native7.StyleSheet.flatten(sheet[key]), {
+      sheet[key] = new Proxy(import_react_native8.StyleSheet.flatten(sheet[key]), {
         get(target, prop, receiver) {
           var res = Reflect.get(target, prop, receiver);
           return isSemanticColor(res) ? resolveSemanticColor(res) : res;
@@ -5187,7 +6824,7 @@
     }
     return sheet;
   }
-  var import_react_native7, Styles, ThemeContext, TextStyleSheet;
+  var import_react_native8, Styles, ThemeContext, TextStyleSheet;
   var init_styles = __esm({
     "src/lib/ui/styles.ts"() {
       "use strict";
@@ -5196,7 +6833,7 @@
       init_lazy();
       init_wrappers();
       init_color();
-      import_react_native7 = __toESM(require_react_native());
+      import_react_native8 = __toESM(require_react_native());
       Styles = findByPropsLazy("createStyles");
       ({ ThemeContext } = lazyDestructure(() => findByProps("ThemeContext"), {
         hint: "object"
@@ -5212,7 +6849,7 @@
         style,
         children
       });
-    return import_react_native8.Platform.select({
+    return import_react_native9.Platform.select({
       ios: /* @__PURE__ */ jsx(InputBasedCodeblock, {
         style,
         children
@@ -5224,7 +6861,7 @@
       })
     });
   }
-  var import_react_native8, useStyles, InputBasedCodeblock, TextBasedCodeblock;
+  var import_react_native9, useStyles, InputBasedCodeblock, TextBasedCodeblock;
   var init_Codeblock = __esm({
     "src/lib/ui/components/Codeblock.tsx"() {
       "use strict";
@@ -5234,7 +6871,7 @@
       init_common();
       init_color();
       init_styles();
-      import_react_native8 = __toESM(require_react_native());
+      import_react_native9 = __toESM(require_react_native());
       useStyles = createStyles({
         codeBlock: {
           fontFamily: constants.Fonts.CODE_NORMAL,
@@ -5248,7 +6885,7 @@
           padding: 10
         }
       });
-      InputBasedCodeblock = ({ style, children }) => /* @__PURE__ */ jsx(import_react_native8.TextInput, {
+      InputBasedCodeblock = ({ style, children }) => /* @__PURE__ */ jsx(import_react_native9.TextInput, {
         editable: false,
         multiline: true,
         style: [
@@ -5257,7 +6894,7 @@
         ],
         value: children
       });
-      TextBasedCodeblock = ({ selectable, style, children }) => /* @__PURE__ */ jsx(import_react_native8.Text, {
+      TextBasedCodeblock = ({ selectable, style, children }) => /* @__PURE__ */ jsx(import_react_native9.Text, {
         selectable,
         style: [
           useStyles().codeBlock,
@@ -5307,18 +6944,9 @@
     }
   });
 
-  // globals:react
-  var require_react = __commonJS({
-    "globals:react"(exports, module) {
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      module.exports = require_depsModule()["react"];
-    }
-  });
-
   // src/core/ui/reporter/components/ErrorComponentStackCard.tsx
   function ErrorComponentStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
     var stack;
     try {
       stack = parseComponentStack(props.componentStack);
@@ -5327,7 +6955,7 @@
       return;
     }
     return /* @__PURE__ */ jsx(Card, {
-      children: /* @__PURE__ */ jsxs(import_react_native9.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native10.View, {
         style: {
           gap: 8
         },
@@ -5336,11 +6964,11 @@
             variant: "heading-lg/bold",
             children: "Component Stack"
           }),
-          /* @__PURE__ */ jsx(import_react_native9.View, {
+          /* @__PURE__ */ jsx(import_react_native10.View, {
             style: {
               gap: 4
             },
-            children: stack.map((component) => /* @__PURE__ */ jsxs(import_react_native9.View, {
+            children: stack.map((component) => /* @__PURE__ */ jsxs(import_react_native10.View, {
               style: {
                 flexDirection: "row"
               },
@@ -5365,7 +6993,7 @@
           collapsed && /* @__PURE__ */ jsx(Text, {
             children: "..."
           }),
-          /* @__PURE__ */ jsxs(import_react_native9.View, {
+          /* @__PURE__ */ jsxs(import_react_native10.View, {
             style: {
               gap: 8,
               flexDirection: "row",
@@ -5376,7 +7004,7 @@
               /* @__PURE__ */ jsx(Button, {
                 variant: "secondary",
                 text: `Show ${collapsed ? "more" : "less"}`,
-                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native9.Image, {
+                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native10.Image, {
                   style: {
                     transform: [
                       {
@@ -5400,7 +7028,7 @@
       })
     });
   }
-  var import_react, import_react_native9;
+  var import_react2, import_react_native10;
   var init_ErrorComponentStackCard = __esm({
     "src/core/ui/reporter/components/ErrorComponentStackCard.tsx"() {
       "use strict";
@@ -5411,8 +7039,8 @@
       init_assets();
       init_common();
       init_components();
-      import_react = __toESM(require_react());
-      import_react_native9 = __toESM(require_react_native());
+      import_react2 = __toESM(require_react());
+      import_react_native10 = __toESM(require_react_native());
     }
   });
 
@@ -5520,7 +7148,7 @@
 
   // src/core/ui/reporter/components/ErrorStackCard.tsx
   function ErrorStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
     var stack;
     try {
       var parsedErrorStack = parseErrorStack(props.error.stack);
@@ -5529,7 +7157,7 @@
       return null;
     }
     return /* @__PURE__ */ jsx(Card, {
-      children: /* @__PURE__ */ jsxs(import_react_native10.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native11.View, {
         style: {
           gap: 12
         },
@@ -5538,7 +7166,7 @@
             variant: "heading-lg/bold",
             children: "Call Stack"
           }),
-          /* @__PURE__ */ jsx(import_react_native10.View, {
+          /* @__PURE__ */ jsx(import_react_native11.View, {
             style: {
               gap: 4
             },
@@ -5550,7 +7178,7 @@
           collapsed && /* @__PURE__ */ jsx(Text, {
             children: "..."
           }),
-          /* @__PURE__ */ jsxs(import_react_native10.View, {
+          /* @__PURE__ */ jsxs(import_react_native11.View, {
             style: {
               gap: 8,
               flexDirection: "row",
@@ -5561,7 +7189,7 @@
               /* @__PURE__ */ jsx(Button, {
                 variant: "secondary",
                 text: `Show ${collapsed ? "more" : "less"}`,
-                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native10.Image, {
+                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native11.Image, {
                   style: {
                     transform: [
                       {
@@ -5586,8 +7214,8 @@
     });
   }
   function Line(props) {
-    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
-    return /* @__PURE__ */ jsxs(import_react_native10.Pressable, {
+    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
+    return /* @__PURE__ */ jsxs(import_react_native11.Pressable, {
       onPress: () => setCollapsed((v2) => !v2),
       children: [
         /* @__PURE__ */ jsx(Text, {
@@ -5616,7 +7244,7 @@
       ]
     }, props.id);
   }
-  var import_react2, import_react_native10;
+  var import_react3, import_react_native11;
   var init_ErrorStackCard = __esm({
     "src/core/ui/reporter/components/ErrorStackCard.tsx"() {
       "use strict";
@@ -5627,8 +7255,8 @@
       init_assets();
       init_common();
       init_components();
-      import_react2 = __toESM(require_react());
-      import_react_native10 = __toESM(require_react_native());
+      import_react3 = __toESM(require_react());
+      import_react_native11 = __toESM(require_react_native());
       init_ErrorCard();
     }
   });
@@ -5636,7 +7264,7 @@
   // src/core/ui/reporter/components/ErrorDetailsActionSheet.tsx
   function ErrorDetailsActionSheet(props) {
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native11.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native12.View, {
         style: {
           gap: 12,
           paddingVertical: 12
@@ -5660,7 +7288,7 @@
       })
     });
   }
-  var import_react_native11;
+  var import_react_native12;
   var init_ErrorDetailsActionSheet = __esm({
     "src/core/ui/reporter/components/ErrorDetailsActionSheet.tsx"() {
       "use strict";
@@ -5670,7 +7298,7 @@
       init_isStack();
       init_components2();
       init_components();
-      import_react_native11 = __toESM(require_react_native());
+      import_react_native12 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
     }
@@ -5783,7 +7411,7 @@
 
   // src/lib/ui/components/Search.tsx
   function SearchIcon() {
-    return /* @__PURE__ */ jsx(import_react_native12.Image, {
+    return /* @__PURE__ */ jsx(import_react_native13.Image, {
       style: {
         width: 16,
         height: 16
@@ -5791,7 +7419,7 @@
       source: findAssetId("icon-search")
     });
   }
-  var import_react_native12, Search_default;
+  var import_react_native13, Search_default;
   var init_Search = __esm({
     "src/lib/ui/components/Search.tsx"() {
       "use strict";
@@ -5802,7 +7430,7 @@
       init_assets();
       init_components();
       init_ErrorBoundary();
-      import_react_native12 = __toESM(require_react_native());
+      import_react_native13 = __toESM(require_react_native());
       Search_default = ({ onChangeText, placeholder, style, isRound }) => {
         var [query, setQuery] = React.useState("");
         var onChange = (value) => {
@@ -5810,7 +7438,7 @@
           onChangeText?.(value);
         };
         return /* @__PURE__ */ jsx(ErrorBoundary, {
-          children: /* @__PURE__ */ jsx(import_react_native12.View, {
+          children: /* @__PURE__ */ jsx(import_react_native13.View, {
             style,
             children: /* @__PURE__ */ jsx(TextInput, {
               grow: true,
@@ -5853,11 +7481,11 @@
           onPress: () => {
             setHidden(!hidden);
             if (!noAnimation)
-              import_react_native13.LayoutAnimation.configureNext(import_react_native13.LayoutAnimation.Presets.easeInEaseOut);
+              import_react_native14.LayoutAnimation.configureNext(import_react_native14.LayoutAnimation.Presets.easeInEaseOut);
           }
         }),
         !hidden && /* @__PURE__ */ jsx(Fragment, {
-          children: /* @__PURE__ */ jsx(import_react_native13.View, {
+          children: /* @__PURE__ */ jsx(import_react_native14.View, {
             style: !noPadding && {
               paddingHorizontal: 15
             },
@@ -5867,7 +7495,7 @@
       ]
     });
   }
-  var import_react_native13;
+  var import_react_native14;
   var init_Summary = __esm({
     "src/lib/ui/components/Summary.tsx"() {
       "use strict";
@@ -5876,7 +7504,7 @@
       init_jsxRuntime();
       init_assets();
       init_components();
-      import_react_native13 = __toESM(require_react_native());
+      import_react_native14 = __toESM(require_react_native());
     }
   });
 
@@ -5911,7 +7539,7 @@
         children: /* @__PURE__ */ jsxs(SafeAreaView, {
           style: styles.container,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native14.View, {
+            /* @__PURE__ */ jsxs(import_react_native15.View, {
               style: {
                 gap: 4
               },
@@ -5939,7 +7567,7 @@
                 })
               ]
             }),
-            /* @__PURE__ */ jsxs(import_react_native14.ScrollView, {
+            /* @__PURE__ */ jsxs(import_react_native15.ScrollView, {
               fadingEdgeLength: 64,
               contentContainerStyle: {
                 gap: 12
@@ -5982,7 +7610,7 @@
       })
     });
   }
-  var import_react_native14, useStyles2;
+  var import_react_native15, useStyles2;
   var init_ErrorBoundaryScreen = __esm({
     "src/core/ui/reporter/components/ErrorBoundaryScreen.tsx"() {
       "use strict";
@@ -5997,7 +7625,7 @@
       init_styles();
       init_common();
       init_components();
-      import_react_native14 = __toESM(require_react_native());
+      import_react_native15 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
       useStyles2 = createStyles({
@@ -6073,14 +7701,6 @@
       fixes_default = () => {
         FluxDispatcher.subscribe("I18N_LOAD_SUCCESS", onDispatch);
       };
-    }
-  });
-
-  // src/assets/icons/fakeprofile.png
-  var fakeprofile_default;
-  var init_fakeprofile = __esm({
-    "src/assets/icons/fakeprofile.png"() {
-      fakeprofile_default = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHLAAA9TklEQVR42u19d3hUVfr/55x7ZyaTnpCQXgghQCjB0EFDERCkWpEiCGtdXP2ta2OV1bWiuGtB14a6uirqIuURqVKklwChJNSQkE5Cepty7zm/P+aeYRKmou76XXOeZ57A3LntvP3zvuc9QMfoGB2jY3SMjtExOkbH6Bgdo2N0jI7RMTpGx/hNDKljCryeJ6r9u/1fSfvwducQALLD/52dR52c1zF+RYM4EMwXRpF8vAf5b75gx3A9N0I6bwIwn1LaiRBCHI8xxio452sArAJQ73B+NIDbCSFTKKUBAMA5J5IkccYYVFW9BOBrAJ87uV/H+JVIvj+AjwFwSinXCNTmQynlkiRxQsgFAI8AyASwlBBSJ0mS03PaXe9TB81BOjTAr2PIABQASwghjxJCFMYYGTp0KO644w4kJyfjwoULWLlyJbZv325X/zblAHBuF2RVp9Nh4sSJmDZtGiIiIlBQUIAVK1bgxx9/BCGEAdBpGuQmjQnUjun/7w6d9ncBIYRLkmQGwB955BFusVh4+7Fx40Y+fvx4bjQaVY1pOCHEmpiYyObNm8f379/PnY3FixdzAFySJIumCe5pd/+O8V/QhmLyuwCwyLLMALCHH36Yc865oijcYrFwRVG4oiicMWYnaF5eHt+xYwffuXMnP3jwIK+rq7MfUxSFW61W+1+r1co553zRokUcgCpJkgKgEkCCdn+9poXof8s0/K8TWtImWG4XqgFADwAnNPutjhs3zk5wVVWvkOT2jND+mLNzGGPcarVyVVX5iBEjOABFlmUO4BsAMR5MU0fo/hOGu5AuEsB8AGUaMdTExEReWlrKOedOCek4VFVtwyiumMKROTjn/NChQ9xoNHIAql6v55TSUkLIh5TS+QD6A0gDYHDyHh1a4SqJTwFMAPCuJEmfy7L8pSzLJ2RZvkQp5YQQDkDt3Lkzz87ObkOsn3uI677//vtcMJ1jpKD5IEySpAJCyCEA7wAY2+HEXz3xRwI4IkI3J+GZIkkSGzp0KD9w4MAvSvz2TJCdnc0ffvhhPmTIEDUmJsbq7+9vbf98Ds/8kYOP8JOY4LfAQZImWUMA7KSUyowxFQDv1q0bRo4ciZiYGBoUFETi4uJIWloa+vXrB0mSoKoqJOmXN7mMMVB62TrV1NSgoqICVVVVOHPmDM/JyeEbN25Efn4+c/AFvgQwS2MC1iHjrhmcaDb0hKbeLSkpKXz58uW8oaHBo2S6Gowxu81vHxUwJo6rTiMGV/dz97uamhr++OOPcwCMUipCx+scmLxjuPCaAWCqhrwpycnJPD8//4qJF2GaN86eu9/YjrsntCdmYIzZ7yOeTYw//vGPHICVUsoAvN/uPTtMgAv1/y9K6SxCiLpq1Sp58uTJMJvN0Ol0bVSvq8E5B2OsjTlobGxEYWEhCgoKUFJSgpaWFphMJpjNZhAiQa/Xw2g0Ijw8FImJiUhJSUFiYqL9GozZtLY39wcAVVVBCEFTUxP69eunFhQUSJTSXYyx636KGZD/x1T9FbQDYKSUDmeMkf79+9OJEydCVVUYDAaf7LMkSTCbzThwYD8OHsxGYWEhGhoaYLFYwBizE9TR5xTElSQCg8GAyMhIpKenIysrC126dGkDGwsY2SUnSxIURUFwcDAmTZpEli5dCkppFGPMCMD0U1Xkr4GAnrhY0o4zJ+eJ8MlpfE8IiQXAhw8fTiilUFXVK6nnnINSitZWE9av34A9e3ajsrISqqrY4Dq9HpGRkYiMjERUVBT0ej10Op2dIWpr61BdfQnV1dVoampCcXExysrKsGPHDqSlpWHChAno27evXcK9cTg550hPTxfckgCgE4ASXGU28dfAAILwnqiiODACcfhOBWDUJoIbjUYAQGtrqwzACmAa59wAQB02bJjki9QTQrBr1y58++0qVFfXgHMGnU6HxMQE9OvXD3369EF8fDwCAgLcXu/SpUs4e/Ysjh49itzcXNTX1yM3Nxe5ubno27cv5syZg86dO18RDTiVFEKQlJREAKiMMQOAZABl2pyoVyN5vwbiRwB4ihAyQnPWCOfcrhYZY1bO+WYA/wJw2uH8OAAPEkLuoJRGM8bAOScO6lf4TkY/Pz8cP34cqampbidaSGJTUxOWLVuGQ4cOQaczgDGOXr16Yvz4G9C7dx84amzhIzgjVvv71NbWYvfu3di6dStqamogSRJkWcb06dMxevRotyZBPPexY8eQmZmpqqoqwZZOvstBMFRfNMF/kwGEgzYAwLeU0kRnk2hXVbIsGOFzQsg+znkmIeQ2Smm4oij234WFhYExhvp6W22GTqeD1WrF0KFDsWPHDkiS5NLeCuIXFhbijTfeQG1tLSRJQmxsHG677TZkZPTVCA4wZnPKxMcbc+LoF7S0tOC7777D5s2bwTmH2WzG6NGjMX/+fPs57a8rvqutrUV6ejoqKysZAMoYewrAS04E61fLAOIBUwEckCQpTFVVqyzL0rx58zBhwgQEBwfj4sWLWLt2LdavX4+6ujomTBYhxDHnrhgMBjpnzhwyc+ZMpKWlgXOOQ4cO4eWXX8a+ffsAgKxcuRI33XQTrFYrdLorM65WqwKdTsbhw0ewdOnbIMQm1ePGjcP06dMhSZJbz13TPm1fUjMj7iKKgoICLFu2DCUlJVBVFX369MGf/vQnSJJk90GcaYFHHnkEr7/+OvR6PVdVlaiqugvAPzUtaXEQsF+lxy7Dlno9oKl8a0xMDP/hhx+cxsXnzp3jCxcu5P369WNBQUFWQog1MjLSOnz4cPbEE0/wnJwcp+eZzWa+YMEC7ufnx//2t7/xmpoap4mdy4mZw3zWrDv5XXfN5/feey8/ePCgx9jfG9zAXbaQc86tVitftmwZnzNnDp89ezZfvHixHZdof67ACBobG/mkSZMENKxSSkWV0UHYqpI8Jb/+oxqAtMtiKQCWUkofBKAEBQXJmzdvxsCBA6EoyhVSI6RFVVUUFBSgsbERnTt3RlxcXBv17SidqqpClm0+7htvvIEtW7aga9euePTRRxEfH29X90Kizp49h+eeewE6nQx/fyMef/wxJCYmuvXOxTHOOc6ePYuCggJUVlZCr9ejc+fOSE1NRUJCglsvnzFmNyPffPMNvvvuO3DOMXDgQDz88MNOzxOmwGw247PPPsOyZctw4MABVUMJdYyxIgA3Asj1FB2QX8i2t79pe1X0/wC8LsuyoiiK/P777+Pee++FxWKBXq93qV7bT4T43pmz1d45e/nlxTh16iRCQ0Px5z//GbGxsVAUBZIkoa6uDk89tQgtLS0wGv2xaNFTiI2NgaIodiZy5ZDl5OTg66+/xqlTp8AYs4NLFosFfn5+yMzMxPTp05GUlOTS+eSc2xn266+/xrp168AYw80334ybbrrJ6XmOPoLVasWKFSuwcOFCXLhwQdHyHZWw1TbUOWAiTon1c2fcRKzumMmSAIQB6AXgfUrpQzqdjlmtVmn27Nl48cUX7RPgzKESBBbOlKND5czOOp4nNEjPnunYs2cvTCYzDhw4iISEBERHR4MQgsWLX0FlZSX8/Pzw2GOPIikp0aWv4CjNK1euxNKlS2GxWDB27FhMnz4dU6dOxbhx47T4nmPPnr3YuXMXunXrhujoKLvEO3s/4QOUl5ejrKwMp0+fRvfu3e0hoqPvI/4t/Ik+ffpgypQp+O6772hdXZ1CKQ3inO8EcAbO1y38rBrAUeKHARhPKe2pca0MoA/nPBhApKaqGQB6/fXXY8WKFQgODvbKm/6p2bbjx3Px97//HYQQSBJBSkoK9Ho9cnPzQKmEa68djqlTpyIsLNQlSieutX37drz22mvo378/7rvvPsTGxjq995EjR7B06TtgjOGVV15B584RLsM8QVBFUfDMM8+gvLwc0dHReOGFF67QRO3PFwy7fv16TJo0SQEgMcb+H4C3cLnI9RfRAGJ1SzcAXxNCXqSUjmCMpWufHoyxcM55AOecU0pZUlKSdPfdd+O9995DcHCwV1DoT+JOQsAYQ3R0FNLS0pCbm4eGhnoUFRWhtLQUNvCIoLDwArZu3YqjR3NAKUFSUpJd4wiJo5Sirq4Or776KhITE7Fo0SKEh4fbfRBHLcUYQ2xsLJKTu2DDhg2or6/HsGFDXb6v+E6n06FLly7YsWMH6uvrYTQa0b17d7vmcXau0JApKSn49ttvWWVlpSTL8lrG2EF3YaH8M0l+MICthJB4zjnjnLP09HQyePBgnpCQgICAABoaGkoiIyNJcnKylJqaiqCgIJfx7i8Sd1IKxhjS03vi1VdfQV5eLi5cuICamho0NDSgqakZtbW1qK+vx9Gjx3D8+HFkZx/CAw/8Hnq9bJd+SZKwa9cuVFVV4bHHHoPRaHTrKCqKgoyMPhg7diy2bt2KW2+9BUlJiS79AWEKunbtilGjRmHz5s1Yv34DsrKyEBQU5HK+BIPKsoykpCTk5uZCkiTiiJH8EgwgcPhXKaXxjDFraGio7tVXX6V33nkn/Pz83Ga33Nlvd2CKM6nx5jpCSnQ6GRkZGcjIyLhCjVZXV+PgwWysW7cee/fuh9Wq4k9/+iM4v2y79+zZg7S0NPTs2fOKLKGre44ePRKbNm3A4cOHkJSU6PRd2jPrtGnTcOBANmpqarB9+4+YMmWyS2a7nLdoRX5+vphj7g0BfyrxYwkhv+OcM39/f3n16tW45557YDAYoChKm4+qqm08endE05ZP2b144Si1/zj6DqqqQlVVt5PrAC/bfy/+rdPpEB0djcmTJ+Gxxx5FZGQk9u/fj++//95+v+bmZpSUlCA9Pb2Nn+DufoQQJCYmIjw8HOfPn/fIsDZpZggJCcGgQYOgqir27t0HRVFcQtjiOc6cOYOCggLxjvIvzQAAkEEplTjn/A9/+AMZMWIELBaLHb51/EiS5FbqRTgkpED8vrW1FRcvVuDkyZM4fPgwcnJykJOTg2PHjqGwsBB1dXXg3CaJgrGEDXZFIHF9cQ8hVZxzWK1WpKR0wcyZM2EwGLBu3XrU1dWJJBPMZjNCQ0O99j8AwN/fH506dUJNTY1XGosQ2/RmZV2HgIAAlJWV4+TJU3Z/xpnAAMCmTZtgsViIhnGUuwsBf5ZsIKW0v6qqxGg08nnz5oEx5jKcc6fehSqVJAlWq4KzZ8/g+PHjOH/eBq60trbAYrHYGcQmWRQ6nQ4GgwHBwcGIiYlBamoq0tPTkZiY0EYzeGtuCCHQ6XTgnGPIkEFYs2Y1zp8/j71792LChAkghEKSZI+S7yxmF0Lgje8jTEdychLi4uJw5swZHD16DH369HZ6b6EZdu3aJcLuVgB7HELzX4QBiJZrR0pKClJSUryucGkfVkmShIqKi9i6dRsOHTqEmpoaO+EuMwixI2+EUDAGtLaa0dpqRn19A0pKSnHwYDZ0Oh3i4+MxePAgXHvtcLvD6U26tb1NTUiIR0FBAY4dO4EJEyYgNDQURqMRra2tPhHfZDKhsrIS/fv392luJElCjx7dcfbsWZw/n+9Ue4hnNZlMOH36NAMgcc53ACj1lBP4KQwgQJ4+ABAbG0uE5HgjaY4FFzU1NVizZg12794Ds9kKWZY0VE2PyMgIJCUlISYmGnFxsTAajdDr9XZV3dRks8nFxcUoKSlFTU0NrFYrioqKUFhYiHXr1iMr6zrceOONCAjwt5dWeWIEIWWBgYHQ6XQoKiqCoqg4ciQHFRXlEHUH3g6z2Qw/Pz+cPXsWTU1NCAgI8DhX4lC3bt0gyzIuXryI2tpahIWFOT1XVVWYTCbxZaIWnTW5g4OvlgEEsJAAoC8hhMfHx1NHrvW24OL779fiu+/WwmQyQZJ00OlkxMTEYMCA/sjMzER8fDwkyZPUDgYAmExmnDt3DtnZ2Th8+DDq6uphNpvx/ffrsXPnDtx8880YOXKkT9ogMjISkiSjsbEReXl5+PHHHxEYGISsrCyXmUFnGERISAjuvPNOvPjiiygsLETv3r2dooLO3KzYWBvjNzY2oby8/AoGED6P0WhEWloaLSoqUgkhPQH8HsBid1rAVwYQ6+oU2Kpw/kkICeacs969e1NPXrEj5l1dXY0PPvgAeXkntXCRoGvXLpg4cZI9736Zs5mdga9UfzZlRAiBn58BvXv3Qu/evXDbbbdi79692LhxEyorL8JisWLZso9w4MBB3HPPPQgLC3WL9Yv7JCYmgDEVAQGBWLduPQwGA/z9AxAYGOSTD2DTWAokSfbaDIlX7dSpEwIDA3DpUqu9zsGVuViwYAE2b94sEUJUQsiLnPMfAGS7YgJfkECB+DFN5L6llA7Twj/6+uuvIzw83K2HKxzEkydP4uWXX8alSzUghCAsLBzz58/H9OnTER0dZbf5IoSilFwR9rU/5hjeMcZgMBiQkpKCUaNGwmDQ49SpM5AkGVVVl7Bjxw5065aKyMhIu5/hClgJDw/HgQMH0dpqgslkAmMMNTU16Ns3A5GREV6ZPGHqPv98ORobGzB9+u12jMRzOGjDLfbtO4Cqqip065aKtLS0KzSYAJB69uyJc+fO4ejRo1ySJIlznozLXUiuOgwUBZkGAM8B2CnLciZjTGWM0ZdffhmpqalOJ1Nwv8i8HTp0CEuWLAFjDBaLGUOHDsWLLz6PAQP624lnw+oll8UUIn53xAnah3dC2+h0OkyaNBkvvfQiunXrBovFAs45XnrpJRw5csS+AsgV4XQ6Pe6//z6oqorW1lY0NTXBYDBg1apVGsO5jwYEcLN79x4cPHgQQ4cORWhoqN0X8daJ9Pc3QlUVtLa2eGSY119/HUlJSVRVVU4pHQegtya89Go0gMCRUwBsIITcIUmSpKoqCwsLk5YuXYoHHnjAY95clmUcO3YMb775JgwGA6xWK+bOnYtbb71FlHu5DNUcwaD2gJBjqOcICjk6eqqqIjAwANdeOxyKouDYsWMIDg7C9u3bkZCQgPj4eJdZOqEF+vbti6NHj+HSpUsICQlBSUkprFYr+vTp7VKLCMkvKirG3//+OgIC/PGHPzyIgAB/r9FLwQB79uxFaWkpevdOR69evZxWCwl/IzAwEHq9nqxbt45RSgnn/EetNkBqHxJKXkr+MAA/UEpTOecK55yMHz+eLl++HOPHj3fr+AnU7/z5QixevBgGgwGMMTz66KMYOHCgR6/ckTHKy8tx4sQJnDhxAufOnUNhYRGsViuCgoKh0+nsE9B+Ym3Qqk0T9e7dG5GREdi7dx+CgkKwZ89e9OjRA5GRkU6RNnHN8PAwjBw5Aopixdmz58A5x6lTp+Dn54fu3dOuYAKh+RoaGrBkyRJUVV3Efffdh/T0nk6J54kBdu3ajfLycqSnu2YAxxEdHY1PPvmEt7a2UkmSvuKcn3SWFJI9OHwMtkZJnxBCIhlj1uDgYN3ixYvxwAMP2JMdrhwp4RC2tLTgzTffhE6ng6IoePTRR9GzZ0+3OXdHCTp+/AS+++47nD59Cg0NDRrT2JpnGI1+iImJwbBhQzFp0kQYjUanHj6ltrUjVqsVWVlZkCQZ775ry0a+9dZSvPji8wgNDXVq0wUWYTAYMGPGDIwZMxZr136PHTt24NNPP0NERCcMGjSozX3Fs69cuRKnT5/CjBkzcN1110JVbY6gL5nMy1qQexV1EEIQFRWF5ORkHD16FJIkEVdmTvYg/QqAWymlaYwxa1JSkm716tXo16+fXS27Ir7jJHz88T9RV1cPzhnmz78LPXv2hKIoHojPABD885+fYtOmzTCbzUhMjMeQIUMQERGhpWXrcf58Ac6fL8BXX32FAwf24YEHfo+UlBSXYZ5gwuHDh6GhoQHLl38FnU7Ge++9h4ULF7oMzRzh5cjICMybNxe9e/fC0qVv47PPPkOvXr3g7+/f5r2rq6uxa9cupKenY8aMGW6xfE9hZHNzM2RZtqfPvdUe3sTznh5gMuecy7JMPv74Y/Tr1w9ms9nj0ipBgMOHj2D//v2QJAkjRozAyJEj3WoNcS4hBO+99wE2bNiA5ORkTJs2DUOHDr4iw8gYw4kTuVi9ejVOnDiOxYsX45lnnkFcXJxLD12WZSiKggkTxqOgoAAHDx5Ebm4utmzZiuuvH+2SeYRzKhzMgQMHYOrUKfj444+we/dujBs3ro0p4JxrTidQX19vzx8IRvIET4vnb2pqRl1dHSRJQqdOndz6D8L0FBQU4OzZsyCEQFVV4msUIAo3KaU0g3NORo0aRUePHg1FUZzW7blCv778cjn0ej1CQ0Mxc+ZMj0CRmJi1a7/Hhg3rkJ7eA08//WeMGjUCfn5+V0QBlFL07dsHTz/9FLKyRqKmpg7Lln0MRVHcSoAoCJ037y4EBgbC3z8Q3367EvX1De3Lzt0ywogRWQgP74T9+w/YkzhCaiMiIjB9+nScPHkKjz/+JL74YjnOnDnTJspxt0xNPENFxUU0NzfDYPBDWFiYx6iDUor33nsPra2toJRyVVUtPyUMpAAwduxYlzl5Vw+xbds2VFZWQlEUTJ8+HX5+Bo/ca1OdNVi9eg0iIiLw4IMPIjIyElar1X5cJI0cV9oSQvD739+Pnj174vjx4zhw4ADcrQN0RM/uvHM2TCaTtlhjrUcGcHyHTp06ITExCUVFJWhubgWllyuHVFXFpEmTsHDhkwgKCsJXX32FhQv/jKeeegqbN29Gc3OznZGc3U98V1BwHlarFYGBgYiKinI5h8Ksbt26Fe+//z4nhBCtGcZhV0kh6oUJ4O0LLzyFL6IqdtOmzSCEIDk5GUOGDPIIvwq/4uDBg7h06RJGjBiBuLi4Nv6Cq0yYuPbNN98EzoFt27bbk0aetMCgQYOQmpoKQgh2796Nurr6NkWo7opSCCEwGo0wm81obGx0ev1hw4ZiyZJX8fzzz2Hs2LGoqKjAm2++iccffxybN2+2z6mzawPAsWPHoaoqYmJiEBAQ4NRPESDb/v37cccdd8BkMqkAKOf8a9gWj0pXxQDCT8jLy/OK+GLJ1PHjx1FdfQmcc4wff4NPUpWbmwudTochQ4Z4HTIJbdCzZ0/ExkajoKAAtbU1don0NKZMmQJVVdDc3Iy9e/e2YUhPQ1EUMKba6yDaM6eqMlBK0K9fBu6//z689tprmDdvHkwmE956ayleeeVV1NfXt5mjy4myOuTn50OSJJdFKIL5c3NzcdNNN6GqqkqVJEnmnJcC+JO7ZBB1k+mjADhjrBQAfvzxR97Q0NBGZTmfWBsR9+7dD84JwsJCcM01/doQyZ3msFoVFBeXIDIyEnFxcXBsv+qJATnn8PMzID4+DvX1dSgpKfXoDQtJ79u3D2JjbQtNDhw44PR+jv8Xx2tqalBeXoqgoAAYjQYXzEnbwNRhYWG45ZZb8Morr2DUqNH48cedeOmll1Ff39DGSRTlZ42NjTAajcjMvOaKBJR4t4aGBsydOxfl5eVMlmVJVdUiAMMBXHQI6X3yAQQD7CCE8PPnz/MtW7Z4lAyh/s+fP68VYabDz8/P45p88SImkwmtra3w8/OzRxq+1A0CQEBAAKxWq72Kx5MGsEkQweDBNjNVUlKC8vJyO3O4M1dHjhyxV+4GBga6fV6BXgpoPCIiAo888v8wffrtyM3Nw0cffQyA2JnLYrHgxx+3Q5IkJCcnIT4+7gr1L6T/nXfewaFDh7gW5jYBmAfggqbB2dU4geLNt1MbikK/+uqrNpLgzA4BwIULRairqwMhBH369HFpP50T8UoG83XNgCgF81aFC4kaMKA//Pz8YDKZcOzYMbfMLvyOnTt3gBCChIQEOwjlTWwvy7I9nJw7905MnDgR+/fvR1lZmZ1RbE50FTgHxowZ6/bZ169fD0IIV1WVasTfCjfrAbxhAKapjh2MsbMA6O7du9mlS5dcSob4rri4xO61du3a1eu8OeccwcGB6NSpE8xmM6xWq0PK13vUrLW1FTqdHkFB3q05EMfj4uLQqVM4OOf2ylpXuQlCCC5cKEJRUQlkWUa/fv28Bl/avzPnHL16paOmptrefaS2tg6rV68BpQRduiRh4MABTp1o8Xwmk0nlnFNCyNcAVsC2+FbxKsRzowEkACZCyGe2eLSCXbx40eOLFhcXQ1EUBAQE2IELzzV5wpY1wmKxoK6uDpcuXWqnjDxPaFNTE/Lz8xEcHILExCSvTYiY3JiYaHDOUFVV5ZJxxbtfuFAEi8WKgIAAe6sXX5E+gQf06pWOv/xlkd0P+eCDD2GxWKGqCmbOnKFB2a7NXnh4ONfuXwof2sVQD7kArt0kU4NRiTcgkK1KlyM0NNSe6fOMHdikatu27SgoKECPHj0QHh7uk0SJOoBhw4ahrq4OO3bs8FoqxW/i4+NBCEFjYyNaWlqcni8YKiKik1bEetnf8NbsOMMTrrvuOsiyhG+/XYnc3FxYrVaMGjUKPXr0cBlCi/vFxcUJDhmi0U39qQwg6v7vJYTcRAhRe/ToIYnlUq6WJ9nUVy0IIQgNDfFZLVZUlINzjttuu82rurn2k6nT6XDHHXcgLCwMOTk5PjmRAOwJoebmJjQ0NLiNHHr27IHk5CSYTGasWLHC53d1HMLcbdy4GStXroLBYEBMTDRmzpzpVe1AfHy8YAifqryohxqAZELIK5RSlXNOHn74Yej1eje1bGK5skWzb75PREBAIFRVRWXlRW0yfbuISMFaLCYYjX4+S2JAQIBGYM/dxCRJwpw5c+Dn54cjR45i8+YfvNZ4jhIslpVv2LARn376T4SEBAHgePjhh2AwGLwKfx00M/s5GECo/79RSkMVReETJkygc+fO9dDOrG0fHF+W/IkX7Nu3L/R6PXbt2u0zEwnG3L9/P+rr65GW1s1ntRwSEgJZtrV6M5stLqWaEAJFUdC1awpmz54NQghWrlyF2to6r0AvEQEIj//LL5fj88+/QHBwEMxmM5588gnExsZ6RE+FhqyoqBBzL/1UBhCdpiIIIeMYYzwqKkp65513vFalsqzTJsD3dXvp6T2QlpaGY8eOYefOnW5LttoTX5Ik1NfXY+PGjQgNDcXgwYN9dsxsv+Xg3LM6F882atRIDBgwABcvXsSGDRtdrt5xJLxICBUXl+CFF17C+vUbYDQawTmwcOFCdO3a1WWlkWPOhRCClpYWbNq0SXzX0EYdXwUDCA7qTykN5Jzzxx9/nHTp0sVjM0MxYSEhIeDc5gv4CuTIsoxp06ZpRZSfi4IGt1LsWH2zdOlSlJeXY/jw4UhISPCi9LrtaG5uhqKokCTqEYhyxPBvvPFG+Pn54fDhw7BYLG1yCSKDKaRVdCX58ssv8Oyzz6KwsBCEEERHR+GFF563t7Jz1VJGXE8kxF544QWcOXOGS5LEGGNHfID5XdcDSJIUrKoq/P39+bRp09qskXc1KZcXUwSAEIaGhjqPuX9n4MrgwQMxevRIbNmyDe+88w8899xz9mphd1233n//Axw/novExCTccccdPjmQ4tmrq6u1lcAcsix5qTGA7t3TkJSUhNLSEly8WImEhPgrzBsAnD9fgJ07dyE7+yAaGhohSRSKYsaYMddj5syZkGXZqaAJU+CoESoqKvDKK6/gjTfe4JRSzhijAH7wJXZ2RxkVAIKCguwdPLwdMTHRAGylYHV1dYiIiPCaGEJ9zp07FxcvViE3Nxcff/wJnnzyCdgSk8Sp6v/++3XIyTmKoKAg3Hff/ZoW8r33QFVVlZZT8LMvKfOGeSglCAoKgslkRllZGaKiOsNksqC+vg6VlZU4ffoMTp8+bW8HJwjZpUsybr/9dnTv3t1lLyTH9PLJk6dQWFiIrVu3YfnyL1FRUa4tk2M6AMsAbIYP28/Jbl5KFsmOoqIijzX/jseSk5Oh1+vR3NyM8+fP+8wAgK0P74MPLsDTTy9CTk4O9u/fj6FDh1yh0m1rCiuwcuVKAMDMmTPRo0eaz5s9iGuWlpZqWizQ3gLWm+cWvQVCQ8Pw1Vdf49///jdU1VbKJdYTiOsYDAZ06dIFY8eOxaBBA+z23BlYJiR/9+5dWL16DSoqKsE5sGXLD6ioKOeyLHOtD8D7ABbAx/2IZVeuPGPsogZykK+//hqZmZmwWq1u1bl4+KSkJAQGBmo9cfMwaNAgr+Pjy6torAgNDcGECeOxbNlH2LVrN4YOHeJU+vft24uGhgb07t0Ho0ePtN/Ll8WgIolVUVGhIYIxXl1DMFpubh4qKysRGhqqmREOxlTIss7eOj4qqjO6d++OgQMHIjk5Sbu+LdR1Ze8ppTh06BDefvsd6HS29nNJSYnIyTmCysoKqKpq5pxPBrDFgfg/iQGEt3WYMVZNKQ1/7733+IwZM0i/fv3cVvI61qWLitSTJ0965Qc42nJCCPR6PcxmM1paWqHT6WA2m53aVIGiCfh4167dGDx4MHQ6uQ1DiapgdzDwuXPnUFtbD0KoPYfhTeRhtSr4+utv7CXvo0aNhCRRhIWFISIiEp07d0ZkZESbgs62XUeJ21zBmjXfgVIZo0dfj9tuuwUBAQGoqanGX/96nEmS5KeqahQut+dTfDF5kpvvTQC6EEIGmkwmZcuWLdK4ceMQFRXltrpVTGZraytycnLQ0mJCWloaoqIiwZhzJ07YOEop6uvrcfz4Caxfvw5fffUN9u7dCz8/W9lWbGxMG1MinMaEhAS0trbi8OEj2Lt3Lw4fPoLq6mro9XpERERA7PfsKiIQz7xu3XqcP18IPz8Dpk+fbvcB3J2jKAreeONNFBUVwWQy4a675mLq1CnIyMhA9+7dkZAQj/DwMBgMhjZL3rwtCK2ouIjVq9cgMDAACxb8HsHBtj5BYWFh+Pjjj7miKFS7zte4ipbxkhsgCACOc87vppQaq6ur1dWrV9P09HSkpaW5XVNHCEGnTuHYuXMnzGYLTCYThgwZcoU6dbR7Z8+exbffrsTy5V9hy5YtOHnyFADgmmuuwX333YPevV2vhqGUIjMzE2lpaWhqakJBQQEOHTqEffv24cSJXKiqiqioznYiOFsBZDZb8K9//QsWixWJiQmYPHmSS/Xv2FF8yZIlOH++AGazGZMnT8aNN05wyGK2TYF7Q/j2oNahQ4exe/dupKWlYezYMfbvIyMjsWHDBlJSUgJJkpI555/Ctnu5Tz6AO0iPwtZlcifn/HZZlv3q6+uVFStW0M6dO2PgwIEul1Opqgqj0R9lZWUoLi5GVdUlZGRkIDz88rJmoT5LSkrw0Ucf4csvv8SpU6dAqYS0tDRMnToFs2fPwrhxY9GpU7hWVkXdJpNiY2OQlXUd+vfvj86dI9HY2ITTp09h//79yM7Ohl6vQ0pKShsmEEy4a9du7Nu3D4ypmDJlClJSurjt0FlbW4tHH30UNTU1IIRi5MgRmD17JhRFhU4nu+xj1D7sdGbWHM3hN9+sQGlpKa677lr06tXLjgPIsoz6+nqyadMmlVJq4JxfArAbLmr/fGUAx3TwBQC7GGNjKKVhqqqq3333HY2OjrYv7XKuCYCoqGj8+ONOEGIrbb722uFtbN/evfvw+utv4OTJU4iKisbEiRMxY8btmDZtGlJTUxEYGKiFRvDYI4DSy+hbaGgo0tN7YsSILHTtmoLW1lYUFl7Avn37UVlZiQEDBrQhgqqqeP/992C1WhAQ4I/f/W6+vc2Nq+rbWbNmYfny5aioqMCUKZPx+9//XtMM7nsgOa4HcPw49iMUmmL37j3YtGkDDAY9Zs2ahdDQ0DbnREZG4pNPPmFms5kSQswAvvDVDHiKkwQTFAL4inM+SJKkZAA8OzubzJs3z2nGzqYFGEJDQ1FRcRFFRcWoqqpCZGSk3fs9d+4cXn/9DTDGMXXqFDzwwH3IzMxEWFi4T7bSFTInEixxcXHIyspCYmIiioqKkZ192L6WQDin69atw8GDB7XFIrZtXJxJv2D23bt3Y+HChSCEIDg4GB9++KF9wYon30j4DZcuVaOlpQVms9m+aYR4z5qaGvzww1Z88803aGlpxnXXXYfrr7++jcnknKNTp07YsWMHzc/P55IkxXPOvwVQ5YsZ8AaiUzUmKAcwgjG2gXM+rq6uTi0vL5c6derkdj3d7bffhuxsW9+ef/3rX0hLS0XnzlHYtGkTKisrcf/992PKlMlX+AQ/ZcNGx/OFVhg4cCDi4xPw4osvYePGTbjhhrEIDw9HWVkZVq1aBaPRCIPBgPHjx3usRBbQLeccU6dORXh4eJtIpz1aKnyGqqoqrF37PU6dOq2lzCkkiSAoKBB+fn6aU2vbYkZ0E+vRowdmz559hbkVK66nTp2KjRs3qrCt4ZwB4Fn4sGGEt1kSFbYtzTkh5CMNgOHuGkGKCQoLC8Wdd85GXZ0tL/DWW29r0Gl3pKam4oYbxtlxck+9A69mCKmzWq2IiYlG9+5pYEyFXq+Hoih4++13oNcb0NjYiNmzZ8Pf398jaOXn52cnsmOFVPu2dKJ/gSRJOHz4MJ555hls3LgBxcVFMJtNMJla0dzcjOLiYpw8eRK5ubk4ffo0GhsbkZAQj9tuuxVPPfUU/P39rzBHgsFvvPFGBAcHUy0xNNUXFNDrjJGDtlAJIc9zzp9KTExUjh49KrtaUdveY3733X9gz5590OsNyMjIwEMPPdjG2/05CO+ecLYMX1VVFcxmMxISEvD3v7+B3NxcKIoV1147HPfcc49X+wkdOHAAQ4cO1RpI2DTb7bff7vK5Xn31VXzwwQcYPnw4kpISMXCgbSGKWKNYV1eH5uZmOwQdFRWFLl2SodPp3b6XeJ5p06bxNWvWQJZlrihKPwDH8QvsGCLbUr3yxwD4sGHDrIwxr3bBVBSFWywW/vTTi/hdd83ns2fP4a+//ob93J9rg2ZPz+K4u8e7777PZ8+ew++++17+9NN/4RaL2eOunuJYaWkpDwkJETt8q5IksYceeogfOXKEm0wmzjnnLS0tfNu2bXzy5MkcAA8NDeWff/65T+/q6bdiR9FvvvmGA7Bqm0sv9sG8+6wBFJ1O977Var132rRpyqpVq2Rv4Fbh4ba2tuL5519EZWUlOOfo2jUFf/jDgwgJCfG5d7CvQ0iL2WzC22+/jWPH8mA0+kGv1+P55//qVfJIHG9oaMA111yD8+fP21PVnHOm1+tZamoq4uPjUVJSgry8PGGG5OjoaJw+fRqBgYFOgTRHv8FbjSiep76+Hunp6bysrIxQSmsYY121EN5jRHDVrWLFhHmD8Qt/ICAgAE8//RRiYqLBmG37l0WL/oKjR4/Z7b+iqFddV+eK8MJmnj9fgEWLnsGJEyeh19u2hlm06Cm3xHf2LAaDAZoGAOf8MIBLsixTi8Ui5+XlyZs2bZLz8vJkQogsy7LMOUdlZSV27NjRZocTx49j21pfoh7Rgm7SpElEM9HhAMZ4S19fu4QxSuk0xlhmeHg4u+uuu6gvFT+MMej1elx33XUoKytFYeEFyLIOO3fuxMWLlUhOtiWRxIt5u62qq6IJMbkmkwmrV6/BsmUfac2pLEhMTMCTTz6J8PBwjwmf9vevr6/HkiVLWFNTE6WUzmeM/YUx9gOA/bIsr9fpdBsIIRsYY+sZY6ckSRqqqir39/cnU6ZMuap3cveulFKEhITg008/5ZxzCiActt3DPGoAn00AIeQtAA/6+/ur+/btk3v37g2LxWLv0eNKghxbnQgVt379Bvz73yvszpDBYMC11w7H9ddfj+joqCsI2r41fPuVu+3Dx9bWVuzcuRMbNmzEpUvV8PcPQGNjA7KysjB//l32bV693UBadPtcuXIlbrnlFpVSShljswAs9yCppZzz2Pj4eHbs2DEq9jb0VOvXPlfiDmCyWq0YMmQIP3LkCCilrYyx7rCtCnYbEvqsAQAEUkpvt1gsvKioiM6YMcO+zMlxOZYziLitTwCkpXVDv379UFBQALHi6Ny5fOzcuROnT58B5wwBAQH2St320Kqz9vFmsxn5+fnYuHETPvvsc+zff1Crw2MIDPTH3LlzcfPN01zuy9feb3FELmVZRllZGe666y4Rp1PO+csAKrQwWexlLD56zROPppQOq6+vVwcPHkzd1fk7yzaKd27fCt8RZ9DpdKiqqiLbtm1jGjR8GsAhT9CwLxpAqJMIAAWU0gDGGL/55pvps88+a18D2B6fdwfhOhZt7NmzB2vXfo+SkhLodLJ9jaDR6G/fIi42NgaRkZHQ6XRaHK/CarWgtdWE0tJilJWVo7y83N5o2mDQw2q1Qq/XY8SIEZg6dap9fb2nvvvtGbixsQEbN27CokWLcOrUKau2PdsZ2HolW12oWhGKXSNJUraqquTOO+8kn332mduCFcdcgC2j2oKMjIwr9ih23A2EUoq8vDwMGjRIMZlMMudc7Cbqdn2gr4ZIvNCfALxGCOGccxYQECANHjwYEydORM+e6UhMTET37t3tTZ89qTohiWLHz+3bt+PcuXNobbU4rEPkV6hDIRXCyRTtWWz/5ujcORIDBgzAqFGjEBER4bHAw/HYhQtFOHfuHE6fPoPt27fhyJHDOHfuHGDbpFFijNUBGAfbRo2u1KwQGolSepYx1iUiIoIdP36cRkdHu3wWgSouW7YM999/P1RVZSkpKXzo0KF01KhRJDMzE+np6U77NI0YMULZsWOHLMvyE4qivPpzM4AjEzwA4G+SJBm1kiTSo0dPZGba2qHHxcXi5ptvxpAhg70qz2oPCFVWViIn5yjy8k6iuLgY9fX1bfr+tFeFkiQhODgYnTp1QkpKF2RkZKBHj+52eNZTmCmeMT8/H19+uRxnz56DxWLB6dOnkZNzuA3OzxjLBvAHAPu8AFwEAZZQSh9ljCnvvvuurBH2inkRBTdr1qzBLbfcAsaYaPVinypZllmPHj3IwIEDaVZWFsnMzERCQgKKi4sxefJkpbi4WCKEPMEYW/JLMICjP5AK4CFJkh4EwPv160fnzZuPM2fOoqqqCoypmD9/HsaNG+e1s+Vsf16rVUF1dbV9U6eGhkZYrVZQausTGBoaitDQUERERCAwMMAtY7ljvnPnzuGVV16ByWRGQEAA+vcfgMDAINx7792stbWFcM7LOOfzAWxqNw/eCExPSZKOMMb0119/PRGbRrfH9wVsPGbMGNTX16uwbf+WTSltIYRkAghst05C1ev1iI2NFfOjEEIMnPNnAfwVXiwRv9oh9M+TYv/fTz75hHPOeWNjI1+xYgWfM2cunzNnLi8ouKDtect8QvUUReGKovqEBqqqOE/xiAy2vZfKFy36C581607+7LN/5eXl5fbjWVlZjBDCJElqhm3Leq+RNsd4nBCyCwD39/dXTp061QadFKheYWEhT0lJcUT2tjncKwbARELIYkrpLlmWG7Tf2D9aT6ca2Lq7Evy0bYE8OoVGSukZADwuLk6trq5uA7e++eZb/KabbuFvvrnUq42WPRFJbOIsCKwoCldVxb5BsyPBvYGpHZ/p6NHjfNasO/kDDzzIy8srOOect7a2csZU/vbbbzsS5MmrYABZm6/fybLMASjPPfecnfDi+auqqnj//v05AEWSJBVALWyNnl3dLxrADZIkTdTr9RMlSboRwCTYNov4KRre6zqCLO2F1NmzZ9snVEhfXl4enzXrTn7PPffxysoqOxG9lUx3zPBTr9GeAd59931+yy238X/84107Di+OXbhwgQcHB6uahJ1wCPl80gAAulBKzQBYnz59uNls5haLxZ4rGTduHNdsvJDom9vNt9ivQfbi/tSXB7sa6QeAWzSbzaZMmdLGSweg7Z4dj/r6euzdu89jY8T/9BA2uKWlBbm5uTAY9LjmmmsgNqAQ6GViYiKuv/56gYT2AnCNQ7GMV4CdNteFjLEfKaU4ceKEumXLFuh0OkiShAcffBCbNm1isiyriqJcAnA7gJUiC+tQoKNqNp07MET7z89eD9Ce+CoAHSFkkrY9Kh09enSbCh5RkZOR0Q8AsHXrVjQ3t9h79bbfYtWx/7/jWjp3lT/uCOvsmo73FI2aCCH44YcfUFdXg86dI9G3bx9wjjbtXgFg7ty5AMA0prnnKueNA/gAAOGcqwsXLlTXrVun3n333eoHH3ygSpLEFUWRAfwFwL81TaN4qNhSnXzYLyk4gusnajZRufvuu69IXwo1felSNb/33vv5nDl38RdffImbzearUtG/1O/PnDnDH3jgAT5z5ky+atUqp+/BOef19fU8MTFRBcAppeUAAq4STPPXSuzaOG+UUuHAvaX9Vvef0ILSVZ7DADxNCMngnLOXXnqJpqamtlH/lzOAtg0T9+7dh7q6Ohw5crgNhFlVVYX8/HwcOXIE+/btw44dO5CTk4OysjKEhIQgKCjI6xW+ItRsaWnBgQMHsHfvXuTm5uLSpUuoq6uz72Da0tKibce6HV9++SUaGhqQlJSEu+++2w69OmobRVFgNBpRUFBADhw4oEqSFMwY2wcPW7O7mDsLgGMAUgghFyilxZTSAsZYiUb8v+Byp/ZffJCr/H0QpfQ4YywxLS2NHTlyhLoqpRJw8PbtP+LTTz+1b3kitn+zWq2wWCz2rWVFlY0kSTAajZg+fTrGjBnjFshxXFS5ZcsWrFmzBrW1tfbtYQSObzQa7auaLBaLvVdvSkoKHn74YZfrHwUyt2vXLowYMULlnEuc850Asnyxtz5iLPg1agDB7eMlSbqPMabOmzdPmjhxosvycFGu3aVLF/Tvn2lvqnR5QyQdQkJCkJiYiJSUFG0VUZQ9bbt582bU1tZi8ODBV2wmJey4LNvq8B9//HF8/vnnCA4Ohl6vR2JiIpKSkhAUFGRv5tDSYtuBVJIkxMXFYcyYMbjnnnvcNnkUcHRsbCzWrl1LtSaS8ZzzL7SY26fFGNrviYvPf4z4V10WBuApQgijlFp37drlU/mS+G1dXR2/ePEir6mp4c3NzVf8vqmpiW/evJmnp6dzAHzRokUur93c3MwXLFjAAfDRo0fzL774ghcWFtr9AcYYb2xs5KWlpfzUqVM8Ly+PFxYW2p/Zm7BS/Pa1115zxAQeuwpM4P/sEKIRRim9CID36NGDiRo4b2oDBZDjzoFr/5tJkyYJ54hNnTqVb926lVdXV/OWlhZeUlLCP//8c56Zmcm0EI0vWLDgqusE3dUBir+FhYU8JCREJYRwQshJXF6U+T8/BPhwj8b91ieffNLrok5XSJ0z6RPfVVRU8ISEBA6Aa+AIA6DGxcWp3bp1UyMjI0XYww0GAwfAJ0yYwBVFaaNxHK8pGMwXmLi9Frj11ls5AFWbh7G/FS0gDPwGQgjT6/VKdnb2T4Z4Xalbxhj/97//bQ+RADRqf68In7QQqgUANxqNPC8v7xd7Ls45X7VqFQdg1Z7no58QUf2fI36clhDhAwcOZN4mXHyFbgXhZsyYwQEwSZIYgBEABgEYbjQah/j5+Q2VZXkIbC3R+2hZSQ5AeeGFF3wuN/dGKzhiAikpKUxjwDqtSAb/y6ZAqLe7RTJjyZIlVzh37SfUEU/3xh47/qaiooJHREQI/P2IF5MbTyltAcD69evHLBaL1/d0fEbH53Z2rmCqJ554ggOwavPxh/91MyBpIdI3WjrTmp+f32byhH0V2S3H0djYeIUz5SlaWLZsmaO3/bz2HHoX2LeY+B80c6D88MMPXmkBcfzUqVO8tLTU6XHHjJ14t0OHDnFJkqyag/rK/zoDEACQJOkgAD5mzBjlcr5ecTrJ+fn5fNmyZXz69OmsS5cubMqUKby2ttajbRYTfeONN3ItB28BkOYhdyHs73ShoebMmeORAQSzffzxx9zf359HRUWpEydOVF999VW+a9cuXldX55QhLBYLN5vNfNSoUVYAXKfTvfBbYYC9APhbb711xaxaLBaenZ3NFy9ezEeNGsUCAwMVh6wVB8DGjRvHW1paXKpXwRj5+fk8ODhY0dT/flyusvUUogYSQooA8E6dOqnFxcUutY4g/rZt27jRaBRJFe6QYLF26dJFmTlzJnv33Xd5Tk4OF2ZFjIceesiqRSAv/iYYgFK6FwCbN2+eUltby8vKyvjatWv5I488wjMyMlRKqdWR6JIkcUmSrJRSrtPpOAA2a9asNp6+M6J88MEHjur/CS8nVxz/hwhT33rrLadaQDBaaWkpT0xMtId0hJDzkiQVtq+yAaDo9XprRkaGsmDBAnXZsmXqG2+8oUZERJgJIQoh5LehAQAc0SbEFBcXp0RHR7eXci7LMpckqZIQshLA/Zr6HgOgQafTMQDs2WeftWsNZ4S54YYbmOb9WwD08DJ17djilgNgI0aMaGO3HZ08s9nMb7jhBkF8Btvu2kkAjABuAPA8pXSrJEnVThii/efV34QTqEGfiub42ONwSZI4pTSfELIMwC2wLU1qPx4jhDCdTmcBwD/88MM2Uu+o/gMDAxUNadvvgJH7grHvJoRwvV6vHDx40Gnt3R//+EcRYlo1lT/cRSgXCeBmQsjrGkPkiA8hJAfAOgA9fXzO/9OjG4CbJEm6SZKkaQCmAcjE5SJRR6aRNaKI3PaXhBBOKbUEBATwTZs22YkiTEK7+ru7fZQs8bsHNWfQ+sQTT9jvIYj/4YcfCm0lFnS0x/Qdn71j+JA+ll1g40Q75gdgv7DRkZGR/PTp05xzbl9Xr6l/rgFOMV6q//aAVRSltAEAT0tLY83NzXZ/Izs7mwcGBnJKqUDyvvDAZKQdQ5B20k5/a4xCtclw/FB4X6SYDOCENvlKr169eEFBAeec87y8PB4UFKQQQhghZL2PxG9vrv5FKWUArMLnOH36NE9NTXWEcXc6vAPpkO//HKI4CIBZc74sXbt2tT7xxBPW/v37WwG0aj7G767SsRIaKEsLIy2SJFmzsrKsiYmJVgAWTQO1eIEvdIxfkAluBGBun+DRiG+9CvXvTNtsdJY8gq2V2sjfQhLnp9r0XzKqUAEMBnC71iePaBg8BbAetuVXV1seZQeGYKutz9DpdFyrRm4C8I0W9v3sjZQ6hu9S+t9izg61/ytwfFx50PxnkkziQsUz/Mpr7zpGx+gYHaNjdIyO0TE6RsfoGB2jY3SMjtExOkbH+FnH/wcVZE583I4EnwAAAABJRU5ErkJggg==";
     }
   });
 
@@ -6403,7 +8023,7 @@
         version: debugInfo.device.manufacturer,
         icon: "WrenchIcon"
       },
-      ...import_react_native15.Platform.OS !== "ios" ? [
+      ...import_react_native16.Platform.OS !== "ios" ? [
         {
           label: Strings.BRAND,
           version: debugInfo.device.brand,
@@ -6416,7 +8036,7 @@
         icon: "MobilePhoneIcon"
       },
       {
-        label: import_react_native15.Platform.select({
+        label: import_react_native16.Platform.select({
           android: Strings.CODENAME,
           ios: Strings.MODELID
         }),
@@ -6424,7 +8044,7 @@
         icon: "TagIcon"
       }
     ];
-    return /* @__PURE__ */ jsx(import_react_native15.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native16.ScrollView, {
       style: {
         flex: 1
       },
@@ -6458,7 +8078,7 @@
       })
     });
   }
-  var import_react_native15;
+  var import_react_native16;
   var init_About = __esm({
     "src/core/ui/settings/pages/General/About.tsx"() {
       "use strict";
@@ -6472,7 +8092,7 @@
       init_debug();
       init_settings();
       init_components();
-      import_react_native15 = __toESM(require_react_native());
+      import_react_native16 = __toESM(require_react_native());
     }
   });
 
@@ -6503,7 +8123,7 @@
     useProxy(settings);
     var debugInfo = getDebugInfo();
     var navigation2 = NavigationNative.useNavigation();
-    return /* @__PURE__ */ jsx(import_react_native16.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native17.ScrollView, {
       style: {
         flex: 1
       },
@@ -6562,7 +8182,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("Discord")
                 }),
-                onPress: () => import_react_native16.Linking.openURL(DISCORD_SERVER)
+                onPress: () => import_react_native17.Linking.openURL(DISCORD_SERVER)
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
@@ -6570,7 +8190,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("img_account_sync_github_white")
                 }),
-                onPress: () => import_react_native16.Linking.openURL(GITHUB)
+                onPress: () => import_react_native17.Linking.openURL(GITHUB)
               })
             ]
           }),
@@ -6645,7 +8265,7 @@
       })
     });
   }
-  var import_react_native16;
+  var import_react_native17;
   var init_General = __esm({
     "src/core/ui/settings/pages/General/index.tsx"() {
       "use strict";
@@ -6665,1617 +8285,7 @@
       init_constants();
       init_common();
       init_components();
-      import_react_native16 = __toESM(require_react_native());
-    }
-  });
-
-  // src/lib/api/react/jsx.ts
-  var jsx_exports = {};
-  __export(jsx_exports, {
-    deleteJsxCreate: () => deleteJsxCreate,
-    onJsxCreate: () => onJsxCreate,
-    patchJsx: () => patchJsx
-  });
-  function onJsxCreate(Component, callback) {
-    if (!callbacks.has(Component))
-      callbacks.set(Component, []);
-    callbacks.get(Component).push(callback);
-  }
-  function deleteJsxCreate(Component, callback) {
-    if (!callbacks.has(Component))
-      return;
-    var cbs = callbacks.get(Component);
-    cbs.splice(cbs.indexOf(callback), 1);
-    if (cbs.length === 0)
-      callbacks.delete(Component);
-  }
-  function patchJsx() {
-    var callback = ([Component], ret) => {
-      if (typeof ret.type === "undefined") {
-        ret.type = "RCTView";
-        return ret;
-      }
-      if (typeof Component === "function" && callbacks.has(Component.name)) {
-        var cbs = callbacks.get(Component.name);
-        for (var cb of cbs) {
-          var _ret = cb(Component, ret);
-          if (_ret !== void 0)
-            ret = _ret;
-        }
-        return ret;
-      }
-    };
-    var patches3 = [
-      after("jsx", jsxRuntime2, callback),
-      after("jsxs", jsxRuntime2, callback)
-    ];
-    return () => patches3.forEach((unpatch) => unpatch());
-  }
-  var callbacks, jsxRuntime2;
-  var init_jsx = __esm({
-    "src/lib/api/react/jsx.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_patcher();
-      init_metro();
-      callbacks = /* @__PURE__ */ new Map();
-      jsxRuntime2 = findByPropsLazy("jsx", "jsxs");
-    }
-  });
-
-  // src/core/ui/settings/pages/FakeProfile/index.tsx
-  var FakeProfile_exports = {};
-  __export(FakeProfile_exports, {
-    default: () => FakeProfile
-  });
-  function clearCache() {
-    userCache = /* @__PURE__ */ new WeakMap();
-    profileCache = /* @__PURE__ */ new WeakMap();
-  }
-  function mediaUri(key) {
-    return String(preview[key]?.uri || "");
-  }
-  function safeStore(name) {
-    try {
-      return findByStoreName(name);
-    } catch (e) {
-      return null;
-    }
-  }
-  function setOwnValue(target, key, value) {
-    if (!target)
-      return;
-    try {
-      Object.defineProperty(target, key, {
-        configurable: true,
-        enumerable: true,
-        writable: true,
-        value
-      });
-    } catch (e) {
-      try {
-        target[key] = value;
-      } catch (e2) {
-      }
-    }
-  }
-  function monthsAgo(months) {
-    var date = /* @__PURE__ */ new Date();
-    date.setMonth(date.getMonth() - months);
-    return date;
-  }
-  function durationLabel(months) {
-    if (!months)
-      return "None";
-    if (months % 12 === 0) {
-      var years = months / 12;
-      return `${years} ${years === 1 ? "year" : "years"}`;
-    }
-    return `${months} ${months === 1 ? "month" : "months"}`;
-  }
-  function milestoneIcon(months, values) {
-    return values.find(([minimum]) => months >= minimum)?.[1] || "";
-  }
-  function addRenderedBadge(result, id, description, icon) {
-    if (!icon || result.some((item) => item?.id === id))
-      return;
-    badgeRenderProps.set(id, {
-      id,
-      source: {
-        uri: icon
-      },
-      label: description
-    });
-    result.push({
-      id,
-      description,
-      icon: " _"
-    });
-  }
-  function selectedBadgeObjects(existing) {
-    var _loop2 = function(id2, description2, icon3) {
-      if (!preview.selectedBadges?.[id2])
-        return "continue";
-      var badgeId = `fakeprofile-${id2}`;
-      if (!result.some((item) => item?.id === badgeId)) {
-        result.push({
-          id: badgeId,
-          description: description2,
-          icon: " _",
-          iconSrc: icon3,
-          source: {
-            uri: icon3
-          }
-        });
-      }
-    };
-    var result = preview.replaceBadges ? [] : Array.isArray(existing) ? [
-      ...existing
-    ] : [];
-    for (var [id, description, , icon] of BADGES)
-      _loop2(id, description, icon);
-    if (preview.nitroMonths > 0) {
-      var icon1 = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
-      result.push({
-        id: "fakeprofile-nitro",
-        description: `Nitro ${durationLabel(preview.nitroMonths)}`,
-        icon: " _",
-        iconSrc: icon1,
-        source: {
-          uri: icon1
-        }
-      });
-    }
-    if (preview.boostMonths > 0) {
-      var icon2 = milestoneIcon(preview.boostMonths, BOOST_ICONS);
-      result.push({
-        id: "fakeprofile-boost",
-        description: `Server Booster ${durationLabel(preview.boostMonths)}`,
-        icon: " _",
-        iconSrc: icon2,
-        source: {
-          uri: icon2
-        }
-      });
-    }
-    return result;
-  }
-  function cloneObject(original, kind) {
-    if (!original || !preview.enabled)
-      return original;
-    var cache = kind === "profile" ? profileCache : userCache;
-    try {
-      var cached = cache.get(original);
-      if (cached)
-        return cached;
-    } catch (e) {
-    }
-    var cloned;
-    try {
-      cloned = Object.create(Object.getPrototypeOf(original));
-      for (var key of Reflect.ownKeys(original)) {
-        if (overriddenKeys.has(String(key)))
-          continue;
-        var descriptor = Object.getOwnPropertyDescriptor(original, key);
-        if (descriptor)
-          Object.defineProperty(cloned, key, descriptor);
-      }
-    } catch (e) {
-      try {
-        cloned = {
-          ...original
-        };
-      } catch (e2) {
-        return original;
-      }
-    }
-    var displayName = preview.displayName || original.globalName || original.displayName || original.username;
-    var username = preview.username || original.username;
-    var avatar = mediaUri("avatarMedia");
-    var banner = mediaUri("bannerMedia");
-    var selectedFlags = 0;
-    for (var [id, , flag] of BADGES)
-      if (preview.selectedBadges?.[id])
-        selectedFlags |= flag;
-    var flags = preview.replaceBadges ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
-    setOwnValue(cloned, "username", username);
-    setOwnValue(cloned, "globalName", displayName);
-    setOwnValue(cloned, "displayName", displayName);
-    setOwnValue(cloned, "publicFlags", flags);
-    setOwnValue(cloned, "flags", flags);
-    setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
-    setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
-    setOwnValue(cloned, "hasFlag", (flag2) => !!(flags & flag2));
-    if (preview.nitroMonths > 0) {
-      setOwnValue(cloned, "premiumType", 2);
-      setOwnValue(cloned, "premiumSince", monthsAgo(preview.nitroMonths));
-    }
-    if (preview.boostMonths > 0)
-      setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
-    if (avatar) {
-      setOwnValue(cloned, "avatarURL", avatar);
-      setOwnValue(cloned, "avatarUrl", avatar);
-      setOwnValue(cloned, "getAvatarURL", () => avatar);
-    }
-    if (banner) {
-      setOwnValue(cloned, "banner", banner);
-      setOwnValue(cloned, "bannerURL", banner);
-      setOwnValue(cloned, "bannerUrl", banner);
-      setOwnValue(cloned, "getBannerURL", () => banner);
-      setOwnValue(cloned, "getPreviewBanner", () => banner);
-    }
-    try {
-      cache.set(original, cloned);
-    } catch (e) {
-    }
-    return cloned;
-  }
-  function decorateProfileResult(original, userId) {
-    if (!original || !preview.enabled || !isCurrentUser(userId))
-      return original;
-    var decorated = cloneObject(original, "profile");
-    if (original.user)
-      setOwnValue(decorated, "user", cloneObject(original.user, "user"));
-    if (original.userProfile)
-      setOwnValue(decorated, "userProfile", cloneObject(original.userProfile, "profile"));
-    if (original.guildMemberProfile)
-      setOwnValue(decorated, "guildMemberProfile", cloneObject(original.guildMemberProfile, "profile"));
-    if (original.displayProfile)
-      setOwnValue(decorated, "displayProfile", cloneObject(original.displayProfile, "profile"));
-    if (original.profile)
-      setOwnValue(decorated, "profile", cloneObject(original.profile, "profile"));
-    return decorated;
-  }
-  function isCurrentUser(id) {
-    return !id || !currentUserId || id === currentUserId;
-  }
-  function addPatch(method, parent, handler) {
-    if (!parent?.[method])
-      return;
-    try {
-      instead(method, parent, handler);
-      diagnostics.patches += 1;
-    } catch (error) {
-      diagnostics.last = error?.message || `Could not connect ${method}`;
-    }
-  }
-  function connectBadgeRenderer() {
-    try {
-      after("default", useBadgesModule, ([user], result) => {
-        if (!preview.enabled || !Array.isArray(result))
-          return;
-        var id = user?.userId || user?.id;
-        if (!isCurrentUser(id))
-          return;
-        if (preview.replaceBadges)
-          result.splice(0, result.length);
-        for (var [badgeId, description, , icon] of BADGES) {
-          if (!preview.selectedBadges?.[badgeId])
-            continue;
-          var id1 = `fakeprofile-${badgeId}`;
-          addRenderedBadge(result, id1, description, icon);
-        }
-        addRenderedBadge(result, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
-        addRenderedBadge(result, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
-      });
-      diagnostics.patches += 1;
-    } catch (error) {
-      diagnostics.last = error?.message || "Could not connect badge list";
-    }
-    for (var component of [
-      "ProfileBadge",
-      "RenderedBadge"
-    ]) {
-      try {
-        onJsxCreate(component, (_component, rendered) => {
-          var props = badgeRenderProps.get(rendered?.props?.id);
-          if (props)
-            Object.assign(rendered.props, props);
-        });
-        diagnostics.patches += 1;
-      } catch (e) {
-      }
-    }
-  }
-  function addAfterPatch(method, parent, handler) {
-    if (!parent?.[method])
-      return;
-    try {
-      after(method, parent, handler);
-      diagnostics.patches += 1;
-    } catch (error) {
-      diagnostics.last = error?.message || `Could not connect ${method}`;
-    }
-  }
-  function requestIsCurrent(args) {
-    if (!currentUserId)
-      return true;
-    return args.some((value) => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
-  }
-  function renderedUserId(props) {
-    return props?.userId || props?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
-  }
-  function connectMediaRenderer() {
-    var avatarComponents = [
-      "UserHeaderAvatar",
-      "ProfileAvatar",
-      "UserProfileAvatar"
-    ];
-    var bannerComponents = [
-      "UserBanner",
-      "ProfileBanner",
-      "UserProfileBanner"
-    ];
-    for (var component of avatarComponents) {
-      try {
-        onJsxCreate(component, (_component, rendered) => {
-          var props = rendered?.props;
-          var uri = mediaUri("avatarMedia");
-          var id = renderedUserId(props);
-          if (!preview.enabled || !uri || !id || !isCurrentUser(id))
-            return;
-          props.source = {
-            uri
-          };
-          props.avatarSource = {
-            uri
-          };
-          props.avatarSrc = uri;
-          props.avatarURL = uri;
-          if (props.user)
-            props.user = cloneObject(props.user, "user");
-        });
-        diagnostics.patches += 1;
-      } catch (e) {
-      }
-    }
-    for (var component1 of bannerComponents) {
-      try {
-        onJsxCreate(component1, (_component, rendered) => {
-          var props = rendered?.props;
-          var uri = mediaUri("bannerMedia");
-          var id = renderedUserId(props);
-          if (!preview.enabled || !uri || !id || !isCurrentUser(id))
-            return;
-          props.source = {
-            uri
-          };
-          props.bannerSource = {
-            uri
-          };
-          props.bannerSrc = uri;
-          props.bannerURL = uri;
-          if (props.displayProfile)
-            props.displayProfile = decorateProfileResult(props.displayProfile, id);
-          if (props.profile)
-            props.profile = decorateProfileResult(props.profile, id);
-        });
-        diagnostics.patches += 1;
-      } catch (e) {
-      }
-    }
-    try {
-      onJsxCreate("UserProfileHeader", (_component, rendered) => {
-        var props = rendered?.props;
-        var id = renderedUserId(props);
-        if (!preview.enabled || !id || !isCurrentUser(id))
-          return;
-        if (props.user)
-          props.user = cloneObject(props.user, "user");
-        if (props.displayProfile)
-          props.displayProfile = decorateProfileResult(props.displayProfile, id);
-        if (props.profile)
-          props.profile = decorateProfileResult(props.profile, id);
-      });
-      diagnostics.patches += 1;
-    } catch (e) {
-    }
-  }
-  function ensurePatches() {
-    if (initialized)
-      return;
-    initialized = true;
-    var userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
-    diagnostics.userStore = !!userStore;
-    try {
-      currentUserId = userStore?.getCurrentUser?.()?.id || null;
-    } catch (e) {
-    }
-    addPatch("getCurrentUser", userStore, (args, original) => {
-      var user = original(...args);
-      currentUserId = user?.id || currentUserId;
-      return cloneObject(user, "user");
-    });
-    addPatch("getUser", userStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
-      return cloneObject(original(...args), "user");
-    });
-    var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
-    diagnostics.profileStore = !!profileStore;
-    addPatch("getUserProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
-      return decorateProfileResult(original(...args), args?.[0]);
-    });
-    addPatch("getGuildMemberProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
-      return decorateProfileResult(original(...args), args?.[0]);
-    });
-    try {
-      after("default", useUserProfileModule, (args, result) => {
-        var subject = args?.[0];
-        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-        return decorateProfileResult(result, id);
-      });
-      diagnostics.patches += 1;
-    } catch (error) {
-      diagnostics.last = error?.message || "Could not connect profile view";
-    }
-    try {
-      after("default", useDisplayProfileModule, (args, result) => {
-        var subject = args?.[0];
-        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-        return isCurrentUser(id) ? cloneObject(result, "profile") : result;
-      });
-      diagnostics.patches += 1;
-    } catch (error) {
-      diagnostics.last = error?.message || "Could not connect profile banner";
-    }
-    var avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
-    var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
-    diagnostics.avatarResolver = !!avatarResolver;
-    diagnostics.bannerResolver = !!bannerResolver;
-    for (var method of [
-      "getUserAvatarURL",
-      "getAvatarURL",
-      "getGuildMemberAvatarURL",
-      "getGuildMemberAvatarURLSimple"
-    ]) {
-      addPatch(method, avatarResolver, (args, original) => {
-        var uri = mediaUri("avatarMedia");
-        return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
-      });
-    }
-    for (var method1 of [
-      "getUserAvatarSource",
-      "getGuildMemberAvatarSource"
-    ]) {
-      addPatch(method1, avatarResolver, (args, original) => {
-        var uri = mediaUri("avatarMedia");
-        return preview.enabled && uri && requestIsCurrent(args) ? {
-          uri
-        } : original(...args);
-      });
-    }
-    for (var method2 of [
-      "getUserBannerURL",
-      "getBannerURL",
-      "getGuildMemberBannerURL"
-    ]) {
-      addPatch(method2, bannerResolver, (args, original) => {
-        var uri = mediaUri("bannerMedia");
-        return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
-      });
-    }
-    connectBadgeRenderer();
-    connectMediaRenderer();
-    var bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
-    addAfterPatch("getBanner", bannerComposer, (args, result) => {
-      var uri = mediaUri("bannerMedia");
-      var id = args?.[0]?.displayProfile?.userId || args?.[0]?.userId;
-      if (!preview.enabled || !uri || !result || !id || !isCurrentUser(id))
-        return;
-      return {
-        ...result,
-        bannerSrc: uri,
-        source: {
-          uri
-        }
-      };
-    });
-    diagnostics.last = `Connected ${diagnostics.patches} preview hooks`;
-  }
-  function refreshPreview() {
-    clearCache();
-    try {
-      safeStore("UserStore")?.emitChange?.();
-    } catch (e) {
-    }
-    try {
-      safeStore("UserProfileStore")?.emitChange?.();
-    } catch (e) {
-    }
-    setTimeout(() => {
-      try {
-        if (currentUserId)
-          FluxDispatcher.dispatch({
-            type: "USER_UPDATE",
-            user: {
-              id: currentUserId
-            }
-          });
-      } catch (error) {
-        diagnostics.last = error?.message || "Preview saved; reopen the profile to refresh";
-      }
-    }, 0);
-  }
-  function getImageSize(uri, asset) {
-    return _async_to_generator(function* () {
-      if (asset?.width && asset?.height)
-        return {
-          width: Number(asset.width),
-          height: Number(asset.height)
-        };
-      return yield new Promise((resolve, reject) => {
-        import_react_native17.Image.getSize(uri, (width, height) => resolve({
-          width,
-          height
-        }), reject);
-      });
-    })();
-  }
-  function normalizeMedia(key, asset) {
-    return _async_to_generator(function* () {
-      var sourceUri = asset?.fileCopyUri || asset?.uri;
-      var name = String(asset?.fileName || asset?.name || "Selected image");
-      var type = String(asset?.type || "").toLowerCase();
-      if (!sourceUri)
-        throw new Error("No image was selected.");
-      if (type && !type.startsWith("image/"))
-        throw new Error("Choose a picture or GIF.");
-      var animated = type.includes("gif") || /\.gif(?:$|\?)/i.test(name) || /\.gif(?:$|\?)/i.test(sourceUri);
-      var size = {
-        width: Number(asset?.width || 0),
-        height: Number(asset?.height || 0)
-      };
-      try {
-        size = yield getImageSize(sourceUri, asset);
-      } catch (e) {
-      }
-      var target = key === "bannerMedia" ? {
-        width: 600,
-        height: 240
-      } : {
-        width: 512,
-        height: 512
-      };
-      var sourceRatio = size.width && size.height ? size.width / size.height : target.width / target.height;
-      var targetRatio = target.width / target.height;
-      var uri = sourceUri;
-      var normalized = Math.abs(sourceRatio - targetRatio) < 0.01;
-      if (!animated && size.width > 0 && size.height > 0 && !normalized) {
-        var crop = sourceRatio > targetRatio ? {
-          offset: {
-            x: Math.round((size.width - size.height * targetRatio) / 2),
-            y: 0
-          },
-          size: {
-            width: Math.round(size.height * targetRatio),
-            height: size.height
-          }
-        } : {
-          offset: {
-            x: 0,
-            y: Math.round((size.height - size.width / targetRatio) / 2)
-          },
-          size: {
-            width: size.width,
-            height: Math.round(size.width / targetRatio)
-          }
-        };
-        try {
-          var editor = findByProps("cropImage");
-          var result = yield editor?.cropImage?.(sourceUri, {
-            ...crop,
-            displaySize: target,
-            resizeMode: "cover"
-          });
-          var output = typeof result === "string" ? result : result?.uri;
-          if (output) {
-            uri = output;
-            normalized = true;
-          }
-        } catch (e) {
-        }
-        if (!normalized) {
-          try {
-            var manipulator = findByProps("manipulateAsync");
-            var result1 = yield manipulator?.manipulateAsync?.(sourceUri, [
-              {
-                crop: {
-                  originX: crop.offset.x,
-                  originY: crop.offset.y,
-                  width: crop.size.width,
-                  height: crop.size.height
-                }
-              },
-              {
-                resize: target
-              }
-            ]);
-            if (result1?.uri) {
-              uri = result1.uri;
-              normalized = true;
-            }
-          } catch (e) {
-          }
-        }
-      }
-      var label = key === "bannerMedia" ? "Banner" : "Profile picture";
-      diagnostics.last = animated ? `${label} animation preserved and fitted in preview` : normalized ? `${label} resized to ${target.width} \xD7 ${target.height}` : `${label} fitted to ${target.width} \xD7 ${target.height} in preview`;
-      return {
-        uri,
-        name,
-        type,
-        width: target.width,
-        height: target.height,
-        normalized
-      };
-    })();
-  }
-  function saveMedia(key, asset) {
-    return _async_to_generator(function* () {
-      preview[key] = yield normalizeMedia(key, asset);
-      refreshPreview();
-    })();
-  }
-  function pickFile(key) {
-    return _async_to_generator(function* () {
-      var picker = findByProps("pickSingle", "isCancel");
-      if (!picker?.pickSingle)
-        throw new Error("The system file picker is unavailable.");
-      try {
-        var asset = yield picker.pickSingle({
-          type: picker.types?.images || "image/*",
-          mode: "import",
-          copyTo: "documentDirectory"
-        });
-        if (asset)
-          yield saveMedia(key, asset);
-        return !!asset;
-      } catch (error) {
-        if (picker.isCancel?.(error))
-          return false;
-        throw error;
-      }
-    })();
-  }
-  function pickPhoto(key) {
-    return _async_to_generator(function* () {
-      var picker = findByProps("launchImageLibrary");
-      if (!picker?.launchImageLibrary)
-        return pickFile(key);
-      var result = yield new Promise((resolve, reject) => {
-        try {
-          var returned = picker.launchImageLibrary({
-            mediaType: "photo",
-            selectionLimit: 1,
-            includeBase64: false,
-            assetRepresentationMode: "current"
-          }, resolve);
-          if (returned?.then)
-            returned.then(resolve, reject);
-        } catch (error) {
-          reject(error);
-        }
-      });
-      if (result?.didCancel)
-        return false;
-      if (result?.errorCode)
-        throw new Error(result.errorMessage || "The photo picker failed.");
-      var asset = result?.assets?.[0];
-      if (asset)
-        yield saveMedia(key, asset);
-      return !!asset;
-    })();
-  }
-  function ActionButton({ label, onPress, muted = false }) {
-    return /* @__PURE__ */ jsx(import_react_native17.Pressable, {
-      onPress,
-      style: ({ pressed }) => ({
-        width: "100%",
-        minHeight: 48,
-        paddingHorizontal: 14,
-        paddingVertical: 12,
-        borderRadius: 11,
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: muted ? "#243c46" : "#50fa9b",
-        opacity: pressed ? 0.72 : 1
-      }),
-      children: /* @__PURE__ */ jsx(Text, {
-        variant: "text-sm/bold",
-        style: {
-          color: muted ? "#78e7ff" : "#10251a",
-          textAlign: "center"
-        },
-        children: label
-      })
-    });
-  }
-  function ToggleRow({ label, subLabel, value, onPress, accent = false }) {
-    return /* @__PURE__ */ jsxs(import_react_native17.Pressable, {
-      onPress,
-      style: ({ pressed }) => ({
-        width: "100%",
-        minHeight: 58,
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 11,
-        backgroundColor: pressed ? "rgba(80,250,155,0.16)" : "rgba(255,255,255,0.04)",
-        opacity: pressed ? 0.8 : 1
-      }),
-      children: [
-        /* @__PURE__ */ jsxs(import_react_native17.View, {
-          style: {
-            flex: 1,
-            minWidth: 0,
-            paddingRight: 10
-          },
-          children: [
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-sm/bold",
-              style: {
-                color: accent ? "#50fa9b" : "#f0f3f6"
-              },
-              children: label
-            }),
-            subLabel ? /* @__PURE__ */ jsx(Text, {
-              variant: "text-xs/medium",
-              color: "text-muted",
-              style: {
-                marginTop: 3
-              },
-              children: subLabel
-            }) : null
-          ]
-        }),
-        /* @__PURE__ */ jsx(import_react_native17.View, {
-          style: {
-            width: 48,
-            height: 28,
-            borderRadius: 14,
-            padding: 3,
-            alignItems: value ? "flex-end" : "flex-start",
-            backgroundColor: value ? "#50fa9b" : "#4b4f58"
-          },
-          children: /* @__PURE__ */ jsx(import_react_native17.View, {
-            style: {
-              width: 22,
-              height: 22,
-              borderRadius: 11,
-              backgroundColor: value ? "#10251a" : "#d4d7dc"
-            }
-          })
-        })
-      ]
-    });
-  }
-  function DurationSelect({ label, value, onPress }) {
-    return /* @__PURE__ */ jsxs(import_react_native17.Pressable, {
-      onPress,
-      style: ({ pressed }) => ({
-        width: "100%",
-        minHeight: 58,
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 12,
-        paddingVertical: 10,
-        borderRadius: 11,
-        backgroundColor: pressed ? "rgba(120,231,255,0.16)" : "rgba(255,255,255,0.04)"
-      }),
-      children: [
-        /* @__PURE__ */ jsxs(import_react_native17.View, {
-          style: {
-            flex: 1,
-            minWidth: 0,
-            paddingRight: 12
-          },
-          children: [
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-sm/bold",
-              style: {
-                color: "#50fa9b"
-              },
-              children: label
-            }),
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-xs/medium",
-              color: "text-muted",
-              style: {
-                marginTop: 3
-              },
-              children: "Client-only profile appearance"
-            })
-          ]
-        }),
-        /* @__PURE__ */ jsxs(import_react_native17.View, {
-          style: {
-            maxWidth: "48%",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 7,
-            paddingHorizontal: 10,
-            paddingVertical: 7,
-            borderRadius: 9,
-            backgroundColor: "#243c46"
-          },
-          children: [
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-xs/bold",
-              style: {
-                color: "#78e7ff"
-              },
-              numberOfLines: 1,
-              children: durationLabel(value)
-            }),
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-sm/bold",
-              style: {
-                color: "#78e7ff"
-              },
-              children: "\u2304"
-            })
-          ]
-        })
-      ]
-    });
-  }
-  function FakeProfile() {
-    useProxy(settings);
-    var [, redraw] = (0, import_react3.useReducer)((value) => value + 1, 0);
-    (0, import_react3.useEffect)(() => {
-      ensurePatches();
-      redraw();
-    }, []);
-    var update = (key, value, refresh = false) => {
-      preview[key] = value;
-      clearCache();
-      if (refresh)
-        refreshPreview();
-      redraw();
-    };
-    var choose = (key, source) => _async_to_generator(function* () {
-      try {
-        if (yield source === "photo" ? pickPhoto(key) : pickFile(key))
-          redraw();
-      } catch (error) {
-        diagnostics.last = error?.message || "Could not open the picker.";
-        redraw();
-        import_react_native17.Alert.alert("FakeProfile", diagnostics.last);
-      }
-    })();
-    var clearMedia = (field) => {
-      try {
-        preview[field] = null;
-        clearCache();
-        diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
-        redraw();
-        setTimeout(refreshPreview, 0);
-      } catch (error) {
-        diagnostics.last = error?.message || "Could not clear the image";
-        redraw();
-      }
-    };
-    var chooseDuration = (field, title, values) => {
-      var key = field === "nitroMonths" ? "FakeProfileNitroDuration" : "FakeProfileBoostDuration";
-      try {
-        simpleSheets.showSimpleActionSheet({
-          key,
-          header: {
-            title,
-            onClose: () => simpleSheets.hideActionSheet?.(key)
-          },
-          options: values.map((months) => ({
-            label: durationLabel(months),
-            onPress: () => {
-              update(field, months, true);
-              diagnostics.last = `${title}: ${durationLabel(months)}`;
-              simpleSheets.hideActionSheet?.(key);
-            }
-          }))
-        });
-      } catch (error) {
-        diagnostics.last = error?.message || `Could not open ${title.toLowerCase()}`;
-        redraw();
-      }
-    };
-    var MediaEditor = ({ label, field, banner: banner2 = false }) => {
-      var value = preview[field];
-      return /* @__PURE__ */ jsxs(import_react_native17.View, {
-        style: {
-          width: "100%",
-          gap: 9,
-          marginBottom: 16
-        },
-        children: [
-          /* @__PURE__ */ jsx(Text, {
-            variant: "heading-sm/semibold",
-            style: {
-              color: "#50fa9b"
-            },
-            children: label
-          }),
-          /* @__PURE__ */ jsx(Text, {
-            variant: "text-xs/medium",
-            style: {
-              color: "#78e7ff"
-            },
-            children: banner2 ? "Automatically fitted to 600 \xD7 240" : "Automatically fitted to a square"
-          }),
-          /* @__PURE__ */ jsxs(import_react_native17.View, {
-            style: {
-              width: "100%",
-              gap: 8
-            },
-            children: [
-              /* @__PURE__ */ jsx(ActionButton, {
-                label: "Choose picture",
-                onPress: () => void choose(field, "photo")
-              }),
-              /* @__PURE__ */ jsx(ActionButton, {
-                label: "Choose file or GIF",
-                muted: true,
-                onPress: () => void choose(field, "file")
-              })
-            ]
-          }),
-          value?.uri && /* @__PURE__ */ jsxs(import_react_native17.View, {
-            style: {
-              width: "100%",
-              borderRadius: 12,
-              overflow: "hidden",
-              backgroundColor: "#1f2023"
-            },
-            children: [
-              /* @__PURE__ */ jsx(import_react_native17.View, {
-                style: banner2 ? {
-                  width: "100%",
-                  aspectRatio: 2.5,
-                  overflow: "hidden"
-                } : {
-                  width: 104,
-                  height: 104,
-                  borderRadius: 52,
-                  overflow: "hidden",
-                  alignSelf: "center",
-                  marginVertical: 12
-                },
-                children: /* @__PURE__ */ jsx(import_react_native17.Image, {
-                  source: {
-                    uri: value.uri
-                  },
-                  resizeMode: "cover",
-                  style: {
-                    width: "100%",
-                    height: "100%"
-                  }
-                })
-              }),
-              /* @__PURE__ */ jsxs(import_react_native17.View, {
-                style: {
-                  flexDirection: "row",
-                  alignItems: "center",
-                  padding: 10,
-                  gap: 8
-                },
-                children: [
-                  /* @__PURE__ */ jsx(Text, {
-                    variant: "text-xs/medium",
-                    color: "text-muted",
-                    numberOfLines: 1,
-                    style: {
-                      flex: 1
-                    },
-                    children: value.name
-                  }),
-                  /* @__PURE__ */ jsx(import_react_native17.Pressable, {
-                    onPress: () => clearMedia(field),
-                    style: {
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 7,
-                      backgroundColor: "#4a2024"
-                    },
-                    children: /* @__PURE__ */ jsx(Text, {
-                      variant: "text-xs/bold",
-                      style: {
-                        color: "#ff7b84"
-                      },
-                      children: "Clear"
-                    })
-                  })
-                ]
-              })
-            ]
-          })
-        ]
-      });
-    };
-    var avatar = mediaUri("avatarMedia");
-    var banner = mediaUri("bannerMedia");
-    return /* @__PURE__ */ jsx(import_react_native17.ScrollView, {
-      style: {
-        flex: 1,
-        width: "100%"
-      },
-      contentContainerStyle: {
-        width: "100%",
-        maxWidth: 640,
-        alignSelf: "center",
-        paddingHorizontal: 16,
-        paddingTop: 16,
-        paddingBottom: 110
-      },
-      keyboardShouldPersistTaps: "handled",
-      nestedScrollEnabled: true,
-      showsVerticalScrollIndicator: true,
-      children: /* @__PURE__ */ jsxs(Stack, {
-        spacing: 16,
-        style: {
-          width: "100%"
-        },
-        children: [
-          /* @__PURE__ */ jsxs(import_react_native17.View, {
-            style: {
-              width: "100%",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12
-            },
-            children: [
-              /* @__PURE__ */ jsx(import_react_native17.View, {
-                style: {
-                  width: 52,
-                  height: 52,
-                  alignItems: "center",
-                  justifyContent: "center"
-                },
-                children: /* @__PURE__ */ jsx(import_react_native17.Image, {
-                  source: {
-                    uri: fakeprofile_default
-                  },
-                  style: {
-                    width: 48,
-                    height: 48,
-                    resizeMode: "contain"
-                  }
-                })
-              }),
-              /* @__PURE__ */ jsxs(import_react_native17.View, {
-                style: {
-                  flex: 1,
-                  minWidth: 0
-                },
-                children: [
-                  /* @__PURE__ */ jsx(Text, {
-                    variant: "heading-lg/semibold",
-                    color: "text-normal",
-                    children: "FakeProfile"
-                  }),
-                  /* @__PURE__ */ jsx(Text, {
-                    variant: "text-sm/medium",
-                    color: "text-muted",
-                    children: "Built-in local profile preview"
-                  })
-                ]
-              })
-            ]
-          }),
-          /* @__PURE__ */ jsx(Card, {
-            border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native17.View, {
-              style: {
-                borderRadius: 14,
-                overflow: "hidden"
-              },
-              children: [
-                banner ? /* @__PURE__ */ jsx(import_react_native17.Image, {
-                  source: {
-                    uri: banner
-                  },
-                  resizeMode: "cover",
-                  style: {
-                    width: "100%",
-                    height: 118
-                  }
-                }) : /* @__PURE__ */ jsx(import_react_native17.View, {
-                  style: {
-                    height: 118,
-                    backgroundColor: "#5865f2"
-                  }
-                }),
-                /* @__PURE__ */ jsxs(import_react_native17.View, {
-                  style: {
-                    paddingHorizontal: 16,
-                    paddingBottom: 16
-                  },
-                  children: [
-                    avatar ? /* @__PURE__ */ jsx(import_react_native17.Image, {
-                      source: {
-                        uri: avatar
-                      },
-                      style: {
-                        width: 82,
-                        height: 82,
-                        borderRadius: 41,
-                        marginTop: -41,
-                        borderWidth: 5,
-                        borderColor: "#1f2023"
-                      }
-                    }) : /* @__PURE__ */ jsx(import_react_native17.View, {
-                      style: {
-                        width: 82,
-                        height: 82,
-                        borderRadius: 41,
-                        marginTop: -41,
-                        borderWidth: 5,
-                        borderColor: "#1f2023",
-                        backgroundColor: "#777"
-                      }
-                    }),
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "heading-md/semibold",
-                      color: "text-normal",
-                      style: {
-                        marginTop: 10
-                      },
-                      children: preview.displayName || "Preview Name"
-                    }),
-                    /* @__PURE__ */ jsxs(Text, {
-                      variant: "text-sm/medium",
-                      color: "text-muted",
-                      children: [
-                        "@",
-                        preview.username || "preview"
-                      ]
-                    }),
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-xs/bold",
-                      style: {
-                        color: "#7ee787",
-                        marginTop: 8
-                      },
-                      children: "LOCAL PREVIEW ONLY"
-                    })
-                  ]
-                })
-              ]
-            })
-          }),
-          /* @__PURE__ */ jsx(Card, {
-            border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native17.View, {
-              style: {
-                padding: 14,
-                gap: 14
-              },
-              children: [
-                /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "Show preview in the client",
-                  subLabel: "Affects only what you see on this device",
-                  value: preview.enabled,
-                  accent: true,
-                  onPress: () => update("enabled", !preview.enabled, true)
-                }),
-                /* @__PURE__ */ jsxs(import_react_native17.View, {
-                  style: {
-                    gap: 8
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Display name"
-                    }),
-                    /* @__PURE__ */ jsx(import_react_native17.TextInput, {
-                      defaultValue: preview.displayName,
-                      placeholder: "Preview Name",
-                      placeholderTextColor: "#777",
-                      onChangeText: (value) => update("displayName", value),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1f2023",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
-                  ]
-                }),
-                /* @__PURE__ */ jsxs(import_react_native17.View, {
-                  style: {
-                    gap: 8
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Username"
-                    }),
-                    /* @__PURE__ */ jsx(import_react_native17.TextInput, {
-                      defaultValue: preview.username,
-                      placeholder: "preview",
-                      placeholderTextColor: "#777",
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("username", value),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1f2023",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
-                  ]
-                }),
-                /* @__PURE__ */ jsx(DurationSelect, {
-                  label: "Nitro duration",
-                  value: preview.nitroMonths,
-                  onPress: () => chooseDuration("nitroMonths", "Choose Nitro duration", NITRO_DURATIONS)
-                }),
-                /* @__PURE__ */ jsx(DurationSelect, {
-                  label: "Server booster duration",
-                  value: preview.boostMonths,
-                  onPress: () => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)
-                }),
-                /* @__PURE__ */ jsx(MediaEditor, {
-                  label: "Profile picture",
-                  field: "avatarMedia"
-                }),
-                /* @__PURE__ */ jsx(MediaEditor, {
-                  label: "Banner",
-                  field: "bannerMedia",
-                  banner: true
-                }),
-                /* @__PURE__ */ jsx(ActionButton, {
-                  label: "Apply preview",
-                  onPress: () => {
-                    diagnostics.last = "Preview refreshed";
-                    refreshPreview();
-                    redraw();
-                  }
-                })
-              ]
-            })
-          }),
-          /* @__PURE__ */ jsx(Card, {
-            border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native17.View, {
-              style: {
-                padding: 14,
-                gap: 10
-              },
-              children: [
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-md/semibold",
-                  style: {
-                    color: "#50fa9b"
-                  },
-                  children: "Choose badges"
-                }),
-                /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "Replace visible badges",
-                  subLabel: "Show only the badges selected below",
-                  value: preview.replaceBadges,
-                  onPress: () => update("replaceBadges", !preview.replaceBadges, true)
-                }),
-                BADGES.map(([id, label]) => /* @__PURE__ */ jsx(ToggleRow, {
-                  label,
-                  value: !!preview.selectedBadges?.[id],
-                  onPress: () => update("selectedBadges", {
-                    ...preview.selectedBadges,
-                    [id]: !preview.selectedBadges?.[id]
-                  }, true)
-                }, id))
-              ]
-            })
-          }),
-          /* @__PURE__ */ jsx(Card, {
-            border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native17.View, {
-              style: {
-                padding: 14,
-                gap: 5
-              },
-              children: [
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-sm/semibold",
-                  color: "text-normal",
-                  children: "Diagnostics"
-                }),
-                /* @__PURE__ */ jsxs(Text, {
-                  variant: "text-xs/medium",
-                  color: "text-muted",
-                  children: [
-                    "Preview hooks: ",
-                    diagnostics.patches
-                  ]
-                }),
-                /* @__PURE__ */ jsxs(Text, {
-                  variant: "text-xs/medium",
-                  color: "text-muted",
-                  children: [
-                    "User source: ",
-                    diagnostics.userStore ? "Connected" : "Unavailable"
-                  ]
-                }),
-                /* @__PURE__ */ jsxs(Text, {
-                  variant: "text-xs/medium",
-                  color: "text-muted",
-                  children: [
-                    "Profile source: ",
-                    diagnostics.profileStore ? "Connected" : "Unavailable"
-                  ]
-                }),
-                /* @__PURE__ */ jsxs(Text, {
-                  variant: "text-xs/medium",
-                  color: "text-muted",
-                  children: [
-                    "Profile picture resolver: ",
-                    diagnostics.avatarResolver ? "Connected" : "Unavailable"
-                  ]
-                }),
-                /* @__PURE__ */ jsxs(Text, {
-                  variant: "text-xs/medium",
-                  color: "text-muted",
-                  children: [
-                    "Banner resolver: ",
-                    diagnostics.bannerResolver ? "Connected" : "Unavailable"
-                  ]
-                }),
-                /* @__PURE__ */ jsxs(Text, {
-                  variant: "text-xs/medium",
-                  color: "text-muted",
-                  children: [
-                    "Last action: ",
-                    diagnostics.last
-                  ]
-                })
-              ]
-            })
-          })
-        ]
-      })
-    });
-  }
-  var import_react3, import_react_native17, BADGES, useBadgesModule, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, preview, diagnostics, initialized, currentUserId, userCache, profileCache;
-  var init_FakeProfile = __esm({
-    "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_jsxRuntime();
-      init_fakeprofile();
-      init_storage();
-      init_patcher();
-      init_jsx();
-      init_settings();
-      init_metro();
-      init_common();
-      init_components();
-      import_react3 = __toESM(require_react());
       import_react_native17 = __toESM(require_react_native());
-      BADGES = [
-        [
-          "hypesquad",
-          "HypeSquad Events",
-          4,
-          "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png"
-        ],
-        [
-          "bug1",
-          "Bug Hunter 1",
-          8,
-          "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"
-        ],
-        [
-          "bravery",
-          "HypeSquad Bravery",
-          64,
-          "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png"
-        ],
-        [
-          "brilliance",
-          "HypeSquad Brilliance",
-          128,
-          "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png"
-        ],
-        [
-          "balance",
-          "HypeSquad Balance",
-          256,
-          "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png"
-        ],
-        [
-          "early",
-          "Early Supporter",
-          512,
-          "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"
-        ],
-        [
-          "bug2",
-          "Bug Hunter 2",
-          16384,
-          "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"
-        ],
-        [
-          "vdev",
-          "Verified Developer",
-          131072,
-          "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"
-        ],
-        [
-          "mod",
-          "Former Moderator",
-          262144,
-          "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"
-        ],
-        [
-          "active",
-          "Active Developer",
-          4194304,
-          "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png"
-        ]
-      ];
-      useBadgesModule = findByNameLazy("useBadges", false);
-      useUserProfileModule = findByNameLazy("useUserProfile", false);
-      useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
-      badgeRenderProps = /* @__PURE__ */ new Map();
-      simpleSheets = findByProps("showSimpleActionSheet");
-      overriddenKeys = /* @__PURE__ */ new Set([
-        "username",
-        "globalName",
-        "displayName",
-        "publicFlags",
-        "flags",
-        "badges",
-        "profileBadges",
-        "avatarURL",
-        "avatarUrl",
-        "getAvatarURL",
-        "banner",
-        "bannerURL",
-        "bannerUrl",
-        "getBannerURL",
-        "getPreviewBanner",
-        "hasFlag",
-        "premiumType",
-        "premiumSince",
-        "premiumGuildSince",
-        "user",
-        "userProfile",
-        "guildMemberProfile",
-        "displayProfile",
-        "profile"
-      ]);
-      NITRO_DURATIONS = [
-        0,
-        1,
-        2,
-        3,
-        6,
-        12,
-        24,
-        36,
-        72
-      ];
-      BOOST_DURATIONS = [
-        0,
-        1,
-        2,
-        3,
-        6,
-        9,
-        12,
-        15,
-        18,
-        24
-      ];
-      NITRO_ICONS = [
-        [
-          72,
-          "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png"
-        ],
-        [
-          36,
-          "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png"
-        ],
-        [
-          24,
-          "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png"
-        ],
-        [
-          12,
-          "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png"
-        ],
-        [
-          6,
-          "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png"
-        ],
-        [
-          3,
-          "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png"
-        ],
-        [
-          2,
-          "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png"
-        ],
-        [
-          1,
-          "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png"
-        ]
-      ];
-      BOOST_ICONS = [
-        [
-          24,
-          "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png"
-        ],
-        [
-          18,
-          "https://cdn.discordapp.com/badge-icons/7142225d31238f6387d9f09efaa02759.png"
-        ],
-        [
-          15,
-          "https://cdn.discordapp.com/badge-icons/cb3ae83c15e970e8f3d410bc62cb8b99.png"
-        ],
-        [
-          12,
-          "https://cdn.discordapp.com/badge-icons/991c9f39ee33d7537d9f408c3e53141e.png"
-        ],
-        [
-          9,
-          "https://cdn.discordapp.com/badge-icons/996b3e870e8a22ce519b3a50e6bdd52f.png"
-        ],
-        [
-          6,
-          "https://cdn.discordapp.com/badge-icons/df199d2050d3ed4ebf84d64ae83989f8.png"
-        ],
-        [
-          3,
-          "https://cdn.discordapp.com/badge-icons/72bed924410c304dbe3d00a6e593ff59.png"
-        ],
-        [
-          2,
-          "https://cdn.discordapp.com/badge-icons/0e4080d1d333bc7ad29ef6528b6f2fb7.png"
-        ],
-        [
-          1,
-          "https://cdn.discordapp.com/badge-icons/51040c70d4f20a921ad6674ff86fc95c.png"
-        ]
-      ];
-      rootSettings = settings;
-      rootSettings.fakeProfile ??= {
-        enabled: false,
-        displayName: "Preview Name",
-        username: "preview",
-        avatarMedia: null,
-        bannerMedia: null,
-        nitroMonths: 0,
-        boostMonths: 0,
-        replaceBadges: false,
-        selectedBadges: {}
-      };
-      preview = rootSettings.fakeProfile;
-      preview.nitroMonths ??= 0;
-      preview.boostMonths ??= 0;
-      diagnostics = {
-        patches: 0,
-        userStore: false,
-        profileStore: false,
-        avatarResolver: false,
-        bannerResolver: false,
-        last: "Ready"
-      };
-      initialized = false;
-      currentUserId = null;
-      userCache = /* @__PURE__ */ new WeakMap();
-      profileCache = /* @__PURE__ */ new WeakMap();
     }
   });
 
@@ -15149,6 +15159,7 @@ Type: ${asset.type}`,
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_async_to_generator();
+      init_FakeProfile();
       init_patchErrorBoundary();
       init_fixes();
       init_i18n();
@@ -15177,6 +15188,7 @@ Type: ${asset.type}`,
           initVendettaObject(),
           initFetchI18nStrings(),
           initSettings(),
+          initializeFakeProfile(),
           fixes_default(),
           patchErrorBoundary(),
           updatePlugins(),
