@@ -6669,6 +6669,61 @@
     }
   });
 
+  // src/lib/api/react/jsx.ts
+  var jsx_exports = {};
+  __export(jsx_exports, {
+    deleteJsxCreate: () => deleteJsxCreate,
+    onJsxCreate: () => onJsxCreate,
+    patchJsx: () => patchJsx
+  });
+  function onJsxCreate(Component, callback) {
+    if (!callbacks.has(Component))
+      callbacks.set(Component, []);
+    callbacks.get(Component).push(callback);
+  }
+  function deleteJsxCreate(Component, callback) {
+    if (!callbacks.has(Component))
+      return;
+    var cbs = callbacks.get(Component);
+    cbs.splice(cbs.indexOf(callback), 1);
+    if (cbs.length === 0)
+      callbacks.delete(Component);
+  }
+  function patchJsx() {
+    var callback = ([Component], ret) => {
+      if (typeof ret.type === "undefined") {
+        ret.type = "RCTView";
+        return ret;
+      }
+      if (typeof Component === "function" && callbacks.has(Component.name)) {
+        var cbs = callbacks.get(Component.name);
+        for (var cb of cbs) {
+          var _ret = cb(Component, ret);
+          if (_ret !== void 0)
+            ret = _ret;
+        }
+        return ret;
+      }
+    };
+    var patches3 = [
+      after("jsx", jsxRuntime2, callback),
+      after("jsxs", jsxRuntime2, callback)
+    ];
+    return () => patches3.forEach((unpatch) => unpatch());
+  }
+  var callbacks, jsxRuntime2;
+  var init_jsx = __esm({
+    "src/lib/api/react/jsx.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_patcher();
+      init_metro();
+      callbacks = /* @__PURE__ */ new Map();
+      jsxRuntime2 = findByPropsLazy("jsx", "jsxs");
+    }
+  });
+
   // src/core/ui/settings/pages/FakeProfile/index.tsx
   var FakeProfile_exports = {};
   __export(FakeProfile_exports, {
@@ -6705,6 +6760,30 @@
       }
     }
   }
+  function selectedBadgeObjects(existing) {
+    var _loop2 = function(id2, description2, icon2) {
+      if (!preview.selectedBadges?.[id2])
+        return "continue";
+      var badgeId = `fakeprofile-${id2}`;
+      if (!result.some((item) => item?.id === badgeId)) {
+        result.unshift({
+          id: badgeId,
+          description: description2,
+          icon: " _",
+          iconSrc: icon2,
+          source: {
+            uri: icon2
+          }
+        });
+      }
+    };
+    var result = preview.replaceBadges ? [] : Array.isArray(existing) ? [
+      ...existing
+    ] : [];
+    for (var [id, description, , icon] of BADGES)
+      _loop2(id, description, icon);
+    return result;
+  }
   function cloneObject(original, kind) {
     if (!original || !preview.enabled)
       return original;
@@ -6719,6 +6798,8 @@
     try {
       cloned = Object.create(Object.getPrototypeOf(original));
       for (var key of Reflect.ownKeys(original)) {
+        if (overriddenKeys.has(String(key)))
+          continue;
         var descriptor = Object.getOwnPropertyDescriptor(original, key);
         if (descriptor)
           Object.defineProperty(cloned, key, descriptor);
@@ -6746,6 +6827,9 @@
     setOwnValue(cloned, "displayName", displayName);
     setOwnValue(cloned, "publicFlags", flags);
     setOwnValue(cloned, "flags", flags);
+    setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
+    setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
+    setOwnValue(cloned, "hasFlag", (flag2) => !!(flags & flag2));
     if (avatar) {
       setOwnValue(cloned, "avatarURL", avatar);
       setOwnValue(cloned, "avatarUrl", avatar);
@@ -6774,6 +6858,56 @@
       diagnostics.patches += 1;
     } catch (error) {
       diagnostics.last = error?.message || `Could not connect ${method}`;
+    }
+  }
+  function connectBadgeRenderer() {
+    try {
+      after("default", useBadgesModule, ([user], result) => {
+        var _loop2 = function(badgeId2, description2, icon2) {
+          if (!preview.selectedBadges?.[badgeId2])
+            return "continue";
+          var id2 = `fakeprofile-${badgeId2}`;
+          badgeRenderProps.set(id2, {
+            id: id2,
+            source: {
+              uri: icon2
+            },
+            label: description2
+          });
+          if (!result.some((item) => item?.id === id2))
+            result.unshift({
+              id: id2,
+              description: description2,
+              icon: " _"
+            });
+        };
+        if (!preview.enabled || !Array.isArray(result))
+          return;
+        var id = user?.userId || user?.id;
+        if (!isCurrentUser(id))
+          return;
+        if (preview.replaceBadges)
+          result.splice(0, result.length);
+        for (var [badgeId, description, , icon] of BADGES)
+          _loop2(badgeId, description, icon);
+      });
+      diagnostics.patches += 1;
+    } catch (error) {
+      diagnostics.last = error?.message || "Could not connect badge list";
+    }
+    for (var component of [
+      "ProfileBadge",
+      "RenderedBadge"
+    ]) {
+      try {
+        onJsxCreate(component, (_component, rendered) => {
+          var props = badgeRenderProps.get(rendered?.props?.id);
+          if (props)
+            Object.assign(rendered.props, props);
+        });
+        diagnostics.patches += 1;
+      } catch (e) {
+      }
     }
   }
   function ensurePatches() {
@@ -6834,6 +6968,7 @@
         return preview.enabled && uri && isCurrentUser(id) ? uri : original(...args);
       });
     }
+    connectBadgeRenderer();
     diagnostics.last = `Connected ${diagnostics.patches} preview hooks`;
   }
   function refreshPreview() {
@@ -6846,18 +6981,19 @@
       safeStore("UserProfileStore")?.emitChange?.();
     } catch (e) {
     }
-    try {
-      var dispatcher2 = findByProps("dispatch", "subscribe");
-      dispatcher2?.dispatch?.({
-        type: "CURRENT_USER_UPDATE"
-      });
-      if (currentUserId)
-        dispatcher2?.dispatch?.({
-          type: "USER_PROFILE_UPDATE",
-          userId: currentUserId
-        });
-    } catch (e) {
-    }
+    setTimeout(() => {
+      try {
+        if (currentUserId)
+          FluxDispatcher.dispatch({
+            type: "USER_UPDATE",
+            user: {
+              id: currentUserId
+            }
+          });
+      } catch (error) {
+        diagnostics.last = error?.message || "Preview saved; reopen the profile to refresh";
+      }
+    }, 0);
   }
   function getImageSize(uri, asset) {
     return _async_to_generator(function* () {
@@ -7137,6 +7273,18 @@
         import_react_native17.Alert.alert("FakeProfile", diagnostics.last);
       }
     })();
+    var clearMedia = (field) => {
+      try {
+        preview[field] = null;
+        clearCache();
+        diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
+        redraw();
+        setTimeout(refreshPreview, 0);
+      } catch (error) {
+        diagnostics.last = error?.message || "Could not clear the image";
+        redraw();
+      }
+    };
     var MediaEditor = ({ label, field, banner: banner2 = false }) => {
       var value = preview[field];
       return /* @__PURE__ */ jsxs(import_react_native17.View, {
@@ -7227,7 +7375,7 @@
                     children: value.name
                   }),
                   /* @__PURE__ */ jsx(import_react_native17.Pressable, {
-                    onPress: () => update(field, null, true),
+                    onPress: () => clearMedia(field),
                     style: {
                       paddingHorizontal: 10,
                       paddingVertical: 6,
@@ -7585,7 +7733,7 @@
       })
     });
   }
-  var import_react3, import_react_native17, BADGES, rootSettings, preview, diagnostics, initialized, currentUserId, userCache, profileCache;
+  var import_react3, import_react_native17, BADGES, useBadgesModule, badgeRenderProps, overriddenKeys, rootSettings, preview, diagnostics, initialized, currentUserId, userCache, profileCache;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -7596,8 +7744,10 @@
       init_fakeprofile();
       init_storage();
       init_patcher();
+      init_jsx();
       init_settings();
       init_metro();
+      init_common();
       init_components();
       import_react3 = __toESM(require_react());
       import_react_native17 = __toESM(require_react_native());
@@ -7605,54 +7755,83 @@
         [
           "hypesquad",
           "HypeSquad Events",
-          4
+          4,
+          "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png"
         ],
         [
           "bug1",
           "Bug Hunter 1",
-          8
+          8,
+          "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"
         ],
         [
           "bravery",
           "HypeSquad Bravery",
-          64
+          64,
+          "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png"
         ],
         [
           "brilliance",
           "HypeSquad Brilliance",
-          128
+          128,
+          "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png"
         ],
         [
           "balance",
           "HypeSquad Balance",
-          256
+          256,
+          "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png"
         ],
         [
           "early",
           "Early Supporter",
-          512
+          512,
+          "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"
         ],
         [
           "bug2",
           "Bug Hunter 2",
-          16384
+          16384,
+          "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"
         ],
         [
           "vdev",
           "Verified Developer",
-          131072
+          131072,
+          "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"
         ],
         [
           "mod",
           "Former Moderator",
-          262144
+          262144,
+          "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"
         ],
         [
           "active",
           "Active Developer",
-          4194304
+          4194304,
+          "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png"
         ]
       ];
+      useBadgesModule = findByNameLazy("useBadges", false);
+      badgeRenderProps = /* @__PURE__ */ new Map();
+      overriddenKeys = /* @__PURE__ */ new Set([
+        "username",
+        "globalName",
+        "displayName",
+        "publicFlags",
+        "flags",
+        "badges",
+        "profileBadges",
+        "avatarURL",
+        "avatarUrl",
+        "getAvatarURL",
+        "banner",
+        "bannerURL",
+        "bannerUrl",
+        "getBannerURL",
+        "hasFlag"
+      ]);
       rootSettings = settings;
       rootSettings.fakeProfile ??= {
         enabled: false,
@@ -9535,67 +9714,12 @@
     }
   });
 
-  // src/lib/api/react/jsx.ts
-  var jsx_exports = {};
-  __export(jsx_exports, {
-    deleteJsxCreate: () => deleteJsxCreate,
-    onJsxCreate: () => onJsxCreate,
-    patchJsx: () => patchJsx
-  });
-  function onJsxCreate(Component, callback) {
-    if (!callbacks.has(Component))
-      callbacks.set(Component, []);
-    callbacks.get(Component).push(callback);
-  }
-  function deleteJsxCreate(Component, callback) {
-    if (!callbacks.has(Component))
-      return;
-    var cbs = callbacks.get(Component);
-    cbs.splice(cbs.indexOf(callback), 1);
-    if (cbs.length === 0)
-      callbacks.delete(Component);
-  }
-  function patchJsx() {
-    var callback = ([Component], ret) => {
-      if (typeof ret.type === "undefined") {
-        ret.type = "RCTView";
-        return ret;
-      }
-      if (typeof Component === "function" && callbacks.has(Component.name)) {
-        var cbs = callbacks.get(Component.name);
-        for (var cb of cbs) {
-          var _ret = cb(Component, ret);
-          if (_ret !== void 0)
-            ret = _ret;
-        }
-        return ret;
-      }
-    };
-    var patches3 = [
-      after("jsx", jsxRuntime2, callback),
-      after("jsxs", jsxRuntime2, callback)
-    ];
-    return () => patches3.forEach((unpatch) => unpatch());
-  }
-  var callbacks, jsxRuntime2;
-  var init_jsx = __esm({
-    "src/lib/api/react/jsx.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_patcher();
-      init_metro();
-      callbacks = /* @__PURE__ */ new Map();
-      jsxRuntime2 = findByPropsLazy("jsx", "jsxs");
-    }
-  });
-
   // src/core/plugins/badges/index.tsx
   var badges_exports = {};
   __export(badges_exports, {
     default: () => badges_default
   });
-  var useBadgesModule, badgesCache, badgeProps, pendingRequests, badges_default;
+  var useBadgesModule2, badgesCache, badgeProps, pendingRequests, badges_default;
   var init_badges = __esm({
     "src/core/plugins/badges/index.tsx"() {
       "use strict";
@@ -9607,7 +9731,7 @@
       init_metro();
       init_plugins2();
       init_common();
-      useBadgesModule = findByNameLazy("useBadges", false);
+      useBadgesModule2 = findByNameLazy("useBadges", false);
       badgesCache = /* @__PURE__ */ new Map();
       badgeProps = /* @__PURE__ */ new Map();
       pendingRequests = /* @__PURE__ */ new Set();
@@ -9702,7 +9826,7 @@
               pendingRequests.delete(userId);
             }
           })();
-          after("default", useBadgesModule, ([user], result) => {
+          after("default", useBadgesModule2, ([user], result) => {
             if (!user)
               return;
             var userId = user.userId;
