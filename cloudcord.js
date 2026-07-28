@@ -4789,18 +4789,22 @@
     var userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
     diagnostics.userStore = !!userStore;
     try {
-      currentUserId = userStore?.getCurrentUser?.()?.id || null;
+      realCurrentUser = userStore?.getCurrentUser?.() || null;
+      currentUserId = realCurrentUser?.id || null;
     } catch (e) {
     }
     addPatch("getCurrentUser", userStore, (args, original) => {
       var user = original(...args);
+      realCurrentUser = user || realCurrentUser;
       currentUserId = user?.id || currentUserId;
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
       if (!isCurrentUser(args?.[0]))
         return original(...args);
-      return cloneObject(original(...args), "user");
+      var user = original(...args);
+      realCurrentUser = user || realCurrentUser;
+      return cloneObject(user, "user");
     });
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
@@ -4900,13 +4904,12 @@
     }
     setTimeout(() => {
       try {
-        if (currentUserId)
+        if (currentUserId && realCurrentUser) {
           FluxDispatcher.dispatch({
             type: "USER_UPDATE",
-            user: {
-              id: currentUserId
-            }
+            user: realCurrentUser
           });
+        }
       } catch (error) {
         diagnostics.last = error?.message || "Preview saved; reopen the profile to refresh";
       }
@@ -5275,7 +5278,7 @@
         clearCache();
         diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
         redraw();
-        setTimeout(refreshPreview, 0);
+        refreshPreview();
       } catch (error) {
         diagnostics.last = error?.message || "Could not clear the image";
         redraw();
@@ -5762,7 +5765,7 @@
       })
     });
   }
-  var import_react, import_react_native5, BADGES, useBadgesModule, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, preview, diagnostics, initialized, currentUserId, userCache, profileCache;
+  var import_react, import_react_native5, BADGES, useBadgesModule, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, preview, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -5993,6 +5996,7 @@
       };
       initialized = false;
       currentUserId = null;
+      realCurrentUser = null;
       userCache = /* @__PURE__ */ new WeakMap();
       profileCache = /* @__PURE__ */ new WeakMap();
     }
