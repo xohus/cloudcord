@@ -6760,8 +6760,41 @@
       }
     }
   }
+  function monthsAgo(months) {
+    var date = /* @__PURE__ */ new Date();
+    date.setMonth(date.getMonth() - months);
+    return date;
+  }
+  function durationLabel(months) {
+    if (!months)
+      return "None";
+    if (months % 12 === 0) {
+      var years = months / 12;
+      return `${years} ${years === 1 ? "year" : "years"}`;
+    }
+    return `${months} ${months === 1 ? "month" : "months"}`;
+  }
+  function milestoneIcon(months, values) {
+    return values.find(([minimum]) => months >= minimum)?.[1] || "";
+  }
+  function addRenderedBadge(result, id, description, icon) {
+    if (!icon || result.some((item) => item?.id === id))
+      return;
+    badgeRenderProps.set(id, {
+      id,
+      source: {
+        uri: icon
+      },
+      label: description
+    });
+    result.unshift({
+      id,
+      description,
+      icon: " _"
+    });
+  }
   function selectedBadgeObjects(existing) {
-    var _loop2 = function(id2, description2, icon2) {
+    var _loop2 = function(id2, description2, icon3) {
       if (!preview.selectedBadges?.[id2])
         return "continue";
       var badgeId = `fakeprofile-${id2}`;
@@ -6770,9 +6803,9 @@
           id: badgeId,
           description: description2,
           icon: " _",
-          iconSrc: icon2,
+          iconSrc: icon3,
           source: {
-            uri: icon2
+            uri: icon3
           }
         });
       }
@@ -6782,6 +6815,30 @@
     ] : [];
     for (var [id, description, , icon] of BADGES)
       _loop2(id, description, icon);
+    if (preview.nitroMonths > 0) {
+      var icon1 = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
+      result.unshift({
+        id: "fakeprofile-nitro",
+        description: `Nitro ${durationLabel(preview.nitroMonths)}`,
+        icon: " _",
+        iconSrc: icon1,
+        source: {
+          uri: icon1
+        }
+      });
+    }
+    if (preview.boostMonths > 0) {
+      var icon2 = milestoneIcon(preview.boostMonths, BOOST_ICONS);
+      result.unshift({
+        id: "fakeprofile-boost",
+        description: `Server Booster ${durationLabel(preview.boostMonths)}`,
+        icon: " _",
+        iconSrc: icon2,
+        source: {
+          uri: icon2
+        }
+      });
+    }
     return result;
   }
   function cloneObject(original, kind) {
@@ -6830,6 +6887,12 @@
     setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
     setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
     setOwnValue(cloned, "hasFlag", (flag2) => !!(flags & flag2));
+    if (preview.nitroMonths > 0) {
+      setOwnValue(cloned, "premiumType", 2);
+      setOwnValue(cloned, "premiumSince", monthsAgo(preview.nitroMonths));
+    }
+    if (preview.boostMonths > 0)
+      setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
     if (avatar) {
       setOwnValue(cloned, "avatarURL", avatar);
       setOwnValue(cloned, "avatarUrl", avatar);
@@ -6847,6 +6910,20 @@
     }
     return cloned;
   }
+  function decorateProfileResult(original, userId) {
+    if (!original || !preview.enabled || !isCurrentUser(userId))
+      return original;
+    var decorated = cloneObject(original, "profile");
+    if (original.user)
+      setOwnValue(decorated, "user", cloneObject(original.user, "user"));
+    if (original.userProfile)
+      setOwnValue(decorated, "userProfile", cloneObject(original.userProfile, "profile"));
+    if (original.guildMemberProfile)
+      setOwnValue(decorated, "guildMemberProfile", cloneObject(original.guildMemberProfile, "profile"));
+    if (original.profile)
+      setOwnValue(decorated, "profile", cloneObject(original.profile, "profile"));
+    return decorated;
+  }
   function isCurrentUser(id) {
     return !id || !currentUserId || id === currentUserId;
   }
@@ -6863,24 +6940,6 @@
   function connectBadgeRenderer() {
     try {
       after("default", useBadgesModule, ([user], result) => {
-        var _loop2 = function(badgeId2, description2, icon2) {
-          if (!preview.selectedBadges?.[badgeId2])
-            return "continue";
-          var id2 = `fakeprofile-${badgeId2}`;
-          badgeRenderProps.set(id2, {
-            id: id2,
-            source: {
-              uri: icon2
-            },
-            label: description2
-          });
-          if (!result.some((item) => item?.id === id2))
-            result.unshift({
-              id: id2,
-              description: description2,
-              icon: " _"
-            });
-        };
         if (!preview.enabled || !Array.isArray(result))
           return;
         var id = user?.userId || user?.id;
@@ -6888,8 +6947,14 @@
           return;
         if (preview.replaceBadges)
           result.splice(0, result.length);
-        for (var [badgeId, description, , icon] of BADGES)
-          _loop2(badgeId, description, icon);
+        for (var [badgeId, description, , icon] of BADGES) {
+          if (!preview.selectedBadges?.[badgeId])
+            continue;
+          var id1 = `fakeprofile-${badgeId}`;
+          addRenderedBadge(result, id1, description, icon);
+        }
+        addRenderedBadge(result, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
+        addRenderedBadge(result, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
       });
       diagnostics.patches += 1;
     } catch (error) {
@@ -6935,13 +7000,23 @@
     addPatch("getUserProfile", profileStore, (args, original) => {
       if (!isCurrentUser(args?.[0]))
         return original(...args);
-      return cloneObject(original(...args), "profile");
+      return decorateProfileResult(original(...args), args?.[0]);
     });
     addPatch("getGuildMemberProfile", profileStore, (args, original) => {
       if (!isCurrentUser(args?.[0]))
         return original(...args);
-      return cloneObject(original(...args), "profile");
+      return decorateProfileResult(original(...args), args?.[0]);
     });
+    try {
+      after("default", useUserProfileModule, (args, result) => {
+        var subject = args?.[0];
+        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+        return decorateProfileResult(result, id);
+      });
+      diagnostics.patches += 1;
+    } catch (error) {
+      diagnostics.last = error?.message || "Could not connect profile view";
+    }
     var avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
     var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
     diagnostics.avatarResolver = !!avatarResolver;
@@ -7249,6 +7324,76 @@
       ]
     });
   }
+  function DurationSelect({ label, value, onPress }) {
+    return /* @__PURE__ */ jsxs(import_react_native17.Pressable, {
+      onPress,
+      style: ({ pressed }) => ({
+        width: "100%",
+        minHeight: 58,
+        flexDirection: "row",
+        alignItems: "center",
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 11,
+        backgroundColor: pressed ? "rgba(120,231,255,0.16)" : "rgba(255,255,255,0.04)"
+      }),
+      children: [
+        /* @__PURE__ */ jsxs(import_react_native17.View, {
+          style: {
+            flex: 1,
+            minWidth: 0,
+            paddingRight: 12
+          },
+          children: [
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/bold",
+              style: {
+                color: "#50fa9b"
+              },
+              children: label
+            }),
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-xs/medium",
+              color: "text-muted",
+              style: {
+                marginTop: 3
+              },
+              children: "Client-only profile appearance"
+            })
+          ]
+        }),
+        /* @__PURE__ */ jsxs(import_react_native17.View, {
+          style: {
+            maxWidth: "48%",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 7,
+            paddingHorizontal: 10,
+            paddingVertical: 7,
+            borderRadius: 9,
+            backgroundColor: "#243c46"
+          },
+          children: [
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-xs/bold",
+              style: {
+                color: "#78e7ff"
+              },
+              numberOfLines: 1,
+              children: durationLabel(value)
+            }),
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/bold",
+              style: {
+                color: "#78e7ff"
+              },
+              children: "\u2304"
+            })
+          ]
+        })
+      ]
+    });
+  }
   function FakeProfile() {
     useProxy(settings);
     var [, redraw] = (0, import_react3.useReducer)((value) => value + 1, 0);
@@ -7282,6 +7427,29 @@
         setTimeout(refreshPreview, 0);
       } catch (error) {
         diagnostics.last = error?.message || "Could not clear the image";
+        redraw();
+      }
+    };
+    var chooseDuration = (field, title, values) => {
+      var key = field === "nitroMonths" ? "FakeProfileNitroDuration" : "FakeProfileBoostDuration";
+      try {
+        simpleSheets.showSimpleActionSheet({
+          key,
+          header: {
+            title,
+            onClose: () => simpleSheets.hideActionSheet?.(key)
+          },
+          options: values.map((months) => ({
+            label: durationLabel(months),
+            onPress: () => {
+              update(field, months, true);
+              diagnostics.last = `${title}: ${durationLabel(months)}`;
+              simpleSheets.hideActionSheet?.(key);
+            }
+          }))
+        });
+      } catch (error) {
+        diagnostics.last = error?.message || `Could not open ${title.toLowerCase()}`;
         redraw();
       }
     };
@@ -7613,6 +7781,16 @@
                     })
                   ]
                 }),
+                /* @__PURE__ */ jsx(DurationSelect, {
+                  label: "Nitro duration",
+                  value: preview.nitroMonths,
+                  onPress: () => chooseDuration("nitroMonths", "Choose Nitro duration", NITRO_DURATIONS)
+                }),
+                /* @__PURE__ */ jsx(DurationSelect, {
+                  label: "Server booster duration",
+                  value: preview.boostMonths,
+                  onPress: () => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)
+                }),
                 /* @__PURE__ */ jsx(MediaEditor, {
                   label: "Profile picture",
                   field: "avatarMedia"
@@ -7733,7 +7911,7 @@
       })
     });
   }
-  var import_react3, import_react_native17, BADGES, useBadgesModule, badgeRenderProps, overriddenKeys, rootSettings, preview, diagnostics, initialized, currentUserId, userCache, profileCache;
+  var import_react3, import_react_native17, BADGES, useBadgesModule, useUserProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, preview, diagnostics, initialized, currentUserId, userCache, profileCache;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -7814,7 +7992,9 @@
         ]
       ];
       useBadgesModule = findByNameLazy("useBadges", false);
+      useUserProfileModule = findByNameLazy("useUserProfile", false);
       badgeRenderProps = /* @__PURE__ */ new Map();
+      simpleSheets = findByProps("showSimpleActionSheet");
       overriddenKeys = /* @__PURE__ */ new Set([
         "username",
         "globalName",
@@ -7830,8 +8010,110 @@
         "bannerURL",
         "bannerUrl",
         "getBannerURL",
-        "hasFlag"
+        "hasFlag",
+        "premiumType",
+        "premiumSince",
+        "premiumGuildSince",
+        "user",
+        "userProfile",
+        "guildMemberProfile",
+        "profile"
       ]);
+      NITRO_DURATIONS = [
+        0,
+        1,
+        2,
+        3,
+        6,
+        12,
+        24,
+        36,
+        72
+      ];
+      BOOST_DURATIONS = [
+        0,
+        1,
+        2,
+        3,
+        6,
+        9,
+        12,
+        15,
+        18,
+        24
+      ];
+      NITRO_ICONS = [
+        [
+          72,
+          "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png"
+        ],
+        [
+          36,
+          "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png"
+        ],
+        [
+          24,
+          "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png"
+        ],
+        [
+          12,
+          "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png"
+        ],
+        [
+          6,
+          "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png"
+        ],
+        [
+          3,
+          "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png"
+        ],
+        [
+          2,
+          "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png"
+        ],
+        [
+          1,
+          "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png"
+        ]
+      ];
+      BOOST_ICONS = [
+        [
+          24,
+          "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png"
+        ],
+        [
+          18,
+          "https://cdn.discordapp.com/badge-icons/7142225d31238f6387d9f09efaa02759.png"
+        ],
+        [
+          15,
+          "https://cdn.discordapp.com/badge-icons/cb3ae83c15e970e8f3d410bc62cb8b99.png"
+        ],
+        [
+          12,
+          "https://cdn.discordapp.com/badge-icons/991c9f39ee33d7537d9f408c3e53141e.png"
+        ],
+        [
+          9,
+          "https://cdn.discordapp.com/badge-icons/996b3e870e8a22ce519b3a50e6bdd52f.png"
+        ],
+        [
+          6,
+          "https://cdn.discordapp.com/badge-icons/df199d2050d3ed4ebf84d64ae83989f8.png"
+        ],
+        [
+          3,
+          "https://cdn.discordapp.com/badge-icons/72bed924410c304dbe3d00a6e593ff59.png"
+        ],
+        [
+          2,
+          "https://cdn.discordapp.com/badge-icons/0e4080d1d333bc7ad29ef6528b6f2fb7.png"
+        ],
+        [
+          1,
+          "https://cdn.discordapp.com/badge-icons/51040c70d4f20a921ad6674ff86fc95c.png"
+        ]
+      ];
       rootSettings = settings;
       rootSettings.fakeProfile ??= {
         enabled: false,
@@ -7839,9 +8121,13 @@
         username: "preview",
         avatarMedia: null,
         bannerMedia: null,
+        nitroMonths: 0,
+        boostMonths: 0,
         replaceBadges: false,
         selectedBadges: {}
       };
+      preview.nitroMonths ??= 0;
+      preview.boostMonths ??= 0;
       preview = rootSettings.fakeProfile;
       diagnostics = {
         patches: 0,
