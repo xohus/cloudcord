@@ -225,9 +225,11 @@ jobs:
           cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'
           import FakeProfileIcon from "@assets/icons/fakeprofile.png";
           import { useProxy } from "@core/vendetta/storage";
-          import { instead } from "@lib/api/patcher";
+          import { after, instead } from "@lib/api/patcher";
+          import { onJsxCreate } from "@lib/api/react/jsx";
           import { settings } from "@lib/api/settings";
-          import { findByProps, findByStoreName } from "@metro";
+          import { findByNameLazy, findByProps, findByStoreName } from "@metro";
+          import { FluxDispatcher } from "@metro/common";
           import { Card, Stack, Text } from "@metro/common/components";
           import { useEffect, useReducer } from "react";
           import { Alert, Image, Pressable, ScrollView, TextInput, View } from "react-native";
@@ -243,18 +245,25 @@ jobs:
               selectedBadges: Record<string, boolean>;
           };
           
-          const BADGES: Array<[string, string, number]> = [
-              ["hypesquad", "HypeSquad Events", 4],
-              ["bug1", "Bug Hunter 1", 8],
-              ["bravery", "HypeSquad Bravery", 64],
-              ["brilliance", "HypeSquad Brilliance", 128],
-              ["balance", "HypeSquad Balance", 256],
-              ["early", "Early Supporter", 512],
-              ["bug2", "Bug Hunter 2", 16384],
-              ["vdev", "Verified Developer", 131072],
-              ["mod", "Former Moderator", 262144],
-              ["active", "Active Developer", 4194304]
+          const BADGES: Array<[string, string, number, string]> = [
+              ["hypesquad", "HypeSquad Events", 4, "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png"],
+              ["bug1", "Bug Hunter 1", 8, "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"],
+              ["bravery", "HypeSquad Bravery", 64, "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png"],
+              ["brilliance", "HypeSquad Brilliance", 128, "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png"],
+              ["balance", "HypeSquad Balance", 256, "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png"],
+              ["early", "Early Supporter", 512, "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"],
+              ["bug2", "Bug Hunter 2", 16384, "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"],
+              ["vdev", "Verified Developer", 131072, "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"],
+              ["mod", "Former Moderator", 262144, "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"],
+              ["active", "Active Developer", 4194304, "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png"]
           ];
+
+          const useBadgesModule = findByNameLazy("useBadges", false);
+          const badgeRenderProps = new Map<string, Record<string, any>>();
+          const overriddenKeys = new Set([
+              "username", "globalName", "displayName", "publicFlags", "flags", "badges", "profileBadges",
+              "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "hasFlag"
+          ]);
           
           const rootSettings = settings as any;
           rootSettings.fakeProfile ??= {
@@ -304,6 +313,18 @@ jobs:
                   try { target[key] = value; } catch {}
               }
           }
+
+          function selectedBadgeObjects(existing: any) {
+              const result = preview.replaceBadges ? [] : (Array.isArray(existing) ? [...existing] : []);
+              for (const [id, description, , icon] of BADGES) {
+                  if (!preview.selectedBadges?.[id]) continue;
+                  const badgeId = `fakeprofile-${id}`;
+                  if (!result.some(item => item?.id === badgeId)) {
+                      result.unshift({ id: badgeId, description, icon: " _", iconSrc: icon, source: { uri: icon } });
+                  }
+              }
+              return result;
+          }
           
           function cloneObject(original: any, kind: "user" | "profile") {
               if (!original || !preview.enabled) return original;
@@ -317,6 +338,7 @@ jobs:
               try {
                   cloned = Object.create(Object.getPrototypeOf(original));
                   for (const key of Reflect.ownKeys(original)) {
+                      if (overriddenKeys.has(String(key))) continue;
                       const descriptor = Object.getOwnPropertyDescriptor(original, key);
                       if (descriptor) Object.defineProperty(cloned, key, descriptor);
                   }
@@ -338,6 +360,9 @@ jobs:
               setOwnValue(cloned, "displayName", displayName);
               setOwnValue(cloned, "publicFlags", flags);
               setOwnValue(cloned, "flags", flags);
+              setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
+              setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
+              setOwnValue(cloned, "hasFlag", (flag: number) => !!(flags & flag));
               if (avatar) {
                   setOwnValue(cloned, "avatarURL", avatar);
                   setOwnValue(cloned, "avatarUrl", avatar);
@@ -365,6 +390,37 @@ jobs:
                   diagnostics.patches += 1;
               } catch (error: any) {
                   diagnostics.last = error?.message || `Could not connect ${method}`;
+              }
+          }
+
+          function connectBadgeRenderer() {
+              try {
+                  after("default", useBadgesModule as any, ([user], result) => {
+                      if (!preview.enabled || !Array.isArray(result)) return;
+                      const id = user?.userId || user?.id;
+                      if (!isCurrentUser(id)) return;
+
+                      if (preview.replaceBadges) result.splice(0, result.length);
+                      for (const [badgeId, description, , icon] of BADGES) {
+                          if (!preview.selectedBadges?.[badgeId]) continue;
+                          const id = `fakeprofile-${badgeId}`;
+                          badgeRenderProps.set(id, { id, source: { uri: icon }, label: description });
+                          if (!result.some(item => item?.id === id)) result.unshift({ id, description, icon: " _" });
+                      }
+                  });
+                  diagnostics.patches += 1;
+              } catch (error: any) {
+                  diagnostics.last = error?.message || "Could not connect badge list";
+              }
+
+              for (const component of ["ProfileBadge", "RenderedBadge"]) {
+                  try {
+                      onJsxCreate(component, (_component, rendered) => {
+                          const props = badgeRenderProps.get(rendered?.props?.id);
+                          if (props) Object.assign(rendered.props, props);
+                      });
+                      diagnostics.patches += 1;
+                  } catch {}
               }
           }
           
@@ -418,6 +474,8 @@ jobs:
                       return preview.enabled && uri && isCurrentUser(id) ? uri : original(...args);
                   });
               }
+
+              connectBadgeRenderer();
           
               diagnostics.last = `Connected ${diagnostics.patches} preview hooks`;
           }
@@ -426,11 +484,13 @@ jobs:
               clearCache();
               try { safeStore("UserStore")?.emitChange?.(); } catch {}
               try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
-              try {
-                  const dispatcher = findByProps("dispatch", "subscribe") as any;
-                  dispatcher?.dispatch?.({ type: "CURRENT_USER_UPDATE" });
-                  if (currentUserId) dispatcher?.dispatch?.({ type: "USER_PROFILE_UPDATE", userId: currentUserId });
-              } catch {}
+              setTimeout(() => {
+                  try {
+                      if (currentUserId) FluxDispatcher.dispatch({ type: "USER_UPDATE", user: { id: currentUserId } });
+                  } catch (error: any) {
+                      diagnostics.last = error?.message || "Preview saved; reopen the profile to refresh";
+                  }
+              }, 0);
           }
           
           async function getImageSize(uri: string, asset: any) {
@@ -577,6 +637,19 @@ jobs:
                       Alert.alert("FakeProfile", diagnostics.last);
                   }
               };
+
+              const clearMedia = (field: "avatarMedia" | "bannerMedia") => {
+                  try {
+                      (preview as any)[field] = null;
+                      clearCache();
+                      diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
+                      redraw();
+                      setTimeout(refreshPreview, 0);
+                  } catch (error: any) {
+                      diagnostics.last = error?.message || "Could not clear the image";
+                      redraw();
+                  }
+              };
           
               const MediaEditor = ({ label, field, banner = false }: { label: string; field: "avatarMedia" | "bannerMedia"; banner?: boolean }) => {
                   const value = preview[field];
@@ -595,7 +668,7 @@ jobs:
                                   </View>
                                   <View style={{ flexDirection: "row", alignItems: "center", padding: 10, gap: 8 }}>
                                       <Text variant="text-xs/medium" color="text-muted" numberOfLines={1} style={{ flex: 1 }}>{value.name}</Text>
-                                      <Pressable onPress={() => update(field, null, true)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 7, backgroundColor: "#4a2024" }}>
+                                      <Pressable onPress={() => clearMedia(field)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 7, backgroundColor: "#4a2024" }}>
                                           <Text variant="text-xs/bold" style={{ color: "#ff7b84" }}>Clear</Text>
                                       </Pressable>
                                   </View>
