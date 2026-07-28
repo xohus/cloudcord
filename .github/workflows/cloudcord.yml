@@ -697,6 +697,15 @@ jobs:
                   }
               }, 0);
           }
+
+          export function initializeFakeProfile() {
+              try {
+                  ensurePatches();
+                  if (preview.enabled) refreshPreview();
+              } catch (error: any) {
+                  diagnostics.last = error?.message || "FakeProfile will retry from settings";
+              }
+          }
           
           async function getImageSize(uri: string, asset: any) {
               if (asset?.width && asset?.height) return { width: Number(asset.width), height: Number(asset.height) };
@@ -837,7 +846,7 @@ jobs:
               const [, redraw] = useReducer(value => value + 1, 0);
           
               useEffect(() => {
-                  ensurePatches();
+                  initializeFakeProfile();
                   redraw();
               }, []);
           
@@ -1182,6 +1191,22 @@ jobs:
                   )
 
               settings_index.write_text(text, encoding="utf-8")
+
+          main_index = Path("src/index.ts")
+          if main_index.exists():
+              text = main_index.read_text(encoding="utf-8", errors="ignore")
+              startup_import = 'import { initializeFakeProfile } from "@core/ui/settings/pages/FakeProfile";\n'
+
+              if startup_import not in text:
+                  text = startup_import + text
+
+              if "initializeFakeProfile()," not in text:
+                  text = text.replace(
+                      "        initSettings(),",
+                      "        initSettings(),\n        initializeFakeProfile(),"
+                  )
+
+              main_index.write_text(text, encoding="utf-8")
 
           vendetta_api = Path("src/core/vendetta/api.tsx")
           if vendetta_api.exists():
