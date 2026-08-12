@@ -118,6 +118,10 @@ export function getBotChannelMessages(token: string, channelId: string) {
     return botFetch<any[]>(token, `/channels/${channelId}/messages?limit=50`);
 }
 
+export function getBotGuildMembers(token: string, guildId: string) {
+    return botFetch<any[]>(token, `/guilds/${guildId}/members?limit=100`);
+}
+
 export async function sendBotMessage(token: string, channelId: string, content: string) {
     const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
         method: "POST",
