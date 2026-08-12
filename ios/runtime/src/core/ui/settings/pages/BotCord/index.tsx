@@ -16,7 +16,7 @@ import { createStyles } from "@lib/ui/styles";
 import { NavigationNative, tokens } from "@metro/common";
 import { ActionSheet, ActionSheetRow, Button, IconButton, PressableScale, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text as NativeText, TextInput as NativeTextInput, View } from "react-native";
+import { DynamicColorIOS, FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text as NativeText, TextInput as NativeTextInput, View } from "react-native";
 
 const useStyles = createStyles({
     root: { flex: 1, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
@@ -42,6 +42,9 @@ const avatarUrl = (user: any, size = 128) => user?.avatar ? `https://cdn.discord
 const guildIconUrl = (guild: any, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
 const displayName = (user: any) => user?.global_name || user?.username || "Unknown";
 const inputText = (value: any) => typeof value === "string" ? value : value?.nativeEvent?.text ?? "";
+const nativeTextColor = Platform.OS === "ios" ? DynamicColorIOS({ light: "#1e1f22", dark: "#f2f3f5" }) : "#f2f3f5";
+const nativeMutedColor = Platform.OS === "ios" ? DynamicColorIOS({ light: "#5c5e66", dark: "#949ba4" }) : "#949ba4";
+const nativeInputBackground = Platform.OS === "ios" ? DynamicColorIOS({ light: "#e3e5e8", dark: "#383a40" }) : "#383a40";
 
 function ApiAvatar({ user, size = 40 }: { user: any; size?: number }) {
     const uri = avatarUrl(user, 128);
@@ -252,15 +255,16 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                     onPress={returnFromChat}
                     hitSlop={8}
                     style={({ pressed }) => ({
-                        width: 36,
                         height: 36,
-                        borderRadius: 18,
+                        paddingHorizontal: 4,
+                        flexDirection: "row",
                         alignItems: "center",
                         justifyContent: "center",
                         opacity: pressed ? 0.65 : 1
                     })}
                 >
-                    <NativeText style={{ color: tokens.colors.TEXT_NORMAL, fontSize: 30, lineHeight: 32 }}>‹</NativeText>
+                    <NativeText style={{ color: nativeTextColor, fontSize: 28, lineHeight: 30, marginRight: 2 }}>‹</NativeText>
+                    <NativeText style={{ color: nativeTextColor, fontSize: 16, fontWeight: "600" }}>Back</NativeText>
                 </Pressable>
                 {dmUser ? <ApiAvatar user={dmUser} size={32} /> : null}
                 <View style={{ flex: 1 }}>
@@ -286,7 +290,7 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                 <NativeTextInput
                     value={composer}
                     placeholder={channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`}
-                    placeholderTextColor={tokens.colors.TEXT_MUTED}
+                    placeholderTextColor={nativeMutedColor}
                     onChangeText={setComposer}
                     maxLength={2000}
                     returnKeyType="send"
@@ -300,8 +304,8 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                         paddingHorizontal: 14,
                         paddingVertical: 0,
                         borderRadius: 22,
-                        backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT,
-                        color: tokens.colors.TEXT_NORMAL,
+                        backgroundColor: nativeInputBackground,
+                        color: nativeTextColor,
                         fontSize: 16
                     }}
                 />
