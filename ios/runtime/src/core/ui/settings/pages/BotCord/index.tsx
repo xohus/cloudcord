@@ -16,7 +16,7 @@ import { createStyles } from "@lib/ui/styles";
 import { NavigationNative, tokens } from "@metro/common";
 import { ActionSheet, ActionSheetRow, Button, IconButton, PressableScale, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput as NativeTextInput, View } from "react-native";
 
 const useStyles = createStyles({
     root: { flex: 1, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
@@ -268,15 +268,46 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                 onContentSizeChange={() => listRef.current?.scrollToEnd?.({ animated: false })}
             />
             <View style={styles.composer}>
-                <View style={{ flex: 1 }}>
-                    <TextInput
-                        size="lg"
-                        value={composer}
-                        placeholder={channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`}
-                        onChange={(value: any) => setComposer(inputText(value))}
-                    />
-                </View>
-                <Button size="sm" variant="primary" text="Send" disabled={!composer.trim()} onPress={send} />
+                <NativeTextInput
+                    value={composer}
+                    placeholder={channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`}
+                    placeholderTextColor={tokens.colors.TEXT_MUTED}
+                    onChangeText={setComposer}
+                    multiline
+                    maxLength={2000}
+                    blurOnSubmit={false}
+                    textAlignVertical="center"
+                    style={{
+                        flex: 1,
+                        minHeight: 40,
+                        maxHeight: 120,
+                        paddingHorizontal: 12,
+                        paddingVertical: Platform.OS === "ios" ? 10 : 8,
+                        borderRadius: 18,
+                        backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT,
+                        color: tokens.colors.TEXT_NORMAL,
+                        fontSize: 16
+                    }}
+                />
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Send message"
+                    disabled={!composer.trim()}
+                    onPress={send}
+                    hitSlop={8}
+                    style={({ pressed }) => ({
+                        minWidth: 58,
+                        height: 40,
+                        paddingHorizontal: 12,
+                        borderRadius: 18,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        opacity: !composer.trim() ? 0.4 : pressed ? 0.7 : 1,
+                        backgroundColor: tokens.colors.BRAND_500
+                    })}
+                >
+                    <Text variant="text-sm/semibold" color="text-on-brand">Send</Text>
+                </Pressable>
             </View>
         </KeyboardAvoidingView>;
     }
