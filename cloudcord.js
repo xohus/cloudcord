@@ -9115,6 +9115,20 @@
         navigation2.goBack?.();
       }
     });
+    var returnFromChat = () => {
+      var wasDm = Boolean(channel?.botcordDM);
+      setChannel(null);
+      setMessages([]);
+      setComposer("");
+      setError(null);
+      if (wasDm) {
+        setGuild(null);
+        setChannels([]);
+        setScreen("messages");
+      } else {
+        setScreen("guild");
+      }
+    };
     if (channel) {
       var dmUser = channel.recipients?.[0];
       return /* @__PURE__ */ jsxs(import_react_native19.View, {
@@ -9123,14 +9137,11 @@
           /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: styles.header,
             children: [
-              /* @__PURE__ */ jsx(IconButton, {
+              /* @__PURE__ */ jsx(Button, {
                 size: "sm",
                 variant: "secondary",
-                icon: findAssetId("ArrowLeftIcon") || findAssetId("ChevronLeftIcon"),
-                onPress: () => {
-                  setChannel(null);
-                  setMessages([]);
-                }
+                text: "Back",
+                onPress: returnFromChat
               }),
               dmUser ? /* @__PURE__ */ jsx(ApiAvatar, {
                 user: dmUser,
