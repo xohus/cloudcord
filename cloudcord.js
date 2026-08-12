@@ -9148,8 +9148,10 @@
     };
     if (channel) {
       var dmUser = channel.recipients?.[0];
-      return /* @__PURE__ */ jsxs(import_react_native19.View, {
+      return /* @__PURE__ */ jsxs(import_react_native19.KeyboardAvoidingView, {
         style: styles.root,
+        behavior: import_react_native19.Platform.OS === "ios" ? "padding" : void 0,
+        keyboardVerticalOffset: 0,
         children: [
           /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: styles.header,
@@ -9224,25 +9226,34 @@
             contentContainerStyle: {
               paddingVertical: 6
             },
+            keyboardDismissMode: import_react_native19.Platform.OS === "ios" ? "interactive" : "on-drag",
+            keyboardShouldPersistTaps: "handled",
             onContentSizeChange: () => listRef.current?.scrollToEnd?.({
               animated: false
             })
           }),
-          /* @__PURE__ */ jsx(import_react_native19.View, {
+          /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: styles.composer,
-            children: /* @__PURE__ */ jsx(TextInput, {
-              size: "lg",
-              value: composer,
-              placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
-              onChange: setComposer,
-              trailingIcon: () => /* @__PURE__ */ jsx(IconButton, {
+            children: [
+              /* @__PURE__ */ jsx(import_react_native19.View, {
+                style: {
+                  flex: 1
+                },
+                children: /* @__PURE__ */ jsx(TextInput, {
+                  size: "lg",
+                  value: composer,
+                  placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
+                  onChange: (value) => setComposer(inputText(value))
+                })
+              }),
+              /* @__PURE__ */ jsx(Button, {
                 size: "sm",
                 variant: "primary",
+                text: "Send",
                 disabled: !composer.trim(),
-                icon: findAssetId("SendMessageIcon") || findAssetId("ArrowSmallUpIcon"),
                 onPress: send
               })
-            })
+            ]
           })
         ]
       });
@@ -9679,7 +9690,7 @@
       })
     });
   }
-  var import_react5, import_react_native19, useStyles3, avatarUrl, guildIconUrl, displayName;
+  var import_react5, import_react_native19, useStyles3, avatarUrl, guildIconUrl, displayName, inputText;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -9747,6 +9758,9 @@
         composer: {
           paddingHorizontal: 10,
           paddingVertical: 8,
+          flexDirection: "row",
+          alignItems: "flex-end",
+          gap: 8,
           backgroundColor: tokens.colors.BACKGROUND_PRIMARY
         },
         category: {
@@ -9787,6 +9801,7 @@
       avatarUrl = (user, size = 128) => user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}` : null;
       guildIconUrl = (guild, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
       displayName = (user) => user?.global_name || user?.username || "Unknown";
+      inputText = (value) => typeof value === "string" ? value : value?.nativeEvent?.text ?? "";
     }
   });
 
