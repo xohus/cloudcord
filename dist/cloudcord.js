@@ -4579,7 +4579,7 @@
     });
   }
   function selectedBadgeObjects(existing) {
-    var _loop2 = function(id2, description2, icon3) {
+    var _loop2 = function(id2, description2, icon22) {
       if (!preview.selectedBadges?.[id2])
         return "continue";
       var badgeId = `fakeprofile-${id2}`;
@@ -4588,23 +4588,31 @@
           id: badgeId,
           description: description2,
           icon: " _",
-          iconSrc: icon3,
+          iconSrc: icon22,
           source: {
-            uri: icon3
+            uri: icon22
           }
         });
       }
     };
-    var result = preview.replaceBadges ? [] : Array.isArray(existing) ? [
-      ...existing
-    ] : [];
-    for (var [id, description, , icon] of BADGES)
-      _loop2(id, description, icon);
+    var result = [];
     if (preview.nitroMonths > 0) {
-      var icon1 = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
+      var icon = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
       result.push({
         id: "fakeprofile-nitro",
         description: `Nitro ${durationLabel(preview.nitroMonths)}`,
+        icon: " _",
+        iconSrc: icon,
+        source: {
+          uri: icon
+        }
+      });
+    }
+    if (preview.boostMonths > 0) {
+      var icon1 = milestoneIcon(preview.boostMonths, BOOST_ICONS);
+      result.push({
+        id: "fakeprofile-boost",
+        description: `Server Booster ${durationLabel(preview.boostMonths)}`,
         icon: " _",
         iconSrc: icon1,
         source: {
@@ -4612,17 +4620,16 @@
         }
       });
     }
-    if (preview.boostMonths > 0) {
-      var icon2 = milestoneIcon(preview.boostMonths, BOOST_ICONS);
-      result.push({
-        id: "fakeprofile-boost",
-        description: `Server Booster ${durationLabel(preview.boostMonths)}`,
-        icon: " _",
-        iconSrc: icon2,
-        source: {
-          uri: icon2
-        }
-      });
+    for (var [id, description, , icon2] of BADGES)
+      _loop2(id, description, icon2);
+    if (!preview.replaceBadges && Array.isArray(existing)) {
+      var _loop1 = function(badge2) {
+        if (!badge2 || result.some((item) => item?.id && item.id === badge2?.id))
+          return "continue";
+        result.push(badge2);
+      };
+      for (var badge of existing)
+        _loop1(badge);
     }
     return result;
   }
@@ -4733,16 +4740,17 @@
         var id = user?.userId || user?.id;
         if (!isCurrentUser(id))
           return;
-        if (preview.replaceBadges)
-          result.splice(0, result.length);
+        var existing = preview.replaceBadges ? [] : result.filter((item) => !String(item?.id || "").startsWith("fakeprofile-"));
+        var ordered = [];
+        addRenderedBadge(ordered, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
+        addRenderedBadge(ordered, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
         for (var [badgeId, description, , icon] of BADGES) {
           if (!preview.selectedBadges?.[badgeId])
             continue;
           var id1 = `fakeprofile-${badgeId}`;
-          addRenderedBadge(result, id1, description, icon);
+          addRenderedBadge(ordered, id1, description, icon);
         }
-        addRenderedBadge(result, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
-        addRenderedBadge(result, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
+        result.splice(0, result.length, ...ordered, ...existing);
       });
       diagnostics.patches += 1;
     } catch (error) {
@@ -5868,16 +5876,22 @@
       import_react_native6 = __toESM(require_react_native());
       BADGES = [
         [
-          "hypesquad",
-          "HypeSquad Events",
-          4,
-          "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png"
-        ],
-        [
           "bug1",
           "Bug Hunter 1",
           8,
           "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"
+        ],
+        [
+          "bug2",
+          "Bug Hunter 2",
+          16384,
+          "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"
+        ],
+        [
+          "hypesquad",
+          "HypeSquad Events",
+          4,
+          "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png"
         ],
         [
           "bravery",
@@ -5898,34 +5912,22 @@
           "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png"
         ],
         [
-          "early",
-          "Early Supporter",
-          512,
-          "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"
-        ],
-        [
-          "bug2",
-          "Bug Hunter 2",
-          16384,
-          "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"
-        ],
-        [
-          "vdev",
-          "Verified Developer",
-          131072,
-          "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"
-        ],
-        [
           "mod",
           "Former Moderator",
           262144,
           "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"
         ],
         [
-          "active",
-          "Active Developer",
-          4194304,
-          "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png"
+          "early",
+          "Early Supporter",
+          512,
+          "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"
+        ],
+        [
+          "vdev",
+          "Verified Developer",
+          131072,
+          "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"
         ]
       ];
       useBadgesModule = findByNameLazy("useBadges", false);
