@@ -208,12 +208,26 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
         return `${member.nick || ""} ${member.user?.global_name || ""} ${member.user?.username || ""}`.toLowerCase().includes(q);
     });
     const openAccounts = () => showSheet("BOTCORD_ACCOUNT", AccountSheet, { accounts, active, onMain: () => { onExit(); navigation.goBack?.(); } });
+    const returnFromChat = () => {
+        const wasDm = Boolean(channel?.botcordDM);
+        setChannel(null);
+        setMessages([]);
+        setComposer("");
+        setError(null);
+        if (wasDm) {
+            setGuild(null);
+            setChannels([]);
+            setScreen("messages");
+        } else {
+            setScreen("guild");
+        }
+    };
 
     if (channel) {
         const dmUser = channel.recipients?.[0];
         return <View style={styles.root}>
             <View style={styles.header}>
-                <IconButton size="sm" variant="secondary" icon={findAssetId("ArrowLeftIcon") || findAssetId("ChevronLeftIcon")} onPress={() => { setChannel(null); setMessages([]); }} />
+                <Button size="sm" variant="secondary" text="Back" onPress={returnFromChat} />
                 {dmUser ? <ApiAvatar user={dmUser} size={32} /> : null}
                 <View style={{ flex: 1 }}>
                     <Text variant="heading-md/semibold" numberOfLines={1}>{channel.botcordDM ? displayName(dmUser) : channel.name}</Text>
