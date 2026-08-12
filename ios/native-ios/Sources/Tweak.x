@@ -114,7 +114,7 @@ static NSURL *resolveDownloadURL(void)
     }
     // todo: maybe we shoudlnt hardcode this?
     return [NSURL
-        URLWithString:@"https://codeberg.org/cloudcord/CloudCord/releases/download/latest/cloudcord.hbc"];
+        URLWithString:@"https://raw.githubusercontent.com/xohus/cloudcord/main/dist/cc.js"];
 }
 
 static BOOL downloadBundle(BOOL isExplicit)
@@ -291,18 +291,10 @@ static void registerBridgeMethods(void)
     __block NSData *bundle =
         [NSData dataWithContentsOfURL:[cloudcordDirectory URLByAppendingPathComponent:@"bundle.js"]];
 
-    BOOL shouldDownload = loaderConfig.customLoadUrlEnabled || (bundle == nil);
-
-    if (shouldDownload)
-    {
-        downloadBundle(NO);
-        bundle = [NSData
-            dataWithContentsOfURL:[cloudcordDirectory URLByAppendingPathComponent:@"bundle.js"]];
-    }
-    else
-    {
-        BunnyLog(@"[Updater] Skipping download: bundle cached, no custom URL");
-    }
+    BunnyLog(@"[Updater] Checking for runtime updates before execution");
+    downloadBundle(NO);
+    bundle = [NSData
+        dataWithContentsOfURL:[cloudcordDirectory URLByAppendingPathComponent:@"bundle.js"]];
 
     NSData *themeData =
         [NSData dataWithContentsOfURL:[cloudcordDirectory
