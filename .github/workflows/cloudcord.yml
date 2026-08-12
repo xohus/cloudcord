@@ -41,8 +41,12 @@ jobs:
 
           mkdir -p src/core/ui/settings/pages/CloudSync
           mkdir -p src/core/ui/settings/pages/FakeProfile
+          mkdir -p src/core/ui/settings/pages/BotCord
           mkdir -p src/core/ui/settings/components
+          mkdir -p src/lib/api
           cp "../ios/assets/fakeprofile-icon.png" "src/assets/icons/fakeprofile.png"
+          cp "../ios/runtime/src/core/ui/settings/pages/BotCord/index.tsx" "src/core/ui/settings/pages/BotCord/index.tsx"
+          cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
           import type { ComponentType } from "react";
@@ -1176,6 +1180,13 @@ jobs:
                   render: () => import("@core/ui/settings/pages/CloudSync")
               }},'''
 
+              botcord_item = f'''            {{
+                  key: "BOTCORD",
+                  title: () => "BotCord",
+                  icon: findAssetId("RobotIcon") || findAssetId("AppsIcon"),
+                  render: () => import("@core/ui/settings/pages/BotCord")
+              }},'''
+
               fake_profile_item = f'''            {{
                   key: "FAKE_PROFILE",
                   title: () => "FakeProfile",
@@ -1186,6 +1197,8 @@ jobs:
               plugin_row_pattern = r'(\n\s*\{\s*key:\s*"BUNNY_PLUGINS",)'
 
               items = []
+              if 'key: "BOTCORD"' not in text:
+                  items.append(botcord_item)
               if 'key: "FAKE_PROFILE"' not in text:
                   items.append(fake_profile_item)
               if 'key: "CLOUD_SYNC"' not in text:
@@ -1200,6 +1213,21 @@ jobs:
                   )
 
               settings_index.write_text(text, encoding="utf-8")
+
+          settings_ui = Path("src/lib/ui/settings/index.tsx")
+          if settings_ui.exists():
+              text = settings_ui.read_text(encoding="utf-8", errors="ignore")
+              if 'patchPanelUI' not in text:
+                  text = text.replace(
+                      'import { patchTabsUI } from "./patches/tabs";',
+                      'import { patchPanelUI } from "./patches/panel";\nimport { patchTabsUI } from "./patches/tabs";'
+                  )
+              if 'patchPanelUI(unpatches);' not in text:
+                  text = text.replace(
+                      '    patchTabsUI(unpatches);',
+                      '    patchTabsUI(unpatches);\n    patchPanelUI(unpatches);'
+                  )
+              settings_ui.write_text(text, encoding="utf-8")
 
           main_index = Path("src/index.ts")
           if main_index.exists():

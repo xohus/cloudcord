@@ -64,12 +64,25 @@ export function setActiveBotAccount(id: string | null) {
     botCordState.activeAccountId = id;
 }
 
+async function readDiscordError(response: Response) {
+    try {
+        const body = await response.json();
+        return typeof body?.message === "string" ? body.message : null;
+    } catch {
+        return null;
+    }
+}
+
 async function botFetch<T>(token: string, path: string): Promise<T> {
     const response = await fetch(`https://discord.com/api/v10${path}`, {
         headers: { Authorization: `Bot ${normalizeBotToken(token)}` }
     });
 
-    if (!response.ok) throw new Error(`Discord API request failed (${response.status}).`);
+    if (!response.ok) {
+        const message = await readDiscordError(response);
+        throw new Error(message ? `${message} (${response.status})` : `Discord API request failed (${response.status}).`);
+    }
+
     return response.json();
 }
 
@@ -95,6 +108,10 @@ export async function sendBotMessage(token: string, channelId: string, content: 
         body: JSON.stringify({ content })
     });
 
-    if (!response.ok) throw new Error(`Failed to send message (${response.status}).`);
+    if (!response.ok) {
+        const message = await readDiscordError(response);
+        throw new Error(message ? `${message} (${response.status})` : `Failed to send message (${response.status}).`);
+    }
+
     return response.json();
 }

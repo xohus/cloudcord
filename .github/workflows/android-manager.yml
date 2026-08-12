@@ -7,6 +7,7 @@ name: Build CloudCord Android Manager
       - main
     paths:
       - "android/**"
+      - "dist/cc.js"
       - ".github/workflows/android-manager.yml"
 
 permissions:

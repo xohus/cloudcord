@@ -39,7 +39,7 @@ function BotClient({ token, username, onExit }: { token: string; username: strin
             setGuild(g);
             setChannel(null);
             setMessages([]);
-            setChannels(result.filter(c => c.type === 0 || c.type === 5));
+            setChannels(result.filter(c => [0, 5, 10, 11, 12].includes(c.type)));
         } catch (e) {
             setError(String(e));
         } finally {
@@ -107,7 +107,7 @@ function BotClient({ token, username, onExit }: { token: string; username: strin
                         icon={<TableRow.Icon source={findAssetId("ChannelTextIcon") || findAssetId("ChannelListMagnifyingGlassIcon")} />}
                         onPress={() => openChannel(c)}
                     />)}
-                    {!loading && channels.length === 0 && <TableRow label="No readable text channels" />}
+                    {!loading && channels.length === 0 && <TableRow label="No readable message channels" />}
                 </TableRowGroup>
             </>}
 
