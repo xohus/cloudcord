@@ -8817,8 +8817,22 @@
   __export(BotCord_exports, {
     default: () => BotCord
   });
+  function nativeColor(value, fallback) {
+    try {
+      if (typeof value === "string")
+        return value;
+      if (isSemanticColor(value)) {
+        var resolved = resolveSemanticColor(value);
+        if (typeof resolved === "string" && resolved)
+          return resolved;
+      }
+    } catch (e) {
+    }
+    return fallback;
+  }
   function ApiAvatar({ user, size = 40 }) {
     var uri = avatarUrl(user, 128);
+    var colors = getNativeColors();
     if (uri)
       return /* @__PURE__ */ jsx(import_react_native19.Image, {
         source: {
@@ -8838,7 +8852,7 @@
         borderRadius: size / 2,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT
+        backgroundColor: colors.input
       },
       children: /* @__PURE__ */ jsx(Text, {
         variant: "text-sm/semibold",
@@ -8991,6 +9005,7 @@
   }
   function BotClient({ accounts, activeId, onExit }) {
     var styles = useStyles3();
+    var nativeColors = getNativeColors();
     var navigation2 = NavigationNative.useNavigation();
     var state2 = useBotCordState();
     var active = accounts.find((a) => a.id === activeId) ?? accounts[0] ?? null;
@@ -9317,13 +9332,13 @@
                   borderRadius: 18,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED,
+                  backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1,
                   zIndex: 20
                 }),
                 children: /* @__PURE__ */ jsx(import_react_native19.Text, {
                   style: {
-                    color: tokens.colors.TEXT_NORMAL,
+                    color: nativeColors.text,
                     fontSize: 15,
                     fontWeight: "600"
                   },
@@ -9426,7 +9441,7 @@
                 numberOfLines: 1,
                 style: {
                   flex: 1,
-                  color: tokens.colors.TEXT_NORMAL,
+                  color: nativeColors.text,
                   fontSize: 14
                 },
                 children: selectedImage.name
@@ -9440,12 +9455,12 @@
                   borderRadius: 17,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED,
+                  backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
                 children: /* @__PURE__ */ jsx(import_react_native19.Text, {
                   style: {
-                    color: tokens.colors.TEXT_NORMAL,
+                    color: nativeColors.text,
                     fontSize: 13,
                     fontWeight: "600"
                   },
@@ -9469,12 +9484,12 @@
                   borderRadius: 22,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED,
+                  backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
                 children: /* @__PURE__ */ jsx(import_react_native19.Text, {
                   style: {
-                    color: tokens.colors.TEXT_NORMAL,
+                    color: nativeColors.text,
                     fontSize: 13,
                     fontWeight: "600"
                   },
@@ -9484,7 +9499,7 @@
               /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                 value: composer,
                 placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
-                placeholderTextColor: tokens.colors.TEXT_MUTED,
+                placeholderTextColor: nativeColors.muted,
                 onChangeText: setComposer,
                 maxLength: 2e3,
                 returnKeyType: "send",
@@ -9501,8 +9516,8 @@
                   paddingHorizontal: 14,
                   paddingVertical: 0,
                   borderRadius: 22,
-                  backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT,
-                  color: tokens.colors.TEXT_NORMAL,
+                  backgroundColor: nativeColors.input,
+                  color: nativeColors.text,
                   fontSize: 16
                 }
               }),
@@ -9520,11 +9535,11 @@
                   alignItems: "center",
                   justifyContent: "center",
                   opacity: !composer.trim() && !selectedImage ? 0.45 : pressed ? 0.72 : 1,
-                  backgroundColor: tokens.colors.BRAND_500
+                  backgroundColor: nativeColors.brand
                 }),
                 children: /* @__PURE__ */ jsx(import_react_native19.Text, {
                   style: {
-                    color: tokens.colors.WHITE_500 || "#ffffff",
+                    color: nativeColors.inverse,
                     fontSize: 13,
                     fontWeight: "600"
                   },
@@ -9573,7 +9588,7 @@
               }),
               children: /* @__PURE__ */ jsx(import_react_native19.Text, {
                 style: {
-                  color: tokens.colors.TEXT_NORMAL,
+                  color: nativeColors.text,
                   fontSize: 16,
                   fontWeight: "600"
                 },
@@ -9982,7 +9997,7 @@
       })
     });
   }
-  var import_react5, import_react_native19, useStyles3, avatarUrl, guildIconUrl, displayName, nativeTextColor, nativeMutedColor, nativeInputBackground;
+  var import_react5, import_react_native19, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -9993,6 +10008,7 @@
       init_assets();
       init_botcord();
       init_sheets();
+      init_color();
       init_styles();
       init_metro();
       init_common();
@@ -10097,9 +10113,14 @@
       avatarUrl = (user, size = 128) => user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}` : null;
       guildIconUrl = (guild, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
       displayName = (user) => user?.global_name || user?.username || "Unknown";
-      nativeTextColor = tokens.colors.TEXT_NORMAL;
-      nativeMutedColor = tokens.colors.TEXT_MUTED;
-      nativeInputBackground = tokens.colors.BACKGROUND_MODIFIER_ACCENT;
+      getNativeColors = () => ({
+        text: nativeColor(tokens.colors.TEXT_NORMAL, "#f2f3f5"),
+        muted: nativeColor(tokens.colors.TEXT_MUTED, "#b5bac1"),
+        input: nativeColor(tokens.colors.BACKGROUND_MODIFIER_ACCENT, "#2b2d31"),
+        selected: nativeColor(tokens.colors.BACKGROUND_MODIFIER_SELECTED, "#35373c"),
+        brand: nativeColor(tokens.colors.BRAND_500, "#5865f2"),
+        inverse: nativeColor(tokens.colors.WHITE_500, "#ffffff")
+      });
     }
   });
 
