@@ -7762,6 +7762,86 @@
     }
   });
 
+  // src/lib/ui/settings/patches/panel.tsx
+  function SettingsSection() {
+    var navigation2 = NavigationNative.useNavigation();
+    return /* @__PURE__ */ jsx(Fragment, {
+      children: Object.keys(registeredSections).map((sect) => registeredSections[sect].length > 0 && /* @__PURE__ */ jsx(LegacyFormSection, {
+        title: sect,
+        children: registeredSections[sect].filter((r) => r.usePredicate?.() ?? true).map((row, i, arr) => /* @__PURE__ */ jsxs(Fragment, {
+          children: [
+            /* @__PURE__ */ jsx(LegacyFormRow, {
+              label: row.title(),
+              leading: /* @__PURE__ */ jsx(LegacyFormIcon, {
+                source: row.icon
+              }),
+              trailing: /* @__PURE__ */ jsx(LegacyFormRow.Arrow, {
+                label: row.useTrailing?.() || void 0
+              }),
+              onPress: wrapOnPress(row.onPress, navigation2, row.render, row.title())
+            }),
+            i !== arr.length - 1 && /* @__PURE__ */ jsx(LegacyFormDivider, {})
+          ]
+        }))
+      }, sect))
+    });
+  }
+  function patchPanelUI(unpatches) {
+    try {
+      unpatches.push(after("default", findByNameLazy("getScreens", false), (_a, screens) => ({
+        ...screens,
+        VendettaCustomPage: {
+          title: "CloudCord",
+          render: () => /* @__PURE__ */ jsx(CustomPageRenderer, {})
+        },
+        BUNNY_CUSTOM_PAGE: {
+          title: "CloudCord",
+          render: () => /* @__PURE__ */ jsx(CustomPageRenderer, {})
+        },
+        PUPU_CUSTOM_PAGE: {
+          title: "CloudCord",
+          render: () => /* @__PURE__ */ jsx(CustomPageRenderer, {})
+        }
+      })));
+      var unpatch = after("default", findByNameLazy("UserSettingsOverviewWrapper", false), (_a, ret) => {
+        var UserSettingsOverview = findInReactTree(ret.props.children, (n) => n.type?.name === "UserSettingsOverview");
+        unpatches.push(after("renderSupportAndAcknowledgements", UserSettingsOverview.type.prototype, (_args, { props: { children } }) => {
+          var index = children.findIndex((c2) => c2?.type?.name === "UploadLogsButton");
+          if (index !== -1)
+            children.splice(index, 1);
+        }));
+        unpatches.push(after("render", UserSettingsOverview.type.prototype, (_args, res) => {
+          var titles = [
+            i18n.Messages.BILLING_SETTINGS,
+            i18n.Messages.PREMIUM_SETTINGS
+          ];
+          var sections = findInReactTree(res.props.children, (n) => n?.children?.[1]?.type === LegacyFormSection)?.children || res.props.children;
+          if (sections) {
+            var index = sections.findIndex((c2) => titles.includes(c2?.props.label));
+            sections.splice(-~index || 4, 0, /* @__PURE__ */ jsx(SettingsSection, {}));
+          }
+        }));
+      }, true);
+      unpatches.push(unpatch);
+    } catch (e) {
+    }
+  }
+  var init_panel = __esm({
+    "src/lib/ui/settings/patches/panel.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_patcher();
+      init_utils();
+      init_common();
+      init_components();
+      init_wrappers();
+      init_settings2();
+      init_shared();
+    }
+  });
+
   // src/lib/ui/settings/patches/tabs.tsx
   function useIsFirstRender() {
     var firstRender = false;
@@ -7902,6 +7982,7 @@
   function patchSettings() {
     var unpatches = new Array();
     patchTabsUI(unpatches);
+    patchPanelUI(unpatches);
     return () => unpatches.forEach((u) => u());
   }
   var registeredSections;
@@ -7910,6 +7991,7 @@
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      init_panel();
       init_tabs();
       registeredSections = {};
     }
@@ -8293,6 +8375,472 @@
     }
   });
 
+  // src/lib/api/botcord.ts
+  function normalizeBotToken(token) {
+    return token.trim().replace(/^Bot\s+/i, "");
+  }
+  function getBotUser(token) {
+    return _async_to_generator(function* () {
+      var cleanToken = normalizeBotToken(token);
+      var response = yield fetch("https://discord.com/api/v10/users/@me", {
+        headers: {
+          Authorization: `Bot ${cleanToken}`
+        }
+      });
+      if (!response.ok)
+        throw new Error("Invalid bot token or Discord rejected the request.");
+      var user = yield response.json();
+      return {
+        id: user.id,
+        username: user.global_name || user.username || `Bot ${user.id}`,
+        avatar: user.avatar,
+        token: cleanToken
+      };
+    })();
+  }
+  function addBotAccount(token) {
+    return _async_to_generator(function* () {
+      var account = yield getBotUser(token);
+      var existing = botCordState.accounts.findIndex((a) => a.id === account.id);
+      if (existing === -1)
+        botCordState.accounts.push(account);
+      else
+        botCordState.accounts[existing] = account;
+      botCordState.activeAccountId = account.id;
+      return account;
+    })();
+  }
+  function removeBotAccount(id) {
+    var index = botCordState.accounts.findIndex((a) => a.id === id);
+    if (index !== -1)
+      botCordState.accounts.splice(index, 1);
+    if (botCordState.activeAccountId === id) {
+      botCordState.activeAccountId = botCordState.accounts[0]?.id ?? null;
+    }
+  }
+  function setActiveBotAccount(id) {
+    botCordState.activeAccountId = id;
+  }
+  function readDiscordError(response) {
+    return _async_to_generator(function* () {
+      try {
+        var body = yield response.json();
+        return typeof body?.message === "string" ? body.message : null;
+      } catch (e) {
+        return null;
+      }
+    })();
+  }
+  function botFetch(token, path) {
+    return _async_to_generator(function* () {
+      var response = yield fetch(`https://discord.com/api/v10${path}`, {
+        headers: {
+          Authorization: `Bot ${normalizeBotToken(token)}`
+        }
+      });
+      if (!response.ok) {
+        var message = yield readDiscordError(response);
+        throw new Error(message ? `${message} (${response.status})` : `Discord API request failed (${response.status}).`);
+      }
+      return response.json();
+    })();
+  }
+  function getBotGuilds(token) {
+    return botFetch(token, "/users/@me/guilds");
+  }
+  function getBotGuildChannels(token, guildId) {
+    return botFetch(token, `/guilds/${guildId}/channels`);
+  }
+  function getBotChannelMessages(token, channelId) {
+    return botFetch(token, `/channels/${channelId}/messages?limit=50`);
+  }
+  function sendBotMessage(token, channelId, content) {
+    return _async_to_generator(function* () {
+      var response = yield fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${normalizeBotToken(token)}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content
+        })
+      });
+      if (!response.ok) {
+        var message = yield readDiscordError(response);
+        throw new Error(message ? `${message} (${response.status})` : `Failed to send message (${response.status}).`);
+      }
+      return response.json();
+    })();
+  }
+  var botCordState;
+  var init_botcord = __esm({
+    "src/lib/api/botcord.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_storage();
+      botCordState = wrapSync(createStorage(createFileBackend("botcord/accounts.json", {
+        accounts: [],
+        activeAccountId: null
+      })));
+    }
+  });
+
+  // src/core/ui/settings/pages/BotCord/index.tsx
+  var BotCord_exports = {};
+  __export(BotCord_exports, {
+    default: () => BotCord
+  });
+  function BotClient({ token, username, onExit }) {
+    var [guilds, setGuilds] = (0, import_react4.useState)([]);
+    var [channels2, setChannels] = (0, import_react4.useState)([]);
+    var [messages, setMessages] = (0, import_react4.useState)([]);
+    var [guild, setGuild] = (0, import_react4.useState)(null);
+    var [channel, setChannel] = (0, import_react4.useState)(null);
+    var [composer, setComposer] = (0, import_react4.useState)("");
+    var [loading, setLoading] = (0, import_react4.useState)(true);
+    var [error, setError] = (0, import_react4.useState)(null);
+    (0, import_react4.useEffect)(() => {
+      getBotGuilds(token).then(setGuilds).catch((e) => setError(String(e))).finally(() => setLoading(false));
+    }, [
+      token
+    ]);
+    var openGuild = (g2) => _async_to_generator(function* () {
+      setLoading(true);
+      setError(null);
+      try {
+        var result = yield getBotGuildChannels(token, g2.id);
+        setGuild(g2);
+        setChannel(null);
+        setMessages([]);
+        setChannels(result.filter((c2) => [
+          0,
+          5,
+          10,
+          11,
+          12
+        ].includes(c2.type)));
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
+    var openChannel = (c2) => _async_to_generator(function* () {
+      setLoading(true);
+      setError(null);
+      try {
+        var result = yield getBotChannelMessages(token, c2.id);
+        setChannel(c2);
+        setMessages(result.reverse());
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
+    var send = () => _async_to_generator(function* () {
+      var content = composer.trim();
+      if (!content || !channel)
+        return;
+      setComposer("");
+      try {
+        var sent = yield sendBotMessage(token, channel.id, content);
+        setMessages((old) => [
+          ...old,
+          sent
+        ]);
+      } catch (e) {
+        setComposer(content);
+        setError(String(e));
+      }
+    })();
+    return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
+      style: {
+        flex: 1
+      },
+      contentContainerStyle: {
+        paddingBottom: 38
+      },
+      children: /* @__PURE__ */ jsxs(Stack, {
+        style: {
+          paddingVertical: 24,
+          paddingHorizontal: 12
+        },
+        spacing: 16,
+        children: [
+          /* @__PURE__ */ jsxs(import_react_native18.View, {
+            style: {
+              flexDirection: "row",
+              gap: 8
+            },
+            children: [
+              /* @__PURE__ */ jsxs(import_react_native18.View, {
+                style: {
+                  flex: 1
+                },
+                children: [
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "heading-lg/bold",
+                    children: "BotCord"
+                  }),
+                  /* @__PURE__ */ jsxs(Text, {
+                    variant: "text-sm/normal",
+                    color: "text-muted",
+                    children: [
+                      "Connected as ",
+                      username
+                    ]
+                  })
+                ]
+              }),
+              /* @__PURE__ */ jsx(Button, {
+                size: "sm",
+                variant: "secondary",
+                text: "Accounts",
+                onPress: onExit
+              })
+            ]
+          }),
+          error && /* @__PURE__ */ jsx(Text, {
+            variant: "text-sm/medium",
+            color: "text-feedback-critical",
+            children: error
+          }),
+          loading && /* @__PURE__ */ jsx(Text, {
+            variant: "text-sm/normal",
+            color: "text-muted",
+            children: "Loading\u2026"
+          }),
+          !guild && /* @__PURE__ */ jsxs(TableRowGroup, {
+            title: "Servers",
+            children: [
+              guilds.map((g2) => /* @__PURE__ */ jsx(TableRow, {
+                label: g2.name,
+                subLabel: g2.id,
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: findAssetId("GuildIcon") || findAssetId("Discord")
+                }),
+                onPress: () => openGuild(g2)
+              }, g2.id)),
+              !loading && guilds.length === 0 && /* @__PURE__ */ jsx(TableRow, {
+                label: "No servers available to this bot"
+              })
+            ]
+          }),
+          guild && !channel && /* @__PURE__ */ jsxs(Fragment, {
+            children: [
+              /* @__PURE__ */ jsx(Button, {
+                size: "sm",
+                variant: "secondary",
+                text: "\u2190 Servers",
+                onPress: () => setGuild(null)
+              }),
+              /* @__PURE__ */ jsxs(TableRowGroup, {
+                title: guild.name,
+                children: [
+                  channels2.map((c2) => /* @__PURE__ */ jsx(TableRow, {
+                    label: `# ${c2.name}`,
+                    icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                      source: findAssetId("ChannelTextIcon") || findAssetId("ChannelListMagnifyingGlassIcon")
+                    }),
+                    onPress: () => openChannel(c2)
+                  }, c2.id)),
+                  !loading && channels2.length === 0 && /* @__PURE__ */ jsx(TableRow, {
+                    label: "No readable message channels"
+                  })
+                ]
+              })
+            ]
+          }),
+          channel && /* @__PURE__ */ jsxs(Fragment, {
+            children: [
+              /* @__PURE__ */ jsx(Button, {
+                size: "sm",
+                variant: "secondary",
+                text: `\u2190 ${guild?.name || "Channels"}`,
+                onPress: () => {
+                  setChannel(null);
+                  setMessages([]);
+                }
+              }),
+              /* @__PURE__ */ jsx(TableRowGroup, {
+                title: `# ${channel.name}`,
+                children: messages.map((m2) => /* @__PURE__ */ jsx(TableRow, {
+                  label: m2.author?.global_name || m2.author?.username || "Unknown",
+                  subLabel: m2.content || (m2.attachments?.length ? "Attachment" : m2.embeds?.length ? "Embed" : "")
+                }, m2.id))
+              }),
+              /* @__PURE__ */ jsxs(import_react_native18.View, {
+                style: {
+                  gap: 8
+                },
+                children: [
+                  /* @__PURE__ */ jsx(TextInput, {
+                    size: "lg",
+                    value: composer,
+                    placeholder: `Message #${channel.name}`,
+                    onChange: setComposer
+                  }),
+                  /* @__PURE__ */ jsx(Button, {
+                    size: "md",
+                    variant: "primary",
+                    text: "Send as bot",
+                    disabled: !composer.trim(),
+                    onPress: send
+                  })
+                ]
+              })
+            ]
+          })
+        ]
+      })
+    });
+  }
+  function BotCord() {
+    var state = useProxy(botCordState);
+    var [token, setToken] = (0, import_react4.useState)("");
+    var [adding, setAdding] = (0, import_react4.useState)(false);
+    var [error, setError] = (0, import_react4.useState)(null);
+    var [opened, setOpened] = (0, import_react4.useState)(false);
+    var active = (0, import_react4.useMemo)(() => state.accounts.find((a) => a.id === state.activeAccountId) ?? state.accounts[0] ?? null, [
+      state.accounts,
+      state.activeAccountId
+    ]);
+    if (opened && active) {
+      return /* @__PURE__ */ jsx(BotClient, {
+        token: active.token,
+        username: active.username,
+        onExit: () => setOpened(false)
+      });
+    }
+    return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
+      style: {
+        flex: 1
+      },
+      contentContainerStyle: {
+        paddingBottom: 38
+      },
+      children: /* @__PURE__ */ jsxs(Stack, {
+        style: {
+          paddingVertical: 24,
+          paddingHorizontal: 12
+        },
+        spacing: 16,
+        children: [
+          /* @__PURE__ */ jsxs(import_react_native18.View, {
+            children: [
+              /* @__PURE__ */ jsx(Text, {
+                variant: "heading-xl/bold",
+                children: "BotCord"
+              }),
+              /* @__PURE__ */ jsx(Text, {
+                variant: "text-sm/normal",
+                color: "text-muted",
+                children: "Add bot accounts, switch between them, and use Discord as the selected bot. Tokens stay in CloudCord's local app storage on this device."
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsxs(TableRowGroup, {
+            title: "Bot Accounts",
+            children: [
+              state.accounts.map((account) => /* @__PURE__ */ jsx(TableRow, {
+                label: account.username,
+                subLabel: state.activeAccountId === account.id ? "Active bot" : `Bot ID: ${account.id}`,
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: findAssetId("RobotIcon") || findAssetId("AppsIcon")
+                }),
+                onPress: () => {
+                  setActiveBotAccount(account.id);
+                  setOpened(true);
+                },
+                trailing: /* @__PURE__ */ jsx(Button, {
+                  size: "sm",
+                  variant: "secondary",
+                  text: "Remove",
+                  onPress: () => removeBotAccount(account.id)
+                })
+              }, account.id)),
+              state.accounts.length === 0 && /* @__PURE__ */ jsx(TableRow, {
+                label: "No bot accounts added yet"
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsx(TableRowGroup, {
+            title: "Add Bot Account",
+            children: /* @__PURE__ */ jsx(TableRow, {
+              label: /* @__PURE__ */ jsxs(import_react_native18.View, {
+                style: {
+                  width: "100%",
+                  gap: 10
+                },
+                children: [
+                  /* @__PURE__ */ jsx(TextInput, {
+                    size: "lg",
+                    value: token,
+                    placeholder: "Bot token",
+                    onChange: setToken,
+                    secureTextEntry: true,
+                    state: error ? "error" : void 0,
+                    errorMessage: error || void 0
+                  }),
+                  /* @__PURE__ */ jsx(Button, {
+                    size: "md",
+                    variant: "primary",
+                    text: "Add Bot Account",
+                    loading: adding,
+                    disabled: adding || !token.trim(),
+                    onPress: () => _async_to_generator(function* () {
+                      setAdding(true);
+                      setError(null);
+                      try {
+                        yield addBotAccount(token);
+                        setToken("");
+                      } catch (e) {
+                        setError(String(e));
+                      } finally {
+                        setAdding(false);
+                      }
+                    })()
+                  })
+                ]
+              })
+            })
+          }),
+          active && /* @__PURE__ */ jsx(Button, {
+            size: "lg",
+            variant: "primary",
+            text: `Open BotCord as ${active.username}`,
+            onPress: () => setOpened(true)
+          }),
+          /* @__PURE__ */ jsx(Text, {
+            variant: "text-xs/normal",
+            color: "text-muted",
+            children: "BotCord uses Discord's bot API. A bot only sees servers and channels where it has access and can only perform actions its permissions allow."
+          })
+        ]
+      })
+    });
+  }
+  var import_react4, import_react_native18;
+  var init_BotCord = __esm({
+    "src/core/ui/settings/pages/BotCord/index.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_jsxRuntime();
+      init_storage();
+      init_assets();
+      init_botcord();
+      init_components();
+      import_react4 = __toESM(require_react());
+      import_react_native18 = __toESM(require_react_native());
+    }
+  });
+
   // src/core/vendetta/plugins.ts
   var plugins, pluginInstance, VdPluginManager;
   var init_plugins = __esm({
@@ -8466,7 +9014,7 @@
 
   // src/core/ui/settings/components/ScaledPluginSettings.tsx
   function ScaledPluginSettings({ component: Component }) {
-    return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
       style: {
         flex: 1
       },
@@ -8475,7 +9023,7 @@
         paddingHorizontal: 12
       },
       showsVerticalScrollIndicator: true,
-      children: /* @__PURE__ */ jsx(import_react_native18.View, {
+      children: /* @__PURE__ */ jsx(import_react_native19.View, {
         style: {
           width: "100%",
           paddingRight: 24,
@@ -8485,14 +9033,14 @@
       })
     });
   }
-  var import_react_native18;
+  var import_react_native19;
   var init_ScaledPluginSettings = __esm({
     "src/core/ui/settings/components/ScaledPluginSettings.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      import_react_native18 = __toESM(require_react_native());
+      import_react_native19 = __toESM(require_react_native());
     }
   });
 
@@ -8503,8 +9051,8 @@
   });
   function CloudSync() {
     useProxy(VdPluginManager.plugins);
-    var [busy, setBusy] = (0, import_react4.useState)(false);
-    var [refresh, setRefresh] = (0, import_react4.useState)(0);
+    var [busy, setBusy] = (0, import_react5.useState)(false);
+    var [refresh, setRefresh] = (0, import_react5.useState)(0);
     var plugin = VdPluginManager.plugins[PLUGIN_URL];
     var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
     function installOrStart() {
@@ -8576,7 +9124,7 @@
         component: SettingsComponent
       }, `cloud-sync-settings-${refresh}`);
     }
-    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
       style: {
         flex: 1
       },
@@ -8593,7 +9141,7 @@
           /* @__PURE__ */ jsxs(TableRowGroup, {
             title: "Cloud Sync",
             children: [
-              /* @__PURE__ */ jsxs(import_react_native19.View, {
+              /* @__PURE__ */ jsxs(import_react_native20.View, {
                 style: {
                   paddingHorizontal: 12,
                   paddingBottom: 12
@@ -8644,7 +9192,7 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsx(import_react_native19.View, {
+            children: /* @__PURE__ */ jsx(import_react_native20.View, {
               style: {
                 padding: 12
               },
@@ -8659,7 +9207,7 @@
       })
     });
   }
-  var import_react4, import_react_native19, PLUGIN_URL, CLOUDSYNC_ICON;
+  var import_react5, import_react_native20, PLUGIN_URL, CLOUDSYNC_ICON;
   var init_CloudSync = __esm({
     "src/core/ui/settings/pages/CloudSync/index.tsx"() {
       "use strict";
@@ -8673,8 +9221,8 @@
       init_assets();
       init_toasts();
       init_components();
-      import_react4 = __toESM(require_react());
-      import_react_native19 = __toESM(require_react_native());
+      import_react5 = __toESM(require_react());
+      import_react_native20 = __toESM(require_react_native());
       PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
       CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png";
     }
@@ -9543,7 +10091,7 @@
             state: error ? "error" : void 0,
             errorMessage: error || void 0
           }),
-          /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
+          /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
             horizontal: true,
             showsHorizontalScrollIndicator: false,
             style: {
@@ -9582,7 +10130,7 @@
     var [sortFn, setSortFn] = React.useState(() => null);
     var { bottom: bottomInset } = useSafeAreaInsets();
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react5.useEffect)(() => {
+    (0, import_react6.useEffect)(() => {
       if (props.OptionsActionSheetComponent) {
         navigation2.setOptions({
           headerRight: () => /* @__PURE__ */ jsx(IconButton, {
@@ -9596,7 +10144,7 @@
     }, [
       navigation2
     ]);
-    var results = (0, import_react5.useMemo)(() => {
+    var results = (0, import_react6.useMemo)(() => {
       var values = props.items;
       if (props.resolveItem)
         values = values.map(props.resolveItem).filter(isNotNil);
@@ -9612,7 +10160,7 @@
       sortFn,
       search
     ]);
-    var onInstallPress = (0, import_react5.useCallback)(() => {
+    var onInstallPress = (0, import_react6.useCallback)(() => {
       if (!props.installAction)
         return () => {
         };
@@ -9627,7 +10175,7 @@
       }
     }, []);
     if (results.length === 0 && !search) {
-      return /* @__PURE__ */ jsxs(import_react_native20.View, {
+      return /* @__PURE__ */ jsxs(import_react_native21.View, {
         style: {
           gap: 32,
           flexGrow: 1,
@@ -9635,13 +10183,13 @@
           alignItems: "center"
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native20.View, {
+          /* @__PURE__ */ jsxs(import_react_native21.View, {
             style: {
               gap: 8,
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native20.Image, {
+              /* @__PURE__ */ jsx(import_react_native21.Image, {
                 source: findAssetId("empty_quick_switcher")
               }),
               /* @__PURE__ */ jsx(Text, {
@@ -9660,12 +10208,12 @@
         ]
       });
     }
-    var headerElement = /* @__PURE__ */ jsxs(import_react_native20.View, {
+    var headerElement = /* @__PURE__ */ jsxs(import_react_native21.View, {
       style: {
         paddingBottom: 8
       },
       children: [
-        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native20.View, {
+        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native21.View, {
           style: {
             marginBottom: 10
           },
@@ -9677,7 +10225,7 @@
             props.safeModeHint?.footer
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native20.View, {
+        /* @__PURE__ */ jsxs(import_react_native21.View, {
           style: {
             flexDirection: "row",
             gap: 8
@@ -9718,14 +10266,14 @@
           extraData: search,
           estimatedItemSize: 136,
           ListHeaderComponent: headerElement,
-          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native20.View, {
+          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native21.View, {
             style: {
               gap: 12,
               padding: 12,
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native20.Image, {
+              /* @__PURE__ */ jsx(import_react_native21.Image, {
                 source: findAssetId("devices_not_found")
               }),
               /* @__PURE__ */ jsx(Text, {
@@ -9740,7 +10288,7 @@
             paddingHorizontal: 12,
             paddingBottom: 90
           },
-          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native20.View, {
+          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native21.View, {
             style: {
               height: 8
             }
@@ -9759,7 +10307,7 @@
       ]
     });
   }
-  var import_fuzzysort, import_react5, import_react_native20, showSimpleActionSheet, hideActionSheet;
+  var import_fuzzysort, import_react6, import_react_native21, showSimpleActionSheet, hideActionSheet;
   var init_AddonPage = __esm({
     "src/core/ui/components/AddonPage.tsx"() {
       "use strict";
@@ -9778,8 +10326,8 @@
       init_components2();
       init_dist();
       import_fuzzysort = __toESM(require_fuzzysort());
-      import_react5 = __toESM(require_react());
-      import_react_native20 = __toESM(require_react_native());
+      import_react6 = __toESM(require_react());
+      import_react_native21 = __toESM(require_react_native());
       ({ showSimpleActionSheet, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
     }
   });
@@ -10038,7 +10586,7 @@
       showToast(e.message, findAssetId("Small"));
     });
   }
-  var import_react_native21, showSimpleActionSheet2, handleClick, getChannelId, getChannel, url_default;
+  var import_react_native22, showSimpleActionSheet2, handleClick, getChannelId, getChannel, url_default;
   var init_url = __esm({
     "src/core/plugins/quickinstall/url.tsx"() {
       "use strict";
@@ -10059,7 +10607,7 @@
       init_finders();
       init_wrappers();
       init_toasts();
-      import_react_native21 = __toESM(require_react_native());
+      import_react_native22 = __toESM(require_react_native());
       showSimpleActionSheet2 = findExports(byMutableProp("showSimpleActionSheet"));
       handleClick = findByPropsLazy("handleClick");
       ({ getChannelId } = lazyDestructure(() => channels));
@@ -10095,7 +10643,7 @@
               confirmText: Strings.INSTALL,
               cancelText: Strings.CANCEL,
               secondaryConfirmText: Strings.OPEN_IN_BROWSER,
-              onConfirmSecondary: () => import_react_native21.Linking.openURL(url2)
+              onConfirmSecondary: () => import_react_native22.Linking.openURL(url2)
             });
           }).call(this);
         }));
@@ -11294,14 +11842,14 @@
       variant: "heading-lg/semibold",
       children: highlightedNode.length ? highlightedNode : plugin.name
     });
-    return /* @__PURE__ */ jsxs(import_react_native22.View, {
+    return /* @__PURE__ */ jsxs(import_react_native23.View, {
       style: {
         flexDirection: "row",
         alignItems: "center",
         gap: 6
       },
       children: [
-        icon && /* @__PURE__ */ jsx(import_react_native22.Image, {
+        icon && /* @__PURE__ */ jsx(import_react_native23.Image, {
           style: styles.smallIcon,
           source: icon
         }),
@@ -11322,7 +11870,7 @@
     }, i));
     var badges = plugin.getBadges();
     var authorText = highlightedNode.length > 0 ? highlightedNode : plugin.authors.map((a) => a.name).join(", ");
-    return /* @__PURE__ */ jsxs(import_react_native22.View, {
+    return /* @__PURE__ */ jsxs(import_react_native23.View, {
       style: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -11338,9 +11886,9 @@
             authorText
           ]
         }),
-        badges.length > 0 && /* @__PURE__ */ jsx(import_react_native22.View, {
+        badges.length > 0 && /* @__PURE__ */ jsx(import_react_native23.View, {
           style: styles.badgesContainer,
-          children: badges.map((b3, i) => /* @__PURE__ */ jsx(import_react_native22.Image, {
+          children: badges.map((b3, i) => /* @__PURE__ */ jsx(import_react_native23.Image, {
             source: b3.source,
             style: styles.badgeIcon
           }, i))
@@ -11364,7 +11912,7 @@
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
     var [, forceUpdate] = React.useReducer(() => ({}), 0);
-    var cardContextValue = (0, import_react6.useMemo)(() => ({
+    var cardContextValue = (0, import_react7.useMemo)(() => ({
       plugin,
       result
     }), [
@@ -11378,13 +11926,13 @@
         children: /* @__PURE__ */ jsxs(Stack, {
           spacing: 16,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native22.View, {
+            /* @__PURE__ */ jsxs(import_react_native23.View, {
               style: {
                 flexDirection: "row",
                 justifyContent: "space-between"
               },
               children: [
-                /* @__PURE__ */ jsxs(import_react_native22.View, {
+                /* @__PURE__ */ jsxs(import_react_native23.View, {
                   style: {
                     flexShrink: 1
                   },
@@ -11393,13 +11941,13 @@
                     /* @__PURE__ */ jsx(Authors, {})
                   ]
                 }),
-                /* @__PURE__ */ jsx(import_react_native22.View, {
+                /* @__PURE__ */ jsx(import_react_native23.View, {
                   children: /* @__PURE__ */ jsxs(Stack, {
                     spacing: 12,
                     direction: "horizontal",
                     children: [
                       /* @__PURE__ */ jsx(Actions, {}),
-                      /* @__PURE__ */ jsx(import_react_native22.View, {
+                      /* @__PURE__ */ jsx(import_react_native23.View, {
                         style: core ? {
                           opacity: 0.5
                         } : void 0,
@@ -11425,7 +11973,7 @@
       })
     });
   }
-  var import_chroma_js3, import_react6, import_react_native22, CardContext, useCardContext, Actions;
+  var import_chroma_js3, import_react7, import_react_native23, CardContext, useCardContext, Actions;
   var init_PluginCard = __esm({
     "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"() {
       "use strict";
@@ -11438,15 +11986,15 @@
       init_components();
       init_sheets();
       import_chroma_js3 = __toESM(require_chroma_js());
-      import_react6 = __toESM(require_react());
-      import_react_native22 = __toESM(require_react_native());
+      import_react7 = __toESM(require_react());
+      import_react_native23 = __toESM(require_react_native());
       init_plugins4();
-      CardContext = /* @__PURE__ */ (0, import_react6.createContext)(null);
-      useCardContext = () => (0, import_react6.useContext)(CardContext);
+      CardContext = /* @__PURE__ */ (0, import_react7.createContext)(null);
+      useCardContext = () => (0, import_react7.useContext)(CardContext);
       Actions = () => {
         var { plugin } = useCardContext();
         var navigation2 = NavigationNative.useNavigation();
-        return /* @__PURE__ */ jsxs(import_react_native22.View, {
+        return /* @__PURE__ */ jsxs(import_react_native23.View, {
           style: {
             flexDirection: "row",
             gap: 6
@@ -11514,23 +12062,23 @@
         _loop2(author);
       authorTextNode.pop();
     }
-    return /* @__PURE__ */ jsxs(import_react_native23.View, {
+    return /* @__PURE__ */ jsxs(import_react_native24.View, {
       style: {
         gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native23.View, {
+        /* @__PURE__ */ jsx(import_react_native24.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
             children: plugin.name
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native23.View, {
+        /* @__PURE__ */ jsx(import_react_native24.View, {
           style: {
             flexDirection: "row",
             flexShrink: 1
           },
-          children: authors?.length && /* @__PURE__ */ jsxs(import_react_native23.View, {
+          children: authors?.length && /* @__PURE__ */ jsxs(import_react_native24.View, {
             style: {
               flexDirection: "row",
               gap: 8,
@@ -11560,7 +12108,7 @@
       ]
     });
   }
-  var import_react_native23, showUserProfileActionSheet, maybeFetchUser;
+  var import_react_native24, showUserProfileActionSheet, maybeFetchUser;
   var init_TitleComponent = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/TitleComponent.tsx"() {
       "use strict";
@@ -11572,7 +12120,7 @@
       init_common();
       init_components();
       init_stores();
-      import_react_native23 = __toESM(require_react_native());
+      import_react_native24 = __toESM(require_react_native());
       showUserProfileActionSheet = findByNameLazy("showUserProfileActionSheet");
       ({ getUser: maybeFetchUser } = lazyDestructure(() => findByProps("getUser", "fetchProfile")));
     }
@@ -11595,7 +12143,7 @@
   }
   function PluginInfoActionSheet({ plugin, navigation: navigation2 }) {
     plugin.usePluginState();
-    var [loading, setLoading] = (0, import_react7.useState)(false);
+    var [loading, setLoading] = (0, import_react8.useState)(false);
     var isVendettaPlugin = plugin.id.includes("/");
     var isCorePlugin2 = plugin.id.startsWith("bunny.") || plugin.id.startsWith("vendetta.");
     var copyPluginUrl = () => {
@@ -11691,13 +12239,13 @@
       });
     };
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native24.ScrollView, {
+      children: /* @__PURE__ */ jsxs(import_react_native25.ScrollView, {
         contentContainerStyle: {
           gap: 12,
           marginBottom: 12
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native24.View, {
+          /* @__PURE__ */ jsx(import_react_native25.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
@@ -11710,7 +12258,7 @@
               plugin
             })
           }),
-          /* @__PURE__ */ jsxs(import_react_native24.View, {
+          /* @__PURE__ */ jsxs(import_react_native25.View, {
             style: {
               flexDirection: "row",
               justifyContent: "center",
@@ -11782,7 +12330,7 @@
       })
     });
   }
-  var import_react7, import_react_native24;
+  var import_react8, import_react_native25;
   var init_PluginInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx"() {
       "use strict";
@@ -11799,8 +12347,8 @@
       init_storage();
       init_storage2();
       init_assets();
-      import_react7 = __toESM(require_react());
-      import_react_native24 = __toESM(require_react_native());
+      import_react8 = __toESM(require_react());
+      import_react_native25 = __toESM(require_react_native());
       init_TitleComponent();
       init_ScaledPluginSettings();
     }
@@ -11948,14 +12496,14 @@
         var unproxiedPlugins = Object.values(VdPluginManager.plugins).filter((p) => !p.id.startsWith(VD_PROXY_PREFIX) && !p.id.startsWith(BUNNY_PROXY_PREFIX));
         if (!unproxiedPlugins.length)
           return null;
-        return /* @__PURE__ */ jsx(import_react_native25.View, {
+        return /* @__PURE__ */ jsx(import_react_native26.View, {
           style: {
             marginVertical: 12,
             marginHorizontal: 10
           },
           children: /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native25.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: {
                 flex: 1,
                 justifyContent: "center",
@@ -11963,7 +12511,7 @@
                 flexDirection: "row"
               },
               children: [
-                /* @__PURE__ */ jsxs(import_react_native25.View, {
+                /* @__PURE__ */ jsxs(import_react_native26.View, {
                   style: {
                     gap: 6,
                     flexShrink: 1
@@ -11980,7 +12528,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsx(import_react_native25.View, {
+                /* @__PURE__ */ jsx(import_react_native26.View, {
                   style: {
                     marginLeft: "auto"
                   },
@@ -12000,7 +12548,7 @@
                             contentContainerStyle: {
                               padding: 8
                             },
-                            ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native25.View, {
+                            ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native26.View, {
                               style: {
                                 height: 8
                               }
@@ -12071,7 +12619,7 @@
       }
     });
   }
-  var import_react_native25, openAlert2, AlertModal3, AlertActions2, AlertActionButton3;
+  var import_react_native26, openAlert2, AlertModal3, AlertActions2, AlertActionButton3;
   var init_Plugins = __esm({
     "src/core/ui/settings/pages/Plugins/index.tsx"() {
       "use strict";
@@ -12094,7 +12642,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react_native25 = __toESM(require_react_native());
+      import_react_native26 = __toESM(require_react_native());
       init_bunny();
       init_vendetta();
       ({ openAlert: openAlert2 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -12109,13 +12657,13 @@
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native26.View, {
+          /* @__PURE__ */ jsxs(import_react_native27.View, {
             style: {
               flexDirection: "row",
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsxs(import_react_native26.View, {
+              /* @__PURE__ */ jsxs(import_react_native27.View, {
                 style: styles.headerLeading,
                 children: [
                   /* @__PURE__ */ jsx(Text, {
@@ -12128,7 +12676,7 @@
                   })
                 ]
               }),
-              /* @__PURE__ */ jsxs(import_react_native26.View, {
+              /* @__PURE__ */ jsxs(import_react_native27.View, {
                 style: [
                   styles.headerTrailing,
                   {
@@ -12136,7 +12684,7 @@
                   }
                 ],
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native26.View, {
+                  /* @__PURE__ */ jsxs(import_react_native27.View, {
                     style: styles.actions,
                     children: [
                       props.overflowActions && /* @__PURE__ */ jsx(IconButton, {
@@ -12173,7 +12721,7 @@
                   props.toggleType && (props.toggleType === "switch" ? /* @__PURE__ */ jsx(FormSwitch, {
                     value: props.toggleValue(),
                     onValueChange: props.onToggleChange
-                  }) : /* @__PURE__ */ jsx(import_react_native26.TouchableOpacity, {
+                  }) : /* @__PURE__ */ jsx(import_react_native27.TouchableOpacity, {
                     onPress: () => {
                       props.onToggleChange?.(!props.toggleValue());
                     },
@@ -12193,7 +12741,7 @@
       })
     });
   }
-  var import_react_native26, hideActionSheet2, showSimpleActionSheet3, useStyles3;
+  var import_react_native27, hideActionSheet2, showSimpleActionSheet3, useStyles3;
   var init_AddonCard = __esm({
     "src/core/ui/components/AddonCard.tsx"() {
       "use strict";
@@ -12206,7 +12754,7 @@
       init_wrappers();
       init_color();
       init_styles();
-      import_react_native26 = __toESM(require_react_native());
+      import_react_native27 = __toESM(require_react_native());
       ({ hideActionSheet: hideActionSheet2 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet3 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       useStyles3 = createStyles({
@@ -12277,23 +12825,23 @@
   }
   function TitleComponent2({ theme }) {
     var { authors } = theme.data;
-    return /* @__PURE__ */ jsxs(import_react_native27.View, {
+    return /* @__PURE__ */ jsxs(import_react_native28.View, {
       style: {
         gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native27.View, {
+        /* @__PURE__ */ jsx(import_react_native28.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
             children: theme.data.name
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native27.View, {
+        /* @__PURE__ */ jsx(import_react_native28.View, {
           style: {
             flexDirection: "row",
             flexShrink: 1
           },
-          children: authors && authors.length > 0 && /* @__PURE__ */ jsx(import_react_native27.TouchableOpacity, {
+          children: authors && authors.length > 0 && /* @__PURE__ */ jsx(import_react_native28.TouchableOpacity, {
             style: {
               flexDirection: "row",
               gap: 8,
@@ -12317,11 +12865,11 @@
     });
   }
   function ThemeInfoActionSheet({ theme, navigation: navigation2 }) {
-    var [themeState, setThemeState] = (0, import_react8.useState)({
+    var [themeState, setThemeState] = (0, import_react9.useState)({
       ...theme
     });
-    var [loading, setLoading] = (0, import_react8.useState)(false);
-    (0, import_react8.useEffect)(() => {
+    var [loading, setLoading] = (0, import_react9.useState)(false);
+    (0, import_react9.useEffect)(() => {
       var interval = setInterval(() => {
         setThemeState({
           ...theme
@@ -12385,13 +12933,13 @@
       }
     };
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native27.ScrollView, {
+      children: /* @__PURE__ */ jsxs(import_react_native28.ScrollView, {
         contentContainerStyle: {
           gap: 12,
           marginBottom: 12
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native27.View, {
+          /* @__PURE__ */ jsx(import_react_native28.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
@@ -12404,7 +12952,7 @@
               theme: themeState
             })
           }),
-          /* @__PURE__ */ jsxs(import_react_native27.View, {
+          /* @__PURE__ */ jsxs(import_react_native28.View, {
             style: {
               flexDirection: "row",
               justifyContent: "center",
@@ -12455,7 +13003,7 @@
       })
     });
   }
-  var import_react8, import_react_native27;
+  var import_react9, import_react_native28;
   var init_ThemeInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Themes/sheets/ThemeInfoActionSheet.tsx"() {
       "use strict";
@@ -12467,8 +13015,8 @@
       init_sheets();
       init_components();
       init_common();
-      import_react8 = __toESM(require_react());
-      import_react_native27 = __toESM(require_react_native());
+      import_react9 = __toESM(require_react());
+      import_react_native28 = __toESM(require_react_native());
       init_toasts();
       init_alerts2();
       init_themes();
@@ -12573,7 +13121,7 @@
             /* @__PURE__ */ jsx(BottomSheetTitleHeader, {
               title: "Options"
             }),
-            /* @__PURE__ */ jsxs(import_react_native28.View, {
+            /* @__PURE__ */ jsxs(import_react_native29.View, {
               style: {
                 paddingVertical: 20,
                 gap: 12
@@ -12659,7 +13207,7 @@
       }
     });
   }
-  var import_react_native28;
+  var import_react_native29;
   var init_Themes = __esm({
     "src/core/ui/settings/pages/Themes/index.tsx"() {
       "use strict";
@@ -12677,7 +13225,7 @@
       init_settings();
       init_storage2();
       init_components();
-      import_react_native28 = __toESM(require_react_native());
+      import_react_native29 = __toESM(require_react_native());
     }
   });
 
@@ -12861,9 +13409,9 @@
   function RevengeFontsExtractor({ fonts: fonts2, setName }) {
     var currentTheme = getCurrentTheme().data;
     var themeFonts = currentTheme.fonts;
-    var [fontName, setFontName] = (0, import_react9.useState)(guessFontName(Object.values(themeFonts)));
-    var [error, setError] = (0, import_react9.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native29.View, {
+    var [fontName, setFontName] = (0, import_react10.useState)(guessFontName(Object.values(themeFonts)));
+    var [error, setError] = (0, import_react10.useState)(void 0);
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -12913,10 +13461,10 @@
     });
   }
   function JsonFontImporter({ fonts: fonts2, setName, setSource }) {
-    var [fontLink, setFontLink] = (0, import_react9.useState)("");
-    var [saving, setSaving] = (0, import_react9.useState)(false);
-    var [error, setError] = (0, import_react9.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native29.View, {
+    var [fontLink, setFontLink] = (0, import_react10.useState)("");
+    var [saving, setSaving] = (0, import_react10.useState)(false);
+    var [error, setError] = (0, import_react10.useState)(void 0);
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -12957,9 +13505,9 @@
     });
   }
   function EntryEditorActionSheet(props) {
-    var [familyName, setFamilyName] = (0, import_react9.useState)(props.name);
-    var [fontUrl, setFontUrl] = (0, import_react9.useState)(props.fontEntries[props.name]);
-    return /* @__PURE__ */ jsxs(import_react_native29.View, {
+    var [familyName, setFamilyName] = (0, import_react10.useState)(props.name);
+    var [fontUrl, setFontUrl] = (0, import_react10.useState)(props.fontEntries[props.name]);
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -13013,18 +13561,18 @@
     }), "FontEditorActionSheet");
   }
   function NewEntryRow({ fontName, fontEntry }) {
-    var nameRef = (0, import_react9.useRef)();
-    var urlRef = (0, import_react9.useRef)();
-    var [nameSet, setNameSet] = (0, import_react9.useState)(false);
-    var [error, setError] = (0, import_react9.useState)();
-    return /* @__PURE__ */ jsxs(import_react_native29.View, {
+    var nameRef = (0, import_react10.useRef)();
+    var urlRef = (0, import_react10.useRef)();
+    var [nameSet, setNameSet] = (0, import_react10.useState)(false);
+    var [error, setError] = (0, import_react10.useState)();
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         flexDirection: "row",
         gap: 8,
         justifyContent: "flex-start"
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native29.View, {
+        /* @__PURE__ */ jsx(import_react_native30.View, {
           style: {
             flex: 1
           },
@@ -13078,11 +13626,11 @@
     });
   }
   function FontEditor(props) {
-    var [name, setName] = (0, import_react9.useState)(props.name);
-    var [source, setSource] = (0, import_react9.useState)(props.name && fonts[props.name].source);
-    var [importing, setIsImporting] = (0, import_react9.useState)(false);
-    var [errors, setErrors] = (0, import_react9.useState)();
-    var memoEntry = (0, import_react9.useMemo)(() => {
+    var [name, setName] = (0, import_react10.useState)(props.name);
+    var [source, setSource] = (0, import_react10.useState)(props.name && fonts[props.name].source);
+    var [importing, setIsImporting] = (0, import_react10.useState)(false);
+    var [errors, setErrors] = (0, import_react10.useState)();
+    var memoEntry = (0, import_react10.useMemo)(() => {
       return createProxy(props.name ? {
         ...fonts[props.name].main
       } : {}).proxy;
@@ -13092,7 +13640,7 @@
     var fontEntries = useProxy(memoEntry);
     var navigation2 = NavigationNative.useNavigation();
     var [, forceUpdate] = React.useReducer(() => ({}), 0);
-    return /* @__PURE__ */ jsx(import_react_native29.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native30.ScrollView, {
       style: {
         flex: 1
       },
@@ -13223,7 +13771,7 @@
             color: "text-feedback-critical",
             children: "Some font entries cannot be imported. Please modify the entries and try again."
           }),
-          /* @__PURE__ */ jsx(import_react_native29.View, {
+          /* @__PURE__ */ jsx(import_react_native30.View, {
             style: {
               flexDirection: "row",
               justifyContent: "flex-end",
@@ -13266,7 +13814,7 @@
       })
     });
   }
-  var import_react9, import_react_native29, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
+  var import_react10, import_react_native30, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
   var init_FontEditor = __esm({
     "src/core/ui/settings/pages/Fonts/FontEditor.tsx"() {
       "use strict";
@@ -13285,8 +13833,8 @@
       init_components();
       init_wrappers();
       init_components2();
-      import_react9 = __toESM(require_react());
-      import_react_native29 = __toESM(require_react_native());
+      import_react10 = __toESM(require_react());
+      import_react_native30 = __toESM(require_react_native());
       actionSheet2 = findByPropsLazy("hideActionSheet");
       ({ openAlert: openAlert3 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
       ({ AlertModal: AlertModal4, AlertActionButton: AlertActionButton4 } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
@@ -13301,19 +13849,19 @@
     return /* @__PURE__ */ jsx(Card, {
       children: /* @__PURE__ */ jsx(Stack, {
         spacing: 16,
-        children: /* @__PURE__ */ jsxs(import_react_native30.View, {
+        children: /* @__PURE__ */ jsxs(import_react_native31.View, {
           style: {
             flexDirection: "row",
             alignItems: "center"
           },
           children: [
-            /* @__PURE__ */ jsx(import_react_native30.View, {
+            /* @__PURE__ */ jsx(import_react_native31.View, {
               children: /* @__PURE__ */ jsx(Text, {
                 variant: "heading-lg/semibold",
                 children: font.name
               })
             }),
-            /* @__PURE__ */ jsx(import_react_native30.View, {
+            /* @__PURE__ */ jsx(import_react_native31.View, {
               style: {
                 marginLeft: "auto"
               },
@@ -13359,7 +13907,7 @@
       })
     });
   }
-  var import_react_native30, useToken2;
+  var import_react_native31, useToken2;
   var init_FontCard = __esm({
     "src/core/ui/settings/pages/Fonts/FontCard.tsx"() {
       "use strict";
@@ -13377,7 +13925,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react_native30 = __toESM(require_react_native());
+      import_react_native31 = __toESM(require_react_native());
       init_FontEditor();
       ({ useToken: useToken2 } = lazyDestructure(() => findByProps("useToken")));
     }
@@ -13624,14 +14172,14 @@
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native31.View, {
+          /* @__PURE__ */ jsxs(import_react_native32.View, {
             style: {
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsxs(import_react_native31.View, {
+              /* @__PURE__ */ jsxs(import_react_native32.View, {
                 style: {
                   flexShrink: 1
                 },
@@ -13661,7 +14209,7 @@
                   })
                 ]
               }),
-              /* @__PURE__ */ jsx(import_react_native31.View, {
+              /* @__PURE__ */ jsx(import_react_native32.View, {
                 children: /* @__PURE__ */ jsx(TrailingButtons, {
                   addon,
                   isPluginMode,
@@ -13821,7 +14369,7 @@
       sort
     ]);
     if (error) {
-      return /* @__PURE__ */ jsx(import_react_native31.View, {
+      return /* @__PURE__ */ jsx(import_react_native32.View, {
         style: {
           flex: 1,
           paddingHorizontal: 8,
@@ -13858,24 +14406,24 @@
         })
       });
     }
-    return /* @__PURE__ */ jsxs(import_react_native31.View, {
+    return /* @__PURE__ */ jsxs(import_react_native32.View, {
       style: {
         flex: 1
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native31.View, {
+        /* @__PURE__ */ jsx(import_react_native32.View, {
           style: {
             paddingHorizontal: 10
           },
           children: /* @__PURE__ */ jsxs(Stack, {
             spacing: 12,
             children: [
-              /* @__PURE__ */ jsx(import_react_native31.View, {
+              /* @__PURE__ */ jsx(import_react_native32.View, {
                 style: {
                   flexDirection: "row",
                   paddingTop: 10
                 },
-                children: /* @__PURE__ */ jsxs(import_react_native31.View, {
+                children: /* @__PURE__ */ jsxs(import_react_native32.View, {
                   style: {
                     flex: 1,
                     flexDirection: "row",
@@ -13891,7 +14439,7 @@
                         flex: 1
                       }
                     }),
-                    /* @__PURE__ */ jsx(import_react_native31.View, {
+                    /* @__PURE__ */ jsx(import_react_native32.View, {
                       style: {
                         width: 8
                       }
@@ -13908,7 +14456,7 @@
                   ]
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native31.View, {
+              /* @__PURE__ */ jsxs(import_react_native32.View, {
                 style: {
                   flexDirection: "row",
                   alignItems: "center",
@@ -13924,7 +14472,7 @@
                       flex: 1
                     }
                   }),
-                  /* @__PURE__ */ jsx(import_react_native31.View, {
+                  /* @__PURE__ */ jsx(import_react_native32.View, {
                     style: {
                       flexDirection: "row",
                       alignItems: "center",
@@ -13964,21 +14512,21 @@
             paddingBottom: 90,
             paddingHorizontal: 5
           },
-          ListHeaderComponent: mode === "plugins" ? /* @__PURE__ */ jsx(import_react_native31.View, {
+          ListHeaderComponent: mode === "plugins" ? /* @__PURE__ */ jsx(import_react_native32.View, {
             style: {
               paddingVertical: 6,
               paddingHorizontal: 8
             },
             children: /* @__PURE__ */ jsx(Card, {
               border: "strong",
-              children: /* @__PURE__ */ jsx(import_react_native31.View, {
+              children: /* @__PURE__ */ jsx(import_react_native32.View, {
                 style: {
                   flex: 1,
                   justifyContent: "center",
                   alignItems: "center",
                   flexDirection: "row"
                 },
-                children: /* @__PURE__ */ jsxs(import_react_native31.View, {
+                children: /* @__PURE__ */ jsxs(import_react_native32.View, {
                   style: {
                     gap: 6,
                     flexShrink: 1
@@ -13999,7 +14547,7 @@
             })
           }) : null,
           //@ts-ignore
-          renderItem: ({ item: addon }) => /* @__PURE__ */ jsx(import_react_native31.View, {
+          renderItem: ({ item: addon }) => /* @__PURE__ */ jsx(import_react_native32.View, {
             style: {
               paddingVertical: 6,
               paddingHorizontal: 8
@@ -14016,7 +14564,7 @@
       ]
     });
   }
-  var import_react_native31, showSimpleActionSheet4, hideActionSheet3, PLUGIN_URL2, THEME_URL, Sort;
+  var import_react_native32, showSimpleActionSheet4, hideActionSheet3, PLUGIN_URL2, THEME_URL, Sort;
   var init_PluginBrowser = __esm({
     "src/core/ui/settings/pages/PluginBrowser/index.tsx"() {
       "use strict";
@@ -14025,7 +14573,7 @@
       init_async_to_generator();
       init_jsxRuntime();
       init_common();
-      import_react_native31 = __toESM(require_react_native());
+      import_react_native32 = __toESM(require_react_native());
       init_components();
       init_assets();
       init_safeFetch();
@@ -14058,11 +14606,11 @@
 
   // src/core/ui/hooks/useFS.ts
   function useFileExists(path, prefix) {
-    var [state, setState] = (0, import_react10.useState)(2);
+    var [state, setState] = (0, import_react11.useState)(2);
     var check = () => fileExists(path, {
       prefix
     }).then((exists) => setState(exists ? 1 : 0)).catch(() => setState(3));
-    var customFS = (0, import_react10.useMemo)(() => new Proxy(fs_exports, {
+    var customFS = (0, import_react11.useMemo)(() => new Proxy(fs_exports, {
       get(target, p, receiver) {
         var val = Reflect.get(target, p, receiver);
         if (typeof val !== "function")
@@ -14077,20 +14625,20 @@
         };
       }
     }), []);
-    (0, import_react10.useEffect)(() => void check(), []);
+    (0, import_react11.useEffect)(() => void check(), []);
     return [
       state,
       customFS
     ];
   }
-  var import_react10, CheckState;
+  var import_react11, CheckState;
   var init_useFS = __esm({
     "src/core/ui/hooks/useFS.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_fs();
-      import_react10 = __toESM(require_react());
+      import_react11 = __toESM(require_react());
       CheckState = /* @__PURE__ */ function(CheckState2) {
         CheckState2[CheckState2["FALSE"] = 0] = "FALSE";
         CheckState2[CheckState2["TRUE"] = 1] = "TRUE";
@@ -14107,7 +14655,7 @@
       variant: displayable.has(asset.type) ? "default" : "danger",
       label: asset.name,
       subLabel: `Index: ${asset.id} Type: ${asset.type}`,
-      icon: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native32.Image, {
+      icon: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native33.Image, {
         source: asset.id,
         style: {
           width: 32,
@@ -14122,7 +14670,7 @@
         content: `Index: ${asset.id}
 Module ID: ${asset.moduleId}
 Type: ${asset.type}`,
-        extraContent: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native32.Image, {
+        extraContent: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native33.Image, {
           resizeMode: "contain",
           source: asset.id,
           style: {
@@ -14160,7 +14708,7 @@ Type: ${asset.type}`,
       }))
     });
   }
-  var import_react_native32, openAlert4, AlertModal5, AlertActionButton5, displayable, iconMap, copyToClipboard;
+  var import_react_native33, openAlert4, AlertModal5, AlertActionButton5, displayable, iconMap, copyToClipboard;
   var init_AssetDisplay = __esm({
     "src/core/ui/settings/pages/Developer/AssetDisplay.tsx"() {
       "use strict";
@@ -14173,7 +14721,7 @@ Type: ${asset.type}`,
       init_common();
       init_components();
       init_toasts();
-      import_react_native32 = __toESM(require_react_native());
+      import_react_native33 = __toESM(require_react_native());
       ({ openAlert: openAlert4 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
       ({ AlertModal: AlertModal5, AlertActionButton: AlertActionButton5 } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
       displayable = /* @__PURE__ */ new Set([
@@ -14199,8 +14747,8 @@ Type: ${asset.type}`,
   function AssetBrowser() {
     var [search, setSearch] = React.useState("");
     var [showNonImages, setShowNonImages] = React.useState(false);
-    var all = (0, import_react11.useMemo)(() => Array.from(iterateAssets()), []);
-    var filteredData = (0, import_react11.useMemo)(() => {
+    var all = (0, import_react12.useMemo)(() => Array.from(iterateAssets()), []);
+    var filteredData = (0, import_react12.useMemo)(() => {
       var result = all.filter((a) => a.name.includes(search) || a.id.toString() === search);
       if (!showNonImages) {
         result = result.filter((a) => displayable2.has(a.type));
@@ -14212,19 +14760,19 @@ Type: ${asset.type}`,
       showNonImages
     ]);
     return /* @__PURE__ */ jsx(ErrorBoundary, {
-      children: /* @__PURE__ */ jsxs(import_react_native33.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native34.View, {
         style: {
           flex: 1
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native33.View, {
+          /* @__PURE__ */ jsxs(import_react_native34.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
               margin: 10
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native33.View, {
+              /* @__PURE__ */ jsx(import_react_native34.View, {
                 style: {
                   flex: 1,
                   marginRight: 10
@@ -14233,7 +14781,7 @@ Type: ${asset.type}`,
                   onChangeText: (v2) => setSearch(v2)
                 })
               }),
-              /* @__PURE__ */ jsx(import_react_native33.TouchableOpacity, {
+              /* @__PURE__ */ jsx(import_react_native34.TouchableOpacity, {
                 style: {
                   padding: 12,
                   backgroundColor: showNonImages ? "#0f1013" : "#303139",
@@ -14244,7 +14792,7 @@ Type: ${asset.type}`,
                   minHeight: 44
                 },
                 onPress: () => setShowNonImages(!showNonImages),
-                children: /* @__PURE__ */ jsx(import_react_native33.Image, {
+                children: /* @__PURE__ */ jsx(import_react_native34.Image, {
                   style: {
                     width: 20,
                     height: 20
@@ -14254,8 +14802,8 @@ Type: ${asset.type}`,
               })
             ]
           }),
-          /* @__PURE__ */ jsx(import_react_native33.ScrollView, {
-            children: /* @__PURE__ */ jsxs(import_react_native33.View, {
+          /* @__PURE__ */ jsx(import_react_native34.ScrollView, {
+            children: /* @__PURE__ */ jsxs(import_react_native34.View, {
               style: {
                 flex: 1,
                 borderRadius: 16,
@@ -14272,7 +14820,7 @@ Type: ${asset.type}`,
                   },
                   children: "Some assets types cannot be displayed and will be marked in red."
                 }),
-                /* @__PURE__ */ jsx(import_react_native33.FlatList, {
+                /* @__PURE__ */ jsx(import_react_native34.FlatList, {
                   data: filteredData,
                   renderItem: ({ item }) => /* @__PURE__ */ jsx(AssetDisplay, {
                     asset: item,
@@ -14293,7 +14841,7 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react11, import_react_native33, displayable2;
+  var import_react12, import_react_native34, displayable2;
   var init_AssetBrowser = __esm({
     "src/core/ui/settings/pages/Developer/AssetBrowser.tsx"() {
       "use strict";
@@ -14304,8 +14852,8 @@ Type: ${asset.type}`,
       init_assets();
       init_components();
       init_components2();
-      import_react11 = __toESM(require_react());
-      import_react_native33 = __toESM(require_react_native());
+      import_react12 = __toESM(require_react());
+      import_react_native34 = __toESM(require_react_native());
       displayable2 = /* @__PURE__ */ new Set([
         "png",
         "jpg",
@@ -14321,12 +14869,12 @@ Type: ${asset.type}`,
   });
   function Developer() {
     var [rdtFileExists, fs] = useFileExists("preloads/reactDevtools.js");
-    var [isDebuggerConnected, setIsDebuggerConnected] = (0, import_react12.useState)(isConnectedToDebugger2());
+    var [isDebuggerConnected, setIsDebuggerConnected] = (0, import_react13.useState)(isConnectedToDebugger2());
     var styles = useStyles4();
     var navigation2 = NavigationNative.useNavigation();
     useProxy(settings);
     useProxy(loaderConfig);
-    (0, import_react12.useEffect)(() => {
+    (0, import_react13.useEffect)(() => {
       var interval = setInterval(() => {
         setIsDebuggerConnected(isConnectedToDebugger2());
       }, 1e3);
@@ -14342,7 +14890,7 @@ Type: ${asset.type}`,
       }
     };
     return /* @__PURE__ */ jsx(ErrorBoundary, {
-      children: /* @__PURE__ */ jsx(import_react_native35.ScrollView, {
+      children: /* @__PURE__ */ jsx(import_react_native36.ScrollView, {
         style: {
           flex: 1
         },
@@ -14447,7 +14995,7 @@ Type: ${asset.type}`,
                         }
                         yield devTools.connectToDevTools({
                           host: settings.devToolsUrl.split(":")?.[0],
-                          resolveRNStyle: import_react_native35.StyleSheet.flatten
+                          resolveRNStyle: import_react_native36.StyleSheet.flatten
                         });
                       } catch (error) {
                         showToast("Invalid devTools URL!", findAssetId("Small"));
@@ -14512,7 +15060,7 @@ Type: ${asset.type}`,
                           /* @__PURE__ */ jsx(AlertActionButton6, {
                             text: Strings.RELOAD,
                             variant: "destructive",
-                            onPress: () => import_react_native34.NativeModules.BundleUpdaterManager.reload()
+                            onPress: () => import_react_native35.NativeModules.BundleUpdaterManager.reload()
                           }),
                           /* @__PURE__ */ jsx(AlertActionButton6, {
                             text: Strings.CANCEL,
@@ -14615,7 +15163,7 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react_native34, import_react_native35, import_react12, hideActionSheet4, showSimpleActionSheet5, openAlert5, AlertModal6, AlertActionButton6, RDT_EMBED_LINK, useStyles4;
+  var import_react_native35, import_react_native36, import_react13, hideActionSheet4, showSimpleActionSheet5, openAlert5, AlertModal6, AlertActionButton6, RDT_EMBED_LINK, useStyles4;
   var init_Developer = __esm({
     "src/core/ui/settings/pages/Developer/index.tsx"() {
       "use strict";
@@ -14638,10 +15186,10 @@ Type: ${asset.type}`,
       init_color();
       init_components2();
       init_styles();
-      import_react_native34 = __toESM(require_react_native());
       import_react_native35 = __toESM(require_react_native());
+      import_react_native36 = __toESM(require_react_native());
       init_toasts();
-      import_react12 = __toESM(require_react());
+      import_react13 = __toESM(require_react());
       ({ hideActionSheet: hideActionSheet4 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet5 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       ({ openAlert: openAlert5 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -14670,6 +15218,12 @@ Type: ${asset.type}`,
           },
           render: () => Promise.resolve().then(() => (init_General(), General_exports)),
           useTrailing: () => `(${"v0.1"})`
+        },
+        {
+          key: "BOTCORD",
+          title: () => "BotCord",
+          icon: findAssetId("RobotIcon") || findAssetId("AppsIcon"),
+          render: () => Promise.resolve().then(() => (init_BotCord(), BotCord_exports))
         },
         {
           key: "FAKE_PROFILE",
@@ -14770,7 +15324,7 @@ Type: ${asset.type}`,
   });
 
   // src/core/vendetta/api.tsx
-  var import_react13, import_react_native36, makeIcon, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react14, import_react_native37, makeIcon, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -14799,11 +15353,11 @@ Type: ${asset.type}`,
       init_styles();
       init_toasts();
       init_dist();
-      import_react13 = __toESM(require_react());
-      import_react_native36 = __toESM(require_react_native());
+      import_react14 = __toESM(require_react());
+      import_react_native37 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
-      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react13.createElement)(TableRow, {
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react14.createElement)(TableRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -14814,7 +15368,7 @@ Type: ${asset.type}`,
       });
       PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow.Icon;
       PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow.Arrow;
-      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react13.createElement)(TableSwitchRow, {
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react14.createElement)(TableSwitchRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -14822,7 +15376,7 @@ Type: ${asset.type}`,
         onValueChange: props.onValueChange,
         disabled: props.disabled
       });
-      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react13.createElement)(TableRowGroup, {
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react14.createElement)(TableRowGroup, {
         title: props.title,
         ...props
       }, props.children);
@@ -14861,8 +15415,8 @@ Type: ${asset.type}`,
                     ...module,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
-                      (0, import_react13.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react13.createElement)(import_react_native36.View, null, children);
+                      (0, import_react14.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
+                      return /* @__PURE__ */ (0, import_react14.createElement)(import_react_native37.View, null, children);
                     }
                   };
                 }
