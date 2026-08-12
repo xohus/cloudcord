@@ -954,7 +954,7 @@
       init_modules2();
       byProps = createFilterDefinition((props, m2) => props.length === 0 ? m2[props[0]] : props.every((p) => m2[p]), (props) => `bunny.metro.byProps(${props.join(",")})`);
       byName = createFilterDefinition(([name], m2) => m2.name === name, (name) => `bunny.metro.byName(${name})`);
-      byDisplayName = createFilterDefinition(([displayName], m2) => m2.displayName === displayName, (name) => `bunny.metro.byDisplayName(${name})`);
+      byDisplayName = createFilterDefinition(([displayName2], m2) => m2.displayName === displayName2, (name) => `bunny.metro.byDisplayName(${name})`);
       byTypeName = createFilterDefinition(([typeName], m2) => m2.type?.name === typeName, (name) => `bunny.metro.byTypeName(${name})`);
       byStoreName = createFilterDefinition(([name], m2) => m2.getName?.length === 0 && m2.getName() === name, (name) => `bunny.metro.byStoreName(${name})`);
       byFilePath = createFilterDefinition(
@@ -1378,41 +1378,23 @@
     };
   }
   function useProxy(storage) {
+    var emitter = storage?.[emitterSymbol];
+    if (!emitter)
+      throw new Error("storage?.[emitterSymbol] is undefined");
     var [, forceUpdate] = React.useReducer((n) => ~n, 0);
     React.useEffect(() => {
-      var disposed = false;
-      var emitter;
       var listener = (event, data) => {
         if (event === "DEL" && data.value === storage)
           return;
         forceUpdate();
       };
-      var attach = () => {
-        if (disposed)
-          return;
-        emitter = storage?.[emitterSymbol];
-        if (!emitter)
-          return;
-        emitter.on("SET", listener);
-        emitter.on("DEL", listener);
-        forceUpdate();
-      };
-      emitter = storage?.[emitterSymbol];
-      if (emitter)
-        attach();
-      else {
-        var awaitInit = storage?.[syncAwaitSymbol];
-        if (typeof awaitInit === "function")
-          awaitInit(attach);
-      }
+      emitter.on("SET", listener);
+      emitter.on("DEL", listener);
       return () => {
-        disposed = true;
-        emitter?.off("SET", listener);
-        emitter?.off("DEL", listener);
+        emitter.off("SET", listener);
+        emitter.off("DEL", listener);
       };
-    }, [
-      storage
-    ]);
+    }, []);
     return storage;
   }
   function createStorage(backend) {
@@ -3314,9 +3296,9 @@
       after("get", mmkvStorage, ([key], ret) => {
         if (!_colorRef.current || !patchedKeys.has(key))
           return;
-        var state = findInTree(ret._state, (s) => typeof s.theme === "string");
-        if (state)
-          state.theme = _colorRef.key;
+        var state2 = findInTree(ret._state, (s) => typeof s.theme === "string");
+        if (state2)
+          state2.theme = _colorRef.key;
       }),
       before("set", mmkvStorage, ([key, value]) => {
         if (!patchedKeys.has(key))
@@ -4348,19 +4330,6 @@
     }
   });
 
-  // src/core/ui/botcord/FloatingSwitcher.tsx
-  function initBotCordSwitcher() {
-    return () => {
-    };
-  }
-  var init_FloatingSwitcher = __esm({
-    "src/core/ui/botcord/FloatingSwitcher.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-    }
-  });
-
   // shims/jsxRuntime.ts
   var jsxRuntime_exports = {};
   __export(jsxRuntime_exports, {
@@ -4611,7 +4580,7 @@
         return original;
       }
     }
-    var displayName = preview.displayName || original.globalName || original.displayName || original.username;
+    var displayName2 = preview.displayName || original.globalName || original.displayName || original.username;
     var username = preview.username || original.username;
     var avatar = mediaUri("avatarMedia");
     var banner = mediaUri("bannerMedia");
@@ -4621,8 +4590,8 @@
         selectedFlags |= flag;
     var flags = preview.replaceBadges ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
     setOwnValue(cloned, "username", username);
-    setOwnValue(cloned, "globalName", displayName);
-    setOwnValue(cloned, "displayName", displayName);
+    setOwnValue(cloned, "globalName", displayName2);
+    setOwnValue(cloned, "displayName", displayName2);
     setOwnValue(cloned, "publicFlags", flags);
     setOwnValue(cloned, "flags", flags);
     setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
@@ -8407,6 +8376,146 @@
   });
 
   // src/lib/api/botcord.ts
+  function snapshot() {
+    return {
+      accounts: state.accounts.slice(),
+      activeAccountId: state.activeAccountId,
+      recentDMs: {
+        ...state.recentDMs
+      },
+      loaded: state.loaded
+    };
+  }
+  function notify() {
+    for (var listener of listeners) {
+      try {
+        listener();
+      } catch (e) {
+      }
+    }
+  }
+  function cleanAccount(value) {
+    if (!value || typeof value !== "object")
+      return null;
+    var id = typeof value.id === "string" ? value.id : "";
+    var username = typeof value.username === "string" ? value.username : "";
+    var token = typeof value.token === "string" ? normalizeBotToken(value.token) : "";
+    if (!id || !username || !token)
+      return null;
+    return {
+      id: id.slice(0, 64),
+      username: username.slice(0, 128),
+      avatar: typeof value.avatar === "string" ? value.avatar.slice(0, 256) : null,
+      token: token.slice(0, 512)
+    };
+  }
+  function sanitizeState(value) {
+    var accounts = Array.isArray(value?.accounts) ? value.accounts.slice(0, MAX_ACCOUNTS).map(cleanAccount).filter(Boolean) : [];
+    var active = typeof value?.activeAccountId === "string" && accounts.some((a) => a.id === value.activeAccountId) ? value.activeAccountId : accounts[0]?.id ?? null;
+    var recentDMs = {};
+    if (value?.recentDMs && typeof value.recentDMs === "object") {
+      for (var account of accounts) {
+        var rows = Array.isArray(value.recentDMs[account.id]) ? value.recentDMs[account.id] : [];
+        recentDMs[account.id] = rows.slice(0, 100).map((row) => {
+          var recipient = row?.recipient || {};
+          if (typeof row?.channelId !== "string" || typeof recipient?.id !== "string")
+            return null;
+          return {
+            channelId: row.channelId.slice(0, 64),
+            recipient: {
+              id: recipient.id.slice(0, 64),
+              username: typeof recipient.username === "string" ? recipient.username.slice(0, 128) : void 0,
+              global_name: typeof recipient.global_name === "string" ? recipient.global_name.slice(0, 128) : null,
+              avatar: typeof recipient.avatar === "string" ? recipient.avatar.slice(0, 256) : null,
+              bot: Boolean(recipient.bot)
+            },
+            lastOpenedAt: typeof row.lastOpenedAt === "number" ? row.lastOpenedAt : 0
+          };
+        }).filter(Boolean);
+      }
+    }
+    return {
+      accounts,
+      activeAccountId: active,
+      recentDMs,
+      loaded: true
+    };
+  }
+  function persist() {
+    return _async_to_generator(function* () {
+      var payload = JSON.stringify({
+        accounts: state.accounts,
+        activeAccountId: state.activeAccountId,
+        recentDMs: state.recentDMs
+      });
+      yield NativeFileModule.writeFile("documents", FILE_PATH, payload, "utf8");
+    })();
+  }
+  function resetCorruptStore() {
+    return _async_to_generator(function* () {
+      state = {
+        ...DEFAULT_STATE,
+        loaded: true
+      };
+      try {
+        yield NativeFileModule.writeFile("documents", FILE_PATH, JSON.stringify({
+          accounts: [],
+          activeAccountId: null,
+          recentDMs: {}
+        }), "utf8");
+      } catch (e) {
+      }
+    })();
+  }
+  function ensureBotCordLoaded() {
+    return _async_to_generator(function* () {
+      if (state.loaded)
+        return;
+      if (loadPromise)
+        return loadPromise;
+      loadPromise = (() => _async_to_generator(function* () {
+        try {
+          var fullPath = `${NativeFileModule.getConstants().DocumentsDirPath}/${FILE_PATH}`;
+          if (!(yield NativeFileModule.fileExists(fullPath))) {
+            yield resetCorruptStore();
+            return;
+          }
+          var size = yield NativeFileModule.getSize(fullPath);
+          if (typeof size === "number" && size > MAX_FILE_BYTES) {
+            yield resetCorruptStore();
+            return;
+          }
+          var raw = yield NativeFileModule.readFile(fullPath, "utf8");
+          if (!raw || raw.length > MAX_FILE_BYTES) {
+            yield resetCorruptStore();
+            return;
+          }
+          state = sanitizeState(JSON.parse(raw));
+        } catch (e) {
+          yield resetCorruptStore();
+        } finally {
+          state.loaded = true;
+          loadPromise = null;
+          notify();
+        }
+      })())();
+      return loadPromise;
+    })();
+  }
+  function useBotCordState() {
+    var [value, setValue] = import_react4.default.useState(() => snapshot());
+    import_react4.default.useEffect(() => {
+      var active = true;
+      var update = () => active && setValue(snapshot());
+      listeners.add(update);
+      ensureBotCordLoaded().then(update).catch(update);
+      return () => {
+        active = false;
+        listeners.delete(update);
+      };
+    }, []);
+    return value;
+  }
   function normalizeBotToken(token) {
     return token.trim().replace(/^Bot\s+/i, "");
   }
@@ -8432,33 +8541,37 @@
   function addBotAccount(token) {
     return _async_to_generator(function* () {
       var account = yield getBotUser(token);
-      yield awaitStorage(botCordState);
-      botCordState.accounts ??= [];
-      var existing = botCordState.accounts.findIndex((a) => a.id === account.id);
+      yield ensureBotCordLoaded();
+      var existing = state.accounts.findIndex((a) => a.id === account.id);
       if (existing === -1)
-        botCordState.accounts.push(account);
+        state.accounts = [
+          ...state.accounts,
+          account
+        ].slice(-MAX_ACCOUNTS);
       else
-        botCordState.accounts[existing] = account;
-      botCordState.activeAccountId = account.id;
+        state.accounts = state.accounts.map((a, i) => i === existing ? account : a);
+      state.activeAccountId = account.id;
+      yield persist();
+      notify();
       return account;
     })();
   }
   function removeBotAccount(id) {
     return _async_to_generator(function* () {
-      yield awaitStorage(botCordState);
-      botCordState.accounts ??= [];
-      var index = botCordState.accounts.findIndex((a) => a.id === id);
-      if (index !== -1)
-        botCordState.accounts.splice(index, 1);
-      if (botCordState.activeAccountId === id) {
-        botCordState.activeAccountId = botCordState.accounts[0]?.id ?? null;
-      }
+      yield ensureBotCordLoaded();
+      state.accounts = state.accounts.filter((a) => a.id !== id);
+      if (state.activeAccountId === id)
+        state.activeAccountId = state.accounts[0]?.id ?? null;
+      yield persist();
+      notify();
     })();
   }
   function setActiveBotAccount(id) {
     return _async_to_generator(function* () {
-      yield awaitStorage(botCordState);
-      botCordState.activeAccountId = id;
+      yield ensureBotCordLoaded();
+      state.activeAccountId = id && state.accounts.some((a) => a.id === id) ? id : state.accounts[0]?.id ?? null;
+      yield persist();
+      notify();
     })();
   }
   function readDiscordError(response) {
@@ -8495,7 +8608,65 @@
     return botFetch(token, `/channels/${channelId}/messages?limit=50`);
   }
   function getBotGuildMembers(token, guildId) {
-    return botFetch(token, `/guilds/${guildId}/members?limit=100`);
+    return _async_to_generator(function* () {
+      var members = [];
+      var after2 = "0";
+      while (true) {
+        var page = yield botFetch(token, `/guilds/${guildId}/members?limit=1000&after=${after2}`);
+        members.push(...page);
+        if (page.length < 1e3)
+          break;
+        var next = page[page.length - 1]?.user?.id;
+        if (!next || next === after2)
+          break;
+        after2 = next;
+      }
+      return members;
+    })();
+  }
+  function createBotDM(token, recipient) {
+    return _async_to_generator(function* () {
+      var response = yield fetch("https://discord.com/api/v10/users/@me/channels", {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${normalizeBotToken(token)}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          recipient_id: recipient.id
+        })
+      });
+      if (!response.ok) {
+        var message = yield readDiscordError(response);
+        throw new Error(message ? `${message} (${response.status})` : `Failed to open DM (${response.status}).`);
+      }
+      var channel = yield response.json();
+      yield ensureBotCordLoaded();
+      var account = state.accounts.find((a) => normalizeBotToken(a.token) === normalizeBotToken(token));
+      if (account) {
+        var current = state.recentDMs[account.id] ?? [];
+        state.recentDMs = {
+          ...state.recentDMs,
+          [account.id]: [
+            {
+              channelId: channel.id,
+              recipient: {
+                id: recipient.id,
+                username: recipient.username,
+                global_name: recipient.global_name,
+                avatar: recipient.avatar,
+                bot: Boolean(recipient.bot)
+              },
+              lastOpenedAt: Date.now()
+            },
+            ...current.filter((dm) => dm.recipient.id !== recipient.id)
+          ].slice(0, 100)
+        };
+        yield persist();
+        notify();
+      }
+      return channel;
+    })();
   }
   function sendBotMessage(token, channelId, content) {
     return _async_to_generator(function* () {
@@ -8516,24 +8687,29 @@
       return response.json();
     })();
   }
-  var botCordState;
+  var import_react4, FILE_PATH, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners;
   var init_botcord = __esm({
     "src/lib/api/botcord.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_async_to_generator();
-      init_storage();
-      botCordState = wrapSync(createStorage(createFileBackend("botcord/accounts.json", {
+      init_modules();
+      import_react4 = __toESM(require_react());
+      FILE_PATH = "botcord/accounts.json";
+      MAX_FILE_BYTES = 256 * 1024;
+      MAX_ACCOUNTS = 50;
+      DEFAULT_STATE = {
         accounts: [],
         activeAccountId: null,
-        switcher: {
-          enabled: true,
-          x: 12,
-          y: 180,
-          size: 58
-        }
-      })));
+        recentDMs: {},
+        loaded: false
+      };
+      state = {
+        ...DEFAULT_STATE
+      };
+      loadPromise = null;
+      listeners = /* @__PURE__ */ new Set();
     }
   });
 
@@ -8542,482 +8718,273 @@
   __export(BotCord_exports, {
     default: () => BotCord
   });
-  function Avatar2({ user, size = 38 }) {
+  function ApiAvatar({ user, size = 40 }) {
     var uri = avatarUrl(user, 128);
-    return uri ? /* @__PURE__ */ jsx(import_react_native18.Image, {
-      source: {
-        uri
-      },
-      style: {
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: PANEL
-      }
-    }) : /* @__PURE__ */ jsx(import_react_native18.View, {
-      style: {
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: BRAND,
-        alignItems: "center",
-        justifyContent: "center"
-      },
-      children: /* @__PURE__ */ jsx(Text, {
-        style: {
-          color: "white",
-          fontWeight: "800",
-          fontSize: Math.max(12, size * 0.34)
+    if (uri)
+      return /* @__PURE__ */ jsx(import_react_native18.Image, {
+        source: {
+          uri
         },
-        children: (user?.username || "B").slice(0, 2).toUpperCase()
-      })
-    });
-  }
-  function GuildIcon({ guild, selected, onPress }) {
-    var uri = guildIconUrl(guild);
-    return /* @__PURE__ */ jsx(import_react_native18.Pressable, {
-      onPress,
-      style: {
-        width: 54,
-        alignItems: "center",
-        justifyContent: "center"
-      },
-      children: /* @__PURE__ */ jsx(import_react_native18.View, {
         style: {
-          width: selected ? 48 : 44,
-          height: selected ? 48 : 44,
-          borderRadius: selected ? 16 : 22,
-          overflow: "hidden",
-          backgroundColor: selected ? BRAND : "#313338",
-          alignItems: "center",
-          justifyContent: "center",
-          borderWidth: selected ? 2 : 0,
-          borderColor: "white"
-        },
-        children: uri ? /* @__PURE__ */ jsx(import_react_native18.Image, {
-          source: {
-            uri
-          },
-          style: {
-            width: "100%",
-            height: "100%"
-          }
-        }) : /* @__PURE__ */ jsx(Text, {
-          style: {
-            color: "white",
-            fontWeight: "800",
-            fontSize: 15
-          },
-          children: guild.name?.slice(0, 2).toUpperCase()
-        })
-      })
+          width: size,
+          height: size,
+          borderRadius: size / 2
+        }
+      });
+    return /* @__PURE__ */ jsx(Avatar, {
+      size: "small",
+      user
     });
   }
   function MessageRow({ message }) {
+    var styles = useStyles3();
     var author = message.author || {};
     var time = message.timestamp ? new Date(message.timestamp).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit"
     }) : "";
-    var attachmentText = message.attachments?.length ? `
-\u{1F4CE} ${message.attachments.map((a) => a.filename).join(", ")}` : "";
-    var embedText = message.embeds?.length ? `
-\u25A3 ${message.embeds.length} embed${message.embeds.length > 1 ? "s" : ""}` : "";
+    var reactionCount = message.reactions?.reduce((sum, reaction) => sum + (reaction.count || 0), 0) || 0;
     return /* @__PURE__ */ jsxs(import_react_native18.View, {
-      style: {
-        flexDirection: "row",
-        gap: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 8
-      },
+      style: styles.row,
       children: [
-        /* @__PURE__ */ jsx(Avatar2, {
+        /* @__PURE__ */ jsx(ApiAvatar, {
           user: author,
-          size: 38
+          size: 40
         }),
         /* @__PURE__ */ jsxs(import_react_native18.View, {
-          style: {
-            flex: 1
-          },
+          style: styles.messageBody,
           children: [
             /* @__PURE__ */ jsxs(import_react_native18.View, {
-              style: {
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 7,
-                flexWrap: "wrap"
-              },
+              style: styles.nameLine,
               children: [
                 /* @__PURE__ */ jsx(Text, {
-                  style: {
-                    color: "white",
-                    fontWeight: "700",
-                    fontSize: 15
-                  },
-                  children: author.global_name || author.username || "Unknown"
+                  variant: "text-md/semibold",
+                  children: displayName(author)
                 }),
-                author.bot && /* @__PURE__ */ jsx(import_react_native18.View, {
-                  style: {
-                    backgroundColor: BRAND,
-                    paddingHorizontal: 5,
-                    paddingVertical: 1,
-                    borderRadius: 4
-                  },
-                  children: /* @__PURE__ */ jsx(Text, {
-                    style: {
-                      color: "white",
-                      fontSize: 9,
-                      fontWeight: "800"
-                    },
-                    children: "BOT"
-                  })
-                }),
+                author.bot ? /* @__PURE__ */ jsx(Text, {
+                  variant: "text-xs/semibold",
+                  color: "text-brand",
+                  children: "APP"
+                }) : null,
                 /* @__PURE__ */ jsx(Text, {
-                  style: {
-                    color: "#949ba4",
-                    fontSize: 10
-                  },
+                  variant: "text-xs/normal",
+                  color: "text-muted",
                   children: time
                 })
               ]
             }),
-            !!(message.content || attachmentText || embedText) && /* @__PURE__ */ jsxs(Text, {
+            !!message.content && /* @__PURE__ */ jsx(Text, {
               selectable: true,
-              style: {
-                color: "#dbdee1",
-                fontSize: 15,
-                lineHeight: 20,
-                marginTop: 2
-              },
+              variant: "text-md/normal",
+              children: message.content
+            }),
+            !!message.attachments?.length && /* @__PURE__ */ jsxs(Text, {
+              variant: "text-sm/normal",
+              color: "text-muted",
               children: [
-                message.content || "",
-                attachmentText,
-                embedText
+                "Attachments: ",
+                message.attachments.map((a) => a.filename).join(", ")
               ]
             }),
-            !!message.reactions?.length && /* @__PURE__ */ jsx(import_react_native18.View, {
-              style: {
-                flexDirection: "row",
-                gap: 5,
-                flexWrap: "wrap",
-                marginTop: 6
-              },
-              children: message.reactions.slice(0, 8).map((r, i) => /* @__PURE__ */ jsx(import_react_native18.View, {
-                style: {
-                  paddingHorizontal: 7,
-                  paddingVertical: 3,
-                  borderRadius: 7,
-                  backgroundColor: "#2b2d31",
-                  borderWidth: 1,
-                  borderColor: "#3f4147"
-                },
-                children: /* @__PURE__ */ jsxs(Text, {
-                  style: {
-                    color: "#dbdee1",
-                    fontSize: 12
-                  },
-                  children: [
-                    r.emoji?.name || "?",
-                    " ",
-                    r.count
-                  ]
-                })
-              }, i))
+            !!message.embeds?.length && /* @__PURE__ */ jsxs(Text, {
+              variant: "text-sm/normal",
+              color: "text-muted",
+              children: [
+                message.embeds.length,
+                " embed",
+                message.embeds.length === 1 ? "" : "s"
+              ]
+            }),
+            reactionCount > 0 && /* @__PURE__ */ jsxs(Text, {
+              variant: "text-sm/normal",
+              color: "text-muted",
+              children: [
+                "Reactions: ",
+                reactionCount
+              ]
             })
           ]
         })
       ]
     });
   }
-  function AccountMenu({ visible, onClose, accounts, active, onSwitch, onLogout, onMain }) {
-    return /* @__PURE__ */ jsx(import_react_native18.Modal, {
-      transparent: true,
-      animationType: "fade",
-      visible,
-      onRequestClose: onClose,
-      children: /* @__PURE__ */ jsx(import_react_native18.Pressable, {
-        onPress: onClose,
+  function AccountSheet({ accounts, active, onMain }) {
+    return /* @__PURE__ */ jsx(ActionSheet, {
+      children: /* @__PURE__ */ jsxs(import_react_native18.View, {
         style: {
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,.48)",
-          justifyContent: "flex-end"
+          paddingHorizontal: 12,
+          paddingBottom: 20
         },
-        children: /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
-          onPress: () => {
-          },
-          style: {
-            backgroundColor: PANEL,
-            borderTopLeftRadius: 22,
-            borderTopRightRadius: 22,
-            padding: 16,
-            paddingBottom: 28,
-            gap: 10
-          },
-          children: [
-            /* @__PURE__ */ jsx(import_react_native18.View, {
-              style: {
-                width: 36,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: "#5c5f66",
-                alignSelf: "center",
-                marginBottom: 4
-              }
-            }),
-            /* @__PURE__ */ jsx(Text, {
-              style: {
-                color: "white",
-                fontWeight: "800",
-                fontSize: 18
-              },
-              children: "Bot account"
-            }),
-            accounts.map((account) => /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
-              onPress: () => {
-                onSwitch(account.id);
-                onClose();
-              },
-              style: {
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                padding: 10,
-                borderRadius: 12,
-                backgroundColor: account.id === active?.id ? "rgba(88,101,242,.22)" : "#2b2d31"
-              },
-              children: [
-                /* @__PURE__ */ jsx(Avatar2, {
+        children: [
+          /* @__PURE__ */ jsx(Text, {
+            variant: "heading-lg/extrabold",
+            children: "Switch account"
+          }),
+          /* @__PURE__ */ jsxs(Stack, {
+            spacing: 4,
+            style: {
+              marginTop: 10
+            },
+            children: [
+              accounts.map((account) => /* @__PURE__ */ jsx(ActionSheetRow, {
+                label: account.username,
+                icon: /* @__PURE__ */ jsx(ApiAvatar, {
                   user: account,
-                  size: 36
+                  size: 32
                 }),
-                /* @__PURE__ */ jsxs(import_react_native18.View, {
-                  style: {
-                    flex: 1
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      style: {
-                        color: "white",
-                        fontWeight: "700"
-                      },
-                      children: account.username
-                    }),
-                    /* @__PURE__ */ jsx(Text, {
-                      style: {
-                        color: MUTED,
-                        fontSize: 11
-                      },
-                      children: account.id === active?.id ? "Currently active" : "Switch to this bot"
-                    })
-                  ]
-                }),
-                account.id === active?.id && /* @__PURE__ */ jsx(Text, {
-                  style: {
-                    color: "#57f287",
-                    fontSize: 18
-                  },
-                  children: "\u25CF"
-                })
-              ]
-            }, account.id)),
-            /* @__PURE__ */ jsx(import_react_native18.Pressable, {
-              onPress: onMain,
-              style: {
-                padding: 13,
-                borderRadius: 12,
-                backgroundColor: BRAND,
-                alignItems: "center"
-              },
-              children: /* @__PURE__ */ jsx(Text, {
-                style: {
-                  color: "white",
-                  fontWeight: "800"
-                },
-                children: "Back to Discord \xB7 Main Account"
+                onPress: () => _async_to_generator(function* () {
+                  yield setActiveBotAccount(account.id);
+                  hideSheet("BOTCORD_ACCOUNT");
+                })()
+              }, account.id)),
+              /* @__PURE__ */ jsx(ActionSheetRow, {
+                label: "Back to Discord",
+                onPress: () => {
+                  hideSheet("BOTCORD_ACCOUNT");
+                  onMain();
+                }
+              }),
+              /* @__PURE__ */ jsx(ActionSheetRow, {
+                label: "Log out bot",
+                variant: "destructive",
+                onPress: () => _async_to_generator(function* () {
+                  yield removeBotAccount(active.id);
+                  hideSheet("BOTCORD_ACCOUNT");
+                  onMain();
+                })()
               })
-            }),
-            /* @__PURE__ */ jsx(import_react_native18.Pressable, {
-              onPress: onLogout,
-              style: {
-                padding: 13,
-                borderRadius: 12,
-                backgroundColor: "rgba(242,63,66,.16)",
-                alignItems: "center"
-              },
-              children: /* @__PURE__ */ jsx(Text, {
-                style: {
-                  color: "#ff7b7d",
-                  fontWeight: "800"
-                },
-                children: "Log out this bot"
-              })
-            })
-          ]
-        })
-      })
-    });
-  }
-  function MembersSheet({ visible, onClose, members }) {
-    return /* @__PURE__ */ jsx(import_react_native18.Modal, {
-      transparent: true,
-      animationType: "slide",
-      visible,
-      onRequestClose: onClose,
-      children: /* @__PURE__ */ jsx(import_react_native18.Pressable, {
-        onPress: onClose,
-        style: {
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,.4)",
-          justifyContent: "flex-end"
-        },
-        children: /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
-          onPress: () => {
-          },
-          style: {
-            maxHeight: "72%",
-            backgroundColor: PANEL,
-            borderTopLeftRadius: 22,
-            borderTopRightRadius: 22,
-            paddingTop: 12,
-            paddingBottom: 24
-          },
-          children: [
-            /* @__PURE__ */ jsx(import_react_native18.View, {
-              style: {
-                width: 36,
-                height: 4,
-                borderRadius: 2,
-                backgroundColor: "#5c5f66",
-                alignSelf: "center",
-                marginBottom: 12
-              }
-            }),
-            /* @__PURE__ */ jsxs(Text, {
-              style: {
-                color: "white",
-                fontWeight: "800",
-                fontSize: 18,
-                paddingHorizontal: 16,
-                marginBottom: 8
-              },
-              children: [
-                "Members \xB7 ",
-                members.length
-              ]
-            }),
-            /* @__PURE__ */ jsx(import_react_native18.FlatList, {
-              data: members,
-              keyExtractor: (m2, i) => m2.user?.id || String(i),
-              renderItem: ({ item }) => /* @__PURE__ */ jsxs(import_react_native18.View, {
-                style: {
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10,
-                  paddingHorizontal: 16,
-                  paddingVertical: 8
-                },
-                children: [
-                  /* @__PURE__ */ jsx(Avatar2, {
-                    user: item.user,
-                    size: 34
-                  }),
-                  /* @__PURE__ */ jsxs(import_react_native18.View, {
-                    style: {
-                      flex: 1
-                    },
-                    children: [
-                      /* @__PURE__ */ jsx(Text, {
-                        style: {
-                          color: "#dbdee1",
-                          fontWeight: "600"
-                        },
-                        children: item.nick || item.user?.global_name || item.user?.username || "Unknown"
-                      }),
-                      item.user?.bot && /* @__PURE__ */ jsx(Text, {
-                        style: {
-                          color: MUTED,
-                          fontSize: 10
-                        },
-                        children: "BOT"
-                      })
-                    ]
-                  })
-                ]
-              })
-            })
-          ]
-        })
+            ]
+          })
+        ]
       })
     });
   }
   function BotClient({ accounts, activeId, onExit }) {
+    var styles = useStyles3();
     var navigation2 = NavigationNative.useNavigation();
+    var state2 = useBotCordState();
     var active = accounts.find((a) => a.id === activeId) ?? accounts[0] ?? null;
-    var [guilds, setGuilds] = (0, import_react4.useState)([]);
-    var [channels2, setChannels] = (0, import_react4.useState)([]);
-    var [members, setMembers] = (0, import_react4.useState)([]);
-    var [messages, setMessages] = (0, import_react4.useState)([]);
-    var [guild, setGuild] = (0, import_react4.useState)(null);
-    var [channel, setChannel] = (0, import_react4.useState)(null);
-    var [composer, setComposer] = (0, import_react4.useState)("");
-    var [loading, setLoading] = (0, import_react4.useState)(false);
-    var [error, setError] = (0, import_react4.useState)(null);
-    var [accountMenu, setAccountMenu] = (0, import_react4.useState)(false);
-    var [membersOpen, setMembersOpen] = (0, import_react4.useState)(false);
-    var listRef = (0, import_react4.useRef)(null);
-    (0, import_react4.useEffect)(() => {
+    var [guilds, setGuilds] = (0, import_react5.useState)([]);
+    var [channels2, setChannels] = (0, import_react5.useState)([]);
+    var [guild, setGuild] = (0, import_react5.useState)(null);
+    var [channel, setChannel] = (0, import_react5.useState)(null);
+    var [messages, setMessages] = (0, import_react5.useState)([]);
+    var [composer, setComposer] = (0, import_react5.useState)("");
+    var [loading, setLoading] = (0, import_react5.useState)(false);
+    var [error, setError] = (0, import_react5.useState)(null);
+    var [screen, setScreen] = (0, import_react5.useState)("messages");
+    var [members, setMembers] = (0, import_react5.useState)([]);
+    var [memberSearch, setMemberSearch] = (0, import_react5.useState)("");
+    var [memberStatus, setMemberStatus] = (0, import_react5.useState)("");
+    var listRef = (0, import_react5.useRef)(null);
+    (0, import_react5.useEffect)(() => {
       if (!active)
         return;
       setLoading(true);
       setError(null);
       setGuild(null);
       setChannel(null);
-      setMessages([]);
       setChannels([]);
-      setMembers([]);
-      getBotGuilds(active.token).then((g2) => {
-        setGuilds(g2);
-        if (g2[0])
-          openGuild(g2[0], active.token);
-      }).catch((e) => setError(String(e))).finally(() => setLoading(false));
+      setMessages([]);
+      setScreen("messages");
+      getBotGuilds(active.token).then(setGuilds).catch((e) => setError(String(e))).finally(() => setLoading(false));
     }, [
       active?.id
     ]);
-    var openGuild = (g2, tokenOverride) => _async_to_generator(function* () {
-      if (!active && !tokenOverride)
+    var openGuild = (nextGuild) => _async_to_generator(function* () {
+      if (!active)
         return;
-      var token = tokenOverride || active.token;
-      setLoading(true);
-      setError(null);
-      setGuild(g2);
+      setGuild(nextGuild);
       setChannel(null);
       setMessages([]);
-      setMembers([]);
+      setScreen("guild");
+      setLoading(true);
+      setError(null);
       try {
-        var [channelResult, memberResult] = yield Promise.all([
-          getBotGuildChannels(token, g2.id),
-          getBotGuildMembers(token, g2.id).catch(() => [])
-        ]);
-        setChannels(channelResult.sort((a, b3) => (a.position ?? 0) - (b3.position ?? 0)));
-        setMembers(memberResult);
+        var nextChannels = yield getBotGuildChannels(active.token, nextGuild.id);
+        setChannels(nextChannels.sort((a, b3) => (a.position ?? 0) - (b3.position ?? 0)));
       } catch (e) {
         setError(String(e));
       } finally {
         setLoading(false);
       }
     })();
-    var openChannel = (c2) => _async_to_generator(function* () {
+    var openMessages = () => {
+      setGuild(null);
+      setChannel(null);
+      setMessages([]);
+      setScreen("messages");
+      setError(null);
+    };
+    var openChannel = (nextChannel) => _async_to_generator(function* () {
       if (!active)
         return;
       setLoading(true);
       setError(null);
       try {
-        var result = yield getBotChannelMessages(active.token, c2.id);
-        setChannel(c2);
+        var result = yield getBotChannelMessages(active.token, nextChannel.id);
+        setChannel(nextChannel);
         setMessages(result.reverse());
-        setTimeout(() => listRef.current?.scrollToEnd({
-          animated: false
-        }), 40);
+      } catch (e) {
+        setError(String(e));
+      } finally {
+        setLoading(false);
+      }
+    })();
+    var openRecentDM = (dm) => _async_to_generator(function* () {
+      yield openChannel({
+        id: dm.channelId,
+        name: displayName(dm.recipient),
+        recipients: [
+          dm.recipient
+        ],
+        type: 1,
+        botcordDM: true
+      });
+    })();
+    var loadAllMembers = () => _async_to_generator(function* () {
+      if (!active)
+        return;
+      setScreen("members");
+      setMemberSearch("");
+      setMembers([]);
+      setMemberStatus("Loading members");
+      setError(null);
+      var dedup = /* @__PURE__ */ new Map();
+      var completed = 0;
+      for (var i = 0; i < guilds.length; i += 3) {
+        var batch = guilds.slice(i, i + 3);
+        var results = yield Promise.all(batch.map((g2) => getBotGuildMembers(active.token, g2.id).catch(() => [])));
+        for (var rows of results) {
+          for (var member of rows) {
+            var user = member?.user;
+            if (user?.id && user.id !== active.id && !dedup.has(user.id))
+              dedup.set(user.id, member);
+          }
+        }
+        completed += batch.length;
+        setMembers(Array.from(dedup.values()));
+        setMemberStatus(`Loaded ${dedup.size} members from ${completed} of ${guilds.length} servers`);
+      }
+      setMemberStatus(`${dedup.size} available members`);
+    })();
+    var openMemberDM = (member) => _async_to_generator(function* () {
+      if (!active || !member?.user?.id)
+        return;
+      setLoading(true);
+      setError(null);
+      try {
+        var dm = yield createBotDM(active.token, member.user);
+        setChannel({
+          ...dm,
+          name: displayName(member.user),
+          recipients: [
+            member.user
+          ],
+          botcordDM: true
+        });
+        var result = yield getBotChannelMessages(active.token, dm.id);
+        setMessages(result.reverse());
       } catch (e) {
         setError(String(e));
       } finally {
@@ -9025,11 +8992,9 @@
       }
     })();
     var send = () => _async_to_generator(function* () {
-      if (!active || !channel)
+      if (!active || !channel || !composer.trim())
         return;
       var content = composer.trim();
-      if (!content)
-        return;
       setComposer("");
       try {
         var sent = yield sendBotMessage(active.token, channel.id, content);
@@ -9037,9 +9002,6 @@
           ...old,
           sent
         ]);
-        setTimeout(() => listRef.current?.scrollToEnd({
-          animated: true
-        }), 40);
       } catch (e) {
         setComposer(content);
         setError(String(e));
@@ -9048,434 +9010,422 @@
     if (!active)
       return null;
     var categories = channels2.filter((c2) => c2.type === 4);
-    var uncategorized = channels2.filter((c2) => [
+    var textChannels = (parentId) => channels2.filter((c2) => [
       0,
       5,
       10,
       11,
       12
-    ].includes(c2.type) && !c2.parent_id);
-    var channelsFor = (catId) => channels2.filter((c2) => [
-      0,
-      5,
-      10,
-      11,
-      12
-    ].includes(c2.type) && c2.parent_id === catId);
-    return /* @__PURE__ */ jsxs(import_react_native18.View, {
-      style: {
-        flex: 1,
-        backgroundColor: BG
-      },
-      children: [
-        /* @__PURE__ */ jsx(AccountMenu, {
-          visible: accountMenu,
-          onClose: () => setAccountMenu(false),
-          accounts,
-          active,
-          onSwitch: (id) => _async_to_generator(function* () {
-            return setActiveBotAccount(id);
-          })(),
-          onMain: () => {
-            setAccountMenu(false);
-            onExit();
-            navigation2.goBack?.();
-          },
-          onLogout: () => _async_to_generator(function* () {
-            yield removeBotAccount(active.id);
-            setAccountMenu(false);
-            onExit();
-          })()
-        }),
-        /* @__PURE__ */ jsx(MembersSheet, {
-          visible: membersOpen,
-          onClose: () => setMembersOpen(false),
-          members
-        }),
-        /* @__PURE__ */ jsxs(import_react_native18.View, {
-          style: {
-            height: 58,
-            paddingHorizontal: 12,
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
-            backgroundColor: PANEL,
-            borderBottomWidth: 1,
-            borderBottomColor: "#1e1f22"
-          },
-          children: [
-            channel && /* @__PURE__ */ jsx(import_react_native18.Pressable, {
-              onPress: () => setChannel(null),
-              style: {
-                padding: 6
-              },
-              children: /* @__PURE__ */ jsx(Text, {
+    ].includes(c2.type) && (c2.parent_id || null) === parentId);
+    var recentDMs = state2.recentDMs?.[active.id] ?? [];
+    var filteredMembers = members.filter((member) => {
+      var q3 = memberSearch.trim().toLowerCase();
+      if (!q3)
+        return true;
+      return `${member.nick || ""} ${member.user?.global_name || ""} ${member.user?.username || ""}`.toLowerCase().includes(q3);
+    });
+    var openAccounts = () => showSheet("BOTCORD_ACCOUNT", AccountSheet, {
+      accounts,
+      active,
+      onMain: () => {
+        onExit();
+        navigation2.goBack?.();
+      }
+    });
+    if (channel) {
+      var dmUser = channel.recipients?.[0];
+      return /* @__PURE__ */ jsxs(import_react_native18.View, {
+        style: styles.root,
+        children: [
+          /* @__PURE__ */ jsxs(import_react_native18.View, {
+            style: styles.header,
+            children: [
+              /* @__PURE__ */ jsx(IconButton, {
+                size: "sm",
+                variant: "secondary",
+                icon: findAssetId("ArrowLeftIcon") || findAssetId("ChevronLeftIcon"),
+                onPress: () => {
+                  setChannel(null);
+                  setMessages([]);
+                }
+              }),
+              dmUser ? /* @__PURE__ */ jsx(ApiAvatar, {
+                user: dmUser,
+                size: 32
+              }) : null,
+              /* @__PURE__ */ jsxs(import_react_native18.View, {
                 style: {
-                  color: "white",
-                  fontSize: 22
+                  flex: 1
                 },
-                children: "\u2039"
+                children: [
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "heading-md/semibold",
+                    numberOfLines: 1,
+                    children: channel.botcordDM ? displayName(dmUser) : channel.name
+                  }),
+                  !channel.botcordDM && guild ? /* @__PURE__ */ jsx(Text, {
+                    variant: "text-xs/normal",
+                    color: "text-muted",
+                    numberOfLines: 1,
+                    children: guild.name
+                  }) : null
+                ]
+              }),
+              /* @__PURE__ */ jsx(PressableScale, {
+                onPress: openAccounts,
+                children: /* @__PURE__ */ jsx(ApiAvatar, {
+                  user: active,
+                  size: 32
+                })
               })
+            ]
+          }),
+          error ? /* @__PURE__ */ jsx(import_react_native18.View, {
+            style: {
+              paddingHorizontal: 12,
+              paddingVertical: 8
+            },
+            children: /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/medium",
+              color: "text-feedback-critical",
+              children: error
+            })
+          }) : null,
+          loading ? /* @__PURE__ */ jsx(Text, {
+            variant: "text-sm/normal",
+            color: "text-muted",
+            style: {
+              padding: 10,
+              textAlign: "center"
+            },
+            children: "Loading"
+          }) : null,
+          /* @__PURE__ */ jsx(import_react_native18.FlatList, {
+            ref: listRef,
+            style: {
+              flex: 1
+            },
+            data: messages,
+            keyExtractor: (m2, i) => m2.id || String(i),
+            renderItem: ({ item }) => /* @__PURE__ */ jsx(MessageRow, {
+              message: item
             }),
+            contentContainerStyle: {
+              paddingVertical: 6
+            },
+            onContentSizeChange: () => listRef.current?.scrollToEnd?.({
+              animated: false
+            })
+          }),
+          /* @__PURE__ */ jsx(import_react_native18.View, {
+            style: styles.composer,
+            children: /* @__PURE__ */ jsx(TextInput, {
+              size: "lg",
+              value: composer,
+              placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
+              onChange: setComposer,
+              trailingIcon: () => /* @__PURE__ */ jsx(IconButton, {
+                size: "sm",
+                variant: "primary",
+                disabled: !composer.trim(),
+                icon: findAssetId("SendMessageIcon") || findAssetId("ArrowSmallUpIcon"),
+                onPress: send
+              })
+            })
+          })
+        ]
+      });
+    }
+    return /* @__PURE__ */ jsxs(import_react_native18.View, {
+      style: styles.root,
+      children: [
+        /* @__PURE__ */ jsxs(import_react_native18.View, {
+          style: styles.header,
+          children: [
             /* @__PURE__ */ jsxs(import_react_native18.View, {
               style: {
                 flex: 1
               },
               children: [
                 /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-md/semibold",
                   numberOfLines: 1,
-                  style: {
-                    color: "white",
-                    fontWeight: "800",
-                    fontSize: 16
-                  },
-                  children: channel ? `# ${channel.name}` : guild?.name || "BotCord"
+                  children: screen === "members" ? "New Message" : screen === "messages" ? "Messages" : guild?.name || "BotCord"
                 }),
-                /* @__PURE__ */ jsxs(Text, {
-                  numberOfLines: 1,
-                  style: {
-                    color: MUTED,
-                    fontSize: 10
-                  },
-                  children: [
-                    active.username,
-                    " \xB7 bot session"
-                  ]
-                })
-              ]
-            }),
-            !!guild && /* @__PURE__ */ jsx(import_react_native18.Pressable, {
-              onPress: () => setMembersOpen(true),
-              style: {
-                padding: 8
-              },
-              children: /* @__PURE__ */ jsx(Text, {
-                style: {
-                  color: MUTED,
-                  fontSize: 18
-                },
-                children: "\u265F"
-              })
-            }),
-            /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
-              onPress: () => setAccountMenu(true),
-              style: {
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 6,
-                padding: 4,
-                paddingLeft: 8,
-                borderRadius: 18,
-                backgroundColor: "#2b2d31"
-              },
-              children: [
                 /* @__PURE__ */ jsx(Text, {
-                  style: {
-                    color: MUTED,
-                    fontSize: 10,
-                    fontWeight: "700"
-                  },
-                  children: "BOT"
-                }),
-                /* @__PURE__ */ jsx(Avatar2, {
-                  user: active,
-                  size: 30
+                  variant: "text-xs/normal",
+                  color: "text-muted",
+                  numberOfLines: 1,
+                  children: active.username
                 })
               ]
+            }),
+            screen !== "members" ? /* @__PURE__ */ jsx(IconButton, {
+              size: "sm",
+              variant: "secondary",
+              icon: findAssetId("MessagePlusIcon") || findAssetId("NewMessageIcon") || findAssetId("ChatIcon"),
+              onPress: loadAllMembers
+            }) : null,
+            /* @__PURE__ */ jsx(PressableScale, {
+              onPress: openAccounts,
+              children: /* @__PURE__ */ jsx(ApiAvatar, {
+                user: active,
+                size: 32
+              })
             })
           ]
         }),
-        /* @__PURE__ */ jsx(import_react_native18.View, {
+        error ? /* @__PURE__ */ jsx(import_react_native18.View, {
           style: {
-            height: 64,
-            backgroundColor: RAIL,
-            borderBottomWidth: 1,
-            borderBottomColor: "#111214"
-          },
-          children: /* @__PURE__ */ jsx(import_react_native18.FlatList, {
-            horizontal: true,
-            data: guilds,
-            showsHorizontalScrollIndicator: false,
-            contentContainerStyle: {
-              paddingHorizontal: 8,
-              alignItems: "center",
-              gap: 2
-            },
-            keyExtractor: (g2) => g2.id,
-            renderItem: ({ item }) => /* @__PURE__ */ jsx(GuildIcon, {
-              guild: item,
-              selected: guild?.id === item.id,
-              onPress: () => openGuild(item)
-            })
-          })
-        }),
-        error && /* @__PURE__ */ jsx(import_react_native18.View, {
-          style: {
-            padding: 9,
-            backgroundColor: "rgba(242,63,66,.15)"
+            paddingHorizontal: 12,
+            paddingVertical: 8
           },
           children: /* @__PURE__ */ jsx(Text, {
-            style: {
-              color: "#ff8e90",
-              fontSize: 12
-            },
+            variant: "text-sm/medium",
+            color: "text-feedback-critical",
             children: error
           })
-        }),
-        loading && /* @__PURE__ */ jsx(import_react_native18.View, {
+        }) : null,
+        loading ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-sm/normal",
+          color: "text-muted",
           style: {
-            paddingVertical: 6,
-            backgroundColor: PANEL
+            padding: 8,
+            textAlign: "center"
           },
-          children: /* @__PURE__ */ jsx(Text, {
-            style: {
-              color: MUTED,
-              textAlign: "center",
-              fontSize: 11
-            },
-            children: "Loading\u2026"
-          })
-        }),
-        !channel ? /* @__PURE__ */ jsxs(import_react_native18.ScrollView, {
-          style: {
-            flex: 1,
-            backgroundColor: SIDEBAR
-          },
-          contentContainerStyle: {
-            paddingBottom: 30
-          },
+          children: "Loading"
+        }) : null,
+        /* @__PURE__ */ jsxs(import_react_native18.View, {
+          style: styles.navigator,
           children: [
-            !guild && /* @__PURE__ */ jsxs(import_react_native18.View, {
-              style: {
-                padding: 24,
-                alignItems: "center",
-                gap: 8
-              },
+            /* @__PURE__ */ jsxs(import_react_native18.View, {
+              style: styles.guildRail,
               children: [
-                /* @__PURE__ */ jsx(Text, {
-                  style: {
-                    color: "white",
-                    fontSize: 20,
-                    fontWeight: "800"
-                  },
-                  children: "Choose a server"
-                }),
-                /* @__PURE__ */ jsx(Text, {
-                  style: {
-                    color: MUTED,
-                    textAlign: "center"
-                  },
-                  children: "Your bot's servers appear in the rail above."
-                })
-              ]
-            }),
-            !!guild && /* @__PURE__ */ jsxs(Fragment, {
-              children: [
-                /* @__PURE__ */ jsxs(import_react_native18.View, {
-                  style: {
-                    padding: 16,
-                    borderBottomWidth: 1,
-                    borderBottomColor: "#1e1f22"
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      style: {
-                        color: "white",
-                        fontWeight: "800",
-                        fontSize: 18
-                      },
-                      children: guild.name
-                    }),
-                    /* @__PURE__ */ jsx(Text, {
-                      style: {
-                        color: MUTED,
-                        fontSize: 11
-                      },
-                      children: "Select a channel"
-                    })
-                  ]
-                }),
-                uncategorized.map((c2) => /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
-                  onPress: () => openChannel(c2),
-                  style: {
-                    paddingHorizontal: 15,
-                    paddingVertical: 11,
-                    flexDirection: "row",
-                    gap: 9,
-                    alignItems: "center"
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      style: {
-                        color: "#949ba4",
-                        fontSize: 19
-                      },
-                      children: "#"
-                    }),
-                    /* @__PURE__ */ jsx(Text, {
-                      style: {
-                        color: "#dbdee1",
-                        fontWeight: "600"
-                      },
-                      children: c2.name
-                    })
-                  ]
-                }, c2.id)),
-                categories.map((cat) => /* @__PURE__ */ jsxs(import_react_native18.View, {
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      style: {
-                        color: "#949ba4",
-                        fontSize: 11,
-                        fontWeight: "800",
-                        paddingHorizontal: 15,
-                        paddingTop: 16,
-                        paddingBottom: 5
-                      },
-                      children: String(cat.name || "CATEGORY").toUpperCase()
-                    }),
-                    channelsFor(cat.id).map((c2) => /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
-                      onPress: () => openChannel(c2),
-                      style: {
-                        paddingHorizontal: 15,
-                        paddingVertical: 10,
-                        flexDirection: "row",
-                        gap: 9,
-                        alignItems: "center"
-                      },
-                      children: [
-                        /* @__PURE__ */ jsx(Text, {
-                          style: {
-                            color: "#949ba4",
-                            fontSize: 19
-                          },
-                          children: "#"
-                        }),
-                        /* @__PURE__ */ jsx(Text, {
-                          style: {
-                            color: "#dbdee1",
-                            fontWeight: "600"
-                          },
-                          children: c2.name
-                        })
-                      ]
-                    }, c2.id))
-                  ]
-                }, cat.id)),
-                channels2.filter((c2) => [
-                  0,
-                  5,
-                  10,
-                  11,
-                  12
-                ].includes(c2.type)).length === 0 && /* @__PURE__ */ jsx(Text, {
-                  style: {
-                    color: MUTED,
-                    padding: 18
-                  },
-                  children: "No readable message channels."
-                })
-              ]
-            })
-          ]
-        }) : /* @__PURE__ */ jsxs(import_react_native18.View, {
-          style: {
-            flex: 1,
-            backgroundColor: BG
-          },
-          children: [
-            /* @__PURE__ */ jsx(import_react_native18.FlatList, {
-              ref: listRef,
-              data: messages,
-              keyExtractor: (m2, i) => m2.id || String(i),
-              renderItem: ({ item }) => /* @__PURE__ */ jsx(MessageRow, {
-                message: item
-              }),
-              contentContainerStyle: {
-                paddingVertical: 8,
-                flexGrow: 1,
-                justifyContent: messages.length ? "flex-start" : "center"
-              },
-              ListEmptyComponent: /* @__PURE__ */ jsxs(import_react_native18.View, {
-                style: {
-                  padding: 24,
-                  alignItems: "center"
-                },
-                children: [
-                  /* @__PURE__ */ jsxs(Text, {
-                    style: {
-                      color: "white",
-                      fontWeight: "800",
-                      fontSize: 20
-                    },
-                    children: [
-                      "# ",
-                      channel.name
-                    ]
-                  }),
-                  /* @__PURE__ */ jsx(Text, {
-                    style: {
-                      color: MUTED,
-                      marginTop: 5
-                    },
-                    children: "No messages yet, or this bot cannot read history."
+                /* @__PURE__ */ jsx(PressableScale, {
+                  onPress: openMessages,
+                  style: styles.guildButton,
+                  children: /* @__PURE__ */ jsx(IconButton, {
+                    size: "lg",
+                    variant: screen === "messages" ? "primary" : "secondary",
+                    icon: findAssetId("HomeIcon") || findAssetId("MessagesIcon") || findAssetId("ChatIcon"),
+                    onPress: openMessages
                   })
-                ]
-              }),
-              onContentSizeChange: () => listRef.current?.scrollToEnd({
-                animated: false
-              })
+                }),
+                /* @__PURE__ */ jsx(import_react_native18.FlatList, {
+                  data: guilds,
+                  keyExtractor: (g2) => g2.id,
+                  showsVerticalScrollIndicator: false,
+                  renderItem: ({ item }) => {
+                    var uri = guildIconUrl(item);
+                    return /* @__PURE__ */ jsx(PressableScale, {
+                      onPress: () => openGuild(item),
+                      style: styles.guildButton,
+                      children: uri ? /* @__PURE__ */ jsx(import_react_native18.Image, {
+                        source: {
+                          uri
+                        },
+                        style: styles.guildImage
+                      }) : /* @__PURE__ */ jsx(import_react_native18.View, {
+                        style: styles.guildImage,
+                        children: /* @__PURE__ */ jsx(Text, {
+                          variant: "text-sm/semibold",
+                          children: item.name?.slice(0, 2).toUpperCase()
+                        })
+                      })
+                    });
+                  }
+                })
+              ]
             }),
             /* @__PURE__ */ jsx(import_react_native18.View, {
-              style: {
-                paddingHorizontal: 10,
-                paddingTop: 7,
-                paddingBottom: 12,
-                backgroundColor: BG
-              },
-              children: /* @__PURE__ */ jsxs(import_react_native18.View, {
-                style: {
-                  minHeight: 46,
-                  borderRadius: 23,
-                  backgroundColor: INPUT,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  paddingLeft: 14,
-                  paddingRight: 6
-                },
+              style: styles.sidebar,
+              children: screen === "messages" ? /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsx(import_react_native18.TextInput, {
-                    value: composer,
-                    onChangeText: setComposer,
-                    placeholder: `Message #${channel.name}`,
-                    placeholderTextColor: "#949ba4",
-                    style: {
-                      flex: 1,
-                      color: "white",
-                      fontSize: 15,
-                      paddingVertical: 10
-                    },
-                    multiline: true,
-                    maxLength: 2e3
+                  /* @__PURE__ */ jsxs(import_react_native18.View, {
+                    style: styles.sidebarHeader,
+                    children: [
+                      /* @__PURE__ */ jsx(Text, {
+                        variant: "heading-md/semibold",
+                        style: {
+                          flex: 1
+                        },
+                        children: "Direct Messages"
+                      }),
+                      /* @__PURE__ */ jsx(IconButton, {
+                        size: "sm",
+                        variant: "secondary",
+                        icon: findAssetId("PlusIcon"),
+                        onPress: loadAllMembers
+                      })
+                    ]
                   }),
-                  /* @__PURE__ */ jsx(import_react_native18.Pressable, {
-                    disabled: !composer.trim(),
-                    onPress: send,
-                    style: {
-                      width: 34,
-                      height: 34,
-                      borderRadius: 17,
-                      backgroundColor: composer.trim() ? BRAND : "#4e5058",
-                      alignItems: "center",
-                      justifyContent: "center"
-                    },
+                  /* @__PURE__ */ jsx(import_react_native18.FlatList, {
+                    data: recentDMs,
+                    keyExtractor: (dm) => dm.channelId,
+                    renderItem: ({ item }) => /* @__PURE__ */ jsxs(PressableScale, {
+                      onPress: () => openRecentDM(item),
+                      style: styles.dmRow,
+                      children: [
+                        /* @__PURE__ */ jsx(ApiAvatar, {
+                          user: item.recipient,
+                          size: 36
+                        }),
+                        /* @__PURE__ */ jsxs(import_react_native18.View, {
+                          style: {
+                            flex: 1
+                          },
+                          children: [
+                            /* @__PURE__ */ jsx(Text, {
+                              variant: "text-md/medium",
+                              numberOfLines: 1,
+                              children: displayName(item.recipient)
+                            }),
+                            item.recipient.bot ? /* @__PURE__ */ jsx(Text, {
+                              variant: "text-xs/normal",
+                              color: "text-muted",
+                              children: "APP"
+                            }) : null
+                          ]
+                        })
+                      ]
+                    }),
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native18.View, {
+                      style: styles.listEmpty,
+                      children: /* @__PURE__ */ jsx(Text, {
+                        variant: "text-md/normal",
+                        color: "text-muted",
+                        children: "No recent direct messages. Use New Message to choose a member."
+                      })
+                    })
+                  })
+                ]
+              }) : screen === "members" ? /* @__PURE__ */ jsxs(Fragment, {
+                children: [
+                  /* @__PURE__ */ jsxs(import_react_native18.View, {
+                    style: styles.sidebarHeader,
+                    children: [
+                      /* @__PURE__ */ jsx(IconButton, {
+                        size: "sm",
+                        variant: "secondary",
+                        icon: findAssetId("ArrowLeftIcon") || findAssetId("ChevronLeftIcon"),
+                        onPress: () => setScreen("messages")
+                      }),
+                      /* @__PURE__ */ jsxs(import_react_native18.View, {
+                        style: {
+                          flex: 1
+                        },
+                        children: [
+                          /* @__PURE__ */ jsx(Text, {
+                            variant: "heading-md/semibold",
+                            children: "New Message"
+                          }),
+                          /* @__PURE__ */ jsx(Text, {
+                            variant: "text-xs/normal",
+                            color: "text-muted",
+                            children: memberStatus
+                          })
+                        ]
+                      })
+                    ]
+                  }),
+                  /* @__PURE__ */ jsx(import_react_native18.View, {
+                    style: styles.search,
+                    children: /* @__PURE__ */ jsx(TextInput, {
+                      size: "md",
+                      value: memberSearch,
+                      placeholder: "Search members",
+                      onChange: setMemberSearch
+                    })
+                  }),
+                  /* @__PURE__ */ jsx(import_react_native18.FlatList, {
+                    data: filteredMembers,
+                    keyExtractor: (member, i) => member.user?.id || String(i),
+                    keyboardShouldPersistTaps: "handled",
+                    renderItem: ({ item }) => /* @__PURE__ */ jsxs(PressableScale, {
+                      onPress: () => openMemberDM(item),
+                      style: styles.dmRow,
+                      children: [
+                        /* @__PURE__ */ jsx(ApiAvatar, {
+                          user: item.user,
+                          size: 36
+                        }),
+                        /* @__PURE__ */ jsxs(import_react_native18.View, {
+                          style: {
+                            flex: 1
+                          },
+                          children: [
+                            /* @__PURE__ */ jsx(Text, {
+                              variant: "text-md/medium",
+                              numberOfLines: 1,
+                              children: item.nick || displayName(item.user)
+                            }),
+                            item.nick && item.nick !== displayName(item.user) ? /* @__PURE__ */ jsx(Text, {
+                              variant: "text-xs/normal",
+                              color: "text-muted",
+                              numberOfLines: 1,
+                              children: displayName(item.user)
+                            }) : item.user?.bot ? /* @__PURE__ */ jsx(Text, {
+                              variant: "text-xs/normal",
+                              color: "text-muted",
+                              children: "APP"
+                            }) : null
+                          ]
+                        })
+                      ]
+                    }),
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native18.View, {
+                      style: styles.listEmpty,
+                      children: /* @__PURE__ */ jsx(Text, {
+                        variant: "text-md/normal",
+                        color: "text-muted",
+                        children: "No members are available from the bot's servers."
+                      })
+                    })
+                  })
+                ]
+              }) : /* @__PURE__ */ jsxs(Fragment, {
+                children: [
+                  /* @__PURE__ */ jsx(import_react_native18.View, {
+                    style: styles.sidebarHeader,
                     children: /* @__PURE__ */ jsx(Text, {
-                      style: {
-                        color: "white",
-                        fontWeight: "900",
-                        fontSize: 16
-                      },
-                      children: "\u2191"
+                      variant: "heading-md/semibold",
+                      numberOfLines: 1,
+                      children: guild?.name
+                    })
+                  }),
+                  /* @__PURE__ */ jsx(import_react_native18.FlatList, {
+                    data: [
+                      ...textChannels(null),
+                      ...categories.flatMap((cat) => [
+                        {
+                          ...cat,
+                          botcordCategory: true
+                        },
+                        ...textChannels(cat.id)
+                      ])
+                    ],
+                    keyExtractor: (item) => `${item.botcordCategory ? "cat" : "chan"}-${item.id}`,
+                    renderItem: ({ item }) => item.botcordCategory ? /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/bold",
+                      color: "text-muted",
+                      style: styles.category,
+                      children: String(item.name || "CATEGORY").toUpperCase()
+                    }) : /* @__PURE__ */ jsx(PressableScale, {
+                      onPress: () => openChannel(item),
+                      style: styles.channelRow,
+                      children: /* @__PURE__ */ jsx(Text, {
+                        variant: "text-md/medium",
+                        color: "text-muted",
+                        children: item.name
+                      })
+                    }),
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native18.View, {
+                      style: styles.listEmpty,
+                      children: /* @__PURE__ */ jsx(Text, {
+                        variant: "text-md/normal",
+                        color: "text-muted",
+                        children: "No message channels available."
+                      })
                     })
                   })
                 ]
@@ -9487,15 +9437,15 @@
     });
   }
   function BotCord() {
-    var state = useProxy(botCordState);
-    var [token, setToken] = (0, import_react4.useState)("");
-    var [adding, setAdding] = (0, import_react4.useState)(false);
-    var [error, setError] = (0, import_react4.useState)(null);
-    var [opened, setOpened] = (0, import_react4.useState)(false);
-    var accounts = state.accounts ?? [];
-    var active = (0, import_react4.useMemo)(() => accounts.find((a) => a.id === state.activeAccountId) ?? accounts[0] ?? null, [
+    var state2 = useBotCordState();
+    var [token, setToken] = (0, import_react5.useState)("");
+    var [adding, setAdding] = (0, import_react5.useState)(false);
+    var [error, setError] = (0, import_react5.useState)(null);
+    var [opened, setOpened] = (0, import_react5.useState)(false);
+    var accounts = state2.accounts;
+    var active = (0, import_react5.useMemo)(() => accounts.find((a) => a.id === state2.activeAccountId) ?? accounts[0] ?? null, [
       accounts,
-      state.activeAccountId
+      state2.activeAccountId
     ]);
     if (opened && active)
       return /* @__PURE__ */ jsx(BotClient, {
@@ -9526,7 +9476,7 @@
               /* @__PURE__ */ jsx(Text, {
                 variant: "text-sm/normal",
                 color: "text-muted",
-                children: "Mobile bot client. Open a bot to browse servers, channels, members and messages in a Discord-style interface."
+                children: "Bot accounts use Discord's mobile components and stay only on this device."
               })
             ]
           }),
@@ -9535,7 +9485,7 @@
             children: [
               accounts.map((account) => /* @__PURE__ */ jsx(TableRow, {
                 label: account.username,
-                subLabel: state.activeAccountId === account.id ? "Active bot" : `Bot ID: ${account.id}`,
+                subLabel: state2.activeAccountId === account.id ? "Active bot" : `Bot ID: ${account.id}`,
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("RobotIcon") || findAssetId("AppsIcon")
                 }),
@@ -9550,9 +9500,12 @@
                   onPress: () => removeBotAccount(account.id)
                 })
               }, account.id)),
-              accounts.length === 0 && /* @__PURE__ */ jsx(TableRow, {
+              !state2.loaded ? /* @__PURE__ */ jsx(TableRow, {
+                label: "Loading bot accounts"
+              }) : null,
+              state2.loaded && accounts.length === 0 ? /* @__PURE__ */ jsx(TableRow, {
                 label: "No bot accounts added yet"
-              })
+              }) : null
             ]
           }),
           /* @__PURE__ */ jsx(TableRowGroup, {
@@ -9596,22 +9549,17 @@
               })
             })
           }),
-          active && /* @__PURE__ */ jsx(Button, {
+          active ? /* @__PURE__ */ jsx(Button, {
             size: "lg",
             variant: "primary",
-            text: `Open mobile client as ${active.username}`,
+            text: `Open as ${active.username}`,
             onPress: () => setOpened(true)
-          }),
-          /* @__PURE__ */ jsx(Text, {
-            variant: "text-xs/normal",
-            color: "text-muted",
-            children: "BotCord uses Discord's official bot API. What it can see or do depends on that bot's server permissions and enabled intents."
-          })
+          }) : null
         ]
       })
     });
   }
-  var import_react4, import_react_native18, BG, SIDEBAR, RAIL, PANEL, INPUT, MUTED, BRAND, avatarUrl, guildIconUrl;
+  var import_react5, import_react_native18, useStyles3, avatarUrl, guildIconUrl, displayName;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -9619,22 +9567,106 @@
       init_promiseAllSettled();
       init_async_to_generator();
       init_jsxRuntime();
-      init_storage();
       init_assets();
       init_botcord();
+      init_sheets();
+      init_styles();
       init_common();
       init_components();
-      import_react4 = __toESM(require_react());
+      import_react5 = __toESM(require_react());
       import_react_native18 = __toESM(require_react_native());
-      BG = "#313338";
-      SIDEBAR = "#2b2d31";
-      RAIL = "#1e1f22";
-      PANEL = "#232428";
-      INPUT = "#383a40";
-      MUTED = "#b5bac1";
-      BRAND = "#5865f2";
+      useStyles3 = createStyles({
+        root: {
+          flex: 1,
+          backgroundColor: tokens.colors.BACKGROUND_PRIMARY
+        },
+        header: {
+          minHeight: 56,
+          paddingHorizontal: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          backgroundColor: tokens.colors.BACKGROUND_PRIMARY
+        },
+        navigator: {
+          flex: 1,
+          flexDirection: "row",
+          backgroundColor: tokens.colors.BACKGROUND_SECONDARY
+        },
+        guildRail: {
+          width: 72,
+          backgroundColor: tokens.colors.BACKGROUND_TERTIARY,
+          paddingVertical: 8
+        },
+        sidebar: {
+          flex: 1,
+          backgroundColor: tokens.colors.BACKGROUND_SECONDARY
+        },
+        sidebarHeader: {
+          minHeight: 54,
+          paddingHorizontal: 12,
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8
+        },
+        row: {
+          flexDirection: "row",
+          gap: 10,
+          paddingHorizontal: 12,
+          paddingVertical: 7
+        },
+        messageBody: {
+          flex: 1
+        },
+        nameLine: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 6,
+          flexWrap: "wrap"
+        },
+        composer: {
+          paddingHorizontal: 10,
+          paddingVertical: 8,
+          backgroundColor: tokens.colors.BACKGROUND_PRIMARY
+        },
+        category: {
+          paddingHorizontal: 12,
+          paddingTop: 14,
+          paddingBottom: 4
+        },
+        channelRow: {
+          paddingHorizontal: 12,
+          paddingVertical: 10
+        },
+        guildButton: {
+          width: 72,
+          height: 56,
+          alignItems: "center",
+          justifyContent: "center"
+        },
+        guildImage: {
+          width: 48,
+          height: 48,
+          borderRadius: 24
+        },
+        dmRow: {
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 10,
+          paddingHorizontal: 12,
+          paddingVertical: 8
+        },
+        search: {
+          paddingHorizontal: 10,
+          paddingBottom: 8
+        },
+        listEmpty: {
+          padding: 20
+        }
+      });
       avatarUrl = (user, size = 128) => user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}` : null;
       guildIconUrl = (guild, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
+      displayName = (user) => user?.global_name || user?.username || "Unknown";
     }
   });
 
@@ -9848,8 +9880,8 @@
   });
   function CloudSync() {
     useProxy(VdPluginManager.plugins);
-    var [busy, setBusy] = (0, import_react5.useState)(false);
-    var [refresh, setRefresh] = (0, import_react5.useState)(0);
+    var [busy, setBusy] = (0, import_react6.useState)(false);
+    var [refresh, setRefresh] = (0, import_react6.useState)(0);
     var plugin = VdPluginManager.plugins[PLUGIN_URL];
     var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
     function installOrStart() {
@@ -10004,7 +10036,7 @@
       })
     });
   }
-  var import_react5, import_react_native20, PLUGIN_URL, CLOUDSYNC_ICON;
+  var import_react6, import_react_native20, PLUGIN_URL, CLOUDSYNC_ICON;
   var init_CloudSync = __esm({
     "src/core/ui/settings/pages/CloudSync/index.tsx"() {
       "use strict";
@@ -10018,7 +10050,7 @@
       init_assets();
       init_toasts();
       init_components();
-      import_react5 = __toESM(require_react());
+      import_react6 = __toESM(require_react());
       import_react_native20 = __toESM(require_react_native());
       PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
       CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png";
@@ -10927,7 +10959,7 @@
     var [sortFn, setSortFn] = React.useState(() => null);
     var { bottom: bottomInset } = useSafeAreaInsets();
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react6.useEffect)(() => {
+    (0, import_react7.useEffect)(() => {
       if (props.OptionsActionSheetComponent) {
         navigation2.setOptions({
           headerRight: () => /* @__PURE__ */ jsx(IconButton, {
@@ -10941,7 +10973,7 @@
     }, [
       navigation2
     ]);
-    var results = (0, import_react6.useMemo)(() => {
+    var results = (0, import_react7.useMemo)(() => {
       var values = props.items;
       if (props.resolveItem)
         values = values.map(props.resolveItem).filter(isNotNil);
@@ -10957,7 +10989,7 @@
       sortFn,
       search
     ]);
-    var onInstallPress = (0, import_react6.useCallback)(() => {
+    var onInstallPress = (0, import_react7.useCallback)(() => {
       if (!props.installAction)
         return () => {
         };
@@ -11104,7 +11136,7 @@
       ]
     });
   }
-  var import_fuzzysort, import_react6, import_react_native21, showSimpleActionSheet, hideActionSheet;
+  var import_fuzzysort, import_react7, import_react_native21, showSimpleActionSheet, hideActionSheet;
   var init_AddonPage = __esm({
     "src/core/ui/components/AddonPage.tsx"() {
       "use strict";
@@ -11123,7 +11155,7 @@
       init_components2();
       init_dist();
       import_fuzzysort = __toESM(require_fuzzysort());
-      import_react6 = __toESM(require_react());
+      import_react7 = __toESM(require_react());
       import_react_native21 = __toESM(require_react_native());
       ({ showSimpleActionSheet, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
     }
@@ -12709,7 +12741,7 @@
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
     var [, forceUpdate] = React.useReducer(() => ({}), 0);
-    var cardContextValue = (0, import_react7.useMemo)(() => ({
+    var cardContextValue = (0, import_react8.useMemo)(() => ({
       plugin,
       result
     }), [
@@ -12770,7 +12802,7 @@
       })
     });
   }
-  var import_chroma_js3, import_react7, import_react_native23, CardContext, useCardContext, Actions;
+  var import_chroma_js3, import_react8, import_react_native23, CardContext, useCardContext, Actions;
   var init_PluginCard = __esm({
     "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"() {
       "use strict";
@@ -12783,11 +12815,11 @@
       init_components();
       init_sheets();
       import_chroma_js3 = __toESM(require_chroma_js());
-      import_react7 = __toESM(require_react());
+      import_react8 = __toESM(require_react());
       import_react_native23 = __toESM(require_react_native());
       init_plugins4();
-      CardContext = /* @__PURE__ */ (0, import_react7.createContext)(null);
-      useCardContext = () => (0, import_react7.useContext)(CardContext);
+      CardContext = /* @__PURE__ */ (0, import_react8.createContext)(null);
+      useCardContext = () => (0, import_react8.useContext)(CardContext);
       Actions = () => {
         var { plugin } = useCardContext();
         var navigation2 = NavigationNative.useNavigation();
@@ -12940,7 +12972,7 @@
   }
   function PluginInfoActionSheet({ plugin, navigation: navigation2 }) {
     plugin.usePluginState();
-    var [loading, setLoading] = (0, import_react8.useState)(false);
+    var [loading, setLoading] = (0, import_react9.useState)(false);
     var isVendettaPlugin = plugin.id.includes("/");
     var isCorePlugin2 = plugin.id.startsWith("bunny.") || plugin.id.startsWith("vendetta.");
     var copyPluginUrl = () => {
@@ -13127,7 +13159,7 @@
       })
     });
   }
-  var import_react8, import_react_native25;
+  var import_react9, import_react_native25;
   var init_PluginInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx"() {
       "use strict";
@@ -13144,7 +13176,7 @@
       init_storage();
       init_storage2();
       init_assets();
-      import_react8 = __toESM(require_react());
+      import_react9 = __toESM(require_react());
       import_react_native25 = __toESM(require_react_native());
       init_TitleComponent();
       init_ScaledPluginSettings();
@@ -13449,7 +13481,7 @@
 
   // src/core/ui/components/AddonCard.tsx
   function AddonCard(props) {
-    var styles = useStyles3();
+    var styles = useStyles4();
     return /* @__PURE__ */ jsx(Card, {
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
@@ -13538,7 +13570,7 @@
       })
     });
   }
-  var import_react_native27, hideActionSheet2, showSimpleActionSheet3, useStyles3;
+  var import_react_native27, hideActionSheet2, showSimpleActionSheet3, useStyles4;
   var init_AddonCard = __esm({
     "src/core/ui/components/AddonCard.tsx"() {
       "use strict";
@@ -13554,7 +13586,7 @@
       import_react_native27 = __toESM(require_react_native());
       ({ hideActionSheet: hideActionSheet2 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet3 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
-      useStyles3 = createStyles({
+      useStyles4 = createStyles({
         card: {
           backgroundColor: semanticColors?.CARD_SECONDARY_BG,
           borderRadius: 12,
@@ -13662,11 +13694,11 @@
     });
   }
   function ThemeInfoActionSheet({ theme, navigation: navigation2 }) {
-    var [themeState, setThemeState] = (0, import_react9.useState)({
+    var [themeState, setThemeState] = (0, import_react10.useState)({
       ...theme
     });
-    var [loading, setLoading] = (0, import_react9.useState)(false);
-    (0, import_react9.useEffect)(() => {
+    var [loading, setLoading] = (0, import_react10.useState)(false);
+    (0, import_react10.useEffect)(() => {
       var interval = setInterval(() => {
         setThemeState({
           ...theme
@@ -13800,7 +13832,7 @@
       })
     });
   }
-  var import_react9, import_react_native28;
+  var import_react10, import_react_native28;
   var init_ThemeInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Themes/sheets/ThemeInfoActionSheet.tsx"() {
       "use strict";
@@ -13812,7 +13844,7 @@
       init_sheets();
       init_components();
       init_common();
-      import_react9 = __toESM(require_react());
+      import_react10 = __toESM(require_react());
       import_react_native28 = __toESM(require_react_native());
       init_toasts();
       init_alerts2();
@@ -14206,8 +14238,8 @@
   function RevengeFontsExtractor({ fonts: fonts2, setName }) {
     var currentTheme = getCurrentTheme().data;
     var themeFonts = currentTheme.fonts;
-    var [fontName, setFontName] = (0, import_react10.useState)(guessFontName(Object.values(themeFonts)));
-    var [error, setError] = (0, import_react10.useState)(void 0);
+    var [fontName, setFontName] = (0, import_react11.useState)(guessFontName(Object.values(themeFonts)));
+    var [error, setError] = (0, import_react11.useState)(void 0);
     return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         padding: 8,
@@ -14258,9 +14290,9 @@
     });
   }
   function JsonFontImporter({ fonts: fonts2, setName, setSource }) {
-    var [fontLink, setFontLink] = (0, import_react10.useState)("");
-    var [saving, setSaving] = (0, import_react10.useState)(false);
-    var [error, setError] = (0, import_react10.useState)(void 0);
+    var [fontLink, setFontLink] = (0, import_react11.useState)("");
+    var [saving, setSaving] = (0, import_react11.useState)(false);
+    var [error, setError] = (0, import_react11.useState)(void 0);
     return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         padding: 8,
@@ -14302,8 +14334,8 @@
     });
   }
   function EntryEditorActionSheet(props) {
-    var [familyName, setFamilyName] = (0, import_react10.useState)(props.name);
-    var [fontUrl, setFontUrl] = (0, import_react10.useState)(props.fontEntries[props.name]);
+    var [familyName, setFamilyName] = (0, import_react11.useState)(props.name);
+    var [fontUrl, setFontUrl] = (0, import_react11.useState)(props.fontEntries[props.name]);
     return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         padding: 8,
@@ -14358,10 +14390,10 @@
     }), "FontEditorActionSheet");
   }
   function NewEntryRow({ fontName, fontEntry }) {
-    var nameRef = (0, import_react10.useRef)();
-    var urlRef = (0, import_react10.useRef)();
-    var [nameSet, setNameSet] = (0, import_react10.useState)(false);
-    var [error, setError] = (0, import_react10.useState)();
+    var nameRef = (0, import_react11.useRef)();
+    var urlRef = (0, import_react11.useRef)();
+    var [nameSet, setNameSet] = (0, import_react11.useState)(false);
+    var [error, setError] = (0, import_react11.useState)();
     return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         flexDirection: "row",
@@ -14423,11 +14455,11 @@
     });
   }
   function FontEditor(props) {
-    var [name, setName] = (0, import_react10.useState)(props.name);
-    var [source, setSource] = (0, import_react10.useState)(props.name && fonts[props.name].source);
-    var [importing, setIsImporting] = (0, import_react10.useState)(false);
-    var [errors, setErrors] = (0, import_react10.useState)();
-    var memoEntry = (0, import_react10.useMemo)(() => {
+    var [name, setName] = (0, import_react11.useState)(props.name);
+    var [source, setSource] = (0, import_react11.useState)(props.name && fonts[props.name].source);
+    var [importing, setIsImporting] = (0, import_react11.useState)(false);
+    var [errors, setErrors] = (0, import_react11.useState)();
+    var memoEntry = (0, import_react11.useMemo)(() => {
       return createProxy(props.name ? {
         ...fonts[props.name].main
       } : {}).proxy;
@@ -14611,7 +14643,7 @@
       })
     });
   }
-  var import_react10, import_react_native30, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
+  var import_react11, import_react_native30, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
   var init_FontEditor = __esm({
     "src/core/ui/settings/pages/Fonts/FontEditor.tsx"() {
       "use strict";
@@ -14630,7 +14662,7 @@
       init_components();
       init_wrappers();
       init_components2();
-      import_react10 = __toESM(require_react());
+      import_react11 = __toESM(require_react());
       import_react_native30 = __toESM(require_react_native());
       actionSheet2 = findByPropsLazy("hideActionSheet");
       ({ openAlert: openAlert3 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -15403,11 +15435,11 @@
 
   // src/core/ui/hooks/useFS.ts
   function useFileExists(path, prefix) {
-    var [state, setState] = (0, import_react11.useState)(2);
+    var [state2, setState] = (0, import_react12.useState)(2);
     var check = () => fileExists(path, {
       prefix
     }).then((exists) => setState(exists ? 1 : 0)).catch(() => setState(3));
-    var customFS = (0, import_react11.useMemo)(() => new Proxy(fs_exports, {
+    var customFS = (0, import_react12.useMemo)(() => new Proxy(fs_exports, {
       get(target, p, receiver) {
         var val = Reflect.get(target, p, receiver);
         if (typeof val !== "function")
@@ -15422,20 +15454,20 @@
         };
       }
     }), []);
-    (0, import_react11.useEffect)(() => void check(), []);
+    (0, import_react12.useEffect)(() => void check(), []);
     return [
-      state,
+      state2,
       customFS
     ];
   }
-  var import_react11, CheckState;
+  var import_react12, CheckState;
   var init_useFS = __esm({
     "src/core/ui/hooks/useFS.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_fs();
-      import_react11 = __toESM(require_react());
+      import_react12 = __toESM(require_react());
       CheckState = /* @__PURE__ */ function(CheckState2) {
         CheckState2[CheckState2["FALSE"] = 0] = "FALSE";
         CheckState2[CheckState2["TRUE"] = 1] = "TRUE";
@@ -15544,8 +15576,8 @@ Type: ${asset.type}`,
   function AssetBrowser() {
     var [search, setSearch] = React.useState("");
     var [showNonImages, setShowNonImages] = React.useState(false);
-    var all = (0, import_react12.useMemo)(() => Array.from(iterateAssets()), []);
-    var filteredData = (0, import_react12.useMemo)(() => {
+    var all = (0, import_react13.useMemo)(() => Array.from(iterateAssets()), []);
+    var filteredData = (0, import_react13.useMemo)(() => {
       var result = all.filter((a) => a.name.includes(search) || a.id.toString() === search);
       if (!showNonImages) {
         result = result.filter((a) => displayable2.has(a.type));
@@ -15638,7 +15670,7 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react12, import_react_native34, displayable2;
+  var import_react13, import_react_native34, displayable2;
   var init_AssetBrowser = __esm({
     "src/core/ui/settings/pages/Developer/AssetBrowser.tsx"() {
       "use strict";
@@ -15649,7 +15681,7 @@ Type: ${asset.type}`,
       init_assets();
       init_components();
       init_components2();
-      import_react12 = __toESM(require_react());
+      import_react13 = __toESM(require_react());
       import_react_native34 = __toESM(require_react_native());
       displayable2 = /* @__PURE__ */ new Set([
         "png",
@@ -15666,12 +15698,12 @@ Type: ${asset.type}`,
   });
   function Developer() {
     var [rdtFileExists, fs] = useFileExists("preloads/reactDevtools.js");
-    var [isDebuggerConnected, setIsDebuggerConnected] = (0, import_react13.useState)(isConnectedToDebugger2());
-    var styles = useStyles4();
+    var [isDebuggerConnected, setIsDebuggerConnected] = (0, import_react14.useState)(isConnectedToDebugger2());
+    var styles = useStyles5();
     var navigation2 = NavigationNative.useNavigation();
     useProxy(settings);
     useProxy(loaderConfig);
-    (0, import_react13.useEffect)(() => {
+    (0, import_react14.useEffect)(() => {
       var interval = setInterval(() => {
         setIsDebuggerConnected(isConnectedToDebugger2());
       }, 1e3);
@@ -15960,7 +15992,7 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react_native35, import_react_native36, import_react13, hideActionSheet4, showSimpleActionSheet5, openAlert5, AlertModal6, AlertActionButton6, RDT_EMBED_LINK, useStyles4;
+  var import_react_native35, import_react_native36, import_react14, hideActionSheet4, showSimpleActionSheet5, openAlert5, AlertModal6, AlertActionButton6, RDT_EMBED_LINK, useStyles5;
   var init_Developer = __esm({
     "src/core/ui/settings/pages/Developer/index.tsx"() {
       "use strict";
@@ -15986,13 +16018,13 @@ Type: ${asset.type}`,
       import_react_native35 = __toESM(require_react_native());
       import_react_native36 = __toESM(require_react_native());
       init_toasts();
-      import_react13 = __toESM(require_react());
+      import_react14 = __toESM(require_react());
       ({ hideActionSheet: hideActionSheet4 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet5 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       ({ openAlert: openAlert5 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
       ({ AlertModal: AlertModal6, AlertActionButton: AlertActionButton6 } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
       RDT_EMBED_LINK = "https://codeberg.org/raincord/raindevtools/raw/branch/dev/dist/index.bundle";
-      useStyles4 = createStyles({
+      useStyles5 = createStyles({
         leadingText: {
           ...TextStyleSheet["heading-md/semibold"],
           color: semanticColors.TEXT_MUTED,
@@ -16121,7 +16153,7 @@ Type: ${asset.type}`,
   });
 
   // src/core/vendetta/api.tsx
-  var import_react14, import_react_native37, makeIcon, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react15, import_react_native37, makeIcon, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -16150,11 +16182,11 @@ Type: ${asset.type}`,
       init_styles();
       init_toasts();
       init_dist();
-      import_react14 = __toESM(require_react());
+      import_react15 = __toESM(require_react());
       import_react_native37 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
-      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react14.createElement)(TableRow, {
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(TableRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -16165,7 +16197,7 @@ Type: ${asset.type}`,
       });
       PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow.Icon;
       PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow.Arrow;
-      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react14.createElement)(TableSwitchRow, {
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(TableSwitchRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -16173,7 +16205,7 @@ Type: ${asset.type}`,
         onValueChange: props.onValueChange,
         disabled: props.disabled
       });
-      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react14.createElement)(TableRowGroup, {
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react15.createElement)(TableRowGroup, {
         title: props.title,
         ...props
       }, props.children);
@@ -16212,8 +16244,8 @@ Type: ${asset.type}`,
                     ...module,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
-                      (0, import_react14.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react14.createElement)(import_react_native37.View, null, children);
+                      (0, import_react15.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
+                      return /* @__PURE__ */ (0, import_react15.createElement)(import_react_native37.View, null, children);
                     }
                   };
                 }
@@ -16228,8 +16260,8 @@ Type: ${asset.type}`,
               return findByName(name, defaultExp ?? true);
             },
             findByNameAll: (name, defaultExp = true) => findByNameAll(name, defaultExp),
-            findByDisplayName: (displayName, defaultExp = true) => findByDisplayName(displayName, defaultExp),
-            findByDisplayNameAll: (displayName, defaultExp = true) => findByDisplayNameAll(displayName, defaultExp),
+            findByDisplayName: (displayName2, defaultExp = true) => findByDisplayName(displayName2, defaultExp),
+            findByDisplayNameAll: (displayName2, defaultExp = true) => findByDisplayNameAll(displayName2, defaultExp),
             findByTypeName: (typeName, defaultExp = true) => findByTypeName(typeName, defaultExp),
             findByTypeNameAll: (typeName, defaultExp = true) => findByTypeNameAll(typeName, defaultExp),
             findByStoreName: (name) => findByStoreName(name),
@@ -16514,7 +16546,6 @@ Type: ${asset.type}`,
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_async_to_generator();
-      init_FloatingSwitcher();
       init_FakeProfile();
       init_patchErrorBoundary();
       init_fixes();
@@ -16544,7 +16575,6 @@ Type: ${asset.type}`,
           initVendettaObject(),
           initFetchI18nStrings(),
           initSettings(),
-          initBotCordSwitcher(),
           initializeFakeProfile(),
           fixes_default(),
           patchErrorBoundary(),
