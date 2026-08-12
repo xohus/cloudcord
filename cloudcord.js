@@ -4348,6 +4348,19 @@
     }
   });
 
+  // src/core/ui/botcord/FloatingSwitcher.tsx
+  function initBotCordSwitcher() {
+    return () => {
+    };
+  }
+  var init_FloatingSwitcher = __esm({
+    "src/core/ui/botcord/FloatingSwitcher.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+    }
+  });
+
   // shims/jsxRuntime.ts
   var jsxRuntime_exports = {};
   __export(jsxRuntime_exports, {
@@ -4379,143 +4392,11 @@
     }
   });
 
-  // src/lib/api/botcord.ts
-  function normalizeBotToken(token) {
-    return token.trim().replace(/^Bot\s+/i, "");
-  }
-  function getBotUser(token) {
-    return _async_to_generator(function* () {
-      var cleanToken = normalizeBotToken(token);
-      var response = yield fetch("https://discord.com/api/v10/users/@me", {
-        headers: {
-          Authorization: `Bot ${cleanToken}`
-        }
-      });
-      if (!response.ok)
-        throw new Error("Invalid bot token or Discord rejected the request.");
-      var user = yield response.json();
-      return {
-        id: user.id,
-        username: user.global_name || user.username || `Bot ${user.id}`,
-        avatar: user.avatar,
-        token: cleanToken
-      };
-    })();
-  }
-  function addBotAccount(token) {
-    return _async_to_generator(function* () {
-      var account = yield getBotUser(token);
-      yield awaitStorage(botCordState);
-      botCordState.accounts ??= [];
-      var existing = botCordState.accounts.findIndex((a) => a.id === account.id);
-      if (existing === -1)
-        botCordState.accounts.push(account);
-      else
-        botCordState.accounts[existing] = account;
-      botCordState.activeAccountId = account.id;
-      return account;
-    })();
-  }
-  function removeBotAccount(id) {
-    return _async_to_generator(function* () {
-      yield awaitStorage(botCordState);
-      botCordState.accounts ??= [];
-      var index = botCordState.accounts.findIndex((a) => a.id === id);
-      if (index !== -1)
-        botCordState.accounts.splice(index, 1);
-      if (botCordState.activeAccountId === id) {
-        botCordState.activeAccountId = botCordState.accounts[0]?.id ?? null;
-      }
-    })();
-  }
-  function setActiveBotAccount(id) {
-    return _async_to_generator(function* () {
-      yield awaitStorage(botCordState);
-      botCordState.activeAccountId = id;
-    })();
-  }
-  function updateBotCordSwitcher(patch) {
-    return _async_to_generator(function* () {
-      yield awaitStorage(botCordState);
-      botCordState.switcher ??= {
-        enabled: true,
-        x: 12,
-        y: 180,
-        size: 58
-      };
-      Object.assign(botCordState.switcher, patch);
-    })();
-  }
-  function readDiscordError(response) {
-    return _async_to_generator(function* () {
-      try {
-        var body = yield response.json();
-        return typeof body?.message === "string" ? body.message : null;
-      } catch (e) {
-        return null;
-      }
-    })();
-  }
-  function botFetch(token, path) {
-    return _async_to_generator(function* () {
-      var response = yield fetch(`https://discord.com/api/v10${path}`, {
-        headers: {
-          Authorization: `Bot ${normalizeBotToken(token)}`
-        }
-      });
-      if (!response.ok) {
-        var message = yield readDiscordError(response);
-        throw new Error(message ? `${message} (${response.status})` : `Discord API request failed (${response.status}).`);
-      }
-      return response.json();
-    })();
-  }
-  function getBotGuilds(token) {
-    return botFetch(token, "/users/@me/guilds");
-  }
-  function getBotGuildChannels(token, guildId) {
-    return botFetch(token, `/guilds/${guildId}/channels`);
-  }
-  function getBotChannelMessages(token, channelId) {
-    return botFetch(token, `/channels/${channelId}/messages?limit=50`);
-  }
-  function sendBotMessage(token, channelId, content) {
-    return _async_to_generator(function* () {
-      var response = yield fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bot ${normalizeBotToken(token)}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          content
-        })
-      });
-      if (!response.ok) {
-        var message = yield readDiscordError(response);
-        throw new Error(message ? `${message} (${response.status})` : `Failed to send message (${response.status}).`);
-      }
-      return response.json();
-    })();
-  }
-  var botCordState;
-  var init_botcord = __esm({
-    "src/lib/api/botcord.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_storage();
-      botCordState = wrapSync(createStorage(createFileBackend("botcord/accounts.json", {
-        accounts: [],
-        activeAccountId: null,
-        switcher: {
-          enabled: true,
-          x: 12,
-          y: 180,
-          size: 58
-        }
-      })));
+  // src/assets/icons/fakeprofile.png
+  var fakeprofile_default;
+  var init_fakeprofile = __esm({
+    "src/assets/icons/fakeprofile.png"() {
+      fakeprofile_default = "data:image/png;base64,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";
     }
   });
 
@@ -4580,274 +4461,6 @@
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       module.exports = require_depsModule()["react"];
-    }
-  });
-
-  // src/core/ui/botcord/FloatingSwitcher.tsx
-  function avatarUrl(account) {
-    return account?.avatar ? `https://cdn.discordapp.com/avatars/${account.id}/${account.avatar}.png?size=128` : null;
-  }
-  function FloatingBotSwitcher() {
-    var state = useProxy(botCordState);
-    var accounts = state.accounts ?? [];
-    var settings2 = state.switcher ?? {
-      enabled: true,
-      x: 12,
-      y: 180,
-      size: 58
-    };
-    var { width, height } = (0, import_react_native5.useWindowDimensions)();
-    var [expanded, setExpanded] = (0, import_react.useState)(false);
-    var position = (0, import_react.useRef)(new import_react_native5.Animated.ValueXY({
-      x: settings2.x,
-      y: settings2.y
-    })).current;
-    var start = (0, import_react.useRef)({
-      x: settings2.x,
-      y: settings2.y
-    });
-    var active = (0, import_react.useMemo)(() => accounts.find((a) => a.id === state.activeAccountId) ?? accounts[0] ?? null, [
-      accounts,
-      state.activeAccountId
-    ]);
-    var size = Math.max(46, Math.min(92, settings2.size || 58));
-    var pan = (0, import_react.useMemo)(() => import_react_native5.PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_e, g2) => Math.abs(g2.dx) > 3 || Math.abs(g2.dy) > 3,
-      onPanResponderGrant: () => {
-        position.stopAnimation((v2) => {
-          start.current = {
-            x: v2.x,
-            y: v2.y
-          };
-        });
-      },
-      onPanResponderMove: (_e, g2) => {
-        position.setValue({
-          x: start.current.x + g2.dx,
-          y: start.current.y + g2.dy
-        });
-      },
-      onPanResponderRelease: (_e, g2) => {
-        var x2 = Math.max(6, Math.min(width - size - 6, start.current.x + g2.dx));
-        var y2 = Math.max(54, Math.min(height - size - 24, start.current.y + g2.dy));
-        position.setValue({
-          x: x2,
-          y: y2
-        });
-        updateBotCordSwitcher({
-          x: x2,
-          y: y2
-        });
-      }
-    }), [
-      height,
-      position,
-      size,
-      width
-    ]);
-    if (!settings2.enabled || !active || accounts.length === 0)
-      return null;
-    return /* @__PURE__ */ jsxs(import_react_native5.Animated.View, {
-      pointerEvents: "box-none",
-      ...pan.panHandlers,
-      style: {
-        position: "absolute",
-        zIndex: 2147483647,
-        elevation: 9999,
-        transform: position.getTranslateTransform()
-      },
-      children: [
-        expanded && /* @__PURE__ */ jsxs(import_react_native5.View, {
-          style: {
-            position: "absolute",
-            bottom: size + 10,
-            right: 0,
-            width: Math.max(210, size * 3.8),
-            padding: 10,
-            gap: 7,
-            borderRadius: 16,
-            backgroundColor: "rgba(20,20,24,0.96)",
-            borderWidth: 1,
-            borderColor: "rgba(255,255,255,0.14)"
-          },
-          children: [
-            /* @__PURE__ */ jsx(import_react_native5.Text, {
-              style: {
-                color: "white",
-                fontWeight: "700",
-                fontSize: 15
-              },
-              children: "BotCord"
-            }),
-            accounts.map((account) => {
-              var uri = avatarUrl(account);
-              var selected = account.id === active.id;
-              return /* @__PURE__ */ jsxs(import_react_native5.Pressable, {
-                onPress: () => setActiveBotAccount(account.id),
-                style: {
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 9,
-                  padding: 8,
-                  borderRadius: 10,
-                  backgroundColor: selected ? "rgba(88,101,242,0.34)" : "rgba(255,255,255,0.06)"
-                },
-                children: [
-                  uri ? /* @__PURE__ */ jsx(import_react_native5.Image, {
-                    source: {
-                      uri
-                    },
-                    style: {
-                      width: 30,
-                      height: 30,
-                      borderRadius: 15
-                    }
-                  }) : /* @__PURE__ */ jsx(import_react_native5.View, {
-                    style: {
-                      width: 30,
-                      height: 30,
-                      borderRadius: 15,
-                      backgroundColor: "#5865F2",
-                      alignItems: "center",
-                      justifyContent: "center"
-                    },
-                    children: /* @__PURE__ */ jsx(import_react_native5.Text, {
-                      style: {
-                        color: "white"
-                      },
-                      children: "\u{1F916}"
-                    })
-                  }),
-                  /* @__PURE__ */ jsxs(import_react_native5.View, {
-                    style: {
-                      flex: 1
-                    },
-                    children: [
-                      /* @__PURE__ */ jsx(import_react_native5.Text, {
-                        numberOfLines: 1,
-                        style: {
-                          color: "white",
-                          fontWeight: selected ? "700" : "500"
-                        },
-                        children: account.username
-                      }),
-                      /* @__PURE__ */ jsx(import_react_native5.Text, {
-                        style: {
-                          color: "#aeb1b8",
-                          fontSize: 11
-                        },
-                        children: selected ? "Active bot" : "Tap to switch"
-                      })
-                    ]
-                  })
-                ]
-              }, account.id);
-            }),
-            /* @__PURE__ */ jsxs(import_react_native5.View, {
-              style: {
-                flexDirection: "row",
-                gap: 7
-              },
-              children: [
-                /* @__PURE__ */ jsx(import_react_native5.Pressable, {
-                  onPress: () => updateBotCordSwitcher({
-                    size: Math.max(46, size - 6)
-                  }),
-                  style: {
-                    flex: 1,
-                    padding: 8,
-                    borderRadius: 9,
-                    backgroundColor: "rgba(255,255,255,0.08)",
-                    alignItems: "center"
-                  },
-                  children: /* @__PURE__ */ jsx(import_react_native5.Text, {
-                    style: {
-                      color: "white",
-                      fontWeight: "700"
-                    },
-                    children: "\u2212"
-                  })
-                }),
-                /* @__PURE__ */ jsx(import_react_native5.Pressable, {
-                  onPress: () => updateBotCordSwitcher({
-                    size: Math.min(92, size + 6)
-                  }),
-                  style: {
-                    flex: 1,
-                    padding: 8,
-                    borderRadius: 9,
-                    backgroundColor: "rgba(255,255,255,0.08)",
-                    alignItems: "center"
-                  },
-                  children: /* @__PURE__ */ jsx(import_react_native5.Text, {
-                    style: {
-                      color: "white",
-                      fontWeight: "700"
-                    },
-                    children: "+"
-                  })
-                })
-              ]
-            })
-          ]
-        }),
-        /* @__PURE__ */ jsx(import_react_native5.Pressable, {
-          onPress: () => setExpanded((v2) => !v2),
-          style: {
-            width: size,
-            height: size,
-            borderRadius: size / 2,
-            overflow: "hidden",
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: "#5865F2",
-            borderWidth: 2,
-            borderColor: "rgba(255,255,255,0.85)"
-          },
-          children: avatarUrl(active) ? /* @__PURE__ */ jsx(import_react_native5.Image, {
-            source: {
-              uri: avatarUrl(active)
-            },
-            style: {
-              width: size,
-              height: size
-            }
-          }) : /* @__PURE__ */ jsx(import_react_native5.Text, {
-            style: {
-              fontSize: size * 0.46
-            },
-            children: "\u{1F916}"
-          })
-        })
-      ]
-    });
-  }
-  function initBotCordSwitcher() {
-    onJsxCreate("App", inject);
-    return () => deleteJsxCreate("App", inject);
-  }
-  var import_react, import_react_native5, inject;
-  var init_FloatingSwitcher = __esm({
-    "src/core/ui/botcord/FloatingSwitcher.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_storage();
-      init_botcord();
-      init_jsx();
-      import_react = __toESM(require_react());
-      import_react_native5 = __toESM(require_react_native());
-      inject = (_Component, ret) => /* @__PURE__ */ import_react.default.createElement(import_react.default.Fragment, null, ret, /* @__PURE__ */ import_react.default.createElement(FloatingBotSwitcher));
-    }
-  });
-
-  // src/assets/icons/fakeprofile.png
-  var fakeprofile_default;
-  var init_fakeprofile = __esm({
-    "src/assets/icons/fakeprofile.png"() {
-      fakeprofile_default = "data:image/png;base64,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";
     }
   });
 
@@ -5350,7 +4963,7 @@
           height: Number(asset.height)
         };
       return yield new Promise((resolve, reject) => {
-        import_react_native6.Image.getSize(uri, (width, height) => resolve({
+        import_react_native5.Image.getSize(uri, (width, height) => resolve({
           width,
           height
         }), reject);
@@ -5513,7 +5126,7 @@
     })();
   }
   function ActionButton({ label, onPress, muted = false }) {
-    return /* @__PURE__ */ jsx(import_react_native6.Pressable, {
+    return /* @__PURE__ */ jsx(import_react_native5.Pressable, {
       onPress,
       style: ({ pressed }) => ({
         width: "100%",
@@ -5537,7 +5150,7 @@
     });
   }
   function ToggleRow({ label, subLabel, value, onPress, accent = false }) {
-    return /* @__PURE__ */ jsxs(import_react_native6.Pressable, {
+    return /* @__PURE__ */ jsxs(import_react_native5.Pressable, {
       onPress,
       style: ({ pressed }) => ({
         width: "100%",
@@ -5551,7 +5164,7 @@
         opacity: pressed ? 0.8 : 1
       }),
       children: [
-        /* @__PURE__ */ jsxs(import_react_native6.View, {
+        /* @__PURE__ */ jsxs(import_react_native5.View, {
           style: {
             flex: 1,
             minWidth: 0,
@@ -5575,7 +5188,7 @@
             }) : null
           ]
         }),
-        /* @__PURE__ */ jsx(import_react_native6.View, {
+        /* @__PURE__ */ jsx(import_react_native5.View, {
           style: {
             width: 48,
             height: 28,
@@ -5584,7 +5197,7 @@
             alignItems: value ? "flex-end" : "flex-start",
             backgroundColor: value ? "#50fa9b" : "#4b4f58"
           },
-          children: /* @__PURE__ */ jsx(import_react_native6.View, {
+          children: /* @__PURE__ */ jsx(import_react_native5.View, {
             style: {
               width: 22,
               height: 22,
@@ -5597,7 +5210,7 @@
     });
   }
   function DurationSelect({ label, value, onPress }) {
-    return /* @__PURE__ */ jsxs(import_react_native6.Pressable, {
+    return /* @__PURE__ */ jsxs(import_react_native5.Pressable, {
       onPress,
       style: ({ pressed }) => ({
         width: "100%",
@@ -5610,7 +5223,7 @@
         backgroundColor: pressed ? "rgba(120,231,255,0.16)" : "rgba(255,255,255,0.04)"
       }),
       children: [
-        /* @__PURE__ */ jsxs(import_react_native6.View, {
+        /* @__PURE__ */ jsxs(import_react_native5.View, {
           style: {
             flex: 1,
             minWidth: 0,
@@ -5634,7 +5247,7 @@
             })
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native6.View, {
+        /* @__PURE__ */ jsxs(import_react_native5.View, {
           style: {
             maxWidth: "48%",
             flexDirection: "row",
@@ -5668,8 +5281,8 @@
   }
   function FakeProfile() {
     useProxy(settings);
-    var [, redraw] = (0, import_react2.useReducer)((value) => value + 1, 0);
-    (0, import_react2.useEffect)(() => {
+    var [, redraw] = (0, import_react.useReducer)((value) => value + 1, 0);
+    (0, import_react.useEffect)(() => {
       initializeFakeProfile();
       redraw();
     }, []);
@@ -5687,7 +5300,7 @@
       } catch (error) {
         diagnostics.last = error?.message || "Could not open the picker.";
         redraw();
-        import_react_native6.Alert.alert("FakeProfile", diagnostics.last);
+        import_react_native5.Alert.alert("FakeProfile", diagnostics.last);
       }
     })();
     var clearMedia = (field) => {
@@ -5727,7 +5340,7 @@
     };
     var MediaEditor = ({ label, field, banner: banner2 = false }) => {
       var value = preview[field];
-      return /* @__PURE__ */ jsxs(import_react_native6.View, {
+      return /* @__PURE__ */ jsxs(import_react_native5.View, {
         style: {
           width: "100%",
           gap: 9,
@@ -5748,7 +5361,7 @@
             },
             children: banner2 ? "Automatically fitted to 600 \xD7 240" : "Automatically fitted to a square"
           }),
-          /* @__PURE__ */ jsxs(import_react_native6.View, {
+          /* @__PURE__ */ jsxs(import_react_native5.View, {
             style: {
               width: "100%",
               gap: 8
@@ -5765,7 +5378,7 @@
               })
             ]
           }),
-          value?.uri && /* @__PURE__ */ jsxs(import_react_native6.View, {
+          value?.uri && /* @__PURE__ */ jsxs(import_react_native5.View, {
             style: {
               width: "100%",
               borderRadius: 12,
@@ -5773,7 +5386,7 @@
               backgroundColor: "#1f2023"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native6.View, {
+              /* @__PURE__ */ jsx(import_react_native5.View, {
                 style: banner2 ? {
                   width: "100%",
                   aspectRatio: 2.5,
@@ -5786,7 +5399,7 @@
                   alignSelf: "center",
                   marginVertical: 12
                 },
-                children: /* @__PURE__ */ jsx(import_react_native6.Image, {
+                children: /* @__PURE__ */ jsx(import_react_native5.Image, {
                   source: {
                     uri: value.uri
                   },
@@ -5797,7 +5410,7 @@
                   }
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native6.View, {
+              /* @__PURE__ */ jsxs(import_react_native5.View, {
                 style: {
                   flexDirection: "row",
                   alignItems: "center",
@@ -5814,7 +5427,7 @@
                     },
                     children: value.name
                   }),
-                  /* @__PURE__ */ jsx(import_react_native6.Pressable, {
+                  /* @__PURE__ */ jsx(import_react_native5.Pressable, {
                     onPress: () => clearMedia(field),
                     style: {
                       paddingHorizontal: 10,
@@ -5839,7 +5452,7 @@
     };
     var avatar = mediaUri("avatarMedia");
     var banner = mediaUri("bannerMedia");
-    return /* @__PURE__ */ jsx(import_react_native6.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native5.ScrollView, {
       style: {
         flex: 1,
         width: "100%"
@@ -5861,7 +5474,7 @@
           width: "100%"
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native6.View, {
+          /* @__PURE__ */ jsxs(import_react_native5.View, {
             style: {
               width: "100%",
               flexDirection: "row",
@@ -5869,14 +5482,14 @@
               gap: 12
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native6.View, {
+              /* @__PURE__ */ jsx(import_react_native5.View, {
                 style: {
                   width: 52,
                   height: 52,
                   alignItems: "center",
                   justifyContent: "center"
                 },
-                children: /* @__PURE__ */ jsx(import_react_native6.Image, {
+                children: /* @__PURE__ */ jsx(import_react_native5.Image, {
                   source: {
                     uri: fakeprofile_default
                   },
@@ -5887,7 +5500,7 @@
                   }
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native6.View, {
+              /* @__PURE__ */ jsxs(import_react_native5.View, {
                 style: {
                   flex: 1,
                   minWidth: 0
@@ -5909,13 +5522,13 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native6.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native5.View, {
               style: {
                 borderRadius: 14,
                 overflow: "hidden"
               },
               children: [
-                banner ? /* @__PURE__ */ jsx(import_react_native6.Image, {
+                banner ? /* @__PURE__ */ jsx(import_react_native5.Image, {
                   source: {
                     uri: banner
                   },
@@ -5924,19 +5537,19 @@
                     width: "100%",
                     height: 118
                   }
-                }) : /* @__PURE__ */ jsx(import_react_native6.View, {
+                }) : /* @__PURE__ */ jsx(import_react_native5.View, {
                   style: {
                     height: 118,
                     backgroundColor: "#5865f2"
                   }
                 }),
-                /* @__PURE__ */ jsxs(import_react_native6.View, {
+                /* @__PURE__ */ jsxs(import_react_native5.View, {
                   style: {
                     paddingHorizontal: 16,
                     paddingBottom: 16
                   },
                   children: [
-                    avatar ? /* @__PURE__ */ jsx(import_react_native6.Image, {
+                    avatar ? /* @__PURE__ */ jsx(import_react_native5.Image, {
                       source: {
                         uri: avatar
                       },
@@ -5948,7 +5561,7 @@
                         borderWidth: 5,
                         borderColor: "#1f2023"
                       }
-                    }) : /* @__PURE__ */ jsx(import_react_native6.View, {
+                    }) : /* @__PURE__ */ jsx(import_react_native5.View, {
                       style: {
                         width: 82,
                         height: 82,
@@ -5990,7 +5603,7 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native6.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native5.View, {
               style: {
                 padding: 14,
                 gap: 14
@@ -6003,7 +5616,7 @@
                   accent: true,
                   onPress: () => update("enabled", !preview.enabled, true)
                 }),
-                /* @__PURE__ */ jsxs(import_react_native6.View, {
+                /* @__PURE__ */ jsxs(import_react_native5.View, {
                   style: {
                     gap: 8
                   },
@@ -6013,7 +5626,7 @@
                       color: "text-normal",
                       children: "Display name"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native6.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native5.TextInput, {
                       defaultValue: preview.displayName,
                       placeholder: "Preview Name",
                       placeholderTextColor: "#777",
@@ -6027,7 +5640,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native6.View, {
+                /* @__PURE__ */ jsxs(import_react_native5.View, {
                   style: {
                     gap: 8
                   },
@@ -6037,7 +5650,7 @@
                       color: "text-normal",
                       children: "Username"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native6.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native5.TextInput, {
                       defaultValue: preview.username,
                       placeholder: "preview",
                       placeholderTextColor: "#777",
@@ -6085,7 +5698,7 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native6.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native5.View, {
               style: {
                 padding: 14,
                 gap: 10
@@ -6117,7 +5730,7 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native6.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native5.View, {
               style: {
                 padding: 14,
                 gap: 5
@@ -6183,7 +5796,7 @@
       })
     });
   }
-  var import_react2, import_react_native6, BADGES, useBadgesModule, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, preview, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache;
+  var import_react, import_react_native5, BADGES, useBadgesModule, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, preview, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -6199,8 +5812,8 @@
       init_metro();
       init_common();
       init_components();
-      import_react2 = __toESM(require_react());
-      import_react_native6 = __toESM(require_react_native());
+      import_react = __toESM(require_react());
+      import_react_native5 = __toESM(require_react_native());
       BADGES = [
         [
           "hypesquad",
@@ -7005,7 +6618,7 @@
     if (devTools?.connectToDevTools) {
       devTools.connectToDevTools({
         websocket: ws,
-        resolveRNStyle: import_react_native7.StyleSheet.flatten
+        resolveRNStyle: import_react_native6.StyleSheet.flatten
       });
     }
   }
@@ -7036,7 +6649,7 @@
     var hermesProps = globalThis.HermesInternal.getRuntimeProperties();
     var hermesVer = hermesProps["OSS Release Version"];
     var padding = "for RN ";
-    var PlatformConstants = import_react_native7.Platform.constants;
+    var PlatformConstants = import_react_native6.Platform.constants;
     var rnVer = PlatformConstants.reactNativeVersion;
     return {
       vendetta: {
@@ -7063,7 +6676,7 @@
         buildType: hermesProps.Build,
         bytecodeVersion: hermesProps["Bytecode Version"]
       },
-      ...import_react_native7.Platform.select({
+      ...import_react_native6.Platform.select({
         android: {
           os: {
             name: "Android",
@@ -7078,7 +6691,7 @@
           }
         }
       }),
-      ...import_react_native7.Platform.select({
+      ...import_react_native6.Platform.select({
         android: {
           device: {
             manufacturer: PlatformConstants.Manufacturer,
@@ -7116,7 +6729,7 @@
       }
     }
   }
-  var import_react_native7, socket2, originalConsoleLog2, originalConsoleError2, originalConsoleWarn2, originalLoggerLog2, originalLoggerError2, originalLoggerWarn2, VERSION2, rdtPort, rdtClient, rdtConnected, changeHooks, versionHash;
+  var import_react_native6, socket2, originalConsoleLog2, originalConsoleError2, originalConsoleWarn2, originalLoggerLog2, originalLoggerError2, originalLoggerWarn2, VERSION2, rdtPort, rdtClient, rdtConnected, changeHooks, versionHash;
   var init_debug = __esm({
     "src/lib/api/debug.ts"() {
       "use strict";
@@ -7131,7 +6744,7 @@
       init_settings();
       init_logger();
       init_toasts();
-      import_react_native7 = __toESM(require_react_native());
+      import_react_native6 = __toESM(require_react_native());
       VERSION2 = 1;
       rdtPort = 8097;
       rdtClient = null;
@@ -7145,7 +6758,7 @@
   function AlertModal2(props) {
     var forwardFailedModal = findByFilePath("modules/forwarding/native/ForwardFailedAlertModal.tsx");
     if (!forwardFailedModal && "extraContent" in props) {
-      props.content = /* @__PURE__ */ jsxs(import_react_native8.View, {
+      props.content = /* @__PURE__ */ jsxs(import_react_native7.View, {
         style: {
           gap: 16
         },
@@ -7155,7 +6768,7 @@
             color: "text-muted",
             children: props.content
           }),
-          /* @__PURE__ */ jsx(import_react_native8.View, {
+          /* @__PURE__ */ jsx(import_react_native7.View, {
             children: props.extraContent
           })
         ]
@@ -7166,7 +6779,7 @@
       ...props
     });
   }
-  var import_react_native8, _AlertModal, _AlertActionButton, AlertActionButton2;
+  var import_react_native7, _AlertModal, _AlertActionButton, AlertActionButton2;
   var init_AlertModal = __esm({
     "src/lib/ui/components/wrappers/AlertModal.tsx"() {
       "use strict";
@@ -7176,7 +6789,7 @@
       init_lazy();
       init_metro();
       init_components();
-      import_react_native8 = __toESM(require_react_native());
+      import_react_native7 = __toESM(require_react_native());
       ({ AlertModal: _AlertModal, AlertActionButton: _AlertActionButton } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
       AlertActionButton2 = _AlertActionButton;
     }
@@ -7237,7 +6850,7 @@
   }
   function createThemedStyleSheet(sheet) {
     for (var key in sheet) {
-      sheet[key] = new Proxy(import_react_native9.StyleSheet.flatten(sheet[key]), {
+      sheet[key] = new Proxy(import_react_native8.StyleSheet.flatten(sheet[key]), {
         get(target, prop, receiver) {
           var res = Reflect.get(target, prop, receiver);
           return isSemanticColor(res) ? resolveSemanticColor(res) : res;
@@ -7246,7 +6859,7 @@
     }
     return sheet;
   }
-  var import_react_native9, Styles, ThemeContext, TextStyleSheet;
+  var import_react_native8, Styles, ThemeContext, TextStyleSheet;
   var init_styles = __esm({
     "src/lib/ui/styles.ts"() {
       "use strict";
@@ -7255,7 +6868,7 @@
       init_lazy();
       init_wrappers();
       init_color();
-      import_react_native9 = __toESM(require_react_native());
+      import_react_native8 = __toESM(require_react_native());
       Styles = findByPropsLazy("createStyles");
       ({ ThemeContext } = lazyDestructure(() => findByProps("ThemeContext"), {
         hint: "object"
@@ -7271,7 +6884,7 @@
         style,
         children
       });
-    return import_react_native10.Platform.select({
+    return import_react_native9.Platform.select({
       ios: /* @__PURE__ */ jsx(InputBasedCodeblock, {
         style,
         children
@@ -7283,7 +6896,7 @@
       })
     });
   }
-  var import_react_native10, useStyles, InputBasedCodeblock, TextBasedCodeblock;
+  var import_react_native9, useStyles, InputBasedCodeblock, TextBasedCodeblock;
   var init_Codeblock = __esm({
     "src/lib/ui/components/Codeblock.tsx"() {
       "use strict";
@@ -7293,7 +6906,7 @@
       init_common();
       init_color();
       init_styles();
-      import_react_native10 = __toESM(require_react_native());
+      import_react_native9 = __toESM(require_react_native());
       useStyles = createStyles({
         codeBlock: {
           fontFamily: constants.Fonts.CODE_NORMAL,
@@ -7307,7 +6920,7 @@
           padding: 10
         }
       });
-      InputBasedCodeblock = ({ style, children }) => /* @__PURE__ */ jsx(import_react_native10.TextInput, {
+      InputBasedCodeblock = ({ style, children }) => /* @__PURE__ */ jsx(import_react_native9.TextInput, {
         editable: false,
         multiline: true,
         style: [
@@ -7316,7 +6929,7 @@
         ],
         value: children
       });
-      TextBasedCodeblock = ({ selectable, style, children }) => /* @__PURE__ */ jsx(import_react_native10.Text, {
+      TextBasedCodeblock = ({ selectable, style, children }) => /* @__PURE__ */ jsx(import_react_native9.Text, {
         selectable,
         style: [
           useStyles().codeBlock,
@@ -7368,7 +6981,7 @@
 
   // src/core/ui/reporter/components/ErrorComponentStackCard.tsx
   function ErrorComponentStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
     var stack;
     try {
       stack = parseComponentStack(props.componentStack);
@@ -7377,7 +6990,7 @@
       return;
     }
     return /* @__PURE__ */ jsx(Card, {
-      children: /* @__PURE__ */ jsxs(import_react_native11.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native10.View, {
         style: {
           gap: 8
         },
@@ -7386,11 +6999,11 @@
             variant: "heading-lg/bold",
             children: "Component Stack"
           }),
-          /* @__PURE__ */ jsx(import_react_native11.View, {
+          /* @__PURE__ */ jsx(import_react_native10.View, {
             style: {
               gap: 4
             },
-            children: stack.map((component) => /* @__PURE__ */ jsxs(import_react_native11.View, {
+            children: stack.map((component) => /* @__PURE__ */ jsxs(import_react_native10.View, {
               style: {
                 flexDirection: "row"
               },
@@ -7415,7 +7028,7 @@
           collapsed && /* @__PURE__ */ jsx(Text, {
             children: "..."
           }),
-          /* @__PURE__ */ jsxs(import_react_native11.View, {
+          /* @__PURE__ */ jsxs(import_react_native10.View, {
             style: {
               gap: 8,
               flexDirection: "row",
@@ -7426,7 +7039,7 @@
               /* @__PURE__ */ jsx(Button, {
                 variant: "secondary",
                 text: `Show ${collapsed ? "more" : "less"}`,
-                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native11.Image, {
+                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native10.Image, {
                   style: {
                     transform: [
                       {
@@ -7450,7 +7063,7 @@
       })
     });
   }
-  var import_react3, import_react_native11;
+  var import_react2, import_react_native10;
   var init_ErrorComponentStackCard = __esm({
     "src/core/ui/reporter/components/ErrorComponentStackCard.tsx"() {
       "use strict";
@@ -7461,8 +7074,8 @@
       init_assets();
       init_common();
       init_components();
-      import_react3 = __toESM(require_react());
-      import_react_native11 = __toESM(require_react_native());
+      import_react2 = __toESM(require_react());
+      import_react_native10 = __toESM(require_react_native());
     }
   });
 
@@ -7570,7 +7183,7 @@
 
   // src/core/ui/reporter/components/ErrorStackCard.tsx
   function ErrorStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react4.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
     var stack;
     try {
       var parsedErrorStack = parseErrorStack(props.error.stack);
@@ -7579,7 +7192,7 @@
       return null;
     }
     return /* @__PURE__ */ jsx(Card, {
-      children: /* @__PURE__ */ jsxs(import_react_native12.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native11.View, {
         style: {
           gap: 12
         },
@@ -7588,7 +7201,7 @@
             variant: "heading-lg/bold",
             children: "Call Stack"
           }),
-          /* @__PURE__ */ jsx(import_react_native12.View, {
+          /* @__PURE__ */ jsx(import_react_native11.View, {
             style: {
               gap: 4
             },
@@ -7600,7 +7213,7 @@
           collapsed && /* @__PURE__ */ jsx(Text, {
             children: "..."
           }),
-          /* @__PURE__ */ jsxs(import_react_native12.View, {
+          /* @__PURE__ */ jsxs(import_react_native11.View, {
             style: {
               gap: 8,
               flexDirection: "row",
@@ -7611,7 +7224,7 @@
               /* @__PURE__ */ jsx(Button, {
                 variant: "secondary",
                 text: `Show ${collapsed ? "more" : "less"}`,
-                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native12.Image, {
+                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native11.Image, {
                   style: {
                     transform: [
                       {
@@ -7636,8 +7249,8 @@
     });
   }
   function Line(props) {
-    var [collapsed, setCollapsed] = (0, import_react4.useState)(true);
-    return /* @__PURE__ */ jsxs(import_react_native12.Pressable, {
+    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
+    return /* @__PURE__ */ jsxs(import_react_native11.Pressable, {
       onPress: () => setCollapsed((v2) => !v2),
       children: [
         /* @__PURE__ */ jsx(Text, {
@@ -7666,7 +7279,7 @@
       ]
     }, props.id);
   }
-  var import_react4, import_react_native12;
+  var import_react3, import_react_native11;
   var init_ErrorStackCard = __esm({
     "src/core/ui/reporter/components/ErrorStackCard.tsx"() {
       "use strict";
@@ -7677,8 +7290,8 @@
       init_assets();
       init_common();
       init_components();
-      import_react4 = __toESM(require_react());
-      import_react_native12 = __toESM(require_react_native());
+      import_react3 = __toESM(require_react());
+      import_react_native11 = __toESM(require_react_native());
       init_ErrorCard();
     }
   });
@@ -7686,7 +7299,7 @@
   // src/core/ui/reporter/components/ErrorDetailsActionSheet.tsx
   function ErrorDetailsActionSheet(props) {
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native13.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native12.View, {
         style: {
           gap: 12,
           paddingVertical: 12
@@ -7710,7 +7323,7 @@
       })
     });
   }
-  var import_react_native13;
+  var import_react_native12;
   var init_ErrorDetailsActionSheet = __esm({
     "src/core/ui/reporter/components/ErrorDetailsActionSheet.tsx"() {
       "use strict";
@@ -7720,7 +7333,7 @@
       init_isStack();
       init_components2();
       init_components();
-      import_react_native13 = __toESM(require_react_native());
+      import_react_native12 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
     }
@@ -7833,7 +7446,7 @@
 
   // src/lib/ui/components/Search.tsx
   function SearchIcon() {
-    return /* @__PURE__ */ jsx(import_react_native14.Image, {
+    return /* @__PURE__ */ jsx(import_react_native13.Image, {
       style: {
         width: 16,
         height: 16
@@ -7841,7 +7454,7 @@
       source: findAssetId("icon-search")
     });
   }
-  var import_react_native14, Search_default;
+  var import_react_native13, Search_default;
   var init_Search = __esm({
     "src/lib/ui/components/Search.tsx"() {
       "use strict";
@@ -7852,7 +7465,7 @@
       init_assets();
       init_components();
       init_ErrorBoundary();
-      import_react_native14 = __toESM(require_react_native());
+      import_react_native13 = __toESM(require_react_native());
       Search_default = ({ onChangeText, placeholder, style, isRound }) => {
         var [query, setQuery] = React.useState("");
         var onChange = (value) => {
@@ -7860,7 +7473,7 @@
           onChangeText?.(value);
         };
         return /* @__PURE__ */ jsx(ErrorBoundary, {
-          children: /* @__PURE__ */ jsx(import_react_native14.View, {
+          children: /* @__PURE__ */ jsx(import_react_native13.View, {
             style,
             children: /* @__PURE__ */ jsx(TextInput, {
               grow: true,
@@ -7903,11 +7516,11 @@
           onPress: () => {
             setHidden(!hidden);
             if (!noAnimation)
-              import_react_native15.LayoutAnimation.configureNext(import_react_native15.LayoutAnimation.Presets.easeInEaseOut);
+              import_react_native14.LayoutAnimation.configureNext(import_react_native14.LayoutAnimation.Presets.easeInEaseOut);
           }
         }),
         !hidden && /* @__PURE__ */ jsx(Fragment, {
-          children: /* @__PURE__ */ jsx(import_react_native15.View, {
+          children: /* @__PURE__ */ jsx(import_react_native14.View, {
             style: !noPadding && {
               paddingHorizontal: 15
             },
@@ -7917,7 +7530,7 @@
       ]
     });
   }
-  var import_react_native15;
+  var import_react_native14;
   var init_Summary = __esm({
     "src/lib/ui/components/Summary.tsx"() {
       "use strict";
@@ -7926,7 +7539,7 @@
       init_jsxRuntime();
       init_assets();
       init_components();
-      import_react_native15 = __toESM(require_react_native());
+      import_react_native14 = __toESM(require_react_native());
     }
   });
 
@@ -7961,7 +7574,7 @@
         children: /* @__PURE__ */ jsxs(SafeAreaView, {
           style: styles.container,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native16.View, {
+            /* @__PURE__ */ jsxs(import_react_native15.View, {
               style: {
                 gap: 4
               },
@@ -7989,7 +7602,7 @@
                 })
               ]
             }),
-            /* @__PURE__ */ jsxs(import_react_native16.ScrollView, {
+            /* @__PURE__ */ jsxs(import_react_native15.ScrollView, {
               fadingEdgeLength: 64,
               contentContainerStyle: {
                 gap: 12
@@ -8032,7 +7645,7 @@
       })
     });
   }
-  var import_react_native16, useStyles2;
+  var import_react_native15, useStyles2;
   var init_ErrorBoundaryScreen = __esm({
     "src/core/ui/reporter/components/ErrorBoundaryScreen.tsx"() {
       "use strict";
@@ -8047,7 +7660,7 @@
       init_styles();
       init_common();
       init_components();
-      import_react_native16 = __toESM(require_react_native());
+      import_react_native15 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
       useStyles2 = createStyles({
@@ -8527,7 +8140,7 @@
         version: debugInfo.device.manufacturer,
         icon: "WrenchIcon"
       },
-      ...import_react_native17.Platform.OS !== "ios" ? [
+      ...import_react_native16.Platform.OS !== "ios" ? [
         {
           label: Strings.BRAND,
           version: debugInfo.device.brand,
@@ -8540,7 +8153,7 @@
         icon: "MobilePhoneIcon"
       },
       {
-        label: import_react_native17.Platform.select({
+        label: import_react_native16.Platform.select({
           android: Strings.CODENAME,
           ios: Strings.MODELID
         }),
@@ -8548,7 +8161,7 @@
         icon: "TagIcon"
       }
     ];
-    return /* @__PURE__ */ jsx(import_react_native17.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native16.ScrollView, {
       style: {
         flex: 1
       },
@@ -8582,7 +8195,7 @@
       })
     });
   }
-  var import_react_native17;
+  var import_react_native16;
   var init_About = __esm({
     "src/core/ui/settings/pages/General/About.tsx"() {
       "use strict";
@@ -8596,7 +8209,7 @@
       init_debug();
       init_settings();
       init_components();
-      import_react_native17 = __toESM(require_react_native());
+      import_react_native16 = __toESM(require_react_native());
     }
   });
 
@@ -8627,7 +8240,7 @@
     useProxy(settings);
     var debugInfo = getDebugInfo();
     var navigation2 = NavigationNative.useNavigation();
-    return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native17.ScrollView, {
       style: {
         flex: 1
       },
@@ -8686,7 +8299,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("Discord")
                 }),
-                onPress: () => import_react_native18.Linking.openURL(DISCORD_SERVER)
+                onPress: () => import_react_native17.Linking.openURL(DISCORD_SERVER)
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
@@ -8694,7 +8307,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("img_account_sync_github_white")
                 }),
-                onPress: () => import_react_native18.Linking.openURL(GITHUB)
+                onPress: () => import_react_native17.Linking.openURL(GITHUB)
               })
             ]
           }),
@@ -8769,7 +8382,7 @@
       })
     });
   }
-  var import_react_native18;
+  var import_react_native17;
   var init_General = __esm({
     "src/core/ui/settings/pages/General/index.tsx"() {
       "use strict";
@@ -8789,7 +8402,138 @@
       init_constants();
       init_common();
       init_components();
-      import_react_native18 = __toESM(require_react_native());
+      import_react_native17 = __toESM(require_react_native());
+    }
+  });
+
+  // src/lib/api/botcord.ts
+  function normalizeBotToken(token) {
+    return token.trim().replace(/^Bot\s+/i, "");
+  }
+  function getBotUser(token) {
+    return _async_to_generator(function* () {
+      var cleanToken = normalizeBotToken(token);
+      var response = yield fetch("https://discord.com/api/v10/users/@me", {
+        headers: {
+          Authorization: `Bot ${cleanToken}`
+        }
+      });
+      if (!response.ok)
+        throw new Error("Invalid bot token or Discord rejected the request.");
+      var user = yield response.json();
+      return {
+        id: user.id,
+        username: user.global_name || user.username || `Bot ${user.id}`,
+        avatar: user.avatar,
+        token: cleanToken
+      };
+    })();
+  }
+  function addBotAccount(token) {
+    return _async_to_generator(function* () {
+      var account = yield getBotUser(token);
+      yield awaitStorage(botCordState);
+      botCordState.accounts ??= [];
+      var existing = botCordState.accounts.findIndex((a) => a.id === account.id);
+      if (existing === -1)
+        botCordState.accounts.push(account);
+      else
+        botCordState.accounts[existing] = account;
+      botCordState.activeAccountId = account.id;
+      return account;
+    })();
+  }
+  function removeBotAccount(id) {
+    return _async_to_generator(function* () {
+      yield awaitStorage(botCordState);
+      botCordState.accounts ??= [];
+      var index = botCordState.accounts.findIndex((a) => a.id === id);
+      if (index !== -1)
+        botCordState.accounts.splice(index, 1);
+      if (botCordState.activeAccountId === id) {
+        botCordState.activeAccountId = botCordState.accounts[0]?.id ?? null;
+      }
+    })();
+  }
+  function setActiveBotAccount(id) {
+    return _async_to_generator(function* () {
+      yield awaitStorage(botCordState);
+      botCordState.activeAccountId = id;
+    })();
+  }
+  function readDiscordError(response) {
+    return _async_to_generator(function* () {
+      try {
+        var body = yield response.json();
+        return typeof body?.message === "string" ? body.message : null;
+      } catch (e) {
+        return null;
+      }
+    })();
+  }
+  function botFetch(token, path) {
+    return _async_to_generator(function* () {
+      var response = yield fetch(`https://discord.com/api/v10${path}`, {
+        headers: {
+          Authorization: `Bot ${normalizeBotToken(token)}`
+        }
+      });
+      if (!response.ok) {
+        var message = yield readDiscordError(response);
+        throw new Error(message ? `${message} (${response.status})` : `Discord API request failed (${response.status}).`);
+      }
+      return response.json();
+    })();
+  }
+  function getBotGuilds(token) {
+    return botFetch(token, "/users/@me/guilds");
+  }
+  function getBotGuildChannels(token, guildId) {
+    return botFetch(token, `/guilds/${guildId}/channels`);
+  }
+  function getBotChannelMessages(token, channelId) {
+    return botFetch(token, `/channels/${channelId}/messages?limit=50`);
+  }
+  function getBotGuildMembers(token, guildId) {
+    return botFetch(token, `/guilds/${guildId}/members?limit=100`);
+  }
+  function sendBotMessage(token, channelId, content) {
+    return _async_to_generator(function* () {
+      var response = yield fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bot ${normalizeBotToken(token)}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          content
+        })
+      });
+      if (!response.ok) {
+        var message = yield readDiscordError(response);
+        throw new Error(message ? `${message} (${response.status})` : `Failed to send message (${response.status}).`);
+      }
+      return response.json();
+    })();
+  }
+  var botCordState;
+  var init_botcord = __esm({
+    "src/lib/api/botcord.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_storage();
+      botCordState = wrapSync(createStorage(createFileBackend("botcord/accounts.json", {
+        accounts: [],
+        activeAccountId: null,
+        switcher: {
+          enabled: true,
+          x: 12,
+          y: 180,
+          size: 58
+        }
+      })));
     }
   });
 
@@ -8798,35 +8542,464 @@
   __export(BotCord_exports, {
     default: () => BotCord
   });
-  function BotClient({ token, username, onExit }) {
-    var [guilds, setGuilds] = (0, import_react5.useState)([]);
-    var [channels2, setChannels] = (0, import_react5.useState)([]);
-    var [messages, setMessages] = (0, import_react5.useState)([]);
-    var [guild, setGuild] = (0, import_react5.useState)(null);
-    var [channel, setChannel] = (0, import_react5.useState)(null);
-    var [composer, setComposer] = (0, import_react5.useState)("");
-    var [loading, setLoading] = (0, import_react5.useState)(true);
-    var [error, setError] = (0, import_react5.useState)(null);
-    (0, import_react5.useEffect)(() => {
-      getBotGuilds(token).then(setGuilds).catch((e) => setError(String(e))).finally(() => setLoading(false));
-    }, [
-      token
-    ]);
-    var openGuild = (g2) => _async_to_generator(function* () {
+  function Avatar2({ user, size = 38 }) {
+    var uri = avatarUrl(user, 128);
+    return uri ? /* @__PURE__ */ jsx(import_react_native18.Image, {
+      source: {
+        uri
+      },
+      style: {
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: PANEL
+      }
+    }) : /* @__PURE__ */ jsx(import_react_native18.View, {
+      style: {
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: BRAND,
+        alignItems: "center",
+        justifyContent: "center"
+      },
+      children: /* @__PURE__ */ jsx(Text, {
+        style: {
+          color: "white",
+          fontWeight: "800",
+          fontSize: Math.max(12, size * 0.34)
+        },
+        children: (user?.username || "B").slice(0, 2).toUpperCase()
+      })
+    });
+  }
+  function GuildIcon({ guild, selected, onPress }) {
+    var uri = guildIconUrl(guild);
+    return /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+      onPress,
+      style: {
+        width: 54,
+        alignItems: "center",
+        justifyContent: "center"
+      },
+      children: /* @__PURE__ */ jsx(import_react_native18.View, {
+        style: {
+          width: selected ? 48 : 44,
+          height: selected ? 48 : 44,
+          borderRadius: selected ? 16 : 22,
+          overflow: "hidden",
+          backgroundColor: selected ? BRAND : "#313338",
+          alignItems: "center",
+          justifyContent: "center",
+          borderWidth: selected ? 2 : 0,
+          borderColor: "white"
+        },
+        children: uri ? /* @__PURE__ */ jsx(import_react_native18.Image, {
+          source: {
+            uri
+          },
+          style: {
+            width: "100%",
+            height: "100%"
+          }
+        }) : /* @__PURE__ */ jsx(Text, {
+          style: {
+            color: "white",
+            fontWeight: "800",
+            fontSize: 15
+          },
+          children: guild.name?.slice(0, 2).toUpperCase()
+        })
+      })
+    });
+  }
+  function MessageRow({ message }) {
+    var author = message.author || {};
+    var time = message.timestamp ? new Date(message.timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit"
+    }) : "";
+    var attachmentText = message.attachments?.length ? `
+\u{1F4CE} ${message.attachments.map((a) => a.filename).join(", ")}` : "";
+    var embedText = message.embeds?.length ? `
+\u25A3 ${message.embeds.length} embed${message.embeds.length > 1 ? "s" : ""}` : "";
+    return /* @__PURE__ */ jsxs(import_react_native18.View, {
+      style: {
+        flexDirection: "row",
+        gap: 10,
+        paddingHorizontal: 12,
+        paddingVertical: 8
+      },
+      children: [
+        /* @__PURE__ */ jsx(Avatar2, {
+          user: author,
+          size: 38
+        }),
+        /* @__PURE__ */ jsxs(import_react_native18.View, {
+          style: {
+            flex: 1
+          },
+          children: [
+            /* @__PURE__ */ jsxs(import_react_native18.View, {
+              style: {
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 7,
+                flexWrap: "wrap"
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  style: {
+                    color: "white",
+                    fontWeight: "700",
+                    fontSize: 15
+                  },
+                  children: author.global_name || author.username || "Unknown"
+                }),
+                author.bot && /* @__PURE__ */ jsx(import_react_native18.View, {
+                  style: {
+                    backgroundColor: BRAND,
+                    paddingHorizontal: 5,
+                    paddingVertical: 1,
+                    borderRadius: 4
+                  },
+                  children: /* @__PURE__ */ jsx(Text, {
+                    style: {
+                      color: "white",
+                      fontSize: 9,
+                      fontWeight: "800"
+                    },
+                    children: "BOT"
+                  })
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  style: {
+                    color: "#949ba4",
+                    fontSize: 10
+                  },
+                  children: time
+                })
+              ]
+            }),
+            !!(message.content || attachmentText || embedText) && /* @__PURE__ */ jsxs(Text, {
+              selectable: true,
+              style: {
+                color: "#dbdee1",
+                fontSize: 15,
+                lineHeight: 20,
+                marginTop: 2
+              },
+              children: [
+                message.content || "",
+                attachmentText,
+                embedText
+              ]
+            }),
+            !!message.reactions?.length && /* @__PURE__ */ jsx(import_react_native18.View, {
+              style: {
+                flexDirection: "row",
+                gap: 5,
+                flexWrap: "wrap",
+                marginTop: 6
+              },
+              children: message.reactions.slice(0, 8).map((r, i) => /* @__PURE__ */ jsx(import_react_native18.View, {
+                style: {
+                  paddingHorizontal: 7,
+                  paddingVertical: 3,
+                  borderRadius: 7,
+                  backgroundColor: "#2b2d31",
+                  borderWidth: 1,
+                  borderColor: "#3f4147"
+                },
+                children: /* @__PURE__ */ jsxs(Text, {
+                  style: {
+                    color: "#dbdee1",
+                    fontSize: 12
+                  },
+                  children: [
+                    r.emoji?.name || "?",
+                    " ",
+                    r.count
+                  ]
+                })
+              }, i))
+            })
+          ]
+        })
+      ]
+    });
+  }
+  function AccountMenu({ visible, onClose, accounts, active, onSwitch, onLogout, onMain }) {
+    return /* @__PURE__ */ jsx(import_react_native18.Modal, {
+      transparent: true,
+      animationType: "fade",
+      visible,
+      onRequestClose: onClose,
+      children: /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+        onPress: onClose,
+        style: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,.48)",
+          justifyContent: "flex-end"
+        },
+        children: /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
+          onPress: () => {
+          },
+          style: {
+            backgroundColor: PANEL,
+            borderTopLeftRadius: 22,
+            borderTopRightRadius: 22,
+            padding: 16,
+            paddingBottom: 28,
+            gap: 10
+          },
+          children: [
+            /* @__PURE__ */ jsx(import_react_native18.View, {
+              style: {
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: "#5c5f66",
+                alignSelf: "center",
+                marginBottom: 4
+              }
+            }),
+            /* @__PURE__ */ jsx(Text, {
+              style: {
+                color: "white",
+                fontWeight: "800",
+                fontSize: 18
+              },
+              children: "Bot account"
+            }),
+            accounts.map((account) => /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
+              onPress: () => {
+                onSwitch(account.id);
+                onClose();
+              },
+              style: {
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                padding: 10,
+                borderRadius: 12,
+                backgroundColor: account.id === active?.id ? "rgba(88,101,242,.22)" : "#2b2d31"
+              },
+              children: [
+                /* @__PURE__ */ jsx(Avatar2, {
+                  user: account,
+                  size: 36
+                }),
+                /* @__PURE__ */ jsxs(import_react_native18.View, {
+                  style: {
+                    flex: 1
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      style: {
+                        color: "white",
+                        fontWeight: "700"
+                      },
+                      children: account.username
+                    }),
+                    /* @__PURE__ */ jsx(Text, {
+                      style: {
+                        color: MUTED,
+                        fontSize: 11
+                      },
+                      children: account.id === active?.id ? "Currently active" : "Switch to this bot"
+                    })
+                  ]
+                }),
+                account.id === active?.id && /* @__PURE__ */ jsx(Text, {
+                  style: {
+                    color: "#57f287",
+                    fontSize: 18
+                  },
+                  children: "\u25CF"
+                })
+              ]
+            }, account.id)),
+            /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+              onPress: onMain,
+              style: {
+                padding: 13,
+                borderRadius: 12,
+                backgroundColor: BRAND,
+                alignItems: "center"
+              },
+              children: /* @__PURE__ */ jsx(Text, {
+                style: {
+                  color: "white",
+                  fontWeight: "800"
+                },
+                children: "Back to Discord \xB7 Main Account"
+              })
+            }),
+            /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+              onPress: onLogout,
+              style: {
+                padding: 13,
+                borderRadius: 12,
+                backgroundColor: "rgba(242,63,66,.16)",
+                alignItems: "center"
+              },
+              children: /* @__PURE__ */ jsx(Text, {
+                style: {
+                  color: "#ff7b7d",
+                  fontWeight: "800"
+                },
+                children: "Log out this bot"
+              })
+            })
+          ]
+        })
+      })
+    });
+  }
+  function MembersSheet({ visible, onClose, members }) {
+    return /* @__PURE__ */ jsx(import_react_native18.Modal, {
+      transparent: true,
+      animationType: "slide",
+      visible,
+      onRequestClose: onClose,
+      children: /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+        onPress: onClose,
+        style: {
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,.4)",
+          justifyContent: "flex-end"
+        },
+        children: /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
+          onPress: () => {
+          },
+          style: {
+            maxHeight: "72%",
+            backgroundColor: PANEL,
+            borderTopLeftRadius: 22,
+            borderTopRightRadius: 22,
+            paddingTop: 12,
+            paddingBottom: 24
+          },
+          children: [
+            /* @__PURE__ */ jsx(import_react_native18.View, {
+              style: {
+                width: 36,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: "#5c5f66",
+                alignSelf: "center",
+                marginBottom: 12
+              }
+            }),
+            /* @__PURE__ */ jsxs(Text, {
+              style: {
+                color: "white",
+                fontWeight: "800",
+                fontSize: 18,
+                paddingHorizontal: 16,
+                marginBottom: 8
+              },
+              children: [
+                "Members \xB7 ",
+                members.length
+              ]
+            }),
+            /* @__PURE__ */ jsx(import_react_native18.FlatList, {
+              data: members,
+              keyExtractor: (m2, i) => m2.user?.id || String(i),
+              renderItem: ({ item }) => /* @__PURE__ */ jsxs(import_react_native18.View, {
+                style: {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  paddingHorizontal: 16,
+                  paddingVertical: 8
+                },
+                children: [
+                  /* @__PURE__ */ jsx(Avatar2, {
+                    user: item.user,
+                    size: 34
+                  }),
+                  /* @__PURE__ */ jsxs(import_react_native18.View, {
+                    style: {
+                      flex: 1
+                    },
+                    children: [
+                      /* @__PURE__ */ jsx(Text, {
+                        style: {
+                          color: "#dbdee1",
+                          fontWeight: "600"
+                        },
+                        children: item.nick || item.user?.global_name || item.user?.username || "Unknown"
+                      }),
+                      item.user?.bot && /* @__PURE__ */ jsx(Text, {
+                        style: {
+                          color: MUTED,
+                          fontSize: 10
+                        },
+                        children: "BOT"
+                      })
+                    ]
+                  })
+                ]
+              })
+            })
+          ]
+        })
+      })
+    });
+  }
+  function BotClient({ accounts, activeId, onExit }) {
+    var navigation2 = NavigationNative.useNavigation();
+    var active = accounts.find((a) => a.id === activeId) ?? accounts[0] ?? null;
+    var [guilds, setGuilds] = (0, import_react4.useState)([]);
+    var [channels2, setChannels] = (0, import_react4.useState)([]);
+    var [members, setMembers] = (0, import_react4.useState)([]);
+    var [messages, setMessages] = (0, import_react4.useState)([]);
+    var [guild, setGuild] = (0, import_react4.useState)(null);
+    var [channel, setChannel] = (0, import_react4.useState)(null);
+    var [composer, setComposer] = (0, import_react4.useState)("");
+    var [loading, setLoading] = (0, import_react4.useState)(false);
+    var [error, setError] = (0, import_react4.useState)(null);
+    var [accountMenu, setAccountMenu] = (0, import_react4.useState)(false);
+    var [membersOpen, setMembersOpen] = (0, import_react4.useState)(false);
+    var listRef = (0, import_react4.useRef)(null);
+    (0, import_react4.useEffect)(() => {
+      if (!active)
+        return;
       setLoading(true);
       setError(null);
+      setGuild(null);
+      setChannel(null);
+      setMessages([]);
+      setChannels([]);
+      setMembers([]);
+      getBotGuilds(active.token).then((g2) => {
+        setGuilds(g2);
+        if (g2[0])
+          openGuild(g2[0], active.token);
+      }).catch((e) => setError(String(e))).finally(() => setLoading(false));
+    }, [
+      active?.id
+    ]);
+    var openGuild = (g2, tokenOverride) => _async_to_generator(function* () {
+      if (!active && !tokenOverride)
+        return;
+      var token = tokenOverride || active.token;
+      setLoading(true);
+      setError(null);
+      setGuild(g2);
+      setChannel(null);
+      setMessages([]);
+      setMembers([]);
       try {
-        var result = yield getBotGuildChannels(token, g2.id);
-        setGuild(g2);
-        setChannel(null);
-        setMessages([]);
-        setChannels(result.filter((c2) => [
-          0,
-          5,
-          10,
-          11,
-          12
-        ].includes(c2.type)));
+        var [channelResult, memberResult] = yield Promise.all([
+          getBotGuildChannels(token, g2.id),
+          getBotGuildMembers(token, g2.id).catch(() => [])
+        ]);
+        setChannels(channelResult.sort((a, b3) => (a.position ?? 0) - (b3.position ?? 0)));
+        setMembers(memberResult);
       } catch (e) {
         setError(String(e));
       } finally {
@@ -8834,12 +9007,17 @@
       }
     })();
     var openChannel = (c2) => _async_to_generator(function* () {
+      if (!active)
+        return;
       setLoading(true);
       setError(null);
       try {
-        var result = yield getBotChannelMessages(token, c2.id);
+        var result = yield getBotChannelMessages(active.token, c2.id);
         setChannel(c2);
         setMessages(result.reverse());
+        setTimeout(() => listRef.current?.scrollToEnd({
+          animated: false
+        }), 40);
       } catch (e) {
         setError(String(e));
       } finally {
@@ -8847,182 +9025,485 @@
       }
     })();
     var send = () => _async_to_generator(function* () {
+      if (!active || !channel)
+        return;
       var content = composer.trim();
-      if (!content || !channel)
+      if (!content)
         return;
       setComposer("");
       try {
-        var sent = yield sendBotMessage(token, channel.id, content);
+        var sent = yield sendBotMessage(active.token, channel.id, content);
         setMessages((old) => [
           ...old,
           sent
         ]);
+        setTimeout(() => listRef.current?.scrollToEnd({
+          animated: true
+        }), 40);
       } catch (e) {
         setComposer(content);
         setError(String(e));
       }
     })();
-    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
+    if (!active)
+      return null;
+    var categories = channels2.filter((c2) => c2.type === 4);
+    var uncategorized = channels2.filter((c2) => [
+      0,
+      5,
+      10,
+      11,
+      12
+    ].includes(c2.type) && !c2.parent_id);
+    var channelsFor = (catId) => channels2.filter((c2) => [
+      0,
+      5,
+      10,
+      11,
+      12
+    ].includes(c2.type) && c2.parent_id === catId);
+    return /* @__PURE__ */ jsxs(import_react_native18.View, {
       style: {
-        flex: 1
+        flex: 1,
+        backgroundColor: BG
       },
-      contentContainerStyle: {
-        paddingBottom: 38
-      },
-      children: /* @__PURE__ */ jsxs(Stack, {
-        style: {
-          paddingVertical: 24,
-          paddingHorizontal: 12
-        },
-        spacing: 16,
-        children: [
-          /* @__PURE__ */ jsxs(import_react_native19.View, {
-            style: {
-              flexDirection: "row",
-              gap: 8
-            },
-            children: [
-              /* @__PURE__ */ jsxs(import_react_native19.View, {
+      children: [
+        /* @__PURE__ */ jsx(AccountMenu, {
+          visible: accountMenu,
+          onClose: () => setAccountMenu(false),
+          accounts,
+          active,
+          onSwitch: (id) => _async_to_generator(function* () {
+            return setActiveBotAccount(id);
+          })(),
+          onMain: () => {
+            setAccountMenu(false);
+            onExit();
+            navigation2.goBack?.();
+          },
+          onLogout: () => _async_to_generator(function* () {
+            yield removeBotAccount(active.id);
+            setAccountMenu(false);
+            onExit();
+          })()
+        }),
+        /* @__PURE__ */ jsx(MembersSheet, {
+          visible: membersOpen,
+          onClose: () => setMembersOpen(false),
+          members
+        }),
+        /* @__PURE__ */ jsxs(import_react_native18.View, {
+          style: {
+            height: 58,
+            paddingHorizontal: 12,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 10,
+            backgroundColor: PANEL,
+            borderBottomWidth: 1,
+            borderBottomColor: "#1e1f22"
+          },
+          children: [
+            channel && /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+              onPress: () => setChannel(null),
+              style: {
+                padding: 6
+              },
+              children: /* @__PURE__ */ jsx(Text, {
                 style: {
-                  flex: 1
+                  color: "white",
+                  fontSize: 22
                 },
-                children: [
-                  /* @__PURE__ */ jsx(Text, {
-                    variant: "heading-lg/bold",
-                    children: "BotCord"
-                  }),
-                  /* @__PURE__ */ jsxs(Text, {
-                    variant: "text-sm/normal",
-                    color: "text-muted",
-                    children: [
-                      "Connected as ",
-                      username
-                    ]
-                  })
-                ]
-              }),
-              /* @__PURE__ */ jsx(Button, {
-                size: "sm",
-                variant: "secondary",
-                text: "Accounts",
-                onPress: onExit
+                children: "\u2039"
               })
-            ]
-          }),
-          error && /* @__PURE__ */ jsx(Text, {
-            variant: "text-sm/medium",
-            color: "text-feedback-critical",
-            children: error
-          }),
-          loading && /* @__PURE__ */ jsx(Text, {
-            variant: "text-sm/normal",
-            color: "text-muted",
-            children: "Loading\u2026"
-          }),
-          !guild && /* @__PURE__ */ jsxs(TableRowGroup, {
-            title: "Servers",
-            children: [
-              guilds.map((g2) => /* @__PURE__ */ jsx(TableRow, {
-                label: g2.name,
-                subLabel: g2.id,
-                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                  source: findAssetId("GuildIcon") || findAssetId("Discord")
+            }),
+            /* @__PURE__ */ jsxs(import_react_native18.View, {
+              style: {
+                flex: 1
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  numberOfLines: 1,
+                  style: {
+                    color: "white",
+                    fontWeight: "800",
+                    fontSize: 16
+                  },
+                  children: channel ? `# ${channel.name}` : guild?.name || "BotCord"
                 }),
-                onPress: () => openGuild(g2)
-              }, g2.id)),
-              !loading && guilds.length === 0 && /* @__PURE__ */ jsx(TableRow, {
-                label: "No servers available to this bot"
-              })
-            ]
-          }),
-          guild && !channel && /* @__PURE__ */ jsxs(Fragment, {
-            children: [
-              /* @__PURE__ */ jsx(Button, {
-                size: "sm",
-                variant: "secondary",
-                text: "\u2190 Servers",
-                onPress: () => setGuild(null)
-              }),
-              /* @__PURE__ */ jsxs(TableRowGroup, {
-                title: guild.name,
-                children: [
-                  channels2.map((c2) => /* @__PURE__ */ jsx(TableRow, {
-                    label: `# ${c2.name}`,
-                    icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                      source: findAssetId("ChannelTextIcon") || findAssetId("ChannelListMagnifyingGlassIcon")
-                    }),
-                    onPress: () => openChannel(c2)
-                  }, c2.id)),
-                  !loading && channels2.length === 0 && /* @__PURE__ */ jsx(TableRow, {
-                    label: "No readable message channels"
-                  })
-                ]
-              })
-            ]
-          }),
-          channel && /* @__PURE__ */ jsxs(Fragment, {
-            children: [
-              /* @__PURE__ */ jsx(Button, {
-                size: "sm",
-                variant: "secondary",
-                text: `\u2190 ${guild?.name || "Channels"}`,
-                onPress: () => {
-                  setChannel(null);
-                  setMessages([]);
-                }
-              }),
-              /* @__PURE__ */ jsx(TableRowGroup, {
-                title: `# ${channel.name}`,
-                children: messages.map((m2) => /* @__PURE__ */ jsx(TableRow, {
-                  label: m2.author?.global_name || m2.author?.username || "Unknown",
-                  subLabel: m2.content || (m2.attachments?.length ? "Attachment" : m2.embeds?.length ? "Embed" : "")
-                }, m2.id))
-              }),
-              /* @__PURE__ */ jsxs(import_react_native19.View, {
+                /* @__PURE__ */ jsxs(Text, {
+                  numberOfLines: 1,
+                  style: {
+                    color: MUTED,
+                    fontSize: 10
+                  },
+                  children: [
+                    active.username,
+                    " \xB7 bot session"
+                  ]
+                })
+              ]
+            }),
+            !!guild && /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+              onPress: () => setMembersOpen(true),
+              style: {
+                padding: 8
+              },
+              children: /* @__PURE__ */ jsx(Text, {
                 style: {
-                  gap: 8
+                  color: MUTED,
+                  fontSize: 18
+                },
+                children: "\u265F"
+              })
+            }),
+            /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
+              onPress: () => setAccountMenu(true),
+              style: {
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                padding: 4,
+                paddingLeft: 8,
+                borderRadius: 18,
+                backgroundColor: "#2b2d31"
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  style: {
+                    color: MUTED,
+                    fontSize: 10,
+                    fontWeight: "700"
+                  },
+                  children: "BOT"
+                }),
+                /* @__PURE__ */ jsx(Avatar2, {
+                  user: active,
+                  size: 30
+                })
+              ]
+            })
+          ]
+        }),
+        /* @__PURE__ */ jsx(import_react_native18.View, {
+          style: {
+            height: 64,
+            backgroundColor: RAIL,
+            borderBottomWidth: 1,
+            borderBottomColor: "#111214"
+          },
+          children: /* @__PURE__ */ jsx(import_react_native18.FlatList, {
+            horizontal: true,
+            data: guilds,
+            showsHorizontalScrollIndicator: false,
+            contentContainerStyle: {
+              paddingHorizontal: 8,
+              alignItems: "center",
+              gap: 2
+            },
+            keyExtractor: (g2) => g2.id,
+            renderItem: ({ item }) => /* @__PURE__ */ jsx(GuildIcon, {
+              guild: item,
+              selected: guild?.id === item.id,
+              onPress: () => openGuild(item)
+            })
+          })
+        }),
+        error && /* @__PURE__ */ jsx(import_react_native18.View, {
+          style: {
+            padding: 9,
+            backgroundColor: "rgba(242,63,66,.15)"
+          },
+          children: /* @__PURE__ */ jsx(Text, {
+            style: {
+              color: "#ff8e90",
+              fontSize: 12
+            },
+            children: error
+          })
+        }),
+        loading && /* @__PURE__ */ jsx(import_react_native18.View, {
+          style: {
+            paddingVertical: 6,
+            backgroundColor: PANEL
+          },
+          children: /* @__PURE__ */ jsx(Text, {
+            style: {
+              color: MUTED,
+              textAlign: "center",
+              fontSize: 11
+            },
+            children: "Loading\u2026"
+          })
+        }),
+        !channel ? /* @__PURE__ */ jsxs(import_react_native18.ScrollView, {
+          style: {
+            flex: 1,
+            backgroundColor: SIDEBAR
+          },
+          contentContainerStyle: {
+            paddingBottom: 30
+          },
+          children: [
+            !guild && /* @__PURE__ */ jsxs(import_react_native18.View, {
+              style: {
+                padding: 24,
+                alignItems: "center",
+                gap: 8
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  style: {
+                    color: "white",
+                    fontSize: 20,
+                    fontWeight: "800"
+                  },
+                  children: "Choose a server"
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  style: {
+                    color: MUTED,
+                    textAlign: "center"
+                  },
+                  children: "Your bot's servers appear in the rail above."
+                })
+              ]
+            }),
+            !!guild && /* @__PURE__ */ jsxs(Fragment, {
+              children: [
+                /* @__PURE__ */ jsxs(import_react_native18.View, {
+                  style: {
+                    padding: 16,
+                    borderBottomWidth: 1,
+                    borderBottomColor: "#1e1f22"
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      style: {
+                        color: "white",
+                        fontWeight: "800",
+                        fontSize: 18
+                      },
+                      children: guild.name
+                    }),
+                    /* @__PURE__ */ jsx(Text, {
+                      style: {
+                        color: MUTED,
+                        fontSize: 11
+                      },
+                      children: "Select a channel"
+                    })
+                  ]
+                }),
+                uncategorized.map((c2) => /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
+                  onPress: () => openChannel(c2),
+                  style: {
+                    paddingHorizontal: 15,
+                    paddingVertical: 11,
+                    flexDirection: "row",
+                    gap: 9,
+                    alignItems: "center"
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      style: {
+                        color: "#949ba4",
+                        fontSize: 19
+                      },
+                      children: "#"
+                    }),
+                    /* @__PURE__ */ jsx(Text, {
+                      style: {
+                        color: "#dbdee1",
+                        fontWeight: "600"
+                      },
+                      children: c2.name
+                    })
+                  ]
+                }, c2.id)),
+                categories.map((cat) => /* @__PURE__ */ jsxs(import_react_native18.View, {
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      style: {
+                        color: "#949ba4",
+                        fontSize: 11,
+                        fontWeight: "800",
+                        paddingHorizontal: 15,
+                        paddingTop: 16,
+                        paddingBottom: 5
+                      },
+                      children: String(cat.name || "CATEGORY").toUpperCase()
+                    }),
+                    channelsFor(cat.id).map((c2) => /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
+                      onPress: () => openChannel(c2),
+                      style: {
+                        paddingHorizontal: 15,
+                        paddingVertical: 10,
+                        flexDirection: "row",
+                        gap: 9,
+                        alignItems: "center"
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx(Text, {
+                          style: {
+                            color: "#949ba4",
+                            fontSize: 19
+                          },
+                          children: "#"
+                        }),
+                        /* @__PURE__ */ jsx(Text, {
+                          style: {
+                            color: "#dbdee1",
+                            fontWeight: "600"
+                          },
+                          children: c2.name
+                        })
+                      ]
+                    }, c2.id))
+                  ]
+                }, cat.id)),
+                channels2.filter((c2) => [
+                  0,
+                  5,
+                  10,
+                  11,
+                  12
+                ].includes(c2.type)).length === 0 && /* @__PURE__ */ jsx(Text, {
+                  style: {
+                    color: MUTED,
+                    padding: 18
+                  },
+                  children: "No readable message channels."
+                })
+              ]
+            })
+          ]
+        }) : /* @__PURE__ */ jsxs(import_react_native18.View, {
+          style: {
+            flex: 1,
+            backgroundColor: BG
+          },
+          children: [
+            /* @__PURE__ */ jsx(import_react_native18.FlatList, {
+              ref: listRef,
+              data: messages,
+              keyExtractor: (m2, i) => m2.id || String(i),
+              renderItem: ({ item }) => /* @__PURE__ */ jsx(MessageRow, {
+                message: item
+              }),
+              contentContainerStyle: {
+                paddingVertical: 8,
+                flexGrow: 1,
+                justifyContent: messages.length ? "flex-start" : "center"
+              },
+              ListEmptyComponent: /* @__PURE__ */ jsxs(import_react_native18.View, {
+                style: {
+                  padding: 24,
+                  alignItems: "center"
                 },
                 children: [
-                  /* @__PURE__ */ jsx(TextInput, {
-                    size: "lg",
-                    value: composer,
-                    placeholder: `Message #${channel.name}`,
-                    onChange: setComposer
+                  /* @__PURE__ */ jsxs(Text, {
+                    style: {
+                      color: "white",
+                      fontWeight: "800",
+                      fontSize: 20
+                    },
+                    children: [
+                      "# ",
+                      channel.name
+                    ]
                   }),
-                  /* @__PURE__ */ jsx(Button, {
-                    size: "md",
-                    variant: "primary",
-                    text: "Send as bot",
+                  /* @__PURE__ */ jsx(Text, {
+                    style: {
+                      color: MUTED,
+                      marginTop: 5
+                    },
+                    children: "No messages yet, or this bot cannot read history."
+                  })
+                ]
+              }),
+              onContentSizeChange: () => listRef.current?.scrollToEnd({
+                animated: false
+              })
+            }),
+            /* @__PURE__ */ jsx(import_react_native18.View, {
+              style: {
+                paddingHorizontal: 10,
+                paddingTop: 7,
+                paddingBottom: 12,
+                backgroundColor: BG
+              },
+              children: /* @__PURE__ */ jsxs(import_react_native18.View, {
+                style: {
+                  minHeight: 46,
+                  borderRadius: 23,
+                  backgroundColor: INPUT,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  paddingLeft: 14,
+                  paddingRight: 6
+                },
+                children: [
+                  /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+                    value: composer,
+                    onChangeText: setComposer,
+                    placeholder: `Message #${channel.name}`,
+                    placeholderTextColor: "#949ba4",
+                    style: {
+                      flex: 1,
+                      color: "white",
+                      fontSize: 15,
+                      paddingVertical: 10
+                    },
+                    multiline: true,
+                    maxLength: 2e3
+                  }),
+                  /* @__PURE__ */ jsx(import_react_native18.Pressable, {
                     disabled: !composer.trim(),
-                    onPress: send
+                    onPress: send,
+                    style: {
+                      width: 34,
+                      height: 34,
+                      borderRadius: 17,
+                      backgroundColor: composer.trim() ? BRAND : "#4e5058",
+                      alignItems: "center",
+                      justifyContent: "center"
+                    },
+                    children: /* @__PURE__ */ jsx(Text, {
+                      style: {
+                        color: "white",
+                        fontWeight: "900",
+                        fontSize: 16
+                      },
+                      children: "\u2191"
+                    })
                   })
                 ]
               })
-            ]
-          })
-        ]
-      })
+            })
+          ]
+        })
+      ]
     });
   }
   function BotCord() {
     var state = useProxy(botCordState);
-    var [token, setToken] = (0, import_react5.useState)("");
-    var [adding, setAdding] = (0, import_react5.useState)(false);
-    var [error, setError] = (0, import_react5.useState)(null);
-    var [opened, setOpened] = (0, import_react5.useState)(false);
+    var [token, setToken] = (0, import_react4.useState)("");
+    var [adding, setAdding] = (0, import_react4.useState)(false);
+    var [error, setError] = (0, import_react4.useState)(null);
+    var [opened, setOpened] = (0, import_react4.useState)(false);
     var accounts = state.accounts ?? [];
-    var active = (0, import_react5.useMemo)(() => accounts.find((a) => a.id === state.activeAccountId) ?? accounts[0] ?? null, [
+    var active = (0, import_react4.useMemo)(() => accounts.find((a) => a.id === state.activeAccountId) ?? accounts[0] ?? null, [
       accounts,
       state.activeAccountId
     ]);
-    if (opened && active) {
+    if (opened && active)
       return /* @__PURE__ */ jsx(BotClient, {
-        token: active.token,
-        username: active.username,
+        accounts,
+        activeId: active.id,
         onExit: () => setOpened(false)
       });
-    }
-    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
       style: {
         flex: 1
       },
@@ -9036,7 +9517,7 @@
         },
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native19.View, {
+          /* @__PURE__ */ jsxs(import_react_native18.View, {
             children: [
               /* @__PURE__ */ jsx(Text, {
                 variant: "heading-xl/bold",
@@ -9045,7 +9526,7 @@
               /* @__PURE__ */ jsx(Text, {
                 variant: "text-sm/normal",
                 color: "text-muted",
-                children: "Add bot accounts, switch between them, and use Discord as the selected bot. Tokens stay in CloudCord's local app storage on this device."
+                children: "Mobile bot client. Open a bot to browse servers, channels, members and messages in a Discord-style interface."
               })
             ]
           }),
@@ -9058,10 +9539,10 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("RobotIcon") || findAssetId("AppsIcon")
                 }),
-                onPress: () => {
-                  setActiveBotAccount(account.id);
+                onPress: () => _async_to_generator(function* () {
+                  yield setActiveBotAccount(account.id);
                   setOpened(true);
-                },
+                })(),
                 trailing: /* @__PURE__ */ jsx(Button, {
                   size: "sm",
                   variant: "secondary",
@@ -9077,7 +9558,7 @@
           /* @__PURE__ */ jsx(TableRowGroup, {
             title: "Add Bot Account",
             children: /* @__PURE__ */ jsx(TableRow, {
-              label: /* @__PURE__ */ jsxs(import_react_native19.View, {
+              label: /* @__PURE__ */ jsxs(import_react_native18.View, {
                 style: {
                   width: "100%",
                   gap: 10
@@ -9118,27 +9599,19 @@
           active && /* @__PURE__ */ jsx(Button, {
             size: "lg",
             variant: "primary",
-            text: `Open BotCord as ${active.username}`,
+            text: `Open mobile client as ${active.username}`,
             onPress: () => setOpened(true)
-          }),
-          /* @__PURE__ */ jsx(Button, {
-            size: "md",
-            variant: "secondary",
-            text: state.switcher?.enabled ?? true ? "Hide Floating Bot Switcher" : "Show Floating Bot Switcher",
-            onPress: () => updateBotCordSwitcher({
-              enabled: !(state.switcher?.enabled ?? true)
-            })
           }),
           /* @__PURE__ */ jsx(Text, {
             variant: "text-xs/normal",
             color: "text-muted",
-            children: "BotCord uses Discord's bot API. A bot only sees servers and channels where it has access and can only perform actions its permissions allow."
+            children: "BotCord uses Discord's official bot API. What it can see or do depends on that bot's server permissions and enabled intents."
           })
         ]
       })
     });
   }
-  var import_react5, import_react_native19;
+  var import_react4, import_react_native18, BG, SIDEBAR, RAIL, PANEL, INPUT, MUTED, BRAND, avatarUrl, guildIconUrl;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -9149,9 +9622,19 @@
       init_storage();
       init_assets();
       init_botcord();
+      init_common();
       init_components();
-      import_react5 = __toESM(require_react());
-      import_react_native19 = __toESM(require_react_native());
+      import_react4 = __toESM(require_react());
+      import_react_native18 = __toESM(require_react_native());
+      BG = "#313338";
+      SIDEBAR = "#2b2d31";
+      RAIL = "#1e1f22";
+      PANEL = "#232428";
+      INPUT = "#383a40";
+      MUTED = "#b5bac1";
+      BRAND = "#5865f2";
+      avatarUrl = (user, size = 128) => user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}` : null;
+      guildIconUrl = (guild, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
     }
   });
 
@@ -9328,7 +9811,7 @@
 
   // src/core/ui/settings/components/ScaledPluginSettings.tsx
   function ScaledPluginSettings({ component: Component }) {
-    return /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
       style: {
         flex: 1
       },
@@ -9337,7 +9820,7 @@
         paddingHorizontal: 12
       },
       showsVerticalScrollIndicator: true,
-      children: /* @__PURE__ */ jsx(import_react_native20.View, {
+      children: /* @__PURE__ */ jsx(import_react_native19.View, {
         style: {
           width: "100%",
           paddingRight: 24,
@@ -9347,14 +9830,14 @@
       })
     });
   }
-  var import_react_native20;
+  var import_react_native19;
   var init_ScaledPluginSettings = __esm({
     "src/core/ui/settings/components/ScaledPluginSettings.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      import_react_native20 = __toESM(require_react_native());
+      import_react_native19 = __toESM(require_react_native());
     }
   });
 
@@ -9365,8 +9848,8 @@
   });
   function CloudSync() {
     useProxy(VdPluginManager.plugins);
-    var [busy, setBusy] = (0, import_react6.useState)(false);
-    var [refresh, setRefresh] = (0, import_react6.useState)(0);
+    var [busy, setBusy] = (0, import_react5.useState)(false);
+    var [refresh, setRefresh] = (0, import_react5.useState)(0);
     var plugin = VdPluginManager.plugins[PLUGIN_URL];
     var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
     function installOrStart() {
@@ -9438,7 +9921,7 @@
         component: SettingsComponent
       }, `cloud-sync-settings-${refresh}`);
     }
-    return /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
       style: {
         flex: 1
       },
@@ -9455,7 +9938,7 @@
           /* @__PURE__ */ jsxs(TableRowGroup, {
             title: "Cloud Sync",
             children: [
-              /* @__PURE__ */ jsxs(import_react_native21.View, {
+              /* @__PURE__ */ jsxs(import_react_native20.View, {
                 style: {
                   paddingHorizontal: 12,
                   paddingBottom: 12
@@ -9506,7 +9989,7 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsx(import_react_native21.View, {
+            children: /* @__PURE__ */ jsx(import_react_native20.View, {
               style: {
                 padding: 12
               },
@@ -9521,7 +10004,7 @@
       })
     });
   }
-  var import_react6, import_react_native21, PLUGIN_URL, CLOUDSYNC_ICON;
+  var import_react5, import_react_native20, PLUGIN_URL, CLOUDSYNC_ICON;
   var init_CloudSync = __esm({
     "src/core/ui/settings/pages/CloudSync/index.tsx"() {
       "use strict";
@@ -9535,8 +10018,8 @@
       init_assets();
       init_toasts();
       init_components();
-      import_react6 = __toESM(require_react());
-      import_react_native21 = __toESM(require_react_native());
+      import_react5 = __toESM(require_react());
+      import_react_native20 = __toESM(require_react_native());
       PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
       CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png";
     }
@@ -10405,7 +10888,7 @@
             state: error ? "error" : void 0,
             errorMessage: error || void 0
           }),
-          /* @__PURE__ */ jsx(import_react_native22.ScrollView, {
+          /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
             horizontal: true,
             showsHorizontalScrollIndicator: false,
             style: {
@@ -10444,7 +10927,7 @@
     var [sortFn, setSortFn] = React.useState(() => null);
     var { bottom: bottomInset } = useSafeAreaInsets();
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react7.useEffect)(() => {
+    (0, import_react6.useEffect)(() => {
       if (props.OptionsActionSheetComponent) {
         navigation2.setOptions({
           headerRight: () => /* @__PURE__ */ jsx(IconButton, {
@@ -10458,7 +10941,7 @@
     }, [
       navigation2
     ]);
-    var results = (0, import_react7.useMemo)(() => {
+    var results = (0, import_react6.useMemo)(() => {
       var values = props.items;
       if (props.resolveItem)
         values = values.map(props.resolveItem).filter(isNotNil);
@@ -10474,7 +10957,7 @@
       sortFn,
       search
     ]);
-    var onInstallPress = (0, import_react7.useCallback)(() => {
+    var onInstallPress = (0, import_react6.useCallback)(() => {
       if (!props.installAction)
         return () => {
         };
@@ -10489,7 +10972,7 @@
       }
     }, []);
     if (results.length === 0 && !search) {
-      return /* @__PURE__ */ jsxs(import_react_native22.View, {
+      return /* @__PURE__ */ jsxs(import_react_native21.View, {
         style: {
           gap: 32,
           flexGrow: 1,
@@ -10497,13 +10980,13 @@
           alignItems: "center"
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native22.View, {
+          /* @__PURE__ */ jsxs(import_react_native21.View, {
             style: {
               gap: 8,
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native22.Image, {
+              /* @__PURE__ */ jsx(import_react_native21.Image, {
                 source: findAssetId("empty_quick_switcher")
               }),
               /* @__PURE__ */ jsx(Text, {
@@ -10522,12 +11005,12 @@
         ]
       });
     }
-    var headerElement = /* @__PURE__ */ jsxs(import_react_native22.View, {
+    var headerElement = /* @__PURE__ */ jsxs(import_react_native21.View, {
       style: {
         paddingBottom: 8
       },
       children: [
-        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native22.View, {
+        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native21.View, {
           style: {
             marginBottom: 10
           },
@@ -10539,7 +11022,7 @@
             props.safeModeHint?.footer
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native22.View, {
+        /* @__PURE__ */ jsxs(import_react_native21.View, {
           style: {
             flexDirection: "row",
             gap: 8
@@ -10580,14 +11063,14 @@
           extraData: search,
           estimatedItemSize: 136,
           ListHeaderComponent: headerElement,
-          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native22.View, {
+          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native21.View, {
             style: {
               gap: 12,
               padding: 12,
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native22.Image, {
+              /* @__PURE__ */ jsx(import_react_native21.Image, {
                 source: findAssetId("devices_not_found")
               }),
               /* @__PURE__ */ jsx(Text, {
@@ -10602,7 +11085,7 @@
             paddingHorizontal: 12,
             paddingBottom: 90
           },
-          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native22.View, {
+          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native21.View, {
             style: {
               height: 8
             }
@@ -10621,7 +11104,7 @@
       ]
     });
   }
-  var import_fuzzysort, import_react7, import_react_native22, showSimpleActionSheet, hideActionSheet;
+  var import_fuzzysort, import_react6, import_react_native21, showSimpleActionSheet, hideActionSheet;
   var init_AddonPage = __esm({
     "src/core/ui/components/AddonPage.tsx"() {
       "use strict";
@@ -10640,8 +11123,8 @@
       init_components2();
       init_dist();
       import_fuzzysort = __toESM(require_fuzzysort());
-      import_react7 = __toESM(require_react());
-      import_react_native22 = __toESM(require_react_native());
+      import_react6 = __toESM(require_react());
+      import_react_native21 = __toESM(require_react_native());
       ({ showSimpleActionSheet, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
     }
   });
@@ -10900,7 +11383,7 @@
       showToast(e.message, findAssetId("Small"));
     });
   }
-  var import_react_native23, showSimpleActionSheet2, handleClick, getChannelId, getChannel, url_default;
+  var import_react_native22, showSimpleActionSheet2, handleClick, getChannelId, getChannel, url_default;
   var init_url = __esm({
     "src/core/plugins/quickinstall/url.tsx"() {
       "use strict";
@@ -10921,7 +11404,7 @@
       init_finders();
       init_wrappers();
       init_toasts();
-      import_react_native23 = __toESM(require_react_native());
+      import_react_native22 = __toESM(require_react_native());
       showSimpleActionSheet2 = findExports(byMutableProp("showSimpleActionSheet"));
       handleClick = findByPropsLazy("handleClick");
       ({ getChannelId } = lazyDestructure(() => channels));
@@ -10957,7 +11440,7 @@
               confirmText: Strings.INSTALL,
               cancelText: Strings.CANCEL,
               secondaryConfirmText: Strings.OPEN_IN_BROWSER,
-              onConfirmSecondary: () => import_react_native23.Linking.openURL(url2)
+              onConfirmSecondary: () => import_react_native22.Linking.openURL(url2)
             });
           }).call(this);
         }));
@@ -12156,14 +12639,14 @@
       variant: "heading-lg/semibold",
       children: highlightedNode.length ? highlightedNode : plugin.name
     });
-    return /* @__PURE__ */ jsxs(import_react_native24.View, {
+    return /* @__PURE__ */ jsxs(import_react_native23.View, {
       style: {
         flexDirection: "row",
         alignItems: "center",
         gap: 6
       },
       children: [
-        icon && /* @__PURE__ */ jsx(import_react_native24.Image, {
+        icon && /* @__PURE__ */ jsx(import_react_native23.Image, {
           style: styles.smallIcon,
           source: icon
         }),
@@ -12184,7 +12667,7 @@
     }, i));
     var badges = plugin.getBadges();
     var authorText = highlightedNode.length > 0 ? highlightedNode : plugin.authors.map((a) => a.name).join(", ");
-    return /* @__PURE__ */ jsxs(import_react_native24.View, {
+    return /* @__PURE__ */ jsxs(import_react_native23.View, {
       style: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -12200,9 +12683,9 @@
             authorText
           ]
         }),
-        badges.length > 0 && /* @__PURE__ */ jsx(import_react_native24.View, {
+        badges.length > 0 && /* @__PURE__ */ jsx(import_react_native23.View, {
           style: styles.badgesContainer,
-          children: badges.map((b3, i) => /* @__PURE__ */ jsx(import_react_native24.Image, {
+          children: badges.map((b3, i) => /* @__PURE__ */ jsx(import_react_native23.Image, {
             source: b3.source,
             style: styles.badgeIcon
           }, i))
@@ -12226,7 +12709,7 @@
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
     var [, forceUpdate] = React.useReducer(() => ({}), 0);
-    var cardContextValue = (0, import_react8.useMemo)(() => ({
+    var cardContextValue = (0, import_react7.useMemo)(() => ({
       plugin,
       result
     }), [
@@ -12240,13 +12723,13 @@
         children: /* @__PURE__ */ jsxs(Stack, {
           spacing: 16,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native24.View, {
+            /* @__PURE__ */ jsxs(import_react_native23.View, {
               style: {
                 flexDirection: "row",
                 justifyContent: "space-between"
               },
               children: [
-                /* @__PURE__ */ jsxs(import_react_native24.View, {
+                /* @__PURE__ */ jsxs(import_react_native23.View, {
                   style: {
                     flexShrink: 1
                   },
@@ -12255,13 +12738,13 @@
                     /* @__PURE__ */ jsx(Authors, {})
                   ]
                 }),
-                /* @__PURE__ */ jsx(import_react_native24.View, {
+                /* @__PURE__ */ jsx(import_react_native23.View, {
                   children: /* @__PURE__ */ jsxs(Stack, {
                     spacing: 12,
                     direction: "horizontal",
                     children: [
                       /* @__PURE__ */ jsx(Actions, {}),
-                      /* @__PURE__ */ jsx(import_react_native24.View, {
+                      /* @__PURE__ */ jsx(import_react_native23.View, {
                         style: core ? {
                           opacity: 0.5
                         } : void 0,
@@ -12287,7 +12770,7 @@
       })
     });
   }
-  var import_chroma_js3, import_react8, import_react_native24, CardContext, useCardContext, Actions;
+  var import_chroma_js3, import_react7, import_react_native23, CardContext, useCardContext, Actions;
   var init_PluginCard = __esm({
     "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"() {
       "use strict";
@@ -12300,15 +12783,15 @@
       init_components();
       init_sheets();
       import_chroma_js3 = __toESM(require_chroma_js());
-      import_react8 = __toESM(require_react());
-      import_react_native24 = __toESM(require_react_native());
+      import_react7 = __toESM(require_react());
+      import_react_native23 = __toESM(require_react_native());
       init_plugins4();
-      CardContext = /* @__PURE__ */ (0, import_react8.createContext)(null);
-      useCardContext = () => (0, import_react8.useContext)(CardContext);
+      CardContext = /* @__PURE__ */ (0, import_react7.createContext)(null);
+      useCardContext = () => (0, import_react7.useContext)(CardContext);
       Actions = () => {
         var { plugin } = useCardContext();
         var navigation2 = NavigationNative.useNavigation();
-        return /* @__PURE__ */ jsxs(import_react_native24.View, {
+        return /* @__PURE__ */ jsxs(import_react_native23.View, {
           style: {
             flexDirection: "row",
             gap: 6
@@ -12376,23 +12859,23 @@
         _loop2(author);
       authorTextNode.pop();
     }
-    return /* @__PURE__ */ jsxs(import_react_native25.View, {
+    return /* @__PURE__ */ jsxs(import_react_native24.View, {
       style: {
         gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native25.View, {
+        /* @__PURE__ */ jsx(import_react_native24.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
             children: plugin.name
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native25.View, {
+        /* @__PURE__ */ jsx(import_react_native24.View, {
           style: {
             flexDirection: "row",
             flexShrink: 1
           },
-          children: authors?.length && /* @__PURE__ */ jsxs(import_react_native25.View, {
+          children: authors?.length && /* @__PURE__ */ jsxs(import_react_native24.View, {
             style: {
               flexDirection: "row",
               gap: 8,
@@ -12422,7 +12905,7 @@
       ]
     });
   }
-  var import_react_native25, showUserProfileActionSheet, maybeFetchUser;
+  var import_react_native24, showUserProfileActionSheet, maybeFetchUser;
   var init_TitleComponent = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/TitleComponent.tsx"() {
       "use strict";
@@ -12434,7 +12917,7 @@
       init_common();
       init_components();
       init_stores();
-      import_react_native25 = __toESM(require_react_native());
+      import_react_native24 = __toESM(require_react_native());
       showUserProfileActionSheet = findByNameLazy("showUserProfileActionSheet");
       ({ getUser: maybeFetchUser } = lazyDestructure(() => findByProps("getUser", "fetchProfile")));
     }
@@ -12457,7 +12940,7 @@
   }
   function PluginInfoActionSheet({ plugin, navigation: navigation2 }) {
     plugin.usePluginState();
-    var [loading, setLoading] = (0, import_react9.useState)(false);
+    var [loading, setLoading] = (0, import_react8.useState)(false);
     var isVendettaPlugin = plugin.id.includes("/");
     var isCorePlugin2 = plugin.id.startsWith("bunny.") || plugin.id.startsWith("vendetta.");
     var copyPluginUrl = () => {
@@ -12553,13 +13036,13 @@
       });
     };
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native26.ScrollView, {
+      children: /* @__PURE__ */ jsxs(import_react_native25.ScrollView, {
         contentContainerStyle: {
           gap: 12,
           marginBottom: 12
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native26.View, {
+          /* @__PURE__ */ jsx(import_react_native25.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
@@ -12572,7 +13055,7 @@
               plugin
             })
           }),
-          /* @__PURE__ */ jsxs(import_react_native26.View, {
+          /* @__PURE__ */ jsxs(import_react_native25.View, {
             style: {
               flexDirection: "row",
               justifyContent: "center",
@@ -12644,7 +13127,7 @@
       })
     });
   }
-  var import_react9, import_react_native26;
+  var import_react8, import_react_native25;
   var init_PluginInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx"() {
       "use strict";
@@ -12661,8 +13144,8 @@
       init_storage();
       init_storage2();
       init_assets();
-      import_react9 = __toESM(require_react());
-      import_react_native26 = __toESM(require_react_native());
+      import_react8 = __toESM(require_react());
+      import_react_native25 = __toESM(require_react_native());
       init_TitleComponent();
       init_ScaledPluginSettings();
     }
@@ -12810,14 +13293,14 @@
         var unproxiedPlugins = Object.values(VdPluginManager.plugins).filter((p) => !p.id.startsWith(VD_PROXY_PREFIX) && !p.id.startsWith(BUNNY_PROXY_PREFIX));
         if (!unproxiedPlugins.length)
           return null;
-        return /* @__PURE__ */ jsx(import_react_native27.View, {
+        return /* @__PURE__ */ jsx(import_react_native26.View, {
           style: {
             marginVertical: 12,
             marginHorizontal: 10
           },
           children: /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native27.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: {
                 flex: 1,
                 justifyContent: "center",
@@ -12825,7 +13308,7 @@
                 flexDirection: "row"
               },
               children: [
-                /* @__PURE__ */ jsxs(import_react_native27.View, {
+                /* @__PURE__ */ jsxs(import_react_native26.View, {
                   style: {
                     gap: 6,
                     flexShrink: 1
@@ -12842,7 +13325,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsx(import_react_native27.View, {
+                /* @__PURE__ */ jsx(import_react_native26.View, {
                   style: {
                     marginLeft: "auto"
                   },
@@ -12862,7 +13345,7 @@
                             contentContainerStyle: {
                               padding: 8
                             },
-                            ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native27.View, {
+                            ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native26.View, {
                               style: {
                                 height: 8
                               }
@@ -12933,7 +13416,7 @@
       }
     });
   }
-  var import_react_native27, openAlert2, AlertModal3, AlertActions2, AlertActionButton3;
+  var import_react_native26, openAlert2, AlertModal3, AlertActions2, AlertActionButton3;
   var init_Plugins = __esm({
     "src/core/ui/settings/pages/Plugins/index.tsx"() {
       "use strict";
@@ -12956,7 +13439,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react_native27 = __toESM(require_react_native());
+      import_react_native26 = __toESM(require_react_native());
       init_bunny();
       init_vendetta();
       ({ openAlert: openAlert2 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -12971,13 +13454,13 @@
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native28.View, {
+          /* @__PURE__ */ jsxs(import_react_native27.View, {
             style: {
               flexDirection: "row",
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsxs(import_react_native28.View, {
+              /* @__PURE__ */ jsxs(import_react_native27.View, {
                 style: styles.headerLeading,
                 children: [
                   /* @__PURE__ */ jsx(Text, {
@@ -12990,7 +13473,7 @@
                   })
                 ]
               }),
-              /* @__PURE__ */ jsxs(import_react_native28.View, {
+              /* @__PURE__ */ jsxs(import_react_native27.View, {
                 style: [
                   styles.headerTrailing,
                   {
@@ -12998,7 +13481,7 @@
                   }
                 ],
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native28.View, {
+                  /* @__PURE__ */ jsxs(import_react_native27.View, {
                     style: styles.actions,
                     children: [
                       props.overflowActions && /* @__PURE__ */ jsx(IconButton, {
@@ -13035,7 +13518,7 @@
                   props.toggleType && (props.toggleType === "switch" ? /* @__PURE__ */ jsx(FormSwitch, {
                     value: props.toggleValue(),
                     onValueChange: props.onToggleChange
-                  }) : /* @__PURE__ */ jsx(import_react_native28.TouchableOpacity, {
+                  }) : /* @__PURE__ */ jsx(import_react_native27.TouchableOpacity, {
                     onPress: () => {
                       props.onToggleChange?.(!props.toggleValue());
                     },
@@ -13055,7 +13538,7 @@
       })
     });
   }
-  var import_react_native28, hideActionSheet2, showSimpleActionSheet3, useStyles3;
+  var import_react_native27, hideActionSheet2, showSimpleActionSheet3, useStyles3;
   var init_AddonCard = __esm({
     "src/core/ui/components/AddonCard.tsx"() {
       "use strict";
@@ -13068,7 +13551,7 @@
       init_wrappers();
       init_color();
       init_styles();
-      import_react_native28 = __toESM(require_react_native());
+      import_react_native27 = __toESM(require_react_native());
       ({ hideActionSheet: hideActionSheet2 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet3 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       useStyles3 = createStyles({
@@ -13139,23 +13622,23 @@
   }
   function TitleComponent2({ theme }) {
     var { authors } = theme.data;
-    return /* @__PURE__ */ jsxs(import_react_native29.View, {
+    return /* @__PURE__ */ jsxs(import_react_native28.View, {
       style: {
         gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native29.View, {
+        /* @__PURE__ */ jsx(import_react_native28.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
             children: theme.data.name
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native29.View, {
+        /* @__PURE__ */ jsx(import_react_native28.View, {
           style: {
             flexDirection: "row",
             flexShrink: 1
           },
-          children: authors && authors.length > 0 && /* @__PURE__ */ jsx(import_react_native29.TouchableOpacity, {
+          children: authors && authors.length > 0 && /* @__PURE__ */ jsx(import_react_native28.TouchableOpacity, {
             style: {
               flexDirection: "row",
               gap: 8,
@@ -13179,11 +13662,11 @@
     });
   }
   function ThemeInfoActionSheet({ theme, navigation: navigation2 }) {
-    var [themeState, setThemeState] = (0, import_react10.useState)({
+    var [themeState, setThemeState] = (0, import_react9.useState)({
       ...theme
     });
-    var [loading, setLoading] = (0, import_react10.useState)(false);
-    (0, import_react10.useEffect)(() => {
+    var [loading, setLoading] = (0, import_react9.useState)(false);
+    (0, import_react9.useEffect)(() => {
       var interval = setInterval(() => {
         setThemeState({
           ...theme
@@ -13247,13 +13730,13 @@
       }
     };
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native29.ScrollView, {
+      children: /* @__PURE__ */ jsxs(import_react_native28.ScrollView, {
         contentContainerStyle: {
           gap: 12,
           marginBottom: 12
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native29.View, {
+          /* @__PURE__ */ jsx(import_react_native28.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
@@ -13266,7 +13749,7 @@
               theme: themeState
             })
           }),
-          /* @__PURE__ */ jsxs(import_react_native29.View, {
+          /* @__PURE__ */ jsxs(import_react_native28.View, {
             style: {
               flexDirection: "row",
               justifyContent: "center",
@@ -13317,7 +13800,7 @@
       })
     });
   }
-  var import_react10, import_react_native29;
+  var import_react9, import_react_native28;
   var init_ThemeInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Themes/sheets/ThemeInfoActionSheet.tsx"() {
       "use strict";
@@ -13329,8 +13812,8 @@
       init_sheets();
       init_components();
       init_common();
-      import_react10 = __toESM(require_react());
-      import_react_native29 = __toESM(require_react_native());
+      import_react9 = __toESM(require_react());
+      import_react_native28 = __toESM(require_react_native());
       init_toasts();
       init_alerts2();
       init_themes();
@@ -13435,7 +13918,7 @@
             /* @__PURE__ */ jsx(BottomSheetTitleHeader, {
               title: "Options"
             }),
-            /* @__PURE__ */ jsxs(import_react_native30.View, {
+            /* @__PURE__ */ jsxs(import_react_native29.View, {
               style: {
                 paddingVertical: 20,
                 gap: 12
@@ -13521,7 +14004,7 @@
       }
     });
   }
-  var import_react_native30;
+  var import_react_native29;
   var init_Themes = __esm({
     "src/core/ui/settings/pages/Themes/index.tsx"() {
       "use strict";
@@ -13539,7 +14022,7 @@
       init_settings();
       init_storage2();
       init_components();
-      import_react_native30 = __toESM(require_react_native());
+      import_react_native29 = __toESM(require_react_native());
     }
   });
 
@@ -13723,9 +14206,9 @@
   function RevengeFontsExtractor({ fonts: fonts2, setName }) {
     var currentTheme = getCurrentTheme().data;
     var themeFonts = currentTheme.fonts;
-    var [fontName, setFontName] = (0, import_react11.useState)(guessFontName(Object.values(themeFonts)));
-    var [error, setError] = (0, import_react11.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native31.View, {
+    var [fontName, setFontName] = (0, import_react10.useState)(guessFontName(Object.values(themeFonts)));
+    var [error, setError] = (0, import_react10.useState)(void 0);
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -13775,10 +14258,10 @@
     });
   }
   function JsonFontImporter({ fonts: fonts2, setName, setSource }) {
-    var [fontLink, setFontLink] = (0, import_react11.useState)("");
-    var [saving, setSaving] = (0, import_react11.useState)(false);
-    var [error, setError] = (0, import_react11.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native31.View, {
+    var [fontLink, setFontLink] = (0, import_react10.useState)("");
+    var [saving, setSaving] = (0, import_react10.useState)(false);
+    var [error, setError] = (0, import_react10.useState)(void 0);
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -13819,9 +14302,9 @@
     });
   }
   function EntryEditorActionSheet(props) {
-    var [familyName, setFamilyName] = (0, import_react11.useState)(props.name);
-    var [fontUrl, setFontUrl] = (0, import_react11.useState)(props.fontEntries[props.name]);
-    return /* @__PURE__ */ jsxs(import_react_native31.View, {
+    var [familyName, setFamilyName] = (0, import_react10.useState)(props.name);
+    var [fontUrl, setFontUrl] = (0, import_react10.useState)(props.fontEntries[props.name]);
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -13875,18 +14358,18 @@
     }), "FontEditorActionSheet");
   }
   function NewEntryRow({ fontName, fontEntry }) {
-    var nameRef = (0, import_react11.useRef)();
-    var urlRef = (0, import_react11.useRef)();
-    var [nameSet, setNameSet] = (0, import_react11.useState)(false);
-    var [error, setError] = (0, import_react11.useState)();
-    return /* @__PURE__ */ jsxs(import_react_native31.View, {
+    var nameRef = (0, import_react10.useRef)();
+    var urlRef = (0, import_react10.useRef)();
+    var [nameSet, setNameSet] = (0, import_react10.useState)(false);
+    var [error, setError] = (0, import_react10.useState)();
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         flexDirection: "row",
         gap: 8,
         justifyContent: "flex-start"
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native31.View, {
+        /* @__PURE__ */ jsx(import_react_native30.View, {
           style: {
             flex: 1
           },
@@ -13940,11 +14423,11 @@
     });
   }
   function FontEditor(props) {
-    var [name, setName] = (0, import_react11.useState)(props.name);
-    var [source, setSource] = (0, import_react11.useState)(props.name && fonts[props.name].source);
-    var [importing, setIsImporting] = (0, import_react11.useState)(false);
-    var [errors, setErrors] = (0, import_react11.useState)();
-    var memoEntry = (0, import_react11.useMemo)(() => {
+    var [name, setName] = (0, import_react10.useState)(props.name);
+    var [source, setSource] = (0, import_react10.useState)(props.name && fonts[props.name].source);
+    var [importing, setIsImporting] = (0, import_react10.useState)(false);
+    var [errors, setErrors] = (0, import_react10.useState)();
+    var memoEntry = (0, import_react10.useMemo)(() => {
       return createProxy(props.name ? {
         ...fonts[props.name].main
       } : {}).proxy;
@@ -13954,7 +14437,7 @@
     var fontEntries = useProxy(memoEntry);
     var navigation2 = NavigationNative.useNavigation();
     var [, forceUpdate] = React.useReducer(() => ({}), 0);
-    return /* @__PURE__ */ jsx(import_react_native31.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native30.ScrollView, {
       style: {
         flex: 1
       },
@@ -14085,7 +14568,7 @@
             color: "text-feedback-critical",
             children: "Some font entries cannot be imported. Please modify the entries and try again."
           }),
-          /* @__PURE__ */ jsx(import_react_native31.View, {
+          /* @__PURE__ */ jsx(import_react_native30.View, {
             style: {
               flexDirection: "row",
               justifyContent: "flex-end",
@@ -14128,7 +14611,7 @@
       })
     });
   }
-  var import_react11, import_react_native31, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
+  var import_react10, import_react_native30, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
   var init_FontEditor = __esm({
     "src/core/ui/settings/pages/Fonts/FontEditor.tsx"() {
       "use strict";
@@ -14147,8 +14630,8 @@
       init_components();
       init_wrappers();
       init_components2();
-      import_react11 = __toESM(require_react());
-      import_react_native31 = __toESM(require_react_native());
+      import_react10 = __toESM(require_react());
+      import_react_native30 = __toESM(require_react_native());
       actionSheet2 = findByPropsLazy("hideActionSheet");
       ({ openAlert: openAlert3 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
       ({ AlertModal: AlertModal4, AlertActionButton: AlertActionButton4 } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
@@ -14163,19 +14646,19 @@
     return /* @__PURE__ */ jsx(Card, {
       children: /* @__PURE__ */ jsx(Stack, {
         spacing: 16,
-        children: /* @__PURE__ */ jsxs(import_react_native32.View, {
+        children: /* @__PURE__ */ jsxs(import_react_native31.View, {
           style: {
             flexDirection: "row",
             alignItems: "center"
           },
           children: [
-            /* @__PURE__ */ jsx(import_react_native32.View, {
+            /* @__PURE__ */ jsx(import_react_native31.View, {
               children: /* @__PURE__ */ jsx(Text, {
                 variant: "heading-lg/semibold",
                 children: font.name
               })
             }),
-            /* @__PURE__ */ jsx(import_react_native32.View, {
+            /* @__PURE__ */ jsx(import_react_native31.View, {
               style: {
                 marginLeft: "auto"
               },
@@ -14221,7 +14704,7 @@
       })
     });
   }
-  var import_react_native32, useToken2;
+  var import_react_native31, useToken2;
   var init_FontCard = __esm({
     "src/core/ui/settings/pages/Fonts/FontCard.tsx"() {
       "use strict";
@@ -14239,7 +14722,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react_native32 = __toESM(require_react_native());
+      import_react_native31 = __toESM(require_react_native());
       init_FontEditor();
       ({ useToken: useToken2 } = lazyDestructure(() => findByProps("useToken")));
     }
@@ -14486,14 +14969,14 @@
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native33.View, {
+          /* @__PURE__ */ jsxs(import_react_native32.View, {
             style: {
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsxs(import_react_native33.View, {
+              /* @__PURE__ */ jsxs(import_react_native32.View, {
                 style: {
                   flexShrink: 1
                 },
@@ -14523,7 +15006,7 @@
                   })
                 ]
               }),
-              /* @__PURE__ */ jsx(import_react_native33.View, {
+              /* @__PURE__ */ jsx(import_react_native32.View, {
                 children: /* @__PURE__ */ jsx(TrailingButtons, {
                   addon,
                   isPluginMode,
@@ -14683,7 +15166,7 @@
       sort
     ]);
     if (error) {
-      return /* @__PURE__ */ jsx(import_react_native33.View, {
+      return /* @__PURE__ */ jsx(import_react_native32.View, {
         style: {
           flex: 1,
           paddingHorizontal: 8,
@@ -14720,24 +15203,24 @@
         })
       });
     }
-    return /* @__PURE__ */ jsxs(import_react_native33.View, {
+    return /* @__PURE__ */ jsxs(import_react_native32.View, {
       style: {
         flex: 1
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native33.View, {
+        /* @__PURE__ */ jsx(import_react_native32.View, {
           style: {
             paddingHorizontal: 10
           },
           children: /* @__PURE__ */ jsxs(Stack, {
             spacing: 12,
             children: [
-              /* @__PURE__ */ jsx(import_react_native33.View, {
+              /* @__PURE__ */ jsx(import_react_native32.View, {
                 style: {
                   flexDirection: "row",
                   paddingTop: 10
                 },
-                children: /* @__PURE__ */ jsxs(import_react_native33.View, {
+                children: /* @__PURE__ */ jsxs(import_react_native32.View, {
                   style: {
                     flex: 1,
                     flexDirection: "row",
@@ -14753,7 +15236,7 @@
                         flex: 1
                       }
                     }),
-                    /* @__PURE__ */ jsx(import_react_native33.View, {
+                    /* @__PURE__ */ jsx(import_react_native32.View, {
                       style: {
                         width: 8
                       }
@@ -14770,7 +15253,7 @@
                   ]
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native33.View, {
+              /* @__PURE__ */ jsxs(import_react_native32.View, {
                 style: {
                   flexDirection: "row",
                   alignItems: "center",
@@ -14786,7 +15269,7 @@
                       flex: 1
                     }
                   }),
-                  /* @__PURE__ */ jsx(import_react_native33.View, {
+                  /* @__PURE__ */ jsx(import_react_native32.View, {
                     style: {
                       flexDirection: "row",
                       alignItems: "center",
@@ -14826,21 +15309,21 @@
             paddingBottom: 90,
             paddingHorizontal: 5
           },
-          ListHeaderComponent: mode === "plugins" ? /* @__PURE__ */ jsx(import_react_native33.View, {
+          ListHeaderComponent: mode === "plugins" ? /* @__PURE__ */ jsx(import_react_native32.View, {
             style: {
               paddingVertical: 6,
               paddingHorizontal: 8
             },
             children: /* @__PURE__ */ jsx(Card, {
               border: "strong",
-              children: /* @__PURE__ */ jsx(import_react_native33.View, {
+              children: /* @__PURE__ */ jsx(import_react_native32.View, {
                 style: {
                   flex: 1,
                   justifyContent: "center",
                   alignItems: "center",
                   flexDirection: "row"
                 },
-                children: /* @__PURE__ */ jsxs(import_react_native33.View, {
+                children: /* @__PURE__ */ jsxs(import_react_native32.View, {
                   style: {
                     gap: 6,
                     flexShrink: 1
@@ -14861,7 +15344,7 @@
             })
           }) : null,
           //@ts-ignore
-          renderItem: ({ item: addon }) => /* @__PURE__ */ jsx(import_react_native33.View, {
+          renderItem: ({ item: addon }) => /* @__PURE__ */ jsx(import_react_native32.View, {
             style: {
               paddingVertical: 6,
               paddingHorizontal: 8
@@ -14878,7 +15361,7 @@
       ]
     });
   }
-  var import_react_native33, showSimpleActionSheet4, hideActionSheet3, PLUGIN_URL2, THEME_URL, Sort;
+  var import_react_native32, showSimpleActionSheet4, hideActionSheet3, PLUGIN_URL2, THEME_URL, Sort;
   var init_PluginBrowser = __esm({
     "src/core/ui/settings/pages/PluginBrowser/index.tsx"() {
       "use strict";
@@ -14887,7 +15370,7 @@
       init_async_to_generator();
       init_jsxRuntime();
       init_common();
-      import_react_native33 = __toESM(require_react_native());
+      import_react_native32 = __toESM(require_react_native());
       init_components();
       init_assets();
       init_safeFetch();
@@ -14920,11 +15403,11 @@
 
   // src/core/ui/hooks/useFS.ts
   function useFileExists(path, prefix) {
-    var [state, setState] = (0, import_react12.useState)(2);
+    var [state, setState] = (0, import_react11.useState)(2);
     var check = () => fileExists(path, {
       prefix
     }).then((exists) => setState(exists ? 1 : 0)).catch(() => setState(3));
-    var customFS = (0, import_react12.useMemo)(() => new Proxy(fs_exports, {
+    var customFS = (0, import_react11.useMemo)(() => new Proxy(fs_exports, {
       get(target, p, receiver) {
         var val = Reflect.get(target, p, receiver);
         if (typeof val !== "function")
@@ -14939,20 +15422,20 @@
         };
       }
     }), []);
-    (0, import_react12.useEffect)(() => void check(), []);
+    (0, import_react11.useEffect)(() => void check(), []);
     return [
       state,
       customFS
     ];
   }
-  var import_react12, CheckState;
+  var import_react11, CheckState;
   var init_useFS = __esm({
     "src/core/ui/hooks/useFS.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_fs();
-      import_react12 = __toESM(require_react());
+      import_react11 = __toESM(require_react());
       CheckState = /* @__PURE__ */ function(CheckState2) {
         CheckState2[CheckState2["FALSE"] = 0] = "FALSE";
         CheckState2[CheckState2["TRUE"] = 1] = "TRUE";
@@ -14969,7 +15452,7 @@
       variant: displayable.has(asset.type) ? "default" : "danger",
       label: asset.name,
       subLabel: `Index: ${asset.id} Type: ${asset.type}`,
-      icon: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native34.Image, {
+      icon: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native33.Image, {
         source: asset.id,
         style: {
           width: 32,
@@ -14984,7 +15467,7 @@
         content: `Index: ${asset.id}
 Module ID: ${asset.moduleId}
 Type: ${asset.type}`,
-        extraContent: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native34.Image, {
+        extraContent: displayable.has(asset.type) ? /* @__PURE__ */ jsx(import_react_native33.Image, {
           resizeMode: "contain",
           source: asset.id,
           style: {
@@ -15022,7 +15505,7 @@ Type: ${asset.type}`,
       }))
     });
   }
-  var import_react_native34, openAlert4, AlertModal5, AlertActionButton5, displayable, iconMap, copyToClipboard;
+  var import_react_native33, openAlert4, AlertModal5, AlertActionButton5, displayable, iconMap, copyToClipboard;
   var init_AssetDisplay = __esm({
     "src/core/ui/settings/pages/Developer/AssetDisplay.tsx"() {
       "use strict";
@@ -15035,7 +15518,7 @@ Type: ${asset.type}`,
       init_common();
       init_components();
       init_toasts();
-      import_react_native34 = __toESM(require_react_native());
+      import_react_native33 = __toESM(require_react_native());
       ({ openAlert: openAlert4 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
       ({ AlertModal: AlertModal5, AlertActionButton: AlertActionButton5 } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
       displayable = /* @__PURE__ */ new Set([
@@ -15061,8 +15544,8 @@ Type: ${asset.type}`,
   function AssetBrowser() {
     var [search, setSearch] = React.useState("");
     var [showNonImages, setShowNonImages] = React.useState(false);
-    var all = (0, import_react13.useMemo)(() => Array.from(iterateAssets()), []);
-    var filteredData = (0, import_react13.useMemo)(() => {
+    var all = (0, import_react12.useMemo)(() => Array.from(iterateAssets()), []);
+    var filteredData = (0, import_react12.useMemo)(() => {
       var result = all.filter((a) => a.name.includes(search) || a.id.toString() === search);
       if (!showNonImages) {
         result = result.filter((a) => displayable2.has(a.type));
@@ -15074,19 +15557,19 @@ Type: ${asset.type}`,
       showNonImages
     ]);
     return /* @__PURE__ */ jsx(ErrorBoundary, {
-      children: /* @__PURE__ */ jsxs(import_react_native35.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native34.View, {
         style: {
           flex: 1
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native35.View, {
+          /* @__PURE__ */ jsxs(import_react_native34.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
               margin: 10
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native35.View, {
+              /* @__PURE__ */ jsx(import_react_native34.View, {
                 style: {
                   flex: 1,
                   marginRight: 10
@@ -15095,7 +15578,7 @@ Type: ${asset.type}`,
                   onChangeText: (v2) => setSearch(v2)
                 })
               }),
-              /* @__PURE__ */ jsx(import_react_native35.TouchableOpacity, {
+              /* @__PURE__ */ jsx(import_react_native34.TouchableOpacity, {
                 style: {
                   padding: 12,
                   backgroundColor: showNonImages ? "#0f1013" : "#303139",
@@ -15106,7 +15589,7 @@ Type: ${asset.type}`,
                   minHeight: 44
                 },
                 onPress: () => setShowNonImages(!showNonImages),
-                children: /* @__PURE__ */ jsx(import_react_native35.Image, {
+                children: /* @__PURE__ */ jsx(import_react_native34.Image, {
                   style: {
                     width: 20,
                     height: 20
@@ -15116,8 +15599,8 @@ Type: ${asset.type}`,
               })
             ]
           }),
-          /* @__PURE__ */ jsx(import_react_native35.ScrollView, {
-            children: /* @__PURE__ */ jsxs(import_react_native35.View, {
+          /* @__PURE__ */ jsx(import_react_native34.ScrollView, {
+            children: /* @__PURE__ */ jsxs(import_react_native34.View, {
               style: {
                 flex: 1,
                 borderRadius: 16,
@@ -15134,7 +15617,7 @@ Type: ${asset.type}`,
                   },
                   children: "Some assets types cannot be displayed and will be marked in red."
                 }),
-                /* @__PURE__ */ jsx(import_react_native35.FlatList, {
+                /* @__PURE__ */ jsx(import_react_native34.FlatList, {
                   data: filteredData,
                   renderItem: ({ item }) => /* @__PURE__ */ jsx(AssetDisplay, {
                     asset: item,
@@ -15155,7 +15638,7 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react13, import_react_native35, displayable2;
+  var import_react12, import_react_native34, displayable2;
   var init_AssetBrowser = __esm({
     "src/core/ui/settings/pages/Developer/AssetBrowser.tsx"() {
       "use strict";
@@ -15166,8 +15649,8 @@ Type: ${asset.type}`,
       init_assets();
       init_components();
       init_components2();
-      import_react13 = __toESM(require_react());
-      import_react_native35 = __toESM(require_react_native());
+      import_react12 = __toESM(require_react());
+      import_react_native34 = __toESM(require_react_native());
       displayable2 = /* @__PURE__ */ new Set([
         "png",
         "jpg",
@@ -15183,12 +15666,12 @@ Type: ${asset.type}`,
   });
   function Developer() {
     var [rdtFileExists, fs] = useFileExists("preloads/reactDevtools.js");
-    var [isDebuggerConnected, setIsDebuggerConnected] = (0, import_react14.useState)(isConnectedToDebugger2());
+    var [isDebuggerConnected, setIsDebuggerConnected] = (0, import_react13.useState)(isConnectedToDebugger2());
     var styles = useStyles4();
     var navigation2 = NavigationNative.useNavigation();
     useProxy(settings);
     useProxy(loaderConfig);
-    (0, import_react14.useEffect)(() => {
+    (0, import_react13.useEffect)(() => {
       var interval = setInterval(() => {
         setIsDebuggerConnected(isConnectedToDebugger2());
       }, 1e3);
@@ -15204,7 +15687,7 @@ Type: ${asset.type}`,
       }
     };
     return /* @__PURE__ */ jsx(ErrorBoundary, {
-      children: /* @__PURE__ */ jsx(import_react_native37.ScrollView, {
+      children: /* @__PURE__ */ jsx(import_react_native36.ScrollView, {
         style: {
           flex: 1
         },
@@ -15309,7 +15792,7 @@ Type: ${asset.type}`,
                         }
                         yield devTools.connectToDevTools({
                           host: settings.devToolsUrl.split(":")?.[0],
-                          resolveRNStyle: import_react_native37.StyleSheet.flatten
+                          resolveRNStyle: import_react_native36.StyleSheet.flatten
                         });
                       } catch (error) {
                         showToast("Invalid devTools URL!", findAssetId("Small"));
@@ -15374,7 +15857,7 @@ Type: ${asset.type}`,
                           /* @__PURE__ */ jsx(AlertActionButton6, {
                             text: Strings.RELOAD,
                             variant: "destructive",
-                            onPress: () => import_react_native36.NativeModules.BundleUpdaterManager.reload()
+                            onPress: () => import_react_native35.NativeModules.BundleUpdaterManager.reload()
                           }),
                           /* @__PURE__ */ jsx(AlertActionButton6, {
                             text: Strings.CANCEL,
@@ -15477,7 +15960,7 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react_native36, import_react_native37, import_react14, hideActionSheet4, showSimpleActionSheet5, openAlert5, AlertModal6, AlertActionButton6, RDT_EMBED_LINK, useStyles4;
+  var import_react_native35, import_react_native36, import_react13, hideActionSheet4, showSimpleActionSheet5, openAlert5, AlertModal6, AlertActionButton6, RDT_EMBED_LINK, useStyles4;
   var init_Developer = __esm({
     "src/core/ui/settings/pages/Developer/index.tsx"() {
       "use strict";
@@ -15500,10 +15983,10 @@ Type: ${asset.type}`,
       init_color();
       init_components2();
       init_styles();
+      import_react_native35 = __toESM(require_react_native());
       import_react_native36 = __toESM(require_react_native());
-      import_react_native37 = __toESM(require_react_native());
       init_toasts();
-      import_react14 = __toESM(require_react());
+      import_react13 = __toESM(require_react());
       ({ hideActionSheet: hideActionSheet4 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet5 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       ({ openAlert: openAlert5 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -15638,7 +16121,7 @@ Type: ${asset.type}`,
   });
 
   // src/core/vendetta/api.tsx
-  var import_react15, import_react_native38, makeIcon, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react14, import_react_native37, makeIcon, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -15667,11 +16150,11 @@ Type: ${asset.type}`,
       init_styles();
       init_toasts();
       init_dist();
-      import_react15 = __toESM(require_react());
-      import_react_native38 = __toESM(require_react_native());
+      import_react14 = __toESM(require_react());
+      import_react_native37 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
-      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(TableRow, {
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react14.createElement)(TableRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -15682,7 +16165,7 @@ Type: ${asset.type}`,
       });
       PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow.Icon;
       PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow.Arrow;
-      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(TableSwitchRow, {
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react14.createElement)(TableSwitchRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -15690,7 +16173,7 @@ Type: ${asset.type}`,
         onValueChange: props.onValueChange,
         disabled: props.disabled
       });
-      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react15.createElement)(TableRowGroup, {
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react14.createElement)(TableRowGroup, {
         title: props.title,
         ...props
       }, props.children);
@@ -15729,8 +16212,8 @@ Type: ${asset.type}`,
                     ...module,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
-                      (0, import_react15.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react15.createElement)(import_react_native38.View, null, children);
+                      (0, import_react14.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
+                      return /* @__PURE__ */ (0, import_react14.createElement)(import_react_native37.View, null, children);
                     }
                   };
                 }
