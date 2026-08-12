@@ -253,12 +253,31 @@ export async function createBotDM(token: string, recipient: any) {
 }
 
 
-export async function sendBotMessage(token: string, channelId: string, content: string) {
-    const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
-        method: "POST",
-        headers: { Authorization: `Bot ${normalizeBotToken(token)}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ content })
-    });
+export interface BotCordUpload {
+    uri: string;
+    name?: string;
+    type?: string;
+}
+
+export async function sendBotMessage(token: string, channelId: string, content: string, attachment?: BotCordUpload) {
+    let body: any;
+    let headers: Record<string, string> = { Authorization: `Bot ${normalizeBotToken(token)}` };
+
+    if (attachment?.uri) {
+        const form = new FormData();
+        form.append("payload_json", JSON.stringify({ content }));
+        form.append("files[0]", {
+            uri: attachment.uri,
+            name: attachment.name || `image-${Date.now()}.jpg`,
+            type: attachment.type || "image/jpeg"
+        } as any);
+        body = form;
+    } else {
+        headers["Content-Type"] = "application/json";
+        body = JSON.stringify({ content });
+    }
+
+    const response = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, { method: "POST", headers, body });
     if (!response.ok) {
         const message = await readDiscordError(response);
         throw new Error(message ? `${message} (${response.status})` : `Failed to send message (${response.status}).`);

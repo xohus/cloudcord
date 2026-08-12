@@ -13,10 +13,11 @@ import {
 } from "@lib/api/botcord";
 import { hideSheet, showSheet } from "@lib/ui/sheets";
 import { createStyles } from "@lib/ui/styles";
+import { findByProps } from "@metro";
 import { NavigationNative, tokens } from "@metro/common";
 import { ActionSheet, ActionSheetRow, Button, IconButton, PressableScale, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { DynamicColorIOS, FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text as NativeText, TextInput as NativeTextInput, View } from "react-native";
+import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text as NativeText, TextInput as NativeTextInput, View } from "react-native";
 
 const useStyles = createStyles({
     root: { flex: 1, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
@@ -42,9 +43,9 @@ const avatarUrl = (user: any, size = 128) => user?.avatar ? `https://cdn.discord
 const guildIconUrl = (guild: any, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
 const displayName = (user: any) => user?.global_name || user?.username || "Unknown";
 const inputText = (value: any) => typeof value === "string" ? value : value?.nativeEvent?.text ?? "";
-const nativeTextColor = Platform.OS === "ios" ? DynamicColorIOS({ light: "#1e1f22", dark: "#f2f3f5" }) : "#f2f3f5";
-const nativeMutedColor = Platform.OS === "ios" ? DynamicColorIOS({ light: "#5c5e66", dark: "#949ba4" }) : "#949ba4";
-const nativeInputBackground = Platform.OS === "ios" ? DynamicColorIOS({ light: "#e3e5e8", dark: "#383a40" }) : "#383a40";
+const nativeTextColor = tokens.colors.TEXT_NORMAL;
+const nativeMutedColor = tokens.colors.TEXT_MUTED;
+const nativeInputBackground = tokens.colors.BACKGROUND_MODIFIER_ACCENT;
 
 function ApiAvatar({ user, size = 40 }: { user: any; size?: number }) {
     const uri = avatarUrl(user, 128);
@@ -74,7 +75,16 @@ function MessageRow({ message }: { message: any }) {
                 <Text variant="text-xs/normal" color="text-muted">{time}</Text>
             </View>
             {!!message.content && <Text selectable variant="text-md/normal">{message.content}</Text>}
-            {!!message.attachments?.length && <Text variant="text-sm/normal" color="text-muted">Attachments: {message.attachments.map((a: any) => a.filename).join(", ")}</Text>}
+            {!!message.attachments?.length && <View style={{ marginTop: 6, gap: 6 }}>
+                {message.attachments.map((attachment: any, index: number) => {
+                    const uri = attachment.url || attachment.proxy_url;
+                    const type = String(attachment.content_type || "");
+                    const isImage = type.startsWith("image/") || /\.(png|jpe?g|gif|webp)(?:$|\?)/i.test(String(uri || attachment.filename || ""));
+                    return isImage && uri
+                        ? <Image key={attachment.id || `${attachment.filename}-${index}`} source={{ uri }} resizeMode="cover" style={{ width: 260, height: 180, maxWidth: "100%", borderRadius: 8, backgroundColor: tokens.colors.BACKGROUND_SECONDARY }} />
+                        : <Text key={attachment.id || `${attachment.filename}-${index}`} variant="text-sm/normal" color="text-link">{attachment.filename || "Attachment"}</Text>;
+                })}
+            </View>}
             {!!message.embeds?.length && <Text variant="text-sm/normal" color="text-muted">{message.embeds.length} embed{message.embeds.length === 1 ? "" : "s"}</Text>}
             {reactionCount > 0 && <Text variant="text-sm/normal" color="text-muted">Reactions: {reactionCount}</Text>}
         </View>
@@ -105,6 +115,7 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
     const [channel, setChannel] = useState<any | null>(null);
     const [messages, setMessages] = useState<any[]>([]);
     const [composer, setComposer] = useState("");
+    const [selectedImage, setSelectedImage] = useState<any | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [screen, setScreen] = useState<"messages" | "guild" | "members">("messages");
@@ -121,11 +132,30 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
         setChannel(null);
         setChannels([]);
         setMessages([]);
+        setSelectedImage(null);
         setMembers([]);
         setMemberStatus("");
         setScreen("messages");
         getBotGuilds(active.token).then(setGuilds).catch(e => setError(String(e))).finally(() => setLoading(false));
     }, [active?.id]);
+
+    useEffect(() => {
+        if (!active || !channel?.id) return;
+        let disposed = false;
+        const refresh = async () => {
+            try {
+                const remote = await getBotChannelMessages(active.token, channel.id);
+                if (disposed) return;
+                const chronological = remote.slice().reverse();
+                setMessages(current => {
+                    const optimistic = current.filter(message => String(message?.id || "").startsWith("local-"));
+                    return [...chronological, ...optimistic];
+                });
+            } catch {}
+        };
+        const timer = setInterval(refresh, 1500);
+        return () => { disposed = true; clearInterval(timer); };
+    }, [active?.id, channel?.id]);
 
     const openGuild = async (nextGuild: any) => {
         if (!active) return;
@@ -205,14 +235,70 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
         } catch (e) { setError(String(e)); } finally { setLoading(false); }
     };
 
-    const send = async () => {
-        if (!active || !channel || !composer.trim()) return;
-        const content = composer.trim();
-        setComposer("");
+    const pickImage = async () => {
+        setError(null);
         try {
-            const sent = await sendBotMessage(active.token, channel.id, content);
-            setMessages(old => [...old, sent]);
-        } catch (e) { setComposer(content); setError(String(e)); }
+            const imagePicker = findByProps("launchImageLibrary") as any;
+            let asset: any = null;
+            if (imagePicker?.launchImageLibrary) {
+                const result: any = await new Promise((resolve, reject) => {
+                    try {
+                        const returned = imagePicker.launchImageLibrary({ mediaType: "photo", selectionLimit: 1, includeBase64: false, assetRepresentationMode: "current" }, resolve);
+                        if (returned?.then) returned.then(resolve, reject);
+                    } catch (error) { reject(error); }
+                });
+                if (result?.didCancel) return;
+                if (result?.errorCode) throw new Error(result.errorMessage || "Could not open photos.");
+                asset = result?.assets?.[0];
+            } else {
+                const filePicker = findByProps("pickSingle", "isCancel") as any;
+                if (!filePicker?.pickSingle) throw new Error("Photo picker unavailable.");
+                try {
+                    asset = await filePicker.pickSingle({ type: filePicker.types?.images || "image/*", mode: "import", copyTo: "documentDirectory" });
+                } catch (error) {
+                    if (filePicker.isCancel?.(error)) return;
+                    throw error;
+                }
+            }
+            const uri = asset?.fileCopyUri || asset?.uri;
+            if (!uri) return;
+            setSelectedImage({
+                uri,
+                name: asset?.fileName || asset?.name || `image-${Date.now()}.jpg`,
+                type: asset?.type || "image/jpeg",
+                width: asset?.width,
+                height: asset?.height
+            });
+        } catch (e) { setError(String(e)); }
+    };
+
+    const send = async () => {
+        if (!active || !channel || (!composer.trim() && !selectedImage)) return;
+        const content = composer.trim();
+        const image = selectedImage;
+        const optimisticId = `local-${Date.now()}`;
+        const optimistic = {
+            id: optimisticId,
+            content,
+            author: active,
+            timestamp: new Date().toISOString(),
+            attachments: image ? [{ id: "0", filename: image.name, url: image.uri, proxy_url: image.uri, content_type: image.type }] : [],
+            botcordPending: true
+        };
+        setComposer("");
+        setSelectedImage(null);
+        setError(null);
+        setMessages(old => [...old, optimistic]);
+        requestAnimationFrame(() => listRef.current?.scrollToEnd?.({ animated: true }));
+        try {
+            const sent = await sendBotMessage(active.token, channel.id, content, image || undefined);
+            setMessages(old => old.map(message => message.id === optimisticId ? sent : message));
+        } catch (e) {
+            setMessages(old => old.filter(message => message.id !== optimisticId));
+            setComposer(content);
+            setSelectedImage(image);
+            setError(String(e));
+        }
     };
 
     if (!active) return null;
@@ -231,6 +317,7 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
         setChannel(null);
         setMessages([]);
         setComposer("");
+        setSelectedImage(null);
         setError(null);
         if (wasDm) {
             setGuild(null);
@@ -253,18 +340,20 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                     accessibilityRole="button"
                     accessibilityLabel="Back"
                     onPress={returnFromChat}
-                    hitSlop={8}
+                    hitSlop={10}
                     style={({ pressed }) => ({
+                        width: 64,
                         height: 36,
-                        paddingHorizontal: 4,
-                        flexDirection: "row",
+                        flexShrink: 0,
+                        borderRadius: 18,
                         alignItems: "center",
                         justifyContent: "center",
-                        opacity: pressed ? 0.65 : 1
+                        backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED,
+                        opacity: pressed ? 0.7 : 1,
+                        zIndex: 20
                     })}
                 >
-                    <NativeText style={{ color: nativeTextColor, fontSize: 28, lineHeight: 30, marginRight: 2 }}>‹</NativeText>
-                    <NativeText style={{ color: nativeTextColor, fontSize: 16, fontWeight: "600" }}>Back</NativeText>
+                    <NativeText style={{ color: tokens.colors.TEXT_NORMAL, fontSize: 15, fontWeight: "600" }}>Back</NativeText>
                 </Pressable>
                 {dmUser ? <ApiAvatar user={dmUser} size={32} /> : null}
                 <View style={{ flex: 1 }}>
@@ -286,15 +375,31 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                 keyboardShouldPersistTaps="handled"
                 onContentSizeChange={() => listRef.current?.scrollToEnd?.({ animated: false })}
             />
+            {selectedImage ? <View style={{ height: 72, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: tokens.colors.BACKGROUND_PRIMARY }}>
+                <Image source={{ uri: selectedImage.uri }} style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: tokens.colors.BACKGROUND_SECONDARY }} />
+                <NativeText numberOfLines={1} style={{ flex: 1, color: tokens.colors.TEXT_NORMAL, fontSize: 14 }}>{selectedImage.name}</NativeText>
+                <Pressable onPress={() => setSelectedImage(null)} hitSlop={8} style={({ pressed }) => ({ height: 34, paddingHorizontal: 12, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED, opacity: pressed ? 0.7 : 1 })}>
+                    <NativeText style={{ color: tokens.colors.TEXT_NORMAL, fontSize: 13, fontWeight: "600" }}>Remove</NativeText>
+                </Pressable>
+            </View> : null}
             <View style={styles.composer}>
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Add photo"
+                    onPress={pickImage}
+                    hitSlop={6}
+                    style={({ pressed }) => ({ width: 52, height: 44, flexShrink: 0, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED, opacity: pressed ? 0.7 : 1 })}
+                >
+                    <NativeText style={{ color: tokens.colors.TEXT_NORMAL, fontSize: 13, fontWeight: "600" }}>Photo</NativeText>
+                </Pressable>
                 <NativeTextInput
                     value={composer}
                     placeholder={channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`}
-                    placeholderTextColor={nativeMutedColor}
+                    placeholderTextColor={tokens.colors.TEXT_MUTED}
                     onChangeText={setComposer}
                     maxLength={2000}
                     returnKeyType="send"
-                    onSubmitEditing={() => { if (composer.trim()) send(); }}
+                    onSubmitEditing={() => { if (composer.trim() || selectedImage) send(); }}
                     style={{
                         width: 0,
                         minWidth: 0,
@@ -304,29 +409,29 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                         paddingHorizontal: 14,
                         paddingVertical: 0,
                         borderRadius: 22,
-                        backgroundColor: nativeInputBackground,
-                        color: nativeTextColor,
+                        backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT,
+                        color: tokens.colors.TEXT_NORMAL,
                         fontSize: 16
                     }}
                 />
                 <Pressable
                     accessibilityRole="button"
                     accessibilityLabel="Send message"
-                    disabled={!composer.trim()}
+                    disabled={!composer.trim() && !selectedImage}
                     onPress={send}
                     hitSlop={6}
                     style={({ pressed }) => ({
-                        width: 56,
+                        width: 52,
                         height: 44,
                         flexShrink: 0,
                         borderRadius: 22,
                         alignItems: "center",
                         justifyContent: "center",
-                        opacity: !composer.trim() ? 0.45 : pressed ? 0.72 : 1,
+                        opacity: (!composer.trim() && !selectedImage) ? 0.45 : pressed ? 0.72 : 1,
                         backgroundColor: tokens.colors.BRAND_500
                     })}
                 >
-                    <NativeText style={{ color: "white", fontSize: 14, fontWeight: "600" }}>Send</NativeText>
+                    <NativeText style={{ color: tokens.colors.WHITE_500 || "#ffffff", fontSize: 13, fontWeight: "600" }}>Send</NativeText>
                 </Pressable>
             </View>
         </KeyboardAvoidingView>;
