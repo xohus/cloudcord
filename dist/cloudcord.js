@@ -8814,9 +8814,20 @@
           borderRadius: size / 2
         }
       });
-    return /* @__PURE__ */ jsx(Avatar, {
-      size: "small",
-      user
+    var label = displayName(user).trim().slice(0, 2).toUpperCase() || "?";
+    return /* @__PURE__ */ jsx(import_react_native19.View, {
+      style: {
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT
+      },
+      children: /* @__PURE__ */ jsx(Text, {
+        variant: "text-sm/semibold",
+        children: label
+      })
     });
   }
   function MessageRow({ message }) {
@@ -8969,6 +8980,8 @@
       setChannel(null);
       setChannels([]);
       setMessages([]);
+      setMembers([]);
+      setMemberStatus("");
       setScreen("messages");
       getBotGuilds(active.token).then(setGuilds).catch((e) => setError(String(e))).finally(() => setLoading(false));
     }, [
@@ -9030,13 +9043,16 @@
         return;
       setScreen("members");
       setMemberSearch("");
-      setMembers([]);
-      setMemberStatus("Loading members");
       setError(null);
+      if (members.length > 0) {
+        setMemberStatus(`${members.length} available members`);
+        return;
+      }
+      setMemberStatus("Loading members");
       var dedup = /* @__PURE__ */ new Map();
       var completed = 0;
-      for (var i = 0; i < guilds.length; i += 3) {
-        var batch = guilds.slice(i, i + 3);
+      for (var i = 0; i < guilds.length; i += 4) {
+        var batch = guilds.slice(i, i + 4);
         var results = yield Promise.all(batch.map((g2) => getBotGuildMembers(active.token, g2.id).catch(() => [])));
         for (var rows of results) {
           for (var member of rows) {
@@ -9046,10 +9062,11 @@
           }
         }
         completed += batch.length;
-        setMembers(Array.from(dedup.values()));
-        setMemberStatus(`Loaded ${dedup.size} members from ${completed} of ${guilds.length} servers`);
+        setMemberStatus(`Loading ${completed} of ${guilds.length}`);
       }
-      setMemberStatus(`${dedup.size} available members`);
+      var all = Array.from(dedup.values());
+      setMembers(all);
+      setMemberStatus(`${all.length} available members`);
     })();
     var openMemberDM = (member) => _async_to_generator(function* () {
       if (!active || !member?.user?.id)
@@ -9254,12 +9271,17 @@
                 })
               ]
             }),
-            screen !== "members" ? /* @__PURE__ */ jsx(IconButton, {
+            screen === "members" ? /* @__PURE__ */ jsx(Button, {
               size: "sm",
               variant: "secondary",
-              icon: findAssetId("MessagePlusIcon") || findAssetId("NewMessageIcon") || findAssetId("ChatIcon"),
+              text: "Back",
+              onPress: openMessages
+            }) : /* @__PURE__ */ jsx(Button, {
+              size: "sm",
+              variant: "secondary",
+              text: "New Message",
               onPress: loadAllMembers
-            }) : null,
+            }),
             /* @__PURE__ */ jsx(PressableScale, {
               onPress: openAccounts,
               children: /* @__PURE__ */ jsx(ApiAvatar, {
@@ -9345,10 +9367,10 @@
                         },
                         children: "Direct Messages"
                       }),
-                      /* @__PURE__ */ jsx(IconButton, {
+                      /* @__PURE__ */ jsx(Button, {
                         size: "sm",
                         variant: "secondary",
-                        icon: findAssetId("PlusIcon"),
+                        text: "New Message",
                         onPress: loadAllMembers
                       })
                     ]
@@ -9398,11 +9420,11 @@
                   /* @__PURE__ */ jsxs(import_react_native19.View, {
                     style: styles.sidebarHeader,
                     children: [
-                      /* @__PURE__ */ jsx(IconButton, {
+                      /* @__PURE__ */ jsx(Button, {
                         size: "sm",
                         variant: "secondary",
-                        icon: findAssetId("ArrowLeftIcon") || findAssetId("ChevronLeftIcon"),
-                        onPress: () => setScreen("messages")
+                        text: "Back",
+                        onPress: openMessages
                       }),
                       /* @__PURE__ */ jsxs(import_react_native19.View, {
                         style: {
@@ -9428,13 +9450,17 @@
                       size: "md",
                       value: memberSearch,
                       placeholder: "Search members",
-                      onChange: setMemberSearch
+                      onChange: (value) => setMemberSearch(typeof value === "string" ? value : value?.nativeEvent?.text ?? "")
                     })
                   }),
                   /* @__PURE__ */ jsx(import_react_native19.FlatList, {
                     data: filteredMembers,
                     keyExtractor: (member, i) => member.user?.id || String(i),
                     keyboardShouldPersistTaps: "handled",
+                    initialNumToRender: 18,
+                    maxToRenderPerBatch: 18,
+                    windowSize: 7,
+                    removeClippedSubviews: true,
                     renderItem: ({ item }) => /* @__PURE__ */ jsxs(PressableScale, {
                       onPress: () => openMemberDM(item),
                       style: styles.dmRow,
