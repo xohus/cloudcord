@@ -3535,16 +3535,19 @@
   function isPyonLoader() {
     return pyonLoaderIdentity != null;
   }
+  function isCloudCordLoader() {
+    return cloudCordLoaderIdentity != null;
+  }
   function isRa1nLoader() {
-    return rainLoaderIdentity != null;
+    return isCloudCordLoader();
   }
   function polyfillVendettaLoaderIdentity() {
-    if (!isPyonLoader() || isVendettaLoader() || !isRa1nLoader())
+    if (!isPyonLoader() || isVendettaLoader() || !isCloudCordLoader())
       return null;
     var loader;
-    if (isRa1nLoader() == true) {
+    if (isCloudCordLoader() == true) {
       loader = {
-        name: rainLoaderIdentity.loaderName,
+        name: cloudCordLoaderIdentity.loaderName ?? "CloudCord",
         features: {}
       };
     } else {
@@ -3592,28 +3595,28 @@
     return polyfillVendettaLoaderIdentity();
   }
   function getLoaderName() {
+    if (isCloudCordLoader())
+      return cloudCordLoaderIdentity.loaderName ?? "CloudCord";
     if (isPyonLoader())
       return pyonLoaderIdentity.loaderName;
-    else if (isRa1nLoader())
-      return rainLoaderIdentity.loadername;
-    else if (isVendettaLoader())
+    if (isVendettaLoader())
       return vendettaLoaderIdentity.name;
     return "Unknown";
   }
   function getLoaderVersion() {
+    if (isCloudCordLoader())
+      return cloudCordLoaderIdentity.loaderVersion ?? String(cloudCordLoaderIdentity.cloudcordAutoUpdateVersion ?? "2");
     if (isPyonLoader())
       return pyonLoaderIdentity.loaderVersion;
-    else if (isRa1nLoader())
-      return rainLoaderIdentity.loaderVersion;
     return null;
   }
   function isLoaderConfigSupported() {
+    if (isCloudCordLoader())
+      return true;
     if (isPyonLoader()) {
       return true;
     } else if (isVendettaLoader()) {
       return vendettaLoaderIdentity.features.loaderConfig;
-    } else if (isRa1nLoader()) {
-      return true;
     }
     return false;
   }
@@ -3628,6 +3631,8 @@
     return false;
   }
   function getStoredTheme() {
+    if (isCloudCordLoader() && cloudCordLoaderIdentity.storedTheme)
+      return cloudCordLoaderIdentity.storedTheme;
     if (isPyonLoader()) {
       return pyonLoaderIdentity.storedTheme;
     } else if (isVendettaLoader()) {
@@ -3639,8 +3644,10 @@
     return null;
   }
   function getThemeFilePath() {
+    if (isCloudCordLoader())
+      return "cloudcord/current-theme.json";
     if (isPyonLoader()) {
-      return "pyoncord/current-theme.json";
+      return "cloudcord/current-theme.json";
     } else if (isVendettaLoader()) {
       return "vendetta_theme.json";
     }
@@ -3659,8 +3666,8 @@
     if (!isReactDevToolsPreloaded())
       return null;
     if (isPyonLoader()) {
-      globalThis.__pyoncord_rdt = globalThis.__REACT_DEVTOOLS__.exports;
-      return "__pyoncord_rdt";
+      globalThis.__cloudcord_rdt = globalThis.__REACT_DEVTOOLS__.exports;
+      return "__cloudcord_rdt";
     }
     if (isVendettaLoader()) {
       return vendettaLoaderIdentity.features.devtools.prop;
@@ -3692,12 +3699,12 @@
     return null;
   }
   function getLoaderConfigPath() {
+    if (isCloudCordLoader())
+      return "cloudcord/loader.json";
     if (isPyonLoader()) {
-      return "pyoncord/loader.json";
+      return "cloudcord/loader.json";
     } else if (isVendettaLoader()) {
       return "vendetta_loader.json";
-    } else if (isRa1nLoader()) {
-      return "rain/loader.json";
     }
     return "loader.json";
   }
@@ -3706,7 +3713,7 @@
       return pyonLoaderIdentity.fontPatch === 2;
     return false;
   }
-  var pyonLoaderIdentity, rainLoaderIdentity, vendettaLoaderIdentity;
+  var pyonLoaderIdentity, cloudCordLoaderIdentity, vendettaLoaderIdentity;
   var init_loader = __esm({
     "src/lib/api/native/loader.ts"() {
       "use strict";
@@ -3714,7 +3721,7 @@
       init_promiseAllSettled();
       init_fs();
       pyonLoaderIdentity = globalThis.__PYON_LOADER__;
-      rainLoaderIdentity = globalThis.__RAIN_LOADER__;
+      cloudCordLoaderIdentity = globalThis.__CLOUDCORD_LOADER__;
       vendettaLoaderIdentity = globalThis.__vendetta_loader;
       getVendettaLoaderIdentity();
     }
@@ -4345,10 +4352,14 @@
       return true;
     })();
   }
+  function isCurrentCloudCordLoader() {
+    var nativeLoader = globalThis.__CLOUDCORD_LOADER__;
+    return Boolean(nativeLoader && Number(nativeLoader.cloudcordAutoUpdateVersion ?? 0) >= 2);
+  }
   function initLegacyRuntimeRefresh() {
     return _async_to_generator(function* () {
       var nativeLoader = globalThis.__CLOUDCORD_LOADER__;
-      if (!nativeLoader || Number(nativeLoader.cloudcordAutoUpdateVersion ?? 0) >= 2)
+      if (!nativeLoader || isCurrentCloudCordLoader())
         return;
       yield awaitStorage(loaderConfig);
       var config = loaderConfig;
@@ -16638,6 +16649,7 @@ Type: ${asset.type}`,
       init_debug();
       init_lib();
       src_default = () => _async_to_generator(function* () {
+        yield initLegacyRuntimeRefresh();
         yield Promise.all([
           initThemes(),
           injectFluxInterceptor(),
@@ -16648,7 +16660,6 @@ Type: ${asset.type}`,
           initVendettaObject(),
           initFetchI18nStrings(),
           initSettings(),
-          initLegacyRuntimeRefresh(),
           initializeFakeProfile(),
           fixes_default(),
           patchErrorBoundary(),
