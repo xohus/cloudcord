@@ -16,7 +16,7 @@ import { createStyles } from "@lib/ui/styles";
 import { NavigationNative, tokens } from "@metro/common";
 import { ActionSheet, ActionSheetRow, Button, IconButton, PressableScale, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Image, ScrollView, View } from "react-native";
+import { FlatList, Image, KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 
 const useStyles = createStyles({
     root: { flex: 1, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
@@ -28,7 +28,7 @@ const useStyles = createStyles({
     row: { flexDirection: "row", gap: 10, paddingHorizontal: 12, paddingVertical: 7 },
     messageBody: { flex: 1 },
     nameLine: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-    composer: { paddingHorizontal: 10, paddingVertical: 8, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
+    composer: { paddingHorizontal: 10, paddingVertical: 8, flexDirection: "row", alignItems: "flex-end", gap: 8, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
     category: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 4 },
     channelRow: { paddingHorizontal: 12, paddingVertical: 10 },
     guildButton: { width: 72, height: 56, alignItems: "center", justifyContent: "center" },
@@ -41,6 +41,7 @@ const useStyles = createStyles({
 const avatarUrl = (user: any, size = 128) => user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}` : null;
 const guildIconUrl = (guild: any, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
 const displayName = (user: any) => user?.global_name || user?.username || "Unknown";
+const inputText = (value: any) => typeof value === "string" ? value : value?.nativeEvent?.text ?? "";
 
 function ApiAvatar({ user, size = 40 }: { user: any; size?: number }) {
     const uri = avatarUrl(user, 128);
@@ -239,7 +240,11 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
 
     if (channel) {
         const dmUser = channel.recipients?.[0];
-        return <View style={styles.root}>
+        return <KeyboardAvoidingView
+            style={styles.root}
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            keyboardVerticalOffset={0}
+        >
             <View style={styles.header}>
                 <Button size="sm" variant="secondary" text="Back" onPress={returnFromChat} />
                 {dmUser ? <ApiAvatar user={dmUser} size={32} /> : null}
@@ -251,11 +256,29 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
             </View>
             {error ? <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}><Text variant="text-sm/medium" color="text-feedback-critical">{error}</Text></View> : null}
             {loading ? <Text variant="text-sm/normal" color="text-muted" style={{ padding: 10, textAlign: "center" }}>Loading</Text> : null}
-            <FlatList ref={listRef} style={{ flex: 1 }} data={messages} keyExtractor={(m: any, i) => m.id || String(i)} renderItem={({ item }: any) => <MessageRow message={item} />} contentContainerStyle={{ paddingVertical: 6 }} onContentSizeChange={() => listRef.current?.scrollToEnd?.({ animated: false })} />
+            <FlatList
+                ref={listRef}
+                style={{ flex: 1 }}
+                data={messages}
+                keyExtractor={(m: any, i) => m.id || String(i)}
+                renderItem={({ item }: any) => <MessageRow message={item} />}
+                contentContainerStyle={{ paddingVertical: 6 }}
+                keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+                keyboardShouldPersistTaps="handled"
+                onContentSizeChange={() => listRef.current?.scrollToEnd?.({ animated: false })}
+            />
             <View style={styles.composer}>
-                <TextInput size="lg" value={composer} placeholder={channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`} onChange={setComposer} trailingIcon={() => <IconButton size="sm" variant="primary" disabled={!composer.trim()} icon={findAssetId("SendMessageIcon") || findAssetId("ArrowSmallUpIcon")} onPress={send} />} />
+                <View style={{ flex: 1 }}>
+                    <TextInput
+                        size="lg"
+                        value={composer}
+                        placeholder={channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`}
+                        onChange={(value: any) => setComposer(inputText(value))}
+                    />
+                </View>
+                <Button size="sm" variant="primary" text="Send" disabled={!composer.trim()} onPress={send} />
             </View>
-        </View>;
+        </KeyboardAvoidingView>;
     }
 
     return <View style={styles.root}>
