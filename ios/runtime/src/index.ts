@@ -1,3 +1,4 @@
+import { initBotCordSwitcher } from "@core/ui/botcord/FloatingSwitcher";
 import patchErrorBoundary from "@core/debug/patches/patchErrorBoundary";
 import initFixes from "@core/fixes";
 import { initFetchI18nStrings } from "@core/i18n";
@@ -30,6 +31,7 @@ export default async () => {
         initVendettaObject(),
         initFetchI18nStrings(),
         initSettings(),
+        initBotCordSwitcher(),
         initFixes(),
         patchErrorBoundary(),
         updatePlugins(),

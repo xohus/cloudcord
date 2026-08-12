@@ -42,11 +42,14 @@ jobs:
           mkdir -p src/core/ui/settings/pages/CloudSync
           mkdir -p src/core/ui/settings/pages/FakeProfile
           mkdir -p src/core/ui/settings/pages/BotCord
+          mkdir -p src/core/ui/botcord
           mkdir -p src/core/ui/settings/components
           mkdir -p src/lib/api
           cp "../ios/assets/fakeprofile-icon.png" "src/assets/icons/fakeprofile.png"
           cp "../ios/runtime/src/core/ui/settings/pages/BotCord/index.tsx" "src/core/ui/settings/pages/BotCord/index.tsx"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
+          cp "../ios/runtime/src/core/ui/botcord/FloatingSwitcher.tsx" "src/core/ui/botcord/FloatingSwitcher.tsx"
+          cp "../ios/runtime/src/core/vendetta/storage.ts" "src/core/vendetta/storage.ts"
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
           import type { ComponentType } from "react";
@@ -1233,14 +1236,23 @@ jobs:
           if main_index.exists():
               text = main_index.read_text(encoding="utf-8", errors="ignore")
               startup_import = 'import { initializeFakeProfile } from "@core/ui/settings/pages/FakeProfile";\n'
+              botcord_import = 'import { initBotCordSwitcher } from "@core/ui/botcord/FloatingSwitcher";\n'
 
               if startup_import not in text:
                   text = startup_import + text
+              if botcord_import not in text:
+                  text = botcord_import + text
 
               if "initializeFakeProfile()," not in text:
                   text = text.replace(
                       "        initSettings(),",
                       "        initSettings(),\n        initializeFakeProfile(),"
+                  )
+
+              if "initBotCordSwitcher()," not in text:
+                  text = text.replace(
+                      "        initSettings(),",
+                      "        initSettings(),\n        initBotCordSwitcher(),"
                   )
 
               main_index.write_text(text, encoding="utf-8")

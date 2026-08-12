@@ -8,7 +8,8 @@ import {
     getBotGuilds,
     removeBotAccount,
     sendBotMessage,
-    setActiveBotAccount
+    setActiveBotAccount,
+    updateBotCordSwitcher
 } from "@lib/api/botcord";
 import { Button, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
 import { useEffect, useMemo, useState } from "react";
@@ -144,9 +145,10 @@ export default function BotCord() {
     const [error, setError] = useState<string | null>(null);
     const [opened, setOpened] = useState(false);
 
+    const accounts = state.accounts ?? [];
     const active = useMemo(
-        () => state.accounts.find(a => a.id === state.activeAccountId) ?? state.accounts[0] ?? null,
-        [state.accounts, state.activeAccountId]
+        () => accounts.find(a => a.id === state.activeAccountId) ?? accounts[0] ?? null,
+        [accounts, state.activeAccountId]
     );
 
     if (opened && active) {
@@ -163,7 +165,7 @@ export default function BotCord() {
             </View>
 
             <TableRowGroup title="Bot Accounts">
-                {state.accounts.map(account => <TableRow
+                {accounts.map(account => <TableRow
                     key={account.id}
                     label={account.username}
                     subLabel={state.activeAccountId === account.id ? "Active bot" : `Bot ID: ${account.id}`}
@@ -179,7 +181,7 @@ export default function BotCord() {
                         onPress={() => removeBotAccount(account.id)}
                     />}
                 />)}
-                {state.accounts.length === 0 && <TableRow label="No bot accounts added yet" />}
+                {accounts.length === 0 && <TableRow label="No bot accounts added yet" />}
             </TableRowGroup>
 
             <TableRowGroup title="Add Bot Account">
@@ -221,6 +223,14 @@ export default function BotCord() {
                 text={`Open BotCord as ${active.username}`}
                 onPress={() => setOpened(true)}
             />}
+
+
+            <Button
+                size="md"
+                variant="secondary"
+                text={(state.switcher?.enabled ?? true) ? "Hide Floating Bot Switcher" : "Show Floating Bot Switcher"}
+                onPress={() => updateBotCordSwitcher({ enabled: !(state.switcher?.enabled ?? true) })}
+            />
 
             <Text variant="text-xs/normal" color="text-muted">
                 BotCord uses Discord's bot API. A bot only sees servers and channels where it has access and can only perform actions its permissions allow.

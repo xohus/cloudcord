@@ -82,25 +82,39 @@ export function createProxy(target: any = {}): { proxy: any; emitter: Emitter; }
 }
 
 export function useProxy<T>(storage: T): T {
-    const emitter = (storage as any)?.[emitterSymbol] as Emitter;
-    if (!emitter) throw new Error("storage?.[emitterSymbol] is undefined");
-
     const [, forceUpdate] = React.useReducer(n => ~n, 0);
 
     React.useEffect(() => {
+        let disposed = false;
+        let emitter: Emitter | undefined;
+
         const listener: EmitterListener = (event: EmitterEvent, data: EmitterListenerData) => {
             if (event === "DEL" && data.value === storage) return;
             forceUpdate();
         };
 
-        emitter.on("SET", listener);
-        emitter.on("DEL", listener);
+        const attach = () => {
+            if (disposed) return;
+            emitter = (storage as any)?.[emitterSymbol] as Emitter | undefined;
+            if (!emitter) return;
+            emitter.on("SET", listener);
+            emitter.on("DEL", listener);
+            forceUpdate();
+        };
+
+        emitter = (storage as any)?.[emitterSymbol] as Emitter | undefined;
+        if (emitter) attach();
+        else {
+            const awaitInit = (storage as any)?.[syncAwaitSymbol];
+            if (typeof awaitInit === "function") awaitInit(attach);
+        }
 
         return () => {
-            emitter.off("SET", listener);
-            emitter.off("DEL", listener);
+            disposed = true;
+            emitter?.off("SET", listener);
+            emitter?.off("DEL", listener);
         };
-    }, []);
+    }, [storage]);
 
     return storage;
 }

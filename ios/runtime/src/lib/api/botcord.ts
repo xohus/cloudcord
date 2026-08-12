@@ -1,4 +1,4 @@
-import { createFileBackend, createStorage, wrapSync } from "@core/vendetta/storage";
+import { awaitStorage, createFileBackend, createStorage, wrapSync } from "@core/vendetta/storage";
 
 export interface BotCordAccount {
     id: string;
@@ -7,15 +7,24 @@ export interface BotCordAccount {
     token: string;
 }
 
+export interface BotCordSwitcherState {
+    enabled: boolean;
+    x: number;
+    y: number;
+    size: number;
+}
+
 export interface BotCordState {
     accounts: BotCordAccount[];
     activeAccountId?: string | null;
+    switcher?: BotCordSwitcherState;
 }
 
 export const botCordState = wrapSync(createStorage<BotCordState>(
     createFileBackend("botcord/accounts.json", {
         accounts: [],
-        activeAccountId: null
+        activeAccountId: null,
+        switcher: { enabled: true, x: 12, y: 180, size: 58 }
     })
 ));
 
@@ -42,6 +51,8 @@ export async function getBotUser(token: string) {
 
 export async function addBotAccount(token: string) {
     const account = await getBotUser(token);
+    await awaitStorage(botCordState);
+    botCordState.accounts ??= [];
     const existing = botCordState.accounts.findIndex(a => a.id === account.id);
 
     if (existing === -1) botCordState.accounts.push(account);
@@ -51,7 +62,9 @@ export async function addBotAccount(token: string) {
     return account;
 }
 
-export function removeBotAccount(id: string) {
+export async function removeBotAccount(id: string) {
+    await awaitStorage(botCordState);
+    botCordState.accounts ??= [];
     const index = botCordState.accounts.findIndex(a => a.id === id);
     if (index !== -1) botCordState.accounts.splice(index, 1);
 
@@ -60,8 +73,15 @@ export function removeBotAccount(id: string) {
     }
 }
 
-export function setActiveBotAccount(id: string | null) {
+export async function setActiveBotAccount(id: string | null) {
+    await awaitStorage(botCordState);
     botCordState.activeAccountId = id;
+}
+
+export async function updateBotCordSwitcher(patch: Partial<BotCordSwitcherState>) {
+    await awaitStorage(botCordState);
+    botCordState.switcher ??= { enabled: true, x: 12, y: 180, size: 58 };
+    Object.assign(botCordState.switcher, patch);
 }
 
 async function readDiscordError(response: Response) {
