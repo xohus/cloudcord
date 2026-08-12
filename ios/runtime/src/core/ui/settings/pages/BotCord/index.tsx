@@ -14,7 +14,7 @@ import {
 import { hideSheet, showSheet } from "@lib/ui/sheets";
 import { createStyles } from "@lib/ui/styles";
 import { NavigationNative, tokens } from "@metro/common";
-import { ActionSheet, ActionSheetRow, Avatar, Button, IconButton, PressableScale, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
+import { ActionSheet, ActionSheetRow, Button, IconButton, PressableScale, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Image, ScrollView, View } from "react-native";
 
@@ -45,7 +45,15 @@ const displayName = (user: any) => user?.global_name || user?.username || "Unkno
 function ApiAvatar({ user, size = 40 }: { user: any; size?: number }) {
     const uri = avatarUrl(user, 128);
     if (uri) return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
-    return <Avatar size="small" user={user} />;
+    const label = displayName(user).trim().slice(0, 2).toUpperCase() || "?";
+    return <View style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT
+    }}><Text variant="text-sm/semibold">{label}</Text></View>;
 }
 
 function MessageRow({ message }: { message: any }) {
@@ -109,6 +117,8 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
         setChannel(null);
         setChannels([]);
         setMessages([]);
+        setMembers([]);
+        setMemberStatus("");
         setScreen("messages");
         getBotGuilds(active.token).then(setGuilds).catch(e => setError(String(e))).finally(() => setLoading(false));
     }, [active?.id]);
@@ -154,13 +164,16 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
         if (!active) return;
         setScreen("members");
         setMemberSearch("");
-        setMembers([]);
-        setMemberStatus("Loading members");
         setError(null);
+        if (members.length > 0) {
+            setMemberStatus(`${members.length} available members`);
+            return;
+        }
+        setMemberStatus("Loading members");
         const dedup = new Map<string, any>();
         let completed = 0;
-        for (let i = 0; i < guilds.length; i += 3) {
-            const batch = guilds.slice(i, i + 3);
+        for (let i = 0; i < guilds.length; i += 4) {
+            const batch = guilds.slice(i, i + 4);
             const results = await Promise.all(batch.map(g => getBotGuildMembers(active.token, g.id).catch(() => [])));
             for (const rows of results) {
                 for (const member of rows) {
@@ -169,10 +182,11 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                 }
             }
             completed += batch.length;
-            setMembers(Array.from(dedup.values()));
-            setMemberStatus(`Loaded ${dedup.size} members from ${completed} of ${guilds.length} servers`);
+            setMemberStatus(`Loading ${completed} of ${guilds.length}`);
         }
-        setMemberStatus(`${dedup.size} available members`);
+        const all = Array.from(dedup.values());
+        setMembers(all);
+        setMemberStatus(`${all.length} available members`);
     };
 
     const openMemberDM = async (member: any) => {
@@ -250,7 +264,7 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                 <Text variant="heading-md/semibold" numberOfLines={1}>{screen === "members" ? "New Message" : screen === "messages" ? "Messages" : guild?.name || "BotCord"}</Text>
                 <Text variant="text-xs/normal" color="text-muted" numberOfLines={1}>{active.username}</Text>
             </View>
-            {screen !== "members" ? <IconButton size="sm" variant="secondary" icon={findAssetId("MessagePlusIcon") || findAssetId("NewMessageIcon") || findAssetId("ChatIcon")} onPress={loadAllMembers} /> : null}
+            {screen === "members" ? <Button size="sm" variant="secondary" text="Back" onPress={openMessages} /> : <Button size="sm" variant="secondary" text="New Message" onPress={loadAllMembers} />}
             <PressableScale onPress={openAccounts}><ApiAvatar user={active} size={32} /></PressableScale>
         </View>
 
@@ -272,12 +286,12 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
 
             <View style={styles.sidebar}>
                 {screen === "messages" ? <>
-                    <View style={styles.sidebarHeader}><Text variant="heading-md/semibold" style={{ flex: 1 }}>Direct Messages</Text><IconButton size="sm" variant="secondary" icon={findAssetId("PlusIcon")} onPress={loadAllMembers} /></View>
+                    <View style={styles.sidebarHeader}><Text variant="heading-md/semibold" style={{ flex: 1 }}>Direct Messages</Text><Button size="sm" variant="secondary" text="New Message" onPress={loadAllMembers} /></View>
                     <FlatList data={recentDMs} keyExtractor={(dm: any) => dm.channelId} renderItem={({ item }: any) => <PressableScale onPress={() => openRecentDM(item)} style={styles.dmRow}><ApiAvatar user={item.recipient} size={36} /><View style={{ flex: 1 }}><Text variant="text-md/medium" numberOfLines={1}>{displayName(item.recipient)}</Text>{item.recipient.bot ? <Text variant="text-xs/normal" color="text-muted">APP</Text> : null}</View></PressableScale>} ListEmptyComponent={<View style={styles.listEmpty}><Text variant="text-md/normal" color="text-muted">No recent direct messages. Use New Message to choose a member.</Text></View>} />
                 </> : screen === "members" ? <>
-                    <View style={styles.sidebarHeader}><IconButton size="sm" variant="secondary" icon={findAssetId("ArrowLeftIcon") || findAssetId("ChevronLeftIcon")} onPress={() => setScreen("messages")} /><View style={{ flex: 1 }}><Text variant="heading-md/semibold">New Message</Text><Text variant="text-xs/normal" color="text-muted">{memberStatus}</Text></View></View>
-                    <View style={styles.search}><TextInput size="md" value={memberSearch} placeholder="Search members" onChange={setMemberSearch} /></View>
-                    <FlatList data={filteredMembers} keyExtractor={(member: any, i) => member.user?.id || String(i)} keyboardShouldPersistTaps="handled" renderItem={({ item }: any) => <PressableScale onPress={() => openMemberDM(item)} style={styles.dmRow}><ApiAvatar user={item.user} size={36} /><View style={{ flex: 1 }}><Text variant="text-md/medium" numberOfLines={1}>{item.nick || displayName(item.user)}</Text>{item.nick && item.nick !== displayName(item.user) ? <Text variant="text-xs/normal" color="text-muted" numberOfLines={1}>{displayName(item.user)}</Text> : item.user?.bot ? <Text variant="text-xs/normal" color="text-muted">APP</Text> : null}</View></PressableScale>} ListEmptyComponent={<View style={styles.listEmpty}><Text variant="text-md/normal" color="text-muted">No members are available from the bot's servers.</Text></View>} />
+                    <View style={styles.sidebarHeader}><Button size="sm" variant="secondary" text="Back" onPress={openMessages} /><View style={{ flex: 1 }}><Text variant="heading-md/semibold">New Message</Text><Text variant="text-xs/normal" color="text-muted">{memberStatus}</Text></View></View>
+                    <View style={styles.search}><TextInput size="md" value={memberSearch} placeholder="Search members" onChange={(value: any) => setMemberSearch(typeof value === "string" ? value : value?.nativeEvent?.text ?? "")} /></View>
+                    <FlatList data={filteredMembers} keyExtractor={(member: any, i) => member.user?.id || String(i)} keyboardShouldPersistTaps="handled" initialNumToRender={18} maxToRenderPerBatch={18} windowSize={7} removeClippedSubviews={true} renderItem={({ item }: any) => <PressableScale onPress={() => openMemberDM(item)} style={styles.dmRow}><ApiAvatar user={item.user} size={36} /><View style={{ flex: 1 }}><Text variant="text-md/medium" numberOfLines={1}>{item.nick || displayName(item.user)}</Text>{item.nick && item.nick !== displayName(item.user) ? <Text variant="text-xs/normal" color="text-muted" numberOfLines={1}>{displayName(item.user)}</Text> : item.user?.bot ? <Text variant="text-xs/normal" color="text-muted">APP</Text> : null}</View></PressableScale>} ListEmptyComponent={<View style={styles.listEmpty}><Text variant="text-md/normal" color="text-muted">No members are available from the bot's servers.</Text></View>} />
                 </> : <>
                     <View style={styles.sidebarHeader}><Text variant="heading-md/semibold" numberOfLines={1}>{guild?.name}</Text></View>
                     <FlatList data={[...textChannels(null), ...categories.flatMap(cat => [{ ...cat, botcordCategory: true }, ...textChannels(cat.id)])]} keyExtractor={(item: any) => `${item.botcordCategory ? "cat" : "chan"}-${item.id}`} renderItem={({ item }: any) => item.botcordCategory ? <Text variant="text-xs/bold" color="text-muted" style={styles.category}>{String(item.name || "CATEGORY").toUpperCase()}</Text> : <PressableScale onPress={() => openChannel(item)} style={styles.channelRow}><Text variant="text-md/medium" color="text-muted">{item.name}</Text></PressableScale>} ListEmptyComponent={<View style={styles.listEmpty}><Text variant="text-md/normal" color="text-muted">No message channels available.</Text></View>} />
