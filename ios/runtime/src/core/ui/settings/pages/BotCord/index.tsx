@@ -1,117 +1,99 @@
-import { useProxy } from "@core/vendetta/storage";
 import { findAssetId } from "@lib/api/assets";
 import {
     addBotAccount,
-    botCordState,
     getBotChannelMessages,
     getBotGuildChannels,
     getBotGuildMembers,
     getBotGuilds,
     removeBotAccount,
     sendBotMessage,
-    setActiveBotAccount
+    setActiveBotAccount,
+    useBotCordState
 } from "@lib/api/botcord";
-import { NavigationNative } from "@metro/common";
-import { Button, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
+import { hideSheet, showSheet } from "@lib/ui/sheets";
+import { createStyles } from "@lib/ui/styles";
+import { NavigationNative, tokens } from "@metro/common";
+import { ActionSheet, ActionSheetRow, Avatar, Button, IconButton, PressableScale, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Image, Modal, Pressable, ScrollView, TextInput as RNTextInput, View } from "react-native";
+import { FlatList, Image, ScrollView, View } from "react-native";
 
-const BG = "#313338";
-const SIDEBAR = "#2b2d31";
-const RAIL = "#1e1f22";
-const PANEL = "#232428";
-const INPUT = "#383a40";
-const MUTED = "#b5bac1";
-const BRAND = "#5865f2";
+const useStyles = createStyles({
+    root: { flex: 1, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
+    header: { minHeight: 56, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
+    guildRail: { backgroundColor: tokens.colors.BACKGROUND_SECONDARY, paddingVertical: 8 },
+    channelList: { flex: 1, backgroundColor: tokens.colors.BACKGROUND_SECONDARY },
+    messageList: { flex: 1, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
+    row: { flexDirection: "row", gap: 10, paddingHorizontal: 12, paddingVertical: 7 },
+    messageBody: { flex: 1 },
+    nameLine: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
+    composer: { paddingHorizontal: 10, paddingVertical: 8, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
+    category: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 4 },
+    channelRow: { paddingHorizontal: 12, paddingVertical: 9 },
+    guildButton: { width: 52, alignItems: "center", justifyContent: "center" },
+    guildImage: { width: 44, height: 44, borderRadius: 22 },
+    sheet: { paddingHorizontal: 12, paddingBottom: 20, gap: 8 }
+});
 
-const avatarUrl = (user: any, size = 128) => user?.avatar
-    ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}`
-    : null;
+const avatarUrl = (user: any, size = 128) => user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}` : null;
+const guildIconUrl = (guild: any, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
 
-const guildIconUrl = (guild: any, size = 128) => guild?.icon
-    ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}`
-    : null;
-
-function Avatar({ user, size = 38 }: { user: any; size?: number; }) {
+function ApiAvatar({ user, size = 40 }: { user: any; size?: number }) {
     const uri = avatarUrl(user, 128);
-    return uri
-        ? <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: PANEL }} />
-        : <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: BRAND, alignItems: "center", justifyContent: "center" }}>
-            <Text style={{ color: "white", fontWeight: "800", fontSize: Math.max(12, size * .34) }}>{(user?.username || "B").slice(0, 2).toUpperCase()}</Text>
-        </View>;
+    if (uri) return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
+    return <Avatar size="small" user={user} />;
 }
 
-function GuildIcon({ guild, selected, onPress }: { guild: any; selected: boolean; onPress: () => void; }) {
-    const uri = guildIconUrl(guild);
-    return <Pressable onPress={onPress} style={{ width: 54, alignItems: "center", justifyContent: "center" }}>
-        <View style={{
-            width: selected ? 48 : 44,
-            height: selected ? 48 : 44,
-            borderRadius: selected ? 16 : 22,
-            overflow: "hidden",
-            backgroundColor: selected ? BRAND : "#313338",
-            alignItems: "center",
-            justifyContent: "center",
-            borderWidth: selected ? 2 : 0,
-            borderColor: "white"
-        }}>
-            {uri ? <Image source={{ uri }} style={{ width: "100%", height: "100%" }} /> : <Text style={{ color: "white", fontWeight: "800", fontSize: 15 }}>{guild.name?.slice(0, 2).toUpperCase()}</Text>}
-        </View>
-    </Pressable>;
-}
-
-function MessageRow({ message }: { message: any; }) {
+function MessageRow({ message }: { message: any }) {
+    const styles = useStyles();
     const author = message.author || {};
     const time = message.timestamp ? new Date(message.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
-    const attachmentText = message.attachments?.length ? `\n📎 ${message.attachments.map((a: any) => a.filename).join(", ")}` : "";
-    const embedText = message.embeds?.length ? `\n▣ ${message.embeds.length} embed${message.embeds.length > 1 ? "s" : ""}` : "";
-    return <View style={{ flexDirection: "row", gap: 10, paddingHorizontal: 12, paddingVertical: 8 }}>
-        <Avatar user={author} size={38} />
-        <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
-                <Text style={{ color: "white", fontWeight: "700", fontSize: 15 }}>{author.global_name || author.username || "Unknown"}</Text>
-                {author.bot && <View style={{ backgroundColor: BRAND, paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4 }}><Text style={{ color: "white", fontSize: 9, fontWeight: "800" }}>BOT</Text></View>}
-                <Text style={{ color: "#949ba4", fontSize: 10 }}>{time}</Text>
+    return <View style={styles.row}>
+        <ApiAvatar user={author} size={40} />
+        <View style={styles.messageBody}>
+            <View style={styles.nameLine}>
+                <Text variant="text-md/semibold">{author.global_name || author.username || "Unknown"}</Text>
+                {author.bot && <Text variant="text-xs/semibold" color="text-brand">APP</Text>}
+                <Text variant="text-xs/normal" color="text-muted">{time}</Text>
             </View>
-            {!!(message.content || attachmentText || embedText) && <Text selectable style={{ color: "#dbdee1", fontSize: 15, lineHeight: 20, marginTop: 2 }}>{message.content || ""}{attachmentText}{embedText}</Text>}
-            {!!message.reactions?.length && <View style={{ flexDirection: "row", gap: 5, flexWrap: "wrap", marginTop: 6 }}>
-                {message.reactions.slice(0, 8).map((r: any, i: number) => <View key={i} style={{ paddingHorizontal: 7, paddingVertical: 3, borderRadius: 7, backgroundColor: "#2b2d31", borderWidth: 1, borderColor: "#3f4147" }}><Text style={{ color: "#dbdee1", fontSize: 12 }}>{r.emoji?.name || "?"} {r.count}</Text></View>)}
-            </View>}
+            {!!message.content && <Text selectable variant="text-md/normal">{message.content}</Text>}
+            {!!message.attachments?.length && <Text variant="text-sm/normal" color="text-muted">📎 {message.attachments.map((a: any) => a.filename).join(", ")}</Text>}
+            {!!message.embeds?.length && <Text variant="text-sm/normal" color="text-muted">{message.embeds.length} embed{message.embeds.length === 1 ? "" : "s"}</Text>}
+            {!!message.reactions?.length && <Text variant="text-sm/normal" color="text-muted">{message.reactions.slice(0, 8).map((r: any) => `${r.emoji?.name || "?"} ${r.count}`).join("   ")}</Text>}
         </View>
     </View>;
 }
 
-function AccountMenu({ visible, onClose, accounts, active, onSwitch, onLogout, onMain }: any) {
-    return <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
-        <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(0,0,0,.48)", justifyContent: "flex-end" }}>
-            <Pressable onPress={() => {}} style={{ backgroundColor: PANEL, borderTopLeftRadius: 22, borderTopRightRadius: 22, padding: 16, paddingBottom: 28, gap: 10 }}>
-                <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "#5c5f66", alignSelf: "center", marginBottom: 4 }} />
-                <Text style={{ color: "white", fontWeight: "800", fontSize: 18 }}>Bot account</Text>
-                {accounts.map((account: any) => <Pressable key={account.id} onPress={() => { onSwitch(account.id); onClose(); }} style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 10, borderRadius: 12, backgroundColor: account.id === active?.id ? "rgba(88,101,242,.22)" : "#2b2d31" }}>
-                    <Avatar user={account} size={36} />
-                    <View style={{ flex: 1 }}><Text style={{ color: "white", fontWeight: "700" }}>{account.username}</Text><Text style={{ color: MUTED, fontSize: 11 }}>{account.id === active?.id ? "Currently active" : "Switch to this bot"}</Text></View>
-                    {account.id === active?.id && <Text style={{ color: "#57f287", fontSize: 18 }}>●</Text>}
-                </Pressable>)}
-                <Pressable onPress={onMain} style={{ padding: 13, borderRadius: 12, backgroundColor: BRAND, alignItems: "center" }}><Text style={{ color: "white", fontWeight: "800" }}>Back to Discord · Main Account</Text></Pressable>
-                <Pressable onPress={onLogout} style={{ padding: 13, borderRadius: 12, backgroundColor: "rgba(242,63,66,.16)", alignItems: "center" }}><Text style={{ color: "#ff7b7d", fontWeight: "800" }}>Log out this bot</Text></Pressable>
-            </Pressable>
-        </Pressable>
-    </Modal>;
+function AccountSheet({ accounts, active, onMain }: any) {
+    return <ActionSheet>
+        <View style={{ paddingHorizontal: 12, paddingBottom: 20 }}>
+            <Text variant="heading-lg/extrabold">Switch account</Text>
+            <Stack spacing={4} style={{ marginTop: 10 }}>
+                {accounts.map((account: any) => <ActionSheetRow
+                    key={account.id}
+                    label={account.username}
+                    icon={<ApiAvatar user={account} size={32} />}
+                    onPress={async () => { await setActiveBotAccount(account.id); hideSheet("BOTCORD_ACCOUNT"); }}
+                />)}
+                <ActionSheetRow label="Back to Discord" onPress={() => { hideSheet("BOTCORD_ACCOUNT"); onMain(); }} />
+                <ActionSheetRow label="Log out bot" variant="destructive" onPress={async () => { await removeBotAccount(active.id); hideSheet("BOTCORD_ACCOUNT"); onMain(); }} />
+            </Stack>
+        </View>
+    </ActionSheet>;
 }
 
-function MembersSheet({ visible, onClose, members }: { visible: boolean; onClose: () => void; members: any[]; }) {
-    return <Modal transparent animationType="slide" visible={visible} onRequestClose={onClose}>
-        <Pressable onPress={onClose} style={{ flex: 1, backgroundColor: "rgba(0,0,0,.4)", justifyContent: "flex-end" }}>
-            <Pressable onPress={() => {}} style={{ maxHeight: "72%", backgroundColor: PANEL, borderTopLeftRadius: 22, borderTopRightRadius: 22, paddingTop: 12, paddingBottom: 24 }}>
-                <View style={{ width: 36, height: 4, borderRadius: 2, backgroundColor: "#5c5f66", alignSelf: "center", marginBottom: 12 }} />
-                <Text style={{ color: "white", fontWeight: "800", fontSize: 18, paddingHorizontal: 16, marginBottom: 8 }}>Members · {members.length}</Text>
-                <FlatList data={members} keyExtractor={(m: any, i) => m.user?.id || String(i)} renderItem={({ item }: any) => <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 16, paddingVertical: 8 }}><Avatar user={item.user} size={34} /><View style={{ flex: 1 }}><Text style={{ color: "#dbdee1", fontWeight: "600" }}>{item.nick || item.user?.global_name || item.user?.username || "Unknown"}</Text>{item.user?.bot && <Text style={{ color: MUTED, fontSize: 10 }}>BOT</Text>}</View></View>} />
-            </Pressable>
-        </Pressable>
-    </Modal>;
+function MembersSheet({ members }: { members: any[] }) {
+    return <ActionSheet scrollable>
+        <View style={{ paddingHorizontal: 12, paddingBottom: 20 }}>
+            <Text variant="heading-lg/extrabold">Members</Text>
+            <Stack spacing={2} style={{ marginTop: 8 }}>
+                {members.map((member: any, i: number) => <ActionSheetRow key={member.user?.id || String(i)} label={member.nick || member.user?.global_name || member.user?.username || "Unknown"} icon={<ApiAvatar user={member.user} size={32} />} />)}
+            </Stack>
+        </View>
+    </ActionSheet>;
 }
 
-function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: string | null | undefined; onExit: () => void; }) {
+function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: string | null; onExit: () => void }) {
+    const styles = useStyles();
     const navigation = NavigationNative.useNavigation();
     const active = accounts.find(a => a.id === activeId) ?? accounts[0] ?? null;
     const [guilds, setGuilds] = useState<any[]>([]);
@@ -123,152 +105,120 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
     const [composer, setComposer] = useState("");
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [accountMenu, setAccountMenu] = useState(false);
-    const [membersOpen, setMembersOpen] = useState(false);
-    const listRef = useRef<FlatList>(null);
+    const listRef = useRef<any>(null);
 
     useEffect(() => {
         if (!active) return;
         setLoading(true); setError(null); setGuild(null); setChannel(null); setMessages([]); setChannels([]); setMembers([]);
-        getBotGuilds(active.token).then(g => { setGuilds(g); if (g[0]) openGuild(g[0], active.token); }).catch(e => setError(String(e))).finally(() => setLoading(false));
+        getBotGuilds(active.token).then(result => {
+            setGuilds(result);
+            if (result[0]) openGuild(result[0], active.token);
+        }).catch(e => setError(String(e))).finally(() => setLoading(false));
     }, [active?.id]);
 
-    const openGuild = async (g: any, tokenOverride?: string) => {
-        if (!active && !tokenOverride) return;
-        const token = tokenOverride || active.token;
-        setLoading(true); setError(null); setGuild(g); setChannel(null); setMessages([]); setMembers([]);
+    const openGuild = async (nextGuild: any, tokenOverride?: string) => {
+        const token = tokenOverride || active?.token;
+        if (!token) return;
+        setGuild(nextGuild); setChannel(null); setMessages([]); setMembers([]); setLoading(true); setError(null);
         try {
-            const [channelResult, memberResult] = await Promise.all([
-                getBotGuildChannels(token, g.id),
-                getBotGuildMembers(token, g.id).catch(() => [])
+            const [nextChannels, nextMembers] = await Promise.all([
+                getBotGuildChannels(token, nextGuild.id),
+                getBotGuildMembers(token, nextGuild.id).catch(() => [])
             ]);
-            setChannels(channelResult.sort((a, b) => (a.position ?? 0) - (b.position ?? 0)));
-            setMembers(memberResult);
-        } catch (e) { setError(String(e)); }
-        finally { setLoading(false); }
+            setChannels(nextChannels.sort((a, b) => (a.position ?? 0) - (b.position ?? 0)));
+            setMembers(nextMembers);
+        } catch (e) { setError(String(e)); } finally { setLoading(false); }
     };
 
-    const openChannel = async (c: any) => {
+    const openChannel = async (nextChannel: any) => {
         if (!active) return;
         setLoading(true); setError(null);
         try {
-            const result = await getBotChannelMessages(active.token, c.id);
-            setChannel(c); setMessages(result.reverse());
-            setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 40);
-        } catch (e) { setError(String(e)); }
-        finally { setLoading(false); }
+            const result = await getBotChannelMessages(active.token, nextChannel.id);
+            setChannel(nextChannel); setMessages(result.reverse());
+        } catch (e) { setError(String(e)); } finally { setLoading(false); }
     };
 
     const send = async () => {
-        if (!active || !channel) return;
-        const content = composer.trim(); if (!content) return;
-        setComposer("");
+        if (!active || !channel || !composer.trim()) return;
+        const content = composer.trim(); setComposer("");
         try {
             const sent = await sendBotMessage(active.token, channel.id, content);
             setMessages(old => [...old, sent]);
-            setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 40);
         } catch (e) { setComposer(content); setError(String(e)); }
     };
 
     if (!active) return null;
     const categories = channels.filter(c => c.type === 4);
-    const uncategorized = channels.filter(c => [0, 5, 10, 11, 12].includes(c.type) && !c.parent_id);
-    const channelsFor = (catId: string) => channels.filter(c => [0, 5, 10, 11, 12].includes(c.type) && c.parent_id === catId);
+    const uncategorized = channels.filter(c => [0,5,10,11,12].includes(c.type) && !c.parent_id);
+    const channelsFor = (id: string) => channels.filter(c => [0,5,10,11,12].includes(c.type) && c.parent_id === id);
+    const openAccounts = () => showSheet("BOTCORD_ACCOUNT", AccountSheet, { accounts, active, onMain: () => { onExit(); navigation.goBack?.(); } });
+    const openMembers = () => showSheet("BOTCORD_MEMBERS", MembersSheet, { members });
 
-    return <View style={{ flex: 1, backgroundColor: BG }}>
-        <AccountMenu
-            visible={accountMenu}
-            onClose={() => setAccountMenu(false)}
-            accounts={accounts}
-            active={active}
-            onSwitch={async (id: string) => setActiveBotAccount(id)}
-            onMain={() => { setAccountMenu(false); onExit(); navigation.goBack?.(); }}
-            onLogout={async () => { await removeBotAccount(active.id); setAccountMenu(false); onExit(); }}
-        />
-        <MembersSheet visible={membersOpen} onClose={() => setMembersOpen(false)} members={members} />
-
-        <View style={{ height: 58, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: PANEL, borderBottomWidth: 1, borderBottomColor: "#1e1f22" }}>
-            {channel && <Pressable onPress={() => setChannel(null)} style={{ padding: 6 }}><Text style={{ color: "white", fontSize: 22 }}>‹</Text></Pressable>}
+    return <View style={styles.root}>
+        <View style={styles.header}>
+            {channel ? <IconButton size="sm" variant="secondary" icon={findAssetId("ArrowLeftIcon") || findAssetId("ChevronLeftIcon")} onPress={() => setChannel(null)} /> : null}
             <View style={{ flex: 1 }}>
-                <Text numberOfLines={1} style={{ color: "white", fontWeight: "800", fontSize: 16 }}>{channel ? `# ${channel.name}` : guild?.name || "BotCord"}</Text>
-                <Text numberOfLines={1} style={{ color: MUTED, fontSize: 10 }}>{active.username} · bot session</Text>
+                <Text variant="heading-md/semibold" numberOfLines={1}>{channel ? `# ${channel.name}` : guild?.name || "BotCord"}</Text>
+                <Text variant="text-xs/normal" color="text-muted" numberOfLines={1}>{active.username}</Text>
             </View>
-            {!!guild && <Pressable onPress={() => setMembersOpen(true)} style={{ padding: 8 }}><Text style={{ color: MUTED, fontSize: 18 }}>♟</Text></Pressable>}
-            <Pressable onPress={() => setAccountMenu(true)} style={{ flexDirection: "row", alignItems: "center", gap: 6, padding: 4, paddingLeft: 8, borderRadius: 18, backgroundColor: "#2b2d31" }}>
-                <Text style={{ color: MUTED, fontSize: 10, fontWeight: "700" }}>BOT</Text><Avatar user={active} size={30} />
-            </Pressable>
+            {guild ? <IconButton size="sm" variant="secondary" icon={findAssetId("MembersIcon") || findAssetId("PeopleIcon")} onPress={openMembers} /> : null}
+            <PressableScale onPress={openAccounts}><ApiAvatar user={active} size={32} /></PressableScale>
         </View>
 
-        <View style={{ height: 64, backgroundColor: RAIL, borderBottomWidth: 1, borderBottomColor: "#111214" }}>
-            <FlatList horizontal data={guilds} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8, alignItems: "center", gap: 2 }} keyExtractor={(g: any) => g.id} renderItem={({ item }: any) => <GuildIcon guild={item} selected={guild?.id === item.id} onPress={() => openGuild(item)} />} />
+        <View style={styles.guildRail}>
+            <FlatList horizontal data={guilds} keyExtractor={(g: any) => g.id} showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 8, gap: 4 }} renderItem={({ item }: any) => {
+                const uri = guildIconUrl(item);
+                return <PressableScale onPress={() => openGuild(item)} style={styles.guildButton}>
+                    {uri ? <Image source={{ uri }} style={styles.guildImage} /> : <View style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}><Text variant="text-sm/semibold">{item.name?.slice(0, 2).toUpperCase()}</Text></View>}
+                </PressableScale>;
+            }} />
         </View>
 
-        {error && <View style={{ padding: 9, backgroundColor: "rgba(242,63,66,.15)" }}><Text style={{ color: "#ff8e90", fontSize: 12 }}>{error}</Text></View>}
-        {loading && <View style={{ paddingVertical: 6, backgroundColor: PANEL }}><Text style={{ color: MUTED, textAlign: "center", fontSize: 11 }}>Loading…</Text></View>}
+        {error ? <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}><Text variant="text-sm/medium" color="text-feedback-critical">{error}</Text></View> : null}
+        {loading ? <Text variant="text-sm/normal" color="text-muted" style={{ padding: 10, textAlign: "center" }}>Loading…</Text> : null}
 
-        {!channel ? <ScrollView style={{ flex: 1, backgroundColor: SIDEBAR }} contentContainerStyle={{ paddingBottom: 30 }}>
-            {!guild && <View style={{ padding: 24, alignItems: "center", gap: 8 }}><Text style={{ color: "white", fontSize: 20, fontWeight: "800" }}>Choose a server</Text><Text style={{ color: MUTED, textAlign: "center" }}>Your bot's servers appear in the rail above.</Text></View>}
-            {!!guild && <>
-                <View style={{ padding: 16, borderBottomWidth: 1, borderBottomColor: "#1e1f22" }}><Text style={{ color: "white", fontWeight: "800", fontSize: 18 }}>{guild.name}</Text><Text style={{ color: MUTED, fontSize: 11 }}>Select a channel</Text></View>
-                {uncategorized.map(c => <Pressable key={c.id} onPress={() => openChannel(c)} style={{ paddingHorizontal: 15, paddingVertical: 11, flexDirection: "row", gap: 9, alignItems: "center" }}><Text style={{ color: "#949ba4", fontSize: 19 }}>#</Text><Text style={{ color: "#dbdee1", fontWeight: "600" }}>{c.name}</Text></Pressable>)}
+        {!channel ? <ScrollView style={styles.channelList} contentContainerStyle={{ paddingBottom: 24 }}>
+            {guild ? <>
+                {uncategorized.map(c => <PressableScale key={c.id} onPress={() => openChannel(c)} style={styles.channelRow}><Text variant="text-md/medium" color="text-muted">#  {c.name}</Text></PressableScale>)}
                 {categories.map(cat => <View key={cat.id}>
-                    <Text style={{ color: "#949ba4", fontSize: 11, fontWeight: "800", paddingHorizontal: 15, paddingTop: 16, paddingBottom: 5 }}>{String(cat.name || "CATEGORY").toUpperCase()}</Text>
-                    {channelsFor(cat.id).map(c => <Pressable key={c.id} onPress={() => openChannel(c)} style={{ paddingHorizontal: 15, paddingVertical: 10, flexDirection: "row", gap: 9, alignItems: "center" }}><Text style={{ color: "#949ba4", fontSize: 19 }}>#</Text><Text style={{ color: "#dbdee1", fontWeight: "600" }}>{c.name}</Text></Pressable>)}
+                    <Text variant="text-xs/bold" color="text-muted" style={styles.category}>{String(cat.name || "CATEGORY").toUpperCase()}</Text>
+                    {channelsFor(cat.id).map(c => <PressableScale key={c.id} onPress={() => openChannel(c)} style={styles.channelRow}><Text variant="text-md/medium" color="text-muted">#  {c.name}</Text></PressableScale>)}
                 </View>)}
-                {channels.filter(c => [0,5,10,11,12].includes(c.type)).length === 0 && <Text style={{ color: MUTED, padding: 18 }}>No readable message channels.</Text>}
-            </>}
-        </ScrollView> : <View style={{ flex: 1, backgroundColor: BG }}>
-            <FlatList
-                ref={listRef}
-                data={messages}
-                keyExtractor={(m: any, i) => m.id || String(i)}
-                renderItem={({ item }: any) => <MessageRow message={item} />}
-                contentContainerStyle={{ paddingVertical: 8, flexGrow: 1, justifyContent: messages.length ? "flex-start" : "center" }}
-                ListEmptyComponent={<View style={{ padding: 24, alignItems: "center" }}><Text style={{ color: "white", fontWeight: "800", fontSize: 20 }}># {channel.name}</Text><Text style={{ color: MUTED, marginTop: 5 }}>No messages yet, or this bot cannot read history.</Text></View>}
-                onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-            />
-            <View style={{ paddingHorizontal: 10, paddingTop: 7, paddingBottom: 12, backgroundColor: BG }}>
-                <View style={{ minHeight: 46, borderRadius: 23, backgroundColor: INPUT, flexDirection: "row", alignItems: "center", paddingLeft: 14, paddingRight: 6 }}>
-                    <RNTextInput
-                        value={composer}
-                        onChangeText={setComposer}
-                        placeholder={`Message #${channel.name}`}
-                        placeholderTextColor="#949ba4"
-                        style={{ flex: 1, color: "white", fontSize: 15, paddingVertical: 10 }}
-                        multiline
-                        maxLength={2000}
-                    />
-                    <Pressable disabled={!composer.trim()} onPress={send} style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: composer.trim() ? BRAND : "#4e5058", alignItems: "center", justifyContent: "center" }}><Text style={{ color: "white", fontWeight: "900", fontSize: 16 }}>↑</Text></Pressable>
-                </View>
+            </> : <Text variant="text-md/normal" color="text-muted" style={{ padding: 20 }}>Choose a server.</Text>}
+        </ScrollView> : <View style={styles.messageList}>
+            <FlatList ref={listRef} data={messages} keyExtractor={(m: any, i) => m.id || String(i)} renderItem={({ item }: any) => <MessageRow message={item} />} contentContainerStyle={{ paddingVertical: 6 }} />
+            <View style={styles.composer}>
+                <TextInput size="lg" value={composer} placeholder={`Message #${channel.name}`} onChange={setComposer} trailingIcon={() => <IconButton size="sm" variant="primary" disabled={!composer.trim()} icon={findAssetId("SendMessageIcon") || findAssetId("ArrowSmallUpIcon")} onPress={send} />} />
             </View>
         </View>}
     </View>;
 }
 
 export default function BotCord() {
-    const state = useProxy(botCordState);
+    const state = useBotCordState();
     const [token, setToken] = useState("");
     const [adding, setAdding] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [opened, setOpened] = useState(false);
-    const accounts = state.accounts ?? [];
+    const accounts = state.accounts;
     const active = useMemo(() => accounts.find(a => a.id === state.activeAccountId) ?? accounts[0] ?? null, [accounts, state.activeAccountId]);
 
     if (opened && active) return <BotClient accounts={accounts} activeId={active.id} onExit={() => setOpened(false)} />;
 
     return <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
         <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={16}>
-            <View><Text variant="heading-xl/bold">BotCord</Text><Text variant="text-sm/normal" color="text-muted">Mobile bot client. Open a bot to browse servers, channels, members and messages in a Discord-style interface.</Text></View>
+            <View><Text variant="heading-xl/bold">BotCord</Text><Text variant="text-sm/normal" color="text-muted">Bot accounts use Discord's native mobile UI and stay only on this device.</Text></View>
             <TableRowGroup title="Bot Accounts">
                 {accounts.map(account => <TableRow key={account.id} label={account.username} subLabel={state.activeAccountId === account.id ? "Active bot" : `Bot ID: ${account.id}`} icon={<TableRow.Icon source={findAssetId("RobotIcon") || findAssetId("AppsIcon")} />} onPress={async () => { await setActiveBotAccount(account.id); setOpened(true); }} trailing={<Button size="sm" variant="secondary" text="Remove" onPress={() => removeBotAccount(account.id)} />} />)}
-                {accounts.length === 0 && <TableRow label="No bot accounts added yet" />}
+                {!state.loaded ? <TableRow label="Loading bot accounts…" /> : null}
+                {state.loaded && accounts.length === 0 ? <TableRow label="No bot accounts added yet" /> : null}
             </TableRowGroup>
             <TableRowGroup title="Add Bot Account"><TableRow label={<View style={{ width: "100%", gap: 10 }}>
                 <TextInput size="lg" value={token} placeholder="Bot token" onChange={setToken} secureTextEntry state={error ? "error" : undefined} errorMessage={error || undefined} />
                 <Button size="md" variant="primary" text="Add Bot Account" loading={adding} disabled={adding || !token.trim()} onPress={async () => { setAdding(true); setError(null); try { await addBotAccount(token); setToken(""); } catch (e) { setError(String(e)); } finally { setAdding(false); } }} />
             </View>} /></TableRowGroup>
-            {active && <Button size="lg" variant="primary" text={`Open mobile client as ${active.username}`} onPress={() => setOpened(true)} />}
-            <Text variant="text-xs/normal" color="text-muted">BotCord uses Discord's official bot API. What it can see or do depends on that bot's server permissions and enabled intents.</Text>
+            {active ? <Button size="lg" variant="primary" text={`Open as ${active.username}`} onPress={() => setOpened(true)} /> : null}
         </Stack>
     </ScrollView>;
 }
