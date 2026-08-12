@@ -50,6 +50,7 @@ jobs:
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
           mkdir -p src/lib/api/native
           cp "../ios/runtime/src/lib/api/native/legacyRuntimeRefresh.ts" "src/lib/api/native/legacyRuntimeRefresh.ts"
+          cp "../ios/runtime/src/lib/api/native/loader.ts" "src/lib/api/native/loader.ts"
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
           import type { ComponentType } from "react";
@@ -1268,11 +1269,12 @@ jobs:
                       "        initSettings(),\n        initializeFakeProfile(),"
                   )
 
-              if "initLegacyRuntimeRefresh()," not in text:
+              if "await initLegacyRuntimeRefresh();" not in text:
                   text = text.replace(
-                      "        initSettings(),",
-                      "        initSettings(),\n        initLegacyRuntimeRefresh(),"
+                      "export default async () => {",
+                      "export default async () => {\n    await initLegacyRuntimeRefresh();"
                   )
+              text = text.replace("        initLegacyRuntimeRefresh(),\n", "")
 
 
               main_index.write_text(text, encoding="utf-8")

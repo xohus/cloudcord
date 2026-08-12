@@ -5,7 +5,7 @@ import { removeCacheFile } from "./fs";
 const pyonLoaderIdentity = globalThis.__PYON_LOADER__;
 
 // @ts-ignore
-const rainLoaderIdentity = globalThis.__CLOUDCORD_LOADER__;
+const cloudCordLoaderIdentity = globalThis.__CLOUDCORD_LOADER__;
 
 // @ts-ignore
 const vendettaLoaderIdentity = globalThis.__vendetta_loader;
@@ -32,18 +32,22 @@ export function isPyonLoader() {
     return pyonLoaderIdentity != null;
 }
 
+export function isCloudCordLoader() {
+    return cloudCordLoaderIdentity != null;
+}
+
 export function isRa1nLoader() {
-    return rainLoaderIdentity != null;
+    return isCloudCordLoader();
 }
 
 function polyfillVendettaLoaderIdentity() {
-    if (!isPyonLoader() || isVendettaLoader() || !isRa1nLoader()) return null;
+    if (!isPyonLoader() || isVendettaLoader() || !isCloudCordLoader()) return null;
 
     let loader: { name: string; features: Record<string, any> };
 
-    if (isRa1nLoader() == true) {
+    if (isCloudCordLoader() == true) {
         loader = {
-            name: rainLoaderIdentity.loaderName,
+            name: cloudCordLoaderIdentity.loaderName ?? "CloudCord",
             features: {} as Record<string, any>,
         };
     } else {
@@ -92,14 +96,9 @@ function polyfillVendettaLoaderIdentity() {
 }
 
 export function getLoaderIdentity() {
-    if (isPyonLoader()) {
-        return pyonLoaderIdentity;
-    } else if (isVendettaLoader()) {
-        return getVendettaLoaderIdentity();
-    } else if (isRa1nLoader()) {
-        return rainLoaderIdentity();
-    }
-
+    if (isCloudCordLoader()) return cloudCordLoaderIdentity;
+    if (isPyonLoader()) return pyonLoaderIdentity;
+    if (isVendettaLoader()) return getVendettaLoaderIdentity();
     return null;
 }
 
@@ -113,26 +112,24 @@ export function getVendettaLoaderIdentity(): VendettaLoaderIdentity | null {
 getVendettaLoaderIdentity();
 
 export function getLoaderName() {
+    if (isCloudCordLoader()) return cloudCordLoaderIdentity.loaderName ?? "CloudCord";
     if (isPyonLoader()) return pyonLoaderIdentity.loaderName;
-    else if (isRa1nLoader()) return rainLoaderIdentity.loadername;
-    else if (isVendettaLoader()) return vendettaLoaderIdentity.name;
-
+    if (isVendettaLoader()) return vendettaLoaderIdentity.name;
     return "Unknown";
 }
 
 export function getLoaderVersion(): string | null {
+    if (isCloudCordLoader()) return cloudCordLoaderIdentity.loaderVersion ?? String(cloudCordLoaderIdentity.cloudcordAutoUpdateVersion ?? "2");
     if (isPyonLoader()) return pyonLoaderIdentity.loaderVersion;
-    else if (isRa1nLoader()) return rainLoaderIdentity.loaderVersion;
     return null;
 }
 
 export function isLoaderConfigSupported() {
+    if (isCloudCordLoader()) return true;
     if (isPyonLoader()) {
         return true;
     } else if (isVendettaLoader()) {
         return vendettaLoaderIdentity!!.features.loaderConfig;
-    } else if (isRa1nLoader()) {
-        return true;
     }
 
     return false;
@@ -151,6 +148,7 @@ export function isThemeSupported() {
 }
 
 export function getStoredTheme(): VdThemeInfo | null {
+    if (isCloudCordLoader() && cloudCordLoaderIdentity.storedTheme) return cloudCordLoaderIdentity.storedTheme;
     if (isPyonLoader()) {
         return pyonLoaderIdentity.storedTheme;
     } else if (isVendettaLoader()) {
@@ -164,6 +162,7 @@ export function getStoredTheme(): VdThemeInfo | null {
 }
 
 export function getThemeFilePath() {
+    if (isCloudCordLoader()) return "cloudcord/current-theme.json";
     if (isPyonLoader()) {
         return "cloudcord/current-theme.json";
     } else if (isVendettaLoader()) {
@@ -228,12 +227,11 @@ export function getSysColors() {
 }
 
 export function getLoaderConfigPath() {
+    if (isCloudCordLoader()) return "cloudcord/loader.json";
     if (isPyonLoader()) {
         return "cloudcord/loader.json";
     } else if (isVendettaLoader()) {
         return "vendetta_loader.json";
-    } else if (isRa1nLoader()) {
-        return "rain/loader.json";
     }
 
     return "loader.json";

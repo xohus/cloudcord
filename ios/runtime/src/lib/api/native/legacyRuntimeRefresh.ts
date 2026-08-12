@@ -14,9 +14,14 @@ async function invokeLegacyReload() {
     return true;
 }
 
+export function isCurrentCloudCordLoader() {
+    const nativeLoader = (globalThis as any).__CLOUDCORD_LOADER__;
+    return Boolean(nativeLoader && Number(nativeLoader.cloudcordAutoUpdateVersion ?? 0) >= 2);
+}
+
 export async function initLegacyRuntimeRefresh() {
     const nativeLoader = (globalThis as any).__CLOUDCORD_LOADER__;
-    if (!nativeLoader || Number(nativeLoader.cloudcordAutoUpdateVersion ?? 0) >= 2) return;
+    if (!nativeLoader || isCurrentCloudCordLoader()) return;
 
     await awaitStorage(loaderConfig as any);
 

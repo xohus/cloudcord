@@ -20,8 +20,9 @@ import { initDebugger } from "@lib/api/debug";
 import * as lib from "./lib";
 
 export default async () => {
-    // Load everything in parallel
+    await initLegacyRuntimeRefresh();
 
+    // Load everything in parallel
     await Promise.all([
         initThemes(),
         injectFluxInterceptor(),
@@ -32,7 +33,6 @@ export default async () => {
         initVendettaObject(),
         initFetchI18nStrings(),
         initSettings(),
-        initLegacyRuntimeRefresh(),
         initBotCordSwitcher(),
         initFixes(),
         patchErrorBoundary(),

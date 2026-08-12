@@ -288,7 +288,7 @@ static void registerBridgeMethods(void)
     BunnyLog(@"Injecting loader");
     %orig(patchData, source, YES);
 
-    NSString *updaterMarker = @"globalThis.__CLOUDCORD_LOADER__&&(globalThis.__CLOUDCORD_LOADER__.cloudcordAutoUpdateVersion=2);";
+    NSString *updaterMarker = @"globalThis.__CLOUDCORD_LOADER__&&Object.assign(globalThis.__CLOUDCORD_LOADER__,{loaderName:\"CloudCord\",loaderVersion:\"2\",cloudcordAutoUpdateVersion:2});";
     %orig([updaterMarker dataUsingEncoding:NSUTF8StringEncoding], source, YES);
 
     __block NSData *bundle =
