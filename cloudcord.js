@@ -8751,17 +8751,33 @@
       return channel;
     })();
   }
-  function sendBotMessage(token, channelId, content) {
+  function sendBotMessage(token, channelId, content, attachment) {
     return _async_to_generator(function* () {
+      var body;
+      var headers = {
+        Authorization: `Bot ${normalizeBotToken(token)}`
+      };
+      if (attachment?.uri) {
+        var form = new FormData();
+        form.append("payload_json", JSON.stringify({
+          content
+        }));
+        form.append("files[0]", {
+          uri: attachment.uri,
+          name: attachment.name || `image-${Date.now()}.jpg`,
+          type: attachment.type || "image/jpeg"
+        });
+        body = form;
+      } else {
+        headers["Content-Type"] = "application/json";
+        body = JSON.stringify({
+          content
+        });
+      }
       var response = yield fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
         method: "POST",
-        headers: {
-          Authorization: `Bot ${normalizeBotToken(token)}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          content
-        })
+        headers,
+        body
       });
       if (!response.ok) {
         var message = yield readDiscordError(response);
@@ -8872,13 +8888,33 @@
               variant: "text-md/normal",
               children: message.content
             }),
-            !!message.attachments?.length && /* @__PURE__ */ jsxs(Text, {
-              variant: "text-sm/normal",
-              color: "text-muted",
-              children: [
-                "Attachments: ",
-                message.attachments.map((a) => a.filename).join(", ")
-              ]
+            !!message.attachments?.length && /* @__PURE__ */ jsx(import_react_native19.View, {
+              style: {
+                marginTop: 6,
+                gap: 6
+              },
+              children: message.attachments.map((attachment, index) => {
+                var uri = attachment.url || attachment.proxy_url;
+                var type = String(attachment.content_type || "");
+                var isImage = type.startsWith("image/") || /\.(png|jpe?g|gif|webp)(?:$|\?)/i.test(String(uri || attachment.filename || ""));
+                return isImage && uri ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+                  source: {
+                    uri
+                  },
+                  resizeMode: "cover",
+                  style: {
+                    width: 260,
+                    height: 180,
+                    maxWidth: "100%",
+                    borderRadius: 8,
+                    backgroundColor: tokens.colors.BACKGROUND_SECONDARY
+                  }
+                }, attachment.id || `${attachment.filename}-${index}`) : /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/normal",
+                  color: "text-link",
+                  children: attachment.filename || "Attachment"
+                }, attachment.id || `${attachment.filename}-${index}`);
+              })
             }),
             !!message.embeds?.length && /* @__PURE__ */ jsxs(Text, {
               variant: "text-sm/normal",
@@ -8964,6 +9000,7 @@
     var [channel, setChannel] = (0, import_react5.useState)(null);
     var [messages, setMessages] = (0, import_react5.useState)([]);
     var [composer, setComposer] = (0, import_react5.useState)("");
+    var [selectedImage, setSelectedImage] = (0, import_react5.useState)(null);
     var [loading, setLoading] = (0, import_react5.useState)(false);
     var [error, setError] = (0, import_react5.useState)(null);
     var [screen, setScreen] = (0, import_react5.useState)("messages");
@@ -8980,12 +9017,42 @@
       setChannel(null);
       setChannels([]);
       setMessages([]);
+      setSelectedImage(null);
       setMembers([]);
       setMemberStatus("");
       setScreen("messages");
       getBotGuilds(active.token).then(setGuilds).catch((e) => setError(String(e))).finally(() => setLoading(false));
     }, [
       active?.id
+    ]);
+    (0, import_react5.useEffect)(() => {
+      if (!active || !channel?.id)
+        return;
+      var disposed = false;
+      var refresh = () => _async_to_generator(function* () {
+        try {
+          var remote = yield getBotChannelMessages(active.token, channel.id);
+          if (disposed)
+            return;
+          var chronological = remote.slice().reverse();
+          setMessages((current) => {
+            var optimistic = current.filter((message) => String(message?.id || "").startsWith("local-"));
+            return [
+              ...chronological,
+              ...optimistic
+            ];
+          });
+        } catch (e) {
+        }
+      })();
+      var timer = setInterval(refresh, 1500);
+      return () => {
+        disposed = true;
+        clearInterval(timer);
+      };
+    }, [
+      active?.id,
+      channel?.id
     ]);
     var openGuild = (nextGuild) => _async_to_generator(function* () {
       if (!active)
@@ -9091,19 +9158,100 @@
         setLoading(false);
       }
     })();
+    var pickImage = () => _async_to_generator(function* () {
+      setError(null);
+      try {
+        var imagePicker = findByProps("launchImageLibrary");
+        var asset = null;
+        if (imagePicker?.launchImageLibrary) {
+          var result = yield new Promise((resolve, reject) => {
+            try {
+              var returned = imagePicker.launchImageLibrary({
+                mediaType: "photo",
+                selectionLimit: 1,
+                includeBase64: false,
+                assetRepresentationMode: "current"
+              }, resolve);
+              if (returned?.then)
+                returned.then(resolve, reject);
+            } catch (error2) {
+              reject(error2);
+            }
+          });
+          if (result?.didCancel)
+            return;
+          if (result?.errorCode)
+            throw new Error(result.errorMessage || "Could not open photos.");
+          asset = result?.assets?.[0];
+        } else {
+          var filePicker = findByProps("pickSingle", "isCancel");
+          if (!filePicker?.pickSingle)
+            throw new Error("Photo picker unavailable.");
+          try {
+            asset = yield filePicker.pickSingle({
+              type: filePicker.types?.images || "image/*",
+              mode: "import",
+              copyTo: "documentDirectory"
+            });
+          } catch (error2) {
+            if (filePicker.isCancel?.(error2))
+              return;
+            throw error2;
+          }
+        }
+        var uri = asset?.fileCopyUri || asset?.uri;
+        if (!uri)
+          return;
+        setSelectedImage({
+          uri,
+          name: asset?.fileName || asset?.name || `image-${Date.now()}.jpg`,
+          type: asset?.type || "image/jpeg",
+          width: asset?.width,
+          height: asset?.height
+        });
+      } catch (e) {
+        setError(String(e));
+      }
+    })();
     var send = () => _async_to_generator(function* () {
-      if (!active || !channel || !composer.trim())
+      if (!active || !channel || !composer.trim() && !selectedImage)
         return;
       var content = composer.trim();
+      var image = selectedImage;
+      var optimisticId = `local-${Date.now()}`;
+      var optimistic = {
+        id: optimisticId,
+        content,
+        author: active,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        attachments: image ? [
+          {
+            id: "0",
+            filename: image.name,
+            url: image.uri,
+            proxy_url: image.uri,
+            content_type: image.type
+          }
+        ] : [],
+        botcordPending: true
+      };
       setComposer("");
+      setSelectedImage(null);
+      setError(null);
+      setMessages((old) => [
+        ...old,
+        optimistic
+      ]);
+      requestAnimationFrame(() => listRef.current?.scrollToEnd?.({
+        animated: true
+      }));
       try {
-        var sent = yield sendBotMessage(active.token, channel.id, content);
-        setMessages((old) => [
-          ...old,
-          sent
-        ]);
+        var sent = yield sendBotMessage(active.token, channel.id, content, image || void 0);
+        setMessages((old) => old.map((message) => message.id === optimisticId ? sent : message));
       } catch (e) {
+        setMessages((old) => old.filter((message) => message.id !== optimisticId));
         setComposer(content);
+        setSelectedImage(image);
         setError(String(e));
       }
     })();
@@ -9137,6 +9285,7 @@
       setChannel(null);
       setMessages([]);
       setComposer("");
+      setSelectedImage(null);
       setError(null);
       if (wasDm) {
         setGuild(null);
@@ -9156,38 +9305,30 @@
           /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: styles.header,
             children: [
-              /* @__PURE__ */ jsxs(import_react_native19.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native19.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Back",
                 onPress: returnFromChat,
-                hitSlop: 8,
+                hitSlop: 10,
                 style: ({ pressed }) => ({
+                  width: 64,
                   height: 36,
-                  paddingHorizontal: 4,
-                  flexDirection: "row",
+                  flexShrink: 0,
+                  borderRadius: 18,
                   alignItems: "center",
                   justifyContent: "center",
-                  opacity: pressed ? 0.65 : 1
+                  backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED,
+                  opacity: pressed ? 0.7 : 1,
+                  zIndex: 20
                 }),
-                children: [
-                  /* @__PURE__ */ jsx(import_react_native19.Text, {
-                    style: {
-                      color: nativeTextColor,
-                      fontSize: 28,
-                      lineHeight: 30,
-                      marginRight: 2
-                    },
-                    children: "\u2039"
-                  }),
-                  /* @__PURE__ */ jsx(import_react_native19.Text, {
-                    style: {
-                      color: nativeTextColor,
-                      fontSize: 16,
-                      fontWeight: "600"
-                    },
-                    children: "Back"
-                  })
-                ]
+                children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+                  style: {
+                    color: tokens.colors.TEXT_NORMAL,
+                    fontSize: 15,
+                    fontWeight: "600"
+                  },
+                  children: "Back"
+                })
               }),
               dmUser ? /* @__PURE__ */ jsx(ApiAvatar, {
                 user: dmUser,
@@ -9259,18 +9400,96 @@
               animated: false
             })
           }),
+          selectedImage ? /* @__PURE__ */ jsxs(import_react_native19.View, {
+            style: {
+              height: 72,
+              paddingHorizontal: 10,
+              paddingVertical: 6,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 10,
+              backgroundColor: tokens.colors.BACKGROUND_PRIMARY
+            },
+            children: [
+              /* @__PURE__ */ jsx(import_react_native19.Image, {
+                source: {
+                  uri: selectedImage.uri
+                },
+                style: {
+                  width: 56,
+                  height: 56,
+                  borderRadius: 8,
+                  backgroundColor: tokens.colors.BACKGROUND_SECONDARY
+                }
+              }),
+              /* @__PURE__ */ jsx(import_react_native19.Text, {
+                numberOfLines: 1,
+                style: {
+                  flex: 1,
+                  color: tokens.colors.TEXT_NORMAL,
+                  fontSize: 14
+                },
+                children: selectedImage.name
+              }),
+              /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+                onPress: () => setSelectedImage(null),
+                hitSlop: 8,
+                style: ({ pressed }) => ({
+                  height: 34,
+                  paddingHorizontal: 12,
+                  borderRadius: 17,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED,
+                  opacity: pressed ? 0.7 : 1
+                }),
+                children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+                  style: {
+                    color: tokens.colors.TEXT_NORMAL,
+                    fontSize: 13,
+                    fontWeight: "600"
+                  },
+                  children: "Remove"
+                })
+              })
+            ]
+          }) : null,
           /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: styles.composer,
             children: [
+              /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+                accessibilityRole: "button",
+                accessibilityLabel: "Add photo",
+                onPress: pickImage,
+                hitSlop: 6,
+                style: ({ pressed }) => ({
+                  width: 52,
+                  height: 44,
+                  flexShrink: 0,
+                  borderRadius: 22,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED,
+                  opacity: pressed ? 0.7 : 1
+                }),
+                children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+                  style: {
+                    color: tokens.colors.TEXT_NORMAL,
+                    fontSize: 13,
+                    fontWeight: "600"
+                  },
+                  children: "Photo"
+                })
+              }),
               /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                 value: composer,
                 placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
-                placeholderTextColor: nativeMutedColor,
+                placeholderTextColor: tokens.colors.TEXT_MUTED,
                 onChangeText: setComposer,
                 maxLength: 2e3,
                 returnKeyType: "send",
                 onSubmitEditing: () => {
-                  if (composer.trim())
+                  if (composer.trim() || selectedImage)
                     send();
                 },
                 style: {
@@ -9282,31 +9501,31 @@
                   paddingHorizontal: 14,
                   paddingVertical: 0,
                   borderRadius: 22,
-                  backgroundColor: nativeInputBackground,
-                  color: nativeTextColor,
+                  backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT,
+                  color: tokens.colors.TEXT_NORMAL,
                   fontSize: 16
                 }
               }),
               /* @__PURE__ */ jsx(import_react_native19.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Send message",
-                disabled: !composer.trim(),
+                disabled: !composer.trim() && !selectedImage,
                 onPress: send,
                 hitSlop: 6,
                 style: ({ pressed }) => ({
-                  width: 56,
+                  width: 52,
                   height: 44,
                   flexShrink: 0,
                   borderRadius: 22,
                   alignItems: "center",
                   justifyContent: "center",
-                  opacity: !composer.trim() ? 0.45 : pressed ? 0.72 : 1,
+                  opacity: !composer.trim() && !selectedImage ? 0.45 : pressed ? 0.72 : 1,
                   backgroundColor: tokens.colors.BRAND_500
                 }),
                 children: /* @__PURE__ */ jsx(import_react_native19.Text, {
                   style: {
-                    color: "white",
-                    fontSize: 14,
+                    color: tokens.colors.WHITE_500 || "#ffffff",
+                    fontSize: 13,
                     fontWeight: "600"
                   },
                   children: "Send"
@@ -9775,6 +9994,7 @@
       init_botcord();
       init_sheets();
       init_styles();
+      init_metro();
       init_common();
       init_components();
       import_react5 = __toESM(require_react());
@@ -9877,18 +10097,9 @@
       avatarUrl = (user, size = 128) => user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}` : null;
       guildIconUrl = (guild, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
       displayName = (user) => user?.global_name || user?.username || "Unknown";
-      nativeTextColor = import_react_native19.Platform.OS === "ios" ? (0, import_react_native19.DynamicColorIOS)({
-        light: "#1e1f22",
-        dark: "#f2f3f5"
-      }) : "#f2f3f5";
-      nativeMutedColor = import_react_native19.Platform.OS === "ios" ? (0, import_react_native19.DynamicColorIOS)({
-        light: "#5c5e66",
-        dark: "#949ba4"
-      }) : "#949ba4";
-      nativeInputBackground = import_react_native19.Platform.OS === "ios" ? (0, import_react_native19.DynamicColorIOS)({
-        light: "#e3e5e8",
-        dark: "#383a40"
-      }) : "#383a40";
+      nativeTextColor = tokens.colors.TEXT_NORMAL;
+      nativeMutedColor = tokens.colors.TEXT_MUTED;
+      nativeInputBackground = tokens.colors.BACKGROUND_MODIFIER_ACCENT;
     }
   });
 
