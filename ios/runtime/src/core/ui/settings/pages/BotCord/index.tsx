@@ -12,6 +12,7 @@ import {
     useBotCordState
 } from "@lib/api/botcord";
 import { hideSheet, showSheet } from "@lib/ui/sheets";
+import { isSemanticColor, resolveSemanticColor } from "@lib/ui/color";
 import { createStyles } from "@lib/ui/styles";
 import { findByProps } from "@metro";
 import { NavigationNative, tokens } from "@metro/common";
@@ -43,12 +44,29 @@ const avatarUrl = (user: any, size = 128) => user?.avatar ? `https://cdn.discord
 const guildIconUrl = (guild: any, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
 const displayName = (user: any) => user?.global_name || user?.username || "Unknown";
 const inputText = (value: any) => typeof value === "string" ? value : value?.nativeEvent?.text ?? "";
-const nativeTextColor = tokens.colors.TEXT_NORMAL;
-const nativeMutedColor = tokens.colors.TEXT_MUTED;
-const nativeInputBackground = tokens.colors.BACKGROUND_MODIFIER_ACCENT;
+function nativeColor(value: any, fallback: string) {
+    try {
+        if (typeof value === "string") return value;
+        if (isSemanticColor(value)) {
+            const resolved = resolveSemanticColor(value);
+            if (typeof resolved === "string" && resolved) return resolved;
+        }
+    } catch {}
+    return fallback;
+}
+
+const getNativeColors = () => ({
+    text: nativeColor(tokens.colors.TEXT_NORMAL, "#f2f3f5"),
+    muted: nativeColor(tokens.colors.TEXT_MUTED, "#b5bac1"),
+    input: nativeColor(tokens.colors.BACKGROUND_MODIFIER_ACCENT, "#2b2d31"),
+    selected: nativeColor(tokens.colors.BACKGROUND_MODIFIER_SELECTED, "#35373c"),
+    brand: nativeColor(tokens.colors.BRAND_500, "#5865f2"),
+    inverse: nativeColor(tokens.colors.WHITE_500, "#ffffff")
+});
 
 function ApiAvatar({ user, size = 40 }: { user: any; size?: number }) {
     const uri = avatarUrl(user, 128);
+    const colors = getNativeColors();
     if (uri) return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
     const label = displayName(user).trim().slice(0, 2).toUpperCase() || "?";
     return <View style={{
@@ -57,7 +75,7 @@ function ApiAvatar({ user, size = 40 }: { user: any; size?: number }) {
         borderRadius: size / 2,
         alignItems: "center",
         justifyContent: "center",
-        backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT
+        backgroundColor: colors.input
     }}><Text variant="text-sm/semibold">{label}</Text></View>;
 }
 
@@ -106,6 +124,7 @@ function AccountSheet({ accounts, active, onMain }: any) {
 
 function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: string | null; onExit: () => void }) {
     const styles = useStyles();
+    const nativeColors = getNativeColors();
     const navigation = NavigationNative.useNavigation();
     const state = useBotCordState();
     const active = accounts.find(a => a.id === activeId) ?? accounts[0] ?? null;
@@ -348,12 +367,12 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                         borderRadius: 18,
                         alignItems: "center",
                         justifyContent: "center",
-                        backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED,
+                        backgroundColor: nativeColors.selected,
                         opacity: pressed ? 0.7 : 1,
                         zIndex: 20
                     })}
                 >
-                    <NativeText style={{ color: tokens.colors.TEXT_NORMAL, fontSize: 15, fontWeight: "600" }}>Back</NativeText>
+                    <NativeText style={{ color: nativeColors.text, fontSize: 15, fontWeight: "600" }}>Back</NativeText>
                 </Pressable>
                 {dmUser ? <ApiAvatar user={dmUser} size={32} /> : null}
                 <View style={{ flex: 1 }}>
@@ -377,9 +396,9 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
             />
             {selectedImage ? <View style={{ height: 72, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: tokens.colors.BACKGROUND_PRIMARY }}>
                 <Image source={{ uri: selectedImage.uri }} style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: tokens.colors.BACKGROUND_SECONDARY }} />
-                <NativeText numberOfLines={1} style={{ flex: 1, color: tokens.colors.TEXT_NORMAL, fontSize: 14 }}>{selectedImage.name}</NativeText>
-                <Pressable onPress={() => setSelectedImage(null)} hitSlop={8} style={({ pressed }) => ({ height: 34, paddingHorizontal: 12, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED, opacity: pressed ? 0.7 : 1 })}>
-                    <NativeText style={{ color: tokens.colors.TEXT_NORMAL, fontSize: 13, fontWeight: "600" }}>Remove</NativeText>
+                <NativeText numberOfLines={1} style={{ flex: 1, color: nativeColors.text, fontSize: 14 }}>{selectedImage.name}</NativeText>
+                <Pressable onPress={() => setSelectedImage(null)} hitSlop={8} style={({ pressed }) => ({ height: 34, paddingHorizontal: 12, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: nativeColors.selected, opacity: pressed ? 0.7 : 1 })}>
+                    <NativeText style={{ color: nativeColors.text, fontSize: 13, fontWeight: "600" }}>Remove</NativeText>
                 </Pressable>
             </View> : null}
             <View style={styles.composer}>
@@ -388,14 +407,14 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                     accessibilityLabel="Add photo"
                     onPress={pickImage}
                     hitSlop={6}
-                    style={({ pressed }) => ({ width: 52, height: 44, flexShrink: 0, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: tokens.colors.BACKGROUND_MODIFIER_SELECTED, opacity: pressed ? 0.7 : 1 })}
+                    style={({ pressed }) => ({ width: 52, height: 44, flexShrink: 0, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: nativeColors.selected, opacity: pressed ? 0.7 : 1 })}
                 >
-                    <NativeText style={{ color: tokens.colors.TEXT_NORMAL, fontSize: 13, fontWeight: "600" }}>Photo</NativeText>
+                    <NativeText style={{ color: nativeColors.text, fontSize: 13, fontWeight: "600" }}>Photo</NativeText>
                 </Pressable>
                 <NativeTextInput
                     value={composer}
                     placeholder={channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`}
-                    placeholderTextColor={tokens.colors.TEXT_MUTED}
+                    placeholderTextColor={nativeColors.muted}
                     onChangeText={setComposer}
                     maxLength={2000}
                     returnKeyType="send"
@@ -409,8 +428,8 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                         paddingHorizontal: 14,
                         paddingVertical: 0,
                         borderRadius: 22,
-                        backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT,
-                        color: tokens.colors.TEXT_NORMAL,
+                        backgroundColor: nativeColors.input,
+                        color: nativeColors.text,
                         fontSize: 16
                     }}
                 />
@@ -428,10 +447,10 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                         alignItems: "center",
                         justifyContent: "center",
                         opacity: (!composer.trim() && !selectedImage) ? 0.45 : pressed ? 0.72 : 1,
-                        backgroundColor: tokens.colors.BRAND_500
+                        backgroundColor: nativeColors.brand
                     })}
                 >
-                    <NativeText style={{ color: tokens.colors.WHITE_500 || "#ffffff", fontSize: 13, fontWeight: "600" }}>Send</NativeText>
+                    <NativeText style={{ color: nativeColors.inverse, fontSize: 13, fontWeight: "600" }}>Send</NativeText>
                 </Pressable>
             </View>
         </KeyboardAvoidingView>;
@@ -443,7 +462,7 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                 <Text variant="heading-md/semibold" numberOfLines={1}>{screen === "members" ? "New Message" : screen === "messages" ? "Messages" : guild?.name || "BotCord"}</Text>
                 <Text variant="text-xs/normal" color="text-muted" numberOfLines={1}>{active.username}</Text>
             </View>
-            {screen === "members" ? <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={openMessages} hitSlop={8} style={({ pressed }) => ({ paddingHorizontal: 8, height: 36, justifyContent: "center", opacity: pressed ? 0.65 : 1 })}><NativeText style={{ color: tokens.colors.TEXT_NORMAL, fontSize: 16, fontWeight: "600" }}>Back</NativeText></Pressable> : <Button size="sm" variant="secondary" text="New Message" onPress={loadAllMembers} />}
+            {screen === "members" ? <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={openMessages} hitSlop={8} style={({ pressed }) => ({ paddingHorizontal: 8, height: 36, justifyContent: "center", opacity: pressed ? 0.65 : 1 })}><NativeText style={{ color: nativeColors.text, fontSize: 16, fontWeight: "600" }}>Back</NativeText></Pressable> : <Button size="sm" variant="secondary" text="New Message" onPress={loadAllMembers} />}
             <PressableScale onPress={openAccounts}><ApiAvatar user={active} size={32} /></PressableScale>
         </View>
 
