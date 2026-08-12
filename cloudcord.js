@@ -9156,11 +9156,27 @@
           /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: styles.header,
             children: [
-              /* @__PURE__ */ jsx(Button, {
-                size: "sm",
-                variant: "secondary",
-                text: "Back",
-                onPress: returnFromChat
+              /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+                accessibilityRole: "button",
+                accessibilityLabel: "Back",
+                onPress: returnFromChat,
+                hitSlop: 8,
+                style: ({ pressed }) => ({
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: pressed ? 0.65 : 1
+                }),
+                children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+                  style: {
+                    color: tokens.colors.TEXT_NORMAL,
+                    fontSize: 30,
+                    lineHeight: 32
+                  },
+                  children: "\u2039"
+                })
               }),
               dmUser ? /* @__PURE__ */ jsx(ApiAvatar, {
                 user: dmUser,
@@ -9247,7 +9263,9 @@
                     send();
                 },
                 style: {
-                  flex: 1,
+                  width: 0,
+                  minWidth: 0,
+                  flexGrow: 1,
                   flexShrink: 1,
                   height: 44,
                   paddingHorizontal: 14,
@@ -9312,11 +9330,25 @@
                 })
               ]
             }),
-            screen === "members" ? /* @__PURE__ */ jsx(Button, {
-              size: "sm",
-              variant: "secondary",
-              text: "Back",
-              onPress: openMessages
+            screen === "members" ? /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+              accessibilityRole: "button",
+              accessibilityLabel: "Back",
+              onPress: openMessages,
+              hitSlop: 8,
+              style: ({ pressed }) => ({
+                paddingHorizontal: 8,
+                height: 36,
+                justifyContent: "center",
+                opacity: pressed ? 0.65 : 1
+              }),
+              children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+                style: {
+                  color: tokens.colors.TEXT_NORMAL,
+                  fontSize: 16,
+                  fontWeight: "600"
+                },
+                children: "Back"
+              })
             }) : /* @__PURE__ */ jsx(Button, {
               size: "sm",
               variant: "secondary",
