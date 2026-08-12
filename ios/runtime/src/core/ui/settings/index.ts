@@ -15,6 +15,12 @@ export default function initSettings() {
         name: "CloudCord",
         items: [
             {
+                key: "BOTCORD",
+                title: () => "BotCord",
+                icon: findAssetId("RobotIcon") || findAssetId("AppsIcon"),
+                render: () => import("@core/ui/settings/pages/BotCord")
+            },
+            {
                 key: "CLOUDCORD",
                 title: () => Strings.PUPU,
                 icon: { uri: PupuIcon },
@@ -57,19 +63,16 @@ export default function initSettings() {
         ]
     });
 
-    // Compat with Bunny Plugins that use configs in settings
     registerSection({
         name: "Bunny",
         items: []
     });
 
-    // Compat with Revenge Plugins that use configs in settings
     registerSection({
         name: "Revenge",
         items: []
     });
 
-    // Compat with Vendetta Plugins that use configs in settings
     registerSection({
         name: "Vendetta",
         items: []
