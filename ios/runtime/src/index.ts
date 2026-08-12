@@ -10,6 +10,7 @@ import { initPlugins, updatePlugins } from "@lib/addons/plugins";
 import { initThemes } from "@lib/addons/themes";
 import { patchCommands } from "@lib/api/commands";
 import { patchLogHook } from "@lib/api/debug";
+import { initLegacyRuntimeRefresh } from "@lib/api/native/legacyRuntimeRefresh";
 import { injectFluxInterceptor } from "@lib/api/flux";
 import { patchJsx } from "@lib/api/react/jsx";
 import { logger } from "@lib/utils/logger";
@@ -31,6 +32,7 @@ export default async () => {
         initVendettaObject(),
         initFetchI18nStrings(),
         initSettings(),
+        initLegacyRuntimeRefresh(),
         initBotCordSwitcher(),
         initFixes(),
         patchErrorBoundary(),

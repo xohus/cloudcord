@@ -48,6 +48,8 @@ jobs:
           cp "../ios/assets/fakeprofile-icon.png" "src/assets/icons/fakeprofile.png"
           cp "../ios/runtime/src/core/ui/settings/pages/BotCord/index.tsx" "src/core/ui/settings/pages/BotCord/index.tsx"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
+          mkdir -p src/lib/api/native
+          cp "../ios/runtime/src/lib/api/native/legacyRuntimeRefresh.ts" "src/lib/api/native/legacyRuntimeRefresh.ts"
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
           import type { ComponentType } from "react";
@@ -1253,14 +1255,23 @@ jobs:
           if main_index.exists():
               text = main_index.read_text(encoding="utf-8", errors="ignore")
               startup_import = 'import { initializeFakeProfile } from "@core/ui/settings/pages/FakeProfile";\n'
+              legacy_refresh_import = 'import { initLegacyRuntimeRefresh } from "@lib/api/native/legacyRuntimeRefresh";\n'
 
               if startup_import not in text:
                   text = startup_import + text
+              if legacy_refresh_import not in text:
+                  text = legacy_refresh_import + text
 
               if "initializeFakeProfile()," not in text:
                   text = text.replace(
                       "        initSettings(),",
                       "        initSettings(),\n        initializeFakeProfile(),"
+                  )
+
+              if "initLegacyRuntimeRefresh()," not in text:
+                  text = text.replace(
+                      "        initSettings(),",
+                      "        initSettings(),\n        initLegacyRuntimeRefresh(),"
                   )
 
 
