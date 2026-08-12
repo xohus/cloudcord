@@ -9235,23 +9235,48 @@
           /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: styles.composer,
             children: [
-              /* @__PURE__ */ jsx(import_react_native19.View, {
+              /* @__PURE__ */ jsx(import_react_native19.TextInput, {
+                value: composer,
+                placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
+                placeholderTextColor: tokens.colors.TEXT_MUTED,
+                onChangeText: setComposer,
+                multiline: true,
+                maxLength: 2e3,
+                blurOnSubmit: false,
+                textAlignVertical: "center",
                 style: {
-                  flex: 1
-                },
-                children: /* @__PURE__ */ jsx(TextInput, {
-                  size: "lg",
-                  value: composer,
-                  placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
-                  onChange: (value) => setComposer(inputText(value))
-                })
+                  flex: 1,
+                  minHeight: 40,
+                  maxHeight: 120,
+                  paddingHorizontal: 12,
+                  paddingVertical: import_react_native19.Platform.OS === "ios" ? 10 : 8,
+                  borderRadius: 18,
+                  backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT,
+                  color: tokens.colors.TEXT_NORMAL,
+                  fontSize: 16
+                }
               }),
-              /* @__PURE__ */ jsx(Button, {
-                size: "sm",
-                variant: "primary",
-                text: "Send",
+              /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+                accessibilityRole: "button",
+                accessibilityLabel: "Send message",
                 disabled: !composer.trim(),
-                onPress: send
+                onPress: send,
+                hitSlop: 8,
+                style: ({ pressed }) => ({
+                  minWidth: 58,
+                  height: 40,
+                  paddingHorizontal: 12,
+                  borderRadius: 18,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  opacity: !composer.trim() ? 0.4 : pressed ? 0.7 : 1,
+                  backgroundColor: tokens.colors.BRAND_500
+                }),
+                children: /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/semibold",
+                  color: "text-on-brand",
+                  children: "Send"
+                })
               })
             ]
           })
@@ -9690,7 +9715,7 @@
       })
     });
   }
-  var import_react5, import_react_native19, useStyles3, avatarUrl, guildIconUrl, displayName, inputText;
+  var import_react5, import_react_native19, useStyles3, avatarUrl, guildIconUrl, displayName;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -9801,7 +9826,6 @@
       avatarUrl = (user, size = 128) => user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}` : null;
       guildIconUrl = (guild, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
       displayName = (user) => user?.global_name || user?.username || "Unknown";
-      inputText = (value) => typeof value === "string" ? value : value?.nativeEvent?.text ?? "";
     }
   });
 
