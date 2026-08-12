@@ -9240,17 +9240,19 @@
                 placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
                 placeholderTextColor: tokens.colors.TEXT_MUTED,
                 onChangeText: setComposer,
-                multiline: true,
                 maxLength: 2e3,
-                blurOnSubmit: false,
-                textAlignVertical: "center",
+                returnKeyType: "send",
+                onSubmitEditing: () => {
+                  if (composer.trim())
+                    send();
+                },
                 style: {
                   flex: 1,
-                  minHeight: 40,
-                  maxHeight: 120,
-                  paddingHorizontal: 12,
-                  paddingVertical: import_react_native19.Platform.OS === "ios" ? 10 : 8,
-                  borderRadius: 18,
+                  flexShrink: 1,
+                  height: 44,
+                  paddingHorizontal: 14,
+                  paddingVertical: 0,
+                  borderRadius: 22,
                   backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT,
                   color: tokens.colors.TEXT_NORMAL,
                   fontSize: 16
@@ -9261,20 +9263,23 @@
                 accessibilityLabel: "Send message",
                 disabled: !composer.trim(),
                 onPress: send,
-                hitSlop: 8,
+                hitSlop: 6,
                 style: ({ pressed }) => ({
-                  minWidth: 58,
-                  height: 40,
-                  paddingHorizontal: 12,
-                  borderRadius: 18,
+                  width: 56,
+                  height: 44,
+                  flexShrink: 0,
+                  borderRadius: 22,
                   alignItems: "center",
                   justifyContent: "center",
-                  opacity: !composer.trim() ? 0.4 : pressed ? 0.7 : 1,
+                  opacity: !composer.trim() ? 0.45 : pressed ? 0.72 : 1,
                   backgroundColor: tokens.colors.BRAND_500
                 }),
-                children: /* @__PURE__ */ jsx(Text, {
-                  variant: "text-sm/semibold",
-                  color: "text-on-brand",
+                children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+                  style: {
+                    color: "white",
+                    fontSize: 14,
+                    fontWeight: "600"
+                  },
                   children: "Send"
                 })
               })
@@ -9781,11 +9786,14 @@
           flexWrap: "wrap"
         },
         composer: {
+          height: 60,
+          width: "100%",
           paddingHorizontal: 10,
           paddingVertical: 8,
           flexDirection: "row",
-          alignItems: "flex-end",
+          alignItems: "center",
           gap: 8,
+          flexShrink: 0,
           backgroundColor: tokens.colors.BACKGROUND_PRIMARY
         },
         category: {
