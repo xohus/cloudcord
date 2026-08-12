@@ -229,7 +229,7 @@ jobs:
 
           cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'
           import FakeProfileIcon from "@assets/icons/fakeprofile.png";
-          import { useProxy } from "@core/vendetta/storage";
+          import { awaitStorage, useProxy } from "@core/vendetta/storage";
           import { after, instead } from "@lib/api/patcher";
           import { onJsxCreate } from "@lib/api/react/jsx";
           import { settings } from "@lib/api/settings";
@@ -301,7 +301,7 @@ jobs:
           ];
           
           const rootSettings = settings as any;
-          rootSettings.fakeProfile ??= {
+          const defaultPreview = (): PreviewSettings => ({
               enabled: false,
               displayName: "Preview Name",
               username: "preview",
@@ -311,11 +311,23 @@ jobs:
               boostMonths: 0,
               replaceBadges: false,
               selectedBadges: {}
-          } satisfies PreviewSettings;
+          });
 
-          const preview = rootSettings.fakeProfile as PreviewSettings;
-          preview.nitroMonths ??= 0;
-          preview.boostMonths ??= 0;
+          let preview = defaultPreview();
+          let configReady = false;
+          let initPromise: Promise<void> | null = null;
+
+          function bindSavedPreview() {
+              if (configReady) return;
+              const saved = rootSettings.fakeProfile;
+              rootSettings.fakeProfile = {
+                  ...defaultPreview(),
+                  ...(saved && typeof saved === "object" ? saved : {}),
+                  selectedBadges: { ...(saved?.selectedBadges || {}) }
+              } satisfies PreviewSettings;
+              preview = rootSettings.fakeProfile as PreviewSettings;
+              configReady = true;
+          }
 
           const diagnostics = {
               patches: 0,
@@ -713,12 +725,19 @@ jobs:
           }
 
           export function initializeFakeProfile() {
-              try {
-                  ensurePatches();
-                  if (preview.enabled) refreshPreview();
-              } catch (error: any) {
-                  diagnostics.last = error?.message || "FakeProfile will retry from settings";
-              }
+              if (initPromise) return initPromise;
+              initPromise = (async () => {
+                  try {
+                      await awaitStorage(settings);
+                      bindSavedPreview();
+                      ensurePatches();
+                      if (preview.enabled) refreshPreview();
+                  } catch (error: any) {
+                      diagnostics.last = error?.message || "Could not restore Fake Profile";
+                      initPromise = null;
+                  }
+              })();
+              return initPromise;
           }
           
           async function getImageSize(uri: string, asset: any) {
@@ -845,7 +864,7 @@ jobs:
                   <Pressable onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 58, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 11, backgroundColor: pressed ? "rgba(120,231,255,0.16)" : "rgba(255,255,255,0.04)" })}>
                       <View style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
                           <Text variant="text-sm/bold" style={{ color: "#50fa9b" }}>{label}</Text>
-                          <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>Client-only profile appearance</Text>
+                          <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>Profile appearance</Text>
                       </View>
                       <View style={{ maxWidth: "48%", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: "#243c46" }}>
                           <Text variant="text-xs/bold" style={{ color: "#78e7ff" }} numberOfLines={1}>{durationLabel(value)}</Text>
@@ -966,7 +985,7 @@ jobs:
                                       {avatar ? <Image source={{ uri: avatar }} style={{ width: 82, height: 82, borderRadius: 41, marginTop: -41, borderWidth: 5, borderColor: "#1f2023" }} /> : <View style={{ width: 82, height: 82, borderRadius: 41, marginTop: -41, borderWidth: 5, borderColor: "#1f2023", backgroundColor: "#777" }} />}
                                       <Text variant="heading-md/semibold" color="text-normal" style={{ marginTop: 10 }}>{preview.displayName || "Preview Name"}</Text>
                                       <Text variant="text-sm/medium" color="text-muted">@{preview.username || "preview"}</Text>
-                                      <Text variant="text-xs/bold" style={{ color: "#7ee787", marginTop: 8 }}>LOCAL PREVIEW ONLY</Text>
+                                      <Text variant="text-xs/bold" style={{ color: "#7ee787", marginTop: 8 }}>PREVIEW</Text>
                                   </View>
                               </View>
                           </Card>
@@ -975,7 +994,7 @@ jobs:
                               <View style={{ padding: 14, gap: 14 }}>
                                   <ToggleRow
                                       label="Show preview in the client"
-                                      subLabel="Affects only what you see on this device"
+                                      subLabel="Show your saved profile preview"
                                       value={preview.enabled}
                                       accent
                                       onPress={() => update("enabled", !preview.enabled, true)}
