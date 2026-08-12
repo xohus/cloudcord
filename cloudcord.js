@@ -9156,27 +9156,38 @@
           /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: styles.header,
             children: [
-              /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+              /* @__PURE__ */ jsxs(import_react_native19.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Back",
                 onPress: returnFromChat,
                 hitSlop: 8,
                 style: ({ pressed }) => ({
-                  width: 36,
                   height: 36,
-                  borderRadius: 18,
+                  paddingHorizontal: 4,
+                  flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "center",
                   opacity: pressed ? 0.65 : 1
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native19.Text, {
-                  style: {
-                    color: tokens.colors.TEXT_NORMAL,
-                    fontSize: 30,
-                    lineHeight: 32
-                  },
-                  children: "\u2039"
-                })
+                children: [
+                  /* @__PURE__ */ jsx(import_react_native19.Text, {
+                    style: {
+                      color: nativeTextColor,
+                      fontSize: 28,
+                      lineHeight: 30,
+                      marginRight: 2
+                    },
+                    children: "\u2039"
+                  }),
+                  /* @__PURE__ */ jsx(import_react_native19.Text, {
+                    style: {
+                      color: nativeTextColor,
+                      fontSize: 16,
+                      fontWeight: "600"
+                    },
+                    children: "Back"
+                  })
+                ]
               }),
               dmUser ? /* @__PURE__ */ jsx(ApiAvatar, {
                 user: dmUser,
@@ -9254,7 +9265,7 @@
               /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                 value: composer,
                 placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
-                placeholderTextColor: tokens.colors.TEXT_MUTED,
+                placeholderTextColor: nativeMutedColor,
                 onChangeText: setComposer,
                 maxLength: 2e3,
                 returnKeyType: "send",
@@ -9271,8 +9282,8 @@
                   paddingHorizontal: 14,
                   paddingVertical: 0,
                   borderRadius: 22,
-                  backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT,
-                  color: tokens.colors.TEXT_NORMAL,
+                  backgroundColor: nativeInputBackground,
+                  color: nativeTextColor,
                   fontSize: 16
                 }
               }),
@@ -9752,7 +9763,7 @@
       })
     });
   }
-  var import_react5, import_react_native19, useStyles3, avatarUrl, guildIconUrl, displayName;
+  var import_react5, import_react_native19, useStyles3, avatarUrl, guildIconUrl, displayName, nativeTextColor, nativeMutedColor, nativeInputBackground;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -9866,6 +9877,18 @@
       avatarUrl = (user, size = 128) => user?.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}` : null;
       guildIconUrl = (guild, size = 128) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=${size}` : null;
       displayName = (user) => user?.global_name || user?.username || "Unknown";
+      nativeTextColor = import_react_native19.Platform.OS === "ios" ? (0, import_react_native19.DynamicColorIOS)({
+        light: "#1e1f22",
+        dark: "#f2f3f5"
+      }) : "#f2f3f5";
+      nativeMutedColor = import_react_native19.Platform.OS === "ios" ? (0, import_react_native19.DynamicColorIOS)({
+        light: "#5c5e66",
+        dark: "#949ba4"
+      }) : "#949ba4";
+      nativeInputBackground = import_react_native19.Platform.OS === "ios" ? (0, import_react_native19.DynamicColorIOS)({
+        light: "#e3e5e8",
+        dark: "#383a40"
+      }) : "#383a40";
     }
   });
 
