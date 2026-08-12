@@ -16,7 +16,7 @@ import { createStyles } from "@lib/ui/styles";
 import { NavigationNative, tokens } from "@metro/common";
 import { ActionSheet, ActionSheetRow, Button, IconButton, PressableScale, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput as NativeTextInput, View } from "react-native";
+import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text as NativeText, TextInput as NativeTextInput, View } from "react-native";
 
 const useStyles = createStyles({
     root: { flex: 1, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
@@ -28,7 +28,7 @@ const useStyles = createStyles({
     row: { flexDirection: "row", gap: 10, paddingHorizontal: 12, paddingVertical: 7 },
     messageBody: { flex: 1 },
     nameLine: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-    composer: { paddingHorizontal: 10, paddingVertical: 8, flexDirection: "row", alignItems: "flex-end", gap: 8, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
+    composer: { height: 60, width: "100%", paddingHorizontal: 10, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
     category: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 4 },
     channelRow: { paddingHorizontal: 12, paddingVertical: 10 },
     guildButton: { width: 72, height: 56, alignItems: "center", justifyContent: "center" },
@@ -273,17 +273,16 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                     placeholder={channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`}
                     placeholderTextColor={tokens.colors.TEXT_MUTED}
                     onChangeText={setComposer}
-                    multiline
                     maxLength={2000}
-                    blurOnSubmit={false}
-                    textAlignVertical="center"
+                    returnKeyType="send"
+                    onSubmitEditing={() => { if (composer.trim()) send(); }}
                     style={{
                         flex: 1,
-                        minHeight: 40,
-                        maxHeight: 120,
-                        paddingHorizontal: 12,
-                        paddingVertical: Platform.OS === "ios" ? 10 : 8,
-                        borderRadius: 18,
+                        flexShrink: 1,
+                        height: 44,
+                        paddingHorizontal: 14,
+                        paddingVertical: 0,
+                        borderRadius: 22,
                         backgroundColor: tokens.colors.BACKGROUND_MODIFIER_ACCENT,
                         color: tokens.colors.TEXT_NORMAL,
                         fontSize: 16
@@ -294,19 +293,19 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                     accessibilityLabel="Send message"
                     disabled={!composer.trim()}
                     onPress={send}
-                    hitSlop={8}
+                    hitSlop={6}
                     style={({ pressed }) => ({
-                        minWidth: 58,
-                        height: 40,
-                        paddingHorizontal: 12,
-                        borderRadius: 18,
+                        width: 56,
+                        height: 44,
+                        flexShrink: 0,
+                        borderRadius: 22,
                         alignItems: "center",
                         justifyContent: "center",
-                        opacity: !composer.trim() ? 0.4 : pressed ? 0.7 : 1,
+                        opacity: !composer.trim() ? 0.45 : pressed ? 0.72 : 1,
                         backgroundColor: tokens.colors.BRAND_500
                     })}
                 >
-                    <Text variant="text-sm/semibold" color="text-on-brand">Send</Text>
+                    <NativeText style={{ color: "white", fontSize: 14, fontWeight: "600" }}>Send</NativeText>
                 </Pressable>
             </View>
         </KeyboardAvoidingView>;
