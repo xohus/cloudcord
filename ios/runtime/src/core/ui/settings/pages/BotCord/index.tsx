@@ -246,7 +246,22 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
             keyboardVerticalOffset={0}
         >
             <View style={styles.header}>
-                <Button size="sm" variant="secondary" text="Back" onPress={returnFromChat} />
+                <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel="Back"
+                    onPress={returnFromChat}
+                    hitSlop={8}
+                    style={({ pressed }) => ({
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        opacity: pressed ? 0.65 : 1
+                    })}
+                >
+                    <NativeText style={{ color: tokens.colors.TEXT_NORMAL, fontSize: 30, lineHeight: 32 }}>‹</NativeText>
+                </Pressable>
                 {dmUser ? <ApiAvatar user={dmUser} size={32} /> : null}
                 <View style={{ flex: 1 }}>
                     <Text variant="heading-md/semibold" numberOfLines={1}>{channel.botcordDM ? displayName(dmUser) : channel.name}</Text>
@@ -277,7 +292,9 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                     returnKeyType="send"
                     onSubmitEditing={() => { if (composer.trim()) send(); }}
                     style={{
-                        flex: 1,
+                        width: 0,
+                        minWidth: 0,
+                        flexGrow: 1,
                         flexShrink: 1,
                         height: 44,
                         paddingHorizontal: 14,
@@ -317,7 +334,7 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                 <Text variant="heading-md/semibold" numberOfLines={1}>{screen === "members" ? "New Message" : screen === "messages" ? "Messages" : guild?.name || "BotCord"}</Text>
                 <Text variant="text-xs/normal" color="text-muted" numberOfLines={1}>{active.username}</Text>
             </View>
-            {screen === "members" ? <Button size="sm" variant="secondary" text="Back" onPress={openMessages} /> : <Button size="sm" variant="secondary" text="New Message" onPress={loadAllMembers} />}
+            {screen === "members" ? <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={openMessages} hitSlop={8} style={({ pressed }) => ({ paddingHorizontal: 8, height: 36, justifyContent: "center", opacity: pressed ? 0.65 : 1 })}><NativeText style={{ color: tokens.colors.TEXT_NORMAL, fontSize: 16, fontWeight: "600" }}>Back</NativeText></Pressable> : <Button size="sm" variant="secondary" text="New Message" onPress={loadAllMembers} />}
             <PressableScale onPress={openAccounts}><ApiAvatar user={active} size={32} /></PressableScale>
         </View>
 
