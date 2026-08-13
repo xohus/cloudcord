@@ -14,6 +14,31 @@
 
 ---
 
+## Install
+
+<div align="center">
+<table>
+<tr>
+<td align="center" width="50%">
+  <img src="https://img.shields.io/badge/iOS%20%2F%20iPadOS-CloudCord-111111?style=for-the-badge&logo=apple" alt="iOS / iPadOS" />
+  <br /><br />
+  <a href="https://github.com/xohus/cloudcord/releases/download/new_beta/cloudcord0.ipa"><strong>Download CloudCord IPA</strong></a>
+  <br />
+  <sub><a href="https://github.com/xohus/cloudcord/releases/tag/new_beta">View iOS / iPadOS release</a></sub>
+</td>
+<td align="center" width="50%">
+  <img src="https://img.shields.io/badge/Android-CloudCord-111111?style=for-the-badge&logo=android" alt="Android" />
+  <br /><br />
+  <a href="https://github.com/xohus/cloudcord/releases/download/new_beta_android/cloudcord.apk"><strong>Download CloudCord APK</strong></a>
+  <br />
+  <sub><a href="https://github.com/xohus/cloudcord/releases/tag/new_beta_android">View Android release</a></sub>
+</td>
+</tr>
+</table>
+</div>
+
+> Download CloudCord only from this repository's releases. The iOS package is distributed as an `.ipa`; Android is distributed as an `.apk`.
+
 ## CloudCord at a glance
 
 CloudCord extends Discord with a focused set of client features while keeping the experience familiar. Mobile features are integrated directly into the Discord settings and navigation surfaces, with local configuration and an automatically refreshed runtime.
@@ -56,17 +81,19 @@ Preview a customized profile locally without changing your real Discord account.
 
 ## Built-in tabs
 
-| Tab | What it does |
-| --- | --- |
-| **General** | Core CloudCord controls and client options |
-| **BotCord** | Bot accounts, DMs, servers, channels and messaging |
-| **Fake Profile** | Local profile customization and previews |
-| **Cloud Sync** | Sync supported CloudCord settings |
-| **Plugins** | Manage installed plugins |
-| **Plugin Browser** | Discover and manage available plugins |
-| **Themes** | Theme management |
-| **Fonts** | Font customization |
-| **Developer** | Loader, diagnostics and developer controls |
+CloudCord keeps its main features directly inside the client settings. Each tab has a dedicated purpose and visual identity.
+
+| Icon | Tab | What it does |
+| :---: | --- | --- |
+| <img src="assets/cloudcord-favicon.png" width="28" height="28" alt="General" /> | **General** | Core CloudCord controls, client options and runtime controls |
+| <img src="assets/readme/tabs/botcord.svg" width="28" height="28" alt="BotCord" /> | **BotCord** | Bot accounts, DMs, servers, channels, members, messaging and media |
+| <img src="ios/assets/fakeprofile-icon.png" width="28" height="28" alt="Fake Profile" /> | **Fake Profile** | Local profile customization, badges, avatar, banner and previews |
+| <img src="assets/readme/tabs/cloud-sync.svg" width="28" height="28" alt="Cloud Sync" /> | **Cloud Sync** | Sync supported CloudCord settings and backups |
+| <img src="assets/readme/tabs/plugins.svg" width="28" height="28" alt="Plugins" /> | **Plugins** | Enable, disable and configure installed plugins |
+| <img src="assets/readme/tabs/plugin-browser.svg" width="28" height="28" alt="Plugin Browser" /> | **Plugin Browser** | Browse and manage available plugins |
+| <img src="assets/readme/tabs/themes.svg" width="28" height="28" alt="Themes" /> | **Themes** | Install and manage client themes |
+| <img src="assets/readme/tabs/fonts.svg" width="28" height="28" alt="Fonts" /> | **Fonts** | Customize client typography |
+| <img src="assets/readme/tabs/developer.svg" width="28" height="28" alt="Developer" /> | **Developer** | Loader controls, diagnostics and development options |
 
 ## Why CloudCord
 
