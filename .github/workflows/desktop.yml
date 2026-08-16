@@ -38,6 +38,7 @@ jobs:
           Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
 
       - name: Prepare clean Sincord source
+        if: ${{ false }}
         shell: bash
         run: |
           set -e
@@ -56,6 +57,7 @@ jobs:
           rm -rf desktop/client/dist
 
       - name: Patch Sincord source into CloudCord
+        if: ${{ false }}
         shell: bash
         run: |
           set -e
@@ -283,6 +285,7 @@ jobs:
           fi
 
           cp "$INSTALLER_PATH" desktop/client/dist/CloudCordSetup.exe
+          cp "$INSTALLER_PATH" desktop/client/dist/cloudcord.exe
 
           test -f desktop/client/dist/CloudCordSetup.exe
           test -d desktop/client/dist/desktop

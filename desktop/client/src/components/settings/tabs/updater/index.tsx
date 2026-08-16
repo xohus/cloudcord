@@ -49,7 +49,7 @@ function SinbopSection() {
         <Flex className={Margins.bottom20} flexDirection="column" gap="1em">
             <Card variant="brand">
                 <HeadingSecondary>Sinbop & Sincord</HeadingSecondary>
-                <Paragraph>Sinbop and Sincord are two separate things. This updater is for Sincord.</Paragraph>
+                <Paragraph>CloudCord updates itself automatically and keeps your plugins, themes, settings, and shared profile.</Paragraph>
                 <Paragraph className={Margins.top8}>
                     You receive separate popups for Sinbop updates. You can also manually update by installing the <Link href="https://sinbop.org/install">latest version</Link>.
                 </Paragraph>

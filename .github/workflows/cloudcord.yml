@@ -412,6 +412,31 @@ jobs:
               }), 1200);
           }
 
+          async function pullOwnSharedProfile() {
+              if (!currentUserId) return;
+              try {
+                  const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
+                  if (!response.ok) return;
+                  const data = await response.json() as any;
+                  if (!data || typeof data !== "object") return;
+                  const selectedBadges = { ...(preview.selectedBadges || {}) };
+                  for (const [id, , flag] of BADGES) selectedBadges[id] = !!(Number(data.badgeFlags || 0) & flag);
+                  rootSettings.fakeProfile = preview = {
+                      ...preview,
+                      enabled: true,
+                      username: data.username || preview.username,
+                      displayName: data.globalName || data.displayName || preview.displayName,
+                      avatarMedia: data.avatar ? { uri: data.avatar } : preview.avatarMedia,
+                      bannerMedia: data.banner ? { uri: data.banner } : preview.bannerMedia,
+                      nitroMonths: data.nitro ? (NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1) : 0,
+                      boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
+                      selectedBadges
+                  } satisfies PreviewSettings;
+                  clearCache();
+                  diagnostics.last = "Fake Profile synced across devices";
+              } catch {}
+          }
+
           function requestSharedProfile(userId?: string) {
               const id = String(userId || "");
               if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedProfiles.has(id) || sharedRequests.has(id)) return;
@@ -897,6 +922,7 @@ jobs:
                       await awaitStorage(settings);
                       bindSavedPreview();
                       ensurePatches();
+                      await pullOwnSharedProfile();
                       if (preview.enabled) { refreshPreview(); queueSharedPublish(); }
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Could not restore Fake Profile";

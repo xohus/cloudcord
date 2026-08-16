@@ -30,6 +30,8 @@ const LS_ALL_DATA = "SincordCP_allData";
 const LS_ALL_ENABLED = "SincordCP_allEnabled";
 const LS_KEY_DATA = "SincordCP_data";
 const LS_KEY_ENABLED = "SincordCP_enabled";
+const SHARED_PROFILE_API = "https://cloudcord-profiles.ggxohus.workers.dev";
+const LS_SHARE = "CloudCord_fakeProfileShare";
 
 const FLAG = {
     STAFF: 1, PARTNER: 2, HYPESQUAD: 4, BUG_HUNTER_1: 8,
@@ -120,6 +122,85 @@ let _avatarPatchApplied = false;
 let _domQueued = false;
 let _domMutations: MutationRecord[] = [];
 let _cachedRealDateVariants: string[] | null = null;
+const sharedProfiles = new Map<string, CustomProfileData>();
+const sharedRequests = new Set<string>();
+let publishTimer: ReturnType<typeof setTimeout> | null = null;
+
+function fromSharedProfile(data: any): CustomProfileData {
+    return {
+        username: data?.username || "", globalName: data?.globalName || data?.displayName || "",
+        avatar: data?.avatar || "", banner: data?.banner || "", bio: data?.bio || "",
+        pronouns: data?.pronouns || "", accentColor: data?.accentColor,
+        accentColor2: data?.accentColor2, badgeFlags: data?.badgeFlags || 0,
+        nitro: !!(data?.nitro || data?.nitroLevel >= 0), nitroLevel: data?.nitroLevel,
+        boostMonths: data?.boostMonths, customBadgeIds: data?.customBadgeIds || [],
+        decorationAsset: data?.decorationAsset
+    };
+}
+
+function toSharedProfile(data: CustomProfileData) {
+    return { ...data, displayName: data.globalName };
+}
+
+async function publishSharedProfile(): Promise<void> {
+    const ownerId = AuthenticationStore?.getId?.();
+    if (!ownerId || !isEnabled) return;
+    let saved: any = {};
+    try { saved = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { }
+    const response = await fetch(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
+        method: saved.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {}) },
+        body: JSON.stringify({ ownerId, profile: toSharedProfile(storedData) })
+    });
+    if (!response.ok) {
+        if (saved.id && (response.status === 401 || response.status === 404)) { localStorage.removeItem(LS_SHARE); return publishSharedProfile(); }
+        throw new Error(`CloudCord profile sync failed (${response.status})`);
+    }
+    const result = await response.json();
+    if (!saved.id && result?.id) localStorage.setItem(LS_SHARE, JSON.stringify({ id: result.id, editToken: result.editToken }));
+}
+
+function queueSharedPublish() {
+    if (publishTimer) clearTimeout(publishTimer);
+    publishTimer = setTimeout(() => void publishSharedProfile().catch(() => { }), 800);
+}
+
+async function pullOwnSharedProfile() {
+    const id = AuthenticationStore?.getId?.();
+    if (!id) return;
+    try {
+        const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`);
+        if (!response.ok) return;
+        const pulled = fromSharedProfile(await response.json());
+        if (!Object.keys(pulled).length) return;
+        storedData = pulled; isEnabled = true; allAccountsData[id] = pulled; allAccountsEnabled[id] = true;
+        saveDataSync(pulled, true); saveAllDataSync();
+        await Promise.all([DataStore.set(DS_ALL_DATA, allAccountsData), DataStore.set(DS_ALL_ENABLED, allAccountsEnabled)]);
+        cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++; forceAccountPanelRerender();
+    } catch { }
+}
+
+function requestSharedProfile(userId: string) {
+    if (!/^\d{15,22}$/.test(userId) || isMe(userId) || sharedProfiles.has(userId) || sharedRequests.has(userId)) return;
+    sharedRequests.add(userId);
+    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`)
+        .then(r => r.ok ? r.json() : null).then(data => {
+            if (!data) return;
+            sharedProfiles.set(userId, fromSharedProfile(data));
+            try { (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore")?.emitChange?.(); } catch { }
+        }).catch(() => { }).finally(() => sharedRequests.delete(userId));
+}
+
+function decorateSharedProfile(profile: any, data: CustomProfileData) {
+    if (!profile || !data) return profile;
+    const merged: any = {};
+    if (data.bio) merged.bio = data.bio;
+    if (data.pronouns) merged.pronouns = data.pronouns;
+    if (data.banner) merged.banner = data.banner;
+    if (data.accentColor != null) merged.accentColor = data.accentColor;
+    if (data.accentColor != null) merged.themeColors = [data.accentColor, data.accentColor2 ?? data.accentColor];
+    return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
+}
 
 function saveDataSync(data: CustomProfileData, enabled: boolean) {
     try { localStorage.setItem(LS_KEY_DATA, JSON.stringify(data)); localStorage.setItem(LS_KEY_ENABLED, enabled ? "1" : "0"); } catch { }
@@ -406,6 +487,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             saveAllDataSync();
             DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
             updateCachedRealData(); forceAccountPanelRerender();
+            if (selectedAccountId === myId) queueSharedPublish();
         } catch (err) { console.error("[ProfileSpoofer] save error:", err); }
         setSaving(false); rootProps.onClose();
     }
@@ -659,7 +741,9 @@ fakeObfuscatedEmail(real: string | null) {
                     try {
                         const p = origGet(uid);
                         if (isMe(uid)) return (isEnabled && p) ? this.hookUserProfile(p) : p;
-                        return p;
+                        requestSharedProfile(uid);
+                        const shared = sharedProfiles.get(uid);
+                        return shared && p ? decorateSharedProfile(p, shared) : p;
                     } catch { return origGet(uid); }
                 };
                 const origGuild = UPS.getGuildMemberProfile.bind(UPS);
@@ -667,7 +751,9 @@ fakeObfuscatedEmail(real: string | null) {
                     try {
                         const p = origGuild(uid, gid);
                         if (isMe(uid)) return (isEnabled && p) ? this.hookUserProfile(p) : p;
-                        return p;
+                        requestSharedProfile(uid);
+                        const shared = sharedProfiles.get(uid);
+                        return shared && p ? decorateSharedProfile(p, shared) : p;
                     } catch { return origGuild(uid, gid); }
                 };
                 UPS._cp_hook = true;
@@ -679,6 +765,11 @@ fakeObfuscatedEmail(real: string | null) {
             const orig = this._origGetUserAvatarURL;
             (IconUtils as any).getUserAvatarURL = (user: any, ...args: any[]) => {
                 if (user?.id && isMe(user.id) && isEnabled && storedData.avatar) return storedData.avatar;
+                if (user?.id && !isMe(user.id)) {
+                    requestSharedProfile(user.id);
+                    const shared = sharedProfiles.get(user.id);
+                    if (shared?.avatar) return shared.avatar;
+                }
                 return orig(user, ...args);
             };
             _avatarPatchApplied = true;
@@ -698,6 +789,7 @@ fakeObfuscatedEmail(real: string | null) {
 
         await loadData();
         updateCachedRealData();
+        await pullOwnSharedProfile();
         if (isEnabled) forceAccountPanelRerender();
     },
 
