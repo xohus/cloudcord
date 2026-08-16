@@ -105,7 +105,7 @@ function createCloudCordMenuItems(): MenuItemConstructorOptions[] {
                     click: () => sendToRenderer(IpcEvents.TRAY_CHECK_UPDATES)
                 },
                 {
-                    label: "Repair CloudCord",
+                    label: "Update CloudCord",
                     click: () => sendToRenderer(IpcEvents.TRAY_REPAIR)
                 },
                 { type: "separator" },

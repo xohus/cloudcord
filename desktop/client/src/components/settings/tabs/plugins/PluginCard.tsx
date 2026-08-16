@@ -94,19 +94,19 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
             condition: isModifiedPlugin,
             src: "https://sincord.org/assets/icons/sincord/modified.png",
             alt: "Modified",
-            title: "Modified Vencord Plugin"
+            title: "CloudCord Modified Plugin"
         },
         {
             condition: isSincordPlugin,
             src: "https://sincord.org/assets/favicon.png",
-            alt: "Sincord",
-            title: "Sincord Plugin"
+            alt: "CloudCord Extra",
+            title: "CloudCord Extra Plugin"
         },
         {
             condition: isVencordPlugin,
             src: "https://sincord.org/assets/icons/vencord/icon-light.png",
-            alt: "Vencord",
-            title: "Vencord Plugin"
+            alt: "CloudCord",
+            title: "CloudCord Built-in Plugin"
         },
         {
             condition: isUserPlugin,

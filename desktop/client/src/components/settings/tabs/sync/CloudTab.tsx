@@ -26,7 +26,6 @@ import { Flex } from "@components/Flex";
 import { FormSwitch } from "@components/FormSwitch";
 import { Heading } from "@components/Heading";
 import { CloudDownloadIcon, CloudUploadIcon, SkullIcon } from "@components/Icons";
-import { Link } from "@components/Link";
 import { Notice } from "@components/Notice";
 import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
@@ -35,16 +34,6 @@ import { Margins } from "@utils/margins";
 import { useForceUpdater } from "@utils/react";
 import { findComponentByCodeLazy } from "@webpack";
 import { Alerts, SearchableSelect, Select, useState } from "@webpack/common";
-
-const ICON_STYLE: React.CSSProperties = { width: 20, height: 20, borderRadius: 4, verticalAlign: "middle" };
-
-function SincordIcon() {
-    return <img src="https://sincord.org/assets/favicon.png" alt="Sincord" style={ICON_STYLE} />;
-}
-
-function VencordIcon() {
-    return <img src="https://sincord.org/assets/icons/vencord/icon-light.png" alt="Vencord" style={ICON_STYLE} />;
-}
 
 const RefreshIcon = findComponentByCodeLazy("M4 12a8 8 0 0 1 14.93-4H15");
 const TrashIcon = findComponentByCodeLazy("2.81h8.36a3");
@@ -59,8 +48,8 @@ function validateUrl(url: string) {
 }
 
 const cloudBackendOptions = [
-    { label: "Sincord Cloud", value: "https://cloud.sincord.org/" },
-    { label: "Vencord Cloud", value: "https://api.vencord.dev/" }
+    { label: "CloudCord Cloud", value: "https://cloud.sincord.org/" },
+    { label: "CloudCord Compatible Cloud", value: "https://api.vencord.dev/" }
 ];
 
 const syncDirectionOptions = [
@@ -91,15 +80,13 @@ function CloudTab() {
 
     return (
         <SettingsTab>
-            <Heading className={Margins.top16}>Cloud Integration</Heading>
+            <Heading className={Margins.top16}>CloudCord Sync</Heading>
             <Paragraph className={Margins.bottom16}>
-                Sincord's cloud integration allows you to sync your settings across multiple devices and Discord installations. Your data is securely stored and can be easily restored at any time.
+                Keep your CloudCord settings consistent across devices and Discord installations, then restore them whenever you need.
             </Paragraph>
 
             <Notice.Info className={Margins.bottom16}>
-                We use our own <Link href="https://github.com/Sincord/Equicloud">Equicloud backend</Link> with enhanced features.
-                View our <Link href="https://sincord.org/cloud/policy">privacy policy</Link> to see what we store and how we use your data.
-                Equicloud is BSD 3.0 licensed, so you can self-host if preferred.
+                Installer updates preserve your local plugins, settings, themes, fonts and CloudCord feature data.
             </Notice.Info>
 
             <FormSwitch
@@ -119,7 +106,7 @@ function CloudTab() {
 
             <Heading className={Margins.top20}>Cloud Backend</Heading>
             <Paragraph className={Margins.bottom16}>
-                Choose which cloud backend to use for storing your settings. You can switch between Sincord's and Vencord's cloud services, or use a self-hosted instance.
+                Use CloudCord Cloud or enter a compatible self-hosted endpoint.
             </Paragraph>
 
             <div className={Margins.bottom8}>
@@ -128,7 +115,6 @@ function CloudTab() {
                     value={cloudBackendOptions.find(o => o.value === cloud.url)?.value}
                     onChange={v => changeUrl(v)}
                     closeOnSelect={true}
-                    renderOptionPrefix={o => o?.value?.includes("sincord") ? <SincordIcon /> : <VencordIcon />}
                 />
             </div>
 
@@ -164,7 +150,7 @@ function CloudTab() {
 
             <Heading className={Margins.top20}>Settings Sync</Heading>
             <Paragraph className={Margins.bottom16}>
-                Synchronize your Sincord settings to the cloud. This makes it easy to keep your configuration consistent across multiple devices without manual import/export.
+                Synchronize your CloudCord settings to keep your configuration consistent without manual import and export.
             </Paragraph>
 
             <FormSwitch

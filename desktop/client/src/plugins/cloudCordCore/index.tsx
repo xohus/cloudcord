@@ -23,6 +23,28 @@ function InfoRow({ label, value }: { label: string; value: ReactNode; }) {
     );
 }
 
+const features = [
+    ["BotCord", "Account tools and CloudCord companion integration."],
+    ["Fake Profile", "Local profile previews and appearance tools."],
+    ["Cloud Sync", "Keep settings and add-ons consistent across installations."],
+    ["Add-ons", "Manage plugins, themes and fonts in one place."]
+] as const;
+
+function FeatureCards() {
+    return (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "0.75rem", marginTop: "1rem" }}>
+            {features.map(([name, description]) => (
+                <div key={name} style={{ padding: "1rem", borderRadius: "16px", background: "linear-gradient(135deg, rgba(124, 92, 252, .18), rgba(57, 208, 255, .08))", border: "1px solid rgba(124, 92, 252, .35)" }}>
+                    <Text variant="text-md/semibold">{name}</Text>
+                    <div style={{ marginTop: ".35rem" }}>
+                        <Text variant="text-sm/normal" color="text-muted">{description}</Text>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
 function CloudCordCoreAbout() {
     const installStatus = IS_DISCORD_DESKTOP ? "Injected into Discord Desktop" : "Running outside Discord Desktop";
 
@@ -31,12 +53,11 @@ function CloudCordCoreAbout() {
             <InfoRow label="CloudCord Desktop version" value={VERSION} />
             <InfoRow label="Repository" value={<Link href={REPO_URL}>{REPO_URL}</Link>} />
             <InfoRow label="Install status" value={installStatus} />
-            <InfoRow label="Credits" value="CloudCord by Xohus, based on Sincord and inspired by Vencord architecture." />
             <InfoRow label="Mobile runtime" value="iOS and Android use CloudCord's separate React Native runtime." />
-            <InfoRow label="Desktop runtime" value="Desktop uses this Vencord/Sincord-style desktop bundle." />
             <Paragraph className={Margins.top16}>
-                CloudCord Core provides desktop identity and integration metadata for the open-source CloudCord Desktop client mod.
+                Your CloudCord features live together here. Installer updates replace only the runtime and preserve your settings and add-on data.
             </Paragraph>
+            <FeatureCards />
         </div>
     );
 }

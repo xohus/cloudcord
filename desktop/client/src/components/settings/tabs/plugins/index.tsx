@@ -109,12 +109,12 @@ const enum SearchStatus {
 }
 
 export const ExcludedReasons: Record<"web" | "discordDesktop" | "vesktop" | "sinbop" | "desktop" | "dev", string> = {
-    desktop: "Discord Desktop app or Vesktop/Sinbop",
+    desktop: "supported desktop apps",
     discordDesktop: "Discord Desktop app",
-    vesktop: "Vesktop/Sinbop apps",
-    sinbop: "Vesktop/Sinbop apps",
-    web: "Vesktop/Sinbop apps & Discord web",
-    dev: "Developer version of Sincord"
+    vesktop: "compatible desktop apps",
+    sinbop: "compatible desktop apps",
+    web: "compatible desktop apps and Discord web",
+    dev: "CloudCord developer build"
 };
 
 function ExcludedPluginsList({ search }: { search: string; }) {
@@ -280,7 +280,7 @@ export default function PluginSettings() {
 
             if (isRequired) {
                 const tooltipText = p.required || !depMap[p.name]
-                    ? "This plugin is required for Sincord to function."
+                    ? "This plugin is required for CloudCord to function."
                     : <PluginDependencyList deps={depMap[p.name]?.filter(d => settings.plugins[d].enabled)} />;
 
                 requiredPlugins.push(
@@ -421,8 +421,8 @@ export default function PluginSettings() {
                             { label: "Show All", value: SearchStatus.ALL, default: true },
                             { label: "Show Enabled", value: SearchStatus.ENABLED },
                             { label: "Show Disabled", value: SearchStatus.DISABLED },
-                            { label: "Show Sincord", value: SearchStatus.SINCORD },
-                            { label: "Show Vencord", value: SearchStatus.VENCORD },
+                            { label: "Show CloudCord Extras", value: SearchStatus.SINCORD },
+                            { label: "Show CloudCord Built-ins", value: SearchStatus.VENCORD },
                             { label: "Show New", value: SearchStatus.NEW },
                             hasUserPlugins && { label: "Show UserPlugins", value: SearchStatus.USER_PLUGINS },
                             { label: "Show API Plugins", value: SearchStatus.API_PLUGINS },

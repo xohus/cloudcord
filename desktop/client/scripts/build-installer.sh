@@ -40,6 +40,7 @@ case "$(uname -s)" in
         ;;
     MINGW*|MSYS*|CYGWIN*)
         OUT="CloudCordSetup.exe"
+        BUILD_FLAGS=(-ldflags "-s -w -H windowsgui")
         ;;
     *)
         echo "Unsupported platform"
@@ -48,7 +49,7 @@ case "$(uname -s)" in
 esac
 
 echo "Building $OUT..."
-go build -o "$OUT" .
+go build "${BUILD_FLAGS[@]}" -o "$OUT" .
 chmod +x "$OUT" 2>/dev/null || true
 mkdir -p ../dist
 cp "$OUT" "../dist/$OUT"

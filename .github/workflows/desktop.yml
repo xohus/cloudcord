@@ -75,7 +75,7 @@ jobs:
         env:
           CGO_ENABLED: "1"
         run: |
-          go build -trimpath -ldflags "-s -w" -o ../dist/CloudCordSetup.exe .
+          go build -trimpath -ldflags "-s -w -H windowsgui" -o ../dist/CloudCordSetup.exe .
           go build -trimpath -tags cli -ldflags "-s -w" -o ../dist/CloudCordSetupCli.exe .
 
       - name: Smoke test installer
