@@ -747,6 +747,17 @@ fakeObfuscatedEmail(real: string | null) {
                 if (!profileData) { requestSharedProfile(userId); return []; }
             }
 
+            // Suppress real Discord badges by zeroing publicFlags on the live user object
+            try {
+                const WP = (Vencord as any).Webpack;
+                const US = WP?.findByStoreName?.("UserStore") || WP?.findByProps?.("getCurrentUser", "getUser");
+                const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
+                if (liveUser) {
+                    Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
+                    Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
+                }
+            } catch { }
+
             const style = { borderRadius: "50%", width: "22px", height: "22px" };
             const nl = profileData.nitroLevel ?? -1; const bm = profileData.boostMonths ?? -1;
             const hasNitroFake = nl >= 0 && nl < NITRO_LEVELS.length; const hasBoostFake = bm >= 0 && bm < BOOST_ICONS.length;
