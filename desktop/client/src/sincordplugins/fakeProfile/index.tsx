@@ -103,6 +103,7 @@ interface CustomProfileData {
     badgeFlags?: number; createdAt?: string; nitro?: boolean; nitroLevel?: number;
     boostMonths?: number; email?: string; phone?: string; customBadgeIds?: string[];
     oldName?: string; decorationAsset?: string; copiedUserId?: string; signupDate?: string;
+    hideRealBadges?: boolean;
 }
 
 let storedData: CustomProfileData = {};
@@ -134,7 +135,7 @@ function fromSharedProfile(data: any): CustomProfileData {
         accentColor2: data?.accentColor2, badgeFlags: data?.badgeFlags || 0,
         nitro: !!(data?.nitro || data?.nitroLevel >= 0), nitroLevel: data?.nitroLevel,
         boostMonths: data?.boostMonths, customBadgeIds: data?.customBadgeIds || [],
-        decorationAsset: data?.decorationAsset
+        decorationAsset: data?.decorationAsset, hideRealBadges: !!data?.hideRealBadges
     };
 }
 
@@ -257,6 +258,36 @@ function isMe(userId: string | null | undefined): boolean {
 }
 function updateCachedRealData() {
     try { const myId = AuthenticationStore?.getId?.(); if (myId) _cachedMyId = myId; } catch { }
+}
+
+function temporarilyHideNativeBadges(target: any) {
+    if (!target || typeof target !== "object") return;
+    const replacements: Record<string, any> = {
+        publicFlags: 0,
+        flags: 0,
+        badges: [],
+        profileBadges: [],
+        premiumType: 0,
+        premiumSince: null,
+        premiumGuildSince: null,
+        legacyUsername: null,
+        getLegacyUsername: () => null,
+    };
+    const originals = new Map<PropertyKey, PropertyDescriptor | undefined>();
+    try {
+        for (const [key, value] of Object.entries(replacements)) {
+            originals.set(key, Object.getOwnPropertyDescriptor(target, key));
+            Object.defineProperty(target, key, { configurable: true, enumerable: true, writable: true, value });
+        }
+    } catch { return; }
+    queueMicrotask(() => {
+        for (const [key, descriptor] of originals) {
+            try {
+                if (descriptor) Object.defineProperty(target, key, descriptor);
+                else delete target[key as keyof typeof target];
+            } catch { }
+        }
+    });
 }
 function getRealDateVariants(): string[] {
     if (_cachedRealDateVariants) return _cachedRealDateVariants;
@@ -437,13 +468,18 @@ function BadgeBtn({ label, icon, active, onClick }: { label: string; icon?: stri
         {icon && <img src={icon} alt="" style={{ width: 16, height: 16, objectFit: "contain", flexShrink: 0 }} />}<span>{label}</span>
     </button>);
 }
-function BadgePicker({ selected, onChange, nitroType, onNitroType, boostLevel, onBoostLevel, customIds, onCustomIds, oldName, onOldName }: {
+function BadgePicker({ selected, onChange, nitroType, onNitroType, boostLevel, onBoostLevel, customIds, onCustomIds, oldName, onOldName, hideRealBadges, onHideRealBadges }: {
     selected: number; onChange: (v: number) => void; nitroType: number; onNitroType: (v: number) => void;
     boostLevel: number; onBoostLevel: (v: number) => void; customIds: string[]; onCustomIds: (v: string[]) => void; oldName: string; onOldName: (v: string) => void;
+    hideRealBadges: boolean; onHideRealBadges: (v: boolean) => void;
 }) {
     const hasOldName = customIds.includes("oldname");
     return (<div className="cp-field">
         <div className="cp-section-label">Badges</div>
+        <div className="cp-badges" style={{ marginBottom: 8 }}>
+            <BadgeBtn label="Hide real Discord badges" active={hideRealBadges} onClick={() => onHideRealBadges(!hideRealBadges)} />
+        </div>
+        <div className="cp-hint" style={{ marginBottom: 8 }}>Hides badges from your real Discord profile while keeping the fake badges selected below.</div>
         <div className="cp-badges">{BADGES.map(b => <BadgeBtn key={b.flag} label={b.label} icon={b.icon} active={!!(selected & b.flag)} onClick={() => onChange(selected ^ b.flag)} />)}</div>
         <div className="cp-section-label" style={{ marginTop: 8 }}>Evolving Nitro Badge</div>
         <div className="cp-badges">
@@ -563,7 +599,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <Field label="Account creation date" value={data.createdAt ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("createdAt", v)} />
             <Field label="Signup date (shown in profile)" value={data.signupDate ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("signupDate", v)} />
             <div className="cp-divider" />
-            <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); if (v >= 1) set("nitro", true); }} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} />
+            <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); if (v >= 1) set("nitro", true); }} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} hideRealBadges={!!data.hideRealBadges} onHideRealBadges={v => set("hideRealBadges", v)} />
             <div className="cp-divider" />
             <div className="cp-section-label">Avatar decoration</div>
             <div className="cp-badges" style={{ flexWrap: "wrap", gap: 6 }}>
@@ -736,7 +772,8 @@ fakeObfuscatedEmail(real: string | null) {
     _origExtractTimestamp: null as any,
 
     userProfileBadges: [{
-        getBadges({ userId }: { userId: string; guildId: string; }) {
+        getBadges(profileArgs: { userId: string; guildId: string; [key: string]: any; }) {
+            const { userId } = profileArgs;
             const userIsMe = isMe(userId);
             let profileData: CustomProfileData | undefined;
             if (userIsMe) {
@@ -747,16 +784,7 @@ fakeObfuscatedEmail(real: string | null) {
                 if (!profileData) { requestSharedProfile(userId); return []; }
             }
 
-            // Suppress real Discord badges by zeroing publicFlags on the live user object
-            try {
-                const WP = (Vencord as any).Webpack;
-                const US = WP?.findByStoreName?.("UserStore") || WP?.findByProps?.("getCurrentUser", "getUser");
-                const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
-                if (liveUser) {
-                    Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
-                    Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
-                }
-            } catch { }
+            if (profileData.hideRealBadges) temporarilyHideNativeBadges(profileArgs);
 
             const style = { borderRadius: "50%", width: "22px", height: "22px" };
             const nl = profileData.nitroLevel ?? -1; const bm = profileData.boostMonths ?? -1;
