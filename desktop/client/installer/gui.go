@@ -645,7 +645,7 @@ func renderLegacyInstaller() g.Widget {
 			DiscordYellow,
 			func() *g.MarkdownWidget {
 				if cachedWarningMarkdown == nil {
-					cachedWarningMarkdown = g.Markdown("**Official build:** github.com/xohus/cloudcord — avoid installers from other sources.")
+					cachedWarningMarkdown = g.Markdown("**Official build:** github.com/xohus/cloudcord  -  avoid installers from other sources.")
 				}
 				return cachedWarningMarkdown
 			}(),
@@ -848,4 +848,5 @@ func loop() {
 
 	g.PopStyle()
 }
+
 

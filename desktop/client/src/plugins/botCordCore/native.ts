@@ -27,7 +27,9 @@ export async function request(
     if (attachment) {
         const form = new FormData();
         form.append("payload_json", JSON.stringify(jsonBody ?? {}));
-        form.append("files[0]", new Blob([attachment.data], { type: attachment.type || "application/octet-stream" }), attachment.name);
+        const bytes = new Uint8Array(attachment.data.byteLength);
+        bytes.set(attachment.data);
+        form.append("files[0]", new Blob([bytes.buffer], { type: attachment.type || "application/octet-stream" }), attachment.name);
         body = form;
     } else if (jsonBody !== undefined) {
         headers["Content-Type"] = "application/json";
@@ -46,4 +48,5 @@ export async function request(
         return { ok: false, status: 0, text: error instanceof Error ? error.message : String(error) };
     }
 }
+
 
