@@ -43,13 +43,13 @@
 
 [Download cloudcord.exe](https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/cloudcord.exe), close Discord completely, then use Install or Update / Fix.
 
-## Live CloudCord users
+## Live CloudCord downloads
 
 <div align="center">
-  <img src="https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/badge.svg" alt="Live CloudCord users" />
+  <img src="https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/badge.svg" alt="Live CloudCord downloads" />
 </div>
 
-The number updates from anonymous CloudCord installations active within the last 24 hours. CloudCord does not send Discord IDs, usernames, account details, or tokens to count usage.
+The number is the cumulative GitHub release download total for the official iOS IPA, Android APK, and Windows EXE. It updates automatically and does not require account or installation tracking.
 
 ## CloudCord at a glance
 

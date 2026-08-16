@@ -33,37 +33,48 @@ async function tokenHash(token) {
   return btoa(String.fromCharCode(...new Uint8Array(digest)));
 }
 
-async function activeCount(env) {
-  const since = Date.now() - 24 * 60 * 60 * 1000;
-  const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM active_installs WHERE last_seen >= ?").bind(since).first();
-  return Number(row?.count || 0);
+const releaseTags = ["new_beta", "new_beta_android", "new_beta_t_desktop"];
+// Preserve the one download recorded on the removed pre-rename Windows asset.
+const historicalDownloads = 1;
+
+async function downloadCount(request, ctx) {
+  const cache = caches.default;
+  const cacheKey = new Request(new URL("/v1/usage/github-downloads", request.url));
+  const cached = await cache.match(cacheKey);
+  if (cached) return Number(await cached.text());
+
+  const counts = await Promise.all(releaseTags.map(async tag => {
+    const release = await fetch(`https://api.github.com/repos/xohus/cloudcord/releases/tags/${tag}`, {
+      headers: { "Accept": "application/vnd.github+json", "User-Agent": "CloudCord-Download-Counter" }
+    });
+    if (!release.ok) throw new Error(`GitHub release lookup failed (${release.status}).`);
+    const data = await release.json();
+    return (data.assets || []).reduce((total, asset) => total + Number(asset.download_count || 0), 0);
+  }));
+
+  const count = historicalDownloads + counts.reduce((total, value) => total + value, 0);
+  ctx.waitUntil(cache.put(cacheKey, new Response(String(count), { headers: { "Cache-Control": "public, max-age=300" } })));
+  return count;
 }
 
 function usageBadge(count) {
-  const label = `${count} ppl using it`;
+  const label = `${count} downloads`;
   const width = Math.max(124, label.length * 8 + 28);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="34" role="img" aria-label="${label}"><title>${label}</title><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7758ff"/><stop offset="1" stop-color="#34c7f3"/></linearGradient></defs><rect width="${width}" height="34" rx="17" fill="#121827"/><rect x="1" y="1" width="${width - 2}" height="32" rx="16" fill="none" stroke="url(#g)" stroke-width="2"/><text x="${width / 2}" y="22" fill="#fff" font-family="Segoe UI,Arial,sans-serif" font-size="14" font-weight="600" text-anchor="middle">${label}</text></svg>`;
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     if (request.method === "OPTIONS") return response("", 204);
     const url = new URL(request.url);
     if (url.pathname === "/health") return response({ ok: true, service: "cloudcord-profiles" });
-    if (url.pathname === "/v1/usage/ping" && request.method === "POST") {
-      try {
-        const { installId } = await request.json();
-        if (typeof installId !== "string" || !/^[A-Za-z0-9_-]{16,64}$/.test(installId)) return response({ error: "Invalid installation ID." }, 400, { "Cache-Control": "no-store" });
-        const now = Date.now();
-        await env.DB.prepare("INSERT INTO active_installs (id_hash, last_seen) VALUES (?, ?) ON CONFLICT(id_hash) DO UPDATE SET last_seen = excluded.last_seen").bind(await tokenHash(installId), now).run();
-        return response({ ok: true }, 200, { "Cache-Control": "no-store" });
-      } catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 400, { "Cache-Control": "no-store" }); }
-    }
     if (url.pathname === "/v1/usage/count" && request.method === "GET") {
-      return response({ count: await activeCount(env) }, 200, { "Cache-Control": "no-cache, max-age=60" });
+      try { return response({ count: await downloadCount(request, ctx), metric: "release_downloads" }, 200, { "Cache-Control": "public, max-age=300" }); }
+      catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 502, { "Cache-Control": "no-store" }); }
     }
     if (url.pathname === "/v1/usage/badge.svg" && request.method === "GET") {
-      return response(usageBadge(await activeCount(env)), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" });
+      try { return response(usageBadge(await downloadCount(request, ctx)), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "public, max-age=300" }); }
+      catch { return response(usageBadge(0), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
     }
     if (url.pathname === "/v1/profiles" && request.method === "POST") {
       try {

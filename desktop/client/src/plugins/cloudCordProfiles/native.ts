@@ -29,16 +29,3 @@ export function update(_: IpcMainInvokeEvent, id: string, editToken: string, pro
 export function get(_: IpcMainInvokeEvent, id: string) {
     return call(`/${encodeURIComponent(id)}`);
 }
-
-export async function pingUsage(_: IpcMainInvokeEvent, installId: string) {
-    try {
-        const response = await fetch(`${ORIGIN}/v1/usage/ping`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ installId })
-        });
-        return { ok: response.ok, status: response.status };
-    } catch {
-        return { ok: false, status: 0 };
-    }
-}
