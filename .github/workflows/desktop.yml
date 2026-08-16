@@ -312,3 +312,25 @@ jobs:
             desktop/client/CREDITS.md
             desktop/client/CLOUDCORD_NOTES.md
             desktop/README.md
+
+      - name: Package desktop.asar for updater
+        shell: bash
+        run: |
+          set -e
+          # The built runtime is the desktop folder — pack it into desktop.asar
+          # so the in-app updater can fetch it from the release
+          npm install -g @electron/asar --quiet 2>/dev/null || true
+          asar pack desktop/client/dist/desktop desktop/client/dist/desktop.asar
+          test -f desktop/client/dist/desktop.asar
+
+      - name: Upload desktop.asar to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: new_beta_t_desktop
+          name: CloudCord Desktop ${{ github.sha }}
+          make_latest: true
+          files: |
+            desktop/client/dist/desktop.asar
+            desktop/client/dist/cloudcord.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
