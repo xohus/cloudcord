@@ -153,6 +153,8 @@ jobs:
               .replaceAll("Sincord", "CloudCord")
               .replaceAll("SINCORD", "CLOUDCORD")
               .replaceAll("Sinlotl", "CloudCordSetup")
+              .replaceAll("export const isCloudCordGuild = isCloudCordGuild;", "")
+              .replaceAll("export const isCloudCordSupport = isCloudCordSupport;", "")
               .replaceAll("The better Discord client mod", "CloudCord desktop client mod")
               .replaceAll("https://github.com/Sincord/Sincord", "https://github.com/xohus/cloudcord")
               .replaceAll("git+https://github.com/Sincord/Sincord.git", "git+https://github.com/xohus/cloudcord.git");
