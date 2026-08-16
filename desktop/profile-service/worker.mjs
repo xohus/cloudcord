@@ -68,8 +68,13 @@ async function downloadCount(request, ctx) {
   return count;
 }
 
-function usageBadge(count) {
-  const label = `${count} downloads`;
+async function sharedAccountCount(env) {
+  const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM profile_owners").first();
+  return Number(row?.count || 0);
+}
+
+function usageBadge(count, noun = "downloads") {
+  const label = `${count} ${noun}`;
   const width = Math.max(124, label.length * 8 + 28);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="34" role="img" aria-label="${label}"><title>${label}</title><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7758ff"/><stop offset="1" stop-color="#34c7f3"/></linearGradient></defs><rect width="${width}" height="34" rx="17" fill="#121827"/><rect x="1" y="1" width="${width - 2}" height="32" rx="16" fill="none" stroke="url(#g)" stroke-width="2"/><text x="${width / 2}" y="22" fill="#fff" font-family="Segoe UI,Arial,sans-serif" font-size="14" font-weight="600" text-anchor="middle">${label}</text></svg>`;
 }
@@ -83,9 +88,17 @@ export default {
       try { return response({ count: await downloadCount(request, ctx), metric: "release_downloads" }, 200, { "Cache-Control": "public, max-age=300" }); }
       catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 502, { "Cache-Control": "no-store" }); }
     }
+    if (url.pathname === "/v1/usage/accounts" && request.method === "GET") {
+      try { return response({ count: await sharedAccountCount(env), metric: "shared_profile_accounts" }, 200, { "Cache-Control": "no-cache, max-age=60" }); }
+      catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 500, { "Cache-Control": "no-store" }); }
+    }
     if (url.pathname === "/v1/usage/badge.svg" && request.method === "GET") {
       try { return response(usageBadge(await downloadCount(request, ctx)), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "public, max-age=300" }); }
       catch { return response(usageBadge(0), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
+    }
+    if (url.pathname === "/v1/usage/accounts-badge.svg" && request.method === "GET") {
+      try { return response(usageBadge(await sharedAccountCount(env), "shared accounts"), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
+      catch { return response(usageBadge(0, "shared accounts"), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
     }
     if (url.pathname === "/v1/profiles" && request.method === "POST") {
       try {
