@@ -18,6 +18,8 @@ pnpm build
 pnpm build:installer
 ```
 
+`build:installer` packages `dist/desktop` as `dist/desktop.asar` and embeds it in the setup executable. Do not skip the runtime build step.
+
 On Windows, the installer build outputs:
 
 ```text

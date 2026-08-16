@@ -4,6 +4,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALLER_DIR="$SCRIPT_DIR/../installer"
+CLIENT_DIR="$SCRIPT_DIR/.."
 
 if ! command -v go &> /dev/null; then
     echo "ERROR: Go is not installed."
@@ -11,6 +12,17 @@ if ! command -v go &> /dev/null; then
     echo "                 winget install GoLang.Go  (Windows)"
     exit 1
 fi
+
+if [ ! -d "$CLIENT_DIR/dist/desktop" ]; then
+    echo "ERROR: The CloudCord desktop runtime has not been built."
+    echo "Run 'pnpm build' before 'pnpm build:installer'."
+    exit 1
+fi
+
+echo "Packaging the CloudCord desktop runtime..."
+pnpm exec asar pack "$CLIENT_DIR/dist/desktop" "$CLIENT_DIR/dist/desktop.asar"
+mkdir -p "$INSTALLER_DIR/bundled"
+cp "$CLIENT_DIR/dist/desktop.asar" "$INSTALLER_DIR/bundled/desktop.asar"
 
 cd "$INSTALLER_DIR"
 
