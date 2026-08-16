@@ -4514,96 +4514,6 @@
     preview = rootSettings.fakeProfile;
     configReady = true;
   }
-  function ownSharedProfile() {
-    return {
-      username: preview.username,
-      globalName: preview.displayName,
-      avatar: mediaUri("avatarMedia"),
-      banner: mediaUri("bannerMedia"),
-      nitro: preview.nitroMonths > 0,
-      nitroLevel: Math.max(-1, NITRO_DURATIONS.indexOf(preview.nitroMonths) - 1),
-      boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
-      badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0)
-    };
-  }
-  function publishSharedProfile() {
-    return _async_to_generator(function* () {
-      if (!preview.enabled || !currentUserId)
-        return;
-      var saved = rootSettings.fakeProfileShare || {};
-      var path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
-      var response = yield fetch(`https://cloudcord-profiles.ggxohus.workers.dev${path}`, {
-        method: saved.id ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...saved.editToken ? {
-            Authorization: `Bearer ${saved.editToken}`
-          } : {}
-        },
-        body: JSON.stringify({
-          ownerId: currentUserId,
-          profile: ownSharedProfile()
-        })
-      });
-      if (!response.ok)
-        throw new Error(`CloudCord sharing failed (${response.status})`);
-      var result = yield response.json();
-      if (!saved.id)
-        rootSettings.fakeProfileShare = {
-          id: result.id,
-          editToken: result.editToken
-        };
-      diagnostics.last = "Saved and shared with CloudCord desktop and mobile";
-    })();
-  }
-  function queueSharedPublish() {
-    if (publishTimer)
-      clearTimeout(publishTimer);
-    publishTimer = setTimeout(() => void publishSharedProfile().catch((error) => {
-      diagnostics.last = error?.message || "Could not share Fake Profile";
-    }), 900);
-  }
-  function requestSharedProfile(userId) {
-    if (!userId || userId === currentUserId || sharedProfiles.has(userId) || sharedRequests.has(userId))
-      return;
-    sharedRequests.add(userId);
-    void fetch(`https://cloudcord-profiles.ggxohus.workers.dev/v1/profiles/user/${encodeURIComponent(userId)}`).then((response) => response.ok ? response.json() : null).then((profile) => {
-      if (profile) {
-        sharedProfiles.set(userId, profile);
-        refreshPreview();
-      }
-    }).catch(() => {
-    }).finally(() => sharedRequests.delete(userId));
-  }
-  function sharedUser(original, userId) {
-    var data = userId ? sharedProfiles.get(userId) : null;
-    if (!original || !data)
-      return original;
-    var cloned = Object.assign(Object.create(Object.getPrototypeOf(original)), original);
-    if (data.username)
-      setOwnValue(cloned, "username", data.username);
-    if (data.globalName) {
-      setOwnValue(cloned, "globalName", data.globalName);
-      setOwnValue(cloned, "displayName", data.globalName);
-    }
-    if (data.avatar) {
-      setOwnValue(cloned, "avatarURL", data.avatar);
-      setOwnValue(cloned, "avatarUrl", data.avatar);
-      setOwnValue(cloned, "getAvatarURL", () => data.avatar);
-    }
-    if (data.banner) {
-      setOwnValue(cloned, "banner", data.banner);
-      setOwnValue(cloned, "bannerURL", data.banner);
-      setOwnValue(cloned, "getBannerURL", () => data.banner);
-    }
-    if (data.badgeFlags != null) {
-      setOwnValue(cloned, "publicFlags", data.badgeFlags);
-      setOwnValue(cloned, "flags", data.badgeFlags);
-    }
-    if (data.nitro)
-      setOwnValue(cloned, "premiumType", 2);
-    return cloned;
-  }
   function clearCache() {
     userCache = /* @__PURE__ */ new WeakMap();
     profileCache = /* @__PURE__ */ new WeakMap();
@@ -4825,57 +4735,22 @@
   function connectBadgeRenderer() {
     try {
       after("default", useBadgesModule, ([user], result) => {
-        if (!Array.isArray(result))
+        if (!preview.enabled || !Array.isArray(result))
           return;
         var id = user?.userId || user?.id;
-        if (!isCurrentUser(id)) {
-          requestSharedProfile(id);
-          var data = sharedProfiles.get(id);
-          if (!data)
-            return;
-          var ordered = [];
-          var nitroMonths = [
-            1,
-            2,
-            3,
-            6,
-            12,
-            24,
-            36,
-            72
-          ][Number(data.nitroLevel)] || 0;
-          var boostMonths = [
-            1,
-            2,
-            3,
-            6,
-            9,
-            12,
-            15,
-            18,
-            24
-          ][Number(data.boostMonths)] || 0;
-          addRenderedBadge(ordered, "cloudcord-shared-nitro", `Nitro ${durationLabel(nitroMonths)}`, milestoneIcon(nitroMonths, NITRO_ICONS));
-          addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster ${durationLabel(boostMonths)}`, milestoneIcon(boostMonths, BOOST_ICONS));
-          for (var [, description, flag, icon] of BADGES)
-            if ((Number(data.badgeFlags) & flag) !== 0)
-              addRenderedBadge(ordered, `cloudcord-shared-${flag}`, description, icon);
-          result.splice(0, result.length, ...ordered, ...result);
-          return;
-        }
-        if (!preview.enabled)
+        if (!isCurrentUser(id))
           return;
         var existing = preview.replaceBadges ? [] : result.filter((item) => !String(item?.id || "").startsWith("fakeprofile-"));
-        var ordered1 = [];
-        addRenderedBadge(ordered1, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
-        addRenderedBadge(ordered1, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
-        for (var [badgeId, description1, , icon1] of BADGES) {
+        var ordered = [];
+        addRenderedBadge(ordered, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
+        addRenderedBadge(ordered, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
+        for (var [badgeId, description, , icon] of BADGES) {
           if (!preview.selectedBadges?.[badgeId])
             continue;
           var id1 = `fakeprofile-${badgeId}`;
-          addRenderedBadge(ordered1, id1, description1, icon1);
+          addRenderedBadge(ordered, id1, description, icon);
         }
-        result.splice(0, result.length, ...ordered1, ...existing);
+        result.splice(0, result.length, ...ordered, ...existing);
       });
       diagnostics.patches += 1;
     } catch (error) {
@@ -4911,14 +4786,6 @@
       return true;
     return args.some((value) => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
   }
-  function requestUserId(args) {
-    for (var value of args) {
-      var id = typeof value === "string" && /^\d{15,22}$/.test(value) ? value : value?.id || value?.userId || value?.user?.id;
-      if (id)
-        return String(id);
-    }
-    return "";
-  }
   function renderedUserId(props) {
     return props?.userId || props?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
   }
@@ -4937,13 +4804,9 @@
       try {
         onJsxCreate(component, (_component, rendered) => {
           var props = rendered?.props;
+          var uri = mediaUri("avatarMedia");
           var id = renderedUserId(props);
-          if (!id)
-            return;
-          if (!isCurrentUser(id))
-            requestSharedProfile(id);
-          var uri = isCurrentUser(id) ? mediaUri("avatarMedia") : sharedProfiles.get(id)?.avatar;
-          if (!uri || isCurrentUser(id) && !preview.enabled)
+          if (!preview.enabled || !uri || !id || !isCurrentUser(id))
             return;
           props.source = {
             uri
@@ -4954,7 +4817,7 @@
           props.avatarSrc = uri;
           props.avatarURL = uri;
           if (props.user)
-            props.user = isCurrentUser(id) ? cloneObject(props.user, "user") : sharedUser(props.user, id);
+            props.user = cloneObject(props.user, "user");
         });
         diagnostics.patches += 1;
       } catch (e) {
@@ -4964,13 +4827,9 @@
       try {
         onJsxCreate(component1, (_component, rendered) => {
           var props = rendered?.props;
+          var uri = mediaUri("bannerMedia");
           var id = renderedUserId(props);
-          if (!id)
-            return;
-          if (!isCurrentUser(id))
-            requestSharedProfile(id);
-          var uri = isCurrentUser(id) ? mediaUri("bannerMedia") : sharedProfiles.get(id)?.banner;
-          if (!uri || isCurrentUser(id) && !preview.enabled)
+          if (!preview.enabled || !uri || !id || !isCurrentUser(id))
             return;
           props.source = {
             uri
@@ -4993,14 +4852,10 @@
       onJsxCreate("UserProfileHeader", (_component, rendered) => {
         var props = rendered?.props;
         var id = renderedUserId(props);
-        if (!id)
-          return;
-        if (!isCurrentUser(id))
-          requestSharedProfile(id);
-        if (isCurrentUser(id) && !preview.enabled)
+        if (!preview.enabled || !id || !isCurrentUser(id))
           return;
         if (props.user)
-          props.user = isCurrentUser(id) ? cloneObject(props.user, "user") : sharedUser(props.user, id);
+          props.user = cloneObject(props.user, "user");
         if (props.displayProfile)
           props.displayProfile = decorateProfileResult(props.displayProfile, id);
         if (props.profile)
@@ -5028,11 +4883,8 @@
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
-      if (!isCurrentUser(args?.[0])) {
-        var id = args?.[0];
-        requestSharedProfile(id);
-        return sharedUser(original(...args), id);
-      }
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
       var user = original(...args);
       realCurrentUser = user || realCurrentUser;
       return cloneObject(user, "user");
@@ -5040,29 +4892,19 @@
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
     addPatch("getUserProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0])) {
-        var id = args?.[0];
-        requestSharedProfile(id);
-        return sharedUser(original(...args), id);
-      }
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
       return decorateProfileResult(original(...args), args?.[0]);
     });
     addPatch("getGuildMemberProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0])) {
-        var id = args?.[0];
-        requestSharedProfile(id);
-        return sharedUser(original(...args), id);
-      }
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
       return decorateProfileResult(original(...args), args?.[0]);
     });
     try {
       after("default", useUserProfileModule, (args, result) => {
         var subject = args?.[0];
         var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-        if (!isCurrentUser(id)) {
-          requestSharedProfile(id);
-          return sharedUser(result, id);
-        }
         return decorateProfileResult(result, id);
       });
       diagnostics.patches += 1;
@@ -5073,11 +4915,7 @@
       after("default", useDisplayProfileModule, (args, result) => {
         var subject = args?.[0];
         var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-        if (!isCurrentUser(id)) {
-          requestSharedProfile(id);
-          return sharedUser(result, id);
-        }
-        return cloneObject(result, "profile");
+        return isCurrentUser(id) ? cloneObject(result, "profile") : result;
       });
       diagnostics.patches += 1;
     } catch (error) {
@@ -5094,13 +4932,6 @@
       "getGuildMemberAvatarURLSimple"
     ]) {
       addPatch(method, avatarResolver, (args, original) => {
-        var id = requestUserId(args);
-        if (id && !isCurrentUser(id)) {
-          requestSharedProfile(id);
-          var shared = sharedProfiles.get(id);
-          if (shared?.avatar)
-            return shared.avatar;
-        }
         var uri = mediaUri("avatarMedia");
         return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
       });
@@ -5110,15 +4941,6 @@
       "getGuildMemberAvatarSource"
     ]) {
       addPatch(method1, avatarResolver, (args, original) => {
-        var id = requestUserId(args);
-        if (id && !isCurrentUser(id)) {
-          requestSharedProfile(id);
-          var shared = sharedProfiles.get(id);
-          if (shared?.avatar)
-            return {
-              uri: shared.avatar
-            };
-        }
         var uri = mediaUri("avatarMedia");
         return preview.enabled && uri && requestIsCurrent(args) ? {
           uri
@@ -5131,13 +4953,6 @@
       "getGuildMemberBannerURL"
     ]) {
       addPatch(method2, bannerResolver, (args, original) => {
-        var id = requestUserId(args);
-        if (id && !isCurrentUser(id)) {
-          requestSharedProfile(id);
-          var shared = sharedProfiles.get(id);
-          if (shared?.banner)
-            return shared.banner;
-        }
         var uri = mediaUri("bannerMedia");
         return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
       });
@@ -5146,13 +4961,9 @@
     connectMediaRenderer();
     var bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
     addAfterPatch("getBanner", bannerComposer, (args, result) => {
+      var uri = mediaUri("bannerMedia");
       var id = args?.[0]?.displayProfile?.userId || args?.[0]?.userId;
-      if (!id || !result)
-        return;
-      if (!isCurrentUser(id))
-        requestSharedProfile(id);
-      var uri = isCurrentUser(id) ? mediaUri("bannerMedia") : sharedProfiles.get(id)?.banner;
-      if (!uri || isCurrentUser(id) && !preview.enabled)
+      if (!preview.enabled || !uri || !result || !id || !isCurrentUser(id))
         return;
       return {
         ...result,
@@ -5195,10 +5006,8 @@
         yield awaitStorage(settings);
         bindSavedPreview();
         ensurePatches();
-        if (preview.enabled) {
+        if (preview.enabled)
           refreshPreview();
-          queueSharedPublish();
-        }
       } catch (error) {
         diagnostics.last = error?.message || "Could not restore Fake Profile";
         initPromise = null;
@@ -5309,7 +5118,7 @@
         }
       }
       var label = key === "bannerMedia" ? "Banner" : "Profile picture";
-      diagnostics.last = animated ? `${label} animation preserved and fitted in preview` : normalized ? `${label} resized to ${target.width} x ${target.height}` : `${label} fitted to ${target.width} x ${target.height} in preview`;
+      diagnostics.last = animated ? `${label} animation preserved and fitted in preview` : normalized ? `${label} resized to ${target.width} \xD7 ${target.height}` : `${label} fitted to ${target.width} \xD7 ${target.height} in preview`;
       return {
         uri,
         name,
@@ -5523,7 +5332,7 @@
               style: {
                 color: "#78e7ff"
               },
-              children: "v"
+              children: "\u2304"
             })
           ]
         })
@@ -5542,7 +5351,6 @@
       clearCache();
       if (refresh)
         refreshPreview();
-      queueSharedPublish();
       redraw();
     };
     var choose = (key, source) => _async_to_generator(function* () {
@@ -5611,7 +5419,7 @@
             style: {
               color: "#78e7ff"
             },
-            children: banner2 ? "Automatically fitted to 600 x 240" : "Automatically fitted to a square"
+            children: banner2 ? "Automatically fitted to 600 \xD7 240" : "Automatically fitted to a square"
           }),
           /* @__PURE__ */ jsxs(import_react_native6.View, {
             style: {
@@ -6048,7 +5856,7 @@
       })
     });
   }
-  var import_react, import_react_native6, BADGES, useBadgesModule, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, defaultPreview, preview, configReady, initPromise, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, sharedProfiles, sharedRequests, publishTimer;
+  var import_react, import_react_native6, BADGES, useBadgesModule, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, defaultPreview, preview, configReady, initPromise, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -6276,9 +6084,6 @@
       realCurrentUser = null;
       userCache = /* @__PURE__ */ new WeakMap();
       profileCache = /* @__PURE__ */ new WeakMap();
-      sharedProfiles = /* @__PURE__ */ new Map();
-      sharedRequests = /* @__PURE__ */ new Set();
-      publishTimer = null;
     }
   });
 
