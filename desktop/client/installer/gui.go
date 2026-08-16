@@ -22,6 +22,7 @@ import (
 	// png decoder for icon
 	_ "image/png"
 	"os"
+	path "path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -777,3 +778,4 @@ func loop() {
 
 	g.PopStyle()
 }
+
