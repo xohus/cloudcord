@@ -174,16 +174,22 @@ func installLatestBuilds() (retErr error) {
 		return installBundledBuild()
 	}
 	defer res.Body.Close()
-	out, err := os.OpenFile(CloudCordDirectory, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	temporary := CloudCordDirectory + ".download"
+	out, err := os.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		Log.Error("Failed to create", CloudCordDirectory+":", err)
 		retErr = err
 		return
 	}
 	read, err := io.Copy(out, res.Body)
+	closeErr := out.Close()
 	if err != nil {
 		Log.Error("Failed to download to", CloudCordDirectory+":", err)
 		retErr = err
+		return
+	}
+	if closeErr != nil {
+		retErr = closeErr
 		return
 	}
 	contentLength := res.Header.Get("Content-Length")
@@ -192,6 +198,11 @@ func installLatestBuilds() (retErr error) {
 		err = errors.New("Unexpected end of input. Content-Length was " + contentLength + ", but I only read " + expected)
 		Log.Error(err.Error())
 		return installBundledBuild()
+	}
+	if err = replaceRuntimeFile(temporary, CloudCordDirectory); err != nil {
+		_ = os.Remove(temporary)
+		retErr = err
+		return
 	}
 
 	_ = FixOwnership(CloudCordDirectory)

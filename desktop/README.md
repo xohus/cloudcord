@@ -47,7 +47,9 @@ Run `CloudCordSetup.exe`, select the patched Discord installation, and choose `D
 
 ## Update
 
-Run `CloudCordSetup.exe`, select the Discord installation, and choose `Update`. Update replaces only the CloudCord runtime and reapplies the desktop patch. It preserves plugins, settings, themes, fonts, Cloud Sync state, BotCord data, and Fake Profile data.
+Run `CloudCordSetup.exe`, select the Discord installation, and choose `Update / Fix`. Update replaces only the CloudCord runtime and reapplies the desktop patch. It preserves plugins, settings, themes, fonts, Cloud Sync state, BotCord data, and Fake Profile data.
+
+On Windows, Install and Update close all processes for the selected Discord channel before replacing the runtime. The replacement is staged through a rollback file so an interrupted update does not destroy the working runtime. Use `Update / Fix` if Discord updates or damages its CloudCord patch.
 
 ## Logs
 

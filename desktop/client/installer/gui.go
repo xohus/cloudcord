@@ -62,6 +62,8 @@ var (
 	CloudCordCyan   = color.RGBA{R: 57, G: 208, B: 255, A: 255}
 	CloudCordRed    = color.RGBA{R: 242, G: 87, B: 87, A: 255}
 	CloudCordPanel  = color.RGBA{R: 20, G: 27, B: 48, A: 255}
+	CloudCordBg     = color.RGBA{R: 9, G: 14, B: 28, A: 255}
+	CloudCordMuted  = color.RGBA{R: 174, G: 187, B: 218, A: 255}
 )
 
 //go:embed winres/icon.png
@@ -183,7 +185,7 @@ func InstallLatestBuilds() (err error) {
 
 	err = installLatestBuilds()
 	if err != nil {
-		ShowModal("Uh Oh!", "Failed to install the latest CloudCord builds from GitHub:\n"+err.Error())
+		ShowModal("Update couldn't finish", "CloudCord could not replace its desktop runtime. Close Discord completely and try again.\n\n"+err.Error())
 	}
 	return
 }
@@ -206,17 +208,22 @@ func handleUnpatch() {
 // Discord patch. BaseDir is deliberately left untouched, so plugins, settings,
 // themes, fonts, Cloud Sync, BotCord and Fake Profile data survive updates.
 func handleUpdate() {
+	choice := getChosenInstall()
+	if choice == nil {
+		return
+	}
+	PreparePatch(choice)
+
 	patchSuccessTitle = "CloudCord Desktop updated"
 	if IsDevInstall {
-		handlePatch()
+		choice.Patch()
 		return
 	}
 
 	if err := InstallLatestBuilds(); err != nil {
-		ShowModal("CloudCord update failed", err.Error())
 		return
 	}
-	handlePatch()
+	choice.Patch()
 }
 
 func handleOpenAsar() {
@@ -504,6 +511,96 @@ func ShowModal(title, desc string) {
 }
 
 func renderInstaller() g.Widget {
+	wi, _ := win.GetSize()
+	w := float32(wi) - 84
+	if w < 360 {
+		w = 360
+	}
+	btnWidth := (w - 24) / 3
+
+	if CanUpdateSelf() && !showedUpdatePrompt {
+		showedUpdatePrompt = true
+		g.OpenPopup("#update-prompt")
+	}
+
+	status := "Not installed"
+	if radioIdx >= 0 && radioIdx < len(discords) && discords[radioIdx].(*DiscordInstall).isPatched {
+		status = "CloudCord installed"
+	}
+
+	return g.Column(
+		g.Dummy(0, 14),
+		g.Style().
+			SetColor(g.StyleColorChildBg, CloudCordPanel).
+			SetStyle(g.StyleVarWindowPadding, 22, 20).
+			SetStyleFloat(g.StyleVarChildRounding, 20).
+			To(g.Child().Size(g.Auto, 118).Flags(g.WindowFlagsNoScrollbar).Layout(
+				g.Style().SetColor(g.StyleColorText, CloudCordCyan).SetFontSize(14).To(g.Label("CLOUDCORD DESKTOP")),
+				g.Dummy(0, 5),
+				g.Style().SetFontSize(28).To(g.Label("Your Discord, upgraded.")),
+				g.Dummy(0, 6),
+				g.Style().SetColor(g.StyleColorText, CloudCordMuted).To(g.Label("BotCord  ·  Fake Profile  ·  Cloud Sync  ·  Plugins  ·  Themes")),
+			)),
+
+		g.Dummy(0, 12),
+		g.Style().
+			SetColor(g.StyleColorChildBg, CloudCordPanel).
+			SetStyle(g.StyleVarWindowPadding, 22, 18).
+			SetStyleFloat(g.StyleVarChildRounding, 20).
+			To(g.Child().Size(g.Auto, 210).Flags(g.WindowFlagsNoScrollbar).Layout(
+				g.Row(
+					g.Style().SetFontSize(22).To(g.Label("Choose Discord")),
+					g.Style().SetColor(g.StyleColorText, CloudCordCyan).To(g.Label(status)),
+				),
+				g.Dummy(0, 10),
+				&CondWidget{len(discords) == 0, func() g.Widget {
+					return g.Label("Discord was not detected. Choose its folder below.")
+				}, nil},
+				g.RangeBuilder("CloudCordTargets", discords, func(i int, v any) g.Widget {
+					d := v.(*DiscordInstall)
+					label := strings.ToUpper(d.branch[:1]) + d.branch[1:] + " Discord"
+					if d.isPatched {
+						label += "  ·  Installed"
+					}
+					return g.RadioButton(label, radioIdx == i).OnChange(makeRadioOnChange(i))
+				}),
+				g.RadioButton("Choose a different Discord folder", radioIdx == customChoiceIdx).OnChange(makeRadioOnChange(customChoiceIdx)),
+				g.Dummy(0, 6),
+				g.Style().SetStyle(g.StyleVarFramePadding, 14, 12).SetStyleFloat(g.StyleVarFrameRounding, 12).To(
+					g.InputText(&customDir).Hint("Discord installation folder").Size(w - 44).OnChange(onCustomInputChanged),
+				),
+			)),
+
+		g.Dummy(0, 12),
+		g.Style().SetColor(g.StyleColorText, CloudCordMuted).To(
+			g.Label("Update keeps all plugins, settings, themes, fonts and CloudCord data."),
+		),
+		g.Dummy(0, 10),
+		g.Style().SetStyleFloat(g.StyleVarFrameRounding, 16).To(g.Row(
+			g.Style().SetColor(g.StyleColorButton, CloudCordPurple).To(
+				g.Button("Install").OnClick(func() {
+					patchSuccessTitle = "CloudCord installed"
+					handlePatch()
+				}).Size(btnWidth, 54),
+			),
+			g.Style().SetColor(g.StyleColorButton, CloudCordCyan).To(
+				g.Button("Update / Fix").OnClick(handleUpdate).Size(btnWidth, 54),
+			),
+			g.Style().SetColor(g.StyleColorButton, CloudCordRed).To(
+				g.Button("Delete").OnClick(handleUnpatch).Size(btnWidth, 54),
+			),
+		)),
+
+		InfoModal("#patched", patchSuccessTitle, "CloudCord is ready. Reopen Discord to use it.\n\nYour plugins, settings, themes, fonts, Cloud Sync, BotCord and Fake Profile data were preserved."),
+		InfoModal("#unpatched", "CloudCord removed", "CloudCord was removed from Discord. Your saved CloudCord data was left in place."),
+		InfoModal("#scuffed-install", "Discord needs attention", "This Discord installation is in an unexpected location. Reinstall Discord, then run CloudCord again."),
+		InfoModal("#invalid-custom-location", "That folder is not Discord", "Choose the folder containing your Discord installation."),
+		InfoModal("#modal"+strconv.Itoa(modalId), modalTitle, modalMessage),
+		UpdateModal(),
+	)
+}
+
+func renderLegacyInstaller() g.Widget {
 	if customDir != lastCustomDir {
 		cachedCandidates = makeAutoComplete()
 		lastCustomDir = customDir
@@ -717,14 +814,12 @@ func loop() {
 		return
 	}
 
-	var baseFontSize float32 = 20
-	var baseHeaderSize float32 = 38
+	var baseFontSize float32 = 18
 	if runtime.GOOS == "darwin" {
 		baseFontSize = 10
-		baseHeaderSize = 30
 	}
 
-	g.PushWindowPadding(42, 34)
+	g.PushWindowPadding(42, 28)
 
 	g.SingleWindow().
 		RegisterKeyboardShortcuts(
@@ -740,42 +835,18 @@ func loop() {
 			}},
 		).
 		Layout(
-			g.Style().SetFontSize(baseFontSize).To(
-				g.Align(g.AlignCenter).To(
-					g.Style().SetFontSize(baseHeaderSize).To(
-						g.Label("CloudCord Desktop"),
+			g.Style().
+				SetColor(g.StyleColorWindowBg, CloudCordBg).
+				SetColor(g.StyleColorText, color.White).
+				SetFontSize(baseFontSize).
+				To(
+					g.Row(
+						g.Style().SetFontSize(22).To(g.Label("CloudCord")),
+						g.Style().SetColor(g.StyleColorText, CloudCordMuted).To(g.Label("Desktop  ·  "+buildinfo.InstallerTag)),
 					),
+					renderInstaller(),
 				),
-				g.Align(g.AlignCenter).To(g.Style().SetColor(g.StyleColorText, CloudCordCyan).To(
-					g.Label("A cleaner Discord, synced your way"),
-				)),
-
-				g.Dummy(0, 10),
-				g.Label("Setup "+buildinfo.InstallerTag+"  •  Installed "+Ternary(InstalledHash == "", "Not yet", InstalledHash)),
-
-				&CondWidget{
-					GithubError == nil,
-					func() g.Widget {
-						if IsDevInstall {
-							return g.Label("Developer runtime selected")
-						}
-						return g.Label("Latest available: " + LatestHash)
-					}, func() g.Widget {
-						return renderErrorCard(DiscordRed, func() *g.MarkdownWidget {
-							errText := "Failed to fetch Info from GitHub: " + GithubError.Error()
-							if cachedGithubErrMarkdown == nil || lastGithubErrText != errText {
-								cachedGithubErrMarkdown = g.Markdown(errText)
-								lastGithubErrText = errText
-							}
-							return cachedGithubErrMarkdown
-						}(), 40)
-					},
-				},
-
-				renderInstaller(),
-			),
 		)
 
 	g.PopStyle()
 }
-

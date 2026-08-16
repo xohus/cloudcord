@@ -111,13 +111,14 @@ func patchAppAsar(dir string, isSystemElectron bool) (err error) {
 
 func (di *DiscordInstall) patch() error {
 	Log.Info("Patching " + di.path + "...")
+	// Discord loads cloudcord.asar for the lifetime of the app. Stop it before
+	// downloading or swapping the runtime so Windows does not keep the file locked.
+	PreparePatch(di)
 	if LatestHash != InstalledHash {
 		if err := InstallLatestBuilds(); err != nil {
 			return ErrAlreadyReported
 		}
 	}
-
-	PreparePatch(di)
 
 	if di.isPatched {
 		Log.Info(di.path, "is already patched. Unpatching first...")

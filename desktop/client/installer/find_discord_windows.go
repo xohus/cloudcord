@@ -108,23 +108,24 @@ func PreparePatch(di *DiscordInstall) {
 
 	name := windowsNames[di.branch]
 	Log.Debug("Trying to kill", name)
-	pid := findProcessIdByName(name + ".exe")
-	if pid == 0 {
-		Log.Debug("Didn't find process matching name")
-		return
-	}
+	for {
+		pid := findProcessIdByName(name + ".exe")
+		if pid == 0 {
+			Log.Debug("All", name, "processes are closed")
+			return
+		}
 
-	proc, err := os.FindProcess(int(pid))
-	if err != nil {
-		Log.Warn("Failed to find process with pid", pid)
-		return
-	}
+		proc, err := os.FindProcess(int(pid))
+		if err != nil {
+			Log.Warn("Failed to find process with pid", pid)
+			return
+		}
 
-	err = proc.Kill()
-	if err != nil {
-		Log.Warn("Failed to kill", name+":", err)
-	} else {
-		Log.Debug("Waiting for", name, "to exit")
+		if err = proc.Kill(); err != nil {
+			Log.Warn("Failed to kill", name+":", err)
+			return
+		}
+		Log.Debug("Waiting for", name, "process", pid, "to exit")
 		_, _ = proc.Wait()
 	}
 }
