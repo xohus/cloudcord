@@ -636,7 +636,7 @@ func renderLegacyInstaller() g.Widget {
 			To(g.Child().Size(g.Auto, 104).Flags(g.WindowFlagsNoScrollbar).Layout(
 				g.Style().SetFontSize(22).SetColor(g.StyleColorText, CloudCordCyan).To(g.Label("Everything you want, already included")),
 				g.Dummy(0, 8),
-				g.Label("BotCord   â€¢   Fake Profile   â€¢   Cloud Sync   â€¢   Plugins, themes & fonts"),
+				g.Label("BotCord   •   Fake Profile   •   Cloud Sync   •   Plugins, themes & fonts"),
 			)),
 
 		g.Dummy(0, 10),
@@ -645,7 +645,7 @@ func renderLegacyInstaller() g.Widget {
 			DiscordYellow,
 			func() *g.MarkdownWidget {
 				if cachedWarningMarkdown == nil {
-					cachedWarningMarkdown = g.Markdown("**Official build:** github.com/xohus/cloudcord â€” avoid installers from other sources.")
+					cachedWarningMarkdown = g.Markdown("**Official build:** github.com/xohus/cloudcord — avoid installers from other sources.")
 				}
 				return cachedWarningMarkdown
 			}(),
@@ -820,7 +820,6 @@ func loop() {
 	g.PushWindowPadding(26, 14)
 
 	g.SingleWindow().
-		Flags(g.WindowFlagsNoScrollbar).
 		RegisterKeyboardShortcuts(
 			g.WindowShortcut{Key: g.KeyUp, Callback: func() {
 				if radioIdx > 0 {

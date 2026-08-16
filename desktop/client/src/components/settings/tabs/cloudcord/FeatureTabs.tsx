@@ -34,6 +34,7 @@ import Plugins from "~plugins";
 const panelStyle = { padding: 14, borderRadius: 12, background: "var(--background-secondary)", minWidth: 0 };
 const selectStyle = { width: "100%", padding: "10px 12px", borderRadius: 8, color: "var(--text-normal)", background: "var(--input-background)", border: "1px solid var(--input-border)" };
 const displayName = (user: any) => user?.global_name || user?.username || "Unknown";
+const guildIcon = (guild: any) => guild?.icon ? `https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=96` : null;
 
 function BotCord() {
     const state = useBotCordState();
@@ -129,31 +130,19 @@ function BotCord() {
 
         {active && <>
             <Divider className={Margins.top20} />
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(180px, .8fr) minmax(260px, 1.5fr)", gap: 12, marginTop: 16 }}>
-                <div style={panelStyle}>
-                    <Heading>Browse</Heading>
-                    <Paragraph color="text-muted">Server</Paragraph>
-                    <select style={selectStyle} value={guildId} onChange={event => { setGuildId(event.currentTarget.value); setChannelId(""); setMessages([]); }}>
-                        <option value="">Choose a server</option>
-                        {guilds.map(guild => <option key={guild.id} value={guild.id}>{guild.name}</option>)}
-                    </select>
-                    <Paragraph color="text-muted" className={Margins.top16}>Channel</Paragraph>
-                    <select style={selectStyle} value={channelId} onChange={event => openChannel(event.currentTarget.value)} disabled={!channels.length}>
-                        <option value="">Choose a channel</option>
-                        {channels.map(channel => <option key={channel.id} value={channel.id}># {channel.name}</option>)}
-                    </select>
-
-                    {!!members.length && <>
-                        <Paragraph color="text-muted" className={Margins.top16}>Open a member DM</Paragraph>
-                        <TextInput value={memberSearch} onChange={setMemberSearch} placeholder="Search members" />
-                        <div style={{ maxHeight: 150, overflowY: "auto", marginTop: 6 }}>
-                            {filteredMembers.map(member => <Button key={member.user.id} variant="secondary" size="small" style={{ width: "100%", marginBottom: 4 }} onClick={() => openDM(member.user.id)}>{displayName(member.user)}</Button>)}
-                        </div>
-                    </>}
+            <div style={{ display: "grid", gridTemplateColumns: "72px 190px minmax(320px, 1fr) 180px", gap: 2, marginTop: 16, minHeight: 430, borderRadius: 14, overflow: "hidden", background: "var(--background-tertiary)" }}>
+                <div style={{ ...panelStyle, borderRadius: 0, padding: "10px 8px", background: "var(--background-tertiary)", maxHeight: 430, overflowY: "auto" }}>
+                    {guilds.map(guild => <button key={guild.id} title={guild.name} onClick={() => { setGuildId(guild.id); setChannelId(""); setMessages([]); }} style={{ width: 48, height: 48, borderRadius: guildId === guild.id ? 14 : 24, border: 0, margin: "0 4px 8px", overflow: "hidden", color: "white", background: guildId === guild.id ? "var(--brand-500)" : "var(--background-primary)", cursor: "pointer" }}>
+                        {guildIcon(guild) ? <img src={guildIcon(guild)!} alt="" style={{ width: "100%", height: "100%" }} /> : guild.name.slice(0, 2).toUpperCase()}
+                    </button>)}
                 </div>
-
-                <div style={panelStyle}>
-                    <Heading>Messages</Heading>
+                <div style={{ ...panelStyle, borderRadius: 0, padding: 12, maxHeight: 430, overflowY: "auto" }}>
+                    <Heading>{guilds.find(guild => guild.id === guildId)?.name ?? "BotCord"}</Heading>
+                    {!guildId && <Paragraph color="text-muted">Choose a server.</Paragraph>}
+                    {channels.map(channel => <Button key={channel.id} variant={channelId === channel.id ? "primary" : "secondary"} size="small" style={{ width: "100%", marginBottom: 5, textAlign: "left" }} onClick={() => openChannel(channel.id)}># {channel.name}</Button>)}
+                </div>
+                <div style={{ ...panelStyle, borderRadius: 0 }}>
+                    <Heading>{channels.find(channel => channel.id === channelId)?.name ? `# ${channels.find(channel => channel.id === channelId)?.name}` : "Messages"}</Heading>
                     <div style={{ height: 280, overflowY: "auto", padding: "8px 0" }}>
                         {!channelId && <Paragraph color="text-muted">Choose a channel or member.</Paragraph>}
                         {messages.map(message => <div key={message.id} style={{ padding: "7px 0", borderBottom: "1px solid var(--background-modifier-accent)" }}>
@@ -168,6 +157,13 @@ function BotCord() {
                         <Button disabled={!channelId || busy || (!composer.trim() && !attachment)} onClick={send}>Send</Button>
                     </Flex>
                 </div>
+                <div style={{ ...panelStyle, borderRadius: 0, padding: 12, maxHeight: 430, overflowY: "auto" }}>
+                    <Heading>Members</Heading>
+                    <TextInput value={memberSearch} onChange={setMemberSearch} placeholder="Search" />
+                    <div style={{ marginTop: 8 }}>
+                        {filteredMembers.map(member => <Button key={member.user.id} variant="secondary" size="small" style={{ width: "100%", marginBottom: 4, textAlign: "left" }} onClick={() => openDM(member.user.id)}>{displayName(member.user)}</Button>)}
+                    </div>
+                </div>
             </div>
         </>}
         {status && <Paragraph className={Margins.top16}>{busy ? "Working: " : ""}{status}</Paragraph>}
@@ -176,12 +172,15 @@ function BotCord() {
 
 function FakeProfile() {
     const plugin = Plugins.FakeProfile;
+    const sharedPlugin = Plugins.FakeProfileThemes;
     const [enabled, setEnabled] = useState(Settings.plugins[plugin.name]?.enabled ?? false);
+    const [sharedEnabled, setSharedEnabled] = useState(Settings.plugins[sharedPlugin.name]?.enabled ?? false);
     const SettingsComponent = plugin.settingsAboutComponent;
+    const SharedSettingsComponent = sharedPlugin.settingsAboutComponent;
 
     return <SettingsTab>
         <Heading className={Margins.top16}>Fake Profile</Heading>
-        <Paragraph className={Margins.bottom16}>Customize how your profile appears locally: name, avatar, banner, bio, colors, pronouns, badges, Nitro and boost details.</Paragraph>
+        <Paragraph className={Margins.bottom16}>Customize your name, avatar, banner, bio, colors, pronouns, badges, Nitro, boost details and avatar decorations.</Paragraph>
         <FormSwitch
             title="Enable Fake Profile"
             description="Restart Discord after changing this switch so every profile patch loads correctly."
@@ -190,6 +189,15 @@ function FakeProfile() {
             hideBorder
         />
         {enabled && SettingsComponent && <SettingsComponent />}
+        <Divider className={Margins.top20} />
+        <FormSwitch
+            title="Shared Fake Profile Colors"
+            description="Encodes your selected colors invisibly in your bio so other CloudCord and compatible-client users can see them."
+            value={sharedEnabled}
+            onChange={value => { Settings.plugins[sharedPlugin.name].enabled = value; setSharedEnabled(value); }}
+            hideBorder
+        />
+        {sharedEnabled && SharedSettingsComponent && <SharedSettingsComponent />}
     </SettingsTab>;
 }
 

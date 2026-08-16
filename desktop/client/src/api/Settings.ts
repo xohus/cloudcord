@@ -147,7 +147,7 @@ const DefaultSettings: Settings = {
 
     cloud: {
         authenticated: false,
-        url: "https://cloud.sincord.org/",
+        url: "https://api.vencord.dev/",
         settingsSync: false,
         settingsSyncVersion: 0
     },
@@ -397,3 +397,4 @@ type ResolveUseSettings<T extends object> = {
     : Key
     : never;
 };
+

@@ -5,7 +5,10 @@
  */
 
 import * as DataStore from "@api/DataStore";
+import type { PluginNative } from "@utils/types";
 import { React } from "@webpack/common";
+
+const Native = VencordNative.pluginHelpers.BotCordCore as PluginNative<typeof import("@plugins/botCordCore/native")>;
 
 export interface BotCordAccount {
     id: string;
@@ -62,17 +65,16 @@ export function useBotCordState() {
     return value;
 }
 
-async function discordError(response: Response) {
-    try { return (await response.json())?.message as string | undefined; } catch { return undefined; }
-}
-
 async function botFetch<T>(token: string, path: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(`https://discord.com/api/v10${path}`, {
-        ...init,
-        headers: { Authorization: `Bot ${normalizeBotToken(token)}`, ...init?.headers }
-    });
-    if (!response.ok) throw new Error((await discordError(response)) ?? `Discord request failed (${response.status}).`);
-    return response.json();
+    let jsonBody: unknown;
+    if (typeof init?.body === "string") jsonBody = JSON.parse(init.body);
+    const result = await Native.request(normalizeBotToken(token), init?.method ?? "GET", path, jsonBody);
+    if (!result.ok) {
+        let message = result.text;
+        try { message = JSON.parse(result.text)?.message ?? message; } catch { }
+        throw new Error(message || `Discord request failed (${result.status}).`);
+    }
+    return result.text ? JSON.parse(result.text) : undefined as T;
 }
 
 export async function addBotAccount(token: string) {
@@ -129,10 +131,14 @@ export function createBotDM(token: string, recipientId: string) {
 
 export function sendBotMessage(token: string, channelId: string, content: string, attachment?: File) {
     if (attachment) {
-        const form = new FormData();
-        form.append("payload_json", JSON.stringify({ content }));
-        form.append("files[0]", attachment, attachment.name);
-        return botFetch<any>(token, `/channels/${channelId}/messages`, { method: "POST", body: form });
+        return attachment.arrayBuffer().then(data => Native.request(normalizeBotToken(token), "POST", `/channels/${channelId}/messages`, { content }, {
+            name: attachment.name,
+            type: attachment.type,
+            data: new Uint8Array(data)
+        })).then(result => {
+            if (!result.ok) throw new Error(result.text || `Discord request failed (${result.status}).`);
+            return JSON.parse(result.text);
+        });
     }
     return botFetch<any>(token, `/channels/${channelId}/messages`, {
         method: "POST",
@@ -140,4 +146,7 @@ export function sendBotMessage(token: string, channelId: string, content: string
         body: JSON.stringify({ content })
     });
 }
+
+export const deleteBotMessage = (token: string, channelId: string, messageId: string) => botFetch<void>(token, `/channels/${channelId}/messages/${messageId}`, { method: "DELETE" });
+export const editBotMessage = (token: string, channelId: string, messageId: string, content: string) => botFetch<any>(token, `/channels/${channelId}/messages/${messageId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content }) });
 
