@@ -53,7 +53,7 @@
 ## Live CloudCord numbers
 
 <div align="center">
-  <img src="https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/installs-badge.svg" alt="Lifetime CloudCord installs" />
+  <img src="https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/installs-badge.svg?v=20260816-2" alt="Lifetime CloudCord installs" />
 </div>
 
 The number is how many times CloudCord has been obtained from the official releases across iOS, Android, and Windows. It is calculated from lifetime IPA, APK, and EXE downloads and does not use Fake Profile, Discord account IDs, or online-presence tracking. Reinstalling or downloading on another device can increase the number again.
