@@ -40,6 +40,7 @@ jobs:
           Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
 
       - name: Prepare clean Sincord source
+        if: ${{ false }}
         shell: bash
         run: |
           set -e
@@ -68,6 +69,7 @@ jobs:
           cp _cloudcord_overlay/build-installer.sh desktop/client/scripts/build-installer.sh
 
       - name: Patch Sincord source into CloudCord
+        if: ${{ false }}
         shell: bash
         run: |
           set -e
