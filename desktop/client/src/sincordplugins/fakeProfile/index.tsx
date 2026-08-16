@@ -199,6 +199,19 @@ function decorateSharedProfile(profile: any, data: CustomProfileData) {
     if (data.banner) merged.banner = data.banner;
     if (data.accentColor != null) merged.accentColor = data.accentColor;
     if (data.accentColor != null) merged.themeColors = [data.accentColor, data.accentColor2 ?? data.accentColor];
+    merged.publicFlags = data.badgeFlags != null ? data.badgeFlags : 0;
+    merged.badges = [];
+    if (data.nitro) {
+        merged.premiumType = 2;
+        const nl = data.nitroLevel ?? 0;
+        const LEVEL_MONTHS = [1, 2, 3, 6, 12, 24, 36, 72];
+        const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[nl] ?? 1)); merged.premiumSince = since;
+        const bm = data.boostMonths ?? -1;
+        if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const bs = new Date(); bs.setMonth(bs.getMonth() - (BOOST_M[bm] ?? 1)); merged.premiumGuildSince = bs; }
+        else merged.premiumGuildSince = null;
+    } else {
+        merged.premiumType = 0; merged.premiumSince = null; merged.premiumGuildSince = null;
+    }
     return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
 }
 
@@ -619,7 +632,7 @@ export default definePlugin({
         clone.getGlobalName = () => isEnabled ? fakeGlobal : realGlobalName;
         if (storedData.createdAt) { const fakeCreatedAt = new Date(storedData.createdAt + "T12:00:00Z"); Object.defineProperty(clone, "createdAt", { get: () => fakeCreatedAt, configurable: true, enumerable: true }); }
         if (storedData.decorationAsset) { clone.avatarDecoration = null; clone.avatarDecorationData = { asset: storedData.decorationAsset, skuId: storedData.decorationAsset }; }
-        const wantedFlags = storedData.badgeFlags != null ? storedData.badgeFlags : realUser.publicFlags;
+        const wantedFlags = storedData.badgeFlags != null ? storedData.badgeFlags : 0;
         clone.publicFlags = wantedFlags; clone.flags = wantedFlags;
         if (storedData.nitro) {
             clone.premiumType = 2;
@@ -630,6 +643,49 @@ export default definePlugin({
             else clone.premiumGuildSince = null;
         } else { clone.premiumType = 0; clone.premiumSince = null; clone.premiumGuildSince = null; }
         cachedOriginalUser = user; cachedFakeUser = clone; cachedDataHash = _dataVersion;
+        return clone;
+    },
+
+    fakeOtherUser(user: any) {
+        if (!user || isMe(user.id)) return user;
+        const shared = sharedProfiles.get(user.id);
+        if (!shared) {
+            requestSharedProfile(user.id);
+            return user;
+        }
+        const realUser = user.__cp_isClone ? (user.__cp_original || user) : user;
+        const clone = Object.create(Object.getPrototypeOf(realUser));
+        for (const key of Reflect.ownKeys(realUser)) {
+            if (key === "username" || key === "globalName" || key === "displayName" || key === "__cp_isClone" || key === "__cp_original") continue;
+            const desc = Object.getOwnPropertyDescriptor(realUser, key);
+            if (desc) Object.defineProperty(clone, key, desc);
+        }
+        Object.defineProperty(clone, "__cp_isClone", { value: true, enumerable: false, configurable: true });
+        Object.defineProperty(clone, "__cp_original", { value: realUser, enumerable: false, configurable: true });
+        
+        const fakeUsername = shared.username || realUser.username;
+        const fakeGlobal = shared.globalName || realUser.globalName;
+        const fakeDisplay = shared.globalName || shared.username || realUser.displayName;
+        
+        Object.defineProperty(clone, "username", { get: () => fakeUsername, set: () => { }, configurable: true, enumerable: true });
+        Object.defineProperty(clone, "globalName", { get: () => fakeGlobal, set: () => { }, configurable: true, enumerable: true });
+        Object.defineProperty(clone, "displayName", { get: () => fakeDisplay, set: () => { }, configurable: true, enumerable: true });
+        clone.getTag = () => fakeUsername + "#0000";
+        clone.getGlobalName = () => fakeGlobal;
+        
+        if (shared.decorationAsset) { clone.avatarDecoration = null; clone.avatarDecorationData = { asset: shared.decorationAsset, skuId: shared.decorationAsset }; }
+        const wantedFlags = shared.badgeFlags != null ? shared.badgeFlags : 0;
+        clone.publicFlags = wantedFlags; clone.flags = wantedFlags;
+        if (shared.nitro) {
+            clone.premiumType = 2;
+            const LEVEL_MONTHS = [1, 2, 3, 6, 12, 24, 36, 72];
+            const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[shared.nitroLevel ?? 0] ?? 1)); clone.premiumSince = since;
+            const bm = shared.boostMonths ?? -1;
+            if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const boostSince = new Date(); boostSince.setMonth(boostSince.getMonth() - (BOOST_M[bm] ?? 1)); clone.premiumGuildSince = boostSince; }
+            else clone.premiumGuildSince = null;
+        } else {
+            clone.premiumType = 0; clone.premiumSince = null; clone.premiumGuildSince = null;
+        }
         return clone;
     },
 
@@ -653,7 +709,7 @@ export default definePlugin({
                 if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const bs = new Date(); bs.setMonth(bs.getMonth() - (BOOST_M[bm] ?? 1)); merged.premiumGuildSince = bs; }
                 else merged.premiumGuildSince = null;
             } else { merged.premiumType = 0; merged.premiumSince = null; merged.premiumGuildSince = null; }
-            merged.publicFlags = storedData.badgeFlags != null ? storedData.badgeFlags : profile.publicFlags;
+            merged.publicFlags = storedData.badgeFlags != null ? storedData.badgeFlags : 0;
             merged.badges = [];
             return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
         } catch { return profile; }
@@ -681,11 +737,20 @@ fakeObfuscatedEmail(real: string | null) {
 
     userProfileBadges: [{
         getBadges({ userId }: { userId: string; guildId: string; }) {
-            if (!isEnabled || userId !== UserStore.getCurrentUser()?.id) return [];
+            const userIsMe = isMe(userId);
+            let profileData: CustomProfileData | undefined;
+            if (userIsMe) {
+                if (!isEnabled) return [];
+                profileData = storedData;
+            } else {
+                profileData = sharedProfiles.get(userId);
+                if (!profileData) { requestSharedProfile(userId); return []; }
+            }
+
             const style = { borderRadius: "50%", width: "22px", height: "22px" };
-            const nl = storedData.nitroLevel ?? -1; const bm = storedData.boostMonths ?? -1;
+            const nl = profileData.nitroLevel ?? -1; const bm = profileData.boostMonths ?? -1;
             const hasNitroFake = nl >= 0 && nl < NITRO_LEVELS.length; const hasBoostFake = bm >= 0 && bm < BOOST_ICONS.length;
-            const f = storedData.badgeFlags ?? 0; const badges: ProfileBadge[] = [];
+            const f = profileData.badgeFlags ?? 0; const badges: ProfileBadge[] = [];
             if (f & FLAG.STAFF) badges.push({ id: "sp_staff", description: "Discord Staff", iconSrc: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png", position: 0, props: { style } });
             if (hasNitroFake) badges.push({ id: "sp_nitro", description: "Nitro Subscriber", iconSrc: NITRO_LEVELS[nl].icon, position: 0, props: { style } });
             if (f & FLAG.PARTNER) badges.push({ id: "sp_partner", description: "Partnered Server Owner", iconSrc: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png", position: 0, props: { style } });
@@ -700,9 +765,9 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
             if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", position: 0, props: { style } });
             if (hasBoostFake) badges.push({ id: "sp_boost", description: `Server Booster — ${BOOST_LABELS[bm]}`, iconSrc: BOOST_ICONS[bm], position: 0, props: { style } });
-            if (storedData.customBadgeIds?.includes("oldname")) { const desc = storedData.oldName ? `Old username: ${storedData.oldName}` : "Old username"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
-            if (storedData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
-            if (storedData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs — Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
+            if (profileData.customBadgeIds?.includes("oldname")) { const desc = profileData.oldName ? `Old username: ${profileData.oldName}` : "Old username"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
+            if (profileData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
+            if (profileData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs — Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
             return badges;
         }
     } as ProfileBadge] as ProfileBadge[],
@@ -728,7 +793,7 @@ fakeObfuscatedEmail(real: string | null) {
                     return this.fakeCurrentUser(real);
                 };
                 const origGet = US.getUser.bind(US);
-                US.getUser = (id: string) => isMe(id) ? this.fakeCurrentUser(origGet(id)) : origGet(id);
+                US.getUser = (id: string) => isMe(id) ? this.fakeCurrentUser(origGet(id)) : this.fakeOtherUser(origGet(id));
                 US._cp_hook = true;
             }
         } catch { }
