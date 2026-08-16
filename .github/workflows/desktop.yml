@@ -76,8 +76,8 @@ jobs:
           CGO_ENABLED: "1"
         run: |
           go test -tags cli ./...
-          go build -trimpath -ldflags "-s -w -H windowsgui" -o ../dist/CloudCordSetup.exe .
-          go build -trimpath -tags cli -ldflags "-s -w" -o ../dist/CloudCordSetupCli.exe .
+          go build -trimpath -ldflags "-s -w -H windowsgui -X sinlotl/buildinfo.InstallerTag=Desktop -X sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}" -o ../dist/CloudCordSetup.exe .
+          go build -trimpath -tags cli -ldflags "-s -w -X sinlotl/buildinfo.InstallerTag=Desktop -X sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}" -o ../dist/CloudCordSetupCli.exe .
 
       - name: Smoke test installer
         working-directory: desktop/client
@@ -104,3 +104,4 @@ jobs:
             desktop/client/CREDITS.md
             desktop/client/CLOUDCORD_NOTES.md
             desktop/README.md
+
