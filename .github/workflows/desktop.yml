@@ -38,12 +38,16 @@ jobs:
           Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
 
       - name: Prepare clean Sincord source
-        if: ${{ false }}
         shell: bash
         run: |
           set -e
 
           rm -rf _sincord
+          rm -rf _cloudcord_overlay
+          mkdir -p _cloudcord_overlay
+          cp -R desktop/client/src _cloudcord_overlay/src
+          cp -R desktop/client/installer _cloudcord_overlay/installer
+          cp desktop/client/scripts/build-installer.sh _cloudcord_overlay/build-installer.sh
           rm -rf desktop/client
 
           git clone --depth=1 https://github.com/sincord/sincord _sincord
@@ -56,8 +60,12 @@ jobs:
           rm -rf desktop/client/node_modules
           rm -rf desktop/client/dist
 
+          cp -R _cloudcord_overlay/src/. desktop/client/src/
+          rm -rf desktop/client/installer
+          cp -R _cloudcord_overlay/installer desktop/client/installer
+          cp _cloudcord_overlay/build-installer.sh desktop/client/scripts/build-installer.sh
+
       - name: Patch Sincord source into CloudCord
-        if: ${{ false }}
         shell: bash
         run: |
           set -e
