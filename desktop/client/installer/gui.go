@@ -122,7 +122,9 @@ func main() {
 		os.Setenv("GDK_DPI_SCALE", "1")
 	}
 
-	win = g.NewMasterWindow("CloudCord Desktop", 920, 520, linuxFlags)
+	// Leave enough physical room for high-DPI Windows displays. The previous
+	// 920x520 window caused ImGui to add a root scrollbar at 125%+ scaling.
+	win = g.NewMasterWindow("CloudCord Desktop", 1180, 700, linuxFlags)
 
 	go func() {
 		<-GithubDoneChan
@@ -842,5 +844,4 @@ func loop() {
 
 	g.PopStyle()
 }
-
 

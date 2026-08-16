@@ -7,7 +7,7 @@
 import "./style.css";
 
 import { ProfileBadge } from "@api/Badges";
-import { CloudCordSharedProfile, fetchCloudCordProfile, findProfileId, publishCloudCordProfile } from "@api/CloudCordProfiles";
+import { CloudCordProfileKey, CloudCordSharedProfile, fetchCloudCordProfile, findProfileId, publishCloudCordProfile } from "@api/CloudCordProfiles";
 import { addContextMenuPatch, NavContextMenuPatchCallback, removeContextMenuPatch } from "@api/ContextMenu";
 import { addHeaderBarButton, HeaderBarButton, removeHeaderBarButton } from "@api/HeaderBar";
 import { DataStore } from "@api/index";
@@ -28,6 +28,7 @@ const DS_KEY = "customProfile_data";
 const DS_ENABLED = "customProfile_enabled";
 const DS_ALL_DATA = "customProfile_allData";
 const DS_ALL_ENABLED = "customProfile_allEnabled";
+const DS_SHARE_IDS = "CloudCord_sharedProfileIds";
 const LS_ALL_DATA = "CloudCord_FakeProfile_allData";
 const LS_ALL_ENABLED = "CloudCord_FakeProfile_allEnabled";
 const LS_KEY_DATA = "CloudCord_FakeProfile_data";
@@ -402,7 +403,6 @@ function EditIcon({ size = 18 }: { size?: number; }) { return <svg width={size} 
 function FolderIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z" /></svg>; }
 function CloseIcon() { return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>; }
 function TrashIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2h4a1 1 0 1 1 0 2h-1.1l-.9 12.1A3 3 0 0 1 17 23H7a3 3 0 0 1-3-2.9L3.1 8H2a1 1 0 0 1 0-2h4V4Zm2 0v2h6V4H9ZM5.1 8l.9 11.9a1 1 0 0 0 1 .1h6a1 1 0 0 0 1-.1L14.9 8H5.1Z" /></svg>; }
-function SaveIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4Zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm3-10H5V5h10v4Z" /></svg>; }
 
 function Field({ label, value, placeholder, onChange, type = "text" }: { label: string; value: string; placeholder?: string; onChange: (v: string) => void; type?: string; }) {
     return <div className="cp-field"><div className="cp-section-label">{label}</div><input className="cp-input" type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} /></div>;
@@ -468,6 +468,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     const [data, setData] = React.useState<CustomProfileData>(() => ({ ...(allAccountsData[myId] || storedData || {}) }));
     const [saving, setSaving] = React.useState(false);
     const [shareStatus, setShareStatus] = React.useState("");
+    const publishVersion = React.useRef(0);
     const [decorationSearch, setDecorationSearch] = React.useState("");
     const nitroLevel = data.nitroLevel ?? -1;
     const boostLevel = data.boostMonths ?? -1;
@@ -487,10 +488,9 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
 
     function set<K extends keyof CustomProfileData>(key: K, val: CustomProfileData[K]) { setData(d => ({ ...d, [key]: val })); }
 
-    async function save(close = true) {
-        setSaving(true);
+    async function persist(profile = data) {
         try {
-            const savedData = { ...data };
+            const savedData = { ...profile };
             allAccountsData[selectedAccountId] = savedData; allAccountsEnabled[selectedAccountId] = true;
             if (selectedAccountId === myId) {
                 storedData = savedData; isEnabled = true; saveDataSync(storedData, true);
@@ -499,20 +499,39 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             saveAllDataSync();
             DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
             updateCachedRealData(); forceAccountPanelRerender();
-        } catch (err) { console.error("[ProfileSpoofer] save error:", err); }
-        setSaving(false); if (close) rootProps.onClose();
+        } catch (err) { console.error("[CloudCord] profile save error:", err); }
     }
 
-    async function share() {
-        setSaving(true); setShareStatus("Publishing complete profile...");
-        try {
-            await save(false);
-            const { marker } = await publishCloudCordProfile(data);
-            copyWithToast(marker, "CloudCord profile marker copied");
-            setShareStatus("Shared. Paste the copied invisible marker anywhere in your real Discord About Me. Every editor field will then appear for other CloudCord users.");
-        } catch (error) { setShareStatus(error instanceof Error ? error.message : String(error)); }
-        finally { setSaving(false); }
+    async function persistAndPublish(profile = data, close = false) {
+        const version = ++publishVersion.current;
+        await persist(profile);
+        const keys = await DataStore.get<Record<string, CloudCordProfileKey | string>>(DS_SHARE_IDS) ?? {};
+        const savedKey = keys[selectedAccountId];
+        const key = typeof savedKey === "object" && savedKey?.id && savedKey?.editToken ? savedKey : undefined;
+        const { id, editToken, marker } = await publishCloudCordProfile(profile, key);
+        if (!key) {
+            keys[selectedAccountId] = { id, editToken };
+            await DataStore.set(DS_SHARE_IDS, keys);
+            copyWithToast(marker, "One-time CloudCord profile link copied");
+        }
+        if (version === publishVersion.current) setShareStatus(key
+            ? "Saved and shared automatically."
+            : "Saved and shared. Paste the copied invisible link once in your real About Me; future edits update automatically.");
+        if (close) rootProps.onClose();
     }
+
+    React.useEffect(() => {
+        const snapshot = { ...data };
+        const version = publishVersion.current + 1;
+        setShareStatus("Saving automatically...");
+        const timer = window.setTimeout(() => {
+            setSaving(true);
+            persistAndPublish(snapshot).catch(error => {
+                if (version >= publishVersion.current) setShareStatus(error instanceof Error ? error.message : String(error));
+            }).finally(() => setSaving(false));
+        }, 850);
+        return () => window.clearTimeout(timer);
+    }, [data, selectedAccountId]);
 
     async function reset() {
         delete allAccountsData[selectedAccountId]; delete allAccountsEnabled[selectedAccountId];
@@ -587,17 +606,15 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <div className="cp-hint">Includes CloudCord presets plus decorations discovered from Discord's current collectibles catalog. You can still paste any asset ID below.</div>
             <Field label="Custom decoration asset ID" value={data.decorationAsset ?? ""} placeholder="Paste any Discord collectible asset ID" onChange={v => set("decorationAsset", v || undefined)} />
             <div className="cp-share-card">
-                <strong>Share the complete profile</strong>
-                <span>Save & Share uploads every visible editor field and copies an invisible marker. Paste that marker into your real Discord About Me so other CloudCord users can discover it.</span>
+                <strong>Automatic CloudCord sharing</strong>
+                <span>Every editor change is saved locally and published automatically. The invisible profile link is copied only once; after it is in your real About Me, future edits appear without another step.</span>
                 {shareStatus && <div className="cp-share-status">{shareStatus}</div>}
             </div>
         </ModalContent>
 
         <ModalFooter className="cp-footer">
-            <button className="cp-btn cp-btn-ghost" onClick={rootProps.onClose}>Cancel</button>
             <button className="cp-btn cp-btn-danger" onClick={reset}><TrashIcon /><span>Reset</span></button>
-            <button className="cp-btn cp-btn-share" onClick={share} disabled={saving}><span>{saving ? "Publishing..." : "Save & Share"}</span></button>
-            <button className="cp-btn cp-btn-primary" onClick={() => save()} disabled={saving}><SaveIcon /><span>{saving ? "Saving..." : "Save locally"}</span></button>
+            <button className="cp-btn cp-btn-primary" onClick={() => { setSaving(true); persistAndPublish(data, true).catch(error => setShareStatus(error instanceof Error ? error.message : String(error))).finally(() => setSaving(false)); }} disabled={saving}><span>{saving ? "Finishing..." : "Done"}</span></button>
         </ModalFooter>
     </ModalRoot>);
 }
@@ -609,7 +626,7 @@ function CustomProfileButton() {
 export default definePlugin({
     name: "FakeProfile",
     enabledByDefault: true,
-    description: "Create a complete custom profile and optionally share every editor field with other CloudCord users.",
+    description: "Create a complete custom profile that saves and shares automatically with other CloudCord users.",
     authors: [Devs.Xohus],
     dependencies: ["HeaderBarAPI", "ContextMenuAPI"],
 
@@ -818,5 +835,4 @@ fakeObfuscatedEmail(real: string | null) {
 
     settingsAboutComponent() { return <Button onClick={() => openModal(props => <CustomProfileModal rootProps={props} />)}>Open Fake Profile Editor</Button>; },
 });
-
 

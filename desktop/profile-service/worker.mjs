@@ -1,7 +1,7 @@
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "Content-Type",
-  "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type,Authorization",
+  "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS",
   "Cache-Control": "public, max-age=300"
 };
 
@@ -23,9 +23,14 @@ function cleanProfile(value) {
   return json;
 }
 
-async function profileId(json) {
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(json));
-  return btoa(String.fromCharCode(...new Uint8Array(digest))).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "").slice(0, 27);
+function randomKey(bytes = 24) {
+  const value = crypto.getRandomValues(new Uint8Array(bytes));
+  return btoa(String.fromCharCode(...value)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+async function tokenHash(token) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(token));
+  return btoa(String.fromCharCode(...new Uint8Array(digest)));
 }
 
 export default {
@@ -36,18 +41,34 @@ export default {
     if (url.pathname === "/v1/profiles" && request.method === "POST") {
       try {
         const json = cleanProfile(await request.json());
-        const id = await profileId(json);
-        await env.DB.prepare("INSERT OR IGNORE INTO profiles (id, json, created_at) VALUES (?, ?, ?)").bind(id, json, Date.now()).run();
-        return response({ id }, 201, { "Cache-Control": "no-store" });
+        const id = randomKey(20);
+        const editToken = randomKey(32);
+        const stored = JSON.stringify({ profile: JSON.parse(json), editHash: await tokenHash(editToken) });
+        await env.DB.prepare("INSERT INTO profiles (id, json, created_at) VALUES (?, ?, ?)").bind(id, stored, Date.now()).run();
+        return response({ id, editToken }, 201, { "Cache-Control": "no-store" });
       } catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 400, { "Cache-Control": "no-store" }); }
     }
     const match = url.pathname.match(/^\/v1\/profiles\/([A-Za-z0-9_-]{16,64})$/);
+    if (match && request.method === "PUT") {
+      try {
+        const row = await env.DB.prepare("SELECT json FROM profiles WHERE id = ?").bind(match[1]).first();
+        if (!row) return response({ error: "Profile not found." }, 404, { "Cache-Control": "no-store" });
+        const stored = JSON.parse(row.json);
+        if (!stored?.editHash) return response({ error: "This legacy profile cannot be updated." }, 409, { "Cache-Control": "no-store" });
+        const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") || "";
+        if (!token || await tokenHash(token) !== stored.editHash) return response({ error: "Invalid profile edit key." }, 403, { "Cache-Control": "no-store" });
+        const json = cleanProfile(await request.json());
+        const next = JSON.stringify({ profile: JSON.parse(json), editHash: stored.editHash });
+        await env.DB.prepare("UPDATE profiles SET json = ?, created_at = ? WHERE id = ?").bind(next, Date.now(), match[1]).run();
+        return response({ id: match[1] }, 200, { "Cache-Control": "no-store" });
+      } catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 400, { "Cache-Control": "no-store" }); }
+    }
     if (match && request.method === "GET") {
       const row = await env.DB.prepare("SELECT json FROM profiles WHERE id = ?").bind(match[1]).first();
       if (!row) return response({ error: "Profile not found." }, 404);
-      return response(row.json, 200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=3600, immutable" });
+      const stored = JSON.parse(row.json);
+      return response(stored?.editHash ? stored.profile : stored, 200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300" });
     }
     return response({ error: "Not found." }, 404);
   }
 };
-

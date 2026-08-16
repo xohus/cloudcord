@@ -60,7 +60,7 @@ function MessageBody({ message }: { message: any; }) {
             {embed.thumbnail?.url && <img className="cc-bot-embed-thumb" src={embed.thumbnail.url} alt="" />}
             {embed.footer?.text && <small>{embed.footer.text}</small>}
         </div>)}
-        {message.poll && <div className="cc-bot-poll"><strong>{message.poll.question?.text}</strong>{message.poll.answers?.map((answer: any) => <div key={answer.answer_id}>○ {answer.poll_media?.text || "Answer"}</div>)}</div>}
+        {message.poll && <div className="cc-bot-poll"><strong>{message.poll.question?.text}</strong>{message.poll.answers?.map((answer: any) => <div key={answer.answer_id}>( ) {answer.poll_media?.text || "Answer"}</div>)}</div>}
     </>;
 }
 
@@ -178,7 +178,7 @@ function BotCord() {
     return <SettingsTab>
         <div className="cc-bot-page">
             <div className="cc-bot-topbar">
-                <div><strong>BotCord</strong><span>CloudCord bot client</span></div>
+                <div><strong>BotCord</strong><span>{active.username}</span></div>
                 <select value={active.id} onChange={event => setActiveBotAccount(event.currentTarget.value)}>{state.accounts.map(account => <option key={account.id} value={account.id}>{account.username}</option>)}</select>
                 <button onClick={() => run("Refreshing...", loadAccount)} disabled={busy}>Refresh</button>
                 <button onClick={() => removeBotAccount(active.id)}>Sign out</button>
@@ -208,7 +208,7 @@ function BotCord() {
                     <header><div><strong>{selectedChannel ? `${selectedChannel.recipients ? "@" : "#"} ${channelLabel(selectedChannel)}` : "BotCord"}</strong><span>{selectedChannel?.topic || "Choose a conversation"}</span></div>{channelId && <button onClick={() => refreshMessages()}>Refresh</button>}</header>
                     <div className="cc-bot-messages">
                         {channelId && messages.length >= 50 && <button className="cc-bot-older" onClick={loadOlder}>Load older messages</button>}
-                        {!channelId && <div className="cc-bot-welcome"><div className="cc-bot-login-mark">CC</div><Heading>Your bot, in a real client.</Heading><Paragraph>Open a server channel or direct message to start.</Paragraph></div>}
+                        {!channelId && <div className="cc-bot-welcome"><Heading>Select a conversation</Heading><Paragraph>Choose a channel or direct message from the left.</Paragraph></div>}
                         {messages.map(message => <article className="cc-bot-message" key={message.id}>
                             <img className="cc-bot-avatar" src={avatarUrl(message.author)} alt="" />
                             <div className="cc-bot-message-main"><div className="cc-bot-message-head"><strong>{displayName(message.author)}</strong>{message.author?.bot && <span className="cc-bot-tag">BOT</span>}<time>{timeLabel(message.timestamp)}</time></div><MessageBody message={message} />
@@ -216,7 +216,7 @@ function BotCord() {
                             </div>
                             <div className="cc-bot-message-actions">
                                 <button title="Reply" onClick={() => { setReplyTo(message); setEditing(undefined); setComposer(""); }}>Reply</button>
-                                <button title="React" onClick={() => active && run("", async () => { await addBotReaction(active.token, channelId, message.id, "👍"); await refreshMessages(true); })}>+ 👍</button>
+                                <button title="React" onClick={() => active && run("", async () => { await addBotReaction(active.token, channelId, message.id, "👍"); await refreshMessages(true); })}>Like</button>
                                 {message.author?.id === active.id && <><button title="Edit" onClick={() => { setEditing(message); setReplyTo(undefined); setComposer(message.content || ""); }}>Edit</button><button title="Delete" onClick={() => run("Deleting...", async () => { await deleteBotMessage(active.token, channelId, message.id); await refreshMessages(true); })}>Delete</button></>}
                             </div>
                         </article>)}
@@ -243,13 +243,12 @@ function FakeProfile() {
     return <SettingsTab>
         <Heading className={Margins.top16}>Fake Profile</Heading>
         <Paragraph className={Margins.bottom16}>Edit and share your complete CloudCord profile: name, avatar, banner, bio, colors, pronouns, badges, Nitro details, dates and decorations.</Paragraph>
-        <FormSwitch title="Enable Fake Profile" description="CloudCord applies the editor locally and can publish it for other CloudCord users." value={enabled} onChange={value => { Settings.plugins[plugin.name].enabled = value; setEnabled(value); }} hideBorder />
+        <FormSwitch title="Enable Fake Profile" description="CloudCord saves and publishes editor changes automatically." value={enabled} onChange={value => { Settings.plugins[plugin.name].enabled = value; setEnabled(value); }} hideBorder />
         {enabled && SettingsComponent && <SettingsComponent />}
         <Divider className={Margins.top20} />
-        <Notice.Info>Use "Save & Share" in the editor, then paste the copied invisible CloudCord marker anywhere in your real About Me. Other CloudCord users will automatically load every shared editor field.</Notice.Info>
+        <Notice.Info>Changes save and publish automatically. On the first publish CloudCord copies a one-time invisible profile link; paste it once in your real About Me so other CloudCord users can find the profile.</Notice.Info>
     </SettingsTab>;
 }
 
 export const BotCordTab = wrapTab(BotCord, "BotCord");
 export const FakeProfileTab = wrapTab(FakeProfile, "Fake Profile");
-

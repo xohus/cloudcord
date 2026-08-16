@@ -28,6 +28,11 @@ export interface CloudCordSharedProfile {
     decorationAsset?: string;
 }
 
+export interface CloudCordProfileKey {
+    id: string;
+    editToken: string;
+}
+
 function encodeInvisible(text: string) {
     return Array.from(text).map(character => String.fromCodePoint(character.codePointAt(0)! + 0xe0000)).join("");
 }
@@ -57,12 +62,15 @@ function message(text: string, status: number) {
     catch { return text || `Profile service failed (${status}).`; }
 }
 
-export async function publishCloudCordProfile(profile: CloudCordSharedProfile) {
-    const result = await Native.publish(profile);
+export async function publishCloudCordProfile(profile: CloudCordSharedProfile, key?: CloudCordProfileKey) {
+    const result = key ? await Native.update(key.id, key.editToken, profile) : await Native.publish(profile);
     if (!result.ok) throw new Error(message(result.text, result.status));
-    const id = JSON.parse(result.text)?.id;
+    const body = JSON.parse(result.text);
+    const id = body?.id || key?.id;
+    const editToken = body?.editToken || key?.editToken;
     if (!id) throw new Error("Profile service returned no profile ID.");
-    return { id: String(id), marker: createProfileMarker(String(id)) };
+    if (!editToken) throw new Error("Profile service returned no private edit key.");
+    return { id: String(id), editToken: String(editToken), marker: createProfileMarker(String(id)) };
 }
 
 export async function fetchCloudCordProfile(id: string): Promise<CloudCordSharedProfile> {
@@ -70,4 +78,3 @@ export async function fetchCloudCordProfile(id: string): Promise<CloudCordShared
     if (!result.ok) throw new Error(message(result.text, result.status));
     return JSON.parse(result.text) as CloudCordSharedProfile;
 }
-
