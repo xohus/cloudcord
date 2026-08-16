@@ -120,7 +120,7 @@ function BotCord() {
             <Button disabled={busy || !token.trim()} onClick={() => run("Checking token...", async () => { await addBotAccount(token); setToken(""); setStatus("Bot added."); })}>Add Bot</Button>
         </Flex>
 
-        {state.accounts.length > 0 && <Flex gap="8px" alignItems="center" className={Margins.top12}>
+        {state.accounts.length > 0 && <Flex gap="8px" alignItems="center" className={Margins.top16}>
             <select style={{ ...selectStyle, flex: 1 }} value={active?.id ?? ""} onChange={event => setActiveBotAccount(event.currentTarget.value)}>
                 {state.accounts.map(account => <option key={account.id} value={account.id}>{account.username}</option>)}
             </select>
@@ -137,14 +137,14 @@ function BotCord() {
                         <option value="">Choose a server</option>
                         {guilds.map(guild => <option key={guild.id} value={guild.id}>{guild.name}</option>)}
                     </select>
-                    <Paragraph color="text-muted" className={Margins.top12}>Channel</Paragraph>
+                    <Paragraph color="text-muted" className={Margins.top16}>Channel</Paragraph>
                     <select style={selectStyle} value={channelId} onChange={event => openChannel(event.currentTarget.value)} disabled={!channels.length}>
                         <option value="">Choose a channel</option>
                         {channels.map(channel => <option key={channel.id} value={channel.id}># {channel.name}</option>)}
                     </select>
 
                     {!!members.length && <>
-                        <Paragraph color="text-muted" className={Margins.top12}>Open a member DM</Paragraph>
+                        <Paragraph color="text-muted" className={Margins.top16}>Open a member DM</Paragraph>
                         <TextInput value={memberSearch} onChange={setMemberSearch} placeholder="Search members" />
                         <div style={{ maxHeight: 150, overflowY: "auto", marginTop: 6 }}>
                             {filteredMembers.map(member => <Button key={member.user.id} variant="secondary" size="small" style={{ width: "100%", marginBottom: 4 }} onClick={() => openDM(member.user.id)}>{displayName(member.user)}</Button>)}
@@ -170,7 +170,7 @@ function BotCord() {
                 </div>
             </div>
         </>}
-        {status && <Paragraph className={Margins.top12}>{busy ? "Working: " : ""}{status}</Paragraph>}
+        {status && <Paragraph className={Margins.top16}>{busy ? "Working: " : ""}{status}</Paragraph>}
     </SettingsTab>;
 }
 

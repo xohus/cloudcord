@@ -83,7 +83,7 @@ function CloudTab() {
             onConfirm: () => run("Deleting desktop backup...", deleteCloudCordSettings, "Desktop cloud backup deleted.")
         })}>Delete Desktop Cloud Backup</Button>
 
-        {status && <Paragraph className={Margins.top12}>{busy ? "Working: " : ""}{status}</Paragraph>}
+        {status && <Paragraph className={Margins.top16}>{busy ? "Working: " : ""}{status}</Paragraph>}
     </SettingsTab>;
 }
 
