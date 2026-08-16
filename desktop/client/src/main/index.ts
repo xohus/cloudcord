@@ -103,18 +103,6 @@ if (!IS_VANILLA && !IS_EXTENSION) {
                     .catch(err => console.error("[CloudCord] Failed to install React Developer Tools", err));
         } catch { }
 
-        try {
-            const fs = require("fs");
-            const userDataPath = app.getPath("userData");
-            const markerPath = join(userDataPath, ".cloudcord_install_ping");
-            if (!fs.existsSync(markerPath)) {
-                net.fetch("https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/installs", {
-                    method: "POST"
-                }).then(() => {
-                    fs.writeFileSync(markerPath, "pinged");
-                }).catch(() => {});
-            }
-        } catch { }
 
         initCsp();
     });
