@@ -7,7 +7,7 @@
 import "./style.css";
 
 import { ProfileBadge } from "@api/Badges";
-import { CloudCordProfileKey, CloudCordSharedProfile, fetchCloudCordProfile, findProfileId, publishCloudCordProfile, withProfileMarker } from "@api/CloudCordProfiles";
+import { CloudCordProfileKey, CloudCordSharedProfile, fetchCloudCordProfile, publishCloudCordProfile, removeLegacyProfileMarkers } from "@api/CloudCordProfiles";
 import { addContextMenuPatch, NavContextMenuPatchCallback, removeContextMenuPatch } from "@api/ContextMenu";
 import { addHeaderBarButton, HeaderBarButton, removeHeaderBarButton } from "@api/HeaderBar";
 import { DataStore } from "@api/index";
@@ -28,7 +28,7 @@ const DS_ENABLED = "customProfile_enabled";
 const DS_ALL_DATA = "customProfile_allData";
 const DS_ALL_ENABLED = "customProfile_allEnabled";
 const DS_SHARE_IDS = "CloudCord_sharedProfileIds";
-const DS_MARKER_IDS = "CloudCord_installedProfileMarkers";
+const DS_LEGACY_MARKER_CLEANED = "CloudCord_legacyProfileMarkerCleaned";
 const LS_ALL_DATA = "CloudCord_FakeProfile_allData";
 const LS_ALL_ENABLED = "CloudCord_FakeProfile_allEnabled";
 const LS_KEY_DATA = "CloudCord_FakeProfile_data";
@@ -291,16 +291,13 @@ function sharedForUser(userId: string | null | undefined) {
     return userId ? sharedProfiles.get(userId)?.data : undefined;
 }
 
-function requestSharedProfile(userId: string, bio?: string | null) {
-    const id = findProfileId(bio);
-    if (!id) { sharedProfiles.delete(userId); return; }
-    if (sharedProfiles.get(userId)?.id === id || sharedProfileRequests.has(`${userId}:${id}`)) return;
-    const key = `${userId}:${id}`;
-    const request = fetchCloudCordProfile(id).then(data => {
-        sharedProfiles.set(userId, { id, data });
+function requestSharedProfile(userId: string) {
+    if (!userId || sharedProfiles.has(userId) || sharedProfileRequests.has(userId)) return;
+    const request = fetchCloudCordProfile(userId).then(data => {
+        sharedProfiles.set(userId, { id: userId, data });
         forceAccountPanelRerender();
-    }).catch(error => console.warn("[CloudCord] Could not load shared profile", error)).finally(() => sharedProfileRequests.delete(key));
-    sharedProfileRequests.set(key, request);
+    }).catch(() => { }).finally(() => sharedProfileRequests.delete(userId));
+    sharedProfileRequests.set(userId, request);
 }
 
 function cloneUserWithProfile(user: any, data: CustomProfileData) {
@@ -508,22 +505,14 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         const keys = await DataStore.get<Record<string, CloudCordProfileKey | string>>(DS_SHARE_IDS) ?? {};
         const savedKey = keys[selectedAccountId];
         const key = typeof savedKey === "object" && savedKey?.id && savedKey?.editToken ? savedKey : undefined;
-        const { id, editToken, marker } = await publishCloudCordProfile(profile, key);
+        const { id, editToken } = await publishCloudCordProfile(selectedAccountId, profile, key);
         if (!key) {
             keys[selectedAccountId] = { id, editToken };
             await DataStore.set(DS_SHARE_IDS, keys);
         }
-        const installed = await DataStore.get<Record<string, string>>(DS_MARKER_IDS) ?? {};
-        if (selectedAccountId === myId && installed[selectedAccountId] !== id) {
-            const response = await RestAPI.get({ url: `/users/${myId}/profile?with_mutual_guilds=false&with_mutual_friends_count=false` });
-            const realBio = response?.body?.user_profile?.bio ?? response?.body?.bio ?? "";
-            await RestAPI.patch({ url: "/users/@me/profile", body: { bio: withProfileMarker(realBio, id) } });
-            installed[selectedAccountId] = id;
-            await DataStore.set(DS_MARKER_IDS, installed);
-        }
         if (version === publishVersion.current) setShareStatus(key
             ? "Saved and shared automatically."
-            : "Saved and shared automatically. CloudCord connected it to your real profile for you.");
+            : "Saved and shared automatically with CloudCord desktop and mobile.");
         if (close) rootProps.onClose();
     }
 
@@ -614,7 +603,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <Field label="Custom decoration asset ID" value={data.decorationAsset ?? ""} placeholder="Paste any Discord collectible asset ID" onChange={v => set("decorationAsset", v || undefined)} />
             <div className="cp-share-card">
                 <strong>Automatic CloudCord sharing</strong>
-                <span>Every editor change is saved and published automatically. CloudCord maintains the invisible profile link in your real About Me without changing its visible text.</span>
+                <span>Every editor change is saved automatically and linked to your Discord user ID. Your real About Me is never changed.</span>
                 {shareStatus && <div className="cp-share-status">{shareStatus}</div>}
             </div>
         </ModalContent>
@@ -748,6 +737,17 @@ fakeObfuscatedEmail(real: string | null) {
         addContextMenuPatch("user-context", userContextMenuPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
 
+        DataStore.get<boolean>(DS_LEGACY_MARKER_CLEANED).then(async cleaned => {
+            if (cleaned) return;
+            const myId = AuthenticationStore?.getId?.();
+            if (!myId) return;
+            const response = await RestAPI.get({ url: `/users/${myId}/profile?with_mutual_guilds=false&with_mutual_friends_count=false` });
+            const bio = response?.body?.user_profile?.bio ?? response?.body?.bio ?? "";
+            const nextBio = removeLegacyProfileMarkers(bio);
+            if (nextBio !== bio) await RestAPI.patch({ url: "/users/@me/profile", body: { bio: nextBio } });
+            await DataStore.set(DS_LEGACY_MARKER_CLEANED, true);
+        }).catch(() => { });
+
         try {
             const US = (Vencord as any).Webpack?.findByProps?.("getCurrentUser", "getUser");
             if (US && !US._cp_hook) {
@@ -782,7 +782,7 @@ fakeObfuscatedEmail(real: string | null) {
                     try {
                         const p = origGet(uid);
                         if (isMe(uid)) return (isEnabled && p) ? this.hookUserProfile(p) : p;
-                        requestSharedProfile(uid, p?.bio);
+                        requestSharedProfile(uid);
                         const shared = sharedForUser(uid);
                         return shared ? mergeProfile(p, shared) : p;
                     } catch { return origGet(uid); }
@@ -792,7 +792,7 @@ fakeObfuscatedEmail(real: string | null) {
                     try {
                         const p = origGuild(uid, gid);
                         if (isMe(uid)) return (isEnabled && p) ? this.hookUserProfile(p) : p;
-                        requestSharedProfile(uid, p?.bio);
+                        requestSharedProfile(uid);
                         const shared = sharedForUser(uid);
                         return shared ? mergeProfile(p, shared) : p;
                     } catch { return origGuild(uid, gid); }

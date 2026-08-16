@@ -6,7 +6,7 @@ The desktop tree is self-contained under `desktop/` and uses CloudCord branding,
 
 CloudCord Desktop is separate from CloudCord iOS and Android. iOS and Android use the React Native/mobile runtime. Desktop uses the desktop client mod runtime built from `desktop/client`.
 
-BotCord provides a responsive Discord-style bot client with servers, categorized channels, direct messages, message history, embeds, media, replies, reactions, editing and member browsing. Fake Profile saves and publishes the complete editor automatically through the service in `desktop/profile-service`; the client installs and maintains its invisible About Me link automatically while preserving visible bio text. Discord credentials and BotCord tokens are never sent to that service.
+BotCord provides a responsive Discord-style bot client with servers, categorized channels, direct messages, message history, embeds, media, replies, reactions, editing and member browsing. Fake Profile saves and publishes the complete editor automatically through the service in `desktop/profile-service`; CloudCord desktop and mobile discover it by Discord user ID without adding hidden text to the real About Me. Discord credentials and BotCord tokens are never sent to that service.
 
 ## Build
 

@@ -23,6 +23,17 @@ function cleanProfile(value) {
   return json;
 }
 
+function cleanOwnerId(value) {
+  const ownerId = String(value || "");
+  if (!/^\d{15,22}$/.test(ownerId)) throw new Error("A valid Discord user ID is required.");
+  return ownerId;
+}
+
+async function linkOwner(env, ownerId, profileId) {
+  await env.DB.prepare("INSERT INTO profile_owners (user_id, profile_id, updated_at) VALUES (?, ?, ?) ON CONFLICT(user_id) DO UPDATE SET profile_id = excluded.profile_id, updated_at = excluded.updated_at")
+    .bind(ownerId, profileId, Date.now()).run();
+}
+
 function randomKey(bytes = 24) {
   const value = crypto.getRandomValues(new Uint8Array(bytes));
   return btoa(String.fromCharCode(...value)).replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
@@ -78,11 +89,14 @@ export default {
     }
     if (url.pathname === "/v1/profiles" && request.method === "POST") {
       try {
-        const json = cleanProfile(await request.json());
+        const body = await request.json();
+        const ownerId = cleanOwnerId(body?.ownerId);
+        const json = cleanProfile(body?.profile);
         const id = randomKey(20);
         const editToken = randomKey(32);
         const stored = JSON.stringify({ profile: JSON.parse(json), editHash: await tokenHash(editToken) });
         await env.DB.prepare("INSERT INTO profiles (id, json, created_at) VALUES (?, ?, ?)").bind(id, stored, Date.now()).run();
+        await linkOwner(env, ownerId, id);
         return response({ id, editToken }, 201, { "Cache-Control": "no-store" });
       } catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 400, { "Cache-Control": "no-store" }); }
     }
@@ -95,15 +109,25 @@ export default {
         if (!stored?.editHash) return response({ error: "This legacy profile cannot be updated." }, 409, { "Cache-Control": "no-store" });
         const token = request.headers.get("Authorization")?.replace(/^Bearer\s+/i, "") || "";
         if (!token || await tokenHash(token) !== stored.editHash) return response({ error: "Invalid profile edit key." }, 403, { "Cache-Control": "no-store" });
-        const json = cleanProfile(await request.json());
+        const body = await request.json();
+        const ownerId = cleanOwnerId(body?.ownerId);
+        const json = cleanProfile(body?.profile);
         const next = JSON.stringify({ profile: JSON.parse(json), editHash: stored.editHash });
         await env.DB.prepare("UPDATE profiles SET json = ?, created_at = ? WHERE id = ?").bind(next, Date.now(), match[1]).run();
+        await linkOwner(env, ownerId, match[1]);
         return response({ id: match[1] }, 200, { "Cache-Control": "no-store" });
       } catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 400, { "Cache-Control": "no-store" }); }
     }
     if (match && request.method === "GET") {
       const row = await env.DB.prepare("SELECT json FROM profiles WHERE id = ?").bind(match[1]).first();
       if (!row) return response({ error: "Profile not found." }, 404);
+      const stored = JSON.parse(row.json);
+      return response(stored?.editHash ? stored.profile : stored, 200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300" });
+    }
+    const userMatch = url.pathname.match(/^\/v1\/profiles\/user\/(\d{15,22})$/);
+    if (userMatch && request.method === "GET") {
+      const row = await env.DB.prepare("SELECT p.json FROM profile_owners o JOIN profiles p ON p.id = o.profile_id WHERE o.user_id = ?").bind(userMatch[1]).first();
+      if (!row) return response({ error: "CloudCord profile not found." }, 404);
       const stored = JSON.parse(row.json);
       return response(stored?.editHash ? stored.profile : stored, 200, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "public, max-age=300" });
     }
