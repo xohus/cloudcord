@@ -47,23 +47,46 @@ async function tokenHash(token) {
 const releaseTags = ["new_beta", "new_beta_android", "new_beta_t_desktop"];
 // Preserve the one download recorded on the removed pre-rename Windows asset.
 const historicalDownloads = 1;
+// Never publish a false zero if GitHub is temporarily unavailable. This is the
+// last verified lifetime total from before persistent counter storage existed.
+const minimumKnownDownloads = 38;
 
-async function downloadCount(request, ctx) {
+async function rememberDownloadCount(env, count) {
+  await env.DB.exec("CREATE TABLE IF NOT EXISTS usage_counters (name TEXT PRIMARY KEY, value INTEGER NOT NULL, updated_at INTEGER NOT NULL)");
+  await env.DB.prepare("INSERT INTO usage_counters (name, value, updated_at) VALUES ('official_downloads', ?, ?) ON CONFLICT(name) DO UPDATE SET value = MAX(value, excluded.value), updated_at = excluded.updated_at")
+    .bind(count, Date.now()).run();
+}
+
+async function lastDownloadCount(env) {
+  try {
+    const row = await env.DB.prepare("SELECT value FROM usage_counters WHERE name = 'official_downloads'").first();
+    return Math.max(minimumKnownDownloads, Number(row?.value || 0));
+  } catch {
+    return minimumKnownDownloads;
+  }
+}
+
+async function downloadCount(request, env, ctx) {
   const cache = caches.default;
   const cacheKey = new Request(new URL("/v1/usage/github-downloads", request.url));
   const cached = await cache.match(cacheKey);
   if (cached) return Number(await cached.text());
 
-  const counts = await Promise.all(releaseTags.map(async tag => {
-    const release = await fetch(`https://api.github.com/repos/xohus/cloudcord/releases/tags/${tag}`, {
-      headers: { "Accept": "application/vnd.github+json", "User-Agent": "CloudCord-Download-Counter" }
-    });
-    if (!release.ok) throw new Error(`GitHub release lookup failed (${release.status}).`);
-    const data = await release.json();
-    return (data.assets || []).reduce((total, asset) => total + Number(asset.download_count || 0), 0);
-  }));
-
-  const count = historicalDownloads + counts.reduce((total, value) => total + value, 0);
+  let count;
+  try {
+    const counts = await Promise.all(releaseTags.map(async tag => {
+      const release = await fetch(`https://api.github.com/repos/xohus/cloudcord/releases/tags/${tag}`, {
+        headers: { "Accept": "application/vnd.github+json", "User-Agent": "CloudCord-Download-Counter" }
+      });
+      if (!release.ok) throw new Error(`GitHub release lookup failed (${release.status}).`);
+      const data = await release.json();
+      return (data.assets || []).reduce((total, asset) => total + Number(asset.download_count || 0), 0);
+    }));
+    count = Math.max(minimumKnownDownloads, historicalDownloads + counts.reduce((total, value) => total + value, 0));
+    ctx.waitUntil(rememberDownloadCount(env, count));
+  } catch {
+    count = await lastDownloadCount(env);
+  }
   ctx.waitUntil(cache.put(cacheKey, new Response(String(count), { headers: { "Cache-Control": "public, max-age=300" } })));
   return count;
 }
@@ -80,20 +103,20 @@ export default {
     const url = new URL(request.url);
     if (url.pathname === "/health") return response({ ok: true, service: "cloudcord-profiles" });
     if (url.pathname === "/v1/usage/count" && request.method === "GET") {
-      try { return response({ count: await downloadCount(request, ctx), metric: "release_downloads" }, 200, { "Cache-Control": "public, max-age=300" }); }
+      try { return response({ count: await downloadCount(request, env, ctx), metric: "release_downloads" }, 200, { "Cache-Control": "public, max-age=300" }); }
       catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 502, { "Cache-Control": "no-store" }); }
     }
     if (url.pathname === "/v1/usage/installs" && request.method === "GET") {
-      try { return response({ count: await downloadCount(request, ctx), metric: "lifetime_official_downloads" }, 200, { "Cache-Control": "public, max-age=300" }); }
+      try { return response({ count: await downloadCount(request, env, ctx), metric: "lifetime_official_downloads" }, 200, { "Cache-Control": "public, max-age=300" }); }
       catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 502, { "Cache-Control": "no-store" }); }
     }
     if (url.pathname === "/v1/usage/badge.svg" && request.method === "GET") {
-      try { return response(usageBadge(await downloadCount(request, ctx)), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "public, max-age=300" }); }
-      catch { return response(usageBadge(0), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
+      try { return response(usageBadge(await downloadCount(request, env, ctx)), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "public, max-age=300" }); }
+      catch { return response(usageBadge(minimumKnownDownloads), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
     }
     if (url.pathname === "/v1/usage/installs-badge.svg" && request.method === "GET") {
-      try { return response(usageBadge(await downloadCount(request, ctx), "installs"), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "public, max-age=300" }); }
-      catch { return response(usageBadge(0, "installs"), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
+      try { return response(usageBadge(await downloadCount(request, env, ctx), "installs"), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "public, max-age=300" }); }
+      catch { return response(usageBadge(minimumKnownDownloads, "installs"), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
     }
     if (url.pathname === "/v1/profiles" && request.method === "POST") {
       try {
