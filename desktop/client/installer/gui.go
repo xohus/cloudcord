@@ -516,11 +516,6 @@ func renderInstaller() g.Widget {
 	}
 	btnWidth := (w - 24) / 3
 
-	if CanUpdateSelf() && !showedUpdatePrompt {
-		showedUpdatePrompt = true
-		g.OpenPopup("#update-prompt")
-	}
-
 	status := "Not installed"
 	if radioIdx >= 0 && radioIdx < len(discords) && discords[radioIdx].(*DiscordInstall).isPatched {
 		status = "CloudCord installed"
@@ -594,7 +589,6 @@ func renderInstaller() g.Widget {
 		InfoModal("#scuffed-install", "Discord needs attention", "This Discord installation is in an unexpected location. Reinstall Discord, then run CloudCord again."),
 		InfoModal("#invalid-custom-location", "That folder is not Discord", "Choose the folder containing your Discord installation."),
 		InfoModal("#modal"+strconv.Itoa(modalId), modalTitle, modalMessage),
-		UpdateModal(),
 	)
 }
 
@@ -636,7 +630,7 @@ func renderLegacyInstaller() g.Widget {
 			To(g.Child().Size(g.Auto, 104).Flags(g.WindowFlagsNoScrollbar).Layout(
 				g.Style().SetFontSize(22).SetColor(g.StyleColorText, CloudCordCyan).To(g.Label("Everything you want, already included")),
 				g.Dummy(0, 8),
-				g.Label("BotCord   •   Fake Profile   •   Cloud Sync   •   Plugins, themes & fonts"),
+				g.Label("BotCord  |  Fake Profile  |  Cloud Sync  |  Plugins, themes & fonts"),
 			)),
 
 		g.Dummy(0, 10),

@@ -106,8 +106,9 @@ export async function setActiveBotAccount(id: string) {
 }
 
 export const getBotGuilds = (token: string) => botFetch<any[]>(token, "/users/@me/guilds");
+export const getBotDMChannels = (token: string) => botFetch<any[]>(token, "/users/@me/channels");
 export const getBotGuildChannels = (token: string, guildId: string) => botFetch<any[]>(token, `/guilds/${guildId}/channels`);
-export const getBotChannelMessages = (token: string, channelId: string) => botFetch<any[]>(token, `/channels/${channelId}/messages?limit=50`);
+export const getBotChannelMessages = (token: string, channelId: string, before?: string) => botFetch<any[]>(token, `/channels/${channelId}/messages?limit=50${before ? `&before=${before}` : ""}`);
 
 export async function getBotGuildMembers(token: string, guildId: string) {
     const members: any[] = [];
@@ -149,4 +150,25 @@ export function sendBotMessage(token: string, channelId: string, content: string
 
 export const deleteBotMessage = (token: string, channelId: string, messageId: string) => botFetch<void>(token, `/channels/${channelId}/messages/${messageId}`, { method: "DELETE" });
 export const editBotMessage = (token: string, channelId: string, messageId: string, content: string) => botFetch<any>(token, `/channels/${channelId}/messages/${messageId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ content }) });
+export const addBotReaction = (token: string, channelId: string, messageId: string, emoji: string) => botFetch<void>(token, `/channels/${channelId}/messages/${messageId}/reactions/${encodeURIComponent(emoji)}/@me`, { method: "PUT" });
+
+export function replyBotMessage(token: string, channelId: string, messageId: string, content: string, attachment?: File) {
+    const payload = { content, message_reference: { message_id: messageId, channel_id: channelId }, allowed_mentions: { replied_user: false } };
+    if (attachment) {
+        return attachment.arrayBuffer().then(data => Native.request(normalizeBotToken(token), "POST", `/channels/${channelId}/messages`, payload, {
+            name: attachment.name,
+            type: attachment.type,
+            data: new Uint8Array(data)
+        })).then(result => {
+            if (!result.ok) throw new Error(result.text || `Discord request failed (${result.status}).`);
+            return JSON.parse(result.text);
+        });
+    }
+    return botFetch<any>(token, `/channels/${channelId}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    });
+}
+
 

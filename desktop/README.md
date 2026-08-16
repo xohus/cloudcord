@@ -6,6 +6,8 @@ The desktop tree is self-contained under `desktop/` and uses CloudCord branding,
 
 CloudCord Desktop is separate from CloudCord iOS and Android. iOS and Android use the React Native/mobile runtime. Desktop uses the desktop client mod runtime built from `desktop/client`.
 
+BotCord provides a Discord-style bot client with servers, categorized channels, direct messages, message history, embeds, media, replies, reactions, editing and member browsing. Fake Profile supports complete opt-in sharing through the content-addressed service in `desktop/profile-service`; Discord credentials and BotCord tokens are never sent to that service.
+
 ## Build
 
 From the repository root:
@@ -64,6 +66,9 @@ pnpm build
 pnpm build:installer
 ```
 
+The deployed shared-profile endpoint also exposes `/health`. Its Worker source and D1 schema are versioned under `desktop/profile-service` so the service can be audited or redeployed independently.
+
 ## Known Risks
 
 Discord desktop updates can replace `app.asar` and require an update from CloudCord Setup. Discord client mods may violate Discord terms of service. Plugin patches depend on Discord internals and can break after Discord updates. Antivirus or Windows SmartScreen can flag unsigned community installers. Always close Discord before installing, deleting, or updating.
+
