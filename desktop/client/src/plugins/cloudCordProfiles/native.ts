@@ -18,18 +18,14 @@ async function call(path: string, init?: RequestInit) {
     }
 }
 
-export function publish(_: IpcMainInvokeEvent, ownerId: string, profile: unknown) {
-    return call("", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ownerId, profile }) });
+export function publish(_: IpcMainInvokeEvent, profile: unknown) {
+    return call("", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(profile) });
 }
 
-export function update(_: IpcMainInvokeEvent, id: string, editToken: string, ownerId: string, profile: unknown) {
-    return call(`/${encodeURIComponent(id)}`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${editToken}` }, body: JSON.stringify({ ownerId, profile }) });
+export function update(_: IpcMainInvokeEvent, id: string, editToken: string, profile: unknown) {
+    return call(`/${encodeURIComponent(id)}`, { method: "PUT", headers: { "Content-Type": "application/json", Authorization: `Bearer ${editToken}` }, body: JSON.stringify(profile) });
 }
 
 export function get(_: IpcMainInvokeEvent, id: string) {
     return call(`/${encodeURIComponent(id)}`);
-}
-
-export function getByUser(_: IpcMainInvokeEvent, ownerId: string) {
-    return call(`/user/${encodeURIComponent(ownerId)}`);
 }

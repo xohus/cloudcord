@@ -13,7 +13,7 @@ export const settings = definePluginSettings({
     format: {
         component: ({ setValue }) => FormatSetting(setValue),
         type: OptionType.COMPONENT,
-        default: "{sincordIcon} Sincord {sincordVersion} ({sincordHash})",
+        default: "{sincordIcon} CloudCord {sincordVersion} ({sincordHash})",
         restartNeeded: true
     }
 });
@@ -33,15 +33,15 @@ export const settingVariables = [
     "{buildNumber} - Discord build number (e.g. 123456)",
     "{buildHash} - Discord build hash (e.g. 123456789)",
     "",
-    "Sincord Variables:",
-    "{sincordIcon} - Sincord icon",
-    "{sincordVersion} - Version of Sincord (e.g. 1.0.0)",
-    "{sincordHash} - Sincord build hash (e.g. 123456789)",
-    "{sincordPlatform} - Platform Sincord is running on (e.g. Dev Build)",
+    "CloudCord Variables:",
+    "{sincordIcon} - CloudCord icon",
+    "{sincordVersion} - Version of CloudCord (e.g. 1.0.0)",
+    "{sincordHash} - CloudCord build hash (e.g. 123456789)",
+    "{sincordPlatform} - Platform CloudCord is running on (e.g. Dev Build)",
     "",
-    "Sinbop Specific Variables:",
-    "{sinbopHash} - Sinbop build hash (e.g. 123456789)",
-    "{sinbopPlatform} - Platform Sinbop is running on (e.g. Dev Build)",
+    "CloudCord Host Variables:",
+    "{sinbopHash} - Host build hash (e.g. 123456789)",
+    "{sinbopPlatform} - Host platform (e.g. Dev Build)",
     "",
     "Client Variables:",
     "{clientIcon} - Desktop icon",

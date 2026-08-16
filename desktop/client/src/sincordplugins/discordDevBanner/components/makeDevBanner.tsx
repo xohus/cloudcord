@@ -16,8 +16,8 @@ export function makeDevBanner(state?: string): string | JSX.Element {
     const { RELEASE_CHANNEL, BUILD_NUMBER, VERSION_HASH } = window.GLOBAL_ENV;
     const buildChannel = names[RELEASE_CHANNEL] || RELEASE_CHANNEL.charAt(0).toUpperCase() + RELEASE_CHANNEL.slice(1);
     const { chromiumVersion, electronVersion, getVersionInfo } = SettingsPlugin;
-    const format = settings.store.format ?? "{devbannerIcon} {buildChannel} {buildNumber} ({buildHash}) | {sincordIcon} {sincordName} {sincordVersion} ({sincordHash})";
-    const baseFormat = state ?? format;
+    const format = settings.store.format ?? "{devbannerIcon} {buildChannel} {buildNumber} ({buildHash}) | {sincordIcon} CloudCord {sincordVersion} ({sincordHash})";
+    const baseFormat = (state ?? format).replaceAll("Sincord", "CloudCord").replaceAll("Sinbop", "CloudCord");
 
     const clientInfo = detectClient();
 
