@@ -69,6 +69,7 @@ A full Discord-style bot-account client built directly into CloudCord Desktop.
 - Text, image and file attachments, embeds and poll rendering
 - Replies, reactions, inline editing and message deletion
 - Searchable member list with one-click bot DMs
+- New DM picker limited to members of servers the selected bot belongs to
 - Local multi-bot switching without exposing tokens after setup
 
 </td>
@@ -117,7 +118,7 @@ CloudCord integrates with the client rather than building a separate app around 
 
 ### Fast runtime updates
 
-The CloudCord runtime can refresh independently of a full native rebuild, allowing fixes and feature updates to ship quickly while retaining native iOS and Android loaders.
+The CloudCord runtime can refresh independently of a full native rebuild. On Windows, `cloudcord.exe` also checks the official desktop release and replaces itself automatically when a newer installer is published.
 
 ### Plugin ecosystem
 

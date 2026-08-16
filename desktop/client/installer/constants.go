@@ -13,7 +13,7 @@ import (
 
 const ReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/latest"
 const ReleaseUrlFallback = ""
-const InstallerReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/latest"
+const InstallerReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/tags/new_beta_t_desktop"
 const InstallerReleaseUrlFallback = ""
 
 var UserAgent = "cloudcord.exe/" + buildinfo.InstallerGitHash + " (https://github.com/xohus/cloudcord)"

@@ -511,12 +511,16 @@ func ShowModal(title, desc string) {
 }
 
 func renderInstaller() g.Widget {
-	wi, _ := win.GetSize()
+	wi, hi := win.GetSize()
 	w := float32(wi) - 84
 	if w < 360 {
 		w = 360
 	}
 	btnWidth := (w - 24) / 3
+	topGap := (float32(hi) - 430) / 2
+	if topGap < 8 {
+		topGap = 8
+	}
 
 	status := "Not installed"
 	if radioIdx >= 0 && radioIdx < len(discords) && discords[radioIdx].(*DiscordInstall).isPatched {
@@ -524,12 +528,12 @@ func renderInstaller() g.Widget {
 	}
 
 	return g.Column(
-		g.Dummy(0, 6),
+		g.Dummy(0, topGap),
 		g.Style().
 			SetColor(g.StyleColorChildBg, CloudCordPanel).
 			SetStyle(g.StyleVarWindowPadding, 16, 10).
 			SetStyleFloat(g.StyleVarChildRounding, 16).
-			To(g.Child().Size(g.Auto, 70).Flags(g.WindowFlagsNoScrollbar).Layout(
+			To(g.Child().Size(g.Auto, 94).Flags(g.WindowFlagsNoScrollbar).Layout(
 				g.Style().SetColor(g.StyleColorText, CloudCordCyan).SetFontSize(14).To(g.Label("CLOUDCORD DESKTOP")),
 				g.Style().SetFontSize(22).To(g.Label("Your Discord, upgraded.")),
 				g.Style().SetColor(g.StyleColorText, CloudCordMuted).To(g.Label("BotCord  |  Fake Profile  |  Cloud Sync  |  Plugins  |  Themes")),
@@ -540,7 +544,7 @@ func renderInstaller() g.Widget {
 			SetColor(g.StyleColorChildBg, CloudCordPanel).
 			SetStyle(g.StyleVarWindowPadding, 16, 10).
 			SetStyleFloat(g.StyleVarChildRounding, 16).
-			To(g.Child().Size(g.Auto, Ternary(len(discords) == 0, float32(126), float32(74))).Flags(g.WindowFlagsNoScrollbar).Layout(
+			To(g.Child().Size(g.Auto, Ternary(len(discords) == 0, float32(138), float32(86))).Flags(g.WindowFlagsNoScrollbar).Layout(
 				g.Row(
 					g.Style().SetFontSize(20).To(g.Label("Discord installation")),
 					g.Style().SetColor(g.StyleColorText, CloudCordCyan).To(g.Label(status)),

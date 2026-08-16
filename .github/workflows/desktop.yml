@@ -76,8 +76,8 @@ jobs:
           CGO_ENABLED: "1"
         run: |
           go test -tags cli ./...
-          go build -trimpath -ldflags "-s -w -H windowsgui -X sinlotl/buildinfo.InstallerTag=Desktop -X sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}" -o ../dist/cloudcord.exe .
-          go build -trimpath -tags cli -ldflags "-s -w -X sinlotl/buildinfo.InstallerTag=Desktop -X sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}" -o ../dist/cloudcord-cli.exe .
+          go build -trimpath -ldflags "-s -w -H windowsgui -X sinlotl/buildinfo.InstallerTag=new_beta_t_desktop -X sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}" -o ../dist/cloudcord.exe .
+          go build -trimpath -tags cli -ldflags "-s -w -X sinlotl/buildinfo.InstallerTag=new_beta_t_desktop -X sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}" -o ../dist/cloudcord-cli.exe .
 
       - name: Smoke test installer
         working-directory: desktop/client

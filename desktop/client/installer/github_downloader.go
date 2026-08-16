@@ -25,6 +25,7 @@ type GithubRelease struct {
 	Assets  []struct {
 		Name        string `json:"name"`
 		DownloadURL string `json:"browser_download_url"`
+		Digest      string `json:"digest"`
 	} `json:"assets"`
 }
 

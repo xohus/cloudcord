@@ -77,6 +77,10 @@ function BotCord() {
     const [messages, setMessages] = useState<any[]>([]);
     const [members, setMembers] = useState<any[]>([]);
     const [memberSearch, setMemberSearch] = useState("");
+    const [showNewDM, setShowNewDM] = useState(false);
+    const [dmGuildId, setDmGuildId] = useState("");
+    const [dmMembers, setDmMembers] = useState<any[]>([]);
+    const [dmSearch, setDmSearch] = useState("");
     const [composer, setComposer] = useState("");
     const [attachment, setAttachment] = useState<File | undefined>();
     const [replyTo, setReplyTo] = useState<any>();
@@ -108,7 +112,7 @@ function BotCord() {
     };
 
     useEffect(() => {
-        setGuilds([]); setDms([]); setGuildId(""); setChannels([]); setChannelId(""); setMessages([]); setMembers([]); setHome(true);
+        setGuilds([]); setDms([]); setGuildId(""); setChannels([]); setChannelId(""); setMessages([]); setMembers([]); setHome(true); setShowNewDM(false); setDmGuildId(""); setDmMembers([]); setDmSearch("");
         if (active) run("Connecting...", loadAccount);
     }, [active?.id]);
 
@@ -132,6 +136,10 @@ function BotCord() {
         return [{ id: "uncategorized", name: "Channels", children: loose }, ...groups];
     }, [channels]);
     const filteredMembers = useMemo(() => members.filter(member => displayName(member.user).toLowerCase().includes(memberSearch.toLowerCase())).slice(0, 100), [members, memberSearch]);
+    const filteredDmMembers = useMemo(() => dmMembers
+        .filter(member => member.user?.id !== active?.id)
+        .filter(member => `${member.nick || ""} ${displayName(member.user)}`.toLowerCase().includes(dmSearch.toLowerCase()))
+        .slice(0, 100), [dmMembers, dmSearch, active?.id]);
     const selectedChannel = [...channels, ...dms].find(channel => channel.id === channelId);
 
     async function openChannel(channel: any) {
@@ -144,6 +152,14 @@ function BotCord() {
             const dm = await createBotDM(active.token, userId);
             if (!dms.some(channel => channel.id === dm.id)) setDms(current => [dm, ...current]);
             setHome(true); setGuildId(""); await openChannel(dm);
+        });
+    }
+    async function selectDmGuild(nextGuildId: string) {
+        setDmGuildId(nextGuildId); setDmMembers([]); setDmSearch("");
+        if (!active || !nextGuildId) return;
+        await run("Loading server members...", async () => {
+            setDmMembers(await getBotGuildMembers(active.token, nextGuildId));
+            setStatus("Choose a member to message.");
         });
     }
     async function loadOlder() {
@@ -192,8 +208,23 @@ function BotCord() {
                     </button>)}
                 </aside>
                 <aside className="cc-bot-channels">
-                    <div className="cc-bot-sidebar-title">{home ? "Direct Messages" : guilds.find(guild => guild.id === guildId)?.name || "Server"}</div>
-                    {home ? <>
+                    <div className="cc-bot-sidebar-title"><span>{home ? "Direct Messages" : guilds.find(guild => guild.id === guildId)?.name || "Server"}</span>{home && <button className="cc-bot-new-dm" title="Message a server member" onClick={() => setShowNewDM(true)}>+</button>}</div>
+                    {home ? showNewDM ? <>
+                        <button className="cc-bot-dm-back" onClick={() => setShowNewDM(false)}>Back to conversations</button>
+                        <div className="cc-bot-section-title">Choose a server</div>
+                        <select className="cc-bot-dm-guild" value={dmGuildId} onChange={event => selectDmGuild(event.currentTarget.value)}>
+                            <option value="">Select a server...</option>
+                            {guilds.map(guild => <option key={guild.id} value={guild.id}>{guild.name}</option>)}
+                        </select>
+                        {dmGuildId && <>
+                            <TextInput value={dmSearch} onChange={setDmSearch} placeholder="Search server members" />
+                            <div className="cc-bot-section-title">Members</div>
+                            {filteredDmMembers.map(member => <button className="cc-bot-dm" key={member.user.id} onClick={async () => { await openDM(member.user.id); setShowNewDM(false); }}>
+                                <img src={avatarUrl(member.user)} alt="" /><span>{member.nick || displayName(member.user)}</span>{member.user.bot && <small>BOT</small>}
+                            </button>)}
+                            {!busy && !filteredDmMembers.length && <div className="cc-bot-empty">No matching members.</div>}
+                        </>}
+                    </> : <>
                         <div className="cc-bot-section-title">Conversations</div>
                         {dms.map(dm => <button className={channelId === dm.id ? "active cc-bot-dm" : "cc-bot-dm"} key={dm.id} onClick={() => openChannel(dm)}>
                             <img src={avatarUrl(dm.recipients?.[0])} alt="" /><span>{channelLabel(dm)}</span>

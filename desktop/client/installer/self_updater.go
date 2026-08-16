@@ -7,6 +7,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -38,15 +40,49 @@ func init() {
 			Log.Warn("Failed to check for self updates:", err)
 			SelfUpdateCheckDoneChan <- false
 		} else {
-			IsSelfOutdated = res.TagName != buildinfo.InstallerTag
+			remoteDigest := ""
+			wanted := Ternary(buildinfo.UiType == buildinfo.UiTypeCli, "cloudcord-cli.exe", "cloudcord.exe")
+			for _, asset := range res.Assets {
+				if asset.Name == wanted {
+					remoteDigest = asset.Digest
+					break
+				}
+			}
+			localDigest, digestErr := executableDigest()
+			IsSelfOutdated = remoteDigest != "" && digestErr == nil && remoteDigest != localDigest
 			Log.Debug("Is self outdated?", IsSelfOutdated)
+			if IsSelfOutdated {
+				Log.Info("A newer CloudCord installer is available. Updating automatically...")
+				if err := UpdateSelf(); err != nil {
+					Log.Warn("Automatic installer update failed:", err)
+				} else if err := RelaunchSelf(); err != nil {
+					Log.Warn("Failed to relaunch updated installer:", err)
+				}
+			}
 			SelfUpdateCheckDoneChan <- true
 		}
 	}()
 }
 
+func executableDigest() (string, error) {
+	fileName, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	file, err := os.Open(fileName)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	return "sha256:" + hex.EncodeToString(hash.Sum(nil)), nil
+}
+
 func GetInstallerDownloadLink() string {
-	const BaseUrl = "https://github.com/xohus/cloudcord/releases/latest/download/"
+	const BaseUrl = "https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/"
 	switch runtime.GOOS {
 	case "windows":
 		filename := Ternary(buildinfo.UiType == buildinfo.UiTypeCli, "cloudcord-cli.exe", "cloudcord.exe")
@@ -96,6 +132,9 @@ func UpdateSelf() error {
 		return err
 	}
 	defer res.Body.Close()
+	if res.StatusCode >= 300 {
+		return fmt.Errorf("installer download failed: %s", res.Status)
+	}
 
 	tmp, err := os.CreateTemp(ownExeDir, "CloudCordSetupUpdate")
 	if err != nil {
