@@ -246,7 +246,7 @@ function FakeProfile() {
         <FormSwitch title="Enable Fake Profile" description="CloudCord saves and publishes editor changes automatically." value={enabled} onChange={value => { Settings.plugins[plugin.name].enabled = value; setEnabled(value); }} hideBorder />
         {enabled && SettingsComponent && <SettingsComponent />}
         <Divider className={Margins.top20} />
-        <Notice.Info>Changes save and publish automatically. On the first publish CloudCord copies a one-time invisible profile link; paste it once in your real About Me so other CloudCord users can find the profile.</Notice.Info>
+        <Notice.Info>Changes save and publish automatically. CloudCord maintains the invisible link in your real About Me itself, so other CloudCord users see updates without any manual step.</Notice.Info>
     </SettingsTab>;
 }
 

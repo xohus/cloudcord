@@ -57,6 +57,16 @@ export function findProfileId(bio?: string | null) {
     return null;
 }
 
+export function withProfileMarker(bio: string | null | undefined, id: string) {
+    let visible = bio || "";
+    for (const match of visible.matchAll(/[\u{e0020}-\u{e007e}]+/gu)) {
+        try {
+            if (/^\[CCP1:[A-Za-z0-9_-]{16,64}\]$/.test(decodeInvisible(match[0]))) visible = visible.replace(match[0], "");
+        } catch { }
+    }
+    return `${visible.trimEnd()}${createProfileMarker(id)}`;
+}
+
 function message(text: string, status: number) {
     try { return JSON.parse(text)?.error || JSON.parse(text)?.message || `Profile service failed (${status}).`; }
     catch { return text || `Profile service failed (${status}).`; }

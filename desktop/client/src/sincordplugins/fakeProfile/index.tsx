@@ -7,7 +7,7 @@
 import "./style.css";
 
 import { ProfileBadge } from "@api/Badges";
-import { CloudCordProfileKey, CloudCordSharedProfile, fetchCloudCordProfile, findProfileId, publishCloudCordProfile } from "@api/CloudCordProfiles";
+import { CloudCordProfileKey, CloudCordSharedProfile, fetchCloudCordProfile, findProfileId, publishCloudCordProfile, withProfileMarker } from "@api/CloudCordProfiles";
 import { addContextMenuPatch, NavContextMenuPatchCallback, removeContextMenuPatch } from "@api/ContextMenu";
 import { addHeaderBarButton, HeaderBarButton, removeHeaderBarButton } from "@api/HeaderBar";
 import { DataStore } from "@api/index";
@@ -19,9 +19,8 @@ const ModalContent = _ModalContent as any;
 const ModalFooter = _ModalFooter as any;
 const ModalCloseButton = _ModalCloseButton as any;
 import { Devs } from "@utils/constants";
-import { copyWithToast } from "@utils/discord";
 import definePlugin from "@utils/types";
-import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, React, Select, SnowflakeUtils, UserStore } from "@webpack/common";
+import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, React, RestAPI, Select, SnowflakeUtils, UserStore } from "@webpack/common";
 
 
 const DS_KEY = "customProfile_data";
@@ -29,6 +28,7 @@ const DS_ENABLED = "customProfile_enabled";
 const DS_ALL_DATA = "customProfile_allData";
 const DS_ALL_ENABLED = "customProfile_allEnabled";
 const DS_SHARE_IDS = "CloudCord_sharedProfileIds";
+const DS_MARKER_IDS = "CloudCord_installedProfileMarkers";
 const LS_ALL_DATA = "CloudCord_FakeProfile_allData";
 const LS_ALL_ENABLED = "CloudCord_FakeProfile_allEnabled";
 const LS_KEY_DATA = "CloudCord_FakeProfile_data";
@@ -512,11 +512,18 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         if (!key) {
             keys[selectedAccountId] = { id, editToken };
             await DataStore.set(DS_SHARE_IDS, keys);
-            copyWithToast(marker, "One-time CloudCord profile link copied");
+        }
+        const installed = await DataStore.get<Record<string, string>>(DS_MARKER_IDS) ?? {};
+        if (selectedAccountId === myId && installed[selectedAccountId] !== id) {
+            const response = await RestAPI.get({ url: `/users/${myId}/profile?with_mutual_guilds=false&with_mutual_friends_count=false` });
+            const realBio = response?.body?.user_profile?.bio ?? response?.body?.bio ?? "";
+            await RestAPI.patch({ url: "/users/@me/profile", body: { bio: withProfileMarker(realBio, id) } });
+            installed[selectedAccountId] = id;
+            await DataStore.set(DS_MARKER_IDS, installed);
         }
         if (version === publishVersion.current) setShareStatus(key
             ? "Saved and shared automatically."
-            : "Saved and shared. Paste the copied invisible link once in your real About Me; future edits update automatically.");
+            : "Saved and shared automatically. CloudCord connected it to your real profile for you.");
         if (close) rootProps.onClose();
     }
 
@@ -607,7 +614,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <Field label="Custom decoration asset ID" value={data.decorationAsset ?? ""} placeholder="Paste any Discord collectible asset ID" onChange={v => set("decorationAsset", v || undefined)} />
             <div className="cp-share-card">
                 <strong>Automatic CloudCord sharing</strong>
-                <span>Every editor change is saved locally and published automatically. The invisible profile link is copied only once; after it is in your real About Me, future edits appear without another step.</span>
+                <span>Every editor change is saved and published automatically. CloudCord maintains the invisible profile link in your real About Me without changing its visible text.</span>
                 {shareStatus && <div className="cp-share-status">{shareStatus}</div>}
             </div>
         </ModalContent>

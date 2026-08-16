@@ -87,7 +87,7 @@ Build a complete custom profile locally and optionally share it with other Cloud
 - Profile gradients, badges, Nitro and boost-duration previews
 - Account and signup dates
 - Built-in decorations, Discord catalog discovery and custom asset IDs
-- Automatic full-editor profile saving and sharing through a one-time invisible About Me marker
+- Automatic full-editor profile saving and sharing, including automatic invisible About Me linking
 - Local persistence that automatically reapplies at startup
 
 </td>
@@ -114,7 +114,7 @@ CloudCord keeps its main features directly inside the client settings. Each tab 
 
 ### Local-first configuration
 
-CloudCord keeps feature configuration on-device where possible. BotCord tokens always remain local. When Fake Profile is enabled, editor changes save locally and publish automatically; the public service stores only visible editor fields and never receives Discord credentials, email addresses or phone numbers. A one-time invisible About Me link associates the shared profile with its Discord user.
+CloudCord keeps feature configuration on-device where possible. BotCord tokens always remain local. When Fake Profile is enabled, editor changes save locally and publish automatically; the client maintains an invisible link in the user's real About Me while preserving its visible text. The public service stores only visible editor fields and never receives Discord credentials, email addresses or phone numbers.
 
 ### Familiar interface
 
