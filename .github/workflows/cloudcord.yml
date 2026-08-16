@@ -345,6 +345,68 @@ jobs:
           let realCurrentUser: any = null;
           let userCache = new WeakMap<object, any>();
           let profileCache = new WeakMap<object, any>();
+          const sharedProfiles = new Map<string, any>();
+          const sharedRequests = new Set<string>();
+          let publishTimer: ReturnType<typeof setTimeout> | null = null;
+
+          function ownSharedProfile() {
+              return {
+                  username: preview.username,
+                  globalName: preview.displayName,
+                  avatar: mediaUri("avatarMedia"),
+                  banner: mediaUri("bannerMedia"),
+                  nitro: preview.nitroMonths > 0,
+                  nitroLevel: Math.max(-1, NITRO_DURATIONS.indexOf(preview.nitroMonths) - 1),
+                  boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
+                  badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0)
+              };
+          }
+
+          async function publishSharedProfile() {
+              if (!preview.enabled || !currentUserId) return;
+              const saved = rootSettings.fakeProfileShare || {};
+              const path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
+              const response = await fetch(`https://cloudcord-profiles.ggxohus.workers.dev${path}`, {
+                  method: saved.id ? "PUT" : "POST",
+                  headers: {
+                      "Content-Type": "application/json",
+                      ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {})
+                  },
+                  body: JSON.stringify({ ownerId: currentUserId, profile: ownSharedProfile() })
+              });
+              if (!response.ok) throw new Error(`CloudCord sharing failed (${response.status})`);
+              const result = await response.json() as any;
+              if (!saved.id) rootSettings.fakeProfileShare = { id: result.id, editToken: result.editToken };
+              diagnostics.last = "Saved and shared with CloudCord desktop and mobile";
+          }
+
+          function queueSharedPublish() {
+              if (publishTimer) clearTimeout(publishTimer);
+              publishTimer = setTimeout(() => void publishSharedProfile().catch(error => { diagnostics.last = error?.message || "Could not share Fake Profile"; }), 900);
+          }
+
+          function requestSharedProfile(userId?: string) {
+              if (!userId || userId === currentUserId || sharedProfiles.has(userId) || sharedRequests.has(userId)) return;
+              sharedRequests.add(userId);
+              void fetch(`https://cloudcord-profiles.ggxohus.workers.dev/v1/profiles/user/${encodeURIComponent(userId)}`)
+                  .then(response => response.ok ? response.json() : null)
+                  .then(profile => { if (profile) { sharedProfiles.set(userId, profile); refreshPreview(); } })
+                  .catch(() => {})
+                  .finally(() => sharedRequests.delete(userId));
+          }
+
+          function sharedUser(original: any, userId?: string) {
+              const data = userId ? sharedProfiles.get(userId) : null;
+              if (!original || !data) return original;
+              const cloned = Object.assign(Object.create(Object.getPrototypeOf(original)), original);
+              if (data.username) setOwnValue(cloned, "username", data.username);
+              if (data.globalName) { setOwnValue(cloned, "globalName", data.globalName); setOwnValue(cloned, "displayName", data.globalName); }
+              if (data.avatar) { setOwnValue(cloned, "avatarURL", data.avatar); setOwnValue(cloned, "avatarUrl", data.avatar); setOwnValue(cloned, "getAvatarURL", () => data.avatar); }
+              if (data.banner) { setOwnValue(cloned, "banner", data.banner); setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "getBannerURL", () => data.banner); }
+              if (data.badgeFlags != null) { setOwnValue(cloned, "publicFlags", data.badgeFlags); setOwnValue(cloned, "flags", data.badgeFlags); }
+              if (data.nitro) setOwnValue(cloned, "premiumType", 2);
+              return cloned;
+          }
           
           function clearCache() {
               userCache = new WeakMap();
@@ -507,9 +569,22 @@ jobs:
           function connectBadgeRenderer() {
               try {
                   after("default", useBadgesModule as any, ([user], result) => {
-                      if (!preview.enabled || !Array.isArray(result)) return;
+                      if (!Array.isArray(result)) return;
                       const id = user?.userId || user?.id;
-                      if (!isCurrentUser(id)) return;
+                      if (!isCurrentUser(id)) {
+                          requestSharedProfile(id);
+                          const data = sharedProfiles.get(id);
+                          if (!data) return;
+                          const ordered: any[] = [];
+                          const nitroMonths = [1, 2, 3, 6, 12, 24, 36, 72][Number(data.nitroLevel)] || 0;
+                          const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
+                          addRenderedBadge(ordered, "cloudcord-shared-nitro", `Nitro ${durationLabel(nitroMonths)}`, milestoneIcon(nitroMonths, NITRO_ICONS));
+                          addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster ${durationLabel(boostMonths)}`, milestoneIcon(boostMonths, BOOST_ICONS));
+                          for (const [, description, flag, icon] of BADGES) if ((Number(data.badgeFlags) & flag) !== 0) addRenderedBadge(ordered, `cloudcord-shared-${flag}`, description, icon);
+                          result.splice(0, result.length, ...ordered, ...result);
+                          return;
+                      }
+                      if (!preview.enabled) return;
 
                       const existing = preview.replaceBadges ? [] : result.filter(item => !String(item?.id || "").startsWith("fakeprofile-"));
                       const ordered: any[] = [];
@@ -563,6 +638,14 @@ jobs:
               return args.some(value => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
           }
 
+          function requestUserId(args: any[]) {
+              for (const value of args) {
+                  const id = typeof value === "string" && /^\d{15,22}$/.test(value) ? value : value?.id || value?.userId || value?.user?.id;
+                  if (id) return String(id);
+              }
+              return "";
+          }
+
           function renderedUserId(props: any) {
               return props?.userId
                   || props?.user?.id
@@ -580,14 +663,16 @@ jobs:
                   try {
                       onJsxCreate(component, (_component, rendered) => {
                           const props = rendered?.props;
-                          const uri = mediaUri("avatarMedia");
                           const id = renderedUserId(props);
-                          if (!preview.enabled || !uri || !id || !isCurrentUser(id)) return;
+                          if (!id) return;
+                          if (!isCurrentUser(id)) requestSharedProfile(id);
+                          const uri = isCurrentUser(id) ? mediaUri("avatarMedia") : sharedProfiles.get(id)?.avatar;
+                          if (!uri || (isCurrentUser(id) && !preview.enabled)) return;
                           props.source = { uri };
                           props.avatarSource = { uri };
                           props.avatarSrc = uri;
                           props.avatarURL = uri;
-                          if (props.user) props.user = cloneObject(props.user, "user");
+                          if (props.user) props.user = isCurrentUser(id) ? cloneObject(props.user, "user") : sharedUser(props.user, id);
                       });
                       diagnostics.patches += 1;
                   } catch {}
@@ -597,9 +682,11 @@ jobs:
                   try {
                       onJsxCreate(component, (_component, rendered) => {
                           const props = rendered?.props;
-                          const uri = mediaUri("bannerMedia");
                           const id = renderedUserId(props);
-                          if (!preview.enabled || !uri || !id || !isCurrentUser(id)) return;
+                          if (!id) return;
+                          if (!isCurrentUser(id)) requestSharedProfile(id);
+                          const uri = isCurrentUser(id) ? mediaUri("bannerMedia") : sharedProfiles.get(id)?.banner;
+                          if (!uri || (isCurrentUser(id) && !preview.enabled)) return;
                           props.source = { uri };
                           props.bannerSource = { uri };
                           props.bannerSrc = uri;
@@ -615,8 +702,10 @@ jobs:
                   onJsxCreate("UserProfileHeader", (_component, rendered) => {
                       const props = rendered?.props;
                       const id = renderedUserId(props);
-                      if (!preview.enabled || !id || !isCurrentUser(id)) return;
-                      if (props.user) props.user = cloneObject(props.user, "user");
+                      if (!id) return;
+                      if (!isCurrentUser(id)) requestSharedProfile(id);
+                      if (isCurrentUser(id) && !preview.enabled) return;
+                      if (props.user) props.user = isCurrentUser(id) ? cloneObject(props.user, "user") : sharedUser(props.user, id);
                       if (props.displayProfile) props.displayProfile = decorateProfileResult(props.displayProfile, id);
                       if (props.profile) props.profile = decorateProfileResult(props.profile, id);
                   });
@@ -642,7 +731,10 @@ jobs:
                   return cloneObject(user, "user");
               });
               addPatch("getUser", userStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  if (!isCurrentUser(args?.[0])) {
+                      const id = args?.[0]; requestSharedProfile(id);
+                      return sharedUser(original(...args), id);
+                  }
                   const user = original(...args);
                   realCurrentUser = user || realCurrentUser;
                   return cloneObject(user, "user");
@@ -651,11 +743,17 @@ jobs:
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
               diagnostics.profileStore = !!profileStore;
               addPatch("getUserProfile", profileStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  if (!isCurrentUser(args?.[0])) {
+                      const id = args?.[0]; requestSharedProfile(id);
+                      return sharedUser(original(...args), id);
+                  }
                   return decorateProfileResult(original(...args), args?.[0]);
               });
               addPatch("getGuildMemberProfile", profileStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  if (!isCurrentUser(args?.[0])) {
+                      const id = args?.[0]; requestSharedProfile(id);
+                      return sharedUser(original(...args), id);
+                  }
                   return decorateProfileResult(original(...args), args?.[0]);
               });
 
@@ -663,6 +761,7 @@ jobs:
                   after("default", useUserProfileModule as any, (args, result) => {
                       const subject = args?.[0];
                       const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+                      if (!isCurrentUser(id)) { requestSharedProfile(id); return sharedUser(result, id); }
                       return decorateProfileResult(result, id);
                   });
                   diagnostics.patches += 1;
@@ -674,7 +773,8 @@ jobs:
                   after("default", useDisplayProfileModule as any, (args, result) => {
                       const subject = args?.[0];
                       const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-                      return isCurrentUser(id) ? cloneObject(result, "profile") : result;
+                      if (!isCurrentUser(id)) { requestSharedProfile(id); return sharedUser(result, id); }
+                      return cloneObject(result, "profile");
                   });
                   diagnostics.patches += 1;
               } catch (error: any) {
@@ -688,18 +788,24 @@ jobs:
           
               for (const method of ["getUserAvatarURL", "getAvatarURL", "getGuildMemberAvatarURL", "getGuildMemberAvatarURLSimple"]) {
                   addPatch(method, avatarResolver, (args, original) => {
+                      const id = requestUserId(args);
+                      if (id && !isCurrentUser(id)) { requestSharedProfile(id); const shared = sharedProfiles.get(id); if (shared?.avatar) return shared.avatar; }
                       const uri = mediaUri("avatarMedia");
                       return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
                   });
               }
               for (const method of ["getUserAvatarSource", "getGuildMemberAvatarSource"]) {
                   addPatch(method, avatarResolver, (args, original) => {
+                      const id = requestUserId(args);
+                      if (id && !isCurrentUser(id)) { requestSharedProfile(id); const shared = sharedProfiles.get(id); if (shared?.avatar) return { uri: shared.avatar }; }
                       const uri = mediaUri("avatarMedia");
                       return preview.enabled && uri && requestIsCurrent(args) ? { uri } : original(...args);
                   });
               }
               for (const method of ["getUserBannerURL", "getBannerURL", "getGuildMemberBannerURL"]) {
                   addPatch(method, bannerResolver, (args, original) => {
+                      const id = requestUserId(args);
+                      if (id && !isCurrentUser(id)) { requestSharedProfile(id); const shared = sharedProfiles.get(id); if (shared?.banner) return shared.banner; }
                       const uri = mediaUri("bannerMedia");
                       return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
                   });
@@ -710,9 +816,11 @@ jobs:
 
               const bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
               addAfterPatch("getBanner", bannerComposer, (args, result) => {
-                  const uri = mediaUri("bannerMedia");
                   const id = args?.[0]?.displayProfile?.userId || args?.[0]?.userId;
-                  if (!preview.enabled || !uri || !result || !id || !isCurrentUser(id)) return;
+                  if (!id || !result) return;
+                  if (!isCurrentUser(id)) requestSharedProfile(id);
+                  const uri = isCurrentUser(id) ? mediaUri("bannerMedia") : sharedProfiles.get(id)?.banner;
+                  if (!uri || (isCurrentUser(id) && !preview.enabled)) return;
                   return { ...result, bannerSrc: uri, source: { uri } };
               });
           
@@ -741,7 +849,7 @@ jobs:
                       await awaitStorage(settings);
                       bindSavedPreview();
                       ensurePatches();
-                      if (preview.enabled) refreshPreview();
+                      if (preview.enabled) { refreshPreview(); queueSharedPublish(); }
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Could not restore Fake Profile";
                       initPromise = null;
@@ -800,7 +908,7 @@ jobs:
               const label = key === "bannerMedia" ? "Banner" : "Profile picture";
               diagnostics.last = animated
                   ? `${label} animation preserved and fitted in preview`
-                  : normalized ? `${label} resized to ${target.width} × ${target.height}` : `${label} fitted to ${target.width} × ${target.height} in preview`;
+                  : normalized ? `${label} resized to ${target.width} x ${target.height}` : `${label} fitted to ${target.width} x ${target.height} in preview`;
               return { uri, name, type, width: target.width, height: target.height, normalized };
           }
 
@@ -878,7 +986,7 @@ jobs:
                       </View>
                       <View style={{ maxWidth: "48%", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: "#243c46" }}>
                           <Text variant="text-xs/bold" style={{ color: "#78e7ff" }} numberOfLines={1}>{durationLabel(value)}</Text>
-                          <Text variant="text-sm/bold" style={{ color: "#78e7ff" }}>⌄</Text>
+                          <Text variant="text-sm/bold" style={{ color: "#78e7ff" }}>v</Text>
                       </View>
                   </Pressable>
               );
@@ -897,6 +1005,7 @@ jobs:
                   (preview as any)[key] = value;
                   clearCache();
                   if (refresh) refreshPreview();
+                  queueSharedPublish();
                   redraw();
               };
           
@@ -952,7 +1061,7 @@ jobs:
                   return (
                       <View style={{ width: "100%", gap: 9, marginBottom: 16 }}>
                           <Text variant="heading-sm/semibold" style={{ color: "#50fa9b" }}>{label}</Text>
-                          <Text variant="text-xs/medium" style={{ color: "#78e7ff" }}>{banner ? "Automatically fitted to 600 × 240" : "Automatically fitted to a square"}</Text>
+                          <Text variant="text-xs/medium" style={{ color: "#78e7ff" }}>{banner ? "Automatically fitted to 600 x 240" : "Automatically fitted to a square"}</Text>
                           <View style={{ width: "100%", gap: 8 }}>
                               <ActionButton label="Choose picture" onPress={() => void choose(field, "photo")} />
                               <ActionButton label="Choose file or GIF" muted onPress={() => void choose(field, "file")} />
