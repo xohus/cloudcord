@@ -294,7 +294,9 @@ jobs:
             exit 1
           fi
 
-          cp "$INSTALLER_PATH" desktop/client/dist/CloudCordSetup.exe
+          if [ "$INSTALLER_PATH" != "desktop/client/dist/CloudCordSetup.exe" ]; then
+            cp "$INSTALLER_PATH" desktop/client/dist/CloudCordSetup.exe
+          fi
           cp "$INSTALLER_PATH" desktop/client/dist/cloudcord.exe
 
           test -f desktop/client/dist/CloudCordSetup.exe
