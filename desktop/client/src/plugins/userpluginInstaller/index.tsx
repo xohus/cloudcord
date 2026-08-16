@@ -6,25 +6,21 @@
 
 import "./misc/style.css";
 
-import { showNotification } from "@api/Notifications";
 import { definePluginSettings } from "@api/Settings";
 import { Button } from "@components/Button";
 import { Notice } from "@components/Notice";
-import plSettings from "@plugins/_core/settings";
 import { Devs } from "@utils/constants";
 import { relaunch } from "@utils/native";
 import definePlugin, { OptionType, PluginNative } from "@utils/types";
-import { findByPropsLazy, findComponentByCodeLazy } from "@webpack";
+import { findByPropsLazy } from "@webpack";
 import { Alerts } from "@webpack/common";
 
-import SettingsTab from "./components/SettingsTab";
 import UserpluginInstallButton from "./components/UserpluginInstallButton";
 import { VariableWithCallbacks } from "./VariableWithCallbacks";
 
 // @ts-ignore
 export const Native = VencordNative.pluginHelpers.UserpluginInstaller as PluginNative<typeof import("./native")>;
 export const OpenSettingsModule = findByPropsLazy("openUserSettings");
-const AppsIcon = findComponentByCodeLazy("2.95H20a2 2 0");
 
 export const settings = definePluginSettings({
     allowlistedChannels: {
@@ -76,13 +72,6 @@ export default definePlugin({
             plugins: t
         });
     },
-    section: {
-        key: "cloudcord_userplugins",
-        title: "Outside Plugins",
-        panelTitle: "Outside Plugins",
-        Component: SettingsTab,
-        Icon: AppsIcon
-    },
     async start() {
         if (!VencordNative.pluginHelpers.UserpluginInstaller) return void Alerts.show({
             title: "UserpluginInstaller not fully loaded",
@@ -96,33 +85,12 @@ export default definePlugin({
 
         await Native.ensurePluginsDirectory();
 
-        plSettings.customEntries.push(this.section);
-
-        this.pluginsWithUpdates.registerCallback((value, id) => {
-            if (value.plugins.length === 0) return;
-            if (settings.store.neverNotifyForPlugins.split(",").map(t => t.trim().toLowerCase()).includes(value.plugins[value.plugins.length - 1].toLowerCase()))
-                return;
-            this.pluginsWithUpdates.deregisterCallback(id);
-            if (settings.store.notifyIfUpdate)
-                showNotification({
-                    title: "Some UserPlugins are out of date!",
-                    body: "Click to open the UserPlugin Updater",
-                    noPersist: true,
-                    permanent: true,
-                    onClick() {
-                        OpenSettingsModule.openUserSettings("cloudcord_userplugins_panel");
-                    },
-                });
-        });
         const pls = await Native.getUserplugins();
         // @ts-ignore :trolley:
         this.plugins.value(pls);
         await this.checkPluginUpdates();
     },
-    stop() {
-        // @ts-ignore
-        plSettings.customEntries.splice(plSettings.customEntries.indexOf(this.section), 1);
-    },
+    stop() {},
     plugins: new VariableWithCallbacks<{
         name: string;
         description: string;
