@@ -1,6 +1,6 @@
 # CloudCord Desktop
 
-CloudCord Desktop is an open-source Discord desktop client mod. It targets an installed Discord desktop `.exe` and injects the CloudCord desktop bundle into Discord using an in-repo installer.
+CloudCord Desktop is an open-source Discord desktop client mod. It targets an installed Discord desktop `.exe` and injects the CloudCord desktop bundle into Discord using an in-repo installer. Windows release builds embed the matching desktop runtime, so installation still works when a separate release asset is unavailable.
 
 CloudCord Desktop is based on Sincord/Vencord-style architecture. Sincord is the primary source base for this tree, including the in-repo Go installer and `dist/desktop` runtime output. Vencord is a major architectural reference for runtime patches, plugins, settings, and themes.
 
@@ -24,15 +24,16 @@ On Windows, the installer build outputs:
 desktop/client/dist/CloudCordSetup.exe
 ```
 
-The desktop runtime bundle is generated in:
+The unpacked desktop runtime and packaged installer runtime are generated in:
 
 ```text
 desktop/client/dist/desktop
+desktop/client/dist/desktop.asar
 ```
 
 ## Workflow
 
-Run the `CloudCord Desktop` GitHub Actions workflow manually, or push changes under `desktop/**` or `.github/workflows/desktop.yml`. The workflow builds the desktop runtime and Windows installer, then uploads `CloudCordDesktop-Windows`.
+Run the `CloudCord Desktop` GitHub Actions workflow manually, or push changes under `desktop/**` or `.github/workflows/desktop.yml`. The workflow builds the committed desktop runtime, packages it into the Windows installer, smoke-tests the EXE, then uploads `CloudCordDesktop-Windows`.
 
 ## Install
 

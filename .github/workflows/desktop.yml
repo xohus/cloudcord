@@ -6,6 +6,13 @@ on:
     paths:
       - "desktop/**"
       - ".github/workflows/desktop.yml"
+  pull_request:
+    paths:
+      - "desktop/**"
+      - ".github/workflows/desktop.yml"
+
+permissions:
+  contents: read
 
 jobs:
   windows:
@@ -18,7 +25,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 24
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -28,7 +35,8 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23.x"
+          go-version-file: desktop/client/installer/go.mod
+          cache-dependency-path: desktop/client/installer/go.sum
 
       - name: Install Windows compiler tools
         shell: pwsh
@@ -37,263 +45,61 @@ jobs:
           Add-Content $env:GITHUB_PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
           Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
 
-      - name: Prepare clean Sincord source
-        shell: bash
-        run: |
-          set -e
-
-          rm -rf _sincord
-          rm -rf desktop/client
-
-          git clone --depth=1 https://github.com/sincord/sincord _sincord
-
-          mkdir -p desktop/client
-          cp -R _sincord/. desktop/client/
-
-          rm -rf desktop/client/.git
-          rm -rf desktop/client/.github
-          rm -rf desktop/client/node_modules
-          rm -rf desktop/client/dist
-
-      - name: Patch Sincord source into CloudCord
-        shell: bash
-        run: |
-          set -e
-
-          node <<'NODE'
-          const fs = require("fs");
-          const path = require("path");
-
-          const root = process.cwd();
-          const client = path.join(root, "desktop", "client");
-          const pkgPath = path.join(client, "package.json");
-
-          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
-
-          pkg.name = "cloudcord";
-          pkg.private = "true";
-          pkg.version = "0.1.0";
-          pkg.description = "CloudCord desktop client mod";
-          pkg.homepage = "https://github.com/xohus/cloudcord#readme";
-          pkg.author = "Xohus";
-          pkg.license = "GPL-3.0-or-later";
-          pkg.bugs = {
-            url: "https://github.com/xohus/cloudcord/issues"
-          };
-          pkg.repository = {
-            type: "git",
-            url: "git+https://github.com/xohus/cloudcord.git"
-          };
-
-          if (!pkg.scripts) {
-            pkg.scripts = {};
-          }
-
-          pkg.scripts.typecheck = "pnpm testTsc";
-          pkg.scripts["build:installer"] = "bash scripts/build-installer.sh";
-
-          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 4) + "\n");
-
-          const allowedExtensions = new Set([
-            ".ts",
-            ".tsx",
-            ".js",
-            ".jsx",
-            ".mjs",
-            ".cjs",
-            ".json",
-            ".md",
-            ".go",
-            ".mod",
-            ".sh",
-            ".css",
-            ".scss",
-            ".less",
-            ".html",
-            ".yml",
-            ".yaml",
-            ".toml"
-          ]);
-
-          function shouldSkipDir(name) {
-            return (
-              name === ".git" ||
-              name === ".github" ||
-              name === "node_modules" ||
-              name === "dist" ||
-              name === ".next" ||
-              name === ".turbo"
-            );
-          }
-
-          function patchFile(file) {
-            const ext = path.extname(file);
-            if (!allowedExtensions.has(ext)) {
-              return;
-            }
-
-            let text;
-            try {
-              text = fs.readFileSync(file, "utf8");
-            } catch {
-              return;
-            }
-
-            const patched = text
-              .replaceAll("Sincord", "CloudCord")
-              .replaceAll("SINCORD", "CLOUDCORD")
-              .replaceAll("Sinlotl", "CloudCordSetup")
-              .replaceAll("The better Discord client mod", "CloudCord desktop client mod")
-              .replaceAll("https://github.com/Sincord/Sincord", "https://github.com/xohus/cloudcord")
-              .replaceAll("git+https://github.com/Sincord/Sincord.git", "git+https://github.com/xohus/cloudcord.git");
-
-            if (patched !== text) {
-              fs.writeFileSync(file, patched);
-            }
-          }
-
-          function walk(dir) {
-            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-              const full = path.join(dir, entry.name);
-
-              if (entry.isDirectory()) {
-                if (!shouldSkipDir(entry.name)) {
-                  walk(full);
-                }
-                continue;
-              }
-
-              if (entry.isFile()) {
-                patchFile(full);
-              }
-            }
-          }
-
-          walk(client);
-
-          fs.writeFileSync(
-            path.join(client, "CLOUDCORD_NOTES.md"),
-            [
-              "# CloudCord Desktop Notes",
-              "",
-              "CloudCord Desktop is an open-source Discord desktop client mod based on the Sincord/Vencord-style desktop architecture.",
-              "",
-              "CloudCord Desktop targets installed Discord desktop, not Discord web and not a browser extension.",
-              "",
-              "Mobile CloudCord uses the React Native runtime from the main project. Desktop CloudCord uses the desktop runtime built from this client tree.",
-              ""
-            ].join("\n")
-          );
-
-          fs.writeFileSync(
-            path.join(client, "CREDITS.md"),
-            [
-              "# Credits",
-              "",
-              "CloudCord Desktop is maintained by Xohus.",
-              "",
-              "CloudCord Desktop is based on Sincord and follows the Vencord/Sincord-style Discord desktop client mod architecture.",
-              "",
-              "Upstream projects:",
-              "",
-              "- Sincord: https://github.com/sincord/sincord",
-              "- Vencord: https://github.com/Vendicated/Vencord",
-              "",
-              "CloudCord Desktop keeps GPL-3.0-or-later licensing and upstream attribution.",
-              ""
-            ].join("\n")
-          );
-          NODE
-
-      - name: Verify required source files
-        shell: bash
-        run: |
-          set -e
-
-          test -f desktop/client/package.json
-          test -f desktop/client/scripts/build/build.mjs
-          test -f desktop/client/scripts/build-installer.sh
-          test -d desktop/client/installer
-          test -d desktop/client/src
-
-      - name: Print tool versions
-        shell: bash
-        run: |
-          node --version
-          pnpm --version
-          go version
-          gcc --version || true
-
-      - name: Install dependencies
+      - name: Install desktop dependencies
         working-directory: desktop/client
-        shell: bash
-        run: |
-          set -e
-          pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile
 
       - name: Typecheck
         working-directory: desktop/client
-        shell: bash
-        run: |
-          set -e
-          pnpm typecheck
+        run: pnpm typecheck
 
       - name: Build desktop runtime
         working-directory: desktop/client
-        shell: bash
-        run: |
-          set -e
-          pnpm build
+        run: pnpm build
 
-      - name: Verify desktop runtime output
-        shell: bash
-        run: |
-          set -e
-
-          if [ ! -d "desktop/client/dist/desktop" ]; then
-            echo "desktop/client/dist/desktop was not produced"
-            find desktop/client/dist -maxdepth 3 -type f || true
-            exit 1
-          fi
-
-      - name: Build Windows installer
+      - name: Package runtime for the installer
         working-directory: desktop/client
-        shell: bash
+        shell: pwsh
         run: |
-          set -e
-          pnpm build:installer
+          if (-not (Test-Path -LiteralPath "dist/desktop")) {
+            throw "dist/desktop was not produced"
+          }
 
-      - name: Stage artifacts
-        shell: bash
+          pnpm exec asar pack dist/desktop dist/desktop.asar
+          New-Item -ItemType Directory -Force -Path installer/bundled | Out-Null
+          Copy-Item -LiteralPath dist/desktop.asar -Destination installer/bundled/desktop.asar -Force
+
+      - name: Build CloudCord Setup
+        working-directory: desktop/client/installer
+        shell: pwsh
+        env:
+          CGO_ENABLED: "1"
         run: |
-          set -e
+          go build -trimpath -ldflags "-s -w" -o ../dist/CloudCordSetup.exe .
+          go build -trimpath -tags cli -ldflags "-s -w" -o ../dist/CloudCordSetupCli.exe .
 
-          mkdir -p desktop/client/dist
+      - name: Smoke test installer
+        working-directory: desktop/client
+        shell: pwsh
+        run: |
+          if (-not (Test-Path -LiteralPath "dist/CloudCordSetup.exe")) {
+            throw "CloudCordSetup.exe was not produced"
+          }
 
-          INSTALLER_PATH="$(find desktop/client -type f -name 'CloudCordSetup.exe' | head -n 1)"
-
-          if [ -z "$INSTALLER_PATH" ]; then
-            INSTALLER_PATH="$(find desktop/client -type f -name '*.exe' | head -n 1)"
-          fi
-
-          if [ -z "$INSTALLER_PATH" ]; then
-            echo "No installer .exe was produced"
-            find desktop/client -maxdepth 5 -type f | sed 's#\\#/#g' | sort | tail -200
-            exit 1
-          fi
-
-          cp "$INSTALLER_PATH" desktop/client/dist/CloudCordSetup.exe
-
-          test -f desktop/client/dist/CloudCordSetup.exe
-          test -d desktop/client/dist/desktop
+          & "dist/CloudCordSetupCli.exe" --version
+          if ($LASTEXITCODE -ne 0) {
+            throw "CloudCordSetup CLI smoke test failed with exit code $LASTEXITCODE"
+          }
 
       - name: Upload desktop artifact
         uses: actions/upload-artifact@v4
         with:
           name: CloudCordDesktop-Windows
+          if-no-files-found: error
           path: |
             desktop/client/dist/CloudCordSetup.exe
-            desktop/client/dist/desktop/**
+            desktop/client/dist/CloudCordSetupCli.exe
+            desktop/client/dist/desktop.asar
             desktop/client/CREDITS.md
             desktop/client/CLOUDCORD_NOTES.md
             desktop/README.md
