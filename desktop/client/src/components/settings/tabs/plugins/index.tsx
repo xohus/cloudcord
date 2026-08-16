@@ -37,7 +37,7 @@ import { Margins } from "@utils/margins";
 import { classes } from "@utils/misc";
 import { useAwaiter, useCleanupEffect, useIntersection } from "@utils/react";
 import { PluginTag, PluginTags } from "@utils/types";
-import { Alerts, ConfirmModal, lodash, openModal, Parser, React, SearchableSelect, Select, TextInput, Toasts, Tooltip, useCallback, useMemo, useRef, useState } from "@webpack/common";
+import { Alerts, ConfirmModal, lodash, openModal, Parser, React, SearchableSelect, Select, SettingsRouter, TextInput, Toasts, Tooltip, useCallback, useMemo, useRef, useState } from "@webpack/common";
 import { JSX } from "react";
 
 import Plugins, { ExcludedPlugins, PluginMeta } from "~plugins";
@@ -61,7 +61,7 @@ function showErrorToast(message: string) {
     });
 }
 
-function ReloadRequiredCard({ required, enabledPlugins, openWarningModal, resetCheckAndDo }) {
+function ReloadRequiredCard({ required, enabledPlugins, openWarningModal, resetCheckAndDo, enableAllPlugins }) {
     return (
         <Card className={classes(cl("info-card"), required && "vc-warning-card")}>
             {required ? (
@@ -81,17 +81,25 @@ function ReloadRequiredCard({ required, enabledPlugins, openWarningModal, resetC
                     <Paragraph>Plugins with a cog wheel have settings you can modify!</Paragraph>
                 </>
             )}
-            {enabledPlugins.length > 0 && !required && (
-                <Button
-                    variant="secondary"
-                    size="small"
-                    className={"vc-plugins-disable-warning vc-modal-align-reset"}
-                    onClick={() => {
-                        return openWarningModal(null, undefined, false, enabledPlugins.length, resetCheckAndDo);
-                    }}
-                >
-                    Disable All Plugins
-                </Button>
+            {!required && (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 12 }}>
+                    <Button variant="primary" size="small" onClick={enableAllPlugins}>
+                        Enable All
+                    </Button>
+                    {enabledPlugins.length > 0 && (
+                        <Button
+                            variant="secondary"
+                            size="small"
+                            className={"vc-plugins-disable-warning vc-modal-align-reset"}
+                            onClick={() => openWarningModal(null, undefined, false, enabledPlugins.length, resetCheckAndDo)}
+                        >
+                            Disable All
+                        </Button>
+                    )}
+                    <Button variant="secondary" size="small" onClick={() => SettingsRouter.openUserSettings("cloudcord_userplugins_panel")}>
+                        + Add from Link
+                    </Button>
+                </div>
             )}
         </Card>
     );
@@ -265,6 +273,22 @@ export default function PluginSettings() {
 
     const handleRestartNeeded = useCallback((name: string, key: string) => changes.handleChange(`${name}:${key}`), [changes]);
 
+    function enableAllPlugins() {
+        let changed = 0;
+        for (const plugin of Object.values(Plugins)) {
+            if (plugin.hidden || plugin.required || plugin.isDependency || plugin.name.endsWith("API") || isPluginEnabled(plugin.name)) continue;
+            settings.plugins[plugin.name].enabled = true;
+            changes.handleChange(`${plugin.name}:enabled`);
+            changed++;
+        }
+
+        Toasts.show({
+            message: changed ? `Enabled ${changed} plugins. Restart CloudCord to apply them.` : "All available plugins are already enabled.",
+            type: Toasts.Type.SUCCESS,
+            id: Toasts.genId()
+        });
+    }
+
     const { plugins, requiredPlugins } = useMemo(() => {
         const plugins = [] as JSX.Element[];
         const requiredPlugins = [] as JSX.Element[];
@@ -383,7 +407,7 @@ export default function PluginSettings() {
 
     return (
         <SettingsTab>
-            <ReloadRequiredCard required={changes.hasChanges} enabledPlugins={enabledPlugins} openWarningModal={openWarningModal} resetCheckAndDo={resetCheckAndDo} />
+            <ReloadRequiredCard required={changes.hasChanges} enabledPlugins={enabledPlugins} openWarningModal={openWarningModal} resetCheckAndDo={resetCheckAndDo} enableAllPlugins={enableAllPlugins} />
 
             <div className={cl("stats-container")}>
                 <StockPluginsCard

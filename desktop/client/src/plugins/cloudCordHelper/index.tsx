@@ -22,9 +22,9 @@ import { ComponentType } from "react";
 import { PluginButtons } from "./pluginButtons";
 import { PluginCards } from "./pluginCards";
 
-migratePluginToSettings(true, "SincordHelper", "NoBulletPoints", "noBulletPoints");
-migratePluginToSettings(true, "SincordHelper", "NoModalAnimation", "noModalAnimation");
-migratePluginToSettings(true, "SincordHelper", "GuildTagSettings", "disableAdoptTagPrompt");
+migratePluginToSettings(true, "CloudCordHelper", "NoBulletPoints", "noBulletPoints");
+migratePluginToSettings(true, "CloudCordHelper", "NoModalAnimation", "noModalAnimation");
+migratePluginToSettings(true, "CloudCordHelper", "GuildTagSettings", "disableAdoptTagPrompt");
 
 let clicked = false;
 
@@ -142,8 +142,8 @@ const settings = definePluginSettings({
 });
 
 export default definePlugin({
-    name: "SincordHelper",
-    description: "Used to provide support, fix discord caused crashes, and other misc features.",
+    name: "CloudCordHelper",
+    description: "Provides CloudCord stability fixes and useful client controls.",
     tags: ["Appearance", "Commands", "Utility"],
     dependencies: ["CommandsAPI", "HeaderBarAPI", "MessageAccessoriesAPI"],
     authors: [

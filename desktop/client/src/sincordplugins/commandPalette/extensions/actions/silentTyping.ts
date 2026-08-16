@@ -6,7 +6,7 @@
 
 import { isPluginEnabled, plugins } from "@api/PluginManager";
 import { openPluginModal } from "@components/settings/tabs";
-import { toggleEnabled } from "@sincordplugins/sincordHelper/utils";
+import { toggleEnabled } from "@plugins/cloudCordHelper/utils";
 import { SelectedChannelStore, Toasts } from "@webpack/common";
 
 import { DEFAULT_CATEGORY_ID } from "../../metadata/categories";

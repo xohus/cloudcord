@@ -5,7 +5,7 @@
  */
 
 import { isPluginEnabled, plugins } from "@api/PluginManager";
-import { toggleEnabled } from "@sincordplugins/sincordHelper/utils";
+import { toggleEnabled } from "@plugins/cloudCordHelper/utils";
 import { SettingsRouter, Toasts } from "@webpack/common";
 
 import { DEFAULT_CATEGORY_ID } from "../../metadata/categories";

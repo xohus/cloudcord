@@ -29,11 +29,11 @@ const AppsIcon = findComponentByCodeLazy("2.95H20a2 2 0");
 export const settings = definePluginSettings({
     allowlistedChannels: {
         type: OptionType.STRING,
-        description: "Comma separated list of channels where the Install Plugin button should be displayed. It is always displayed in the Vencord Userplugin channels"
+        description: "Comma separated list of channels where the Install Plugin button should be displayed."
     },
     notifyIfUpdate: {
         type: OptionType.BOOLEAN,
-        description: "Show a Vencord notification if UserPlugins need to be updated",
+        description: "Show a CloudCord notification if outside plugins need to be updated",
         default: true
     },
     neverNotifyForPlugins: {
@@ -53,11 +53,10 @@ export const settings = definePluginSettings({
 
 export default definePlugin({
     name: "UserpluginInstaller",
-    description: "Install userplugins with a simple button click",
+    description: "Add and update outside plugins from trusted repository links.",
     settingsAboutComponent: () => (
         <Notice.Warning>
-            Sincord does not moderate userplugins and takes no responsibility for anything that may result from installing them.
-            Only install userplugins from developers you trust. Doing so is entirely at your own risk.
+            CloudCord does not review outside plugins. They run code inside Discord, so only install links from developers you trust.
         </Notice.Warning>
     ),
     async checkPluginUpdates() {
@@ -78,9 +77,9 @@ export default definePlugin({
         });
     },
     section: {
-        key: "vencord_userplugins",
-        title: "UserPlugins",
-        panelTitle: "UserPlugins",
+        key: "cloudcord_userplugins",
+        title: "Outside Plugins",
+        panelTitle: "Outside Plugins",
         Component: SettingsTab,
         Icon: AppsIcon
     },
@@ -111,7 +110,7 @@ export default definePlugin({
                     noPersist: true,
                     permanent: true,
                     onClick() {
-                        OpenSettingsModule.openUserSettings("vencord_userplugins_panel");
+                        OpenSettingsModule.openUserSettings("cloudcord_userplugins_panel");
                     },
                 });
         });
@@ -139,6 +138,7 @@ export default definePlugin({
         finished: false,
         plugins: []
     }),
+    required: true,
     settings,
     authors: [Devs.nin0dev],
     renderMessageAccessory: props => {
