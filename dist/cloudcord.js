@@ -4590,6 +4590,43 @@
       diagnostics.last = error?.message || "Sharing will retry later";
     }), 1200);
   }
+  function pullOwnSharedProfile() {
+    return _async_to_generator(function* () {
+      if (!currentUserId)
+        return;
+      try {
+        var response = yield fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
+        if (!response.ok)
+          return;
+        var data = yield response.json();
+        if (!data || typeof data !== "object")
+          return;
+        var selectedBadges = {
+          ...preview.selectedBadges || {}
+        };
+        for (var [id, , flag] of BADGES)
+          selectedBadges[id] = !!(Number(data.badgeFlags || 0) & flag);
+        rootSettings.fakeProfile = preview = {
+          ...preview,
+          enabled: true,
+          username: data.username || preview.username,
+          displayName: data.globalName || data.displayName || preview.displayName,
+          avatarMedia: data.avatar ? {
+            uri: data.avatar
+          } : preview.avatarMedia,
+          bannerMedia: data.banner ? {
+            uri: data.banner
+          } : preview.bannerMedia,
+          nitroMonths: data.nitro ? NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1 : 0,
+          boostMonths: data.boostMonths >= 0 ? BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0 : 0,
+          selectedBadges
+        };
+        clearCache();
+        diagnostics.last = "Fake Profile synced across devices";
+      } catch (e) {
+      }
+    })();
+  }
   function requestSharedProfile(userId) {
     var id = String(userId || "");
     if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedProfiles.has(id) || sharedRequests.has(id))
@@ -5237,6 +5274,7 @@
         yield awaitStorage(settings);
         bindSavedPreview();
         ensurePatches();
+        yield pullOwnSharedProfile();
         if (preview.enabled) {
           refreshPreview();
           queueSharedPublish();
