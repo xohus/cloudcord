@@ -39,6 +39,18 @@
 
 > Download CloudCord only from this repository's releases. The iOS package is distributed as an `.ipa`; Android is distributed as an `.apk`.
 
+### Windows desktop
+
+[Download cloudcord.exe](https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/cloudcord.exe), close Discord completely, then use Install or Update / Fix.
+
+## Live CloudCord downloads
+
+<div align="center">
+  <img src="https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/badge.svg" alt="Live CloudCord downloads" />
+</div>
+
+The number is the cumulative GitHub release download total for the official iOS IPA, Android APK, and Windows EXE. It updates automatically and does not require account or installation tracking.
+
 ## CloudCord at a glance
 
 CloudCord extends Discord with a focused set of client features while keeping the experience familiar. Mobile features are integrated directly into the Discord settings and navigation surfaces, with local configuration and an automatically refreshed runtime.
@@ -49,31 +61,30 @@ CloudCord extends Discord with a focused set of client features while keeping th
 
 ### BotCord
 
-A bot-account client built directly into CloudCord.
+A full Discord-style bot-account client built directly into CloudCord Desktop.
 
 - Multiple locally saved bot accounts
-- Server and channel navigation
-- Direct messages and recent DM history
-- Searchable server-member browser
-- Live message refresh while a conversation is open
-- Optimistic sending so your messages appear immediately
-- Photo attachments from the native iOS picker
-- Inline image attachment previews
-- Account switching, bot logout and return to the main Discord account
+- Server rail, categorized channels and direct-message home
+- Message history pagination with automatic conversation refresh
+- Text, image and file attachments, embeds and poll rendering
+- Replies, reactions, inline editing and message deletion
+- Searchable member list with one-click bot DMs
+- New DM picker limited to members of servers the selected bot belongs to
+- Local multi-bot switching without exposing tokens after setup
 
 </td>
 <td width="50%" valign="top">
 
 ### Fake Profile
 
-Preview a customized profile locally without changing your real Discord account.
+Build a complete custom profile locally and optionally share it with other CloudCord users.
 
-- Display name and username preview
-- Avatar and banner media
-- Badge selection
-- Nitro and boost-duration previews
-- Local persistence
-- Automatically reapplies at app startup when enabled
+- Username, display name, avatar, banner, bio and pronouns
+- Profile gradients, badges, Nitro and boost-duration previews
+- Account and signup dates
+- Built-in decorations, Discord catalog discovery and custom asset IDs
+- Automatic full-editor profile saving and sharing, including automatic invisible About Me linking
+- Local persistence that automatically reapplies at startup
 
 </td>
 </tr>
@@ -87,9 +98,9 @@ CloudCord keeps its main features directly inside the client settings. Each tab 
 | :---: | --- | --- |
 | <img src="assets/cloudcord-favicon.png" width="28" height="28" alt="General" /> | **General** | Core CloudCord controls, client options and runtime controls |
 | <img src="assets/readme/tabs/botcord.svg" width="28" height="28" alt="BotCord" /> | **BotCord** | Bot accounts, DMs, servers, channels, members, messaging and media |
-| <img src="ios/assets/fakeprofile-icon.png" width="28" height="28" alt="Fake Profile" /> | **Fake Profile** | Local profile customization, badges, avatar, banner and previews |
+| <img src="ios/assets/fakeprofile-icon.png" width="28" height="28" alt="Fake Profile" /> | **Fake Profile** | Complete local and opt-in shared profiles, badges, media and decorations |
 | <img src="assets/readme/tabs/cloud-sync.svg" width="28" height="28" alt="Cloud Sync" /> | **Cloud Sync** | Sync supported CloudCord settings and backups |
-| <img src="assets/readme/tabs/plugins.svg" width="28" height="28" alt="Plugins" /> | **Plugins** | Enable, disable and configure installed plugins |
+| <img src="assets/readme/tabs/plugins.svg" width="28" height="28" alt="Plugins" /> | **Plugins** | Enable or disable all plugins, configure them, and add trusted outside plugins from repository links |
 | <img src="assets/readme/tabs/plugin-browser.svg" width="28" height="28" alt="Plugin Browser" /> | **Plugin Browser** | Browse and manage available plugins |
 | <img src="assets/readme/tabs/themes.svg" width="28" height="28" alt="Themes" /> | **Themes** | Install and manage client themes |
 | <img src="assets/readme/tabs/fonts.svg" width="28" height="28" alt="Fonts" /> | **Fonts** | Customize client typography |
@@ -99,7 +110,7 @@ CloudCord keeps its main features directly inside the client settings. Each tab 
 
 ### Local-first configuration
 
-CloudCord keeps feature configuration on-device where possible. BotCord account data and Fake Profile configuration are stored locally instead of being exposed as public profile data.
+CloudCord keeps feature configuration on-device where possible. BotCord tokens always remain local. When Fake Profile is enabled, editor changes save locally and publish automatically; the client maintains an invisible link in the user's real About Me while preserving its visible text. The public service stores only visible editor fields and never receives Discord credentials, email addresses or phone numbers.
 
 ### Familiar interface
 
@@ -107,7 +118,7 @@ CloudCord integrates with the client rather than building a separate app around 
 
 ### Fast runtime updates
 
-The CloudCord runtime can refresh independently of a full native rebuild, allowing fixes and feature updates to ship quickly while retaining native iOS and Android loaders.
+The CloudCord runtime can refresh independently of a full native rebuild. On Windows, `cloudcord.exe` also checks the official desktop release and replaces itself automatically when a newer installer is published.
 
 ### Plugin ecosystem
 
@@ -117,12 +128,12 @@ CloudCord includes plugin management and a plugin browser, alongside the broader
 
 ```text
 cloudcord/
-├── ios/                 iOS assets, runtime and native loader
-├── android/             Android manager and packaged assets
-├── desktop/             Desktop client codebase
-├── dist/                Generated shared runtime
-├── assets/              CloudCord logos and visual assets
-└── .github/workflows/   Runtime and platform build automation
+|-- ios/                 iOS assets, runtime and native loader
+|-- android/             Android manager and packaged assets
+|-- desktop/             Desktop client codebase and profile service
+|-- dist/                Generated shared runtime
+|-- assets/              CloudCord logos and visual assets
+`-- .github/workflows/   Runtime and platform build automation
 ```
 
 ## Safety and privacy
@@ -140,3 +151,4 @@ The mobile runtime is generated by the CloudCord workflow and published to `dist
   <br />
   <sub>CloudCord</sub>
 </div>
+
