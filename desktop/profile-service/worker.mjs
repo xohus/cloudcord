@@ -68,11 +68,6 @@ async function downloadCount(request, ctx) {
   return count;
 }
 
-async function sharedAccountCount(env) {
-  const row = await env.DB.prepare("SELECT COUNT(*) AS count FROM profile_owners").first();
-  return Number(row?.count || 0);
-}
-
 function usageBadge(count, noun = "downloads") {
   const label = `${count} ${noun}`;
   const width = Math.max(124, label.length * 8 + 28);
@@ -88,17 +83,17 @@ export default {
       try { return response({ count: await downloadCount(request, ctx), metric: "release_downloads" }, 200, { "Cache-Control": "public, max-age=300" }); }
       catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 502, { "Cache-Control": "no-store" }); }
     }
-    if (url.pathname === "/v1/usage/accounts" && request.method === "GET") {
-      try { return response({ count: await sharedAccountCount(env), metric: "shared_profile_accounts" }, 200, { "Cache-Control": "no-cache, max-age=60" }); }
-      catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 500, { "Cache-Control": "no-store" }); }
+    if (url.pathname === "/v1/usage/installs" && request.method === "GET") {
+      try { return response({ count: await downloadCount(request, ctx), metric: "lifetime_official_downloads" }, 200, { "Cache-Control": "public, max-age=300" }); }
+      catch (error) { return response({ error: error instanceof Error ? error.message : String(error) }, 502, { "Cache-Control": "no-store" }); }
     }
     if (url.pathname === "/v1/usage/badge.svg" && request.method === "GET") {
       try { return response(usageBadge(await downloadCount(request, ctx)), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "public, max-age=300" }); }
       catch { return response(usageBadge(0), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
     }
-    if (url.pathname === "/v1/usage/accounts-badge.svg" && request.method === "GET") {
-      try { return response(usageBadge(await sharedAccountCount(env), "shared accounts"), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
-      catch { return response(usageBadge(0, "shared accounts"), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
+    if (url.pathname === "/v1/usage/installs-badge.svg" && request.method === "GET") {
+      try { return response(usageBadge(await downloadCount(request, ctx), "installs"), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "public, max-age=300" }); }
+      catch { return response(usageBadge(0, "installs"), 200, { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "no-cache, max-age=60" }); }
     }
     if (url.pathname === "/v1/profiles" && request.method === "POST") {
       try {

@@ -7,7 +7,7 @@
   <p>
     <img alt="iOS" src="https://img.shields.io/badge/iOS-supported-111111?style=for-the-badge&logo=apple" />
     <img alt="Android" src="https://img.shields.io/badge/Android-supported-111111?style=for-the-badge&logo=android" />
-    <img alt="Windows" src="https://img.shields.io/badge/Windows-supported-111111?style=for-the-badge&logo=windows11" />
+    <img alt="Windows" src="https://img.shields.io/badge/Windows-supported-111111?style=for-the-badge" />
     <img alt="Open Source" src="https://img.shields.io/badge/source-visible-111111?style=for-the-badge&logo=github" />
     <img alt="Local First" src="https://img.shields.io/badge/local--first-settings-111111?style=for-the-badge&logo=databricks" />
   </p>
@@ -21,21 +21,24 @@
 <table>
 <tr>
 <td align="center" width="33%">
-  <img src="https://img.shields.io/badge/iOS%20%2F%20iPadOS-CloudCord-111111?style=for-the-badge&logo=apple" alt="iOS / iPadOS" />
+  <img src="assets/readme/platforms/ios.svg" width="88" height="88" alt="iOS / iPadOS" />
+  <h3>iOS / iPadOS</h3>
   <br /><br />
   <a href="https://github.com/xohus/cloudcord/releases/download/new_beta/cloudcord0.ipa"><strong>Download CloudCord IPA</strong></a>
   <br />
   <sub><a href="https://github.com/xohus/cloudcord/releases/tag/new_beta">View iOS / iPadOS release</a></sub>
 </td>
 <td align="center" width="33%">
-  <img src="https://img.shields.io/badge/Android-CloudCord-111111?style=for-the-badge&logo=android" alt="Android" />
+  <img src="assets/readme/platforms/android.svg" width="88" height="88" alt="Android" />
+  <h3>Android</h3>
   <br /><br />
   <a href="https://github.com/xohus/cloudcord/releases/download/new_beta_android/cloudcord.apk"><strong>Download CloudCord APK</strong></a>
   <br />
   <sub><a href="https://github.com/xohus/cloudcord/releases/tag/new_beta_android">View Android release</a></sub>
 </td>
 <td align="center" width="33%">
-  <img src="https://img.shields.io/badge/Windows-CloudCord-111111?style=for-the-badge&logo=windows11" alt="Windows desktop" />
+  <img src="assets/readme/platforms/windows.svg" width="88" height="88" alt="Windows desktop" />
+  <h3>Windows</h3>
   <br /><br />
   <a href="https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/cloudcord.exe"><strong>Download cloudcord.exe</strong></a>
   <br />
@@ -50,20 +53,18 @@
 ## Live CloudCord numbers
 
 <div align="center">
-  <img src="https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/accounts-badge.svg" alt="CloudCord shared accounts" />
-  &nbsp;
-  <img src="https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/badge.svg" alt="Live CloudCord downloads" />
+  <img src="https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/installs-badge.svg" alt="Lifetime CloudCord installs" />
 </div>
 
-The account number is the live count of unique Discord accounts that enabled CloudCord shared profiles on desktop or mobile. It is not an online-presence counter. The download number is the lifetime GitHub release download total for the official iOS IPA, Android APK, and Windows EXE.
+The number is how many times CloudCord has been obtained from the official releases across iOS, Android, and Windows. It is calculated from lifetime IPA, APK, and EXE downloads and does not use Fake Profile, Discord account IDs, or online-presence tracking. Reinstalling or downloading on another device can increase the number again.
 
 ## Platform support
 
 | Platform | Package | Support |
 | :---: | :---: | --- |
-| <img src="https://cdn.simpleicons.org/apple/ffffff" width="24" height="24" alt="Apple" /> **iOS / iPadOS** | `.ipa` | Mobile runtime, Cloud Sync, Fake Profile, plugins, themes and fonts |
-| <img src="https://cdn.simpleicons.org/android/3DDC84" width="24" height="24" alt="Android" /> **Android** | `.apk` | Mobile runtime, Cloud Sync, Fake Profile, plugins, themes and fonts |
-| <img src="https://cdn.simpleicons.org/windows11/00A4EF" width="24" height="24" alt="Windows" /> **Windows desktop** | `.exe` | Installer, automatic updates, BotCord, shared Fake Profile, Cloud Sync, plugins, themes and fonts |
+| <img src="assets/readme/platforms/ios.svg" width="28" height="28" alt="iOS" /> **iOS / iPadOS** | `.ipa` | Mobile runtime, Cloud Sync, Fake Profile, plugins, themes and fonts |
+| <img src="assets/readme/platforms/android.svg" width="28" height="28" alt="Android" /> **Android** | `.apk` | Mobile runtime, Cloud Sync, Fake Profile, plugins, themes and fonts |
+| <img src="assets/readme/platforms/windows.svg" width="28" height="28" alt="Windows" /> **Windows desktop** | `.exe` | Installer, automatic updates, BotCord, shared Fake Profile, Cloud Sync, plugins, themes and fonts |
 
 ## CloudCord at a glance
 
