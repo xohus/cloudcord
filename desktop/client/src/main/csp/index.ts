@@ -46,6 +46,9 @@ export const CspPolicies: PolicyMap = {
 
     "cdn.discordapp.com": ImageAndCssSrc, // Discord CDN, used by Vencord and some themes to load media
     "media.discordapp.net": ImageSrc, // Discord media CDN, possible alternative to Discord CDN
+    "discord.com": ConnectSrc, // BotCord Discord API
+    "*.discord.com": ConnectSrc, // BotCord Discord API redirects
+    "dc.cloudsync.nexpid.xyz": ConnectSrc, // Cloud Sync used by CloudCord mobile and desktop
 
     // CDNs used for some things by Vencord.
     // FIXME: we really should not be using CDNs anymore
@@ -152,3 +155,4 @@ export function initCsp() {
     // impossible to load css from github raw despite our fix above
     session.defaultSession.webRequest.onHeadersReceived = () => { };
 }
+

@@ -359,7 +359,7 @@ function BadgePicker({ selected, onChange, nitroType, onNitroType, boostLevel, o
         <div className="cp-section-label" style={{ marginTop: 8 }}>Special Badges</div>
         <div className="cp-badges">
             <BadgeBtn label="Completed a quest" icon="https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png" active={customIds.includes("quest")} onClick={() => onCustomIds(customIds.includes("quest") ? customIds.filter(x => x !== "quest") : [...customIds, "quest"])} />
-            <BadgeBtn label="Orbs — Apprentice" icon="https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png" active={customIds.includes("orbs")} onClick={() => onCustomIds(customIds.includes("orbs") ? customIds.filter(x => x !== "orbs") : [...customIds, "orbs"])} />
+            <BadgeBtn label="Orbs â€” Apprentice" icon="https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png" active={customIds.includes("orbs")} onClick={() => onCustomIds(customIds.includes("orbs") ? customIds.filter(x => x !== "orbs") : [...customIds, "orbs"])} />
             <BadgeBtn label="Old username" icon={OLD_NAME_BADGE_ICON} active={hasOldName} onClick={() => onCustomIds(hasOldName ? customIds.filter(x => x !== "oldname") : [...customIds, "oldname"])} />
         </div>
         {hasOldName && <div className="cp-field" style={{ marginTop: 6 }}><div className="cp-section-label">Old username displayed in tooltip</div><input className="cp-input" value={oldName} placeholder="OldUser#0000" onChange={e => onOldName(e.target.value)} /></div>}
@@ -451,7 +451,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <Field label="Bio" value={data.bio ?? ""} placeholder="My description..." onChange={v => set("bio", v)} />
             <Field label="Pronouns" value={data.pronouns ?? ""} placeholder="he/him" onChange={v => set("pronouns", v)} />
             <div className="cp-field">
-                <div className="cp-section-label">Profile color (Nitro — gradient possible)</div>
+                <div className="cp-section-label">Profile color (Nitro â€” gradient possible)</div>
                 <div className="cp-color-row" style={{ marginBottom: 6 }}>
                     <span style={{ fontSize: 11, color: "var(--text-muted)", marginRight: 6 }}>Color 1</span>
                     <input type="color" value={accentHex || "#5865f2"} className="cp-color-swatch" onChange={e => { const n = parseInt(e.target.value.replace("#", ""), 16); if (!isNaN(n)) set("accentColor", n); }} />
@@ -479,7 +479,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                     </button>
                 ))}
             </div>
-            <div className="cp-hint">Visual and local modifications only — persistent between restarts.</div>
+            <div className="cp-hint">Visual and local modifications only â€” persistent between restarts.</div>
         </ModalContent>
 
         <ModalFooter className="cp-footer">
@@ -495,9 +495,9 @@ function CustomProfileButton() {
 }
 
 export default definePlugin({
-    name: "ProfileSpoofer",
+    name: "FakeProfile",
     enabledByDefault: true,
-    description: "Visually customize your Discord profile (username, avatar, banner, badges, bio...) — persistent, only visible to you.",
+    description: "Visually customize your Discord profile (username, avatar, banner, badges, bio...) â€” persistent, only visible to you.",
     authors: [SincordDevs.nobody],
     dependencies: ["HeaderBarAPI", "ContextMenuAPI"],
 
@@ -593,7 +593,7 @@ fakeObfuscatedEmail(real: string | null) {
         try { return isMe(displayProfile?.userId) ? storedData.banner : null; } catch { return null; }
     },
 
-    toolboxActions: { "Open Profile Spoofer"() { openModal(props => <CustomProfileModal rootProps={props} />); } },
+    toolboxActions: { "Open Fake Profile"() { openModal(props => <CustomProfileModal rootProps={props} />); } },
     _origGetUserAvatarURL: null as any,
     _origExtractTimestamp: null as any,
 
@@ -617,10 +617,10 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Early Verified Bot Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
             if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", position: 0, props: { style } });
-            if (hasBoostFake) badges.push({ id: "sp_boost", description: `Server Booster — ${BOOST_LABELS[bm]}`, iconSrc: BOOST_ICONS[bm], position: 0, props: { style } });
+            if (hasBoostFake) badges.push({ id: "sp_boost", description: `Server Booster â€” ${BOOST_LABELS[bm]}`, iconSrc: BOOST_ICONS[bm], position: 0, props: { style } });
             if (storedData.customBadgeIds?.includes("oldname")) { const desc = storedData.oldName ? `Old username: ${storedData.oldName}` : "Old username"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
             if (storedData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
-            if (storedData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs — Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
+            if (storedData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs â€” Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
             return badges;
         }
     } as ProfileBadge] as ProfileBadge[],
@@ -708,5 +708,6 @@ fakeObfuscatedEmail(real: string | null) {
         if (this._origGetUserAvatarURL && IconUtils) { (IconUtils as any).getUserAvatarURL = this._origGetUserAvatarURL; this._origGetUserAvatarURL = null; _avatarPatchApplied = false; }
     },
 
-    settingsAboutComponent() { return <Button onClick={() => openModal(props => <CustomProfileModal rootProps={props} />)}>Open Profile Spoofer</Button>; },
+    settingsAboutComponent() { return <Button onClick={() => openModal(props => <CustomProfileModal rootProps={props} />)}>Open Fake Profile Editor</Button>; },
 });
+
