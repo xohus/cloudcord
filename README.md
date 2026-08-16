@@ -41,20 +41,15 @@
 
 ### Windows desktop
 
-[Download CloudCordSetup.exe](https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/CloudCordSetup.exe), close Discord completely, then use Install or Update / Fix.
+[Download cloudcord.exe](https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/cloudcord.exe), close Discord completely, then use Install or Update / Fix.
 
-## CloudCord usage
+## Live CloudCord users
 
-GitHub provides package download counts, not private Discord account or unique-user totals. These verified release counts were checked on August 16, 2026:
+<div align="center">
+  <img src="https://cloudcord-profiles.ggxohus.workers.dev/v1/usage/badge.svg" alt="Live CloudCord users" />
+</div>
 
-| Platform | Downloads |
-| --- | ---: |
-| iOS / iPadOS | 28 |
-| Android | 9 |
-| Windows desktop | 1 |
-| **Total published package downloads** | **38** |
-
-Downloads are not the same as unique users because one person can download a package more than once. CloudCord does not invent or publish private account counts.
+The number updates from anonymous CloudCord installations active within the last 24 hours. CloudCord does not send Discord IDs, usernames, account details, or tokens to count usage.
 
 ## CloudCord at a glance
 

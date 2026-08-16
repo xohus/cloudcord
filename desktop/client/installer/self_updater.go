@@ -49,7 +49,7 @@ func GetInstallerDownloadLink() string {
 	const BaseUrl = "https://github.com/xohus/cloudcord/releases/latest/download/"
 	switch runtime.GOOS {
 	case "windows":
-		filename := Ternary(buildinfo.UiType == buildinfo.UiTypeCli, "CloudCordSetupCli.exe", "CloudCordSetup.exe")
+		filename := Ternary(buildinfo.UiType == buildinfo.UiTypeCli, "cloudcord-cli.exe", "cloudcord.exe")
 		return BaseUrl + filename
 	case "darwin":
 		switch runtime.GOARCH {

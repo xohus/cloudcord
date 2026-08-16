@@ -16,7 +16,7 @@ const ReleaseUrlFallback = ""
 const InstallerReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/latest"
 const InstallerReleaseUrlFallback = ""
 
-var UserAgent = "CloudCordSetup/" + buildinfo.InstallerGitHash + " (https://github.com/xohus/cloudcord)"
+var UserAgent = "cloudcord.exe/" + buildinfo.InstallerGitHash + " (https://github.com/xohus/cloudcord)"
 
 var (
 	DiscordGreen  = color.RGBA{R: 0x2D, G: 0x7C, B: 0x46, A: 0xFF}

@@ -25,7 +25,7 @@ pnpm build:installer
 On Windows, the installer build outputs:
 
 ```text
-desktop/client/dist/CloudCordSetup.exe
+desktop/client/dist/cloudcord.exe
 ```
 
 The unpacked desktop runtime and packaged installer runtime are generated in:
@@ -41,15 +41,15 @@ Run the `CloudCord Desktop` GitHub Actions workflow manually, or push changes un
 
 ## Install
 
-Build or download `CloudCordSetup.exe`, close Discord fully from the system tray, run the installer, select the Discord installation, and choose `Install`.
+Build or download `cloudcord.exe`, close Discord fully from the system tray, run the installer, select the Discord installation, and choose `Install`.
 
 ## Uninstall
 
-Run `CloudCordSetup.exe`, select the patched Discord installation, and choose `Delete`.
+Run `cloudcord.exe`, select the patched Discord installation, and choose `Delete`.
 
 ## Update
 
-Run `CloudCordSetup.exe`, select the Discord installation, and choose `Update / Fix`. Update replaces only the CloudCord runtime and reapplies the desktop patch. It preserves plugins, settings, themes, fonts, Cloud Sync state, BotCord data, and Fake Profile data.
+Run `cloudcord.exe`, select the Discord installation, and choose `Update / Fix`. Update replaces only the CloudCord runtime and reapplies the desktop patch. It preserves plugins, settings, themes, fonts, Cloud Sync state, BotCord data, and Fake Profile data.
 
 On Windows, Install and Update close all processes for the selected Discord channel before replacing the runtime. The replacement is staged through a rollback file so an interrupted update does not destroy the working runtime. Use `Update / Fix` if Discord updates or damages its CloudCord patch.
 

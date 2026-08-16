@@ -39,7 +39,7 @@ case "$(uname -s)" in
         OUT="CloudCordSetup-linux"
         ;;
     MINGW*|MSYS*|CYGWIN*)
-        OUT="CloudCordSetup.exe"
+        OUT="cloudcord.exe"
         BUILD_FLAGS=(-ldflags "-s -w -H windowsgui")
         ;;
     *)

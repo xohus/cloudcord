@@ -122,9 +122,9 @@ func main() {
 		os.Setenv("GDK_DPI_SCALE", "1")
 	}
 
-	// Leave enough physical room for high-DPI Windows displays. The previous
-	// 920x520 window caused ImGui to add a root scrollbar at 125%+ scaling.
-	win = g.NewMasterWindow("CloudCord Desktop", 1180, 700, linuxFlags)
+	// Keep the complete three-action layout visible without scrolling, including
+	// on Windows displays using 125% or 150% scaling.
+	win = g.NewMasterWindow("CloudCord Desktop", 1280, 800, linuxFlags)
 
 	go func() {
 		<-GithubDoneChan

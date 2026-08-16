@@ -1,6 +1,6 @@
-$link = "https://github.com/xohus/cloudcord/releases/latest/download/CloudCordSetupCli.exe"
+$link = "https://github.com/xohus/cloudcord/releases/latest/download/cloudcord-cli.exe"
 
-$outfile = "$env:TEMP\CloudCordSetupCli.exe"
+$outfile = "$env:TEMP\cloudcord-cli.exe"
 
 Write-Output "Downloading installer to $outfile"
 
