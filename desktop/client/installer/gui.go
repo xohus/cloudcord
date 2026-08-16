@@ -124,7 +124,7 @@ func main() {
 		os.Setenv("GDK_DPI_SCALE", "1")
 	}
 
-	win = g.NewMasterWindow("CloudCord Desktop", 980, 720, linuxFlags)
+	win = g.NewMasterWindow("CloudCord Desktop", 900, 620, linuxFlags)
 
 	go func() {
 		<-GithubDoneChan
@@ -532,22 +532,22 @@ func renderInstaller() g.Widget {
 		g.Dummy(0, 14),
 		g.Style().
 			SetColor(g.StyleColorChildBg, CloudCordPanel).
-			SetStyle(g.StyleVarWindowPadding, 22, 20).
+			SetStyle(g.StyleVarWindowPadding, 18, 14).
 			SetStyleFloat(g.StyleVarChildRounding, 20).
-			To(g.Child().Size(g.Auto, 118).Flags(g.WindowFlagsNoScrollbar).Layout(
+			To(g.Child().Size(g.Auto, 96).Flags(g.WindowFlagsNoScrollbar).Layout(
 				g.Style().SetColor(g.StyleColorText, CloudCordCyan).SetFontSize(14).To(g.Label("CLOUDCORD DESKTOP")),
-				g.Dummy(0, 5),
-				g.Style().SetFontSize(28).To(g.Label("Your Discord, upgraded.")),
-				g.Dummy(0, 6),
-				g.Style().SetColor(g.StyleColorText, CloudCordMuted).To(g.Label("BotCord  ·  Fake Profile  ·  Cloud Sync  ·  Plugins  ·  Themes")),
+				g.Dummy(0, 3),
+				g.Style().SetFontSize(24).To(g.Label("Your Discord, upgraded.")),
+				g.Dummy(0, 3),
+				g.Style().SetColor(g.StyleColorText, CloudCordMuted).To(g.Label("BotCord  |  Fake Profile  |  Cloud Sync  |  Plugins  |  Themes")),
 			)),
 
 		g.Dummy(0, 12),
 		g.Style().
 			SetColor(g.StyleColorChildBg, CloudCordPanel).
-			SetStyle(g.StyleVarWindowPadding, 22, 18).
+			SetStyle(g.StyleVarWindowPadding, 18, 14).
 			SetStyleFloat(g.StyleVarChildRounding, 20).
-			To(g.Child().Size(g.Auto, 210).Flags(g.WindowFlagsNoScrollbar).Layout(
+			To(g.Child().Size(g.Auto, Ternary(len(discords) == 0, float32(172), float32(108))).Flags(g.WindowFlagsNoScrollbar).Layout(
 				g.Row(
 					g.Style().SetFontSize(22).To(g.Label("Choose Discord")),
 					g.Style().SetColor(g.StyleColorText, CloudCordCyan).To(g.Label(status)),
@@ -560,15 +560,19 @@ func renderInstaller() g.Widget {
 					d := v.(*DiscordInstall)
 					label := strings.ToUpper(d.branch[:1]) + d.branch[1:] + " Discord"
 					if d.isPatched {
-						label += "  ·  Installed"
+						label += "  |  Installed"
 					}
 					return g.RadioButton(label, radioIdx == i).OnChange(makeRadioOnChange(i))
 				}),
-				g.RadioButton("Choose a different Discord folder", radioIdx == customChoiceIdx).OnChange(makeRadioOnChange(customChoiceIdx)),
-				g.Dummy(0, 6),
-				g.Style().SetStyle(g.StyleVarFramePadding, 14, 12).SetStyleFloat(g.StyleVarFrameRounding, 12).To(
-					g.InputText(&customDir).Hint("Discord installation folder").Size(w - 44).OnChange(onCustomInputChanged),
-				),
+				&CondWidget{len(discords) == 0, func() g.Widget {
+					return g.Column(
+						g.RadioButton("Choose a Discord folder", radioIdx == customChoiceIdx).OnChange(makeRadioOnChange(customChoiceIdx)),
+						g.Dummy(0, 6),
+						g.Style().SetStyle(g.StyleVarFramePadding, 12, 10).SetStyleFloat(g.StyleVarFrameRounding, 12).To(
+							g.InputText(&customDir).Hint("Discord installation folder").Size(w - 36).OnChange(onCustomInputChanged),
+						),
+					)
+				}, nil},
 			)),
 
 		g.Dummy(0, 12),
@@ -819,7 +823,7 @@ func loop() {
 		baseFontSize = 10
 	}
 
-	g.PushWindowPadding(42, 28)
+	g.PushWindowPadding(32, 22)
 
 	g.SingleWindow().
 		RegisterKeyboardShortcuts(
@@ -842,7 +846,7 @@ func loop() {
 				To(
 					g.Row(
 						g.Style().SetFontSize(22).To(g.Label("CloudCord")),
-						g.Style().SetColor(g.StyleColorText, CloudCordMuted).To(g.Label("Desktop  ·  "+buildinfo.InstallerTag)),
+						g.Style().SetColor(g.StyleColorText, CloudCordMuted).To(g.Label("Desktop Installer")),
 					),
 					renderInstaller(),
 				),
@@ -850,3 +854,4 @@ func loop() {
 
 	g.PopStyle()
 }
+

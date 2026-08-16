@@ -5,11 +5,13 @@
  */
 
 import { definePluginSettings } from "@api/Settings";
-import { BackupRestoreIcon, LogIcon, MainSettingsIcon, PaintbrushIcon, PatchHelperIcon, PluginsIcon, UpdaterIcon } from "@components/Icons";
+import { BackupRestoreIcon, CloudIcon, LogIcon, MainSettingsIcon, PaintbrushIcon, PluginsIcon, RobotIcon, UpdaterIcon, UserIcon } from "@components/Icons";
 import {
     BackupAndRestoreTab,
+    BotCordTab,
     ChangelogTab,
-    PatchHelperTab,
+    CloudTab,
+    FakeProfileTab,
     PluginsTab,
     ThemesTab,
     UpdaterTab,
@@ -197,6 +199,24 @@ export default definePlugin({
                 Icon: MainSettingsIcon
             }),
             buildEntry({
+                key: "cloudcord_botcord",
+                title: "BotCord",
+                Component: BotCordTab,
+                Icon: RobotIcon
+            }),
+            buildEntry({
+                key: "cloudcord_fake_profile",
+                title: "Fake Profile",
+                Component: FakeProfileTab,
+                Icon: UserIcon
+            }),
+            buildEntry({
+                key: "cloudcord_cloud_sync",
+                title: "Cloud Sync",
+                Component: CloudTab,
+                Icon: CloudIcon
+            }),
+            buildEntry({
                 key: "sincord_plugins",
                 title: "Plugins",
                 Component: PluginsTab,
@@ -226,12 +246,6 @@ export default definePlugin({
                 title: "Backup & Restore",
                 Component: BackupAndRestoreTab,
                 Icon: BackupRestoreIcon
-            }),
-            !IS_STANDALONE && PatchHelperTab && buildEntry({
-                key: "sincord_patch_helper",
-                title: "Patch Helper",
-                Component: PatchHelperTab,
-                Icon: PatchHelperIcon
             }),
             ...this.customEntries.map(buildEntry)
         ].filter(isTruthy);
@@ -329,3 +343,4 @@ export default definePlugin({
         ));
     },
 });
+
