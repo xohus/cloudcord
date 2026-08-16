@@ -74,7 +74,7 @@ func main() {
 
 	if *versionFlag {
 		fmt.Println("CloudCord Setup Cli", buildinfo.InstallerTag, "("+buildinfo.InstallerGitHash+")")
-		fmt.Println("Copyright (C) 2026 Vendicated, thororen1234, Vencord, and CloudCord contributors")
+		fmt.Println("Copyright (C) 2026 CloudCord contributors; see CREDITS.md for upstream attribution")
 		fmt.Println("License GPLv3+: GNU GPL version 3 or later <https://gnu.org/licenses/gpl.html>.")
 		return
 	}
@@ -100,7 +100,7 @@ func main() {
 
 	if *installFlag || *updateFlag {
 		if !<-GithubDoneChan {
-			die("Not " + Ternary(*installFlag, "installing", "updating") + " as fetching release data failed")
+			Log.Warn("Release data is unavailable; CloudCord Setup will use its bundled desktop runtime")
 		}
 	}
 
@@ -299,3 +299,4 @@ func HandleScuffedInstall() {
 	fmt.Println("Please reinstall Discord before proceeding!")
 	fmt.Println("Otherwise, CloudCord will likely not work.")
 }
+

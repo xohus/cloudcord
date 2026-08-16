@@ -79,7 +79,7 @@ function UserPluginsTab() {
     return (
         <STab
             // @ts-ignore
-            title={`UserPlugins${pluginsLoaded ? ` (${plugins.length}, ${plugins.filter(p => Vencord.Settings.plugins[p.name].enabled).length} enabled)` : ""}`}
+            title={`Outside Plugins${pluginsLoaded ? ` (${plugins.length}, ${plugins.filter(p => Vencord.Settings.plugins[p.name].enabled).length} enabled)` : ""}`}
         >
             <div className={cl("update-check-container")}>
                 {isObjectEmpty(pluginsWithUpdates) ? (
@@ -111,12 +111,12 @@ function UserPluginsTab() {
             </div>
             <Card className={cl("info-card")}>
                 <HeadingTertiary className={cl("install-title")}>
-                    Install Plugin
+                    Add Plugin from Link
                 </HeadingTertiary>
                 <Paragraph className={cl("install-desc")}>
-                    You can install a plugin from GitHub, GitLab, Codeberg,
-                    git.nin0.dev, or plugins.nin0.dev by pasting its clone URL
-                    here.
+                    Paste a trusted GitHub, GitLab, Codeberg, git.nin0.dev, or
+                    plugins.nin0.dev clone link. Outside plugins run code inside
+                    Discord, so only add sources you trust.
                 </Paragraph>
                 <div className={cl("install-field")}>
                     <CheckedTextInput

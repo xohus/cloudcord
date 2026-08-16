@@ -25,6 +25,7 @@ type GithubRelease struct {
 	Assets  []struct {
 		Name        string `json:"name"`
 		DownloadURL string `json:"browser_download_url"`
+		Digest      string `json:"digest"`
 	} `json:"assets"`
 }
 
@@ -159,9 +160,8 @@ func installLatestBuilds() (retErr error) {
 	}
 
 	if downloadUrl == "" {
-		retErr = errors.New("Didn't find desktop.asar download link")
-		Log.Error(retErr)
-		return
+		Log.Warn("No desktop.asar release asset is available; using the runtime bundled with CloudCord Setup")
+		return installBundledBuild()
 	}
 
 	Log.Debug("Downloading desktop.asar")
@@ -171,27 +171,37 @@ func installLatestBuilds() (retErr error) {
 		err = errors.New(res.Status)
 	}
 	if err != nil {
-		Log.Error("Failed to download desktop.asar:", err)
-		retErr = err
-		return
+		Log.Warn("Failed to download desktop.asar; using the bundled runtime:", err)
+		return installBundledBuild()
 	}
-	out, err := os.OpenFile(CloudCordDirectory, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	defer res.Body.Close()
+	temporary := CloudCordDirectory + ".download"
+	out, err := os.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		Log.Error("Failed to create", CloudCordDirectory+":", err)
 		retErr = err
 		return
 	}
 	read, err := io.Copy(out, res.Body)
+	closeErr := out.Close()
 	if err != nil {
 		Log.Error("Failed to download to", CloudCordDirectory+":", err)
 		retErr = err
 		return
 	}
+	if closeErr != nil {
+		retErr = closeErr
+		return
+	}
 	contentLength := res.Header.Get("Content-Length")
 	expected := strconv.FormatInt(read, 10)
-	if expected != contentLength {
+	if contentLength != "" && expected != contentLength {
 		err = errors.New("Unexpected end of input. Content-Length was " + contentLength + ", but I only read " + expected)
 		Log.Error(err.Error())
+		return installBundledBuild()
+	}
+	if err = replaceRuntimeFile(temporary, CloudCordDirectory); err != nil {
+		_ = os.Remove(temporary)
 		retErr = err
 		return
 	}

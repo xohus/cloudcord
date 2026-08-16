@@ -17,12 +17,10 @@
 */
 
 import { useSettings } from "@api/Settings";
-import { Button } from "@components/Button";
-import { Card } from "@components/Card";
 import { Divider } from "@components/Divider";
 import { Flex } from "@components/Flex";
 import { FormSwitch } from "@components/FormSwitch";
-import { Heading, HeadingSecondary } from "@components/Heading";
+import { Heading } from "@components/Heading";
 import { Link } from "@components/Link";
 import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
@@ -38,34 +36,6 @@ import { HashLink, Newer, Updatable } from "./Components";
 interface CommonProps {
     repo: string;
     repoPending: boolean;
-}
-
-function SinbopSection() {
-    if (!IS_EQUIBOP) return null;
-
-    const [isSinbopOutdated] = useAwaiter<boolean>(VesktopNative.app.isOutdated, { fallbackValue: false });
-
-    return (
-        <Flex className={Margins.bottom20} flexDirection="column" gap="1em">
-            <Card variant="brand">
-                <HeadingSecondary>Sinbop & Sincord</HeadingSecondary>
-                <Paragraph>Sinbop and Sincord are two separate things. This updater is for Sincord.</Paragraph>
-                <Paragraph className={Margins.top8}>
-                    You receive separate popups for Sinbop updates. You can also manually update by installing the <Link href="https://sinbop.org/install">latest version</Link>.
-                </Paragraph>
-            </Card>
-
-            {isSinbopOutdated && (
-                <Card variant="warning">
-                    <HeadingSecondary>Sinbop Outdated</HeadingSecondary>
-                    <Flex flexDirection="column" gap="0.5em">
-                        <Paragraph>Your version of Sinbop is outdated!</Paragraph>
-                        <Button variant="link" onClick={() => VesktopNative.app.openUpdater()}>Open Sinbop Updater</Button>
-                    </Flex>
-                </Card>
-            )}
-        </Flex>
-    );
 }
 
 function Updater() {
@@ -85,15 +55,14 @@ function Updater() {
 
     return (
         <SettingsTab>
-            <SinbopSection />
             <Heading className={Margins.top16}>Update Preferences</Heading>
             <Paragraph className={Margins.bottom20}>
-                Control how Sincord keeps itself up to date. You can choose to update automatically in the background or be notified when new updates are available.
+                Control how CloudCord keeps itself up to date. Updates preserve plugins, settings, themes, fonts and CloudCord feature data.
             </Paragraph>
 
             <FormSwitch
                 title="Automatically update"
-                description="When enabled, Sincord will automatically download and install updates in the background without asking for confirmation. You'll need to restart Discord to apply the changes."
+                description="When enabled, CloudCord downloads and installs runtime updates in the background. Restart Discord to apply them."
                 value={settings.autoUpdate}
                 onChange={(v: boolean) => settings.autoUpdate = v}
                 hideBorder
@@ -102,7 +71,7 @@ function Updater() {
                 value={settings.autoUpdateNotification}
                 onChange={(v: boolean) => settings.autoUpdateNotification = v}
                 title="Get notified when an automatic update completes"
-                description="Receive a notification when Sincord finishes downloading an update in the background, so you know when to restart Discord."
+                description="Receive a notification when CloudCord finishes downloading an update, so you know when to restart Discord."
                 disabled={!settings.autoUpdate}
                 hideBorder
             />
@@ -111,7 +80,7 @@ function Updater() {
 
             <Heading className={Margins.top20}>Repository</Heading>
             <Paragraph className={Margins.bottom8}>
-                This is the GitHub repository where Sincord fetches updates from.
+                This is the GitHub repository where CloudCord fetches updates.
             </Paragraph>
             <Paragraph color="text-subtle">
                 {repoPending

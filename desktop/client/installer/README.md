@@ -8,8 +8,8 @@ The CloudCord Setup allows you to install [CloudCord, the cutest Discord Desktop
 
 Windows
 
-- [GUI](https://github.com/xohus/cloudcord/releases/latest/download/CloudCordSetup.exe)
-- [CLI](https://github.com/xohus/cloudcord/releases/latest/download/CloudCordSetupCli.exe)
+- [GUI](https://github.com/xohus/cloudcord/releases/latest/download/cloudcord.exe)
+- [CLI](https://github.com/xohus/cloudcord/releases/latest/download/cloudcord-cli.exe)
 
 MacOS
 

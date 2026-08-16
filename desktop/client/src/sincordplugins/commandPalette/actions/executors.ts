@@ -6,7 +6,7 @@
 
 import { isPluginEnabled, plugins } from "@api/PluginManager";
 import { NotesIcon } from "@components/Icons";
-import { toggleEnabled } from "@sincordplugins/sincordHelper/utils";
+import { toggleEnabled } from "@plugins/cloudCordHelper/utils";
 import type { ScheduledMessage } from "@sincordplugins/scheduledMessages/types";
 import { addScheduledMessage, getChannelDisplayInfo, getScheduledMessages, removeScheduledMessage, sendScheduledMessageNow, updateScheduledMessageTime } from "@sincordplugins/scheduledMessages/utils";
 import { sleep } from "@utils/misc";

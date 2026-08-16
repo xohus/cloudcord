@@ -5,14 +5,14 @@
  */
 
 import { definePluginSettings } from "@api/Settings";
-import { BackupRestoreIcon, LogIcon, MainSettingsIcon, PaintbrushIcon, PatchHelperIcon, PluginsIcon, UpdaterIcon } from "@components/Icons";
+import { BackupRestoreIcon, CloudIcon, MainSettingsIcon, PaintbrushIcon, PluginsIcon, RobotIcon, UserIcon } from "@components/Icons";
 import {
     BackupAndRestoreTab,
-    ChangelogTab,
-    PatchHelperTab,
+    BotCordTab,
+    CloudTab,
+    FakeProfileTab,
     PluginsTab,
     ThemesTab,
-    UpdaterTab,
     VencordTab,
 } from "@components/settings";
 import { gitHashShort } from "@shared/vencordUserAgent";
@@ -107,9 +107,9 @@ const settings = definePluginSettings({
             { label: "At the very bottom", value: "bottom" },
         ] as { label: string; value: SettingsLocation; default?: boolean; }[]
     },
-    includeVencordInfoWhenCopying: {
+    includeCloudCordInfoWhenCopying: {
         type: OptionType.BOOLEAN,
-        description: "Also copy Vencord info (Vencord, Electron, Chromium) when clicking the version info in the bottom left area of the Settings page",
+        description: "Also copy CloudCord, Electron and Chromium versions when clicking version info",
         default: true
     }
 });
@@ -184,63 +184,62 @@ export default definePlugin({
         const layout = originalLayoutBuilder.buildLayout();
         if (originalLayoutBuilder.key !== "$Root") return layout;
         if (!Array.isArray(layout)) return layout;
-        if (layout.some(s => s?.key === "sincord_section")) return layout;
+        if (layout.some(s => s?.key === "cloudcord_section")) return layout;
 
         const { buildEntry } = this;
 
-        const sincordEntries: SettingsLayoutNode[] = [
+        const cloudCordEntries: SettingsLayoutNode[] = [
             buildEntry({
-                key: "sincord_main",
+                key: "cloudcord_main",
                 title: "CloudCord",
                 panelTitle: "CloudCord Settings",
                 Component: VencordTab,
                 Icon: MainSettingsIcon
             }),
             buildEntry({
-                key: "sincord_plugins",
+                key: "cloudcord_botcord",
+                title: "BotCord",
+                Component: BotCordTab,
+                Icon: RobotIcon
+            }),
+            buildEntry({
+                key: "cloudcord_fake_profile",
+                title: "Fake Profile",
+                Component: FakeProfileTab,
+                Icon: UserIcon
+            }),
+            buildEntry({
+                key: "cloudcord_cloud_sync",
+                title: "Cloud Sync",
+                Component: CloudTab,
+                Icon: CloudIcon
+            }),
+            buildEntry({
+                key: "cloudcord_plugins",
                 title: "Plugins",
                 Component: PluginsTab,
                 Icon: PluginsIcon
             }),
             buildEntry({
-                key: "sincord_themes",
+                key: "cloudcord_themes",
                 title: "Themes",
                 Component: ThemesTab,
                 Icon: PaintbrushIcon
             }),
-            !IS_UPDATER_DISABLED && UpdaterTab && buildEntry({
-                key: "sincord_updater",
-                title: "Updater",
-                panelTitle: "CloudCord Updater",
-                Component: UpdaterTab,
-                Icon: UpdaterIcon
-            }),
             buildEntry({
-                key: "sincord_changelog",
-                title: "Changelog",
-                Component: ChangelogTab,
-                Icon: LogIcon,
-            }),
-            buildEntry({
-                key: "sincord_backup_restore",
+                key: "cloudcord_backup_restore",
                 title: "Backup & Restore",
                 Component: BackupAndRestoreTab,
                 Icon: BackupRestoreIcon
             }),
-            !IS_STANDALONE && PatchHelperTab && buildEntry({
-                key: "sincord_patch_helper",
-                title: "Patch Helper",
-                Component: PatchHelperTab,
-                Icon: PatchHelperIcon
-            }),
             ...this.customEntries.map(buildEntry)
         ].filter(isTruthy);
 
-        const sincordSection: SettingsLayoutNode = {
-            key: "sincord_section",
+        const cloudCordSection: SettingsLayoutNode = {
+            key: "cloudcord_section",
             type: LayoutTypes.SECTION,
             useTitle: () => "CloudCord Settings",
-            buildLayout: () => sincordEntries
+            buildLayout: () => cloudCordEntries
         };
 
         const { settingsLocation } = settings.store;
@@ -263,7 +262,7 @@ export default definePlugin({
             idx += 1;
         }
 
-        layout.splice(idx, 0, sincordSection);
+        layout.splice(idx, 0, cloudCordSection);
 
         return layout;
     },
@@ -314,7 +313,7 @@ export default definePlugin({
     },
 
     getInfoString() {
-        if (!settings.store.includeVencordInfoWhenCopying) return "";
+        if (!settings.store.includeCloudCordInfoWhenCopying) return "";
         return "\n" + this.getInfoRows().join("\n");
     },
 
@@ -329,3 +328,4 @@ export default definePlugin({
         ));
     },
 });
+

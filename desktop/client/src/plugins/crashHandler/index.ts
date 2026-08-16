@@ -116,7 +116,7 @@ export default definePlugin({
             try {
                 if (!hasCrashedOnce) {
                     hasCrashedOnce = true;
-                    maybePromptToUpdate("Uh oh, Discord has just crashed... but good news, there is a Sincord update available that might fix this issue! Would you like to update now?", true);
+                    maybePromptToUpdate("Discord just crashed, but a CloudCord update is available that may fix it. Update now?", true);
                 }
             } catch { }
 

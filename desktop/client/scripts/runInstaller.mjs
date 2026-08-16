@@ -21,7 +21,7 @@ const DIST_DESKTOP = join(BASE_DIR, "dist", "desktop");
 
 function getPlatformBinaryName() {
     switch (process.platform) {
-        case "win32": return "CloudCordSetup.exe";
+        case "win32": return "cloudcord.exe";
         case "darwin": return process.arch === "arm64" ? "CloudCordSetup-darwin-arm64" : "CloudCordSetup-darwin-x64";
         case "linux": return "CloudCordSetup-linux";
         default: throw new Error("Unsupported platform: " + process.platform);

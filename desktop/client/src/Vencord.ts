@@ -53,10 +53,6 @@ if (IS_REPORTER) {
 }
 
 async function syncSettings() {
-    Settings.cloud.authenticated = false;
-    Settings.cloud.settingsSync = false;
-    return;
-
     const hasCloudAuth = await dsGet("Vencord_cloudSecret");
     if (!hasCloudAuth) {
         if (Settings.cloud.authenticated) {
@@ -65,7 +61,7 @@ async function syncSettings() {
                 title: "Cloud Settings",
                 body: "Cloud sync was disabled because this account isn't connected to the cloud App. You can enable it again by connecting this account in Cloud Settings. (note: it will store your preferences separately)",
                 color: "var(--yellow-360)",
-                onClick: () => SettingsRouter.openUserSettings("sincord_cloud_panel")
+                onClick: () => SettingsRouter.openUserSettings("cloudcord_cloud_sync_panel")
             });
             // Disable cloud sync globally
             Settings.cloud.authenticated = false;
@@ -84,7 +80,7 @@ async function syncSettings() {
             body: "We've noticed you have cloud integrations enabled in another client! Due to limitations, you will " +
                 "need to re-authenticate to continue using them. Click here to go to the settings page to do so!",
             color: "var(--yellow-360)",
-            onClick: () => SettingsRouter.openUserSettings("sincord_cloud_panel")
+            onClick: () => SettingsRouter.openUserSettings("cloudcord_cloud_sync_panel")
         });
         return;
     }
@@ -245,3 +241,4 @@ document.addEventListener("DOMContentLoaded", () => {
         createAndAppendStyle("vencord-native-titlebar-style", coreStyleRootNode).textContent = "[class*=titleBar]{display: none!important}";
     }
 }, { once: true });
+

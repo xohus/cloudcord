@@ -1,4 +1,4 @@
-/* ── Custom Profile Plugin ── */
+/* CloudCord Fake Profile */
 
 .cp-account-selector-inline {
     width: 100%;
@@ -401,3 +401,36 @@
 .cp-btn-primary:hover:not(:disabled) {
     background: #4752c4;
 }
+
+.cp-btn-share {
+    background: linear-gradient(135deg, #7c5cff, #34c9f2);
+    box-shadow: 0 7px 20px rgb(73 119 255 / 22%);
+}
+
+.cp-btn-share:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+.cp-share-card {
+    display: grid;
+    gap: 6px;
+    padding: 13px 14px;
+    margin: 12px 0 5px;
+    border: 1px solid rgb(124 92 255 / 30%);
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgb(124 92 255 / 12%), rgb(52 201 242 / 7%));
+}
+
+.cp-share-card span,
+.cp-share-status {
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.cp-share-status {
+    padding-top: 7px;
+    border-top: 1px solid rgb(255 255 255 / 8%);
+    color: var(--text-normal);
+}
+

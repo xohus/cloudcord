@@ -173,8 +173,6 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
     }
 
     const pluginMeta = PluginMeta[plugin.name];
-    const isSincordPlugin = pluginMeta.folderName.startsWith("src/sincordplugins/") ?? false;
-
     return (
         <Modal
             transitionState={transitionState}
@@ -217,7 +215,7 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
                                 renderUser={(user: User) => (
                                     <Clickable
                                         className={AvatarStyles.clickableAvatar}
-                                        onClick={() => isSincordPlugin ? openContributorModal(user) : openContributorModal(user)}
+                                        onClick={() => openContributorModal(user)}
                                     >
                                         <img
                                             className={AvatarStyles.avatar}
@@ -260,7 +258,7 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
                             <div className={cl("links")}>
                                 <WebsiteButton
                                     text="Website"
-                                    href={isSincordPlugin ? `https://sincord.org/plugins/${plugin.name}` : `https://vencord.dev/plugins/${plugin.name}`}
+                                    href="https://github.com/xohus/cloudcord"
                                 />
                                 <GithubButton
                                     text="Source Code"
@@ -360,3 +358,4 @@ export function openWarningModal(plugin?: Plugin | null, onRestartNeeded?: (plug
         </ConfirmModal>
     ));
 }
+
