@@ -55,7 +55,7 @@ func (h Handler) Log(level Level, a ...any) {
 	}
 
 	levelName := levelNames[level]
-	var prefix any = levelColors[level].Sprintf(levelName + strings.Repeat(" ", len("error")-len(levelName)))
+	var prefix any = levelColors[level].Sprintf("%s", levelName+strings.Repeat(" ", len("error")-len(levelName)))
 
 	_, _ = fmt.Fprintln(os.Stderr, Prepend(a, prefix)...)
 }
@@ -86,3 +86,4 @@ func (h Handler) FatalIfErr(err error) {
 		h.Fatal(err)
 	}
 }
+

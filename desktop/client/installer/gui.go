@@ -14,8 +14,6 @@ import (
 	"errors"
 	"image"
 	"image/color"
-	"sinlotl/buildinfo"
-
 	imgui "github.com/AllenDang/cimgui-go/imgui"
 	g "github.com/AllenDang/giu"
 
