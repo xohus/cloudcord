@@ -1573,7 +1573,7 @@ jobs:
       - name: Upload runtime artifact
         uses: actions/upload-artifact@v4
         with:
-          name: cloudcord-runtime
+          name: cloudcord-mobile-shared-runtime
           path: |
             cc.js
             cloudcord.js
