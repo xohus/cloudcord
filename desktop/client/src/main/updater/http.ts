@@ -27,13 +27,15 @@ import gitRemote from "~git-remote";
 
 import { ASAR_FILE, serializeErrors } from "./common";
 
-const API_BASE = `https://cloudcord.xohus.lol/api/proxy`;
+const API_BASE = `https://api.github.com/repos/${gitRemote}`;
 let PendingUpdate: string | null = null;
 
 async function githubGet<T = any>(endpoint: string) {
     return fetchJson<T>(API_BASE + endpoint, {
         headers: {
-            "X-CC-Client": "1",
+            Accept: "application/vnd.github+json",
+            // "All API requests MUST include a valid User-Agent header.
+            // Requests with no User-Agent header will be rejected."
             "User-Agent": VENCORD_USER_AGENT
         }
     });
@@ -68,11 +70,7 @@ async function fetchUpdates() {
 async function applyUpdates() {
     if (!PendingUpdate) return true;
 
-    const data = await fetchBuffer(PendingUpdate, {
-        headers: {
-            "X-CC-Client": "1"
-        }
-    });
+    const data = await fetchBuffer(PendingUpdate);
     writeFileSync(__dirname, data, { flush: true });
 
     PendingUpdate = null;
