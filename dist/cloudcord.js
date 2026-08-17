@@ -4761,7 +4761,7 @@
   function milestoneIcon(months, values) {
     return values.find(([minimum]) => months >= minimum)?.[1] || "";
   }
-  function addRenderedBadge(result, id, description, icon) {
+  function addRenderedBadge(result, id, description, icon, size) {
     if (!icon || result.some((item) => item?.id === id))
       return;
     badgeRenderProps.set(id, {
@@ -4769,7 +4769,8 @@
       source: {
         uri: icon
       },
-      label: description
+      label: description,
+      ...size ? { width: size, height: size, style: { width: size, height: size } } : {}
     });
     result.push({
       id,
@@ -4945,7 +4946,7 @@
             return;
           var ordered = [];
           if (officialOwner)
-            addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON);
+            addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
           if (data) {
             var nitroMonths = [
               1,
@@ -4988,7 +4989,7 @@
             return;
           var existingOfficial = result.filter((item) => String(item?.id || "") !== CLOUDCORD_OFFICIAL_BADGE_ID);
           var officialOnly = [];
-          addRenderedBadge(officialOnly, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON);
+          addRenderedBadge(officialOnly, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
           result.splice(0, result.length, ...officialOnly, ...existingOfficial);
           return;
         }
@@ -4998,7 +4999,7 @@
         });
         var ordered1 = [];
         if (officialOwner1)
-          addRenderedBadge(ordered1, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON);
+          addRenderedBadge(ordered1, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
         addRenderedBadge(ordered1, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
         addRenderedBadge(ordered1, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
         for (var [badgeId, description1, , icon1] of BADGES) {

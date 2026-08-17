@@ -553,9 +553,9 @@ jobs:
               return values.find(([minimum]) => months >= minimum)?.[1] || "";
           }
 
-          function addRenderedBadge(result: any[], id: string, description: string, icon: string) {
+          function addRenderedBadge(result: any[], id: string, description: string, icon: string, size?: number) {
               if (!icon || result.some(item => item?.id === id)) return;
-              badgeRenderProps.set(id, { id, source: { uri: icon }, label: description });
+              badgeRenderProps.set(id, { id, source: { uri: icon }, label: description, ...(size ? { width: size, height: size, style: { width: size, height: size } } : {}) });
               result.push({ id, description, icon: " _" });
           }
 
@@ -680,7 +680,7 @@ jobs:
                           const officialOwner = id === CLOUDCORD_OFFICIAL_OWNER_ID;
                           if (!data && !officialOwner) return;
                           const ordered: any[] = [];
-                          if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON);
+                          if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
                           if (data) {
                               const nitroMonths = [1, 2, 3, 6, 12, 24, 36, 72][Number(data.nitroLevel)] || 0;
                               const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
@@ -703,7 +703,7 @@ jobs:
                           if (!officialOwner) return;
                           const existing = result.filter(item => String(item?.id || "") !== CLOUDCORD_OFFICIAL_BADGE_ID);
                           const ordered: any[] = [];
-                          addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON);
+                          addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
                           result.splice(0, result.length, ...ordered, ...existing);
                           return;
                       }
@@ -713,7 +713,7 @@ jobs:
                           return badgeId !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId.startsWith("fakeprofile-");
                       });
                       const ordered: any[] = [];
-                      if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON);
+                      if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
                       addRenderedBadge(
                           ordered,
                           "fakeprofile-nitro",
