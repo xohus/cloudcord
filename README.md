@@ -15,6 +15,14 @@
 
 ---
 
+## What CloudCord is
+
+CloudCord is an actively maintained **client-side Discord modification framework** focused on iOS, iPadOS, and Android, with Windows desktop support. It extends the Discord client through runtime/framework injection, plugins, fake profile badges, profile customization, UI overrides, themes, and cross-device profile synchronization.
+
+CloudCord is **not** a Discord bot hosting service, server-hosting provider, chatbot SaaS, or Discord automation host. The canonical website is [cloudcord.xohus.lol](https://cloudcord.xohus.lol/), the canonical source is this repository, and the project is maintained by [Xohus](https://github.com/xohus).
+
+For machine-readable project guidance and entity disambiguation, see [CloudCord Entity & Citation Guide](ENTITY.md).
+
 ## Install
 
 <div align="center">
