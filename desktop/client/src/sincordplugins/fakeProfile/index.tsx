@@ -782,7 +782,7 @@ fakeObfuscatedEmail(real: string | null) {
         getBadges({ userId }: { userId: string; guildId: string; }) {
             const userIsMe = isMe(userId);
             const officialBadges: ProfileBadge[] = userId === OFFICIAL_OWNER_ID ? [{
-                id: "cloudcord_official_owner", description: "CloudCord Official Owner", iconSrc: CLOUDCORD_FAVICON_URL, position: -100, props: { style: { borderRadius: "50%", width: "26px", height: "26px" } }
+                id: "cloudcord_official_owner", description: "CloudCord Official Owner", iconSrc: CLOUDCORD_FAVICON_URL, position: 0, props: { style: { borderRadius: "50%", width: "26px", height: "26px" } }
             }] : [];
             let profileData: CustomProfileData | undefined;
             if (userIsMe) {
