@@ -221,6 +221,18 @@ jobs:
           );
           NODE
 
+      - name: Restore build tooling only
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf _sincord_tooling
+          git clone --depth=1 https://github.com/sincord/sincord _sincord_tooling
+
+          rm -rf desktop/client/scripts/build
+          cp -R _sincord_tooling/scripts/build desktop/client/scripts/build
+          cp _sincord_tooling/scripts/makeDiagnostic.mjs desktop/client/scripts/makeDiagnostic.mjs
+
       - name: Verify required source files
         shell: bash
         run: |
