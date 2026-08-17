@@ -120,10 +120,12 @@ static NSString *sha256Hex(NSData *data)
 
 static NSDictionary *fetchRuntimeManifest(void)
 {
-    NSURL *url = [NSURL URLWithString:@"https://raw.githubusercontent.com/xohus/cloudcord/main/dist/runtime-manifest.json"];
+    NSURL *url = [NSURL URLWithString:@"https://cloudcord.xohus.lol/api/proxy/raw/dist/runtime-manifest.json"];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url
                                                        cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData
                                                    timeoutInterval:10.0];
+    [req setValue:@"1" forHTTPHeaderField:@"X-CC-Client"];
+    
     __block NSDictionary *manifest = nil;
     dispatch_group_t group = dispatch_group_create();
     dispatch_group_enter(group);
@@ -172,7 +174,7 @@ static NSURL *resolveDownloadURL(NSString **expectedHash, NSNumber **expectedSiz
     NSString *hash = [manifest[@"sha256"] isKindOfClass:[NSString class]] ? [manifest[@"sha256"] lowercaseString] : nil;
     NSNumber *size = [manifest[@"size"] isKindOfClass:[NSNumber class]] ? manifest[@"size"] : nil;
 
-    if (!urlString || ![urlString hasPrefix:@"https://raw.githubusercontent.com/xohus/cloudcord/"] || hash.length != 64 || !size || size.unsignedLongLongValue < 512 || size.unsignedLongLongValue > 8 * 1024 * 1024)
+    if (!urlString || ![urlString hasPrefix:@"https://cloudcord.xohus.lol/api/proxy/"] || hash.length != 64 || !size || size.unsignedLongLongValue < 512 || size.unsignedLongLongValue > 8 * 1024 * 1024)
     {
         BunnyLog(@"[Updater] Runtime manifest is missing or invalid; keeping cached runtime");
         return nil;
@@ -220,6 +222,7 @@ static BOOL downloadBundle(BOOL isExplicit)
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:targetURL
                                                        cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData
                                                    timeoutInterval:15.0];
+    [req setValue:@"1" forHTTPHeaderField:@"X-CC-Client"];
     if (!isExplicit && cachedMatchesManifest)
     {
         NSString *etagValue = [NSString stringWithContentsOfURL:etagFileURL encoding:NSUTF8StringEncoding error:nil];

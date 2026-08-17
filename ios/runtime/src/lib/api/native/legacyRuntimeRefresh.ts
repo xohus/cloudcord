@@ -2,7 +2,7 @@ import { awaitStorage } from "@core/vendetta/storage";
 import { loaderConfig } from "@lib/api/settings";
 import { NativeModules } from "react-native";
 
-const CURRENT_RUNTIME_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/dist/cc.js";
+const CURRENT_RUNTIME_URL = "https://cloudcord.xohus.lol/api/proxy/raw/dist/cc.js";
 
 async function invokeLegacyReload() {
     const reader = NativeModules.FileReaderModule ?? NativeModules.RCTFileReaderModule;

@@ -9,6 +9,8 @@ import io.ktor.client.request.url
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+import io.ktor.client.request.header
+
 class RestService(
     private val httpService: HttpService,
     private val prefs: PreferenceManager
@@ -16,7 +18,8 @@ class RestService(
 
     suspend fun getLatestRelease(repo: String) = withContext(Dispatchers.IO) {
         httpService.request<Release> {
-            url("https://api.github.com/repos/$repo/releases/latest")
+            url("https://cloudcord.xohus.lol/api/proxy/releases/latest")
+            header("X-CC-Client", "1")
         }
     }
 
@@ -28,8 +31,9 @@ class RestService(
 
     suspend fun getCommits(repo: String, page: Int = 1) = withContext(Dispatchers.IO) {
         httpService.request<List<Commit>> {
-            url("https://api.github.com/repos/$repo/commits")
+            url("https://cloudcord.xohus.lol/api/proxy/commits")
             parameter("page", page)
+            header("X-CC-Client", "1")
         }
     }
 
