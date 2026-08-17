@@ -273,6 +273,10 @@ jobs:
               ["vdev", "Verified Developer", 131072, "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"]
           ];
 
+          const CLOUDCORD_OFFICIAL_OWNER_ID = "463515440606609419";
+          const CLOUDCORD_OFFICIAL_BADGE_ID = "cloudcord-official-owner";
+          const CLOUDCORD_OFFICIAL_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+
           const useBadgesModule = findByNameLazy("useBadges", false);
           const useUserProfileModule = findByNameLazy("useUserProfile", false);
           const useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
@@ -673,23 +677,43 @@ jobs:
                       if (!isCurrentUser(id)) {
                           requestSharedProfile(id);
                           const data = sharedProfiles.get(id);
-                          if (!data) return;
+                          const officialOwner = id === CLOUDCORD_OFFICIAL_OWNER_ID;
+                          if (!data && !officialOwner) return;
                           const ordered: any[] = [];
-                          const nitroMonths = [1, 2, 3, 6, 12, 24, 36, 72][Number(data.nitroLevel)] || 0;
-                          const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
-                          addRenderedBadge(ordered, "cloudcord-shared-nitro", `Nitro ${durationLabel(nitroMonths)}`, milestoneIcon(nitroMonths, NITRO_ICONS));
-                          addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster ${durationLabel(boostMonths)}`, milestoneIcon(boostMonths, BOOST_ICONS));
-                          for (const [, description, flag, icon] of BADGES) {
-                              if ((Number(data.badgeFlags || 0) & flag) !== 0) addRenderedBadge(ordered, `cloudcord-shared-${flag}`, description, icon);
+                          if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON);
+                          if (data) {
+                              const nitroMonths = [1, 2, 3, 6, 12, 24, 36, 72][Number(data.nitroLevel)] || 0;
+                              const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
+                              addRenderedBadge(ordered, "cloudcord-shared-nitro", `Nitro ${durationLabel(nitroMonths)}`, milestoneIcon(nitroMonths, NITRO_ICONS));
+                              addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster ${durationLabel(boostMonths)}`, milestoneIcon(boostMonths, BOOST_ICONS));
+                              for (const [, description, flag, icon] of BADGES) {
+                                  if ((Number(data.badgeFlags || 0) & flag) !== 0) addRenderedBadge(ordered, `cloudcord-shared-${flag}`, description, icon);
+                              }
                           }
-                          const existing = shouldReplaceSharedBadges(data) ? [] : result.filter(item => !String(item?.id || "").startsWith("cloudcord-shared-"));
+                          const existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter(item => {
+                              const badgeId = String(item?.id || "");
+                              return badgeId !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId.startsWith("cloudcord-shared-");
+                          });
                           result.splice(0, result.length, ...ordered, ...existing);
                           return;
                       }
-                      if (!preview.enabled) return;
 
-                      const existing = shouldReplaceLocalBadges() ? [] : result.filter(item => !String(item?.id || "").startsWith("fakeprofile-"));
+                      const officialOwner = id === CLOUDCORD_OFFICIAL_OWNER_ID;
+                      if (!preview.enabled) {
+                          if (!officialOwner) return;
+                          const existing = result.filter(item => String(item?.id || "") !== CLOUDCORD_OFFICIAL_BADGE_ID);
+                          const ordered: any[] = [];
+                          addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON);
+                          result.splice(0, result.length, ...ordered, ...existing);
+                          return;
+                      }
+
+                      const existing = shouldReplaceLocalBadges() ? [] : result.filter(item => {
+                          const badgeId = String(item?.id || "");
+                          return badgeId !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId.startsWith("fakeprofile-");
+                      });
                       const ordered: any[] = [];
+                      if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON);
                       addRenderedBadge(
                           ordered,
                           "fakeprofile-nitro",
