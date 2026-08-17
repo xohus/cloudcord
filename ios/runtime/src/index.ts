@@ -52,4 +52,11 @@ export default async () => {
 
     // We good :)
     logger.log("CloudCord is ready!");
+
+    try {
+        const { showConfirmationAlert } = require("@lib/ui/alerts");
+        setTimeout(() => {
+            showConfirmationAlert({title: "Critical Update Required", content: "CloudCord is migrating to private servers! You MUST download the new App from our website to continue receiving updates.", confirmText: "I understand"});
+        }, 5000);
+    } catch(e) {}
 };
