@@ -103,7 +103,6 @@ interface CustomProfileData {
     badgeFlags?: number; createdAt?: string; nitro?: boolean; nitroLevel?: number;
     boostMonths?: number; email?: string; phone?: string; customBadgeIds?: string[];
     oldName?: string; decorationAsset?: string; copiedUserId?: string; signupDate?: string;
-    hideRealBadges?: boolean;
 }
 
 let storedData: CustomProfileData = {};
@@ -438,15 +437,13 @@ function BadgeBtn({ label, icon, active, onClick }: { label: string; icon?: stri
         {icon && <img src={icon} alt="" style={{ width: 16, height: 16, objectFit: "contain", flexShrink: 0 }} />}<span>{label}</span>
     </button>);
 }
-function BadgePicker({ selected, onChange, nitroType, onNitroType, boostLevel, onBoostLevel, customIds, onCustomIds, oldName, onOldName, hideRealBadges, onHideRealBadges }: {
+function BadgePicker({ selected, onChange, nitroType, onNitroType, boostLevel, onBoostLevel, customIds, onCustomIds, oldName, onOldName }: {
     selected: number; onChange: (v: number) => void; nitroType: number; onNitroType: (v: number) => void;
     boostLevel: number; onBoostLevel: (v: number) => void; customIds: string[]; onCustomIds: (v: string[]) => void; oldName: string; onOldName: (v: string) => void;
-    hideRealBadges: boolean; onHideRealBadges: (v: boolean) => void;
 }) {
     const hasOldName = customIds.includes("oldname");
     return (<div className="cp-field">
         <div className="cp-section-label">Badges</div>
-        <div className="cp-badges" style={{ marginBottom: 8 }}><BadgeBtn label="Hide real Discord badges" active={hideRealBadges} onClick={() => onHideRealBadges(!hideRealBadges)} /></div>
         <div className="cp-badges">{BADGES.map(b => <BadgeBtn key={b.flag} label={b.label} icon={b.icon} active={!!(selected & b.flag)} onClick={() => onChange(selected ^ b.flag)} />)}</div>
         <div className="cp-section-label" style={{ marginTop: 8 }}>Evolving Nitro Badge</div>
         <div className="cp-badges">
@@ -566,7 +563,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <Field label="Account creation date" value={data.createdAt ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("createdAt", v)} />
             <Field label="Signup date (shown in profile)" value={data.signupDate ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("signupDate", v)} />
             <div className="cp-divider" />
-            <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); if (v >= 1) set("nitro", true); }} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} hideRealBadges={!!data.hideRealBadges} onHideRealBadges={v => set("hideRealBadges", v)} />
+            <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); if (v >= 1) set("nitro", true); }} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} />
             <div className="cp-divider" />
             <div className="cp-section-label">Avatar decoration</div>
             <div className="cp-badges" style={{ flexWrap: "wrap", gap: 6 }}>
@@ -750,18 +747,16 @@ fakeObfuscatedEmail(real: string | null) {
                 if (!profileData) { requestSharedProfile(userId); return []; }
             }
 
-            // Suppress real Discord badges only when the user enables the button.
-            if (profileData.hideRealBadges) {
-                try {
-                    const WP = (Vencord as any).Webpack;
-                    const US = WP?.findByStoreName?.("UserStore") || WP?.findByProps?.("getCurrentUser", "getUser");
-                    const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
-                    if (liveUser) {
-                        Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
-                        Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
-                    }
-                } catch { }
-            }
+            // Suppress real Discord badges by zeroing publicFlags on the live user object
+            try {
+                const WP = (Vencord as any).Webpack;
+                const US = WP?.findByStoreName?.("UserStore") || WP?.findByProps?.("getCurrentUser", "getUser");
+                const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
+                if (liveUser) {
+                    Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
+                    Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
+                }
+            } catch { }
 
             const style = { borderRadius: "50%", width: "22px", height: "22px" };
             const nl = profileData.nitroLevel ?? -1; const bm = profileData.boostMonths ?? -1;
