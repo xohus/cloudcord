@@ -153,13 +153,14 @@ jobs:
 
             const patched = text
               .replaceAll("Sincord", "CloudCord")
+              .replaceAll("sincord", "cloudcord")
               .replaceAll("SINCORD", "CLOUDCORD")
               .replaceAll("Sinlotl", "CloudCordSetup")
               .replaceAll("export const isCloudCordGuild = isCloudCordGuild;", "")
               .replaceAll("export const isCloudCordSupport = isCloudCordSupport;", "")
               .replaceAll("The better Discord client mod", "CloudCord desktop client mod")
-              .replaceAll("https://github.com/Sincord/Sincord", "https://github.com/xohus/cloudcord")
-              .replaceAll("git+https://github.com/Sincord/Sincord.git", "git+https://github.com/xohus/cloudcord.git");
+              .replaceAll("https://github.com/CloudCord/CloudCord", "https://github.com/xohus/cloudcord")
+              .replaceAll("git+https://github.com/CloudCord/CloudCord.git", "git+https://github.com/xohus/cloudcord.git");
 
             if (patched !== text) {
               fs.writeFileSync(file, patched);
@@ -167,7 +168,27 @@ jobs:
           }
 
           function walk(dir) {
-            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            
+            // First rename any entries in this directory
+            for (const entry of entries) {
+              const oldPath = path.join(dir, entry.name);
+              let newName = entry.name;
+              
+              if (newName.includes("Sincord")) newName = newName.replaceAll("Sincord", "CloudCord");
+              if (newName.includes("sincord")) newName = newName.replaceAll("sincord", "cloudcord");
+              if (newName.includes("SINCORD")) newName = newName.replaceAll("SINCORD", "CLOUDCORD");
+              
+              if (newName !== entry.name) {
+                const newPath = path.join(dir, newName);
+                fs.renameSync(oldPath, newPath);
+                // Update the entry name so we can process it correctly below
+                entry.name = newName;
+              }
+            }
+
+            // Then process the updated entries
+            for (const entry of entries) {
               const full = path.join(dir, entry.name);
 
               if (entry.isDirectory()) {
