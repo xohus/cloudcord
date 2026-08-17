@@ -40,7 +40,6 @@ jobs:
           Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
 
       - name: Prepare clean Sincord source
-        if: ${{ false }}
         shell: bash
         run: |
           set -e
@@ -69,7 +68,6 @@ jobs:
           cp _cloudcord_overlay/build-installer.sh desktop/client/scripts/build-installer.sh
 
       - name: Patch Sincord source into CloudCord
-        if: ${{ false }}
         shell: bash
         run: |
           set -e
@@ -220,18 +218,6 @@ jobs:
             ].join("\n")
           );
           NODE
-
-      - name: Restore build tooling only
-        shell: bash
-        run: |
-          set -e
-
-          rm -rf _sincord_tooling
-          git clone --depth=1 https://github.com/sincord/sincord _sincord_tooling
-
-          rm -rf desktop/client/scripts/build
-          cp -R _sincord_tooling/scripts/build desktop/client/scripts/build
-          cp _sincord_tooling/scripts/makeDiagnostic.mjs desktop/client/scripts/makeDiagnostic.mjs
 
       - name: Verify required source files
         shell: bash
