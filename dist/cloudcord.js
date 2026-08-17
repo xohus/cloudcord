@@ -4537,6 +4537,23 @@
       }
     })();
   }
+  var REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
+  function localHasFakeBadges() {
+    return preview.nitroMonths > 0 || preview.boostMonths > 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
+  }
+  function shouldReplaceLocalBadges() {
+    return preview.replaceBadges && localHasFakeBadges();
+  }
+  function remoteReplaceBadges(data) {
+    return data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID);
+  }
+  function remoteHasFakeBadges(data) {
+    var custom = Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id) => id !== REPLACE_BADGES_SYNC_ID) : [];
+    return Number(data?.badgeFlags || 0) !== 0 || data?.nitro === true || Number(data?.nitroLevel ?? -1) >= 0 || Number(data?.boostMonths ?? -1) >= 0 || custom.length > 0;
+  }
+  function shouldReplaceSharedBadges(data) {
+    return remoteReplaceBadges(data) && remoteHasFakeBadges(data);
+  }
   function ownSharedProfile() {
     return _async_to_generator(function* () {
       return {
@@ -4547,7 +4564,8 @@
         nitro: preview.nitroMonths > 0,
         nitroLevel: Math.max(-1, NITRO_DURATIONS.indexOf(preview.nitroMonths) - 1),
         boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
-        badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0)
+        badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0),
+        customBadgeIds: preview.replaceBadges ? [REPLACE_BADGES_SYNC_ID] : []
       };
     })();
   }
@@ -4619,6 +4637,7 @@
           } : preview.bannerMedia,
           nitroMonths: data.nitro ? NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1 : 0,
           boostMonths: data.boostMonths >= 0 ? BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0 : 0,
+          replaceBadges: remoteReplaceBadges(data),
           selectedBadges
         };
         clearCache();
@@ -4663,9 +4682,14 @@
       setOwnValue(cloned, "bannerURL", data.banner);
       setOwnValue(cloned, "getBannerURL", () => data.banner);
     }
-    if (data.badgeFlags != null) {
-      setOwnValue(cloned, "publicFlags", Number(data.badgeFlags));
-      setOwnValue(cloned, "flags", Number(data.badgeFlags));
+    if (shouldReplaceSharedBadges(data)) {
+      setOwnValue(cloned, "publicFlags", 0);
+      setOwnValue(cloned, "flags", 0);
+      setOwnValue(cloned, "badges", []);
+      setOwnValue(cloned, "profileBadges", []);
+      setOwnValue(cloned, "premiumSince", null);
+      setOwnValue(cloned, "premiumGuildSince", null);
+      setOwnValue(cloned, "legacyUsername", null);
     }
     if (data.nitro)
       setOwnValue(cloned, "premiumType", 2);
@@ -4797,7 +4821,7 @@
     }
     for (var [id, description, , icon2] of BADGES)
       _loop2(id, description, icon2);
-    if (!preview.replaceBadges && Array.isArray(existing)) {
+    if (!shouldReplaceLocalBadges() && Array.isArray(existing)) {
       var _loop1 = function(badge2) {
         if (!badge2 || result.some((item) => item?.id && item.id === badge2?.id))
           return "continue";
@@ -4845,7 +4869,7 @@
     for (var [id, , flag] of BADGES)
       if (preview.selectedBadges?.[id])
         selectedFlags |= flag;
-    var flags = preview.replaceBadges ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
+    var flags = shouldReplaceLocalBadges() ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
     setOwnValue(cloned, "username", username);
     setOwnValue(cloned, "globalName", displayName2);
     setOwnValue(cloned, "displayName", displayName2);
@@ -4946,12 +4970,13 @@
             if ((Number(data.badgeFlags || 0) & flag) !== 0)
               addRenderedBadge(ordered, `cloudcord-shared-${flag}`, description, icon);
           }
-          result.splice(0, result.length, ...ordered, ...result.filter((item) => !String(item?.id || "").startsWith("cloudcord-shared-")));
+          var existingShared = shouldReplaceSharedBadges(data) ? [] : result.filter((item) => !String(item?.id || "").startsWith("cloudcord-shared-"));
+          result.splice(0, result.length, ...ordered, ...existingShared);
           return;
         }
         if (!preview.enabled)
           return;
-        var existing = preview.replaceBadges ? [] : result.filter((item) => !String(item?.id || "").startsWith("fakeprofile-"));
+        var existing = shouldReplaceLocalBadges() ? [] : result.filter((item) => !String(item?.id || "").startsWith("fakeprofile-"));
         var ordered1 = [];
         addRenderedBadge(ordered1, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
         addRenderedBadge(ordered1, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
@@ -6046,8 +6071,8 @@
                   children: "Choose badges"
                 }),
                 /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "Replace visible badges",
-                  subLabel: "Show only the badges selected below",
+                  label: "Replace real badges",
+                  subLabel: "Selected fake badges replace your real Discord badges for CloudCord users",
                   value: preview.replaceBadges,
                   onPress: () => update("replaceBadges", !preview.replaceBadges, true)
                 }),

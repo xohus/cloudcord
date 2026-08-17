@@ -247,7 +247,7 @@ jobs:
           import { Card, Stack, Text } from "@metro/common/components";
           import { useEffect, useReducer } from "react";
           import { Alert, Image, Pressable, ScrollView, TextInput, View } from "react-native";
-          
+
           type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
           type PreviewSettings = {
               enabled: boolean;
@@ -260,7 +260,7 @@ jobs:
               replaceBadges: boolean;
               selectedBadges: Record<string, boolean>;
           };
-          
+
           const BADGES: Array<[string, string, number, string]> = [
               ["bug1", "Bug Hunter 1", 8, "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"],
               ["bug2", "Bug Hunter 2", 16384, "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"],
@@ -307,7 +307,7 @@ jobs:
               [2, "https://cdn.discordapp.com/badge-icons/0e4080d1d333bc7ad29ef6528b6f2fb7.png"],
               [1, "https://cdn.discordapp.com/badge-icons/51040c70d4f20a921ad6674ff86fc95c.png"]
           ];
-          
+
           const rootSettings = settings as any;
           const defaultPreview = (): PreviewSettings => ({
               enabled: false,
@@ -345,7 +345,7 @@ jobs:
               bannerResolver: false,
               last: "Ready"
           };
-          
+
           let initialized = false;
           let currentUserId: string | null = null;
           let realCurrentUser: any = null;
@@ -355,6 +355,28 @@ jobs:
           const sharedProfiles = new Map<string, any>();
           const sharedRequests = new Set<string>();
           let publishTimer: ReturnType<typeof setTimeout> | null = null;
+          const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
+
+          function localHasFakeBadges() {
+              return preview.nitroMonths > 0 || preview.boostMonths > 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
+          }
+
+          function shouldReplaceLocalBadges() {
+              return preview.replaceBadges && localHasFakeBadges();
+          }
+
+          function remoteReplaceBadges(data: any) {
+              return data?.replaceRealBadges === true || (Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID));
+          }
+
+          function remoteHasFakeBadges(data: any) {
+              const custom = Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id: string) => id !== REPLACE_BADGES_SYNC_ID) : [];
+              return Number(data?.badgeFlags || 0) !== 0 || data?.nitro === true || Number(data?.nitroLevel ?? -1) >= 0 || Number(data?.boostMonths ?? -1) >= 0 || custom.length > 0;
+          }
+
+          function shouldReplaceSharedBadges(data: any) {
+              return remoteReplaceBadges(data) && remoteHasFakeBadges(data);
+          }
 
           async function shareableMedia(key: "avatarMedia" | "bannerMedia") {
               const uri = mediaUri(key);
@@ -382,7 +404,8 @@ jobs:
                   nitro: preview.nitroMonths > 0,
                   nitroLevel: Math.max(-1, NITRO_DURATIONS.indexOf(preview.nitroMonths) - 1),
                   boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
-                  badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0)
+                  badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0),
+                  customBadgeIds: preview.replaceBadges ? [REPLACE_BADGES_SYNC_ID] : []
               };
           }
 
@@ -430,6 +453,7 @@ jobs:
                       bannerMedia: data.banner ? { uri: data.banner } : preview.bannerMedia,
                       nitroMonths: data.nitro ? (NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1) : 0,
                       boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
+                      replaceBadges: remoteReplaceBadges(data),
                       selectedBadges
                   } satisfies PreviewSettings;
                   clearCache();
@@ -459,7 +483,15 @@ jobs:
               if (data.globalName) { setOwnValue(cloned, "globalName", data.globalName); setOwnValue(cloned, "displayName", data.globalName); }
               if (data.avatar) { setOwnValue(cloned, "avatarURL", data.avatar); setOwnValue(cloned, "avatarUrl", data.avatar); setOwnValue(cloned, "getAvatarURL", () => data.avatar); }
               if (data.banner) { setOwnValue(cloned, "banner", data.banner); setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "getBannerURL", () => data.banner); }
-              if (data.badgeFlags != null) { setOwnValue(cloned, "publicFlags", Number(data.badgeFlags)); setOwnValue(cloned, "flags", Number(data.badgeFlags)); }
+              if (shouldReplaceSharedBadges(data)) {
+                  setOwnValue(cloned, "publicFlags", 0);
+                  setOwnValue(cloned, "flags", 0);
+                  setOwnValue(cloned, "badges", []);
+                  setOwnValue(cloned, "profileBadges", []);
+                  setOwnValue(cloned, "premiumSince", null);
+                  setOwnValue(cloned, "premiumGuildSince", null);
+                  setOwnValue(cloned, "legacyUsername", null);
+              }
               if (data.nitro) setOwnValue(cloned, "premiumType", 2);
               return cloned;
           }
@@ -474,21 +506,21 @@ jobs:
               setOwnValue(cloned, "userId", userId);
               return cloned;
           }
-          
+
           function clearCache() {
               userCache = new WeakMap();
               profileCache = new WeakMap();
           }
-          
+
           function mediaUri(key: "avatarMedia" | "bannerMedia") {
               return String(preview[key]?.uri || "");
           }
-          
+
           function safeStore(name: string) {
               try { return findByStoreName(name) as any; }
               catch { return null; }
           }
-          
+
           function setOwnValue(target: any, key: string, value: any) {
               if (!target) return;
               try {
@@ -540,7 +572,7 @@ jobs:
                       result.push({ id: badgeId, description, icon: " _", iconSrc: icon, source: { uri: icon } });
                   }
               }
-              if (!preview.replaceBadges && Array.isArray(existing)) {
+              if (!shouldReplaceLocalBadges() && Array.isArray(existing)) {
                   for (const badge of existing) {
                       if (!badge || result.some(item => item?.id && item.id === badge?.id)) continue;
                       result.push(badge);
@@ -548,7 +580,7 @@ jobs:
               }
               return result;
           }
-          
+
           function cloneObject(original: any, kind: "user" | "profile") {
               if (!original || !preview.enabled) return original;
               const cache = kind === "profile" ? profileCache : userCache;
@@ -556,7 +588,7 @@ jobs:
                   const cached = cache.get(original);
                   if (cached) return cached;
               } catch {}
-          
+
               let cloned: any;
               try {
                   cloned = Object.create(Object.getPrototypeOf(original));
@@ -569,15 +601,15 @@ jobs:
                   try { cloned = { ...original }; }
                   catch { return original; }
               }
-          
+
               const displayName = preview.displayName || original.globalName || original.displayName || original.username;
               const username = preview.username || original.username;
               const avatar = mediaUri("avatarMedia");
               const banner = mediaUri("bannerMedia");
               let selectedFlags = 0;
               for (const [id, , flag] of BADGES) if (preview.selectedBadges?.[id]) selectedFlags |= flag;
-              const flags = preview.replaceBadges ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
-          
+              const flags = shouldReplaceLocalBadges() ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
+
               setOwnValue(cloned, "username", username);
               setOwnValue(cloned, "globalName", displayName);
               setOwnValue(cloned, "displayName", displayName);
@@ -603,7 +635,7 @@ jobs:
                   setOwnValue(cloned, "getBannerURL", () => banner);
                   setOwnValue(cloned, "getPreviewBanner", () => banner);
               }
-          
+
               try { cache.set(original, cloned); } catch {}
               return cloned;
           }
@@ -618,11 +650,11 @@ jobs:
               if (original.profile) setOwnValue(decorated, "profile", cloneObject(original.profile, "profile"));
               return decorated;
           }
-          
+
           function isCurrentUser(id?: string) {
               return !id || !currentUserId || id === currentUserId;
           }
-          
+
           function addPatch(method: string, parent: any, handler: (args: any[], original: Function) => any) {
               if (!parent?.[method]) return;
               try {
@@ -650,12 +682,13 @@ jobs:
                           for (const [, description, flag, icon] of BADGES) {
                               if ((Number(data.badgeFlags || 0) & flag) !== 0) addRenderedBadge(ordered, `cloudcord-shared-${flag}`, description, icon);
                           }
-                          result.splice(0, result.length, ...ordered, ...result.filter(item => !String(item?.id || "").startsWith("cloudcord-shared-")));
+                          const existing = shouldReplaceSharedBadges(data) ? [] : result.filter(item => !String(item?.id || "").startsWith("cloudcord-shared-"));
+                          result.splice(0, result.length, ...ordered, ...existing);
                           return;
                       }
                       if (!preview.enabled) return;
 
-                      const existing = preview.replaceBadges ? [] : result.filter(item => !String(item?.id || "").startsWith("fakeprofile-"));
+                      const existing = shouldReplaceLocalBadges() ? [] : result.filter(item => !String(item?.id || "").startsWith("fakeprofile-"));
                       const ordered: any[] = [];
                       addRenderedBadge(
                           ordered,
@@ -807,14 +840,14 @@ jobs:
           function ensurePatches() {
               if (initialized) return;
               initialized = true;
-          
+
               const userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
               diagnostics.userStore = !!userStore;
               try {
                   realCurrentUser = userStore?.getCurrentUser?.() || null;
                   currentUserId = realCurrentUser?.id || null;
               } catch {}
-          
+
               addPatch("getCurrentUser", userStore, (args, original) => {
                   const user = original(...args);
                   realCurrentUser = user || realCurrentUser;
@@ -828,7 +861,7 @@ jobs:
                   realCurrentUser = user || realCurrentUser;
                   return cloneObject(user, "user");
               });
-          
+
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
               diagnostics.profileStore = !!profileStore;
               addPatch("getUserProfile", profileStore, (args, original) => {
@@ -861,12 +894,12 @@ jobs:
               } catch (error: any) {
                   diagnostics.last = error?.message || "Could not connect profile banner";
               }
-          
+
               const avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
               const bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
               diagnostics.avatarResolver = !!avatarResolver;
               diagnostics.bannerResolver = !!bannerResolver;
-          
+
               for (const method of ["getUserAvatarURL", "getAvatarURL", "getGuildMemberAvatarURL", "getGuildMemberAvatarURLSimple"]) {
                   addPatch(method, avatarResolver, (args, original) => {
                       const uri = mediaUri("avatarMedia");
@@ -896,10 +929,10 @@ jobs:
                   if (!preview.enabled || !uri || !result || !id || !isCurrentUser(id)) return;
                   return { ...result, bannerSrc: uri, source: { uri } };
               });
-          
+
               diagnostics.last = `Connected ${diagnostics.patches} preview hooks`;
           }
-          
+
           function refreshPreview() {
               clearCache();
               try { safeStore("UserStore")?.emitChange?.(); } catch {}
@@ -931,7 +964,7 @@ jobs:
               })();
               return initPromise;
           }
-          
+
           async function getImageSize(uri: string, asset: any) {
               if (asset?.width && asset?.height) return { width: Number(asset.width), height: Number(asset.height) };
               return await new Promise<{ width: number; height: number }>((resolve, reject) => {
@@ -991,7 +1024,7 @@ jobs:
               refreshPreview();
               queueSharedPublish();
           }
-          
+
           async function pickFile(key: "avatarMedia" | "bannerMedia") {
               const picker = findByProps("pickSingle", "isCancel") as any;
               if (!picker?.pickSingle) throw new Error("The system file picker is unavailable.");
@@ -1008,7 +1041,7 @@ jobs:
                   throw error;
               }
           }
-          
+
           async function pickPhoto(key: "avatarMedia" | "bannerMedia") {
               const picker = findByProps("launchImageLibrary") as any;
               if (!picker?.launchImageLibrary) return pickFile(key);
@@ -1029,7 +1062,7 @@ jobs:
               if (asset) await saveMedia(key, asset);
               return !!asset;
           }
-          
+
           function ActionButton({ label, onPress, muted = false }: { label: string; onPress: () => void; muted?: boolean }) {
               return (
                   <Pressable onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 48, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: muted ? "#243c46" : "#50fa9b", opacity: pressed ? 0.72 : 1 })}>
@@ -1066,16 +1099,16 @@ jobs:
                   </Pressable>
               );
           }
-          
+
           export default function FakeProfile() {
               useProxy(settings);
               const [, redraw] = useReducer(value => value + 1, 0);
-          
+
               useEffect(() => {
                   initializeFakeProfile();
                   redraw();
               }, []);
-          
+
               const update = (key: keyof PreviewSettings, value: any, refresh = false) => {
                   (preview as any)[key] = value;
                   clearCache();
@@ -1083,7 +1116,7 @@ jobs:
                   queueSharedPublish();
                   redraw();
               };
-          
+
               const choose = async (key: "avatarMedia" | "bannerMedia", source: "photo" | "file") => {
                   try {
                       if (await (source === "photo" ? pickPhoto(key) : pickFile(key))) redraw();
@@ -1131,7 +1164,7 @@ jobs:
                       redraw();
                   }
               };
-          
+
               const MediaEditor = ({ label, field, banner = false }: { label: string; field: "avatarMedia" | "bannerMedia"; banner?: boolean }) => {
                   const value = preview[field];
                   return (
@@ -1158,10 +1191,10 @@ jobs:
                       </View>
                   );
               };
-          
+
               const avatar = mediaUri("avatarMedia");
               const banner = mediaUri("bannerMedia");
-          
+
               return (
                   <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator>
                       <Stack spacing={16} style={{ width: "100%" }}>
@@ -1172,7 +1205,7 @@ jobs:
                                   <Text variant="text-sm/medium" color="text-muted">Built-in local profile preview</Text>
                               </View>
                           </View>
-          
+
                           <Card border="strong">
                               <View style={{ borderRadius: 14, overflow: "hidden" }}>
                                   {banner ? <Image source={{ uri: banner }} resizeMode="cover" style={{ width: "100%", height: 118 }} /> : <View style={{ height: 118, backgroundColor: "#5865f2" }} />}
@@ -1184,7 +1217,7 @@ jobs:
                                   </View>
                               </View>
                           </Card>
-          
+
                           <Card border="strong">
                               <View style={{ padding: 14, gap: 14 }}>
                                   <ToggleRow
@@ -1209,13 +1242,13 @@ jobs:
                                   <ActionButton label="Apply preview" onPress={() => { diagnostics.last = "Preview refreshed"; refreshPreview(); redraw(); }} />
                               </View>
                           </Card>
-          
+
                           <Card border="strong">
                               <View style={{ padding: 14, gap: 10 }}>
                                   <Text variant="heading-md/semibold" style={{ color: "#50fa9b" }}>Choose badges</Text>
                                   <ToggleRow
-                                      label="Replace visible badges"
-                                      subLabel="Show only the badges selected below"
+                                      label="Replace real badges"
+                                      subLabel="Selected fake badges replace your real Discord badges for CloudCord users"
                                       value={preview.replaceBadges}
                                       onPress={() => update("replaceBadges", !preview.replaceBadges, true)}
                                   />
@@ -1229,7 +1262,7 @@ jobs:
                                   ))}
                               </View>
                           </Card>
-          
+
                           <Card border="strong">
                               <View style={{ padding: 14, gap: 5 }}>
                                   <Text variant="heading-sm/semibold" color="text-normal">Diagnostics</Text>
@@ -1596,6 +1629,21 @@ jobs:
           cp dist/kettu.min.js ../dist/cc.js
           cp dist/kettu.min.js ../dist/cloudcord.min.js
 
+          node --check ../dist/cc.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import hashlib, json, os
+          runtime = Path("../dist/cc.js").read_bytes()
+          manifest = {
+              "schema": 1,
+              "version": os.environ.get("GITHUB_SHA", "local"),
+              "url": "https://raw.githubusercontent.com/xohus/cloudcord/main/dist/cc.js",
+              "sha256": hashlib.sha256(runtime).hexdigest(),
+              "size": len(runtime),
+          }
+          Path("../dist/runtime-manifest.json").write_text(json.dumps(manifest, separators=(",", ":")) + "\n", encoding="utf-8")
+          PY
+
       - name: Upload runtime artifact
         uses: actions/upload-artifact@v4
         with:
@@ -1607,3 +1655,4 @@ jobs:
             dist/cc.js
             dist/cloudcord.js
             dist/cloudcord.min.js
+            dist/runtime-manifest.json

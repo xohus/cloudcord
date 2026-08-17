@@ -1,5 +1,6 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <CommonCrypto/CommonDigest.h>
 
 #import "Fonts.h"
 #import "LoaderConfig.h"
@@ -105,104 +106,187 @@ static LoaderConfig  *loaderConfig;
 static NSTimeInterval shakeStartTime = 0;
 static BOOL           isShaking      = NO;
 
-static NSURL *resolveDownloadURL(void)
+static NSString *sha256Hex(NSData *data)
 {
+    if (!data)
+        return nil;
+    unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+    CC_SHA256(data.bytes, (CC_LONG) data.length, digest);
+    NSMutableString *result = [NSMutableString stringWithCapacity:CC_SHA256_DIGEST_LENGTH * 2];
+    for (NSUInteger i = 0; i < CC_SHA256_DIGEST_LENGTH; i++)
+        [result appendFormat:@"%02x", digest[i]];
+    return result;
+}
+
+static NSDictionary *fetchRuntimeManifest(void)
+{
+    NSURL *url = [NSURL URLWithString:@"https://raw.githubusercontent.com/xohus/cloudcord/main/dist/runtime-manifest.json"];
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url
+                                                       cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData
+                                                   timeoutInterval:10.0];
+    __block NSDictionary *manifest = nil;
+    dispatch_group_t group = dispatch_group_create();
+    dispatch_group_enter(group);
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
+    [[session dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if (!error && [response isKindOfClass:[NSHTTPURLResponse class]] && ((NSHTTPURLResponse *) response).statusCode == 200 && data.length > 0)
+        {
+            NSError *jsonError = nil;
+            id parsed = [NSJSONSerialization JSONObjectWithData:data options:0 error:&jsonError];
+            if (!jsonError && [parsed isKindOfClass:[NSDictionary class]])
+                manifest = parsed;
+        }
+        dispatch_group_leave(group);
+    }] resume];
+    dispatch_group_wait(group, dispatch_time(DISPATCH_TIME_NOW, (int64_t) (12 * NSEC_PER_SEC)));
+    [session invalidateAndCancel];
+    return manifest;
+}
+
+static BOOL isPlausibleRuntime(NSData *data)
+{
+    if (!data || data.length < 512 || data.length > 8 * 1024 * 1024)
+        return NO;
+    NSString *text = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+    if (!text)
+        return NO;
+    NSString *trimmed = [text stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    if ([trimmed hasPrefix:@"<"])
+        return NO;
+    return [text containsString:@"CloudCord"] || [text containsString:@"cloudcord"];
+}
+
+static NSURL *resolveDownloadURL(NSString **expectedHash, NSNumber **expectedSize)
+{
+    if (expectedHash)
+        *expectedHash = nil;
+    if (expectedSize)
+        *expectedSize = nil;
+
     LoaderConfig *fresh = [LoaderConfig getLoaderConfig];
     if (fresh.customLoadUrlEnabled && fresh.customLoadUrl)
-    {
         return fresh.customLoadUrl;
+
+    NSDictionary *manifest = fetchRuntimeManifest();
+    NSString *urlString = [manifest[@"url"] isKindOfClass:[NSString class]] ? manifest[@"url"] : nil;
+    NSString *hash = [manifest[@"sha256"] isKindOfClass:[NSString class]] ? [manifest[@"sha256"] lowercaseString] : nil;
+    NSNumber *size = [manifest[@"size"] isKindOfClass:[NSNumber class]] ? manifest[@"size"] : nil;
+
+    if (!urlString || ![urlString hasPrefix:@"https://raw.githubusercontent.com/xohus/cloudcord/"] || hash.length != 64 || !size || size.unsignedLongLongValue < 512 || size.unsignedLongLongValue > 8 * 1024 * 1024)
+    {
+        BunnyLog(@"[Updater] Runtime manifest is missing or invalid; keeping cached runtime");
+        return nil;
     }
-    // todo: maybe we shoudlnt hardcode this?
-    return [NSURL
-        URLWithString:@"https://raw.githubusercontent.com/xohus/cloudcord/main/dist/cc.js"];
+
+    NSCharacterSet *nonHex = [[NSCharacterSet characterSetWithCharactersInString:@"0123456789abcdef"] invertedSet];
+    if ([hash rangeOfCharacterFromSet:nonHex].location != NSNotFound)
+    {
+        BunnyLog(@"[Updater] Runtime manifest SHA-256 is invalid; keeping cached runtime");
+        return nil;
+    }
+
+    if (expectedHash)
+        *expectedHash = hash;
+    if (expectedSize)
+        *expectedSize = size;
+    return [NSURL URLWithString:urlString];
 }
 
 static BOOL downloadBundle(BOOL isExplicit)
 {
-    NSURL         *bundleFileURL = [cloudcordDirectory URLByAppendingPathComponent:@"bundle.js"];
-    NSURL         *etagFileURL   = [cloudcordDirectory URLByAppendingPathComponent:@"etag.txt"];
-    NSFileManager *fm            = [NSFileManager defaultManager];
+    NSURL *bundleFileURL = [cloudcordDirectory URLByAppendingPathComponent:@"bundle.js"];
+    NSURL *etagFileURL = [cloudcordDirectory URLByAppendingPathComponent:@"etag.txt"];
+    NSFileManager *fm = [NSFileManager defaultManager];
 
-    NSURL *targetURL = resolveDownloadURL();
+    NSString *expectedHash = nil;
+    NSNumber *expectedSize = nil;
+    NSURL *targetURL = resolveDownloadURL(&expectedHash, &expectedSize);
     if (!targetURL)
-    {
         return NO;
-    }
-    BunnyLog(@"[Updater] Fetching bundle (explicit=%d): %@", isExplicit, targetURL.absoluteString);
 
-    NSMutableURLRequest *req =
-        [NSMutableURLRequest requestWithURL:targetURL
-                                cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData
-                            timeoutInterval:15.0];
-
-    // Only attach ETag on non-explicit fetches — explicit calls must force a fresh download.
-    if (!isExplicit)
+    BOOL cachedMatchesManifest = YES;
+    if (expectedHash && [fm fileExistsAtPath:bundleFileURL.path])
     {
-        NSString *etag = [NSString stringWithContentsOfURL:etagFileURL
-                                                  encoding:NSUTF8StringEncoding
-                                                     error:nil];
-        if (etag && [fm fileExistsAtPath:bundleFileURL.path])
-            [req setValue:etag forHTTPHeaderField:@"If-None-Match"];
+        NSData *cached = [NSData dataWithContentsOfURL:bundleFileURL];
+        cachedMatchesManifest = cached && [[sha256Hex(cached) lowercaseString] isEqualToString:expectedHash];
+        if (!cachedMatchesManifest)
+        {
+            BunnyLog(@"[Updater] Cached runtime hash does not match manifest; forcing a full download");
+            [fm removeItemAtURL:etagFileURL error:nil];
+        }
     }
 
-    __block BOOL     success = NO;
-    dispatch_group_t group   = dispatch_group_create();
+    BunnyLog(@"[Updater] Fetching verified bundle (explicit=%d): %@", isExplicit, targetURL.absoluteString);
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:targetURL
+                                                       cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData
+                                                   timeoutInterval:15.0];
+    if (!isExplicit && cachedMatchesManifest)
+    {
+        NSString *etagValue = [NSString stringWithContentsOfURL:etagFileURL encoding:NSUTF8StringEncoding error:nil];
+        if (etagValue && [fm fileExistsAtPath:bundleFileURL.path])
+            [req setValue:etagValue forHTTPHeaderField:@"If-None-Match"];
+    }
+
+    __block BOOL success = NO;
+    dispatch_group_t group = dispatch_group_create();
     dispatch_group_enter(group);
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration ephemeralSessionConfiguration]];
+    [[session dataTaskWithRequest:req completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if ([response isKindOfClass:[NSHTTPURLResponse class]])
+        {
+            NSHTTPURLResponse *http = (NSHTTPURLResponse *) response;
+            if (http.statusCode == 200 && data.length > 0)
+            {
+                BOOL valid = isPlausibleRuntime(data);
+                if (valid && expectedSize)
+                    valid = data.length == expectedSize.unsignedLongLongValue;
+                if (valid && expectedHash)
+                    valid = [[[sha256Hex(data) lowercaseString] copy] isEqualToString:expectedHash];
 
-    NSURLSession *session = [NSURLSession
-        sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+                if (!valid)
+                {
+                    BunnyLog(@"[Updater] Rejected runtime update: size/hash/content validation failed");
+                }
+                else
+                {
+                    if ([fm fileExistsAtPath:bundleFileURL.path])
+                        moveCachedBundleToBackup();
 
-    [[session dataTaskWithRequest:req
-                completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
-                    if ([response isKindOfClass:[NSHTTPURLResponse class]])
+                    NSError *writeError = nil;
+                    if ([data writeToURL:bundleFileURL options:NSDataWritingAtomic error:&writeError])
                     {
-                        NSHTTPURLResponse *http = (NSHTTPURLResponse *) response;
-
-                        if (http.statusCode == 200 && data.length > 0)
-                        {
-                            [data writeToURL:bundleFileURL atomically:YES];
-
-                            NSString *newEtag = http.allHeaderFields[@"Etag"];
-                            if (newEtag)
-                                [newEtag writeToURL:etagFileURL
-                                         atomically:YES
-                                           encoding:NSUTF8StringEncoding
-                                              error:nil];
-                            else
-                                [fm removeItemAtURL:etagFileURL error:nil];
-
-                            cleanupBundleBackup();
-                            success = YES;
-                        }
-                        else if (http.statusCode == 304)
-                        {
-                            cleanupBundleBackup();
-                            success = YES;
-                        }
+                        NSString *newEtag = http.allHeaderFields[@"Etag"] ?: http.allHeaderFields[@"ETag"];
+                        if (newEtag)
+                            [newEtag writeToURL:etagFileURL atomically:YES encoding:NSUTF8StringEncoding error:nil];
                         else
-                        {
-                            // fail withoput a care, they probably just have bad internet tbh
-                        }
+                            [fm removeItemAtURL:etagFileURL error:nil];
+                        success = YES;
+                        BunnyLog(@"[Updater] Verified runtime installed (%lu bytes)", (unsigned long) data.length);
                     }
-                    else if (error)
+                    else
                     {
-                        BunnyLog(@"[Updater] Download error: %@", error.localizedDescription);
+                        BunnyLog(@"[Updater] Atomic runtime write failed: %@", writeError.localizedDescription);
+                        if (![fm fileExistsAtPath:bundleFileURL.path])
+                            restoreBundleFromBackup();
                     }
+                }
+            }
+            else if (http.statusCode == 304 && [fm fileExistsAtPath:bundleFileURL.path] && cachedMatchesManifest)
+            {
+                success = YES;
+            }
+        }
+        else if (error)
+        {
+            BunnyLog(@"[Updater] Download error: %@", error.localizedDescription);
+        }
 
-                    // if we have no usable bundle at all, try restoring from backup
-                    if (!success && ![fm fileExistsAtPath:bundleFileURL.path])
-                    {
-                        BunnyLog(@"[Updater] No bundle available, attempting restore from backup");
-                        if (restoreBundleFromBackup())
-                            BunnyLog(@"[Updater] Restored from backup");
-                        else
-                            BunnyLog(@"[Updater] No backup to restore");
-                    }
-
-                    dispatch_group_leave(group);
-                }] resume];
-
-    dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+        if (!success && ![fm fileExistsAtPath:bundleFileURL.path])
+            restoreBundleFromBackup();
+        dispatch_group_leave(group);
+    }] resume];
+    dispatch_group_wait(group, dispatch_time(DISPATCH_TIME_NOW, (int64_t) (18 * NSEC_PER_SEC)));
+    [session invalidateAndCancel];
     return success;
 }
 
@@ -288,7 +372,7 @@ static void registerBridgeMethods(void)
     BunnyLog(@"Injecting loader");
     %orig(patchData, source, YES);
 
-    NSString *updaterMarker = @"globalThis.__CLOUDCORD_LOADER__&&Object.assign(globalThis.__CLOUDCORD_LOADER__,{loaderName:\"CloudCord\",loaderVersion:\"2\",cloudcordAutoUpdateVersion:2});";
+    NSString *updaterMarker = @"globalThis.__CLOUDCORD_LOADER__&&Object.assign(globalThis.__CLOUDCORD_LOADER__,{loaderName:\"CloudCord\",loaderVersion:\"2\",cloudcordAutoUpdateVersion:3});";
     %orig([updaterMarker dataUsingEncoding:NSUTF8StringEncoding], source, YES);
 
     __block NSData *bundle =
