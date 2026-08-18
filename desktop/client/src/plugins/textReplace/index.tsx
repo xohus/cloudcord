@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2023 Vendicated and contributors
  *
@@ -26,7 +26,7 @@ import { HeadingSecondary } from "@components/Heading";
 import { Paragraph } from "@components/Paragraph";
 import { Span } from "@components/Span";
 import { TooltipContainer } from "@components/TooltipContainer";
-import { Devs, CloudCordDevs, SUPPORT_CHANNEL_IDS } from "@utils/constants";
+import { Devs, SincordDevs, SUPPORT_CHANNEL_IDS } from "@utils/constants";
 import { classNameFactory } from "@utils/index";
 import { Logger } from "@utils/Logger";
 import definePlugin, { OptionType } from "@utils/types";
@@ -354,7 +354,7 @@ function modifyIncomingMessage(message: Message) {
 
 const TEXT_REPLACE_RULES_EXEMPT_CHANNEL_IDS = [
     "1102784112584040479", // Vencord's Text Replace Rules Channel
-    "1419347113745059961", // CloudCord's Requests Channel
+    "1419347113745059961", // Sincord's Requests Channel
     ...SUPPORT_CHANNEL_IDS
 ];
 
@@ -363,7 +363,7 @@ export default definePlugin({
     description: "Replace text in your messages. You can find pre-made rules in the #textreplace-rules channel in Vencord's Server",
     dependencies: ["MessagePopoverAPI"],
     tags: ["Chat", "Customisation", "Utility"],
-    authors: [Devs.AutumnVN, Devs.TheKodeToad, CloudCordDevs.Etorix, CloudCordDevs.Ape],
+    authors: [Devs.AutumnVN, Devs.TheKodeToad, SincordDevs.Etorix, SincordDevs.Ape],
     isModified: true,
     settings,
     modifyIncomingMessage,

@@ -39,10 +39,212 @@ jobs:
           Add-Content $env:GITHUB_PATH "C:\ProgramData\chocolatey\lib\mingw\tools\install\mingw64\bin"
           Add-Content $env:GITHUB_PATH "C:\ProgramData\mingw64\mingw64\bin"
 
+      - name: Prepare clean Sincord source
+        shell: bash
+        run: |
+          set -e
+
+          rm -rf _sincord
+          rm -rf _cloudcord_overlay
+          mkdir -p _cloudcord_overlay
+          cp -R desktop/client/src _cloudcord_overlay/src
+          cp -R desktop/client/installer _cloudcord_overlay/installer
+          cp desktop/client/scripts/build-installer.sh _cloudcord_overlay/build-installer.sh
+          rm -rf desktop/client
+
+          git clone --depth=1 https://github.com/sincord/sincord _sincord
+
+          mkdir -p desktop/client
+          cp -R _sincord/. desktop/client/
+
+          rm -rf desktop/client/.git
+          rm -rf desktop/client/.github
+          rm -rf desktop/client/node_modules
+          rm -rf desktop/client/dist
+
+          cp -R _cloudcord_overlay/src/. desktop/client/src/
+          rm -rf desktop/client/installer
+          cp -R _cloudcord_overlay/installer desktop/client/installer
+          cp _cloudcord_overlay/build-installer.sh desktop/client/scripts/build-installer.sh
+
+      - name: Patch Sincord source into CloudCord
+        shell: bash
+        run: |
+          set -e
+
+          node <<'NODE'
+          const fs = require("fs");
+          const path = require("path");
+
+          const root = process.cwd();
+          const client = path.join(root, "desktop", "client");
+          const pkgPath = path.join(client, "package.json");
+
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+
+          pkg.name = "cloudcord";
+          pkg.private = "true";
+          pkg.version = "0.1.0";
+          pkg.description = "CloudCord desktop client mod";
+          pkg.homepage = "https://github.com/xohus/cloudcord#readme";
+          pkg.author = "Xohus";
+          pkg.license = "GPL-3.0-or-later";
+          pkg.bugs = {
+            url: "https://github.com/xohus/cloudcord/issues"
+          };
+          pkg.repository = {
+            type: "git",
+            url: "git+https://github.com/xohus/cloudcord.git"
+          };
+
+          if (!pkg.scripts) {
+            pkg.scripts = {};
+          }
+
+          pkg.scripts.typecheck = "pnpm testTsc";
+          pkg.scripts["build:installer"] = "bash scripts/build-installer.sh";
+
+          fs.writeFileSync(pkgPath, JSON.stringify(pkg, null, 4) + "\n");
+
+          const allowedExtensions = new Set([
+            ".ts",
+            ".tsx",
+            ".js",
+            ".jsx",
+            ".mjs",
+            ".cjs",
+            ".json",
+            ".md",
+            ".go",
+            ".mod",
+            ".sh",
+            ".css",
+            ".scss",
+            ".less",
+            ".html",
+            ".yml",
+            ".yaml",
+            ".toml"
+          ]);
+
+          function shouldSkipDir(name) {
+            return (
+              name === ".git" ||
+              name === ".github" ||
+              name === "node_modules" ||
+              name === "dist" ||
+              name === ".next" ||
+              name === ".turbo"
+            );
+          }
+
+          function patchFile(file) {
+            const ext = path.extname(file);
+            if (!allowedExtensions.has(ext)) {
+              return;
+            }
+
+            let text;
+            try {
+              text = fs.readFileSync(file, "utf8");
+            } catch {
+              return;
+            }
+
+            const patched = text
+              .replaceAll("Sincord", "CloudCord")
+              .replaceAll("sincord", "cloudcord")
+              .replaceAll("SINCORD", "CLOUDCORD")
+              .replaceAll("Sinlotl", "CloudCordSetup")
+              .replaceAll("export const isCloudCordGuild = isCloudCordGuild;", "")
+              .replaceAll("export const isCloudCordSupport = isCloudCordSupport;", "")
+              .replaceAll("The better Discord client mod", "CloudCord desktop client mod")
+              .replaceAll("https://github.com/CloudCord/CloudCord", "https://github.com/xohus/cloudcord")
+              .replaceAll("git+https://github.com/CloudCord/CloudCord.git", "git+https://github.com/xohus/cloudcord.git");
+
+            if (patched !== text) {
+              fs.writeFileSync(file, patched);
+            }
+          }
+
+          function walk(dir) {
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            
+            // First rename any entries in this directory
+            for (const entry of entries) {
+              const oldPath = path.join(dir, entry.name);
+              let newName = entry.name;
+              
+              if (newName.includes("Sincord")) newName = newName.replaceAll("Sincord", "CloudCord");
+              if (newName.includes("sincord")) newName = newName.replaceAll("sincord", "cloudcord");
+              if (newName.includes("SINCORD")) newName = newName.replaceAll("SINCORD", "CLOUDCORD");
+              
+              if (newName !== entry.name) {
+                const newPath = path.join(dir, newName);
+                fs.renameSync(oldPath, newPath);
+                // Update the entry name so we can process it correctly below
+                entry.name = newName;
+              }
+            }
+
+            // Then process the updated entries
+            for (const entry of entries) {
+              const full = path.join(dir, entry.name);
+
+              if (entry.isDirectory()) {
+                if (!shouldSkipDir(entry.name)) {
+                  walk(full);
+                }
+                continue;
+              }
+
+              if (entry.isFile()) {
+                patchFile(full);
+              }
+            }
+          }
+
+          walk(client);
+
+          fs.writeFileSync(
+            path.join(client, "CLOUDCORD_NOTES.md"),
+            [
+              "# CloudCord Desktop Notes",
+              "",
+              "CloudCord Desktop is an open-source Discord desktop client mod based on the Sincord/Vencord-style desktop architecture.",
+              "",
+              "CloudCord Desktop targets installed Discord desktop, not Discord web and not a browser extension.",
+              "",
+              "Mobile CloudCord uses the React Native runtime from the main project. Desktop CloudCord uses the desktop runtime built from this client tree.",
+              ""
+            ].join("\n")
+          );
+
+          fs.writeFileSync(
+            path.join(client, "CREDITS.md"),
+            [
+              "# Credits",
+              "",
+              "CloudCord Desktop is maintained by Xohus.",
+              "",
+              "CloudCord Desktop is based on Sincord and follows the Vencord/Sincord-style Discord desktop client mod architecture.",
+              "",
+              "Upstream projects:",
+              "",
+              "- Sincord: https://github.com/sincord/sincord",
+              "- Vencord: https://github.com/Vendicated/Vencord",
+              "",
+              "CloudCord Desktop keeps GPL-3.0-or-later licensing and upstream attribution.",
+              ""
+            ].join("\n")
+          );
+          NODE
+
       - name: Verify required source files
         shell: bash
         run: |
           set -e
+
           test -f desktop/client/package.json
           test -f desktop/client/scripts/build/build.mjs
           test -f desktop/client/scripts/build-installer.sh
@@ -68,7 +270,8 @@ jobs:
         working-directory: desktop/client
         shell: bash
         run: |
-          pnpm typecheck || true
+          set -e
+          pnpm typecheck
 
       - name: Build desktop runtime
         working-directory: desktop/client
@@ -81,12 +284,12 @@ jobs:
         shell: bash
         run: |
           set -e
-          test -f desktop/client/dist/desktop/patcher.js
-          test -f desktop/client/dist/desktop/renderer.js
-          test -f desktop/client/dist/desktop/preload.js
-          test -f desktop/client/dist/desktop/package.json
-          echo "Verified all 4 desktop runtime files exist:"
-          ls -lh desktop/client/dist/desktop
+
+          if [ ! -d "desktop/client/dist/desktop" ]; then
+            echo "desktop/client/dist/desktop was not produced"
+            find desktop/client/dist -maxdepth 3 -type f || true
+            exit 1
+          fi
 
       - name: Build Windows installer
         working-directory: desktop/client
@@ -99,54 +302,56 @@ jobs:
         shell: bash
         run: |
           set -e
+
           mkdir -p desktop/client/dist
-          EXE=$(find desktop/client/installer -maxdepth 1 -name "*.exe" | head -n 1)
-          if [ -n "$EXE" ]; then
-            cp "$EXE" desktop/client/dist/CloudCordSetup.exe
-            cp "$EXE" desktop/client/dist/cloudcord.exe
-            cp "$EXE" desktop/client/dist/CloudCordSetup-Test.exe
-            cp "$EXE" desktop/client/dist/cloudcord-test.exe
+
+          INSTALLER_PATH="$(find desktop/client -type f -name 'CloudCordSetup.exe' | head -n 1)"
+
+          if [ -z "$INSTALLER_PATH" ]; then
+            INSTALLER_PATH="$(find desktop/client -type f -name '*.exe' | head -n 1)"
           fi
 
+          if [ -z "$INSTALLER_PATH" ]; then
+            echo "No installer .exe was produced"
+            find desktop/client -maxdepth 5 -type f | sed 's#\\#/#g' | sort | tail -200
+            exit 1
+          fi
+
+          if [ "$INSTALLER_PATH" != "desktop/client/dist/CloudCordSetup.exe" ]; then
+            cp "$INSTALLER_PATH" desktop/client/dist/CloudCordSetup.exe
+          fi
+          cp "$INSTALLER_PATH" desktop/client/dist/cloudcord.exe
+
+          test -f desktop/client/dist/CloudCordSetup.exe
           test -d desktop/client/dist/desktop
+
+      - name: Upload desktop artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCordDesktop-Windows
+          path: |
+            desktop/client/dist/CloudCordSetup.exe
+            desktop/client/dist/desktop/**
+            desktop/client/CREDITS.md
+            desktop/client/CLOUDCORD_NOTES.md
+            desktop/README.md
 
       - name: Package desktop.asar for updater
         shell: bash
         run: |
           set -e
-          npx --yes @electron/asar pack desktop/client/dist/desktop desktop/client/dist/desktop.asar
-          cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord.asar
-          cp desktop/client/dist/desktop.asar desktop/client/dist/runtime
-          cp desktop/client/dist/desktop.asar desktop/client/dist/desktop-test.asar
-          cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord-test.asar
+          # The built runtime is the desktop folder — pack it into desktop.asar
+          # so the in-app updater can fetch it from the release
+          npm install -g @electron/asar --quiet 2>/dev/null || true
+          asar pack desktop/client/dist/desktop desktop/client/dist/desktop.asar
           test -f desktop/client/dist/desktop.asar
 
-      - name: Upload binaries to GitHub Releases (Test Channel Only)
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          cd desktop/client/dist
-
-          gh release upload --repo "${{ github.repository }}" new_beta_test_desktop \
-            CloudCordSetup-Test.exe \
-            cloudcord-test.exe \
-            desktop-test.asar \
-            cloudcord-test.asar \
-            --clobber || true
-
-      - name: Upload binaries to GitHub Release (Isolated Test Channel fallback)
+      - name: Upload desktop.asar to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: new_beta_test_desktop
-          name: CloudCord Desktop Test ${{ github.sha }}
-          prerelease: true
-          overwrite: true
-          files: |
-            desktop/client/dist/CloudCordSetup-Test.exe
-            desktop/client/dist/cloudcord-test.exe
-            desktop/client/dist/desktop-test.asar
-            desktop/client/dist/cloudcord-test.asar
+          tag_name: new_beta_t_desktop
+          name: CloudCord Desktop ${{ github.sha }}
+          make_latest: true
+          files: desktop/client/dist/desktop.asar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

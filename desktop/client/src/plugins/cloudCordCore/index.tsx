@@ -1,4 +1,4 @@
-﻿/*
+/*
  * CloudCord, a Discord desktop client mod
  * Copyright (c) 2026 Xohus
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -31,9 +31,9 @@ function CloudCordCoreAbout() {
             <InfoRow label="CloudCord Desktop version" value={VERSION} />
             <InfoRow label="Repository" value={<Link href={REPO_URL}>{REPO_URL}</Link>} />
             <InfoRow label="Install status" value={installStatus} />
-            <InfoRow label="Credits" value="CloudCord by Xohus, based on CloudCord and inspired by Vencord architecture." />
+            <InfoRow label="Credits" value="CloudCord by Xohus, based on Sincord and inspired by Vencord architecture." />
             <InfoRow label="Mobile runtime" value="iOS and Android use CloudCord's separate React Native runtime." />
-            <InfoRow label="Desktop runtime" value="Desktop uses this Vencord/CloudCord-style desktop bundle." />
+            <InfoRow label="Desktop runtime" value="Desktop uses this Vencord/Sincord-style desktop bundle." />
             <Paragraph className={Margins.top16}>
                 CloudCord Core provides desktop identity and integration metadata for the open-source CloudCord Desktop client mod.
             </Paragraph>

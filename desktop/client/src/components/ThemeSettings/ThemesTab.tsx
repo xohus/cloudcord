@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -511,7 +511,7 @@ function ThemesTab() {
     function changeThemeLibraryURLs() {
         settings.themeLinks = settings.themeLinks.map(link => {
             if (link.startsWith("https://discord-themes.com/api")) {
-                return link.replace("https://discord-themes.com/api", "https://cloudcord.xohus.lol/themes/api");
+                return link.replace("https://discord-themes.com/api", "https://themes.sincord.org/api");
             }
             return link;
         });
@@ -1033,7 +1033,7 @@ export function CspErrorCard() {
     const allowUrl = async (url: string) => {
         const { origin: baseUrl, host } = new URL(url);
 
-        const result = await VencordNative.csp.requestAddOverride(baseUrl, ["connect-src", "img-src", "style-src", "font-src"], "CloudCord Themes");
+        const result = await VencordNative.csp.requestAddOverride(baseUrl, ["connect-src", "img-src", "style-src", "font-src"], "Sincord Themes");
         if (result !== "ok") return;
 
         CspBlockedUrls.forEach(url => {

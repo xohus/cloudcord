@@ -24,7 +24,7 @@ import { debounce } from "@shared/debounce";
 import { IpcEvents } from "@shared/IpcEvents";
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell, systemPreferences } from "electron";
 import monacoHtml from "file://monacoWin.html?minify&base64";
-import { existsSync, FSWatcher, mkdirSync, readFileSync, watch, writeFileSync } from "fs";
+import { FSWatcher, mkdirSync, readFileSync, watch, writeFileSync } from "fs";
 import { open, readdir, readFile, unlink } from "fs/promises";
 import { release } from "os";
 import { join, normalize } from "path";
@@ -186,38 +186,11 @@ app.on("before-quit", async event => {
     }
 });
 
-ipcMain.handle(IpcEvents.GET_RENDERER_CSS, async () => {
-    try {
-        if (RENDERER_CSS_PATH && existsSync(RENDERER_CSS_PATH)) {
-            return await readFile(RENDERER_CSS_PATH, "utf-8");
-        }
-    } catch {}
-    return "";
-});
+ipcMain.handle(IpcEvents.GET_RENDERER_CSS, () => readFile(RENDERER_CSS_PATH, "utf-8"));
 
 if (IS_DISCORD_DESKTOP) {
     ipcMain.on(IpcEvents.PRELOAD_GET_RENDERER_JS, e => {
-        const candidates = [
-            join(__dirname, "renderer.js"),
-            join(__dirname, "..", "renderer.js"),
-            join(process.env.APPDATA || "", "CloudCord", "renderer.js"),
-            join(process.env.APPDATA || "", "CloudCordTest", "renderer.js"),
-        ];
-
-        for (const p of candidates) {
-            try {
-                if (p && existsSync(p)) {
-                    e.returnValue = readFileSync(p, "utf-8");
-                    return;
-                }
-            } catch {}
-        }
-
-        try {
-            e.returnValue = readFileSync(join(__dirname, "renderer.js"), "utf-8");
-        } catch {
-            e.returnValue = "";
-        }
+        e.returnValue = readFileSync(join(__dirname, "renderer.js"), "utf-8");
     });
 }
 

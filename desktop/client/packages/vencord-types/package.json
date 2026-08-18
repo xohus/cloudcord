@@ -1,5 +1,5 @@
-﻿{
-    "name": "@cloudcord/types",
+{
+    "name": "@sincord/types",
     "private": false,
     "version": "1.14.2",
     "description": "",
@@ -9,7 +9,7 @@
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "keywords": [],
-    "author": "CloudCord & Vencord Contributors",
+    "author": "Sincord & Vencord Contributors",
     "license": "GPL-3.0",
     "devDependencies": {
         "@types/fs-extra": "^11.0.4",

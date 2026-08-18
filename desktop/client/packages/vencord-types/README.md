@@ -1,11 +1,11 @@
-﻿# CloudCord Types
+# Sincord Types
 
-Typings for CloudCord's api, published to npm
+Typings for Sincord's api, published to npm
 
 ```sh
-npm i @cloudcord/types
+npm i @sincord/types
 
-yarn add @cloudcord/types
+yarn add @sincord/types
 
-pnpm add @cloudcord/types
+pnpm add @sincord/types
 ```

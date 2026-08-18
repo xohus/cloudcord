@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2023 Vendicated and contributors
  *
@@ -19,7 +19,7 @@
 import "./style.css";
 
 import { definePluginSettings } from "@api/Settings";
-import { Devs, CloudCordDevs } from "@utils/constants";
+import { Devs, SincordDevs } from "@utils/constants";
 import definePlugin, { OptionType } from "@utils/types";
 
 import { VoiceChannelIndicator } from "./components";
@@ -50,7 +50,7 @@ export default definePlugin({
     description: "Shows an indicator when a user is in a Voice Channel",
     tags: ["Voice", "Appearance", "Friends"],
     dependencies: ["MemberListDecoratorsAPI", "MessageDecorationsAPI", "NicknameIconsAPI"],
-    authors: [Devs.Nuckyz, Devs.LordElias, CloudCordDevs.omaw],
+    authors: [Devs.Nuckyz, Devs.LordElias, SincordDevs.omaw],
     settings,
     renderNicknameIcon({ userId }) {
         if (!settings.store.showInUserProfileModal) return null;

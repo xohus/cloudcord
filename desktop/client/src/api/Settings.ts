@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -147,7 +147,7 @@ const DefaultSettings: Settings = {
 
     cloud: {
         authenticated: false,
-        url: "https://cloudcord-profiles.ggxohus.workers.dev/",
+        url: "https://cloud.sincord.org/",
         settingsSync: false,
         settingsSyncVersion: 0
     },

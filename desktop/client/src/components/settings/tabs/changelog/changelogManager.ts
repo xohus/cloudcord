@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a Discord client mod
  * Copyright (c) 2025 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -30,11 +30,11 @@ export interface UpdateSession {
 
 export type ChangelogHistory = UpdateSession[];
 
-const CHANGELOG_HISTORY_KEY = "CloudCordChangelog_History";
-const LAST_SEEN_HASH_KEY = "CloudCordChangelog_LastSeenHash";
-const KNOWN_PLUGINS_KEY = "CloudCordChangelog_KnownPlugins";
-const KNOWN_SETTINGS_KEY = "CloudCordChangelog_KnownSettings";
-const LAST_REPO_CHECK_KEY = "CloudCordChangelog_LastRepoCheck";
+const CHANGELOG_HISTORY_KEY = "SincordChangelog_History";
+const LAST_SEEN_HASH_KEY = "SincordChangelog_LastSeenHash";
+const KNOWN_PLUGINS_KEY = "SincordChangelog_KnownPlugins";
+const KNOWN_SETTINGS_KEY = "SincordChangelog_KnownSettings";
+const LAST_REPO_CHECK_KEY = "SincordChangelog_LastRepoCheck";
 const GITHUB_COMPARE_ENDPOINT = "https://api.github.com/repos";
 
 type KnownPluginSettingsMap = Map<string, Set<string>>;

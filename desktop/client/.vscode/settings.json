@@ -1,4 +1,4 @@
-﻿{
+{
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
         "source.fixAll.eslint": "explicit"
@@ -19,7 +19,7 @@
             "type": "Gitea"
         }
     ],
-    "cloudcord-companion.showSidebar": true,
+    "sincord-companion.showSidebar": true,
     "css.format.spaceAroundSelectorSeparator": true,
     "[css]": {
         "editor.defaultFormatter": "vscode.css-language-features"
