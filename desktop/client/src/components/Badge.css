@@ -1,4 +1,4 @@
-﻿.vc-badge-base {
+.vc-badge-base {
     display: inline-flex;
     align-items: center;
     align-self: center;
@@ -33,7 +33,7 @@
     color: var(--badge-expressive-text-default);
 }
 
-/* CloudCord variants */
+/* Sincord variants */
 .vc-badge-danger {
     background-color: var(--status-danger);
     color: var(--white);

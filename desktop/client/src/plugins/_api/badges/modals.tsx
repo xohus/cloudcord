@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a Discord client mod
  * Copyright (c) 2025 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -71,7 +71,7 @@ export function VencordDonorModal() {
     ));
 }
 
-export function CloudCordDonorModal() {
+export function SincordDonorModal() {
     openModal(props => (
         <ErrorBoundary noop onError={() => {
             props.onClose();
@@ -90,7 +90,7 @@ export function CloudCordDonorModal() {
                     >
                         <Flex justifyContent="center" alignItems="center" gap="0.5em">
                             <Heart />
-                            CloudCord Donor
+                            Sincord Donor
                         </Flex>
                     </Heading>
                 }
@@ -112,16 +112,16 @@ export function CloudCordDonorModal() {
                     </Flex>
                     <div style={{ padding: "1em" }}>
                         <Paragraph>
-                            This Badge is a special perk for CloudCord (Not Vencord) Donors
+                            This Badge is a special perk for Sincord (Not Vencord) Donors
                         </Paragraph>
                         <Paragraph className={Margins.top20}>
-                            Please consider supporting the development of CloudCord by becoming a donor. It would mean a lot! :3
+                            Please consider supporting the development of Sincord by becoming a donor. It would mean a lot! :3
                         </Paragraph>
                     </div>
                 </div>
                 <div>
                     <Flex justifyContent="center" style={{ width: "100%" }}>
-                        <DonateButton cloudcord={true} />
+                        <DonateButton sincord={true} />
                     </Flex>
                 </div>
             </Modal>
@@ -129,7 +129,7 @@ export function CloudCordDonorModal() {
     ));
 }
 
-export function CloudCordTranslatorModal() {
+export function SincordTranslatorModal() {
     openModal(props => (
         <ErrorBoundary noop onError={() => {
             props.onClose();
@@ -146,7 +146,7 @@ export function CloudCordTranslatorModal() {
                         }}
                     >
                         <Flex justifyContent="center" alignItems="center" gap="0.5em">
-                            CloudCord Translator
+                            Sincord Translator
                         </Flex>
                     </Heading>
                 }
@@ -156,13 +156,13 @@ export function CloudCordTranslatorModal() {
                         <img
                             className="vc-translate-modal-icon"
                             role="presentation"
-                            src="https://cloudcord.xohus.lol/badges/translator.png"
+                            src="https://badge.sincord.org/translator.png"
                             alt=""
                         />
                     </Flex>
                     <div className="vc-translate-modal-paragraph">
                         <Paragraph>
-                            Awarded to contributors who expand CloudCord’s language support by translating content for the community.
+                            Awarded to contributors who expand Sincord’s language support by translating content for the community.
                         </Paragraph>
                     </div>
                 </div>

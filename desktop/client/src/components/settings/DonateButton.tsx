@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -24,11 +24,11 @@ import { ButtonProps } from "@vencord/discord-types";
 import { showToast } from "@webpack/common";
 
 export function DonateButton({
-    cloudcord = false,
+    sincord = false,
     className,
     ...props
-}: Partial<ButtonProps> & { cloudcord?: boolean; }) {
-    const link = cloudcord ? "https://cloudcord.xohus.lol/#download" : "https://github.com/sponsors/Vendicated";
+}: Partial<ButtonProps> & { sincord?: boolean; }) {
+    const link = sincord ? "https://sincord.org/donations" : "https://github.com/sponsors/Vendicated";
     return (
         <Button
             {...props}
@@ -72,7 +72,7 @@ export function TranslateButton({
     className,
     ...props
 }: Partial<ButtonProps>) {
-    const link = "https://github.com/xohus/cloudcord";
+    const link = "https://weblate.sincord.org/projects/sincord/";
     return (
         <Button
             {...props}

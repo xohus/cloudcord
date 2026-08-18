@@ -27,21 +27,11 @@ waitFor(["dispatch", "subscribe"], m => {
     // For this reason, use a non import access here.
     Vencord.Api.PluginManager.subscribeAllPluginsFluxEvents(m);
 
-    let resolved = false;
-    const triggerReady = () => {
-        if (!resolved) {
-            resolved = true;
-            _resolveReady();
-        }
-    };
-
     const cb = () => {
         m.unsubscribe("CONNECTION_OPEN", cb);
-        triggerReady();
+        _resolveReady();
     };
     m.subscribe("CONNECTION_OPEN", cb);
-
-    setTimeout(triggerReady, 1500);
 });
 
 export let ComponentDispatch: any;

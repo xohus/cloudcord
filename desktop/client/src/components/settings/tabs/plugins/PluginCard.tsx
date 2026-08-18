@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a Discord client mod
  * Copyright (c) 2025 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -32,7 +32,7 @@ interface PluginCardProps extends React.HTMLProps<HTMLDivElement> {
 export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, onMouseLeave, isNew }: PluginCardProps) {
     const settings = Settings.plugins[plugin.name];
     const pluginMeta = PluginMeta[plugin.name];
-    const isCloudCordPlugin = pluginMeta.folderName.startsWith("src/cloudcordplugins/") ?? false;
+    const isSincordPlugin = pluginMeta.folderName.startsWith("src/sincordplugins/") ?? false;
     const isVencordPlugin = pluginMeta.folderName.startsWith("src/plugins/") ?? false;
     const isUserPlugin = pluginMeta?.userPlugin ?? false;
     const isModifiedPlugin = plugin.isModified ?? false;
@@ -92,25 +92,25 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
     const pluginInfo = [
         {
             condition: isModifiedPlugin,
-            src: "https://cloudcord.xohus.lol/assets/icons/cloudcord/modified.png",
+            src: "https://sincord.org/assets/icons/sincord/modified.png",
             alt: "Modified",
             title: "Modified Vencord Plugin"
         },
         {
-            condition: isCloudCordPlugin,
-            src: "https://cloudcord.xohus.lol/assets/favicon.png",
-            alt: "CloudCord",
-            title: "CloudCord Plugin"
+            condition: isSincordPlugin,
+            src: "https://sincord.org/assets/favicon.png",
+            alt: "Sincord",
+            title: "Sincord Plugin"
         },
         {
             condition: isVencordPlugin,
-            src: "https://cloudcord.xohus.lol/assets/icons/vencord/icon-light.png",
+            src: "https://sincord.org/assets/icons/vencord/icon-light.png",
             alt: "Vencord",
             title: "Vencord Plugin"
         },
         {
             condition: isUserPlugin,
-            src: "https://cloudcord.xohus.lol/assets/icons/misc/userplugin.png",
+            src: "https://sincord.org/assets/icons/misc/userplugin.png",
             alt: "User",
             title: "User Plugin"
         }

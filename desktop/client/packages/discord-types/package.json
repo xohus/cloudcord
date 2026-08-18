@@ -1,6 +1,6 @@
-﻿{
-    "name": "@cloudcord/discord-types",
-    "author": "CloudCord & Vencord Contributors",
+{
+    "name": "@sincord/discord-types",
+    "author": "Sincord & Vencord Contributors",
     "private": false,
     "description": "Typescript definitions for the webpack modules of the Discord Web app",
     "version": "1.0.4",
@@ -9,7 +9,7 @@
     "type": "module",
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/xohus/cloudcord.git",
+        "url": "git+https://github.com/Sincord/Sincord.git",
         "directory": "packages/discord-types"
     },
     "dependencies": {

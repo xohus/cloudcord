@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2023 Vendicated and contributors
  *
@@ -17,25 +17,25 @@
 */
 
 import { readdirSync, writeFileSync } from "fs";
-import { getEntryPoint, isPluginFile, parseDevs, parseCloudCordDevs, parseFile, PluginData } from "./utils";
+import { getEntryPoint, isPluginFile, parseDevs, parseSincordDevs, parseFile, PluginData } from "./utils";
 
 (async () => {
     parseDevs();
-    parseCloudCordDevs();
+    parseSincordDevs();
 
     const args = process.argv.slice(2);
 
-    const cloudcordFlag = args.includes("--cloudcord");
+    const sincordFlag = args.includes("--sincord");
     const vencordFlag = args.includes("--vencord");
 
     let dirs: string[];
 
-    if (cloudcordFlag) {
-        dirs = ["src/cloudcordplugins/_core", "src/cloudcordplugins"];
+    if (sincordFlag) {
+        dirs = ["src/sincordplugins/_core", "src/sincordplugins"];
     } else if (vencordFlag) {
         dirs = ["src/plugins", "src/plugins/_core"];
     } else {
-        dirs = ["src/plugins", "src/plugins/_core", "src/cloudcordplugins/_core", "src/cloudcordplugins"];
+        dirs = ["src/plugins", "src/plugins/_core", "src/sincordplugins/_core", "src/sincordplugins"];
     }
 
     const outputPath = args.find(a => !a.startsWith("--")) ?? null;

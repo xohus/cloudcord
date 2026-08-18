@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2023 Vendicated and contributors
  *
@@ -17,7 +17,7 @@
 */
 
 import { definePluginSettings, Settings } from "@api/Settings";
-import { getCustomColorString } from "@cloudcordplugins/customUserColors";
+import { getCustomColorString } from "@sincordplugins/customUserColors";
 import { hash as h64 } from "@intrnl/xxhash64";
 import { Devs } from "@utils/constants";
 import definePlugin, { OptionType } from "@utils/types";

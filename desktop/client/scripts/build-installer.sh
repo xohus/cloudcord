@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds the Sinlotl installer binary for the current platform
+# Builds the CloudCord Setup installer binary for the current platform
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,16 +18,16 @@ case "$(uname -s)" in
     Darwin)
         ARCH=$(uname -m)
         if [ "$ARCH" = "arm64" ]; then
-            OUT="Sinlotl-darwin-arm64"
+            OUT="CloudCordSetup-darwin-arm64"
         else
-            OUT="Sinlotl-darwin-x64"
+            OUT="CloudCordSetup-darwin-x64"
         fi
         ;;
     Linux)
-        OUT="Sinlotl-linux"
+        OUT="CloudCordSetup-linux"
         ;;
     MINGW*|MSYS*|CYGWIN*)
-        OUT="Sinlotl.exe"
+        OUT="CloudCordSetup.exe"
         ;;
     *)
         echo "Unsupported platform"
@@ -36,8 +36,19 @@ case "$(uname -s)" in
 esac
 
 echo "Building $OUT..."
-go build -o "$OUT" .
-cp "$OUT" "CloudCordSetup.exe" 2>/dev/null || true
-cp "$OUT" "CloudCordSetup-Test.exe" 2>/dev/null || true
-chmod +x "$OUT" "CloudCordSetup.exe" "CloudCordSetup-Test.exe" 2>/dev/null || true
-echo "Done! Installer built at installer/$OUT and installer/CloudCordSetup.exe"
+go build -ldflags="-s -w" -o "$OUT" .
+chmod +x "$OUT" 2>/dev/null || true
+cp "$OUT" "../dist/$OUT"
+if [ "$OUT" = "CloudCordSetup.exe" ]; then
+    cp "$OUT" "../dist/cloudcord.exe"
+    
+    echo "Building CloudCordSetup-Test.exe (Isolated Test Build)..."
+    go build -ldflags="-s -w -X 'main.IsTestBuildStr=1'" -o "CloudCordSetup-Test.exe" .
+    chmod +x "CloudCordSetup-Test.exe" 2>/dev/null || true
+    cp "CloudCordSetup-Test.exe" "../dist/CloudCordSetup-Test.exe"
+    cp "CloudCordSetup-Test.exe" "../dist/cloudcord-test.exe"
+fi
+echo "Done! Installer built at installer/$OUT and dist/$OUT"
+
+
+

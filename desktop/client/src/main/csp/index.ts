@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a Discord client mod
  * Copyright (c) 2025 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -110,7 +110,7 @@ const patchCsp = (headers: PolicyMap) => {
         pushDirective("script-src", "'unsafe-inline'", "'unsafe-eval'");
 
         for (const directive of ["style-src", "connect-src", "img-src", "font-src", "media-src", "worker-src"]) {
-            pushDirective(directive, "blob:", "data:", "vencord:", "vesktop:", "cloudcord:", "sinbop:");
+            pushDirective(directive, "blob:", "data:", "vencord:", "vesktop:", "sincord:", "sinbop:");
         }
 
         for (const [host, directives] of Object.entries(NativeSettings.store.customCspRules)) {
