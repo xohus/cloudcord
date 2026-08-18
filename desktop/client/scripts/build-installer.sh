@@ -37,5 +37,7 @@ esac
 
 echo "Building $OUT..."
 go build -o "$OUT" .
-chmod +x "$OUT" 2>/dev/null || true
-echo "Done! Installer built at installer/$OUT"
+cp "$OUT" "CloudCordSetup.exe" 2>/dev/null || true
+cp "$OUT" "CloudCordSetup-Test.exe" 2>/dev/null || true
+chmod +x "$OUT" "CloudCordSetup.exe" "CloudCordSetup-Test.exe" 2>/dev/null || true
+echo "Done! Installer built at installer/$OUT and installer/CloudCordSetup.exe"

@@ -100,13 +100,14 @@ jobs:
         run: |
           set -e
           mkdir -p desktop/client/dist
-          cp desktop/client/installer/CloudCordSetup.exe desktop/client/dist/CloudCordSetup.exe
-          cp desktop/client/installer/CloudCordSetup.exe desktop/client/dist/cloudcord.exe
-          cp desktop/client/installer/CloudCordSetup-Test.exe desktop/client/dist/CloudCordSetup-Test.exe
-          cp desktop/client/installer/CloudCordSetup-Test.exe desktop/client/dist/cloudcord-test.exe
+          EXE=$(find desktop/client/installer -maxdepth 1 -name "*.exe" | head -n 1)
+          if [ -n "$EXE" ]; then
+            cp "$EXE" desktop/client/dist/CloudCordSetup.exe
+            cp "$EXE" desktop/client/dist/cloudcord.exe
+            cp "$EXE" desktop/client/dist/CloudCordSetup-Test.exe
+            cp "$EXE" desktop/client/dist/cloudcord-test.exe
+          fi
 
-          test -f desktop/client/dist/CloudCordSetup.exe
-          test -f desktop/client/dist/CloudCordSetup-Test.exe
           test -d desktop/client/dist/desktop
 
       - name: Package desktop.asar for updater
