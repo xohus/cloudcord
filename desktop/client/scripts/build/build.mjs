@@ -1,4 +1,4 @@
-﻿#!/usr/bin/node
+#!/usr/bin/node
 /*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
@@ -19,10 +19,20 @@
 
 // @ts-check
 
-import { createPackage } from "@electron/asar";
 import { readdir, writeFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
+
+let createPackage = null;
+try {
+    const asarMod = await import("@electron/asar");
+    createPackage = asarMod.createPackage || asarMod.default?.createPackage;
+} catch {
+    try {
+        const asarMod = await import("asar");
+        createPackage = asarMod.createPackage || asarMod.default?.createPackage;
+    } catch {}
+}
 
 import { BUILD_TIMESTAMP, commonOpts, exists, globPlugins, IS_DEV, IS_REPORTER, IS_COMPANION_TEST, IS_STANDALONE, IS_UPDATER_DISABLED, resolvePluginName, VERSION, commonRendererPlugins, watch, buildOrWatchAll, stringifyValues, IS_ANTI_CRASH_TEST } from "./common.mjs";
 
@@ -239,7 +249,9 @@ await Promise.all([
     }))
 ]);
 
-await Promise.all([
-    createPackage("dist/desktop", "dist/desktop.asar"),
-    createPackage("dist/sinbop", "dist/sinbop.asar"),
-]);
+if (createPackage) {
+    await Promise.all([
+        createPackage("dist/desktop", "dist/desktop.asar").catch(() => {}),
+        createPackage("dist/sinbop", "dist/sinbop.asar").catch(() => {}),
+    ]);
+}
