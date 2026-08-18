@@ -1,4 +1,4 @@
-﻿{
+{
     "compilerOptions": {
         "resolveJsonModule": true,
         "allowSyntheticDefaultImports": true,
@@ -61,6 +61,34 @@
             ],
             "@cloudcordplugins/*": [
                 "./src/cloudcordplugins/*"
+            ],
+            "@vencord/discord-types/enums": [
+                "./packages/discord-types/enums"
+            ],
+            "@vencord/discord-types/enums/*": [
+                "./packages/discord-types/enums/*"
+            ],
+            "@vencord/discord-types/*": [
+                "./packages/discord-types/*",
+                "./packages/discord-types/src/*"
+            ],
+            "@vencord/discord-types": [
+                "./packages/discord-types",
+                "./packages/discord-types/src/index"
+            ],
+            "discord-types/enums": [
+                "./packages/discord-types/enums"
+            ],
+            "discord-types/enums/*": [
+                "./packages/discord-types/enums/*"
+            ],
+            "discord-types/*": [
+                "./packages/discord-types/*",
+                "./packages/discord-types/src/*"
+            ],
+            "discord-types": [
+                "./packages/discord-types",
+                "./packages/discord-types/src/index"
             ]
         },
         "plugins": [

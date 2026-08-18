@@ -25,10 +25,15 @@ import { exec, execSync } from "child_process";
 import esbuild, { build, context } from "esbuild";
 import { constants as FsConstants, readFileSync } from "fs";
 import { access, readdir, readFile } from "fs/promises";
-import { minify as minifyHtml } from "html-minifier-terser";
 import { dirname, join, relative, resolve } from "path";
 import { fileURLToPath } from "url";
 import { promisify } from "util";
+
+let minifyHtml = (html) => html;
+try {
+    const htmlMin = await import("html-minifier-terser");
+    minifyHtml = htmlMin.minify || htmlMin.default?.minify || minifyHtml;
+} catch {}
 
 import { getPluginTarget } from "../utils.mjs";
 

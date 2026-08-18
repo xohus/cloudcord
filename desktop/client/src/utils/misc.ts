@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -114,8 +114,6 @@ export function isCloudCordGuild(id: string | null | undefined, isGuildId: boole
     return channel.guild_id === GUILD_ID;
 }
 
-export const isCloudCordGuild = isCloudCordGuild;
-
 export function isSupportChannel(channelId: string | null | undefined): boolean {
     if (!channelId) return false;
     return channelId === SUPPORT_CHANNEL_ID;
@@ -128,8 +126,6 @@ export function isCloudCordSupport(userId: string | null | undefined): boolean {
     if (!member) return false;
     return member.roles.includes(CLOUDCORD_HELPERS) || false;
 }
-
-export const isCloudCordSupport = isCloudCordSupport;
 
 export function removeFromArray<T>(arr: T[], predicate: (e: T) => boolean) {
     const idx = arr.findIndex(predicate);
