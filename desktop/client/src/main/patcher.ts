@@ -27,6 +27,13 @@ import { IS_VANILLA } from "./utils/constants";
 
 console.log("[CloudCord] Starting up...");
 
+try {
+    const el = require("electron-log");
+    if (el && typeof el.createLogger !== "function") {
+        el.createLogger = function () { return el; };
+    }
+} catch {}
+
 // Our injector file at app/index.js
 const injectorPath = require.main!.filename;
 

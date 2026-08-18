@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a Discord client mod
  * Copyright (c) 2026 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -192,6 +192,12 @@ const wrapStartup = (coreExports: DiscordDesktopCore | null | undefined) => {
     const origStartup = coreExports.startup;
     coreExports.startup = function (opts, ...rest) {
         try {
+            if (opts?.logger && typeof (opts.logger as any).createLogger !== "function") {
+                (opts.logger as any).createLogger = function () {
+                    return opts.logger;
+                };
+            }
+
             const updaterModule = opts?.updater;
             const inst = updaterModule?.getUpdater?.();
             if (inst) {
@@ -229,12 +235,15 @@ export const installHostUpdateHook = () => {
      */
     const origRequire = Module.prototype.require;
     Module.prototype.require = function (this: Module, id: string) {
-        const result = origRequire.call(this, id);
-        if (!id.includes("discord_desktop_core")) return result;
-
-        if (basename(id.replace(/\\/g, "/")) === "discord_desktop_core") {
-            try { wrapStartup(result?.default ?? result); } catch (e) { error(e); }
-            Module.prototype.require = origRequire;
+        const result = origRequire.apply(this, arguments as any);
+        try {
+            if (typeof id === "string" && id.includes("discord_desktop_core")) {
+                if (basename(id.replace(/\\/g, "/")) === "discord_desktop_core") {
+                    wrapStartup(result?.default ?? result);
+                }
+            }
+        } catch (e) {
+            error(e);
         }
         return result;
     } as typeof Module.prototype.require;

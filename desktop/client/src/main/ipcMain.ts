@@ -186,7 +186,14 @@ app.on("before-quit", async event => {
     }
 });
 
-ipcMain.handle(IpcEvents.GET_RENDERER_CSS, () => readFile(RENDERER_CSS_PATH, "utf-8"));
+ipcMain.handle(IpcEvents.GET_RENDERER_CSS, async () => {
+    try {
+        if (RENDERER_CSS_PATH && existsSync(RENDERER_CSS_PATH)) {
+            return await readFile(RENDERER_CSS_PATH, "utf-8");
+        }
+    } catch {}
+    return "";
+});
 
 if (IS_DISCORD_DESKTOP) {
     ipcMain.on(IpcEvents.PRELOAD_GET_RENDERER_JS, e => {
