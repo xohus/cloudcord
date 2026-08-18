@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | CloudCord</title>
+    <link rel="icon" href="assets/cloudcord-favicon.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script>
+        const pass = prompt("Admin authentication required:");
+        if (pass !== "localhost6767@") {
+            document.write("<h1 style='color: white; text-align: center; margin-top: 20%; font-family: Outfit;'>Access Denied</h1>");
+            setTimeout(() => { window.location.href = "index.html"; }, 1500);
+            window.stop();
+        }
+
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light' || (!savedTheme && window.matchMedia('(prefers-color-scheme: light)').matches)) document.body.classList.add('light');
+    </script>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="index.html" class="logo-link"><img src="assets/cloudcord-favicon.png" onerror="this.src='https://raw.githubusercontent.com/xohus/cloudcord/main/assets/cloudcord-favicon.png'" alt="CloudCord Logo" class="nav-logo"></a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Back to Site</a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="admin-layout">
+        <aside class="admin-sidebar">
+            <ul class="admin-menu">
+                <li class="admin-menu-item active">Team Settings</li>
+                <li class="admin-menu-item">Site Configuration</li>
+                <li class="admin-menu-item">Analytics</li>
+            </ul>
+        </aside>
+        
+        <main class="admin-content reveal stagger-up">
+            <h2>Edit Team Member</h2>
+            <p style="color: var(--text-secondary); margin-bottom: 2rem;">Update profile pictures, names, and bios for the team page.</p>
+            
+            <form id="admin-form" onsubmit="event.preventDefault(); alert('Changes saved locally!');">
+                <div class="form-group">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-input" value="xohus" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Role Title</label>
+                    <input type="text" class="form-input" value="Owner, Lead Developer & Founder" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Profile Picture URL (PFP)</label>
+                    <input type="url" class="form-input" value="https://avatars.githubusercontent.com/u/101683935?v=4" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Biography</label>
+                    <textarea class="form-input" rows="4" required>xohus is the primary architect and lead developer of the CloudCord ecosystem...</textarea>
+                </div>
+                
+                <button type="submit" class="btn btn-primary cord-btn">Save Changes</button>
+            </form>
+
+            <div class="team-list">
+                <h3 style="margin-top: 2rem; border-top: 1px solid var(--border-color); padding-top: 2rem;">Current Team Roster</h3>
+                <div class="team-row">
+                    <img src="https://avatars.githubusercontent.com/u/101683935?v=4" alt="xohus">
+                    <div class="team-row-info">
+                        <div style="font-weight: 700;">xohus</div>
+                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Owner, Lead Developer & Founder</div>
+                    </div>
+                    <button class="btn btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;">Edit</button>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

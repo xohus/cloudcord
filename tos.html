@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terms of Service - CloudCord</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="assets/cloudcord-favicon.png" type="image/png">
+</head>
+<body>
+    <script>
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light' || (!savedTheme && window.matchMedia('(prefers-color-scheme: light)').matches)) document.body.classList.add('light');
+    </script>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="index.html" class="logo-link"><img src="assets/cloudcord-favicon.png" onerror="this.src='https://raw.githubusercontent.com/xohus/cloudcord/main/assets/cloudcord-favicon.png'" alt="CloudCord Logo" class="nav-logo"></a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="tos.html" class="nav-link" style="color: var(--text-primary)">Terms</a>
+            </div>
+        </div>
+    </nav>
+    <main class="page-header" style="padding-top: 150px; padding-bottom: 50px;">
+        <h1 class="section-title">Terms of Service</h1>
+        <p class="section-subtitle">Last updated: August 2026</p>
+    </main>
+    <div style="max-width: 800px; margin: 0 auto 100px; padding: 0 2rem; color: var(--text-secondary); line-height: 1.8;">
+        
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">1. Acceptance of Terms</h3>
+        <p>By downloading, installing, or using the CloudCord client modifications ("CloudCord" or "Software"), you signify your agreement to these Terms of Service. If you do not agree to any of these terms, you may not use the Software. We reserve the right to modify these terms at any time without prior notice, and your continued use of CloudCord constitutes your acceptance of such modifications.</p>
+        
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">2. Disclaimer of Affiliation</h3>
+        <p>CloudCord is a third-party modification and is entirely unaffiliated, unassociated, not authorized, not endorsed by, or in any way officially connected with Discord Inc., or any of its subsidiaries or its affiliates. The official Discord website can be found at https://discord.com. The name "Discord" as well as related names, marks, emblems, and images are registered trademarks of their respective owners.</p>
+
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">3. User Risk and Responsibility</h3>
+        <p>CloudCord modifies the official Discord client by injecting custom code to enable themes, plugins, and enhanced functionality. By using CloudCord, you acknowledge that you are doing so at your own risk. While CloudCord is built with safety in mind, client modifications technically violate Discord's official Terms of Service. CloudCord and its developers (including "xohus") are not responsible for any account suspensions, terminations, data loss, or damages that may result from using this Software.</p>
+
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">4. Prohibited Uses</h3>
+        <p>You agree not to use CloudCord to:</p>
+        <ul style="margin-left: 2rem; margin-top: 0.5rem; margin-bottom: 1.5rem;">
+            <li>Violate any local, state, national, or international law.</li>
+            <li>Spam, harass, abuse, or harm other users on the Discord platform.</li>
+            <li>Bypass rate limits, automate user actions (API abuse), or self-bot in ways that maliciously disrupt services.</li>
+            <li>Create, distribute, or use plugins that steal user tokens, phish for passwords, or otherwise compromise the security of other users.</li>
+        </ul>
+
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">5. Intellectual Property</h3>
+        <p>The original source code, design elements, and assets of CloudCord (excluding those belonging to Discord Inc.) are the intellectual property of xohus and the CloudCord team. You may not claim our code as your own, sell the Software, or distribute modified versions of CloudCord commercially without explicit written permission.</p>
+
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">6. Third-Party Plugins and Themes</h3>
+        <p>CloudCord allows for the installation of third-party plugins and themes. We do not review, endorse, or guarantee the safety of every third-party plugin or theme available on the internet. You are solely responsible for the code you choose to execute within your client. If a third-party plugin violates these Terms or causes harm, CloudCord is not liable.</p>
+
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">7. Termination</h3>
+        <p>We reserve the right to terminate or suspend your access to CloudCord services, support, or associated communities at our sole discretion, without prior notice, for conduct that we believe violates these Terms of Service or is harmful to other users of CloudCord, us, or third parties.</p>
+
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

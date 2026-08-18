@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Privacy Policy - CloudCord</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="assets/cloudcord-favicon.png" type="image/png">
+</head>
+<body>
+    <script>
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light' || (!savedTheme && window.matchMedia('(prefers-color-scheme: light)').matches)) document.body.classList.add('light');
+    </script>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="index.html" class="logo-link"><img src="assets/cloudcord-favicon.png" onerror="this.src='https://raw.githubusercontent.com/xohus/cloudcord/main/assets/cloudcord-favicon.png'" alt="CloudCord Logo" class="nav-logo"></a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="privacy.html" class="nav-link" style="color: var(--text-primary)">Privacy</a>
+            </div>
+        </div>
+    </nav>
+    <main class="page-header" style="padding-top: 150px; padding-bottom: 50px;">
+        <h1 class="section-title">Privacy Policy</h1>
+        <p class="section-subtitle">Last updated: August 2026</p>
+    </main>
+    <div style="max-width: 800px; margin: 0 auto 100px; padding: 0 2rem; color: var(--text-secondary); line-height: 1.8;">
+        
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">1. Introduction</h3>
+        <p>At CloudCord, your privacy is our top priority. Because of the nature of client modifications, we believe in complete transparency. This Privacy Policy outlines what information we collect, how it is used, and why we do not want your personal data.</p>
+        
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">2. Information We Collect</h3>
+        <p><strong>CloudCord is designed to operate locally on your machine.</strong> We do not track you, we do not employ telemetry, and we do not collect personal identifiers.</p>
+        <ul style="margin-left: 2rem; margin-top: 0.5rem; margin-bottom: 1.5rem;">
+            <li><strong>Local Data:</strong> Your plugins, themes, and settings are stored locally on your device in your AppData directory. This data never leaves your computer unless you explicitly choose to export or share it.</li>
+            <li><strong>Website Analytics:</strong> If you visit the CloudCord website, we may collect basic, anonymous analytics (such as page views or browser type) to help us improve the site. This does not include personally identifiable information.</li>
+        </ul>
+
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">3. Discord Data and Tokens</h3>
+        <p>CloudCord does <strong>not</strong> have access to your Discord account, messages, or authentication token. All communication with Discord servers happens directly between your modified client and Discord's API. We do not proxy, intercept, or log your messages.</p>
+
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">4. Third-Party Plugins</h3>
+        <p>While the core CloudCord client respects your privacy, third-party plugins installed by you may have their own data collection practices. If you install a plugin that connects to an external API (for example, a translation plugin or an image host), that plugin may share your data with third parties. We urge you to review the source code or privacy policies of third-party plugins before installing them.</p>
+
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">5. Security</h3>
+        <p>We are committed to ensuring that your information is secure. In order to prevent unauthorized access or disclosure, we have made the CloudCord injector open-source, allowing security researchers to independently verify that no malicious data exfiltration is occurring.</p>
+
+        <h3 style="color: var(--text-primary); margin-bottom: 1rem; margin-top: 2rem; font-size: 1.5rem;">6. Changes to this Policy</h3>
+        <p>We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page. You are advised to review this Privacy Policy periodically for any changes.</p>
+
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

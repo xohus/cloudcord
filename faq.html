@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FAQ | CloudCord</title>
+    <link rel="icon" href="assets/cloudcord-favicon.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        .page-content { padding: 150px 2rem 100px; max-width: 800px; margin: 0 auto; min-height: 80vh; }
+        .faq-item { background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 2rem; margin-bottom: 1.5rem; transition: transform 0.2s; }
+        .faq-item:hover { transform: translateY(-2px); border-color: var(--text-secondary); }
+        .faq-q { font-size: 1.25rem; margin-bottom: 0.75rem; color: var(--text-primary); }
+        .faq-a { color: var(--text-secondary); line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <script>
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light' || (!savedTheme && window.matchMedia('(prefers-color-scheme: light)').matches)) document.body.classList.add('light');
+    </script>
+    <!-- Global Status Banner -->
+    <div style="background: linear-gradient(90deg, #ed4245, #c03538); color: #ffffff; padding: 0.65rem 1rem; text-align: center; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.6rem; z-index: 1000; position: relative; box-shadow: 0 2px 10px rgba(237, 66, 69, 0.3);">
+        <span style="display: inline-block; width: 10px; height: 10px; background-color: #ffffff; border-radius: 50%; box-shadow: 0 0 8px #ffffff;"></span>
+        <span><strong>Desktop Status: DOWN</strong> — CloudCord Desktop (PC) is currently offline while our team investigates client updates. Mobile apps (iOS & Android) are fully operational.</span>
+    </div>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="index.html" class="logo-link"><img src="assets/cloudcord-favicon.png" onerror="this.src='https://raw.githubusercontent.com/xohus/cloudcord/main/assets/cloudcord-favicon.png'" alt="CloudCord Logo" class="nav-logo"></a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="faq.html" class="nav-link" style="color: var(--text-primary)">FAQ</a>
+            </div>
+        </div>
+    </nav>
+    <main class="page-content">
+        <h1 class="reveal stagger-up">Frequently Asked Questions</h1>
+        <p class="section-subtitle reveal stagger-up" style="margin-bottom: 3rem; text-align: left; margin-left: 0;">Find answers to the most common questions about CloudCord.</p>
+        
+        <div class="faq-item reveal stagger-up" style="transition-delay: 0.1s">
+            <h3 class="faq-q">Is CloudCord safe to use?</h3>
+            <p class="faq-a">Yes. CloudCord prioritizes local-first configurations, meaning your bot tokens and environment variables never leave your machine. The runtime relies entirely on client-side compilation.</p>
+        </div>
+        
+        <div class="faq-item reveal stagger-up" style="transition-delay: 0.2s">
+            <h3 class="faq-q">Will this affect my primary Discord installation?</h3>
+            <p class="faq-a">No. CloudCord operates autonomously and does not destructively patch or alter your primary host installation files in a way that breaks standard updates.</p>
+        </div>
+
+        <div class="faq-item reveal stagger-up" style="transition-delay: 0.3s">
+            <h3 class="faq-q">How do I access the plugins?</h3>
+            <p class="faq-a">Over 450+ plugins are packaged directly within the CloudCord settings menu. You can toggle, configure, and override them natively without requiring external downloads.</p>
+        </div>
+
+        <div class="faq-item reveal stagger-up" style="transition-delay: 0.4s">
+            <h3 class="faq-q">What is the status of CloudCord on Windows (PC)?</h3>
+            <p class="faq-a"><strong style="color: #ed4245;">🔴 Current Status: DOWN (Under Maintenance).</strong> Windows PC downloads and updates are temporarily offline while our developers investigate client compatibility updates. We will re-enable desktop downloads as soon as testing concludes.</p>
+        </div>
+
+        <div class="faq-item reveal stagger-up" style="transition-delay: 0.5s">
+            <h3 class="faq-q">How do I install CloudCord on iOS?</h3>
+            <p class="faq-a" style="margin-bottom: 0.5rem;">Download the <code>.ipa</code> file and sideload it to your device using your preferred signing tool. We recommend the following methods:</p>
+            <ul style="color: var(--text-secondary); margin-left: 1.5rem; line-height: 1.6; margin-bottom: 0;">
+                <li><strong>ESign</strong> - A powerful on-device signing tool</li>
+                <li><strong>Scarlet</strong> - An easy-to-use on-device installer</li>
+                <li><strong>KSign</strong> - For seamless app signing</li>
+                <li><strong>TrollStore</strong> - For permanent installation (if on a supported iOS version)</li>
+                <li><strong>AltStore</strong> or <strong>Sideloadly</strong> - For computer-based sideloading</li>
+            </ul>
+        </div>
+
+        <div class="faq-item reveal stagger-up" style="transition-delay: 0.6s">
+            <h3 class="faq-q">How do I install CloudCord on Android?</h3>
+            <p class="faq-a">Download the <code>.apk</code> file from our download section. Open the file on your device to begin the installation. If prompted, make sure to enable <strong>"Install from unknown sources"</strong> in your Android settings.</p>
+        </div>
+
+        <div class="faq-item reveal stagger-up" style="transition-delay: 0.7s">
+            <h3 class="faq-q">Can my account get banned?</h3>
+            <p class="faq-a">CloudCord is built with extreme safety in mind. While custom clients are technically against Discord's Terms of Service, CloudCord employs advanced spoofing and safety protocols to ensure your account remains completely secure.</p>
+        </div>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>

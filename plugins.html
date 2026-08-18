@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plugins Directory | CloudCord</title>
+    <link rel="icon" href="assets/cloudcord-favicon.png" type="image/png">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <script>
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme === 'light' || (!savedTheme && window.matchMedia('(prefers-color-scheme: light)').matches)) document.body.classList.add('light');
+    </script>
+    <!-- Global Status Banner -->
+    <div style="background: linear-gradient(90deg, #ed4245, #c03538); color: #ffffff; padding: 0.65rem 1rem; text-align: center; font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 0.6rem; z-index: 1000; position: relative; box-shadow: 0 2px 10px rgba(237, 66, 69, 0.3);">
+        <span style="display: inline-block; width: 10px; height: 10px; background-color: #ffffff; border-radius: 50%; box-shadow: 0 0 8px #ffffff;"></span>
+        <span><strong>Desktop Status: DOWN</strong> — CloudCord Desktop (PC) is currently offline while our team investigates client updates. Mobile apps (iOS & Android) are fully operational.</span>
+    </div>
+    <nav class="navbar">
+        <div class="nav-content">
+            <a href="index.html" class="logo-link"><img src="assets/cloudcord-favicon.png" onerror="this.src='https://raw.githubusercontent.com/xohus/cloudcord/main/assets/cloudcord-favicon.png'" alt="CloudCord Logo" class="nav-logo"></a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="plugins.html" class="nav-link" style="color: var(--text-primary);">Plugins</a>
+            </div>
+        </div>
+    </nav>
+    
+    <header class="page-header reveal stagger-up">
+        <h1 class="section-title">Plugins Directory</h1>
+        <p class="section-subtitle">Browse and discover over 450+ native CloudCord plugins.</p>
+    </header>
+
+    <main class="plugins-container">
+        <div class="plugin-tabs" style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1.5rem;">
+            <button id="tab-desktop" class="btn btn-primary cord-btn">Desktop Plugins</button>
+            <button id="tab-mobile" class="btn btn-secondary cord-btn">Mobile Plugins</button>
+        </div>
+        <div id="plugin-instructions" style="text-align: center; color: var(--text-secondary); margin-bottom: 2.5rem; line-height: 1.6; font-size: 1.05rem;">
+            <!-- Filled by JS -->
+        </div>
+        
+        <input type="text" id="plugin-search" class="plugin-search" placeholder="Search for plugins (e.g. SpotifyCrack, FakeNitro)...">
+        <div id="plugins-grid" class="plugins-grid">
+            <!-- Rendered by script.js -->
+        </div>
+        
+        <!-- Plugin Details Modal -->
+        <div id="plugin-details-modal" class="modal">
+            <div class="modal-content" style="max-width: 500px; text-align: left; padding: 2.5rem; border-radius: 12px; position: relative;">
+                <span class="close-plugin-modal close-modal">&times;</span>
+                <div style="margin-bottom: 1.5rem;">
+                    <h2 id="modal-plugin-title" style="color: var(--text-primary); font-size: 1.8rem; margin: 0; word-break: break-word; margin-right: 2rem;">Plugin Name</h2>
+                    <span style="font-size: 0.85rem; color: var(--accent-green); font-weight: 600; padding: 0.2rem 0.6rem; background: rgba(35, 165, 89, 0.1); border-radius: 4px; display: inline-block; margin-top: 0.5rem;">Verified Safe</span>
+                </div>
+                
+                <p id="modal-plugin-desc" style="color: var(--text-secondary); line-height: 1.6; margin-bottom: 2rem; font-size: 1.05rem;">Description goes here.</p>
+                
+                <div style="background: var(--bg-secondary); padding: 1.5rem; border-radius: 8px;">
+                    <div style="background: rgba(88, 101, 242, 0.1); border-left: 4px solid var(--accent-purple); padding: 1rem; border-radius: 4px; margin-bottom: 1.5rem;">
+                        <span style="color: var(--text-primary); font-weight: 600; display: block; font-size: 1rem; margin-bottom: 0.5rem;">How to install this plugin:</span>
+                        <span id="modal-install-instructions" style="color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5; display: block;"></span>
+                    </div>
+                    
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-primary); font-size: 0.95rem; font-weight: 500;">Copy exact name:</span>
+                        <button id="modal-plugin-copy" class="btn btn-secondary cord-btn" style="padding: 0.5rem 1.25rem; font-size: 0.9rem;">Copy Name</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <script src="script.js"></script>
+</body>
+</html>
