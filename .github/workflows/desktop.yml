@@ -121,6 +121,16 @@ jobs:
           cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord-test.asar
           test -f desktop/client/dist/desktop.asar
 
+      - name: Clean up test assets from production release tag
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete-asset --repo "${{ github.repository }}" new_beta_t_desktop cloudcord-test.asar --yes || true
+          gh release delete-asset --repo "${{ github.repository }}" new_beta_t_desktop cloudcord-test.exe --yes || true
+          gh release delete-asset --repo "${{ github.repository }}" new_beta_t_desktop CloudCordSetup-Test.exe --yes || true
+          gh release delete-asset --repo "${{ github.repository }}" new_beta_t_desktop desktop-test.asar --yes || true
+
       - name: Upload binaries to GitHub Releases (Test Channel Only)
         shell: bash
         env:
