@@ -84,7 +84,7 @@ if (!IS_VANILLA) {
 
     class BrowserWindow extends electron.BrowserWindow {
         constructor(options: BrowserWindowConstructorOptions) {
-            if (!options?.webPreferences?.preload || !options.title) {
+            if (!options?.webPreferences?.preload) {
                 super(options);
                 return;
             }
@@ -92,7 +92,7 @@ if (!IS_VANILLA) {
             const { frameless, mainWindowFrameless, winNativeTitleBar, disableMinSize, transparent, macosVibrancyStyle, windowsMaterial } = settings;
 
             const original = options.webPreferences.preload;
-            const isMainWindow = options.title === "Discord";
+            const isMainWindow = !options.title || options.title === "Discord" || options.title.toLowerCase().includes("discord");
             options.webPreferences.preload = join(__dirname, "preload.js");
             options.webPreferences.sandbox = false;
             // work around discord unloading when in background
