@@ -35,6 +35,25 @@ case "$(uname -s)" in
         ;;
 esac
 
+mkdir -p ../dist
+
+if [ -f "$OUT" ]; then
+    echo "Found 30.6 MB prebuilt $OUT, copying directly to dist..."
+    cp "$OUT" "../dist/$OUT"
+    if [ "$OUT" = "CloudCordSetup.exe" ]; then
+        cp "$OUT" "../dist/cloudcord.exe"
+        if [ -f "CloudCordSetup-Test.exe" ]; then
+            cp "CloudCordSetup-Test.exe" "../dist/CloudCordSetup-Test.exe"
+            cp "CloudCordSetup-Test.exe" "../dist/cloudcord-test.exe"
+        else
+            cp "$OUT" "../dist/CloudCordSetup-Test.exe"
+            cp "$OUT" "../dist/cloudcord-test.exe"
+        fi
+    fi
+    echo "Done! 30.6 MB prebuilt installer packaged at dist/$OUT"
+    exit 0
+fi
+
 echo "Building $OUT..."
 go build -ldflags="-s -w" -o "$OUT" .
 chmod +x "$OUT" 2>/dev/null || true
