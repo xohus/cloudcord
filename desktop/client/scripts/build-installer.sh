@@ -36,7 +36,7 @@ case "$(uname -s)" in
 esac
 
 echo "Building $OUT..."
-go build -o "$OUT" .
+go build -ldflags="-s -w" -o "$OUT" .
 chmod +x "$OUT" 2>/dev/null || true
 mkdir -p ../dist
 cp "$OUT" "../dist/$OUT"

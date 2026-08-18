@@ -153,14 +153,13 @@ jobs:
 
             const patched = text
               .replaceAll("Sincord", "CloudCord")
-              .replaceAll("sincord", "cloudcord")
               .replaceAll("SINCORD", "CLOUDCORD")
               .replaceAll("Sinlotl", "CloudCordSetup")
               .replaceAll("export const isCloudCordGuild = isCloudCordGuild;", "")
               .replaceAll("export const isCloudCordSupport = isCloudCordSupport;", "")
               .replaceAll("The better Discord client mod", "CloudCord desktop client mod")
-              .replaceAll("https://github.com/CloudCord/CloudCord", "https://github.com/xohus/cloudcord")
-              .replaceAll("git+https://github.com/CloudCord/CloudCord.git", "git+https://github.com/xohus/cloudcord.git");
+              .replaceAll("https://github.com/Sincord/Sincord", "https://github.com/xohus/cloudcord")
+              .replaceAll("git+https://github.com/Sincord/Sincord.git", "git+https://github.com/xohus/cloudcord.git");
 
             if (patched !== text) {
               fs.writeFileSync(file, patched);
@@ -168,27 +167,7 @@ jobs:
           }
 
           function walk(dir) {
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            
-            // First rename any entries in this directory
-            for (const entry of entries) {
-              const oldPath = path.join(dir, entry.name);
-              let newName = entry.name;
-              
-              if (newName.includes("Sincord")) newName = newName.replaceAll("Sincord", "CloudCord");
-              if (newName.includes("sincord")) newName = newName.replaceAll("sincord", "cloudcord");
-              if (newName.includes("SINCORD")) newName = newName.replaceAll("SINCORD", "CLOUDCORD");
-              
-              if (newName !== entry.name) {
-                const newPath = path.join(dir, newName);
-                fs.renameSync(oldPath, newPath);
-                // Update the entry name so we can process it correctly below
-                entry.name = newName;
-              }
-            }
-
-            // Then process the updated entries
-            for (const entry of entries) {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
               const full = path.join(dir, entry.name);
 
               if (entry.isDirectory()) {
@@ -346,12 +325,15 @@ jobs:
           asar pack desktop/client/dist/desktop desktop/client/dist/desktop.asar
           test -f desktop/client/dist/desktop.asar
 
-      - name: Upload desktop.asar to GitHub Release
+      - name: Upload binaries to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: new_beta_t_desktop
           name: CloudCord Desktop ${{ github.sha }}
           make_latest: true
-          files: desktop/client/dist/desktop.asar
+          files: |
+            desktop/client/dist/desktop.asar
+            desktop/client/dist/CloudCordSetup.exe
+            desktop/client/dist/cloudcord.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

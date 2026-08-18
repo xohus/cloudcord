@@ -1,9 +1,9 @@
 //go:build !cli
 
 /*
- * SPDX-License-Identifier: GPL-3.0
- * Vencord Installer, a cross platform gui/cli app for installing Vencord
- * Copyright (c) 2023 Vendicated and Vencord contributors
+ * CloudCord Desktop Installer
+ * Copyright (c) 2026 Xohus and CloudCord contributors
+ * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 package main
@@ -14,18 +14,14 @@ import (
 	"errors"
 	"image"
 	"image/color"
-	"sinlotl/buildinfo"
-
-	imgui "github.com/AllenDang/cimgui-go/imgui"
-	g "github.com/AllenDang/giu"
-
-	// png decoder for icon
 	_ "image/png"
 	"os"
-	path "path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
+
+	imgui "github.com/AllenDang/cimgui-go/imgui"
+	g "github.com/AllenDang/giu"
 )
 
 var (
@@ -53,10 +49,7 @@ var (
 
 	win *g.MasterWindow
 
-	cachedWarningMarkdown   *g.MarkdownWidget
-	cachedGithubErrMarkdown *g.MarkdownWidget
-	lastGithubErrText       string
-	patchSuccessTitle       = "CloudCord Desktop installed"
+	patchSuccessTitle = "CloudCord Desktop installed"
 )
 
 //go:embed winres/icon.png
@@ -67,33 +60,21 @@ func init() {
 }
 
 func main() {
+	hideConsole()
 	var fallbackScale float32 = 1.0
 	if scaleStr := os.Getenv("EQUILOTL_SCALE"); scaleStr != "" {
 		if s, err := strconv.ParseFloat(scaleStr, 32); err == nil && s > 0 && s < 99 {
 			fallbackScale = float32(s)
-			Log.Info("Using custom DPI scale:", fallbackScale)
-		} else {
-			Log.Warn("Invalid value for EQUILOTL_SCALE:", scaleStr)
-		}
-	} else if scaleStr := os.Getenv("EQUILOTL_DPI_SCALE"); scaleStr != "" {
-		if s, err := strconv.ParseFloat(scaleStr, 32); err == nil && s > 0 && s < 99 {
-			fallbackScale = float32(s)
-			Log.Info("Using custom DPI scale:", fallbackScale)
-		} else {
-			Log.Warn("Invalid value for EQUILOTL_DPI_SCALE:", scaleStr)
 		}
 	}
 
 	imgui.SetAssertHandler(func(expression string, file string, line int) {
 		if strings.Contains(expression, "DpiScale") {
-			Log.Warn("Ignoring ImGui DPI scale assertion failure:", expression, "at", file, "line", line)
-
 			io := imgui.CurrentPlatformIO()
 			monitors := io.Monitors().Slice()
-			for i, mon := range monitors {
+			for _, mon := range monitors {
 				scale := mon.DpiScale()
 				if scale <= 0 || scale >= 99 {
-					Log.Warn("Resetting invalid monitor", i, "DPI scale from", scale, "to", fallbackScale)
 					mon.SetDpiScale(fallbackScale)
 				}
 			}
@@ -108,7 +89,6 @@ func main() {
 
 	InitGithubDownloader()
 	discords = FindDiscords()
-
 	customChoiceIdx = len(discords)
 
 	var linuxFlags g.MasterWindowFlags = 0
@@ -117,7 +97,7 @@ func main() {
 		os.Setenv("GDK_DPI_SCALE", "1")
 	}
 
-	win = g.NewMasterWindow("CloudCord Setup", 1200, 800, linuxFlags)
+	win = g.NewMasterWindow("CloudCord Desktop", 760, 480, linuxFlags)
 
 	go func() {
 		<-GithubDoneChan
@@ -130,10 +110,7 @@ func main() {
 	}()
 
 	icon, _, err := image.Decode(bytes.NewReader(iconBytes))
-	if err != nil {
-		Log.Warn("Failed to load application icon", err)
-		Log.Debug(iconBytes, len(iconBytes))
-	} else {
+	if err == nil {
 		win.SetIcon(icon)
 	}
 	win.Run(loop)
@@ -197,36 +174,6 @@ func handleUnpatch() {
 	}
 }
 
-func handleOpenAsar() {
-	if acceptedOpenAsar || getChosenInstall().IsOpenAsar() {
-		handleOpenAsarConfirmed()
-		return
-	}
-
-	g.OpenPopup("#openasar-confirm")
-}
-
-func handleOpenAsarConfirmed() {
-	choice := getChosenInstall()
-	if choice != nil {
-		if choice.IsOpenAsar() {
-			if err := choice.UninstallOpenAsar(); err != nil {
-				handleErr(choice, err, "uninstall OpenAsar from")
-			} else {
-				g.OpenPopup("#openasar-unpatched")
-				g.Update()
-			}
-		} else {
-			if err := choice.InstallOpenAsar(); err != nil {
-				handleErr(choice, err, "install OpenAsar on")
-			} else {
-				g.OpenPopup("#openasar-patched")
-				g.Update()
-			}
-		}
-	}
-}
-
 func handleErr(di *DiscordInstall, err error, action string) {
 	if errors.Is(err, ErrAlreadyReported) {
 		return
@@ -234,24 +181,13 @@ func handleErr(di *DiscordInstall, err error, action string) {
 	if errors.Is(err, os.ErrPermission) {
 		switch runtime.GOOS {
 		case "windows":
-			err = errors.New("Permission denied. Make sure your Discord is fully closed (from the tray)!")
-		case "darwin":
-			// FIXME: This text is not selectable which is a bit mehhh
-			command := "sudo chown -R \"${USER}:wheel\" " + di.path
-			err = errors.New("Permission denied. Please grant the installer Full Disk Access in the system settings (privacy & security page).\n\nIf that also doesn't work, try running the following command in your terminal:\n" + command)
-		case "linux":
-			command := "sudo chown -R \"$USER:$USER\" " + di.path
-			err = errors.New("Permission denied. Try to run the installer with sudo privileges.\n\nIf that also doesn't work, try running the following command in your terminal:\n" + command)
+			err = errors.New("Permission denied. Make sure your Discord is fully closed (from the system tray)!")
 		default:
-			err = errors.New("Permission denied. Maybe try running me as Administrator/Root?")
+			err = errors.New("Permission denied. Try running the installer as Administrator.")
 		}
 	}
 
 	ShowModal("Failed to "+action+" this Install", err.Error())
-}
-
-func HandleScuffedInstall() {
-	g.OpenPopup("#scuffed-install")
 }
 
 func (di *DiscordInstall) Patch() {
@@ -273,207 +209,6 @@ func (di *DiscordInstall) Unpatch() {
 	}
 }
 
-func onCustomInputChanged() {
-	p := customDir
-	if len(p) != 0 {
-		// Select the custom option for people
-		radioIdx = customChoiceIdx
-	}
-
-	dir := path.Dir(p)
-
-	isNewDir := strings.HasSuffix(p, "/")
-	wentUpADir := !isNewDir && dir != autoCompleteDir
-
-	if isNewDir || wentUpADir {
-		autoCompleteDir = dir
-		// reset all the funnies
-		autoCompleteIdx = 0
-		lastAutoComplete = ""
-		autoCompleteFile = ""
-		autoCompleteCandidates = nil
-
-		// Generate autocomplete items
-		files, err := os.ReadDir(dir)
-		if err == nil {
-			for _, file := range files {
-				autoCompleteCandidates = append(autoCompleteCandidates, file.Name())
-			}
-		}
-	} else if !didAutoComplete {
-		// reset auto complete and update our file
-		autoCompleteFile = path.Base(p)
-		lastAutoComplete = ""
-	}
-
-	if wentUpADir {
-		autoCompleteFile = path.Base(p)
-	}
-
-	didAutoComplete = false
-}
-
-// go can you give me []any?
-// to pass to giu RangeBuilder?
-// yeeeeees
-// actually returns []string like a boss
-func makeAutoComplete() []any {
-	input := strings.ToLower(autoCompleteFile)
-
-	var candidates []any
-	for _, e := range autoCompleteCandidates {
-		file := strings.ToLower(e)
-		if autoCompleteFile == "" || strings.HasPrefix(file, input) {
-			candidates = append(candidates, e)
-		}
-	}
-	return candidates
-}
-
-func makeRadioOnChange(i int) func() {
-	return func() {
-		radioIdx = i
-	}
-}
-
-func Tooltip(label string) g.Widget {
-	return g.Style().
-		SetStyle(g.StyleVarWindowPadding, 10, 8).
-		SetStyleFloat(g.StyleVarWindowRounding, 8).
-		To(
-			g.Tooltip(label),
-		)
-}
-
-func InfoModal(id, title, description string) g.Widget {
-	return RawInfoModal(id, title, description, false)
-}
-
-func RawInfoModal(id, title, description string, isOpenAsar bool) g.Widget {
-	isDynamic := strings.HasPrefix(id, "#modal") && !strings.Contains(description, "\n")
-	return g.Style().
-		SetStyle(g.StyleVarWindowPadding, 30, 30).
-		SetStyleFloat(g.StyleVarWindowRounding, 12).
-		To(
-			g.Custom(func() {
-				wi, _ := win.GetSize()
-				modalW := float32(wi) * 0.8
-				if modalW < 300 {
-					modalW = 300
-				}
-				g.SetNextWindowSize(modalW, 0)
-			}),
-			g.PopupModal(id).
-				Flags(g.WindowFlagsNoTitleBar|g.WindowFlagsNoResize|g.WindowFlagsNoMove|Ternary(isDynamic, g.WindowFlagsAlwaysAutoResize, 0)).
-				Layout(
-					g.Align(g.AlignCenter).To(
-						g.Style().SetFontSize(30).To(
-							g.Label(title),
-						),
-					),
-					g.Dummy(0, 10),
-					g.Style().SetFontSize(16).To(
-						g.Label(description).Wrapped(true),
-					),
-					&CondWidget{id == "#scuffed-install", func() g.Widget {
-						return g.Column(
-							g.Dummy(0, 10),
-							g.Align(g.AlignCenter).To(
-								g.Button("Take me there!").OnClick(func() {
-									// this issue only exists on windows so using Windows specific path is oki
-									username := os.Getenv("USERNAME")
-									programData := os.Getenv("PROGRAMDATA")
-									g.OpenURL("file://" + path.Join(programData, username))
-								}).Size(200, 30),
-							),
-						)
-					}, nil},
-					g.Dummy(0, 20),
-					g.Align(g.AlignCenter).To(
-						&CondWidget{isOpenAsar,
-							func() g.Widget {
-								return g.Row(
-									g.Button("Accept").
-										OnClick(func() {
-											acceptedOpenAsar = true
-											g.CloseCurrentPopup()
-										}).
-										Size(100, 30),
-									g.Button("Cancel").
-										OnClick(func() {
-											g.CloseCurrentPopup()
-										}).
-										Size(100, 30),
-								)
-							},
-							func() g.Widget {
-								return g.Button("Ok").
-									OnClick(func() {
-										g.CloseCurrentPopup()
-									}).
-									Size(100, 30)
-							},
-						},
-					),
-				),
-		)
-}
-
-func UpdateModal() g.Widget {
-	return g.Style().
-		SetStyle(g.StyleVarWindowPadding, 30, 30).
-		SetStyleFloat(g.StyleVarWindowRounding, 12).
-		To(
-			g.Custom(func() {
-				wi, _ := win.GetSize()
-				g.SetNextWindowSize(float32(wi)*0.8, 0)
-			}),
-			g.PopupModal("#update-prompt").
-				Flags(g.WindowFlagsNoTitleBar|g.WindowFlagsNoResize|g.WindowFlagsNoMove|g.WindowFlagsAlwaysAutoResize).
-				Layout(
-					g.Align(g.AlignCenter).To(
-						g.Style().SetFontSize(30).To(
-							g.Label("Your Installer is outdated!"),
-						),
-						g.Label(
-							"Would you like to update now?\n\n"+
-								"Once you press Update Now, the new installer will automatically be downloaded.\n"+
-								"The installer will temporarily seem unresponsive. Just wait!\n"+
-								"Once the update is done, the Installer will automatically reopen.\n\n"+
-								"On MacOs, Auto updates are not supported, so it will instead open in browser.",
-						).Wrapped(true),
-						g.Row(
-							g.Button("Update Now").
-								OnClick(func() {
-									if runtime.GOOS == "darwin" {
-										g.CloseCurrentPopup()
-										g.OpenURL(GetInstallerDownloadLink())
-										return
-									}
-
-									err := UpdateSelf()
-									g.CloseCurrentPopup()
-
-									if err != nil {
-										ShowModal("Failed to update self!", err.Error())
-									} else {
-										if err = RelaunchSelf(); err != nil {
-											ShowModal("Failed to restart self! Please do it manually.", err.Error())
-										}
-									}
-								}).
-								Size(100, 30),
-							g.Button("Later").
-								OnClick(func() {
-									g.CloseCurrentPopup()
-								}).
-								Size(100, 30),
-						),
-					),
-				),
-		)
-}
-
 func ShowModal(title, desc string) {
 	modalTitle = title
 	modalMessage = desc
@@ -481,224 +216,27 @@ func ShowModal(title, desc string) {
 	g.OpenPopup("#modal" + strconv.Itoa(modalId))
 }
 
-func renderInstaller() g.Widget {
-	if customDir != lastCustomDir {
-		cachedCandidates = makeAutoComplete()
-		lastCustomDir = customDir
-	}
-	candidates := cachedCandidates
-	wi, _ := win.GetSize()
-	w := float32(wi) - 96
-	if w < 200 {
-		w = 200
-	}
-	btnWidth := (w - 40) / 4
-	if btnWidth < 1 {
-		btnWidth = 1
-	}
-
-	var currentDiscord *DiscordInstall
-	if radioIdx != customChoiceIdx && radioIdx >= 0 && radioIdx < len(discords) {
-		currentDiscord = discords[radioIdx].(*DiscordInstall)
-	}
-	var isOpenAsar = currentDiscord != nil && currentDiscord.IsOpenAsar()
-
-	if CanUpdateSelf() && !showedUpdatePrompt {
-		showedUpdatePrompt = true
-		g.OpenPopup("#update-prompt")
-	}
-
-	var warningHeight float32 = 90
-	var baseFontSize float32 = 30
-	if runtime.GOOS == "darwin" {
-		warningHeight = 130
-		baseFontSize = 20
-	}
-
-	layout := g.Layout{
-		g.Dummy(0, 20),
-		g.Separator(),
-		g.Dummy(0, 5),
-
-		renderErrorCard(
-			DiscordYellow,
-			func() *g.MarkdownWidget {
-				if cachedWarningMarkdown == nil {
-					cachedWarningMarkdown = g.Markdown("**https://github.com/xohus/cloudcord** is the official source for CloudCord Desktop. Any other site claiming to be us is not official.\n" +
-						"If you downloaded from any other source, you should delete / uninstall everything immediately, run a malware scan and change your Discord password.")
-				}
-				return cachedWarningMarkdown
-			}(),
-			warningHeight,
-		),
-
-		g.Dummy(0, 5),
-
-		g.Style().SetFontSize(baseFontSize).To(
-			g.Label("Please select an install to patch"),
-		),
-
-		&CondWidget{len(discords) == 0, func() g.Widget {
-			s := "No Discord installs found. You first need to install Discord."
-			if runtime.GOOS == "linux" {
-				s += " snap is not supported."
-			}
-			return g.Label(s)
-		}, nil},
-
-		g.RangeBuilder("Discords", discords, func(i int, v any) g.Widget {
-			d := v.(*DiscordInstall)
-			//goland:noinspection GoDeprecation
-			text := strings.Title(d.branch) + " - " + d.path
-			if d.isPatched {
-				text += " [PATCHED]"
-			}
-			return g.RadioButton(text, radioIdx == i).
-				OnChange(makeRadioOnChange(i))
-		}),
-
-		g.RadioButton("Custom Install Location", radioIdx == customChoiceIdx).
-			OnChange(makeRadioOnChange(customChoiceIdx)),
-
-		g.Dummy(0, 5),
-		g.Style().
-			SetStyle(g.StyleVarFramePadding, 16, 16).
-			To(
-				g.InputText(&customDir).Hint("The custom location").
-					Size(w - 16).
-					Flags(g.InputTextFlagsCallbackCompletion).
-					OnChange(onCustomInputChanged).
-					// this library has its own autocomplete but it's broken
-					Callback(
-						func(data imgui.InputTextCallbackData) int {
-							if len(candidates) == 0 {
-								return 0
-							}
-							// just wrap around
-							if autoCompleteIdx >= len(candidates) {
-								autoCompleteIdx = 0
-							}
-
-							// used by change handler
-							didAutoComplete = true
-
-							start := len(customDir)
-							// Delete previous auto complete
-							if lastAutoComplete != "" {
-								start -= len(lastAutoComplete)
-								data.DeleteChars(int32(start), int32(len(lastAutoComplete)))
-							} else if autoCompleteFile != "" { // delete partial input
-								start -= len(autoCompleteFile)
-								data.DeleteChars(int32(start), int32(len(autoCompleteFile)))
-							}
-
-							// Insert auto complete
-							lastAutoComplete = candidates[autoCompleteIdx].(string)
-							data.InsertChars(int32(start), lastAutoComplete)
-							autoCompleteIdx++
-
-							return 0
-						},
-					),
-			),
-		g.RangeBuilder("AutoComplete", candidates, func(i int, v any) g.Widget {
-			dir := v.(string)
-			return g.Label(dir)
-		}),
-
-		g.Dummy(0, 20),
-		g.Row(
-			g.Style().
-				SetColor(g.StyleColorButton, DiscordGreen).
-				SetDisabled(false).
-				To(
-					g.Button("Install CloudCord").
-						OnClick(func() {
-							patchSuccessTitle = "CloudCord Desktop installed"
-							handlePatch()
-						}).
-						Size(btnWidth, 50),
-					Tooltip("Patch the selected Discord Install"),
-				),
-			g.Style().
-				SetColor(g.StyleColorButton, DiscordBlue).
-				SetDisabled(false).
-				To(
-					g.Button("Repair CloudCord").
-						OnClick(func() {
-							patchSuccessTitle = "CloudCord Desktop repaired"
-							if IsDevInstall {
-								handlePatch()
-							} else {
-								err := InstallLatestBuilds()
-								if err == nil {
-									handlePatch()
-								}
-							}
-						}).
-						Size(btnWidth, 50),
-					Tooltip("Repair CloudCord"),
-				),
-			g.Style().
-				SetColor(g.StyleColorButton, DiscordRed).
-				To(
-					g.Button("Uninstall CloudCord").
-						OnClick(handleUnpatch).
-						Size(btnWidth, 50),
-					Tooltip("Unpatch the selected Discord Install"),
-				),
-			g.Style().
-				SetColor(g.StyleColorButton, Ternary(isOpenAsar, DiscordRed, DiscordGreen)).
-				To(
-					g.Button(Ternary(isOpenAsar, "Uninstall OpenAsar", Ternary(currentDiscord != nil, "Install OpenAsar", "(Un-)Install OpenAsar"))).
-						OnClick(handleOpenAsar).
-						Size(btnWidth, 50),
-					Tooltip("Manage OpenAsar"),
-				),
-		),
-
-		InfoModal("#patched", patchSuccessTitle, "If Discord is still open, fully close it first.\n"+
-			"Then, start it and verify CloudCord installed successfully by looking for its category in Discord Settings"),
-		InfoModal("#unpatched", "CloudCord Desktop removed", "If Discord is still open, fully close it first. Then start it again, it should be back to stock!"),
-		InfoModal("#scuffed-install", "Hold On!", "You have a broken Discord Install.\n"+
-			"Sometimes Discord decides to install to the wrong location for some reason!\n"+
-			"You need to fix this before patching, otherwise CloudCord will likely not work.\n\n"+
-			"Use the below button to jump there and delete any folder called Discord or Squirrel.\n"+
-			"If the folder is now empty, feel free to go back a step and delete that folder too.\n"+
-			"Then see if Discord still starts. If not, reinstall it"),
-		RawInfoModal("#openasar-confirm", "OpenAsar", "OpenAsar is an open-source alternative of Discord desktop's app.asar.\n"+
-			"CloudCord is in no way affiliated with OpenAsar.\n"+
-			"You're installing OpenAsar at your own risk. If you run into issues with OpenAsar,\n"+
-			"no support will be provided, join the OpenAsar Server instead!\n\n"+
-			"To install OpenAsar, press Accept and click 'Install OpenAsar' again.", true),
-		InfoModal("#openasar-patched", "Successfully Installed OpenAsar", "If Discord is still open, fully close it first. Then start it again and verify OpenAsar installed successfully!"),
-		InfoModal("#openasar-unpatched", "Successfully Uninstalled OpenAsar", "If Discord is still open, fully close it first. Then start it again and it should be back to stock!"),
-		InfoModal("#invalid-custom-location", "Invalid Location", "The specified location is not a valid Discord install.\nMake sure you select the base folder.\n\nHint: Discord snap is not supported. use flatpak or .deb"),
-		InfoModal("#modal"+strconv.Itoa(modalId), modalTitle, modalMessage),
-
-		UpdateModal(),
-	}
-
-	return layout
+func InfoModal(id, title, description string) g.Widget {
+	return RawInfoModal(id, title, description, false)
 }
 
-func renderErrorCard(col color.Color, md *g.MarkdownWidget, height float32) g.Widget {
-	return g.Style().
-		SetColor(g.StyleColorChildBg, col).
-		SetStyleFloat(g.StyleVarAlpha, 0.9).
-		SetStyle(g.StyleVarWindowPadding, 10, 10).
-		SetStyleFloat(g.StyleVarChildRounding, 5).
-		To(
-			g.Child().
-				Size(g.Auto, height).
-				Flags(g.WindowFlagsNoScrollbar).
-				Layout(
-					g.Row(
-						g.Style().SetColor(g.StyleColorText, color.Black).To(
-							md,
-						),
-					),
-				),
+func RawInfoModal(id, title, description string, unformatted bool) g.Widget {
+	return g.PopupModal(id).
+		Flags(g.WindowFlagsAlwaysAutoResize|g.WindowFlagsNoMove).
+		Layout(
+			g.Label(title),
+			&CondWidget{
+				unformatted,
+				func() g.Widget {
+					return g.Label(description)
+				},
+				func() g.Widget {
+					return g.Markdown(description)
+				},
+			},
+			g.Button("OK").OnClick(func() {
+				g.CloseCurrentPopup()
+			}),
 		)
 }
 
@@ -707,80 +245,167 @@ func loop() {
 		return
 	}
 
-	var baseFontSize float32 = 20
-	var baseHeaderSize float32 = 40
-	if runtime.GOOS == "darwin" {
-		baseFontSize = 10
-		baseHeaderSize = 30
+	wi, _ := win.GetSize()
+	w := float32(wi) - 56
+	if w < 200 {
+		w = 200
+	}
+	btnWidth := (w - 24) / 3
+	if btnWidth < 1 {
+		btnWidth = 1
 	}
 
-	g.PushWindowPadding(48, 48)
+	var currentDiscord *DiscordInstall
+	if radioIdx != customChoiceIdx && radioIdx >= 0 && radioIdx < len(discords) {
+		currentDiscord = discords[radioIdx].(*DiscordInstall)
+	}
+	isPatched := currentDiscord != nil && currentDiscord.isPatched
+
+	installText := "Stable Discord"
+	if currentDiscord != nil {
+		installText = strings.Title(currentDiscord.branch) + " Discord"
+	} else if len(discords) == 0 {
+		installText = "No Discord installation found"
+	}
+
+	bgCardCol := color.RGBA{R: 0x16, G: 0x20, B: 0x32, A: 0xFF}
+	accentCyan := color.RGBA{R: 0x38, G: 0xBD, B: 0xF8, A: 0xFF}
+	textMuted := color.RGBA{R: 0x94, G: 0xA3, B: 0xB8, A: 0xFF}
+	btnPurple := color.RGBA{R: 0x7C, G: 0x5D, B: 0xFA, A: 0xFF}
+	btnCyan := color.RGBA{R: 0x38, G: 0xBD, B: 0xF8, A: 0xFF}
+	btnDelete := color.RGBA{R: 0xF8, G: 0x71, B: 0x71, A: 0xFF}
+
+	g.PushWindowPadding(28, 24)
 
 	g.SingleWindow().
-		RegisterKeyboardShortcuts(
-			g.WindowShortcut{Key: g.KeyUp, Callback: func() {
-				if radioIdx > 0 {
-					radioIdx--
-				}
-			}},
-			g.WindowShortcut{Key: g.KeyDown, Callback: func() {
-				if radioIdx < customChoiceIdx {
-					radioIdx++
-				}
-			}},
-		).
 		Layout(
-			g.Style().SetFontSize(baseFontSize).To(
-				g.Align(g.AlignCenter).To(
-					g.Style().SetFontSize(baseHeaderSize).To(
-						g.Label("CloudCord Setup"),
+			// 1. Top Header
+			g.Row(
+				g.Style().SetFontSize(22).SetColor(g.StyleColorText, color.White).To(
+					g.Label("CloudCord"),
+				),
+				g.Style().SetFontSize(16).SetColor(g.StyleColorText, textMuted).To(
+					g.Label(" Desktop Installer"),
+				),
+			),
+
+			g.Dummy(0, 110),
+
+			// 2. Hero Card
+			g.Style().
+				SetColor(g.StyleColorChildBg, bgCardCol).
+				SetStyleFloat(g.StyleVarChildRounding, 8).
+				SetStyle(g.StyleVarWindowPadding, 16, 12).
+				To(
+					g.Child().Size(w, 82).Layout(
+						g.Style().SetFontSize(11).SetColor(g.StyleColorText, accentCyan).To(
+							g.Label("CLOUDCORD DESKTOP"),
+						),
+						g.Dummy(0, 2),
+						g.Style().SetFontSize(17).SetColor(g.StyleColorText, color.White).To(
+							g.Label("Your Discord, upgraded."),
+						),
+						g.Dummy(0, 2),
+						g.Style().SetFontSize(13).SetColor(g.StyleColorText, textMuted).To(
+							g.Label("BotCord  |  Fake Profile  |  Cloud Sync  |  Plugins  |  Themes"),
+						),
 					),
 				),
 
-				g.Dummy(0, 20),
+			g.Dummy(0, 10),
 
-				g.Row(
-					g.Label(Ternary(IsDevInstall, "Dev Install: ", "CloudCord will be downloaded to: ")+CloudCordDirectory),
-					g.Style().
-						SetColor(g.StyleColorButton, DiscordBlue).
-						SetStyle(g.StyleVarFramePadding, 4, 4).
-						To(
-							g.Button("Open Directory").OnClick(func() {
-								g.OpenURL("file://" + path.Dir(CloudCordDirectory))
-							}),
+			// 3. Discord Installation Card
+			g.Style().
+				SetColor(g.StyleColorChildBg, bgCardCol).
+				SetStyleFloat(g.StyleVarChildRounding, 8).
+				SetStyle(g.StyleVarWindowPadding, 16, 12).
+				To(
+					g.Child().Size(w, 72).Layout(
+						g.Row(
+							g.Style().SetFontSize(15).SetColor(g.StyleColorText, color.White).To(
+								g.Label("Discord installation "),
+							),
+							g.Style().SetFontSize(13).SetColor(g.StyleColorText, accentCyan).To(
+								g.Label(Ternary(isPatched, "CloudCord installed", "Not installed")),
+							),
 						),
+						g.Dummy(0, 4),
+						g.Style().SetFontSize(14).SetColor(g.StyleColorText, color.RGBA{R: 0xCB, G: 0xD5, B: 0xE1, A: 0xFF}).To(
+							g.Label(installText),
+						),
+					),
 				),
 
-				&CondWidget{!IsDevInstall, func() g.Widget {
-					return g.Label("To customise this location, set the environment variable 'CLOUDCORD_USER_DATA_DIR' and restart me").Wrapped(true)
-				}, nil},
+			g.Dummy(0, 12),
 
-				g.Dummy(0, 10),
-				g.Label("CloudCord Setup Version: "+buildinfo.InstallerTag+" ("+buildinfo.InstallerGitHash+")"+Ternary(IsSelfOutdated, " - OUTDATED", "")),
-				g.Label("Local CloudCord Version: "+InstalledHash),
-
-				&CondWidget{
-					GithubError == nil,
-					func() g.Widget {
-						if IsDevInstall {
-							return g.Label("Not updating CloudCord due to being in DevMode")
-						}
-						return g.Label("Latest CloudCord Version: " + LatestHash)
-					}, func() g.Widget {
-						return renderErrorCard(DiscordRed, func() *g.MarkdownWidget {
-							errText := "Failed to fetch Info from GitHub: " + GithubError.Error()
-							if cachedGithubErrMarkdown == nil || lastGithubErrText != errText {
-								cachedGithubErrMarkdown = g.Markdown(errText)
-								lastGithubErrText = errText
-							}
-							return cachedGithubErrMarkdown
-						}(), 40)
-					},
-				},
-
-				renderInstaller(),
+			// 4. Subtitle
+			g.Style().SetFontSize(13).SetColor(g.StyleColorText, textMuted).To(
+				g.Label("Update keeps all plugins, settings, themes, fonts and CloudCord data."),
 			),
-		)
 
-	g.PopStyle()
+			g.Dummy(0, 14),
+
+			// 5. 3 Action Buttons
+			g.Style().SetStyleFloat(g.StyleVarFrameRounding, 10).To(
+				g.Row(
+					// Install (Purple)
+					g.Style().
+						SetColor(g.StyleColorButton, btnPurple).
+						SetColor(g.StyleColorButtonHovered, color.RGBA{R: 0x6D, G: 0x4E, B: 0xEB, A: 0xFF}).
+						SetColor(g.StyleColorText, color.White).
+						SetFontSize(15).
+						To(
+							g.Button("Install").
+								OnClick(func() {
+									patchSuccessTitle = "CloudCord Desktop installed"
+									handlePatch()
+								}).
+								Size(btnWidth, 42),
+						),
+
+					// Update / Fix (Cyan)
+					g.Style().
+						SetColor(g.StyleColorButton, btnCyan).
+						SetColor(g.StyleColorButtonHovered, color.RGBA{R: 0x2A, G: 0xAE, B: 0xE9, A: 0xFF}).
+						SetColor(g.StyleColorText, color.RGBA{R: 0x0F, G: 0x17, B: 0x2A, A: 0xFF}).
+						SetFontSize(15).
+						To(
+							g.Button("Update / Fix").
+								OnClick(func() {
+									patchSuccessTitle = "CloudCord Desktop updated"
+									if IsDevInstall {
+										handlePatch()
+									} else {
+										err := InstallLatestBuilds()
+										if err == nil {
+											handlePatch()
+										}
+									}
+								}).
+								Size(btnWidth, 42),
+						),
+
+					// Delete (Red)
+					g.Style().
+						SetColor(g.StyleColorButton, btnDelete).
+						SetColor(g.StyleColorButtonHovered, color.RGBA{R: 0xEF, G: 0x44, B: 0x44, A: 0xFF}).
+						SetColor(g.StyleColorText, color.White).
+						SetFontSize(15).
+						To(
+							g.Button("Delete").
+								OnClick(handleUnpatch).
+								Size(btnWidth, 42),
+						),
+				),
+			),
+
+			InfoModal("#patched", patchSuccessTitle, "If Discord is still open, fully close it first.\nThen start it and verify CloudCord installed successfully in Discord Settings!"),
+			InfoModal("#unpatched", "CloudCord Desktop removed", "CloudCord has been uninstalled. Restart Discord to return to stock."),
+			InfoModal("#modal"+strconv.Itoa(modalId), modalTitle, modalMessage),
+		)
 }
+
+func HandleScuffedInstall() {
+	ShowModal("Broken Discord Install", "You have a broken Discord install in ProgramData.\nPlease reinstall Discord before proceeding!")
+}
+
