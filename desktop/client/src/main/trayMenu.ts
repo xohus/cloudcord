@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a Discord client mod
  * Copyright (c) 2026 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -130,8 +130,8 @@ export function patchTrayMenu(): void {
         const alreadyPatched = template.some(item => item.label === "CloudCord");
         if (isTrayMenu(template) && !alreadyPatched) {
             const insertIndex = findInsertIndex(template);
-            const sincordItems = createCloudCordMenuItems();
-            template.splice(insertIndex, 0, ...sincordItems);
+            const cloudcordItems = createCloudCordMenuItems();
+            template.splice(insertIndex, 0, ...cloudcordItems);
         }
 
         return originalBuildFromTemplate.call(this, template);

@@ -18,6 +18,7 @@
 
 import { onceDefined } from "@shared/onceDefined";
 import electron, { app, BrowserWindowConstructorOptions, Menu } from "electron";
+import { existsSync } from "fs";
 import { dirname, join } from "path";
 
 import { RendererSettings } from "./settings";
@@ -25,6 +26,13 @@ import { patchTrayMenu } from "./trayMenu";
 import { IS_VANILLA } from "./utils/constants";
 
 console.log("[CloudCord] Starting up...");
+
+try {
+    const el = require("electron-log");
+    if (el && typeof el.createLogger !== "function") {
+        el.createLogger = function () { return el; };
+    }
+} catch {}
 
 // Our injector file at app/index.js
 const injectorPath = require.main!.filename;
@@ -84,7 +92,7 @@ if (!IS_VANILLA) {
 
     class BrowserWindow extends electron.BrowserWindow {
         constructor(options: BrowserWindowConstructorOptions) {
-            if (!options?.webPreferences?.preload || !options.title) {
+            if (!options?.webPreferences?.preload) {
                 super(options);
                 return;
             }
@@ -92,8 +100,10 @@ if (!IS_VANILLA) {
             const { frameless, mainWindowFrameless, winNativeTitleBar, disableMinSize, transparent, macosVibrancyStyle, windowsMaterial } = settings;
 
             const original = options.webPreferences.preload;
-            const isMainWindow = options.title === "Discord";
-            options.webPreferences.preload = join(__dirname, "preload.js");
+            const isMainWindow = !options.title || options.title === "Discord" || options.title.toLowerCase().includes("discord");
+
+            const diskPreload = join(dirname(__dirname), "preload.js");
+            options.webPreferences.preload = existsSync(diskPreload) ? diskPreload : join(__dirname, "preload.js");
             options.webPreferences.sandbox = false;
             // work around discord unloading when in background
             options.webPreferences.backgroundThrottling = false;

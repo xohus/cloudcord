@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -169,9 +169,9 @@ export const AudioPlayer = $AudioPlayer;
 export const UserArea = $UserArea;
 
 /**
- * Just used to identify if user is on Sincord as Vencord doesn't have this.
+ * Just used to identify if user is on CloudCord as Vencord doesn't have this.
  */
-export const isSincord = true;
+export const isCloudCord = true;
 
 /**
  * An API allowing you to add other collections where discords game collection is.

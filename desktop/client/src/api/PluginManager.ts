@@ -150,12 +150,13 @@ export function startDependenciesRecursive(p: Plugin) {
     const failures: string[] = [];
 
     p.dependencies?.forEach(d => {
-        if (!settings[d].enabled) {
+        if (!settings[d]?.enabled) {
             const dep = Plugins[d];
+            if (!dep) return;
             startDependenciesRecursive(dep);
 
             // If the plugin has patches, don't start the plugin, just enable it.
-            settings[d].enabled = true;
+            if (settings[d]) settings[d].enabled = true;
             dep.isDependency = true;
 
             if (pluginRequiresRestart(dep)) {
@@ -407,8 +408,8 @@ export const initPluginManager = onlyOnce(function init() {
                 return;
             }
 
-            settings[d].enabled = true;
-            dep.isDependency = true;
+            if (settings[d]) settings[d].enabled = true;
+            if (dep) dep.isDependency = true;
         });
 
         if (p.commands?.length) neededApiPlugins.add("CommandsAPI");
@@ -435,8 +436,10 @@ export const initPluginManager = onlyOnce(function init() {
     }
 
     for (const p of neededApiPlugins) {
-        Plugins[p].isDependency = true;
-        settings[p].enabled = true;
+        if (Plugins[p]) {
+            Plugins[p].isDependency = true;
+            if (settings[p]) settings[p].enabled = true;
+        }
     }
 
     for (const p of pluginsValues) {

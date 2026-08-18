@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2023 Vendicated and contributors
  *
@@ -26,10 +26,10 @@ import { Flex } from "@components/Flex";
 import { Link } from "@components/Link";
 import { Paragraph } from "@components/Paragraph";
 import { openSettingsTabModal, UpdaterTab } from "@components/settings";
-import { platformName } from "@sincordplugins/sincordHelper/utils";
+import { platformName } from "@cloudcordplugins/cloudcordHelper/utils";
 import customIdle from "@plugins/customIdle";
 import { gitHash, gitHashShort } from "@shared/vencordUserAgent";
-import { CONTRIB_ROLE_ID, Devs, DONOR_ROLE_ID, SINCORD_TEAM, GUILD_ID, SUPPORT_CHANNEL_ID, SUPPORT_CHANNEL_IDS, VC_CONTRIB_ROLE_ID, VC_DONOR_ROLE_ID, VC_GUILD_ID, VC_REGULAR_ROLE_ID, VENCORD_CONTRIB_ROLE_ID } from "@utils/constants";
+import { CONTRIB_ROLE_ID, Devs, DONOR_ROLE_ID, CLOUDCORD_TEAM, GUILD_ID, SUPPORT_CHANNEL_ID, SUPPORT_CHANNEL_IDS, VC_CONTRIB_ROLE_ID, VC_DONOR_ROLE_ID, VC_GUILD_ID, VC_REGULAR_ROLE_ID, VENCORD_CONTRIB_ROLE_ID } from "@utils/constants";
 import { sendMessage } from "@utils/discord";
 import { Logger } from "@utils/Logger";
 import { Margins } from "@utils/margins";
@@ -54,7 +54,7 @@ const TrustedRolesIds = [
     VC_CONTRIB_ROLE_ID, // Vencord Contributor
     VC_REGULAR_ROLE_ID, // Vencord Regular
     VC_DONOR_ROLE_ID, // Vencord Donor
-    SINCORD_TEAM, // CloudCord Team
+    CLOUDCORD_TEAM, // CloudCord Team
     DONOR_ROLE_ID, // CloudCord Donor
     CONTRIB_ROLE_ID, // CloudCord Contributor
     VENCORD_CONTRIB_ROLE_ID, // Vencord Contributor
@@ -302,8 +302,8 @@ function DevBuildConfirmModal(props: RenderModalProps) {
                 <Paragraph>You are using a custom build of CloudCord, which we do not provide support for!</Paragraph>
 
                 <Paragraph className={Margins.top8}>
-                    We only provide support for <Link href="https://sincord.org/download">official builds</Link>.
-                    Either <Link href="https://sincord.org/download">switch to an official build</Link> or figure your issue out yourself.
+                    We only provide support for <Link href="https://cloudcord.xohus.lol/#download">official builds</Link>.
+                    Either <Link href="https://cloudcord.xohus.lol/#download">switch to an official build</Link> or figure your issue out yourself.
                 </Paragraph>
 
                 <Text variant="text-md/bold" className={Margins.top8}>You will be banned from receiving support if you ignore this rule.</Text>
@@ -331,14 +331,14 @@ export default definePlugin({
 
     commands: [
         {
-            name: "sincord-debug",
+            name: "cloudcord-debug",
             description: "Send CloudCord debug info",
             // @ts-ignore
             predicate: ctx => isAnyPluginDev(UserStore.getCurrentUser()?.id) || isCloudCordGuild(ctx?.guild?.id, true),
             execute: async () => ({ content: await generateDebugInfoMessage() })
         },
         {
-            name: "sincord-plugins",
+            name: "cloudcord-plugins",
             description: "Send CloudCord plugin list",
             // @ts-ignore
             predicate: ctx => isAnyPluginDev(UserStore.getCurrentUser()?.id) || isCloudCordGuild(ctx?.guild?.id, true),
@@ -413,7 +413,7 @@ export default definePlugin({
                         <div>
                             <Paragraph>You are using an externally updated CloudCord version, which we do not provide support for!</Paragraph>
                             <Paragraph className={Margins.top8}>
-                                Please either switch to an <Link href="https://sincord.org/download">officially supported version of CloudCord</Link>, or
+                                Please either switch to an <Link href="https://cloudcord.xohus.lol/#download">officially supported version of CloudCord</Link>, or
                                 contact your package maintainer for support instead.
                             </Paragraph>
                         </div>
@@ -432,11 +432,11 @@ export default definePlugin({
     renderMessageAccessory(props) {
         const buttons = [] as JSX.Element[];
 
-        const sincordSupport = isCloudCordSupport(props.message.author.id);
+        const cloudcordSupport = isCloudCordSupport(props.message.author.id);
 
         const shouldAddUpdateButton =
             !IS_UPDATER_DISABLED
-            && ((isSupportChannel(props.channel.id) && sincordSupport))
+            && ((isSupportChannel(props.channel.id) && cloudcordSupport))
             && props.message.content?.toLowerCase().includes("update");
 
         if (shouldAddUpdateButton) {
@@ -461,15 +461,15 @@ export default definePlugin({
             );
         }
 
-        if (isSupportChannel(props.channel.id) && PermissionStore.can(PermissionsBits.SEND_MESSAGES, props.channel) && sincordSupport) {
-            if (props.message.content.includes("/sincord-debug") || props.message.content.includes("/sincord-plugins")) {
+        if (isSupportChannel(props.channel.id) && PermissionStore.can(PermissionsBits.SEND_MESSAGES, props.channel) && cloudcordSupport) {
+            if (props.message.content.includes("/cloudcord-debug") || props.message.content.includes("/cloudcord-plugins")) {
                 buttons.push(
                     <Button
                         key="vc-dbg"
                         color={Button.Colors.PRIMARY}
                         onClick={async () => sendMessage(props.channel.id, { content: await generateDebugInfoMessage() })}
                     >
-                        Run /sincord-debug
+                        Run /cloudcord-debug
                     </Button>,
                     <Button
                         key="vc-plg-list"
@@ -489,12 +489,12 @@ export default definePlugin({
                             }
                         }}
                     >
-                        Run /sincord-plugins
+                        Run /cloudcord-plugins
                     </Button>
                 );
             }
 
-            if (sincordSupport) {
+            if (cloudcordSupport) {
                 const match = CodeBlockRe.exec(props.message.content || props.message.embeds[0]?.rawDescription || "");
                 if (match) {
                     buttons.push(

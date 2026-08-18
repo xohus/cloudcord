@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -24,17 +24,17 @@ import { openContributorModal } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
 import { copyWithToast } from "@utils/discord";
 import { Logger } from "@utils/Logger";
-import { shouldShowContributorBadge, shouldShowSincordContributorBadge } from "@utils/misc";
+import { shouldShowContributorBadge, shouldShowCloudCordContributorBadge } from "@utils/misc";
 import definePlugin from "@utils/types";
 import { ContextMenuApi, Menu, Toasts, UserStore } from "@webpack/common";
 
 import Plugins, { PluginMeta } from "~plugins";
 
-import { SincordDonorModal, SincordTranslatorModal, VencordDonorModal } from "./modals";
+import { CloudCordDonorModal, CloudCordTranslatorModal, VencordDonorModal } from "./modals";
 
 const CONTRIBUTOR_BADGE = "https://cdn.discordapp.com/emojis/1092089799109775453.png?size=64";
-const SINCORD_CONTRIBUTOR_BADGE = "https://sincord.org/assets/favicon.png";
-const USERPLUGIN_CONTRIBUTOR_BADGE = "https://sincord.org/assets/icons/misc/userplugin.png";
+const CLOUDCORD_CONTRIBUTOR_BADGE = "https://cloudcord.xohus.lol/assets/favicon.png";
+const USERPLUGIN_CONTRIBUTOR_BADGE = "https://cloudcord.xohus.lol/assets/icons/misc/userplugin.png";
 
 const ContributorBadge: ProfileBadge = {
     id: "vencord_contributor_badge",
@@ -45,12 +45,12 @@ const ContributorBadge: ProfileBadge = {
     onClick: (_, { userId }) => openContributorModal(UserStore.getUser(userId))
 };
 
-const SincordContributorBadge: ProfileBadge = {
-    id: "sincord_contributor_badge",
-    description: "Sincord Contributor",
-    iconSrc: SINCORD_CONTRIBUTOR_BADGE,
+const CloudCordContributorBadge: ProfileBadge = {
+    id: "cloudcord_contributor_badge",
+    description: "CloudCord Contributor",
+    iconSrc: CLOUDCORD_CONTRIBUTOR_BADGE,
     position: BadgePosition.START,
-    shouldShow: ({ userId }) => shouldShowSincordContributorBadge(userId),
+    shouldShow: ({ userId }) => shouldShowCloudCordContributorBadge(userId),
     onClick: (_, { userId }) => openContributorModal(UserStore.getUser(userId)),
     props: {
         style: {
@@ -83,7 +83,7 @@ const UserPluginContributorBadge: ProfileBadge = {
 };
 
 let DonorBadges = {} as Record<string, Array<Record<"tooltip" | "badge", string>>>;
-let SincordDonorBadges = {} as Record<string, Array<Record<"tooltip" | "badge", string>>>;
+let CloudCordDonorBadges = {} as Record<string, Array<Record<"tooltip" | "badge", string>>>;
 
 async function loadBadges(url: string, noCache = false) {
     const init = {} as RequestInit;
@@ -94,10 +94,10 @@ async function loadBadges(url: string, noCache = false) {
 
 async function loadAllBadges(noCache = false) {
     const vencordBadges = await loadBadges("https://badges.vencord.dev/badges.json", noCache);
-    const sincordBadges = await loadBadges("https://badge.sincord.org/badges.json", noCache);
+    const cloudcordBadges = await loadBadges("https://cloudcord.xohus.lol/badges/badges.json", noCache);
 
     DonorBadges = vencordBadges;
-    SincordDonorBadges = sincordBadges;
+    CloudCordDonorBadges = cloudcordBadges;
 }
 
 let intervalId: any;
@@ -165,8 +165,8 @@ export default definePlugin({
         return DonorBadges;
     },
 
-    get SincordDonorBadges() {
-        return SincordDonorBadges;
+    get CloudCordDonorBadges() {
+        return CloudCordDonorBadges;
     },
 
     toolboxActions: {
@@ -180,7 +180,7 @@ export default definePlugin({
         }
     },
 
-    userProfileBadges: [ContributorBadge, SincordContributorBadge, UserPluginContributorBadge],
+    userProfileBadges: [ContributorBadge, CloudCordContributorBadge, UserPluginContributorBadge],
 
     async start() {
         await loadAllBadges();
@@ -242,9 +242,9 @@ export default definePlugin({
         } satisfies ProfileBadge));
     },
 
-    getSincordDonorBadges(userId: string) {
-        return SincordDonorBadges[userId]?.map((badge, idx) => ({
-            id: `sincord_donor_badge_${idx}`,
+    getCloudCordDonorBadges(userId: string) {
+        return CloudCordDonorBadges[userId]?.map((badge, idx) => ({
+            id: `cloudcord_donor_badge_${idx}`,
             iconSrc: badge.badge,
             description: badge.tooltip,
             position: BadgePosition.START,
@@ -258,7 +258,7 @@ export default definePlugin({
                 ContextMenuApi.openContextMenu(event, () => <BadgeContextMenu badge={badge} />);
             },
             onClick() {
-                return badge.tooltip === "Sincord Translator" ? SincordTranslatorModal() : SincordDonorModal();
+                return badge.tooltip === "CloudCord Translator" ? CloudCordTranslatorModal() : CloudCordDonorModal();
             },
         } satisfies ProfileBadge));
     }

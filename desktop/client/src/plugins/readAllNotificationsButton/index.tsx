@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -21,7 +21,7 @@ import "./style.css";
 import { addServerListElement, removeServerListElement, ServerListRenderPosition } from "@api/ServerList";
 import { TextButton } from "@components/Button";
 import ErrorBoundary from "@components/ErrorBoundary";
-import { Devs, SincordDevs } from "@utils/constants";
+import { Devs, CloudCordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 import { ActiveJoinedThreadsStore, FluxDispatcher, GuildChannelStore, GuildStore, React, ReadStateStore } from "@webpack/common";
 
@@ -67,7 +67,7 @@ export default definePlugin({
     name: "ReadAllNotificationsButton",
     description: "Read all server notifications with a single button click!",
     tags: ["Notifications", "Shortcuts"],
-    authors: [Devs.kemo, SincordDevs.KrystalSkull],
+    authors: [Devs.kemo, CloudCordDevs.KrystalSkull],
     dependencies: ["ServerListAPI"],
 
     renderReadAllButton: ErrorBoundary.wrap(ReadAllButton, { noop: true }),

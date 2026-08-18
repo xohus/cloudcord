@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2023 Vendicated and contributors
  *
@@ -25,7 +25,7 @@ interface Dev {
 }
 
 const devs = {} as Record<string, Dev>;
-const sincordDevs = {} as Record<string, Dev>;
+const cloudcordDevs = {} as Record<string, Dev>;
 
 function getName(node: NamedDeclaration) {
     return node.name && isIdentifier(node.name) ? node.name.text : undefined;
@@ -72,26 +72,26 @@ function parseDevs() {
     throw new Error("Could not find Devs constant");
 }
 
-function parseSincordDevs() {
+function parseCloudCordDevs() {
     const file = createSourceFile("constants.ts", readFileSync("src/utils/constants.ts", "utf8"), ScriptTarget.Latest);
 
     for (const child of file.getChildAt(0).getChildren()) {
         if (!isVariableStatement(child)) continue;
 
-        const devsDeclaration = child.declarationList.declarations.find(d => hasName(d, "SincordDevs"));
+        const devsDeclaration = child.declarationList.declarations.find(d => hasName(d, "CloudCordDevs"));
         if (!devsDeclaration?.initializer || !isCallExpression(devsDeclaration.initializer)) continue;
 
         const value = devsDeclaration.initializer.arguments[0];
 
-        if (!isSatisfiesExpression(value) || !isObjectLiteralExpression(value.expression)) throw new Error("Failed to parse SincordDevs: not an object literal");
+        if (!isSatisfiesExpression(value) || !isObjectLiteralExpression(value.expression)) throw new Error("Failed to parse CloudCordDevs: not an object literal");
 
         for (const prop of value.expression.properties) {
             const name = (prop.name as Identifier).text;
             const value = isPropertyAssignment(prop) ? prop.initializer : prop;
 
-            if (!isObjectLiteralExpression(value)) throw new Error(`Failed to parse SincordDevs: ${name} is not an object literal`);
+            if (!isObjectLiteralExpression(value)) throw new Error(`Failed to parse CloudCordDevs: ${name} is not an object literal`);
 
-            sincordDevs[name] = {
+            cloudcordDevs[name] = {
                 name: (getObjectProp(value, "name") as StringLiteral).text,
                 id: (getObjectProp(value, "id") as BigIntLiteral).text.slice(0, -1)
             };
@@ -100,16 +100,16 @@ function parseSincordDevs() {
         return;
     }
 
-    throw new Error("Could not find SincordDevs constant");
+    throw new Error("Could not find CloudCordDevs constant");
 }
 
 (async () => {
     parseDevs();
-    parseSincordDevs();
+    parseCloudCordDevs();
 
     const allDevs = {
         vencord: devs,
-        sincord: sincordDevs,
+        cloudcord: cloudcordDevs,
     };
 
     const data = JSON.stringify(allDevs, null, 2);

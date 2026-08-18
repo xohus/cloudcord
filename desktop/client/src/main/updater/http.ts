@@ -73,6 +73,12 @@ async function applyUpdates() {
             "X-CC-Client": "1"
         }
     });
+
+    if (data.length < 2000000) {
+        console.error("Refusing to apply update: downloaded package is incomplete (" + data.length + " bytes)");
+        return false;
+    }
+
     writeFileSync(__dirname, data, { flush: true });
 
     PendingUpdate = null;

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2023 Vendicated and contributors
  *
@@ -62,8 +62,8 @@ if (!IS_VANILLA && !IS_EXTENSION) {
             }
         });
 
-        protocol.handle("sincord", ({ url: unsafeUrl }) => {
-            let url = decodeURI(unsafeUrl).slice("sincord://".length).replace(/\?v=\d+$/, "");
+        protocol.handle("cloudcord", ({ url: unsafeUrl }) => {
+            let url = decodeURI(unsafeUrl).slice("cloudcord://".length).replace(/\?v=\d+$/, "");
 
             if (url.endsWith("/")) url = url.slice(0, -1);
 

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -17,8 +17,8 @@
 */
 
 import { definePluginSettings, migratePluginSetting, Settings } from "@api/Settings";
-import { containsBlockedKeywords } from "@sincordplugins/blockKeywords";
-import { Devs, SincordDevs } from "@utils/constants";
+import { containsBlockedKeywords } from "@cloudcordplugins/blockKeywords";
+import { Devs, CloudCordDevs } from "@utils/constants";
 import { Logger } from "@utils/Logger";
 import definePlugin, { OptionType } from "@utils/types";
 import { Message, User } from "@vencord/discord-types";
@@ -89,7 +89,7 @@ const settings = definePluginSettings({
 export default definePlugin({
     name: "NoBlockedMessages",
     description: "Hide all blocked/ignored messages from chat completely.",
-    authors: [Devs.rushii, Devs.Samu, Devs.jamesbt365, Devs.Elvyra, SincordDevs.Etorix],
+    authors: [Devs.rushii, Devs.Samu, Devs.jamesbt365, Devs.Elvyra, CloudCordDevs.Etorix],
     tags: ["Accessibility", "Chat"],
     isModified: true,
     settings,

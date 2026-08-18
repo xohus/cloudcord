@@ -19,7 +19,7 @@
 import { User } from "@vencord/discord-types";
 import { ChannelStore, GuildMemberStore, IconUtils } from "@webpack/common";
 
-import { SINCORD_HELPERS, SincordDevsById, GUILD_ID, SUPPORT_CHANNEL_ID, VencordDevsById } from "./constants";
+import { CLOUDCORD_HELPERS, CloudCordDevsById, GUILD_ID, SUPPORT_CHANNEL_ID, VencordDevsById } from "./constants";
 
 /**
  * Calls .join(" ") on the arguments
@@ -81,10 +81,10 @@ export function identity<T>(value: T): T {
 export const isPluginDev = (id: string) => Object.hasOwn(VencordDevsById, id);
 export const shouldShowContributorBadge = (id: string) => isPluginDev(id) && VencordDevsById[id].badge !== false;
 
-export const isSincordPluginDev = (id: string) => Object.hasOwn(SincordDevsById, id);
-export const shouldShowSincordContributorBadge = (id: string) => isSincordPluginDev(id) && SincordDevsById[id].badge !== false;
+export const isCloudCordPluginDev = (id: string) => Object.hasOwn(CloudCordDevsById, id);
+export const shouldShowCloudCordContributorBadge = (id: string) => isCloudCordPluginDev(id) && CloudCordDevsById[id].badge !== false;
 
-export const isAnyPluginDev = (id: string) => Object.hasOwn(VencordDevsById, id) || Object.hasOwn(SincordDevsById, id);
+export const isAnyPluginDev = (id: string) => Object.hasOwn(VencordDevsById, id) || Object.hasOwn(CloudCordDevsById, id);
 
 export function pluralise(amount: number, singular: string, plural = singular + "s") {
     return amount === 1 ? `${amount} ${singular}` : `${amount} ${plural}`;
@@ -106,7 +106,7 @@ export function tryOrElse<T>(func: () => T, fallback: T): T {
     }
 }
 
-export function isSincordGuild(id: string | null | undefined, isGuildId: boolean = false): boolean {
+export function isCloudCordGuild(id: string | null | undefined, isGuildId: boolean = false): boolean {
     if (!id) return false;
     if (isGuildId) return id === GUILD_ID;
     const channel = ChannelStore.getChannel(id);
@@ -114,22 +114,18 @@ export function isSincordGuild(id: string | null | undefined, isGuildId: boolean
     return channel.guild_id === GUILD_ID;
 }
 
-export const isCloudCordGuild = isSincordGuild;
-
 export function isSupportChannel(channelId: string | null | undefined): boolean {
     if (!channelId) return false;
     return channelId === SUPPORT_CHANNEL_ID;
 }
 
-export function isSincordSupport(userId: string | null | undefined): boolean {
+export function isCloudCordSupport(userId: string | null | undefined): boolean {
     if (!userId) return false;
 
     const member = GuildMemberStore.getMember(GUILD_ID, userId);
     if (!member) return false;
-    return member.roles.includes(SINCORD_HELPERS) || false;
+    return member.roles.includes(CLOUDCORD_HELPERS) || false;
 }
-
-export const isCloudCordSupport = isSincordSupport;
 
 export function removeFromArray<T>(arr: T[], predicate: (e: T) => boolean) {
     const idx = arr.findIndex(predicate);

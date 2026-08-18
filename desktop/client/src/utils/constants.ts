@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -18,13 +18,13 @@
 
 export const REACT_GLOBAL = "Vencord.Webpack.Common.React";
 
-// Sincord
+// CloudCord
 export const SUPPORT_CHANNEL_ID = "1297590739911573585";
 export const GUILD_ID = "1173279886065029291";
 export const DONOR_ROLE_ID = "1173316879083896912";
 export const CONTRIB_ROLE_ID = "1222677964760682556";
-export const SINCORD_TEAM = "1173520023239786538";
-export const SINCORD_HELPERS = "1326406112144265257";
+export const CLOUDCORD_TEAM = "1173520023239786538";
+export const CLOUDCORD_HELPERS = "1326406112144265257";
 export const VENCORD_CONTRIB_ROLE_ID = "1173343399470964856";
 export const EQUIBOT_USER_ID = "1243063117852835941";
 
@@ -664,7 +664,7 @@ export const Devs = /* #__PURE__*/ Object.freeze({
     },
 } satisfies Record<string, Dev>);
 
-export const SincordDevs = Object.freeze({
+export const CloudCordDevs = Object.freeze({
     nobody: {
         name: "nobody",
         id: 0n
@@ -1357,9 +1357,9 @@ export const VencordDevsById = /* #__PURE__*/ (() =>
     ))
 )() as Record<string, Dev>;
 
-export const SincordDevsById = /* #__PURE__*/ (() =>
+export const CloudCordDevsById = /* #__PURE__*/ (() =>
     Object.freeze(Object.fromEntries(
-        Object.entries(SincordDevs)
+        Object.entries(CloudCordDevs)
             .filter(d => d[1].id !== 0n)
             .map(([_, v]) => [v.id, v] as const)
     ))

@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -227,7 +227,7 @@ export interface PluginDef {
     renderMemberListDecorator?: MemberListDecoratorFactory;
 
     /*
-    * Custom apis added by Sincord and were placed here for quicker identification rather then mixing them in
+    * Custom apis added by CloudCord and were placed here for quicker identification rather then mixing them in
     */
     renderNicknameIcon?: NicknameIconFactory;
     headerBarButton?: HeaderBarButtonData;
@@ -238,7 +238,7 @@ export interface PluginDef {
     renderProfileSection?: ProfileSectionData;
 
     /**
-     * A Vencord plugin that is modified for extra features in Sincord
+     * A Vencord plugin that is modified for extra features in CloudCord
      */
     isModified?: boolean;
 }
