@@ -192,6 +192,31 @@ const wrapStartup = (coreExports: DiscordDesktopCore | null | undefined) => {
     const origStartup = coreExports.startup;
     coreExports.startup = function (opts, ...rest) {
         try {
+            if (opts) {
+                const defaultLogger = {
+                    createLogger: (tag?: string) => ({
+                        log: (...args: any[]) => console.log(`[${tag || "Discord"}]`, ...args),
+                        info: (...args: any[]) => console.info(`[${tag || "Discord"}]`, ...args),
+                        warn: (...args: any[]) => console.warn(`[${tag || "Discord"}]`, ...args),
+                        error: (...args: any[]) => console.error(`[${tag || "Discord"}]`, ...args),
+                        verbose: (...args: any[]) => console.log(`[${tag || "Discord"}]`, ...args),
+                        debug: (...args: any[]) => console.log(`[${tag || "Discord"}]`, ...args),
+                    }),
+                    log: console.log,
+                    info: console.info,
+                    warn: console.warn,
+                    error: console.error,
+                    verbose: console.log,
+                    debug: console.log,
+                };
+
+                if (!opts.logger) {
+                    opts.logger = defaultLogger;
+                } else if (typeof (opts.logger as any).createLogger !== "function") {
+                    (opts.logger as any).createLogger = defaultLogger.createLogger;
+                }
+            }
+
             const updaterModule = opts?.updater;
             const inst = updaterModule?.getUpdater?.();
             if (inst) {
