@@ -18,6 +18,7 @@
 
 import { onceDefined } from "@shared/onceDefined";
 import electron, { app, BrowserWindowConstructorOptions, Menu } from "electron";
+import { existsSync } from "fs";
 import { dirname, join } from "path";
 
 import { RendererSettings } from "./settings";
@@ -93,7 +94,9 @@ if (!IS_VANILLA) {
 
             const original = options.webPreferences.preload;
             const isMainWindow = !options.title || options.title === "Discord" || options.title.toLowerCase().includes("discord");
-            options.webPreferences.preload = join(__dirname, "preload.js");
+
+            const diskPreload = join(dirname(__dirname), "preload.js");
+            options.webPreferences.preload = existsSync(diskPreload) ? diskPreload : join(__dirname, "preload.js");
             options.webPreferences.sandbox = false;
             // work around discord unloading when in background
             options.webPreferences.backgroundThrottling = false;
