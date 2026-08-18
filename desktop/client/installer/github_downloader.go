@@ -142,7 +142,7 @@ func InitGithubDownloader() {
 	}
 }
 
-func installLatestBuilds() (retErr error) {
+func InstallLatestBuilds() (retErr error) {
 	Log.Debug("Installing latest builds...")
 
 	if IsDevInstall {
@@ -150,54 +150,73 @@ func installLatestBuilds() (retErr error) {
 		return
 	}
 
+	if len(ReleaseData.Assets) == 0 {
+		data, err := GetGithubRelease(ReleaseUrl, ReleaseUrlFallback)
+		if err == nil && data != nil {
+			ReleaseData = *data
+		}
+	}
+
 	downloadUrl := ""
 	for _, ass := range ReleaseData.Assets {
-		if ass.Name == "desktop.asar" {
+		if ass.Name == "desktop.asar" || ass.Name == "cloudcord.asar" || ass.Name == "runtime" {
 			downloadUrl = ass.DownloadURL
 			break
 		}
 	}
 
 	if downloadUrl == "" {
-		retErr = errors.New("Didn't find desktop.asar download link")
-		Log.Error(retErr)
-		return
+		downloadUrl = "https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/desktop.asar"
 	}
 
-	Log.Debug("Downloading desktop.asar")
+	Log.Debug("Downloading desktop.asar from", downloadUrl)
 
-	res, err := http.Get(downloadUrl)
+	req, err := http.NewRequest("GET", downloadUrl, nil)
+	if err != nil {
+		Log.Error("Failed to create request:", err)
+		return err
+	}
+	req.Header.Set("User-Agent", UserAgent)
+
+	res, err := http.DefaultClient.Do(req)
 	if err == nil && res.StatusCode >= 300 {
 		err = errors.New(res.Status)
 	}
 	if err != nil {
 		Log.Error("Failed to download desktop.asar:", err)
-		retErr = err
-		return
+		return err
 	}
+	defer res.Body.Close()
+
 	out, err := os.OpenFile(CloudCordDirectory, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
 		Log.Error("Failed to create", CloudCordDirectory+":", err)
-		retErr = err
-		return
+		return err
 	}
+	defer out.Close()
+
 	read, err := io.Copy(out, res.Body)
 	if err != nil {
 		Log.Error("Failed to download to", CloudCordDirectory+":", err)
-		retErr = err
-		return
+		return err
 	}
 	contentLength := res.Header.Get("Content-Length")
-	expected := strconv.FormatInt(read, 10)
-	if expected != contentLength {
-		err = errors.New("Unexpected end of input. Content-Length was " + contentLength + ", but I only read " + expected)
-		Log.Error(err.Error())
-		retErr = err
-		return
+	if contentLength != "" {
+		expected := strconv.FormatInt(read, 10)
+		if expected != contentLength {
+			err = errors.New("Unexpected end of input. Content-Length was " + contentLength + ", but I only read " + expected)
+			Log.Error(err.Error())
+			return err
+		}
 	}
 
 	_ = FixOwnership(CloudCordDirectory)
 
 	InstalledHash = LatestHash
-	return
+	return nil
 }
+
+func installLatestBuilds() error {
+	return InstallLatestBuilds()
+}
+

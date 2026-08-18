@@ -35,18 +35,6 @@ case "$(uname -s)" in
         ;;
 esac
 
-mkdir -p ../dist
-
-if [ -f "$OUT" ]; then
-    echo "Found prebuilt $OUT, copying to dist..."
-    cp "$OUT" "../dist/$OUT"
-    if [ "$OUT" = "CloudCordSetup.exe" ]; then
-        cp "$OUT" "../dist/cloudcord.exe"
-    fi
-    echo "Done! Prebuilt installer packaged at dist/$OUT"
-    exit 0
-fi
-
 echo "Building $OUT..."
 go build -ldflags="-s -w" -o "$OUT" .
 chmod +x "$OUT" 2>/dev/null || true
@@ -55,4 +43,5 @@ if [ "$OUT" = "CloudCordSetup.exe" ]; then
     cp "$OUT" "../dist/cloudcord.exe"
 fi
 echo "Done! Installer built at installer/$OUT and dist/$OUT"
+
 

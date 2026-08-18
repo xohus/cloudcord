@@ -375,11 +375,12 @@ func loop() {
 									patchSuccessTitle = "CloudCord Desktop updated"
 									if IsDevInstall {
 										handlePatch()
-									} else {
 										err := InstallLatestBuilds()
-										if err == nil {
-											handlePatch()
+										if err != nil {
+											ShowModal("Update Failed", "Failed to download latest CloudCord update:\n"+err.Error())
+											return
 										}
+										handlePatch()
 									}
 								}).
 								Size(btnWidth, 42),

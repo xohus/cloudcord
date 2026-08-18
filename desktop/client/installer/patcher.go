@@ -63,9 +63,18 @@ type DiscordInstall struct {
 	isOpenAsar       *bool
 }
 
-//region Patch
+func KillDiscordProcess() {
+	if runtime.GOOS == "windows" {
+		_ = exec.Command("taskkill", "/F", "/IM", "Discord.exe", "/T").Run()
+		_ = exec.Command("taskkill", "/F", "/IM", "DiscordCanary.exe", "/T").Run()
+		_ = exec.Command("taskkill", "/F", "/IM", "DiscordPTB.exe", "/T").Run()
+		_ = exec.Command("taskkill", "/F", "/IM", "DiscordDevelopment.exe", "/T").Run()
+	}
+}
 
 func patchAppAsar(dir string, isSystemElectron bool) (err error) {
+	KillDiscordProcess()
+
 	appAsar := path.Join(dir, "app.asar")
 	_appAsar := path.Join(dir, "_app.asar")
 
