@@ -43,11 +43,11 @@ jobs:
         shell: bash
         run: |
           set -e
+
           test -f desktop/client/package.json
           test -f desktop/client/scripts/build/build.mjs
           test -f desktop/client/scripts/build-installer.sh
-          test -d desktop/client/installer
-          test -d desktop/client/src
+          test -d desktop/client
 
       - name: Print tool versions
         shell: bash
@@ -68,7 +68,8 @@ jobs:
         working-directory: desktop/client
         shell: bash
         run: |
-          pnpm typecheck || true
+          set -e
+          pnpm typecheck
 
       - name: Build desktop runtime
         working-directory: desktop/client
@@ -81,12 +82,26 @@ jobs:
         shell: bash
         run: |
           set -e
-          test -f desktop/client/dist/desktop/patcher.js
-          test -f desktop/client/dist/desktop/renderer.js
-          test -f desktop/client/dist/desktop/preload.js
-          test -f desktop/client/dist/desktop/package.json
-          echo "Verified all 4 desktop runtime files exist:"
-          ls -lh desktop/client/dist/desktop
+
+          if [ ! -d "desktop/client/dist/desktop" ]; then
+            echo "desktop/client/dist/desktop was not produced"
+            find desktop/client/dist -maxdepth 3 -type f 2>/dev/null || true
+            exit 1
+          fi
+
+      - name: Guard desktop runtime against Sincord/Vencord contamination
+        shell: bash
+        run: |
+          set -e
+          target="desktop/client/dist/desktop"
+          if [ ! -d "$target" ]; then
+            echo "desktop runtime output missing: $target"
+            exit 1
+          fi
+          if rg -a -n -i "sincord|vencord|github\.com/sincord|github\.com/vendicated/vencord" "$target"; then
+            echo "Sincord/Vencord marker detected in the production desktop runtime."
+            exit 1
+          fi
 
       - name: Build Windows installer
         working-directory: desktop/client
@@ -100,59 +115,64 @@ jobs:
         run: |
           set -e
           mkdir -p desktop/client/dist
-          EXE=$(find desktop/client/installer -maxdepth 1 -name "*.exe" | head -n 1)
-          if [ -n "$EXE" ]; then
-            cp "$EXE" desktop/client/dist/CloudCordSetup.exe
-            cp "$EXE" desktop/client/dist/cloudcord.exe
-            cp "$EXE" desktop/client/dist/CloudCordSetup-Test.exe
-            cp "$EXE" desktop/client/dist/cloudcord-test.exe
-          fi
+          cp desktop/client/installer/CloudCordSetup.exe desktop/client/dist/CloudCordSetup.exe
+          cp desktop/client/installer/cloudcord.exe desktop/client/dist/cloudcord.exe
+          cp desktop/client/installer/CloudCordSetup-Test.exe desktop/client/dist/CloudCordSetup-Test.exe
+          cp desktop/client/installer/CloudCordSetup-Test.exe desktop/client/dist/cloudcord-test.exe
 
-          test -d desktop/client/dist/desktop
+          test -f desktop/client/dist/CloudCordSetup.exe
+          test -f desktop/client/dist/CloudCordSetup-Test.exe
+          test -d desktop/client/dist
+
+      - name: Upload desktop artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCordDesktop-Windows
+          path: |
+            desktop/client/dist/CloudCordSetup.exe
+            desktop/client/dist/desktop/**
+            desktop/client/CREDITS.md
+            desktop/client/CLOUDCORD_NOTES.md
+            desktop/client/README.md
 
       - name: Package desktop.asar for updater
         shell: bash
         run: |
           set -e
-          npx --yes @electron/asar pack desktop/client/dist/desktop desktop/client/dist/desktop.asar
+          # The built runtime is the desktop folder; package it for the in-app updater.
+          npm install -g @electron/asar --quiet 2>/dev/null || true
+          asar pack desktop/client/dist/desktop desktop/client/dist/desktop.asar
           cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord.asar
           cp desktop/client/dist/desktop.asar desktop/client/dist/runtime
           cp desktop/client/dist/desktop.asar desktop/client/dist/desktop-test.asar
           cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord-test.asar
           test -f desktop/client/dist/desktop.asar
 
-      - name: Clean up test assets from production release tag
-        shell: bash
+      - name: Upload binaries to GitHub Release (Production)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: new_beta_t_desktop
+          name: CloudCord Desktop ${{ github.sha }}
+          make_latest: true
+          files: |
+            desktop/client/dist/desktop.asar
+            desktop/client/dist/cloudcord.asar
+            desktop/client/dist/runtime
+            desktop/client/dist/CloudCordSetup.exe
+            desktop/client/dist/cloudcord.exe
+            desktop/client/dist/CloudCordSetup-Test.exe
+            desktop/client/dist/cloudcord-test.exe
+            desktop/client/dist/desktop-test.asar
+            desktop/client/dist/cloudcord-test.asar
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          gh release delete-asset --repo "${{ github.repository }}" new_beta_t_desktop cloudcord-test.asar --yes || true
-          gh release delete-asset --repo "${{ github.repository }}" new_beta_t_desktop cloudcord-test.exe --yes || true
-          gh release delete-asset --repo "${{ github.repository }}" new_beta_t_desktop CloudCordSetup-Test.exe --yes || true
-          gh release delete-asset --repo "${{ github.repository }}" new_beta_t_desktop desktop-test.asar --yes || true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload binaries to GitHub Releases (Test Channel Only)
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -e
-          cd desktop/client/dist
-
-          gh release upload --repo "${{ github.repository }}" new_beta_test_desktop \
-            CloudCordSetup-Test.exe \
-            cloudcord-test.exe \
-            desktop-test.asar \
-            cloudcord-test.asar \
-            --clobber || true
-
-      - name: Upload binaries to GitHub Release (Isolated Test Channel fallback)
+      - name: Upload binaries to GitHub Release (Isolated Test Channel)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: new_beta_test_desktop
           name: CloudCord Desktop Test ${{ github.sha }}
           prerelease: true
-          overwrite: true
           files: |
             desktop/client/dist/CloudCordSetup-Test.exe
             desktop/client/dist/cloudcord-test.exe
