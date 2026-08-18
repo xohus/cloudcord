@@ -81,7 +81,10 @@ export async function buildOrWatchAll(buildConfigs) {
     } else {
         for (const cfg of buildConfigs) {
             await build(cfg).catch(error => {
-                console.error(error.message);
+                console.error("ESBUILD ERROR:", error);
+                if (error.errors) {
+                    console.error("DETAILS:", JSON.stringify(error.errors, null, 2));
+                }
                 process.exit(1);
             });
         }
