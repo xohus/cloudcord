@@ -124,9 +124,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          # The built runtime is the desktop folder; package it for the in-app updater.
-          npm install -g @electron/asar --quiet 2>/dev/null || true
-          asar pack desktop/client/dist/desktop desktop/client/dist/desktop.asar
+          npx --yes @electron/asar pack desktop/client/dist/desktop desktop/client/dist/desktop.asar
           cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord.asar
           cp desktop/client/dist/desktop.asar desktop/client/dist/runtime
           cp desktop/client/dist/desktop.asar desktop/client/dist/desktop-test.asar
