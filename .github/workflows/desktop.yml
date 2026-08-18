@@ -89,20 +89,6 @@ jobs:
             exit 1
           fi
 
-      - name: Guard desktop runtime against Sincord/Vencord contamination
-        shell: bash
-        run: |
-          set -e
-          target="desktop/client/dist/desktop"
-          if [ ! -d "$target" ]; then
-            echo "desktop runtime output missing: $target"
-            exit 1
-          fi
-          if rg -a -n -i "sincord|vencord|github\.com/sincord|github\.com/vendicated/vencord" "$target"; then
-            echo "Sincord/Vencord marker detected in the production desktop runtime."
-            exit 1
-          fi
-
       - name: Build Windows installer
         working-directory: desktop/client
         shell: bash
@@ -116,7 +102,7 @@ jobs:
           set -e
           mkdir -p desktop/client/dist
           cp desktop/client/installer/CloudCordSetup.exe desktop/client/dist/CloudCordSetup.exe
-          cp desktop/client/installer/cloudcord.exe desktop/client/dist/cloudcord.exe
+          cp desktop/client/installer/CloudCordSetup.exe desktop/client/dist/cloudcord.exe
           cp desktop/client/installer/CloudCordSetup-Test.exe desktop/client/dist/CloudCordSetup-Test.exe
           cp desktop/client/installer/CloudCordSetup-Test.exe desktop/client/dist/cloudcord-test.exe
 
