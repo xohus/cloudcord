@@ -1,5 +1,5 @@
 ﻿{
-    "name": "@sincord/discord-types",
+    "name": "@cloudcord/discord-types",
     "author": "CloudCord & Vencord Contributors",
     "private": false,
     "description": "Typescript definitions for the webpack modules of the Discord Web app",

@@ -53,7 +53,7 @@ export interface PluginData {
 }
 
 export const devs = {} as Record<string, Dev>;
-export const sincordDevs = {} as Record<string, Dev>;
+export const cloudcordDevs = {} as Record<string, Dev>;
 
 export function getName(node: NamedDeclaration) {
     return node.name && isIdentifier(node.name) ? node.name.text : undefined;
@@ -119,7 +119,7 @@ export function parseCloudCordDevs() {
 
             if (!isObjectLiteralExpression(value)) throw new Error(`Failed to parse CloudCordDevs: ${name} is not an object literal`);
 
-            sincordDevs[name] = {
+            cloudcordDevs[name] = {
                 name: (getObjectProp(value, "name") as StringLiteral).text,
                 id: (getObjectProp(value, "id") as BigIntLiteral).text.slice(0, -1)
             };
@@ -204,7 +204,7 @@ export async function parseFile(fileName: string) {
                     if (!isArrayLiteralExpression(value)) throw fail("authors is not an array literal");
                     data.authors = value.elements.map(e => {
                         if (!isPropertyAccessExpression(e)) throw fail("authors array contains non-property access expressions");
-                        const d = devs[getName(e)!] || sincordDevs[getName(e)!];
+                        const d = devs[getName(e)!] || cloudcordDevs[getName(e)!];
                         if (!d) throw fail(`couldn't look up author ${getName(e)}`);
                         return d;
                     });

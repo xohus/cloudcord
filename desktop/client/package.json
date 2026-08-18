@@ -26,7 +26,7 @@
         "watchWeb": "pnpm buildWeb --watch",
         "generateDevsList": "tsx scripts/generateDevsList.ts",
         "generatePluginJson": "tsx scripts/generatePluginList.ts",
-        "generateCloudCordPluginJson": "tsx scripts/generatePluginList.ts --sincord",
+        "generateCloudCordPluginJson": "tsx scripts/generatePluginList.ts --cloudcord",
         "generateVencordPluginJson": "tsx scripts/generatePluginList.ts --vencord",
         "generateTypes": "tspc --emitDeclarationOnly --declaration --outDir packages/vencord-types --allowJs false",
         "inject": "node scripts/runInstaller.mjs -- --install",

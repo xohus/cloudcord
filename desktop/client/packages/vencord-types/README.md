@@ -3,9 +3,9 @@
 Typings for CloudCord's api, published to npm
 
 ```sh
-npm i @sincord/types
+npm i @cloudcord/types
 
-yarn add @sincord/types
+yarn add @cloudcord/types
 
-pnpm add @sincord/types
+pnpm add @cloudcord/types
 ```

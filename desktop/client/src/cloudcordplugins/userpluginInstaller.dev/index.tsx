@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a Discord client mod
  * Copyright (c) 2025 nin0
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -96,8 +96,6 @@ export default definePlugin({
         });
 
         await Native.ensurePluginsDirectory();
-
-        plSettings.customEntries.push(this.section);
 
         this.pluginsWithUpdates.registerCallback((value, id) => {
             if (value.plugins.length === 0) return;

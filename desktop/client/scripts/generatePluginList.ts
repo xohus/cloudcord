@@ -25,12 +25,12 @@ import { getEntryPoint, isPluginFile, parseDevs, parseCloudCordDevs, parseFile, 
 
     const args = process.argv.slice(2);
 
-    const sincordFlag = args.includes("--sincord");
+    const cloudcordFlag = args.includes("--cloudcord");
     const vencordFlag = args.includes("--vencord");
 
     let dirs: string[];
 
-    if (sincordFlag) {
+    if (cloudcordFlag) {
         dirs = ["src/cloudcordplugins/_core", "src/cloudcordplugins"];
     } else if (vencordFlag) {
         dirs = ["src/plugins", "src/plugins/_core"];

@@ -25,7 +25,7 @@ interface Dev {
 }
 
 const devs = {} as Record<string, Dev>;
-const sincordDevs = {} as Record<string, Dev>;
+const cloudcordDevs = {} as Record<string, Dev>;
 
 function getName(node: NamedDeclaration) {
     return node.name && isIdentifier(node.name) ? node.name.text : undefined;
@@ -91,7 +91,7 @@ function parseCloudCordDevs() {
 
             if (!isObjectLiteralExpression(value)) throw new Error(`Failed to parse CloudCordDevs: ${name} is not an object literal`);
 
-            sincordDevs[name] = {
+            cloudcordDevs[name] = {
                 name: (getObjectProp(value, "name") as StringLiteral).text,
                 id: (getObjectProp(value, "id") as BigIntLiteral).text.slice(0, -1)
             };
@@ -109,7 +109,7 @@ function parseCloudCordDevs() {
 
     const allDevs = {
         vencord: devs,
-        sincord: sincordDevs,
+        cloudcord: cloudcordDevs,
     };
 
     const data = JSON.stringify(allDevs, null, 2);

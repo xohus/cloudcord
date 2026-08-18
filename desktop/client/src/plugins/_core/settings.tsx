@@ -1,14 +1,30 @@
-﻿/*
+/*
  * Vencord, a Discord client mod
  * Copyright (c) 2025 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import { definePluginSettings } from "@api/Settings";
-import { BackupRestoreIcon, LogIcon, MainSettingsIcon, PaintbrushIcon, PatchHelperIcon, PluginsIcon, UpdaterIcon } from "@components/Icons";
+import {
+    AppsIcon,
+    BackupRestoreIcon,
+    CloudIcon,
+    LogIcon,
+    MainSettingsIcon,
+    PaintbrushIcon,
+    PatchHelperIcon,
+    PluginsIcon,
+    RobotIcon,
+    UpdaterIcon,
+    UserIcon
+} from "@components/Icons";
 import {
     BackupAndRestoreTab,
+    BotCordTab,
     ChangelogTab,
+    CloudTab,
+    FakeProfileTab,
+    OutsidePluginsTab,
     PatchHelperTab,
     PluginsTab,
     ThemesTab,
@@ -197,41 +213,53 @@ export default definePlugin({
                 Icon: MainSettingsIcon
             }),
             buildEntry({
+                key: "cloudcord_botcord",
+                title: "BotCord",
+                panelTitle: "BotCord",
+                Component: BotCordTab,
+                Icon: RobotIcon
+            }),
+            buildEntry({
+                key: "cloudcord_fake_profile",
+                title: "Fake Profile",
+                panelTitle: "Fake Profile",
+                Component: FakeProfileTab,
+                Icon: UserIcon
+            }),
+            buildEntry({
+                key: "cloudcord_cloud_sync",
+                title: "Cloud Sync",
+                panelTitle: "Cloud Sync",
+                Component: CloudTab,
+                Icon: CloudIcon
+            }),
+            buildEntry({
                 key: "cloudcord_plugins",
                 title: "Plugins",
+                panelTitle: "CloudCord Plugins",
                 Component: PluginsTab,
                 Icon: PluginsIcon
             }),
             buildEntry({
                 key: "cloudcord_themes",
                 title: "Themes",
+                panelTitle: "CloudCord Themes",
                 Component: ThemesTab,
                 Icon: PaintbrushIcon
-            }),
-            !IS_UPDATER_DISABLED && UpdaterTab && buildEntry({
-                key: "cloudcord_updater",
-                title: "Updater",
-                panelTitle: "CloudCord Updater",
-                Component: UpdaterTab,
-                Icon: UpdaterIcon
-            }),
-            buildEntry({
-                key: "cloudcord_changelog",
-                title: "Changelog",
-                Component: ChangelogTab,
-                Icon: LogIcon,
             }),
             buildEntry({
                 key: "cloudcord_backup_restore",
                 title: "Backup & Restore",
+                panelTitle: "Backup & Restore",
                 Component: BackupAndRestoreTab,
                 Icon: BackupRestoreIcon
             }),
-            !IS_STANDALONE && PatchHelperTab && buildEntry({
-                key: "cloudcord_patch_helper",
-                title: "Patch Helper",
-                Component: PatchHelperTab,
-                Icon: PatchHelperIcon
+            buildEntry({
+                key: "cloudcord_outside_plugins",
+                title: "Outside Plugins",
+                panelTitle: "Outside Plugins",
+                Component: OutsidePluginsTab,
+                Icon: AppsIcon
             }),
             ...this.customEntries.map(buildEntry)
         ].filter(isTruthy);

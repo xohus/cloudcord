@@ -8,7 +8,7 @@
 
 CloudCord is a community project and welcomes any kind of contribution from anyone!
 
-We have development documentation for new contributors, which can be found at <https://docs.sincord.org>.
+We have development documentation for new contributors, which can be found at <https://docs.cloudcord.org>.
 
 > [!IMPORTANT]
 > All contributions must follow our [Code of Conduct](./CODE_OF_CONDUCT.md).

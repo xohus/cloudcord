@@ -7,15 +7,15 @@ While it was primarily created for CloudCord based on Vencord and its respective
 ## Installation
 
 ```bash
-npm install -D @sincord/discord-types
-yarn add -D @sincord/discord-types
-pnpm add -D @sincord/discord-types
+npm install -D @cloudcord/discord-types
+yarn add -D @cloudcord/discord-types
+pnpm add -D @cloudcord/discord-types
 ```
 
 ## Example Usage
 
 ```ts
-import type { UserStore } from "@sincord/discord-types";
+import type { UserStore } from "@cloudcord/discord-types";
 
 const userStore: UserStore = findStore("UserStore"); // findStore is up to you to implement, this library only provides types and no runtime code
 ```
@@ -25,7 +25,7 @@ const userStore: UserStore = findStore("UserStore"); // findStore is up to you t
 This library also exports some const enums that you can use from Typescript code:
 
 ```ts
-import { ApplicationCommandType } from "@sincord/discord-types/enums";
+import { ApplicationCommandType } from "@cloudcord/discord-types/enums";
 
 console.log(ApplicationCommandType.CHAT_INPUT); // 1
 ```
