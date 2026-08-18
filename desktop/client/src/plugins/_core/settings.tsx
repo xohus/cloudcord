@@ -198,9 +198,15 @@ export default definePlugin({
 
     buildLayout(originalLayoutBuilder: SettingsLayoutBuilder) {
         const layout = originalLayoutBuilder.buildLayout();
-        if (originalLayoutBuilder.key !== "$Root") return layout;
         if (!Array.isArray(layout)) return layout;
         if (layout.some(s => s?.key === "cloudcord_section")) return layout;
+
+        const isRoot = !originalLayoutBuilder.key ||
+                       originalLayoutBuilder.key === "$Root" ||
+                       originalLayoutBuilder.key === "root" ||
+                       layout.some(s => s?.key === "user_section" || s?.key === "billing_section" || s?.key === "utility_section");
+
+        if (!isRoot) return layout;
 
         const { buildEntry } = this;
 
