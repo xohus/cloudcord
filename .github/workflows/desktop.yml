@@ -154,6 +154,7 @@ jobs:
           tag_name: new_beta_t_desktop
           name: CloudCord Desktop ${{ github.sha }}
           make_latest: true
+          overwrite: true
           files: |
             desktop/client/dist/desktop.asar
             desktop/client/dist/cloudcord.asar
@@ -173,6 +174,7 @@ jobs:
           tag_name: new_beta_test_desktop
           name: CloudCord Desktop Test ${{ github.sha }}
           prerelease: true
+          overwrite: true
           files: |
             desktop/client/dist/CloudCordSetup-Test.exe
             desktop/client/dist/cloudcord-test.exe
