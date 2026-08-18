@@ -86,18 +86,31 @@ let DonorBadges = {} as Record<string, Array<Record<"tooltip" | "badge", string>
 let SincordDonorBadges = {} as Record<string, Array<Record<"tooltip" | "badge", string>>>;
 
 async function loadBadges(url: string, noCache = false) {
-    const init = {} as RequestInit;
-    if (noCache) init.cache = "no-cache";
+    try {
+        const init = {} as RequestInit;
+        if (noCache) init.cache = "no-cache";
 
-    return await fetch(url, init).then(r => r.json());
+        const res = await fetch(url, init);
+        if (!res.ok) return {};
+        return await res.json();
+    } catch {
+        return {};
+    }
 }
 
 async function loadAllBadges(noCache = false) {
-    const vencordBadges = await loadBadges("https://badges.vencord.dev/badges.json", noCache);
-    const sincordBadges = await loadBadges("https://badge.sincord.org/badges.json", noCache);
-
-    DonorBadges = vencordBadges;
-    SincordDonorBadges = sincordBadges;
+    try {
+        const vencordBadges = await loadBadges("https://badges.vencord.dev/badges.json", noCache);
+        DonorBadges = vencordBadges || {};
+    } catch {
+        DonorBadges = {};
+    }
+    try {
+        const sincordBadges = await loadBadges("https://badge.sincord.org/badges.json", noCache);
+        SincordDonorBadges = sincordBadges || {};
+    } catch {
+        SincordDonorBadges = {};
+    }
 }
 
 let intervalId: any;

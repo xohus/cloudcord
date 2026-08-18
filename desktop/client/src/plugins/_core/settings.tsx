@@ -5,10 +5,26 @@
  */
 
 import { definePluginSettings } from "@api/Settings";
-import { BackupRestoreIcon, LogIcon, MainSettingsIcon, PaintbrushIcon, PatchHelperIcon, PluginsIcon, UpdaterIcon } from "@components/Icons";
+import {
+    AppsIcon,
+    BackupRestoreIcon,
+    CloudIcon,
+    LogIcon,
+    MainSettingsIcon,
+    PaintbrushIcon,
+    PatchHelperIcon,
+    PluginsIcon,
+    RobotIcon,
+    UpdaterIcon,
+    UserIcon
+} from "@components/Icons";
 import {
     BackupAndRestoreTab,
+    BotCordTab,
     ChangelogTab,
+    CloudTab,
+    FakeProfileTab,
+    OutsidePluginsTab,
     PatchHelperTab,
     PluginsTab,
     ThemesTab,
@@ -184,63 +200,75 @@ export default definePlugin({
         const layout = originalLayoutBuilder.buildLayout();
         if (originalLayoutBuilder.key !== "$Root") return layout;
         if (!Array.isArray(layout)) return layout;
-        if (layout.some(s => s?.key === "sincord_section")) return layout;
+        if (layout.some(s => s?.key === "cloudcord_section")) return layout;
 
         const { buildEntry } = this;
 
-        const sincordEntries: SettingsLayoutNode[] = [
+        const cloudcordEntries: SettingsLayoutNode[] = [
             buildEntry({
-                key: "sincord_main",
+                key: "cloudcord_main",
                 title: "CloudCord",
                 panelTitle: "CloudCord Settings",
                 Component: VencordTab,
                 Icon: MainSettingsIcon
             }),
             buildEntry({
-                key: "sincord_plugins",
+                key: "cloudcord_botcord",
+                title: "BotCord",
+                panelTitle: "BotCord",
+                Component: BotCordTab,
+                Icon: RobotIcon
+            }),
+            buildEntry({
+                key: "cloudcord_fake_profile",
+                title: "Fake Profile",
+                panelTitle: "Fake Profile",
+                Component: FakeProfileTab,
+                Icon: UserIcon
+            }),
+            buildEntry({
+                key: "cloudcord_cloud_sync",
+                title: "Cloud Sync",
+                panelTitle: "Cloud Sync",
+                Component: CloudTab,
+                Icon: CloudIcon
+            }),
+            buildEntry({
+                key: "cloudcord_plugins",
                 title: "Plugins",
+                panelTitle: "CloudCord Plugins",
                 Component: PluginsTab,
                 Icon: PluginsIcon
             }),
             buildEntry({
-                key: "sincord_themes",
+                key: "cloudcord_themes",
                 title: "Themes",
+                panelTitle: "CloudCord Themes",
                 Component: ThemesTab,
                 Icon: PaintbrushIcon
             }),
-            !IS_UPDATER_DISABLED && UpdaterTab && buildEntry({
-                key: "sincord_updater",
-                title: "Updater",
-                panelTitle: "CloudCord Updater",
-                Component: UpdaterTab,
-                Icon: UpdaterIcon
-            }),
             buildEntry({
-                key: "sincord_changelog",
-                title: "Changelog",
-                Component: ChangelogTab,
-                Icon: LogIcon,
-            }),
-            buildEntry({
-                key: "sincord_backup_restore",
+                key: "cloudcord_backup_restore",
                 title: "Backup & Restore",
+                panelTitle: "Backup & Restore",
                 Component: BackupAndRestoreTab,
                 Icon: BackupRestoreIcon
             }),
-            !IS_STANDALONE && PatchHelperTab && buildEntry({
-                key: "sincord_patch_helper",
-                title: "Patch Helper",
-                Component: PatchHelperTab,
-                Icon: PatchHelperIcon
+            buildEntry({
+                key: "cloudcord_outside_plugins",
+                title: "Outside Plugins",
+                panelTitle: "Outside Plugins",
+                Component: OutsidePluginsTab,
+                Icon: AppsIcon
             }),
             ...this.customEntries.map(buildEntry)
         ].filter(isTruthy);
 
-        const sincordSection: SettingsLayoutNode = {
-            key: "sincord_section",
+        const cloudcordSection: SettingsLayoutNode = {
+            key: "cloudcord_section",
             type: LayoutTypes.SECTION,
             useTitle: () => "CloudCord Settings",
-            buildLayout: () => sincordEntries
+            buildLayout: () => cloudcordEntries
         };
 
         const { settingsLocation } = settings.store;
@@ -263,7 +291,7 @@ export default definePlugin({
             idx += 1;
         }
 
-        layout.splice(idx, 0, sincordSection);
+        layout.splice(idx, 0, cloudcordSection);
 
         return layout;
     },
