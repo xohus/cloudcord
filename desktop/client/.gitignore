@@ -26,6 +26,8 @@ lerna-debug.log*
 
 .modules/
 src/userplugins
+!scripts/build/
+!scripts/build/**
 
 ExtensionCache/
 /settings
