@@ -121,7 +121,7 @@ jobs:
           cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord-test.asar
           test -f desktop/client/dist/desktop.asar
 
-      - name: Upload binaries to GitHub Releases
+      - name: Upload binaries to GitHub Releases (Test Channel Only)
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -129,44 +129,12 @@ jobs:
           set -e
           cd desktop/client/dist
 
-          gh release upload --repo "${{ github.repository }}" new_beta_t_desktop \
-            desktop.asar \
-            cloudcord.asar \
-            runtime \
-            CloudCordSetup.exe \
-            cloudcord.exe \
-            CloudCordSetup-Test.exe \
-            cloudcord-test.exe \
-            desktop-test.asar \
-            cloudcord-test.asar \
-            --clobber || true
-
           gh release upload --repo "${{ github.repository }}" new_beta_test_desktop \
             CloudCordSetup-Test.exe \
             cloudcord-test.exe \
             desktop-test.asar \
             cloudcord-test.asar \
             --clobber || true
-
-      - name: Upload binaries to GitHub Release (Production fallback)
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: new_beta_t_desktop
-          name: CloudCord Desktop ${{ github.sha }}
-          make_latest: true
-          overwrite: true
-          files: |
-            desktop/client/dist/desktop.asar
-            desktop/client/dist/cloudcord.asar
-            desktop/client/dist/runtime
-            desktop/client/dist/CloudCordSetup.exe
-            desktop/client/dist/cloudcord.exe
-            desktop/client/dist/CloudCordSetup-Test.exe
-            desktop/client/dist/cloudcord-test.exe
-            desktop/client/dist/desktop-test.asar
-            desktop/client/dist/cloudcord-test.asar
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload binaries to GitHub Release (Isolated Test Channel fallback)
         uses: softprops/action-gh-release@v2
