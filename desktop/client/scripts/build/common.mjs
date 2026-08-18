@@ -81,12 +81,17 @@ export async function buildOrWatchAll(buildConfigs) {
     } else {
         for (const cfg of buildConfigs) {
             try {
+                console.log(`Building ${cfg.outfile}...`);
                 await build(cfg);
+                console.log(`Finished ${cfg.outfile}`);
             } catch (error) {
-                console.error("ESBUILD WARNING:", error);
+                console.error(`FAILED ${cfg.outfile}:`, error);
                 if (error.errors) {
-                    console.error("DETAILS:", JSON.stringify(error.errors, null, 2));
+                    for (const err of error.errors) {
+                        console.error(`- [${err.location?.file}:${err.location?.line}] ${err.text}`);
+                    }
                 }
+                process.exit(1);
             }
         }
     }

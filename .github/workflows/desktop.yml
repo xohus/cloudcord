@@ -81,12 +81,12 @@ jobs:
         shell: bash
         run: |
           set -e
-
-          if [ ! -d "desktop/client/dist/desktop" ]; then
-            echo "desktop/client/dist/desktop was not produced"
-            find desktop/client/dist -maxdepth 3 -type f 2>/dev/null || true
-            exit 1
-          fi
+          test -f desktop/client/dist/desktop/patcher.js
+          test -f desktop/client/dist/desktop/renderer.js
+          test -f desktop/client/dist/desktop/preload.js
+          test -f desktop/client/dist/desktop/package.json
+          echo "Verified all 4 desktop runtime files exist:"
+          ls -lh desktop/client/dist/desktop
 
       - name: Build Windows installer
         working-directory: desktop/client
