@@ -19,7 +19,7 @@
 
 // @ts-check
 
-import { readdir, writeFile } from "fs/promises";
+import { mkdir, readdir, writeFile } from "fs/promises";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
@@ -35,6 +35,9 @@ try {
 }
 
 import { BUILD_TIMESTAMP, commonOpts, exists, globPlugins, IS_DEV, IS_REPORTER, IS_COMPANION_TEST, IS_STANDALONE, IS_UPDATER_DISABLED, resolvePluginName, VERSION, commonRendererPlugins, watch, buildOrWatchAll, stringifyValues, IS_ANTI_CRASH_TEST } from "./common.mjs";
+
+await mkdir("dist/desktop", { recursive: true });
+await mkdir("dist/sinbop", { recursive: true });
 
 const defines = stringifyValues({
     IS_STANDALONE,
@@ -133,7 +136,7 @@ const buildConfigs = ([
     // Discord Desktop main & renderer & preload
     {
         ...nodeCommonOpts,
-        entryPoints: [join(dirname(fileURLToPath(import.meta.url)), "../../src/main/index.ts")],
+        entryPoints: ["src/main/index.ts"],
         outfile: "dist/desktop/patcher.js",
         footer: { js: "//# sourceURL=file:///VencordPatcher\n" + sourceMapFooter("patcher") },
         sourcemap,
@@ -151,7 +154,7 @@ const buildConfigs = ([
     },
     {
         ...commonOpts,
-        entryPoints: [join(dirname(fileURLToPath(import.meta.url)), "../../src/Vencord.ts")],
+        entryPoints: ["src/Vencord.ts"],
         outfile: "dist/desktop/renderer.js",
         format: "iife",
         target: ["esnext"],
@@ -171,7 +174,7 @@ const buildConfigs = ([
     },
     {
         ...nodeCommonOpts,
-        entryPoints: [join(dirname(fileURLToPath(import.meta.url)), "../../src/preload.ts")],
+        entryPoints: ["src/preload.ts"],
         outfile: "dist/desktop/preload.js",
         footer: { js: "//# sourceURL=file:///VencordPreload\n" + sourceMapFooter("preload") },
         sourcemap,
@@ -186,7 +189,7 @@ const buildConfigs = ([
     // Vencord Desktop main & renderer & preload
     {
         ...nodeCommonOpts,
-        entryPoints: [join(dirname(fileURLToPath(import.meta.url)), "../../src/main/index.ts")],
+        entryPoints: ["src/main/index.ts"],
         outfile: "dist/sinbop/main.js",
         footer: { js: "//# sourceURL=file:///VencordDesktopMain\n" + sourceMapFooter("main") },
         sourcemap,
@@ -203,7 +206,7 @@ const buildConfigs = ([
     },
     {
         ...commonOpts,
-        entryPoints: [join(dirname(fileURLToPath(import.meta.url)), "../../src/Vencord.ts")],
+        entryPoints: ["src/Vencord.ts"],
         outfile: "dist/sinbop/renderer.js",
         format: "iife",
         target: ["esnext"],
@@ -223,7 +226,7 @@ const buildConfigs = ([
     },
     {
         ...nodeCommonOpts,
-        entryPoints: [join(dirname(fileURLToPath(import.meta.url)), "../../src/preload.ts")],
+        entryPoints: ["src/preload.ts"],
         outfile: "dist/sinbop/preload.js",
         footer: { js: "//# sourceURL=file:///VencordPreload\n" + sourceMapFooter("preload") },
         sourcemap,
