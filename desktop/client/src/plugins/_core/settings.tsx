@@ -61,14 +61,23 @@ const enum LayoutType {
     CUSTOM = 18
 }
 
-let LayoutTypes = {
+let RawLayoutTypes: any = {
     SECTION: 1,
     SIDEBAR_ITEM: 2,
     PANEL: 3,
     CATEGORY: 5,
-    CUSTOM: 19,
+    CUSTOM: 18,
 };
-waitFor(["SECTION", "SIDEBAR_ITEM", "PANEL", "CUSTOM"], v => LayoutTypes = v);
+waitFor(["SECTION", "SIDEBAR_ITEM", "PANEL"], v => {
+    if (v) RawLayoutTypes = v;
+});
+
+function getLayoutType(key: "SECTION" | "SIDEBAR_ITEM" | "PANEL" | "CATEGORY" | "CUSTOM", fallback: number): number {
+    if (typeof RawLayoutTypes?.[key] === "number") return RawLayoutTypes[key];
+    if (typeof RawLayoutTypes?.LayoutType?.[key] === "number") return RawLayoutTypes.LayoutType[key];
+    if (typeof RawLayoutTypes?.default?.[key] === "number") return RawLayoutTypes.default[key];
+    return fallback;
+}
 
 const enum SectionType {
     HEADER = "HEADER",
@@ -173,14 +182,14 @@ export default definePlugin({
 
         const panel: SettingsLayoutNode = {
             key: key + "_panel",
-            type: LayoutTypes.PANEL,
+            type: getLayoutType("PANEL", 3),
             useTitle: () => panelTitle,
             useLabel: () => panelTitle,
             buildLayout: () => [{
-                type: LayoutTypes.CATEGORY,
+                type: getLayoutType("CATEGORY", 5),
                 key: key + "_category",
                 buildLayout: () => [{
-                    type: LayoutTypes.CUSTOM,
+                    type: getLayoutType("CUSTOM", 18),
                     key: key + "_custom",
                     Component: Component,
                     render: () => <Component />,
@@ -192,7 +201,7 @@ export default definePlugin({
 
         return ({
             key,
-            type: LayoutTypes.SIDEBAR_ITEM,
+            type: getLayoutType("SIDEBAR_ITEM", 2),
             useTitle: () => title,
             useLabel: () => title,
             icon: () => <Icon width={20} height={20} />,
@@ -276,7 +285,7 @@ export default definePlugin({
 
         const cloudcordSection: SettingsLayoutNode = {
             key: "cloudcord_section",
-            type: LayoutTypes.SECTION,
+            type: getLayoutType("SECTION", 1),
             useTitle: () => "CloudCord Settings",
             useLabel: () => "CloudCord Settings",
             buildLayout: () => cloudcordEntries
