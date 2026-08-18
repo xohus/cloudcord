@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -25,7 +25,6 @@ import { exec, execSync } from "child_process";
 import esbuild, { build, context } from "esbuild";
 import { constants as FsConstants, readFileSync } from "fs";
 import { access, readdir, readFile } from "fs/promises";
-import { minify as minifyHtml } from "html-minifier-terser";
 import { dirname, join, relative, resolve } from "path";
 import { fileURLToPath } from "url";
 import { promisify } from "util";
@@ -272,17 +271,23 @@ export const fileUrlPlugin = {
                 if (!noTrim) content = content.trimEnd();
             } else {
                 if (path.endsWith(".html")) {
-                    content = await minifyHtml(await readFile(path, "utf-8"), {
-                        collapseWhitespace: true,
-                        removeComments: true,
-                        minifyCSS: true,
-                        minifyJS: true,
-                        removeEmptyAttributes: true,
-                        removeRedundantAttributes: true,
-                        removeScriptTypeAttributes: true,
-                        removeStyleLinkTypeAttributes: true,
-                        useShortDoctype: true
-                    });
+                    const rawHtml = await readFile(path, "utf-8");
+                    try {
+                        const { minify: minifyHtml } = await import("html-minifier-terser");
+                        content = await minifyHtml(rawHtml, {
+                            collapseWhitespace: true,
+                            removeComments: true,
+                            minifyCSS: true,
+                            minifyJS: true,
+                            removeEmptyAttributes: true,
+                            removeRedundantAttributes: true,
+                            removeScriptTypeAttributes: true,
+                            removeStyleLinkTypeAttributes: true,
+                            useShortDoctype: true
+                        });
+                    } catch {
+                        content = rawHtml.replace(/\s+/g, " ").trim();
+                    }
                 } else if (/[mc]?[jt]sx?$/.test(path)) {
                     const res = await esbuild.build({
                         entryPoints: [path],
@@ -356,6 +361,10 @@ export const commonOpts = {
     plugins: [fileUrlPlugin, gitHashPlugin, gitRemotePlugin, stylePlugin],
     external: ["~plugins", "~git-hash", "~git-remote", "/assets/*"],
     inject: [join(dirname(fileURLToPath(import.meta.url)), "inject/react.mjs")],
+    alias: {
+        "@vencord/discord-types": resolve(dirname(fileURLToPath(import.meta.url)), "../../packages/discord-types"),
+        "@sincordplugins": resolve(dirname(fileURLToPath(import.meta.url)), "../../src/sincordplugins"),
+    },
     jsx: "transform",
     jsxFactory: "VencordCreateElement",
     jsxFragment: "VencordFragment"
