@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	path "path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/ProtonMail/go-appdir"
