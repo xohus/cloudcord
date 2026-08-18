@@ -281,27 +281,14 @@ jobs:
         shell: bash
         run: |
           set -e
-
           mkdir -p desktop/client/dist
-
-          INSTALLER_PATH="$(find desktop/client -type f -name 'CloudCordSetup.exe' | head -n 1)"
-
-          if [ -z "$INSTALLER_PATH" ]; then
-            INSTALLER_PATH="$(find desktop/client -type f -name '*.exe' | head -n 1)"
-          fi
-
-          if [ -z "$INSTALLER_PATH" ]; then
-            echo "No installer .exe was produced"
-            find desktop/client -maxdepth 5 -type f | sed 's#\\#/#g' | sort | tail -200
-            exit 1
-          fi
-
-          if [ "$INSTALLER_PATH" != "desktop/client/dist/CloudCordSetup.exe" ]; then
-            cp "$INSTALLER_PATH" desktop/client/dist/CloudCordSetup.exe
-          fi
-          cp "$INSTALLER_PATH" desktop/client/dist/cloudcord.exe
+          cp desktop/client/installer/CloudCordSetup.exe desktop/client/dist/CloudCordSetup.exe
+          cp desktop/client/installer/CloudCordSetup.exe desktop/client/dist/cloudcord.exe
+          cp desktop/client/installer/CloudCordSetup-Test.exe desktop/client/dist/CloudCordSetup-Test.exe
+          cp desktop/client/installer/CloudCordSetup-Test.exe desktop/client/dist/cloudcord-test.exe
 
           test -f desktop/client/dist/CloudCordSetup.exe
+          test -f desktop/client/dist/CloudCordSetup-Test.exe
           test -d desktop/client/dist/desktop
 
       - name: Upload desktop artifact
