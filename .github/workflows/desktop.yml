@@ -325,9 +325,11 @@ jobs:
           asar pack desktop/client/dist/desktop desktop/client/dist/desktop.asar
           cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord.asar
           cp desktop/client/dist/desktop.asar desktop/client/dist/runtime
+          cp desktop/client/dist/desktop.asar desktop/client/dist/desktop-test.asar
+          cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord-test.asar
           test -f desktop/client/dist/desktop.asar
 
-      - name: Upload binaries to GitHub Release
+      - name: Upload binaries to GitHub Release (Production)
         uses: softprops/action-gh-release@v2
         with:
           tag_name: new_beta_t_desktop
@@ -339,5 +341,23 @@ jobs:
             desktop/client/dist/runtime
             desktop/client/dist/CloudCordSetup.exe
             desktop/client/dist/cloudcord.exe
+            desktop/client/dist/CloudCordSetup-Test.exe
+            desktop/client/dist/cloudcord-test.exe
+            desktop/client/dist/desktop-test.asar
+            desktop/client/dist/cloudcord-test.asar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload binaries to GitHub Release (Isolated Test Channel)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: new_beta_test_desktop
+          name: CloudCord Desktop Test ${{ github.sha }}
+          prerelease: true
+          files: |
+            desktop/client/dist/CloudCordSetup-Test.exe
+            desktop/client/dist/cloudcord-test.exe
+            desktop/client/dist/desktop-test.asar
+            desktop/client/dist/cloudcord-test.asar
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

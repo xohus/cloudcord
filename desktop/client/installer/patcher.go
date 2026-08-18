@@ -25,15 +25,26 @@ var CloudCordDirectory string
 var ErrAlreadyReported = errors.New("already reported")
 
 func init() {
+	if IsTestBuildStr == "1" || os.Getenv("CLOUDCORD_TEST_BUILD") == "1" {
+		IsTestBuild = true
+	}
+
+	appName := "CloudCord"
+	asarName := "cloudcord.asar"
+	if IsTestBuild {
+		appName = "CloudCordTest"
+		asarName = "cloudcord-test.asar"
+	}
+
 	if dir := os.Getenv("CLOUDCORD_USER_DATA_DIR"); dir != "" {
 		Log.Debug("Using CLOUDCORD_USER_DATA_DIR")
 		BaseDir = dir
 	} else if dir = os.Getenv("DISCORD_USER_DATA_DIR"); dir != "" {
-		Log.Debug("Using DISCORD_USER_DATA_DIR/../CloudCordData")
-		BaseDir = path.Join(dir, "..", "CloudCordData")
+		Log.Debug("Using DISCORD_USER_DATA_DIR/../" + appName + "Data")
+		BaseDir = path.Join(dir, "..", appName+"Data")
 	} else {
 		Log.Debug("Using UserConfig")
-		BaseDir = appdir.New("CloudCord").UserConfig()
+		BaseDir = appdir.New(appName).UserConfig()
 	}
 	dir := os.Getenv("CLOUDCORD_DIRECTORY")
 	if dir == "" {
@@ -50,7 +61,7 @@ func init() {
 		Log.Debug("Using CLOUDCORD_DIRECTORY")
 		CloudCordDirectory = dir
 	} else {
-		CloudCordDirectory = path.Join(BaseDir, "cloudcord.asar")
+		CloudCordDirectory = path.Join(BaseDir, asarName)
 	}
 }
 

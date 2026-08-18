@@ -159,17 +159,28 @@ func installLatestBuilds() (retErr error) {
 
 	downloadUrl := ""
 	for _, ass := range ReleaseData.Assets {
-		if ass.Name == "desktop.asar" || ass.Name == "cloudcord.asar" || ass.Name == "runtime" {
-			downloadUrl = ass.DownloadURL
-			break
+		if IsTestBuild {
+			if ass.Name == "desktop-test.asar" || ass.Name == "cloudcord-test.asar" || ass.Name == "desktop.asar" {
+				downloadUrl = ass.DownloadURL
+				break
+			}
+		} else {
+			if ass.Name == "desktop.asar" || ass.Name == "cloudcord.asar" || ass.Name == "runtime" {
+				downloadUrl = ass.DownloadURL
+				break
+			}
 		}
 	}
 
 	if downloadUrl == "" {
-		downloadUrl = "https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/desktop.asar"
+		if IsTestBuild {
+			downloadUrl = "https://github.com/xohus/cloudcord/releases/download/new_beta_test_desktop/desktop-test.asar"
+		} else {
+			downloadUrl = "https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/desktop.asar"
+		}
 	}
 
-	Log.Debug("Downloading desktop.asar from", downloadUrl)
+	Log.Debug("Downloading asar from", downloadUrl)
 
 	req, err := http.NewRequest("GET", downloadUrl, nil)
 	if err != nil {

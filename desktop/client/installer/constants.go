@@ -8,15 +8,26 @@ package main
 
 import (
 	"image/color"
+	"os"
 	"sinlotl/buildinfo"
 )
 
-const ReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/latest"
-const ReleaseUrlFallback = ""
+var IsTestBuildStr = "0"
+var IsTestBuild = false
+
+var ReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/latest"
+var ReleaseUrlFallback = ""
 const InstallerReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/latest"
 const InstallerReleaseUrlFallback = ""
 
 var UserAgent = "CloudCordSetup/" + buildinfo.InstallerGitHash + " (https://github.com/xohus/cloudcord)"
+
+func init() {
+	if IsTestBuildStr == "1" || os.Getenv("CLOUDCORD_TEST_BUILD") == "1" {
+		IsTestBuild = true
+		ReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/tags/new_beta_test_desktop"
+	}
+}
 
 var (
 	DiscordGreen  = color.RGBA{R: 0x2D, G: 0x7C, B: 0x46, A: 0xFF}

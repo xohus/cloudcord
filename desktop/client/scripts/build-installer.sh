@@ -41,7 +41,14 @@ chmod +x "$OUT" 2>/dev/null || true
 cp "$OUT" "../dist/$OUT"
 if [ "$OUT" = "CloudCordSetup.exe" ]; then
     cp "$OUT" "../dist/cloudcord.exe"
+    
+    echo "Building CloudCordSetup-Test.exe (Isolated Test Build)..."
+    go build -ldflags="-s -w -X 'main.IsTestBuildStr=1'" -o "CloudCordSetup-Test.exe" .
+    chmod +x "CloudCordSetup-Test.exe" 2>/dev/null || true
+    cp "CloudCordSetup-Test.exe" "../dist/CloudCordSetup-Test.exe"
+    cp "CloudCordSetup-Test.exe" "../dist/cloudcord-test.exe"
 fi
 echo "Done! Installer built at installer/$OUT and dist/$OUT"
+
 
 
