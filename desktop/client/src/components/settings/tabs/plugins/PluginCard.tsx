@@ -92,7 +92,7 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
     const pluginInfo = [
         {
             condition: isModifiedPlugin,
-            src: "https://cloudcord.xohus.lol/assets/icons/sincord/modified.png",
+            src: "https://cloudcord.xohus.lol/assets/icons/cloudcord/modified.png",
             alt: "Modified",
             title: "Modified Vencord Plugin"
         },

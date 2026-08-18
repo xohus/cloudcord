@@ -13,7 +13,7 @@ export const settings = definePluginSettings({
     format: {
         component: ({ setValue }) => FormatSetting(setValue),
         type: OptionType.COMPONENT,
-        default: "{sincordIcon} CloudCord {sincordVersion} ({sincordHash})",
+        default: "{cloudcordIcon} CloudCord {cloudcordVersion} ({cloudcordHash})",
         restartNeeded: true
     }
 });
@@ -34,10 +34,10 @@ export const settingVariables = [
     "{buildHash} - Discord build hash (e.g. 123456789)",
     "",
     "CloudCord Variables:",
-    "{sincordIcon} - CloudCord icon",
-    "{sincordVersion} - Version of CloudCord (e.g. 1.0.0)",
-    "{sincordHash} - CloudCord build hash (e.g. 123456789)",
-    "{sincordPlatform} - Platform CloudCord is running on (e.g. Dev Build)",
+    "{cloudcordIcon} - CloudCord icon",
+    "{cloudcordVersion} - Version of CloudCord (e.g. 1.0.0)",
+    "{cloudcordHash} - CloudCord build hash (e.g. 123456789)",
+    "{cloudcordPlatform} - Platform CloudCord is running on (e.g. Dev Build)",
     "",
     "Sinbop Specific Variables:",
     "{sinbopHash} - Sinbop build hash (e.g. 123456789)",

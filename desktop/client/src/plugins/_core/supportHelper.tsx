@@ -26,7 +26,7 @@ import { Flex } from "@components/Flex";
 import { Link } from "@components/Link";
 import { Paragraph } from "@components/Paragraph";
 import { openSettingsTabModal, UpdaterTab } from "@components/settings";
-import { platformName } from "@cloudcordplugins/sincordHelper/utils";
+import { platformName } from "@cloudcordplugins/cloudcordHelper/utils";
 import customIdle from "@plugins/customIdle";
 import { gitHash, gitHashShort } from "@shared/vencordUserAgent";
 import { CONTRIB_ROLE_ID, Devs, DONOR_ROLE_ID, CLOUDCORD_TEAM, GUILD_ID, SUPPORT_CHANNEL_ID, SUPPORT_CHANNEL_IDS, VC_CONTRIB_ROLE_ID, VC_DONOR_ROLE_ID, VC_GUILD_ID, VC_REGULAR_ROLE_ID, VENCORD_CONTRIB_ROLE_ID } from "@utils/constants";
@@ -331,14 +331,14 @@ export default definePlugin({
 
     commands: [
         {
-            name: "sincord-debug",
+            name: "cloudcord-debug",
             description: "Send CloudCord debug info",
             // @ts-ignore
             predicate: ctx => isAnyPluginDev(UserStore.getCurrentUser()?.id) || isCloudCordGuild(ctx?.guild?.id, true),
             execute: async () => ({ content: await generateDebugInfoMessage() })
         },
         {
-            name: "sincord-plugins",
+            name: "cloudcord-plugins",
             description: "Send CloudCord plugin list",
             // @ts-ignore
             predicate: ctx => isAnyPluginDev(UserStore.getCurrentUser()?.id) || isCloudCordGuild(ctx?.guild?.id, true),
@@ -432,11 +432,11 @@ export default definePlugin({
     renderMessageAccessory(props) {
         const buttons = [] as JSX.Element[];
 
-        const sincordSupport = isCloudCordSupport(props.message.author.id);
+        const cloudcordSupport = isCloudCordSupport(props.message.author.id);
 
         const shouldAddUpdateButton =
             !IS_UPDATER_DISABLED
-            && ((isSupportChannel(props.channel.id) && sincordSupport))
+            && ((isSupportChannel(props.channel.id) && cloudcordSupport))
             && props.message.content?.toLowerCase().includes("update");
 
         if (shouldAddUpdateButton) {
@@ -461,15 +461,15 @@ export default definePlugin({
             );
         }
 
-        if (isSupportChannel(props.channel.id) && PermissionStore.can(PermissionsBits.SEND_MESSAGES, props.channel) && sincordSupport) {
-            if (props.message.content.includes("/sincord-debug") || props.message.content.includes("/sincord-plugins")) {
+        if (isSupportChannel(props.channel.id) && PermissionStore.can(PermissionsBits.SEND_MESSAGES, props.channel) && cloudcordSupport) {
+            if (props.message.content.includes("/cloudcord-debug") || props.message.content.includes("/cloudcord-plugins")) {
                 buttons.push(
                     <Button
                         key="vc-dbg"
                         color={Button.Colors.PRIMARY}
                         onClick={async () => sendMessage(props.channel.id, { content: await generateDebugInfoMessage() })}
                     >
-                        Run /sincord-debug
+                        Run /cloudcord-debug
                     </Button>,
                     <Button
                         key="vc-plg-list"
@@ -489,12 +489,12 @@ export default definePlugin({
                             }
                         }}
                     >
-                        Run /sincord-plugins
+                        Run /cloudcord-plugins
                     </Button>
                 );
             }
 
-            if (sincordSupport) {
+            if (cloudcordSupport) {
                 const match = CodeBlockRe.exec(props.message.content || props.message.embeds[0]?.rawDescription || "");
                 if (match) {
                     buttons.push(

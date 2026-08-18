@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a Discord client mod
  * Copyright (c) 2025 nin0
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -56,7 +56,7 @@ export default definePlugin({
     description: "Install userplugins with a simple button click",
     settingsAboutComponent: () => (
         <Notice.Warning>
-            Sincord does not moderate userplugins and takes no responsibility for anything that may result from installing them.
+            CloudCord does not moderate userplugins and takes no responsibility for anything that may result from installing them.
             Only install userplugins from developers you trust. Doing so is entirely at your own risk.
         </Notice.Warning>
     ),

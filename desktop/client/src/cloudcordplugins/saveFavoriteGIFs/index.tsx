@@ -8,7 +8,7 @@ import { ApplicationCommandInputType } from "@api/Commands";
 import { showNotification } from "@api/Notifications";
 import { isPluginEnabled } from "@api/PluginManager";
 import { definePluginSettings } from "@api/Settings";
-import sincordToolbox from "@cloudcordplugins/sincordToolbox";
+import cloudcordToolbox from "@cloudcordplugins/cloudcordToolbox";
 import { Devs } from "@utils/constants";
 import definePlugin, { OptionType } from "@utils/types";
 import { saveFile } from "@utils/web";
@@ -107,7 +107,7 @@ const settings = definePluginSettings({
         default: true,
         restartNeeded: true,
         get hidden() {
-            return !isPluginEnabled(sincordToolbox.name);
+            return !isPluginEnabled(cloudcordToolbox.name);
         }
     }
 });

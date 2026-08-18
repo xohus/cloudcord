@@ -97,7 +97,7 @@ export default definePlugin({
             registerAction({
                 id: "openDevSettings",
                 label: "Open Dev tab",
-                callback: () => SettingsRouter.openUserSettings("sincord_patch_helper_panel"),
+                callback: () => SettingsRouter.openUserSettings("cloudcord_patch_helper_panel"),
                 registrar: "CloudCord"
             });
         }

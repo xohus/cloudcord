@@ -21,13 +21,13 @@ export default definePlugin({
     settings,
     toolboxActions: {
         "Open Theme Library": () => {
-            SettingsRouter.openUserSettings("sincord_theme_library_panel");
+            SettingsRouter.openUserSettings("cloudcord_theme_library_panel");
         },
     },
 
     start() {
         SettingsPlugin.customEntries.push({
-            key: "sincord_theme_library",
+            key: "cloudcord_theme_library",
             title: "Theme Library",
             Component: require("./components/ThemeTab").default,
             Icon: ColorPaletteIcon
@@ -35,6 +35,6 @@ export default definePlugin({
     },
 
     stop() {
-        removeFromArray(SettingsPlugin.customEntries, e => e.key === "sincord_theme_library");
+        removeFromArray(SettingsPlugin.customEntries, e => e.key === "cloudcord_theme_library");
     },
 });

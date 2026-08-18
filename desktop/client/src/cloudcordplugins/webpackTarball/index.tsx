@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a Discord client mod
  * Copyright (c) 2024 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -62,7 +62,7 @@ async function saveTar(patched: boolean) {
     const { buildNumber, builtAt } = getBuildNumber();
     const mtime = (builtAt.getTime() / 1000) | 0;
 
-    const root = patched ? `sincord-${buildNumber}` : `discord-${buildNumber}`;
+    const root = patched ? `cloudcord-${buildNumber}` : `discord-${buildNumber}`;
 
     for (const [id, module] of Object.entries(wreq.m)) {
         const patchedSrc = Function.toString.call(module);

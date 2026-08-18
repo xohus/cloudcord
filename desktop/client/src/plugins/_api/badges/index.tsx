@@ -46,7 +46,7 @@ const ContributorBadge: ProfileBadge = {
 };
 
 const CloudCordContributorBadge: ProfileBadge = {
-    id: "sincord_contributor_badge",
+    id: "cloudcord_contributor_badge",
     description: "CloudCord Contributor",
     iconSrc: CLOUDCORD_CONTRIBUTOR_BADGE,
     position: BadgePosition.START,
@@ -94,10 +94,10 @@ async function loadBadges(url: string, noCache = false) {
 
 async function loadAllBadges(noCache = false) {
     const vencordBadges = await loadBadges("https://badges.vencord.dev/badges.json", noCache);
-    const sincordBadges = await loadBadges("https://cloudcord.xohus.lol/badges/badges.json", noCache);
+    const cloudcordBadges = await loadBadges("https://cloudcord.xohus.lol/badges/badges.json", noCache);
 
     DonorBadges = vencordBadges;
-    CloudCordDonorBadges = sincordBadges;
+    CloudCordDonorBadges = cloudcordBadges;
 }
 
 let intervalId: any;
@@ -244,7 +244,7 @@ export default definePlugin({
 
     getCloudCordDonorBadges(userId: string) {
         return CloudCordDonorBadges[userId]?.map((badge, idx) => ({
-            id: `sincord_donor_badge_${idx}`,
+            id: `cloudcord_donor_badge_${idx}`,
             iconSrc: badge.badge,
             description: badge.tooltip,
             position: BadgePosition.START,

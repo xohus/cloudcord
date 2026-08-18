@@ -17,7 +17,7 @@ import { ChannelStore, Menu, openModal,SelectedChannelStore } from "@webpack/com
 
 import { SetColorModal } from "./SetColorModal";
 
-export const DATASTORE_KEY = "sincord-customcolors";
+export const DATASTORE_KEY = "cloudcord-customcolors";
 export let colors: Record<string, string> = {};
 
 (async () => {

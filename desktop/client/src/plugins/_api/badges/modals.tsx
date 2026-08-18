@@ -121,7 +121,7 @@ export function CloudCordDonorModal() {
                 </div>
                 <div>
                     <Flex justifyContent="center" style={{ width: "100%" }}>
-                        <DonateButton sincord={true} />
+                        <DonateButton cloudcord={true} />
                     </Flex>
                 </div>
             </Modal>

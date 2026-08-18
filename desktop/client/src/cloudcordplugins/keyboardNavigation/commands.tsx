@@ -26,12 +26,12 @@ export interface ButtonAction {
 }
 
 export const actions: ButtonAction[] = [
-    { id: "openCloudCordSettings", label: "Open CloudCord tab", callback: async () => await SettingsRouter.openUserSettings("sincord_main_panel"), registrar: "CloudCord" },
-    { id: "openPluginSettings", label: "Open Plugin tab", callback: () => SettingsRouter.openUserSettings("sincord_plugins_panel"), registrar: "CloudCord" },
-    { id: "openThemesSettings", label: "Open Themes tab", callback: () => SettingsRouter.openUserSettings("sincord_themes_panel"), registrar: "CloudCord" },
-    { id: "openUpdaterSettings", label: "Open Updater tab", callback: () => SettingsRouter.openUserSettings("sincord_updater_panel"), registrar: "CloudCord" },
+    { id: "openCloudCordSettings", label: "Open CloudCord tab", callback: async () => await SettingsRouter.openUserSettings("cloudcord_main_panel"), registrar: "CloudCord" },
+    { id: "openPluginSettings", label: "Open Plugin tab", callback: () => SettingsRouter.openUserSettings("cloudcord_plugins_panel"), registrar: "CloudCord" },
+    { id: "openThemesSettings", label: "Open Themes tab", callback: () => SettingsRouter.openUserSettings("cloudcord_themes_panel"), registrar: "CloudCord" },
+    { id: "openUpdaterSettings", label: "Open Updater tab", callback: () => SettingsRouter.openUserSettings("cloudcord_updater_panel"), registrar: "CloudCord" },
     { id: "openCloudCordCloudSettings", label: "Open Cloud tab", callback: () => SettingsRouter.openUserSettings("cloudcord_cloud_panel"), registrar: "CloudCord" },
-    { id: "openBackupSettings", label: "Open Backup & Restore tab", callback: () => SettingsRouter.openUserSettings("sincord_backup_restore_panel"), registrar: "CloudCord" },
+    { id: "openBackupSettings", label: "Open Backup & Restore tab", callback: () => SettingsRouter.openUserSettings("cloudcord_backup_restore_panel"), registrar: "CloudCord" },
     { id: "restartClient", label: "Restart Client", callback: () => relaunch(), registrar: "CloudCord" },
     { id: "openQuickCSSFile", label: "Open Quick CSS File", callback: () => VencordNative.quickCss.openEditor(), registrar: "CloudCord" },
     { id: "openSettingsFolder", label: "Open Settings Folder", callback: async () => showItemInFolder(await VencordNative.settings.getSettingsDir()), registrar: "CloudCord" },
@@ -140,7 +140,7 @@ export const actions: ButtonAction[] = [
                     permanent: true,
                     noPersist: true,
                     onClick() {
-                        SettingsRouter.openUserSettings("sincord_updater_panel");
+                        SettingsRouter.openUserSettings("cloudcord_updater_panel");
                     }
                 }), 10_000);
             } else {

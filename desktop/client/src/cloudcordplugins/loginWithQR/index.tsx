@@ -62,7 +62,7 @@ export default definePlugin({
 
     start() {
         SettingsPlugin.customEntries.push({
-            key: "sincord_login_with_qr",
+            key: "cloudcord_login_with_qr",
             title: getIntlMessage("USER_SETTINGS_SCAN_QR_CODE"),
             Component: openQrModal,
             Icon: QrCodeIcon
@@ -71,7 +71,7 @@ export default definePlugin({
     },
 
     stop() {
-        removeFromArray(SettingsPlugin.customEntries, e => e.key === "sincord_login_with_qr");
+        removeFromArray(SettingsPlugin.customEntries, e => e.key === "cloudcord_login_with_qr");
         unload();
     },
 });

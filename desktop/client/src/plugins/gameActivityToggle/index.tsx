@@ -20,7 +20,7 @@ import { isPluginEnabled } from "@api/PluginManager";
 import { definePluginSettings } from "@api/Settings";
 import { UserAreaButton, UserAreaRenderProps } from "@api/UserArea";
 import { getUserSettingLazy } from "@api/UserSettings";
-import sincordToolbox from "@cloudcordplugins/sincordToolbox";
+import cloudcordToolbox from "@cloudcordplugins/cloudcordToolbox";
 import { Devs } from "@utils/constants";
 import definePlugin, { OptionType } from "@utils/types";
 import { Menu } from "@webpack/common";
@@ -41,7 +41,7 @@ const settings = definePluginSettings({
             { label: "CloudCord Toolbox", value: "TOOLBOX" }
         ],
         get hidden() {
-            return !isPluginEnabled(sincordToolbox.name);
+            return !isPluginEnabled(cloudcordToolbox.name);
         }
     }
 });
@@ -80,7 +80,7 @@ function GameActivityToggleButton({ iconForeground, hideTooltips, nameplate }: U
     const { location } = settings.use(["location"]);
     const showCurrentGame = ShowCurrentGame.useSetting();
 
-    if (location !== "PANEL" && isPluginEnabled(sincordToolbox.name)) return null;
+    if (location !== "PANEL" && isPluginEnabled(cloudcordToolbox.name)) return null;
 
     return (
         <UserAreaButton

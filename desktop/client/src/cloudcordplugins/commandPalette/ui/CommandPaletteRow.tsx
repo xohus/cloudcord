@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a Discord client mod
  * Copyright (c) 2026 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -71,7 +71,7 @@ export function CommandPaletteRow({ item, selected, onClick, onDoubleClick, onHo
         if (category.includes("discord-settings") || metadata.includes("settings")) return MainSettingsIcon;
         if (metadata.includes("update") || metadata.includes("changelog")) return UpdaterIcon;
         if (metadata.includes("reload") || metadata.includes("restart")) return RestartIcon;
-        if ((metadata.includes("notification") || metadata.includes("sincord"))
+        if ((metadata.includes("notification") || metadata.includes("cloudcord"))
             && metadata.includes("mute")
             && !metadata.includes("voice")
             && !metadata.includes("deafen")

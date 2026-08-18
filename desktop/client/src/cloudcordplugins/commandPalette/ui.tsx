@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a Discord client mod
  * Copyright (c) 2025 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -19,7 +19,7 @@ export function openCommandPalette() {
     }
 
     modalSerial += 1;
-    const modalKey = `sincord-command-palette-${modalSerial}`;
+    const modalKey = `cloudcord-command-palette-${modalSerial}`;
     activeModalKey = openModal(
         modalProps => <CommandPaletteModal modalProps={modalProps} instanceKey={modalSerial} />,
         {

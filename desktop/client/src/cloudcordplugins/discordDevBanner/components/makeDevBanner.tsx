@@ -16,7 +16,7 @@ export function makeDevBanner(state?: string): string | JSX.Element {
     const { RELEASE_CHANNEL, BUILD_NUMBER, VERSION_HASH } = window.GLOBAL_ENV;
     const buildChannel = names[RELEASE_CHANNEL] || RELEASE_CHANNEL.charAt(0).toUpperCase() + RELEASE_CHANNEL.slice(1);
     const { chromiumVersion, electronVersion, getVersionInfo } = SettingsPlugin;
-    const format = settings.store.format ?? "{devbannerIcon} {buildChannel} {buildNumber} ({buildHash}) | {sincordIcon} {sincordName} {sincordVersion} ({sincordHash})";
+    const format = settings.store.format ?? "{devbannerIcon} {buildChannel} {buildNumber} ({buildHash}) | {cloudcordIcon} {cloudcordName} {cloudcordVersion} ({cloudcordHash})";
     const baseFormat = state ?? format;
 
     const clientInfo = detectClient();
@@ -25,9 +25,9 @@ export function makeDevBanner(state?: string): string | JSX.Element {
         .replace(/{buildChannel}/g, buildChannel)
         .replace(/{buildNumber}/g, BUILD_NUMBER)
         .replace(/{buildHash}/g, VERSION_HASH.slice(0, 9))
-        .replace(/{sincordVersion}/g, VERSION)
-        .replace(/{sincordHash}/g, gitHashShort)
-        .replace(/{sincordPlatform}/g, getVersionInfo(false))
+        .replace(/{cloudcordVersion}/g, VERSION)
+        .replace(/{cloudcordHash}/g, gitHashShort)
+        .replace(/{cloudcordPlatform}/g, getVersionInfo(false))
         .replace(/{electronVersion}/g, electronVersion)
         .replace(/{chromiumVersion}/g, chromiumVersion)
         .replace(/{clientName}/g, clientInfo.name)
@@ -44,8 +44,8 @@ export function makeDevBanner(state?: string): string | JSX.Element {
         switch (part) {
             case "{discordIcon}":
                 return <span key={`icon-discord-${i}`} className="vc-discord-dev-banner-icons"><DiscordIcon /></span>;
-            case "{sincordIcon}":
-                return <span key={`icon-sincord-${i}`} className="vc-discord-dev-banner-icons"><CloudCordIcon /></span>;
+            case "{cloudcordIcon}":
+                return <span key={`icon-cloudcord-${i}`} className="vc-discord-dev-banner-icons"><CloudCordIcon /></span>;
             case "{electronIcon}":
                 return <span key={`icon-electron-${i}`} className="vc-discord-dev-banner-icons"><ElectronIcon /></span>;
             case "{chromiumIcon}":

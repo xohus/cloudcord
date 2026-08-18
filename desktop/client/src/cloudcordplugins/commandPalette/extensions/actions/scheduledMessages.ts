@@ -5,7 +5,7 @@
  */
 
 import { isPluginEnabled, plugins } from "@api/PluginManager";
-import { toggleEnabled } from "@cloudcordplugins/sincordHelper/utils";
+import { toggleEnabled } from "@cloudcordplugins/cloudcordHelper/utils";
 import { openViewScheduledModal } from "@cloudcordplugins/scheduledMessages/components/ViewScheduledModal";
 import { Toasts } from "@webpack/common";
 

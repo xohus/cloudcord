@@ -24,11 +24,11 @@ import { ButtonProps } from "@vencord/discord-types";
 import { showToast } from "@webpack/common";
 
 export function DonateButton({
-    sincord = false,
+    cloudcord = false,
     className,
     ...props
-}: Partial<ButtonProps> & { sincord?: boolean; }) {
-    const link = sincord ? "https://cloudcord.xohus.lol/#download" : "https://github.com/sponsors/Vendicated";
+}: Partial<ButtonProps> & { cloudcord?: boolean; }) {
+    const link = cloudcord ? "https://cloudcord.xohus.lol/#download" : "https://github.com/sponsors/Vendicated";
     return (
         <Button
             {...props}

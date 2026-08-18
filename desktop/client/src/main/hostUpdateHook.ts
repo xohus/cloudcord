@@ -1,11 +1,11 @@
-/*
+﻿/*
  * Vencord, a Discord client mod
  * Copyright (c) 2026 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 /**
- * re-applies the sincord patch to a freshly installed discord host
+ * re-applies the cloudcord patch to a freshly installed discord host
  * version at the moment the native updater finishes writing it.
  *
  * hooks `discord_desktop_core.startup({ updater })` to capture the live
@@ -52,7 +52,7 @@ interface DiscordHostUpdater {
 interface DiscordUpdaterModule {
     getUpdater?(): DiscordHostUpdater | null | undefined;
     tryInitUpdater?(buildInfo: DiscordBuildInfo, repositoryUrl: string, useRustBspatch: boolean): boolean;
-    __sincordTryInitWrapped?: boolean;
+    __cloudcordTryInitWrapped?: boolean;
 }
 
 interface DiscordDesktopCoreStartupOpts {
@@ -62,7 +62,7 @@ interface DiscordDesktopCoreStartupOpts {
 
 interface DiscordDesktopCore {
     startup?(opts: DiscordDesktopCoreStartupOpts): void;
-    __sincordStartupWrapped?: boolean;
+    __cloudcordStartupWrapped?: boolean;
 }
 
 const error = (...args: unknown[]) => console.error("[CloudCord:HostUpdate]", ...args);
@@ -186,8 +186,8 @@ const attachToUpdater = (updater: DiscordHostUpdater | null | undefined) => {
 };
 
 const wrapStartup = (coreExports: DiscordDesktopCore | null | undefined) => {
-    if (!coreExports?.startup || coreExports.__sincordStartupWrapped) return;
-    coreExports.__sincordStartupWrapped = true;
+    if (!coreExports?.startup || coreExports.__cloudcordStartupWrapped) return;
+    coreExports.__cloudcordStartupWrapped = true;
 
     const origStartup = coreExports.startup;
     coreExports.startup = function (opts, ...rest) {
@@ -196,12 +196,12 @@ const wrapStartup = (coreExports: DiscordDesktopCore | null | undefined) => {
             const inst = updaterModule?.getUpdater?.();
             if (inst) {
                 attachToUpdater(inst);
-            } else if (typeof updaterModule?.tryInitUpdater === "function" && !updaterModule.__sincordTryInitWrapped) {
+            } else if (typeof updaterModule?.tryInitUpdater === "function" && !updaterModule.__cloudcordTryInitWrapped) {
                 /*
                  * updater not yet constructed at startup time. wrap the
                  * factory so we attach once vanilla creates it.
                  */
-                updaterModule.__sincordTryInitWrapped = true;
+                updaterModule.__cloudcordTryInitWrapped = true;
                 const origTry = updaterModule.tryInitUpdater.bind(updaterModule);
                 updaterModule.tryInitUpdater = (buildInfo, repositoryUrl, useRustBspatch) => {
                     const ok = origTry(buildInfo, repositoryUrl, useRustBspatch);

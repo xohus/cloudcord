@@ -7,7 +7,7 @@
 import { isPluginEnabled } from "@api/PluginManager";
 import { definePluginSettings } from "@api/Settings";
 import { UserAreaButton, UserAreaRenderProps } from "@api/UserArea";
-import sincordToolbox from "@cloudcordplugins/sincordToolbox";
+import cloudcordToolbox from "@cloudcordplugins/cloudcordToolbox";
 import { Devs } from "@utils/constants";
 import definePlugin, { OptionType } from "@utils/types";
 import { Constants, Menu, RestAPI, useEffect, useState } from "@webpack/common";
@@ -48,7 +48,7 @@ function SpotifyActivityToggleButton({ iconForeground, hideTooltips, nameplate }
         return () => { forceUpdate = null; };
     }, []);
 
-    if (!isLoaded || !spotifyId || location !== "PANEL" && isPluginEnabled(sincordToolbox.name)) return null;
+    if (!isLoaded || !spotifyId || location !== "PANEL" && isPluginEnabled(cloudcordToolbox.name)) return null;
 
     return (
         <UserAreaButton
@@ -80,7 +80,7 @@ const settings = definePluginSettings({
             { label: "CloudCord Toolbox", value: "TOOLBOX" }
         ],
         get hidden() {
-            return !isPluginEnabled(sincordToolbox.name);
+            return !isPluginEnabled(cloudcordToolbox.name);
         }
     },
 });

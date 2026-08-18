@@ -5,7 +5,7 @@
  */
 
 import { isPluginEnabled, plugins } from "@api/PluginManager";
-import { toggleEnabled } from "@cloudcordplugins/sincordHelper/utils";
+import { toggleEnabled } from "@cloudcordplugins/cloudcordHelper/utils";
 import { SettingsRouter, Toasts } from "@webpack/common";
 
 import { DEFAULT_CATEGORY_ID } from "../../metadata/categories";
@@ -43,7 +43,7 @@ async function ensureThemeLibraryPluginEnabled() {
 
 async function runOpenThemeLibrary() {
     if (!await ensureThemeLibraryPluginEnabled()) return;
-    SettingsRouter.openUserSettings("sincord_theme_library_panel");
+    SettingsRouter.openUserSettings("cloudcord_theme_library_panel");
 }
 
 export function createThemeLibraryExtensionCommand(): CommandEntry {

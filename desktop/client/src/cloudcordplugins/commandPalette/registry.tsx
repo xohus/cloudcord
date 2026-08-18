@@ -10,7 +10,7 @@ import { Settings, SettingsStore } from "@api/Settings";
 import { getUserSettingLazy } from "@api/UserSettings";
 import { HeadphonesIcon } from "@components/Icons";
 import { openPluginModal } from "@components/settings/tabs";
-import { toggleEnabled } from "@cloudcordplugins/sincordHelper/utils";
+import { toggleEnabled } from "@cloudcordplugins/cloudcordHelper/utils";
 import { copyWithToast } from "@utils/discord";
 import { Logger } from "@utils/Logger";
 import type { Plugin } from "@utils/types";
@@ -1508,12 +1508,12 @@ async function prunePinned() {
 
 const BUILT_IN_COMMANDS: CommandEntry[] = [
     {
-        id: "open-sincord-settings",
+        id: "open-cloudcord-settings",
         label: "Open CloudCord Settings",
-        keywords: ["settings", "sincord"],
+        keywords: ["settings", "cloudcord"],
         categoryId: DEFAULT_CATEGORY_ID,
         tags: [TAG_NAVIGATION, TAG_CORE],
-        handler: () => SettingsRouter.openUserSettings("sincord_main_panel")
+        handler: () => SettingsRouter.openUserSettings("cloudcord_main_panel")
     },
     {
         id: "reload-windows",
@@ -2359,7 +2359,7 @@ function registerUpdateCommands() {
         keywords: ["updates", "changelog"],
         categoryId: "updates",
         tags: [TAG_DEVELOPER, TAG_NAVIGATION],
-        handler: () => SettingsRouter.openUserSettings("sincord_changelog_panel")
+        handler: () => SettingsRouter.openUserSettings("cloudcord_changelog_panel")
     });
 }
 
@@ -3647,7 +3647,7 @@ function registerPluginChangeCommands() {
     });
 
     registerCommand({
-        id: "restart-sincord",
+        id: "restart-cloudcord",
         label: "Restart CloudCord",
         description: "Reloads the Discord client window",
         keywords: ["restart", "reload"],
@@ -3785,7 +3785,7 @@ function registerCustomizationCommands() {
         keywords: ["theme", "themes", "library"],
         categoryId: DEFAULT_CATEGORY_ID,
         tags: [TAG_CUSTOMIZATION, TAG_NAVIGATION],
-        handler: () => SettingsRouter.openUserSettings("sincord_themes_panel")
+        handler: () => SettingsRouter.openUserSettings("cloudcord_themes_panel")
     });
 }
 

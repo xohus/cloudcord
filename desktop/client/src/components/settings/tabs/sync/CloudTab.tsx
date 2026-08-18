@@ -60,7 +60,7 @@ function validateUrl(url: string) {
 
 const cloudBackendOptions = [
     { label: "CloudCord Cloud", value: "https://cloudcord-profiles.ggxohus.workers.dev/" },
-    { label: "Vencord Cloud", value: "https://api.vencord.dev/" }
+    { label: "CloudCord Cloud", value: "https://api.vencord.dev/" }
 ];
 
 const syncDirectionOptions = [
@@ -128,7 +128,7 @@ function CloudTab() {
                     value={cloudBackendOptions.find(o => o.value === cloud.url)?.value}
                     onChange={v => changeUrl(v)}
                     closeOnSelect={true}
-                    renderOptionPrefix={o => o?.value?.includes("sincord") ? <CloudCordIcon /> : <VencordIcon />}
+                    renderOptionPrefix={o => o?.value?.includes("cloudcord") ? <CloudCordIcon /> : <VencordIcon />}
                 />
             </div>
 

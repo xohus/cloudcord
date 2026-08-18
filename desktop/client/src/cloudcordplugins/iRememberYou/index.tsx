@@ -27,7 +27,7 @@ export default definePlugin({
 
     async start() {
         SettingsPlugin.customEntries.push({
-            key: "sincord_i_remember_you",
+            key: "cloudcord_i_remember_you",
             title: "I Remember You",
             Component: () => <DataUI usersCollection={data.usersCollection} />,
             Icon: EyeIcon
@@ -45,7 +45,7 @@ export default definePlugin({
     },
 
     stop() {
-        removeFromArray(SettingsPlugin.customEntries, e => e.key === "sincord_i_remember_you");
+        removeFromArray(SettingsPlugin.customEntries, e => e.key === "cloudcord_i_remember_you");
 
         const dataManager = this.dataManager as Data;
         removeMessagePreSendListener(dataManager._onMessagePreSend_preSend);

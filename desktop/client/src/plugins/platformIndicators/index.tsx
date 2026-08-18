@@ -84,7 +84,7 @@ const PlatformIcon = ({ platform, status, small }) => {
     const { ConsoleIcon } = settings.store;
     if (platform === "embedded") {
         switch (ConsoleIcon) {
-            case "sincord":
+            case "cloudcord":
                 Icon = Icons.embedded;
                 break;
             case "suncord":
@@ -201,7 +201,7 @@ const settings = definePluginSettings({
         options: [
             {
                 label: "CloudCord",
-                value: "sincord",
+                value: "cloudcord",
                 default: true
             },
             {
@@ -209,7 +209,7 @@ const settings = definePluginSettings({
                 value: "suncord",
             },
             {
-                label: "Vencord",
+                label: "CloudCord",
                 value: "vencord",
             },
         ],

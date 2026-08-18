@@ -5,7 +5,7 @@
  */
 
 import { isPluginEnabled, plugins } from "@api/PluginManager";
-import { toggleEnabled } from "@cloudcordplugins/sincordHelper/utils";
+import { toggleEnabled } from "@cloudcordplugins/cloudcordHelper/utils";
 import { addScheduledMessage } from "@cloudcordplugins/scheduledMessages/utils";
 import { ChannelStore, SelectedChannelStore } from "@webpack/common";
 

@@ -128,7 +128,7 @@ export function _getBadges(args: BadgeUserArgs) {
     }
 
     const donorBadges = BadgeAPIPlugin.getDonorBadges(args.userId);
-    const sincordDonorBadges = BadgeAPIPlugin.getCloudCordDonorBadges(args.userId);
+    const cloudcordDonorBadges = BadgeAPIPlugin.getCloudCordDonorBadges(args.userId);
     const GlobalBadges = isPluginEnabled(globalBadges.name) ? globalBadges.getGlobalBadges(args.userId) : false;
 
     // do globalbadges first so it shows before the contrib badges but after donor badges
@@ -150,9 +150,9 @@ export function _getBadges(args: BadgeUserArgs) {
         );
     }
 
-    if (sincordDonorBadges) {
+    if (cloudcordDonorBadges) {
         badges.unshift(
-            ...sincordDonorBadges.map(badge => ({
+            ...cloudcordDonorBadges.map(badge => ({
                 ...args,
                 ...badge,
             }))
