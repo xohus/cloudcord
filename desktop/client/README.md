@@ -1,11 +1,11 @@
-# [<img src="./browser/icon.png" width="40" align="left" alt="CloudCord">](https://github.com/xohus/cloudcord) CloudCord
+﻿# [<img src="./browser/icon.png" width="40" align="left" alt="CloudCord">](https://github.com/xohus/cloudcord) CloudCord
 
 CloudCord is a fork of [Vencord](https://github.com/Vendicated/Vencord), with over 300+ plugins.
 
 
 ### Included Plugins
 
-Our included plugins can be found [here](https://sincord.org/plugins).
+Our included plugins can be found [here](https://cloudcord.xohus.lol/plugins).
 
 ## Installing / Uninstalling
 

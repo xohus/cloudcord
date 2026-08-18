@@ -1,6 +1,6 @@
-# Sincord Types
+﻿# CloudCord Types
 
-Typings for Sincord's api, published to npm
+Typings for CloudCord's api, published to npm
 
 ```sh
 npm i @sincord/types
