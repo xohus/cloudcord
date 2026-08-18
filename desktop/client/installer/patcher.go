@@ -219,11 +219,11 @@ func cleanupDesyncedPatchedInstall(dir string, isSystemElectron bool) (bool, err
 
 	Log.Warn("Detected a patched install with a non-CloudCord app.asar. Discord was likely updated while patched; removing stale _app.asar")
 
-	if err = os.Remove(_appAsar); err != nil {
+	if err = os.Remove(_appAsar); err != nil && !errors.Is(err, os.ErrNotExist) {
 		return false, CheckIfErrIsCauseItsBusyRn(err)
 	}
 	if isSystemElectron {
-		if err = os.RemoveAll(_appAsar + ".unpacked"); err != nil {
+		if err = os.RemoveAll(_appAsar + ".unpacked"); err != nil && !errors.Is(err, os.ErrNotExist) {
 			return false, err
 		}
 	}
