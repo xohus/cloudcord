@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -9,7 +9,7 @@ const VERBOSE = process.env.LINT_PATCHES_VERBOSE === "1" || process.argv.include
 
 const tracked = execFileSync("git", ["ls-files", "src"], { cwd: ROOT, encoding: "utf8" })
     .split("\n")
-    .filter(p => /^src\/(plugins|sincordplugins)\/.*\.(ts|tsx)$/.test(p))
+    .filter(p => /^src\/(plugins|cloudcordplugins)\/.*\.(ts|tsx)$/.test(p))
     .map(p => p.replace(/\//g, sep));
 
 let errors = 0;

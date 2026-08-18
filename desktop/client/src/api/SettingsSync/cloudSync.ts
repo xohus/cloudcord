@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a Discord client mod
  * Copyright (c) 2025 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -130,7 +130,7 @@ function handleAuthFailure() {
         title: "Cloud Settings",
         body: "Cloud sync was disabled because this account isn't connected. Reconnect in Cloud Settings.",
         color: "var(--yellow-360)",
-        onClick: () => SettingsRouter.openUserSettings("sincord_cloud_panel"),
+        onClick: () => SettingsRouter.openUserSettings("cloudcord_cloud_panel"),
     });
     Settings.cloud.authenticated = false;
 }

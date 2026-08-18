@@ -1,4 +1,4 @@
-{
+﻿{
     "compilerOptions": {
         "resolveJsonModule": true,
         "allowSyntheticDefaultImports": true,
@@ -59,8 +59,8 @@
             "@webpack/types": [
                 "./src/webpack/types"
             ],
-            "@sincordplugins/*": [
-                "./src/sincordplugins/*"
+            "@cloudcordplugins/*": [
+                "./src/cloudcordplugins/*"
             ]
         },
         "plugins": [

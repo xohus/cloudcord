@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -173,7 +173,7 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
     }
 
     const pluginMeta = PluginMeta[plugin.name];
-    const isSincordPlugin = pluginMeta.folderName.startsWith("src/sincordplugins/") ?? false;
+    const isCloudCordPlugin = pluginMeta.folderName.startsWith("src/cloudcordplugins/") ?? false;
 
     return (
         <Modal
@@ -217,7 +217,7 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
                                 renderUser={(user: User) => (
                                     <Clickable
                                         className={AvatarStyles.clickableAvatar}
-                                        onClick={() => isSincordPlugin ? openContributorModal(user) : openContributorModal(user)}
+                                        onClick={() => isCloudCordPlugin ? openContributorModal(user) : openContributorModal(user)}
                                     >
                                         <img
                                             className={AvatarStyles.avatar}
@@ -260,7 +260,7 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
                             <div className={cl("links")}>
                                 <WebsiteButton
                                     text="Website"
-                                    href={isSincordPlugin ? `https://sincord.org/plugins/${plugin.name}` : `https://vencord.dev/plugins/${plugin.name}`}
+                                    href={isCloudCordPlugin ? `https://cloudcord.xohus.lol/plugins${plugin.name}` : `https://vencord.dev/plugins/${plugin.name}`}
                                 />
                                 <GithubButton
                                     text="Source Code"

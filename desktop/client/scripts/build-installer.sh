@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds the CloudCord Setup installer binary for the current platform
+# Builds the Sinlotl installer binary for the current platform
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,16 +18,16 @@ case "$(uname -s)" in
     Darwin)
         ARCH=$(uname -m)
         if [ "$ARCH" = "arm64" ]; then
-            OUT="CloudCordSetup-darwin-arm64"
+            OUT="Sinlotl-darwin-arm64"
         else
-            OUT="CloudCordSetup-darwin-x64"
+            OUT="Sinlotl-darwin-x64"
         fi
         ;;
     Linux)
-        OUT="CloudCordSetup-linux"
+        OUT="Sinlotl-linux"
         ;;
     MINGW*|MSYS*|CYGWIN*)
-        OUT="CloudCordSetup.exe"
+        OUT="Sinlotl.exe"
         ;;
     *)
         echo "Unsupported platform"
@@ -35,37 +35,7 @@ case "$(uname -s)" in
         ;;
 esac
 
-mkdir -p ../dist
-
-if [ -f "CloudCordSetup.exe" ]; then
-    echo "Found 30.6 MB prebuilt CloudCordSetup.exe, copying directly to dist..."
-    cp "CloudCordSetup.exe" "../dist/CloudCordSetup.exe"
-    cp "CloudCordSetup.exe" "../dist/cloudcord.exe"
-    if [ -f "CloudCordSetup-Test.exe" ]; then
-        cp "CloudCordSetup-Test.exe" "../dist/CloudCordSetup-Test.exe"
-        cp "CloudCordSetup-Test.exe" "../dist/cloudcord-test.exe"
-    else
-        cp "CloudCordSetup.exe" "../dist/CloudCordSetup-Test.exe"
-        cp "CloudCordSetup.exe" "../dist/cloudcord-test.exe"
-    fi
-    echo "Done! 30.6 MB prebuilt installer packaged."
-    exit 0
-fi
-
 echo "Building $OUT..."
-go build -ldflags="-s -w" -o "$OUT" .
+go build -o "$OUT" .
 chmod +x "$OUT" 2>/dev/null || true
-cp "$OUT" "../dist/$OUT"
-if [ "$OUT" = "CloudCordSetup.exe" ]; then
-    cp "$OUT" "../dist/cloudcord.exe"
-    
-    echo "Building CloudCordSetup-Test.exe (Isolated Test Build)..."
-    go build -ldflags="-s -w -X 'main.IsTestBuildStr=1'" -o "CloudCordSetup-Test.exe" .
-    chmod +x "CloudCordSetup-Test.exe" 2>/dev/null || true
-    cp "CloudCordSetup-Test.exe" "../dist/CloudCordSetup-Test.exe"
-    cp "CloudCordSetup-Test.exe" "../dist/cloudcord-test.exe"
-fi
-echo "Done! Installer built at installer/$OUT and dist/$OUT"
-
-
-
+echo "Done! Installer built at installer/$OUT"

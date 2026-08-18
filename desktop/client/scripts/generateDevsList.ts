@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2023 Vendicated and contributors
  *
@@ -72,24 +72,24 @@ function parseDevs() {
     throw new Error("Could not find Devs constant");
 }
 
-function parseSincordDevs() {
+function parseCloudCordDevs() {
     const file = createSourceFile("constants.ts", readFileSync("src/utils/constants.ts", "utf8"), ScriptTarget.Latest);
 
     for (const child of file.getChildAt(0).getChildren()) {
         if (!isVariableStatement(child)) continue;
 
-        const devsDeclaration = child.declarationList.declarations.find(d => hasName(d, "SincordDevs"));
+        const devsDeclaration = child.declarationList.declarations.find(d => hasName(d, "CloudCordDevs"));
         if (!devsDeclaration?.initializer || !isCallExpression(devsDeclaration.initializer)) continue;
 
         const value = devsDeclaration.initializer.arguments[0];
 
-        if (!isSatisfiesExpression(value) || !isObjectLiteralExpression(value.expression)) throw new Error("Failed to parse SincordDevs: not an object literal");
+        if (!isSatisfiesExpression(value) || !isObjectLiteralExpression(value.expression)) throw new Error("Failed to parse CloudCordDevs: not an object literal");
 
         for (const prop of value.expression.properties) {
             const name = (prop.name as Identifier).text;
             const value = isPropertyAssignment(prop) ? prop.initializer : prop;
 
-            if (!isObjectLiteralExpression(value)) throw new Error(`Failed to parse SincordDevs: ${name} is not an object literal`);
+            if (!isObjectLiteralExpression(value)) throw new Error(`Failed to parse CloudCordDevs: ${name} is not an object literal`);
 
             sincordDevs[name] = {
                 name: (getObjectProp(value, "name") as StringLiteral).text,
@@ -100,12 +100,12 @@ function parseSincordDevs() {
         return;
     }
 
-    throw new Error("Could not find SincordDevs constant");
+    throw new Error("Could not find CloudCordDevs constant");
 }
 
 (async () => {
     parseDevs();
-    parseSincordDevs();
+    parseCloudCordDevs();
 
     const allDevs = {
         vencord: devs,

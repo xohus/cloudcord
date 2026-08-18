@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a Discord client mod
  * Copyright (c) 2024 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -34,7 +34,7 @@ import { NotificationSection } from "./NotificationSettings";
 import { WindowsMaterialSettings } from "./WindowsMaterialSettings";
 
 const DEFAULT_DONATE_IMAGE = "https://cdn.discordapp.com/emojis/1026533090627174460.png";
-const SHIGGY_DONATE_IMAGE = "https://sincord.org/assets/favicon.png";
+const SHIGGY_DONATE_IMAGE = "https://cloudcord.xohus.lol/assets/favicon.png";
 
 const VENNIE_DONATOR_IMAGE = "https://cdn.discordapp.com/emojis/1238120638020063377.png";
 const COZY_CONTRIB_IMAGE = "https://cdn.discordapp.com/emojis/1026533070955872337.png";
@@ -155,7 +155,7 @@ function Switches() {
     });
 }
 
-function SincordSettings() {
+function CloudCordSettings() {
     const donateImage = useMemo(() =>
         Math.random() > 0.5 ? DEFAULT_DONATE_IMAGE : SHIGGY_DONATE_IMAGE,
         []
@@ -165,16 +165,16 @@ function SincordSettings() {
 
     return (
         <SettingsTab>
-            {(isSincordDonor(user?.id) || isVencordDonor(user?.id)) ? (
+            {(isCloudCordDonor(user?.id) || isVencordDonor(user?.id)) ? (
                 <SpecialCard
                     title="Donations"
                     subtitle="Thank you for donating!"
                     description={
-                        isSincordDonor(user?.id) && isVencordDonor(user?.id)
-                            ? "All Vencord users can see your Vencord donor badge, and Sincord users can see your Sincord donor badge. To change your Vencord donor badge, contact @vending.machine. For your Sincord donor badge, make a ticket in Sincord's server."
+                        isCloudCordDonor(user?.id) && isVencordDonor(user?.id)
+                            ? "All Vencord users can see your Vencord donor badge, and CloudCord users can see your CloudCord donor badge. To change your Vencord donor badge, contact @vending.machine. For your CloudCord donor badge, make a ticket in CloudCord's server."
                             : isVencordDonor(user?.id)
                                 ? "All Vencord users can see your badge! You can manage your perks by messaging @vending.machine."
-                                : "All Sincord users can see your badge! You can manage your perks by making a ticket in Sincord's server."
+                                : "All CloudCord users can see your badge! You can manage your perks by making a ticket in CloudCord's server."
                     }
                     cardImage={VENNIE_DONATOR_IMAGE}
                     backgroundImage={DONOR_BACKGROUND_IMAGE}
@@ -185,7 +185,7 @@ function SincordSettings() {
             ) : (
                 <SpecialCard
                     title="Support the Project"
-                    description="Please consider supporting the development of Sincord by donating!"
+                    description="Please consider supporting the development of CloudCord by donating!"
                     cardImage={donateImage}
                     backgroundImage={DONOR_BACKGROUND_IMAGE}
                     backgroundColor="#c3a3ce"
@@ -197,7 +197,7 @@ function SincordSettings() {
                 <SpecialCard
                     title="Contributions"
                     subtitle="Thank you for contributing!"
-                    description="Since you've contributed to Sincord you now have a cool new badge!"
+                    description="Since you've contributed to CloudCord you now have a cool new badge!"
                     cardImage={COZY_CONTRIB_IMAGE}
                     backgroundImage={CONTRIB_BACKGROUND_IMAGE}
                     backgroundColor="#EDCC87"
@@ -260,7 +260,7 @@ function SincordSettings() {
 
             <Heading className={Margins.top20}>Client Settings</Heading>
             <Paragraph className={Margins.bottom16}>
-                Configure how Sincord behaves and integrates with Discord. These settings affect the Discord client's appearance and behavior.
+                Configure how CloudCord behaves and integrates with Discord. These settings affect the Discord client's appearance and behavior.
             </Paragraph>
             <Notice.Info className={Margins.bottom20} style={{ width: "100%" }}>
                 You can customize where this settings section appears in Discord's settings menu by configuring the{" "}
@@ -283,10 +283,10 @@ function SincordSettings() {
     );
 }
 
-export default wrapTab(SincordSettings, "Sincord Settings");
+export default wrapTab(CloudCordSettings, "CloudCord Settings");
 
-export function isSincordDonor(userId: string): boolean {
-    const donorBadges = BadgeAPI.getSincordDonorBadges(userId);
+export function isCloudCordDonor(userId: string): boolean {
+    const donorBadges = BadgeAPI.getCloudCordDonorBadges(userId);
     return GuildMemberStore.getMember(GUILD_ID, userId)?.roles.includes(DONOR_ROLE_ID) || !!donorBadges;
 }
 

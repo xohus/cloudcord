@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2023 Vendicated and contributors
  *
@@ -1092,7 +1092,7 @@ export function HammerAndChiselIcon(props: IconProps) {
     );
 }
 
-export function SincordIcon(props: IconProps) {
+export function CloudCordIcon(props: IconProps) {
     return (
         <Icon
             {...props}

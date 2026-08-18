@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a Discord client mod
  * Copyright (c) 2026 Vendicated and contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
@@ -7,7 +7,7 @@
 import { isPluginEnabled } from "@api/PluginManager";
 import { definePluginSettings } from "@api/Settings";
 import NoReplyMentionPlugin from "@plugins/noReplyMention";
-import { Devs, SincordDevs } from "@utils/constants";
+import { Devs, CloudCordDevs } from "@utils/constants";
 import { copyWithToast, insertTextIntoChatInputBox } from "@utils/discord";
 import { Logger } from "@utils/Logger";
 import definePlugin, { makeRange, OptionType } from "@utils/types";
@@ -578,7 +578,7 @@ export default definePlugin({
     name: "MessageClickActions",
     description: "Customize click actions on messages.",
     tags: ["Chat", "Shortcuts"],
-    authors: [Devs.Ven, SincordDevs.keircn, SincordDevs.ZcraftElite, SincordDevs.omaw],
+    authors: [Devs.Ven, CloudCordDevs.keircn, CloudCordDevs.ZcraftElite, CloudCordDevs.omaw],
     isModified: true,
 
     settings,

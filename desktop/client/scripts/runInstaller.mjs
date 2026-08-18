@@ -1,6 +1,6 @@
 /*
- * CloudCord, a modification for Discord's desktop app
- * Copyright (c) 2024 CloudCord contributors
+ * Sincord, a modification for Discord's desktop app
+ * Copyright (c) 2024 Sincord contributors
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -21,9 +21,9 @@ const DIST_DESKTOP = join(BASE_DIR, "dist", "desktop");
 
 function getPlatformBinaryName() {
     switch (process.platform) {
-        case "win32": return "cloudcord.exe";
-        case "darwin": return process.arch === "arm64" ? "cloudcord-darwin-arm64" : "cloudcord-darwin-x64";
-        case "linux": return "cloudcord-linux";
+        case "win32": return "Sinlotl.exe";
+        case "darwin": return process.arch === "arm64" ? "Sinlotl-darwin-arm64" : "Sinlotl-darwin-x64";
+        case "linux": return "Sinlotl-linux";
         default: throw new Error("Unsupported platform: " + process.platform);
     }
 }
@@ -33,7 +33,7 @@ function buildInstaller() {
     const binaryPath = join(INSTALLER_DIR, binaryName);
 
     if (!existsSync(INSTALLER_DIR)) {
-        throw new Error("installer/ folder not found. Make sure you have the full CloudCord desktop source tree.");
+        throw new Error("installer/ folder not found. Make sure you have the full Sincord repo.");
     }
 
     // Check if go is available
@@ -42,7 +42,7 @@ function buildInstaller() {
         throw new Error("Go is not installed. Install it with: brew install go");
     }
 
-    console.log("Building CloudCord Setup installer...");
+    console.log("Building Sinlotl installer...");
     execSync(`go build -o ${binaryName} .`, {
         cwd: INSTALLER_DIR,
         stdio: "inherit"
@@ -82,7 +82,7 @@ if (!existsSync(DIST_DESKTOP)) {
 
 const installerBin = getInstallerBinary();
 
-console.log("Launching CloudCord Setup installer...");
+console.log("Launching Sinlotl installer...");
 
 const argStart = process.argv.indexOf("--");
 const args = argStart === -1 ? [] : process.argv.slice(argStart + 1);
@@ -92,9 +92,9 @@ try {
         stdio: "inherit",
         env: {
             ...process.env,
-            CLOUDCORD_USER_DATA_DIR: BASE_DIR,
-            CLOUDCORD_DIRECTORY: DIST_DESKTOP,
-            CLOUDCORD_DEV_INSTALL: "1"
+            SINCORD_USER_DATA_DIR: BASE_DIR,
+            SINCORD_DIRECTORY: DIST_DESKTOP,
+            SINCORD_DEV_INSTALL: "1"
         }
     });
 } catch {

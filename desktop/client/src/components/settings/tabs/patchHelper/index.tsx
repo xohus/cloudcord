@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -110,7 +110,7 @@ function PatchHelper() {
         <SettingsTab>
             <Heading className={Margins.top16}>Patch Helper</Heading>
             <Paragraph className={Margins.bottom16}>
-                A developer tool to help you create patches for Sincord plugins.
+                A developer tool to help you create patches for CloudCord plugins.
             </Paragraph>
 
             <Heading className="">Full Patch</Heading>
