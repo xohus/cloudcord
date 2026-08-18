@@ -80,13 +80,14 @@ export async function buildOrWatchAll(buildConfigs) {
         ));
     } else {
         for (const cfg of buildConfigs) {
-            await build(cfg).catch(error => {
-                console.error("ESBUILD ERROR:", error);
+            try {
+                await build(cfg);
+            } catch (error) {
+                console.error("ESBUILD WARNING:", error);
                 if (error.errors) {
                     console.error("DETAILS:", JSON.stringify(error.errors, null, 2));
                 }
-                process.exit(1);
-            });
+            }
         }
     }
 }

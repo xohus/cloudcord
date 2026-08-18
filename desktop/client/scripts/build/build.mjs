@@ -184,58 +184,6 @@ const buildConfigs = ([
             IS_VESKTOP: "false",
             IS_EQUIBOP: "false"
         }
-    },
-
-    // Vencord Desktop main & renderer & preload
-    {
-        ...nodeCommonOpts,
-        entryPoints: ["src/main/index.ts"],
-        outfile: "dist/sinbop/main.js",
-        footer: { js: "//# sourceURL=file:///VencordDesktopMain\n" + sourceMapFooter("main") },
-        sourcemap,
-        plugins: [
-            ...nodeCommonOpts.plugins,
-            globNativesPlugin
-        ],
-        define: {
-            ...defines,
-            IS_DISCORD_DESKTOP: "false",
-            IS_VESKTOP: "false",
-            IS_EQUIBOP: "true"
-        }
-    },
-    {
-        ...commonOpts,
-        entryPoints: ["src/Vencord.ts"],
-        outfile: "dist/sinbop/renderer.js",
-        format: "iife",
-        target: ["esnext"],
-        footer: { js: "//# sourceURL=file:///VencordDesktopRenderer\n" + sourceMapFooter("renderer") },
-        globalName: "Vencord",
-        sourcemap,
-        plugins: [
-            globPlugins("sinbop"),
-            ...commonRendererPlugins
-        ],
-        define: {
-            ...defines,
-            IS_DISCORD_DESKTOP: "false",
-            IS_VESKTOP: "false",
-            IS_EQUIBOP: "true"
-        }
-    },
-    {
-        ...nodeCommonOpts,
-        entryPoints: ["src/preload.ts"],
-        outfile: "dist/sinbop/preload.js",
-        footer: { js: "//# sourceURL=file:///VencordPreload\n" + sourceMapFooter("preload") },
-        sourcemap,
-        define: {
-            ...defines,
-            IS_DISCORD_DESKTOP: "false",
-            IS_VESKTOP: "false",
-            IS_EQUIBOP: "true"
-        }
     }
 ]);
 
@@ -245,10 +193,6 @@ await Promise.all([
     writeFile("dist/desktop/package.json", JSON.stringify({
         name: "cloudcord",
         main: "patcher.js"
-    })),
-    writeFile("dist/sinbop/package.json", JSON.stringify({
-        name: "cloudcord",
-        main: "main.js"
     }))
 ]);
 
