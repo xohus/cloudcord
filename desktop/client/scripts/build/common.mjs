@@ -48,7 +48,13 @@ if (!IS_COMPANION_TEST && process.argv.includes("--companion-test"))
     console.error("--companion-test must be run with --reporter for any effect");
 
 export const IS_UPDATER_DISABLED = process.argv.includes("--disable-updater");
-export const gitHash = process.env.CLOUDCORD_HASH || execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
+export const gitHash = process.env.CLOUDCORD_HASH || (() => {
+    try {
+        return execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
+    } catch {
+        return "main";
+    }
+})();
 
 export const banner = {
     js: `
@@ -242,14 +248,18 @@ export const gitRemotePlugin = {
         build.onLoad({ filter, namespace: "git-remote" }, async () => {
             let remote = process.env.CLOUDCORD_REMOTE;
             if (!remote) {
-                const res = await promisify(exec)("git remote get-url origin", { encoding: "utf-8" });
-                remote = res.stdout.trim()
-                    .replace("https://github.com/", "")
-                    .replace("git@github.com:", "")
-                    .replace(/.git$/, "");
+                try {
+                    const res = await promisify(exec)("git remote get-url origin", { encoding: "utf-8" });
+                    remote = res.stdout.trim()
+                        .replace("https://github.com/", "")
+                        .replace("git@github.com:", "")
+                        .replace(/.git$/, "");
+                } catch {
+                    remote = "xohus/cloudcord";
+                }
             }
 
-            return { contents: `export default "${remote}"` };
+            return { contents: `export default "${remote || "xohus/cloudcord"}"` };
         });
     }
 };
@@ -332,7 +342,7 @@ const styleModule = readFileSync(join(dirname(fileURLToPath(import.meta.url)), "
 export const stylePlugin = {
     name: "style-plugin",
     setup: ({ onResolve, onLoad }) => {
-        onResolve({ filter: /\.css\?managed$/, namespace: "file" }, ({ path, resolveDir }) => ({
+        onResolve({ filter: /\.css(\?managed)?$/, namespace: "file" }, ({ path, resolveDir }) => ({
             path: relative(process.cwd(), join(resolveDir, path.replace("?managed", ""))),
             namespace: "managed-style",
         }));
