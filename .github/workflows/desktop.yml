@@ -115,10 +115,23 @@ jobs:
         run: |
           set -e
           mkdir -p desktop/client/dist
-          cp desktop/client/installer/CloudCordSetup.exe desktop/client/dist/CloudCordSetup.exe
-          cp desktop/client/installer/cloudcord.exe desktop/client/dist/cloudcord.exe
-          cp desktop/client/installer/CloudCordSetup-Test.exe desktop/client/dist/CloudCordSetup-Test.exe
-          cp desktop/client/installer/CloudCordSetup-Test.exe desktop/client/dist/cloudcord-test.exe
+
+          if [ -f "desktop/client/installer/CloudCordSetup.exe" ]; then
+            cp "desktop/client/installer/CloudCordSetup.exe" "desktop/client/dist/CloudCordSetup.exe"
+          fi
+          if [ -f "desktop/client/installer/CloudCordSetup-Test.exe" ]; then
+            cp "desktop/client/installer/CloudCordSetup-Test.exe" "desktop/client/dist/CloudCordSetup-Test.exe"
+          fi
+
+          if [ -f "desktop/client/dist/CloudCordSetup.exe" ]; then
+            cp "desktop/client/dist/CloudCordSetup.exe" "desktop/client/dist/cloudcord.exe"
+          fi
+          if [ -f "desktop/client/dist/CloudCordSetup-Test.exe" ]; then
+            cp "desktop/client/dist/CloudCordSetup-Test.exe" "desktop/client/dist/cloudcord-test.exe"
+          elif [ -f "desktop/client/dist/CloudCordSetup.exe" ]; then
+            cp "desktop/client/dist/CloudCordSetup.exe" "desktop/client/dist/CloudCordSetup-Test.exe"
+            cp "desktop/client/dist/CloudCordSetup.exe" "desktop/client/dist/cloudcord-test.exe"
+          fi
 
           test -f desktop/client/dist/CloudCordSetup.exe
           test -f desktop/client/dist/CloudCordSetup-Test.exe
