@@ -12,6 +12,7 @@ import (
 	"os"
 	"os/exec"
 	path "path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/ProtonMail/go-appdir"
@@ -24,15 +25,26 @@ var CloudCordDirectory string
 var ErrAlreadyReported = errors.New("already reported")
 
 func init() {
+	if IsTestBuildStr == "1" || os.Getenv("CLOUDCORD_TEST_BUILD") == "1" {
+		IsTestBuild = true
+	}
+
+	appName := "CloudCord"
+	asarName := "cloudcord.asar"
+	if IsTestBuild {
+		appName = "CloudCordTest"
+		asarName = "cloudcord-test.asar"
+	}
+
 	if dir := os.Getenv("CLOUDCORD_USER_DATA_DIR"); dir != "" {
 		Log.Debug("Using CLOUDCORD_USER_DATA_DIR")
 		BaseDir = dir
 	} else if dir = os.Getenv("DISCORD_USER_DATA_DIR"); dir != "" {
-		Log.Debug("Using DISCORD_USER_DATA_DIR/../CloudCordData")
-		BaseDir = path.Join(dir, "..", "CloudCordData")
+		Log.Debug("Using DISCORD_USER_DATA_DIR/../" + appName + "Data")
+		BaseDir = path.Join(dir, "..", appName+"Data")
 	} else {
 		Log.Debug("Using UserConfig")
-		BaseDir = appdir.New("CloudCord").UserConfig()
+		BaseDir = appdir.New(appName).UserConfig()
 	}
 	dir := os.Getenv("CLOUDCORD_DIRECTORY")
 	if dir == "" {
@@ -49,7 +61,7 @@ func init() {
 		Log.Debug("Using CLOUDCORD_DIRECTORY")
 		CloudCordDirectory = dir
 	} else {
-		CloudCordDirectory = path.Join(BaseDir, "cloudcord.asar")
+		CloudCordDirectory = path.Join(BaseDir, asarName)
 	}
 }
 
@@ -63,9 +75,18 @@ type DiscordInstall struct {
 	isOpenAsar       *bool
 }
 
-//region Patch
+func KillDiscordProcess() {
+	if runtime.GOOS == "windows" {
+		_ = exec.Command("taskkill", "/F", "/IM", "Discord.exe", "/T").Run()
+		_ = exec.Command("taskkill", "/F", "/IM", "DiscordCanary.exe", "/T").Run()
+		_ = exec.Command("taskkill", "/F", "/IM", "DiscordPTB.exe", "/T").Run()
+		_ = exec.Command("taskkill", "/F", "/IM", "DiscordDevelopment.exe", "/T").Run()
+	}
+}
 
 func patchAppAsar(dir string, isSystemElectron bool) (err error) {
+	KillDiscordProcess()
+
 	appAsar := path.Join(dir, "app.asar")
 	_appAsar := path.Join(dir, "_app.asar")
 
@@ -219,11 +240,11 @@ func cleanupDesyncedPatchedInstall(dir string, isSystemElectron bool) (bool, err
 
 	Log.Warn("Detected a patched install with a non-CloudCord app.asar. Discord was likely updated while patched; removing stale _app.asar")
 
-	if err = os.Remove(_appAsar); err != nil && !errors.Is(err, os.ErrNotExist) {
+	if err = os.Remove(_appAsar); err != nil {
 		return false, CheckIfErrIsCauseItsBusyRn(err)
 	}
 	if isSystemElectron {
-		if err = os.RemoveAll(_appAsar + ".unpacked"); err != nil && !errors.Is(err, os.ErrNotExist) {
+		if err = os.RemoveAll(_appAsar + ".unpacked"); err != nil {
 			return false, err
 		}
 	}
