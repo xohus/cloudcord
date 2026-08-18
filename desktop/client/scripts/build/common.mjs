@@ -158,7 +158,7 @@ export const globPlugins = kind => ({
         });
 
         build.onLoad({ filter, namespace: "import-plugins" }, async () => {
-            const pluginDirs = ["plugins/_api", "plugins/_core", "plugins", "cloudcordplugins/_api", "cloudcordplugins/_core", "cloudcordplugins", "userplugins"];
+            const pluginDirs = ["plugins", "cloudcordplugins", "userplugins"];
             let code = "";
             let pluginsCode = "\n";
             let metaCode = "\n";
@@ -198,8 +198,8 @@ export const globPlugins = kind => ({
 
                     const mod = `p${i}`;
                     code += `import ${mod} from "./${dir}/${fileName.replace(/\.tsx?$/, "")}";\n`;
-                    pluginsCode += `[${mod}.name]:${mod},\n`;
-                    metaCode += `[${mod}.name]:${JSON.stringify({ folderName, userPlugin })},\n`;
+                    pluginsCode += `...(${mod} && ${mod}.name ? { [${mod}.name]: ${mod} } : {}),\n`;
+                    metaCode += `...(${mod} && ${mod}.name ? { [${mod}.name]: ${JSON.stringify({ folderName, userPlugin })} } : {}),\n`;
                     i++;
                 }
             }
