@@ -142,7 +142,7 @@ func InitGithubDownloader() {
 	}
 }
 
-func InstallLatestBuilds() (retErr error) {
+func installLatestBuilds() (retErr error) {
 	Log.Debug("Installing latest builds...")
 
 	if IsDevInstall {
@@ -214,9 +214,5 @@ func InstallLatestBuilds() (retErr error) {
 
 	InstalledHash = LatestHash
 	return nil
-}
-
-func installLatestBuilds() error {
-	return InstallLatestBuilds()
 }
 
