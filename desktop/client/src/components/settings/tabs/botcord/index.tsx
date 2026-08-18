@@ -9,7 +9,7 @@ import { Card } from "@components/Card";
 import { Divider } from "@components/Divider";
 import { FormSwitch } from "@components/FormSwitch";
 import { Heading, HeadingTertiary } from "@components/Heading";
-import { OpenExternalIcon, RobotIcon, RestartIcon, DeleteIcon, KeyIcon } from "@components/Icons";
+import { OpenExternalIcon, RobotIcon, RestartIcon, DeleteIcon } from "@components/Icons";
 import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { DataStore } from "@api/index";
