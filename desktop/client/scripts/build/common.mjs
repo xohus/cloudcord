@@ -52,7 +52,7 @@ export const IS_COMPANION_TEST = IS_REPORTER && process.argv.includes("--compani
 if (!IS_COMPANION_TEST && process.argv.includes("--companion-test"))
     console.error("--companion-test must be run with --reporter for any effect");
 
-export const IS_UPDATER_DISABLED = process.argv.includes("--disable-updater");
+export const IS_UPDATER_DISABLED = true;
 export const gitHash = process.env.CLOUDCORD_HASH || (() => {
     try {
         return execSync("git rev-parse HEAD", { encoding: "utf-8" }).trim();
