@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Vencord, a modification for Discord's desktop app
  * Copyright (c) 2022 Vendicated and contributors
  *
@@ -88,30 +88,32 @@ export async function buildOrWatchAll(buildConfigs) {
     }
 }
 
-const PluginDefinitionNameMatcher = /definePlugin\(\{\s*(["'])?name\1:\s*(["'`])(.+?)\2/;
+const PluginDefinitionNameMatcher = /definePlugin\(\s*\{[\s\S]*?name\s*:\s*(["'`])(.+?)\1/;
 /**
  * @param {string} base
  * @param {import("fs").Dirent} dirent
  */
 export async function resolvePluginName(base, dirent) {
     const fullPath = join(base, dirent.name);
-    const content = dirent.isFile()
-        ? await readFile(fullPath, "utf-8")
-        : await (async () => {
-            for (const file of ["index.ts", "index.tsx"]) {
-                try {
-                    return await readFile(join(fullPath, file), "utf-8");
-                } catch {
-                    continue;
+    try {
+        const content = dirent.isFile()
+            ? await readFile(fullPath, "utf-8")
+            : await (async () => {
+                for (const file of ["index.ts", "index.tsx"]) {
+                    try {
+                        return await readFile(join(fullPath, file), "utf-8");
+                    } catch {
+                        continue;
+                    }
                 }
-            }
-            throw new Error(`Invalid plugin ${fullPath}: could not resolve entry point`);
-        })();
+                return "";
+            })();
 
-    return PluginDefinitionNameMatcher.exec(content)?.[3]
-        ?? (() => {
-            throw new Error(`Invalid plugin ${fullPath}: must contain definePlugin call with simple string name property as first property`);
-        })();
+        const match = PluginDefinitionNameMatcher.exec(content);
+        return match?.[2] || dirent.name.replace(/\.tsx?$/, "");
+    } catch {
+        return dirent.name.replace(/\.tsx?$/, "");
+    }
 }
 
 export async function exists(path) {
