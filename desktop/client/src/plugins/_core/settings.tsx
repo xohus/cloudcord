@@ -175,6 +175,7 @@ export default definePlugin({
             key: key + "_panel",
             type: LayoutTypes.PANEL,
             useTitle: () => panelTitle,
+            useLabel: () => panelTitle,
             buildLayout: () => [{
                 type: LayoutTypes.CATEGORY,
                 key: key + "_category",
@@ -182,6 +183,8 @@ export default definePlugin({
                     type: LayoutTypes.CUSTOM,
                     key: key + "_custom",
                     Component: Component,
+                    render: () => <Component />,
+                    StronglyDiscouragedCustomComponent: () => <Component />,
                     useSearchTerms: () => [title]
                 }]
             }]
@@ -191,6 +194,7 @@ export default definePlugin({
             key,
             type: LayoutTypes.SIDEBAR_ITEM,
             useTitle: () => title,
+            useLabel: () => title,
             icon: () => <Icon width={20} height={20} />,
             buildLayout: () => [panel]
         });
@@ -274,6 +278,7 @@ export default definePlugin({
             key: "cloudcord_section",
             type: LayoutTypes.SECTION,
             useTitle: () => "CloudCord Settings",
+            useLabel: () => "CloudCord Settings",
             buildLayout: () => cloudcordEntries
         };
 
