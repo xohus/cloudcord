@@ -360,6 +360,7 @@ export const commonOpts = {
     sourcemap: watch ? "inline" : "external",
     legalComments: "linked",
     banner,
+    tsconfig: "tsconfig.json",
     plugins: [fileUrlPlugin, gitHashPlugin, gitRemotePlugin, stylePlugin],
     external: ["/assets/*"],
     inject: [join(dirname(fileURLToPath(import.meta.url)), "inject/react.mjs")],
