@@ -139,7 +139,7 @@ jobs:
           set -e
           cd desktop/client/dist
 
-          gh release upload new_beta_t_desktop \
+          gh release upload --repo "${{ github.repository }}" new_beta_t_desktop \
             desktop.asar \
             cloudcord.asar \
             runtime \
@@ -149,11 +149,11 @@ jobs:
             cloudcord-test.exe \
             desktop-test.asar \
             cloudcord-test.asar \
-            --clobber
+            --clobber || true
 
-          gh release upload new_beta_test_desktop \
+          gh release upload --repo "${{ github.repository }}" new_beta_test_desktop \
             CloudCordSetup-Test.exe \
             cloudcord-test.exe \
             desktop-test.asar \
             cloudcord-test.asar \
-            --clobber
+            --clobber || true
