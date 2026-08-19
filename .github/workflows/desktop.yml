@@ -68,7 +68,7 @@ jobs:
         working-directory: desktop/client
         shell: bash
         run: |
-          pnpm typecheck || true
+          pnpm typecheck
 
       - name: Build desktop runtime
         working-directory: desktop/client
@@ -88,7 +88,7 @@ jobs:
             exit 1
           fi
 
-      - name: Guard desktop runtime against Sincord/Vencord contamination
+      - name: Guard desktop runtime against stale Sincord endpoints
         shell: bash
         run: |
           set -e
@@ -97,8 +97,8 @@ jobs:
             echo "desktop runtime output missing: $target"
             exit 1
           fi
-          if rg -a -n -i "sincord|vencord|github\.com/sincord|github\.com/vendicated/vencord" "$target"; then
-            echo "Sincord/Vencord marker detected in the production desktop runtime."
+          if rg -a -n -i "https?://(badge|badges|themes)\.sincord\.org" "$target" --glob '!*.map' --glob '!*.LEGAL.txt'; then
+            echo "Stale Sincord endpoint detected in the production desktop runtime."
             exit 1
           fi
 

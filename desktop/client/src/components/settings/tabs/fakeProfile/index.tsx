@@ -26,7 +26,7 @@ function FakeProfileTabComponent() {
     };
 
     return (
-        <SettingsTab title="Fake Profile">
+        <SettingsTab>
             <Paragraph className={Margins.bottom16}>
                 Customize your local and cloud profile appearance including Nitro badges, profile banners, custom badges, avatar decorations, and account creation dates.
             </Paragraph>
@@ -62,7 +62,7 @@ function FakeProfileTabComponent() {
 
             <Divider className={Margins.top16 + " " + Margins.bottom16} />
 
-            <Heading level={2} className={Margins.bottom16}>Profile Sync & Badges</Heading>
+            <Heading tag="h2" className={Margins.bottom16}>Profile Sync & Badges</Heading>
             <Paragraph style={{ opacity: 0.8 }}>
                 Changes made with Fake Profile can be synced across other CloudCord users using Cloud Profiles so others with CloudCord see your customized profile and badges.
             </Paragraph>

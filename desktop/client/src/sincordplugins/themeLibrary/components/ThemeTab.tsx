@@ -24,11 +24,14 @@ import { ThemeCard } from "./ThemeCard";
 
 const InputStyles = findCssClassesLazy("inputWrapper", "inputError", "error");
 
-export const apiUrl = "https://themes.sincord.org/api";
+// Theme Library no longer ships with the retired Sincord service configured.
+// A future CloudCord service can set this to its API base without changing callers.
+export const apiUrl = "";
 export const logger = new Logger("ThemeLibrary", "#e5c890");
 
 export async function fetchAllThemes(): Promise<Theme[]> {
     const response = await themeRequest("/themes");
+    if (!response.ok) return [];
     const data = await response.json();
     const themes: Theme[] = Object.values(data);
     themes.forEach(theme => {
@@ -40,12 +43,17 @@ export async function fetchAllThemes(): Promise<Theme[]> {
 }
 
 export async function themeRequest(path: string, options: RequestInit = {}) {
-    return fetch(apiUrl + path, {
-        ...options,
-        headers: {
-            ...options.headers,
-        }
-    });
+    if (!apiUrl) return new Response(null, { status: 503 });
+    try {
+        return await fetch(apiUrl + path, {
+            ...options,
+            headers: {
+                ...options.headers,
+            }
+        });
+    } catch {
+        return new Response(null, { status: 503 });
+    }
 }
 
 const SearchTags = {

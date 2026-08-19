@@ -105,12 +105,7 @@ async function loadAllBadges(noCache = false) {
     } catch {
         DonorBadges = {};
     }
-    try {
-        const sincordBadges = await loadBadges("https://badge.sincord.org/badges.json", noCache);
-        SincordDonorBadges = sincordBadges || {};
-    } catch {
-        SincordDonorBadges = {};
-    }
+    SincordDonorBadges = {};
 }
 
 let intervalId: any;

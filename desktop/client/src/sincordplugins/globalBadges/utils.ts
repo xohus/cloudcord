@@ -28,12 +28,27 @@ export const serviceMap: Record<string, string> = {
 const blockedMods = ["vencord", "sincord"];
 
 export async function loadBadges() {
-    const url = settings.store.apiUrl.endsWith("/") ? settings.store.apiUrl + "users" : settings.store.apiUrl + "/users";
-    const globalBadges = await fetch(url, { cache: "no-cache" }).then(r => r.json());
-    const filteredUsers: Record<string, typeof globalBadges.users[string]> = {};
+    if (!settings.store.apiUrl) {
+        GlobalBadges = {};
+        return;
+    }
 
-    for (const key in globalBadges.users) {
-        filteredUsers[key] = globalBadges.users[key].filter(b => {
+    const url = settings.store.apiUrl.endsWith("/") ? settings.store.apiUrl + "users" : settings.store.apiUrl + "/users";
+    let globalBadges: { users?: Record<string, any[]>; };
+    try {
+        const response = await fetch(url, { cache: "no-cache" });
+        if (!response.ok) throw new Error(`Badge API returned ${response.status}`);
+        globalBadges = await response.json();
+    } catch {
+        GlobalBadges = {};
+        return;
+    }
+
+    const users = globalBadges.users ?? {};
+    const filteredUsers: Record<string, any[]> = {};
+
+    for (const key in users) {
+        filteredUsers[key] = users[key].filter(b => {
             const { mod } = b;
             if (!mod || blockedMods.includes(mod)) return false;
 

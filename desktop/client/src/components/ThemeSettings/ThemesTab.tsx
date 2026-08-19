@@ -509,12 +509,9 @@ function ThemesTab() {
     }
 
     function changeThemeLibraryURLs() {
-        settings.themeLinks = settings.themeLinks.map(link => {
-            if (link.startsWith("https://discord-themes.com/api")) {
-                return link.replace("https://discord-themes.com/api", "https://themes.sincord.org/api");
-            }
-            return link;
-        });
+        // The former theme library service is retired; don't retain links that
+        // would otherwise be fetched on every settings launch.
+        settings.themeLinks = settings.themeLinks.filter(link => !link.startsWith("https://discord-themes.com/api"));
     }
 
     async function refreshLocalThemes() {

@@ -17,7 +17,7 @@ import { React } from "@webpack/common";
 
 function OutsidePluginsTabComponent() {
     return (
-        <SettingsTab title="Outside Plugins">
+        <SettingsTab>
             <Paragraph className={Margins.bottom16}>
                 Install, manage, and update custom community plugins and user plugins from outside GitHub repositories.
             </Paragraph>
@@ -45,7 +45,7 @@ function OutsidePluginsTabComponent() {
 
             <Divider className={Margins.top16 + " " + Margins.bottom16} />
 
-            <Heading level={2} className={Margins.bottom16}>Community Repositories</Heading>
+            <Heading tag="h2" className={Margins.bottom16}>Community Repositories</Heading>
             <Paragraph style={{ opacity: 0.8 }}>
                 You can install third-party plugins by pasting a GitHub repository URL into chat or using the CloudCord plugin installer.
             </Paragraph>

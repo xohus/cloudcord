@@ -90,7 +90,7 @@ function BotCordComponent() {
     };
 
     return (
-        <SettingsTab title="BotCord">
+        <SettingsTab>
             <Paragraph className={Margins.bottom16}>
                 BotCord lets you manage, test, and login directly with Discord Bot tokens inside CloudCord.
             </Paragraph>
@@ -111,13 +111,13 @@ function BotCordComponent() {
                 <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                     <Button onClick={handleAddBot}>Save Bot</Button>
                     <Button
-                        look={Button.Looks.LINK}
+                        variant="link"
                         onClick={() => setShowToken(!showToken)}
                     >
                         {showToken ? "Hide Token" : "Show Token"}
                     </Button>
                     <Button
-                        look={Button.Looks.LINK}
+                        variant="link"
                         onClick={() => window.open("https://discord.com/developers/applications", "_blank")}
                     >
                         Developer Portal <OpenExternalIcon style={{ marginLeft: "4px", width: "16px", height: "16px" }} />
@@ -127,7 +127,7 @@ function BotCordComponent() {
 
             <Divider className={Margins.bottom16} />
 
-            <Heading level={2} className={Margins.bottom16}>Saved Bots ({savedBots.length})</Heading>
+            <Heading tag="h2" className={Margins.bottom16}>Saved Bots ({savedBots.length})</Heading>
 
             {savedBots.length === 0 ? (
                 <Paragraph style={{ opacity: 0.7 }}>No bot tokens saved yet. Add one above to get started.</Paragraph>
@@ -144,15 +144,14 @@ function BotCordComponent() {
                             </div>
                             <div style={{ display: "flex", gap: "8px" }}>
                                 <Button
-                                    size={Button.Sizes.SMALL}
+                                    size="small"
                                     onClick={() => handleLoginAsBot(bot.token, bot.name)}
                                 >
                                     Login
                                 </Button>
                                 <Button
-                                    size={Button.Sizes.SMALL}
-                                    color={Button.Colors.RED}
-                                    look={Button.Looks.OUTLINED}
+                                    size="small"
+                                    variant="dangerSecondary"
                                     onClick={() => handleDeleteBot(bot.token)}
                                 >
                                     <DeleteIcon style={{ width: "16px", height: "16px" }} />

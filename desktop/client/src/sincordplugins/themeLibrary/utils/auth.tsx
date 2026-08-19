@@ -6,10 +6,11 @@
 
 import * as DataStore from "@api/DataStore";
 import { showNotification } from "@api/Notifications";
-import { logger, themeRequest } from "@sincordplugins/themeLibrary/components/ThemeTab";
+import { apiUrl, logger, themeRequest } from "@sincordplugins/themeLibrary/components/ThemeTab";
 import { OAuth2AuthorizeModal, openModal,Toasts, UserStore } from "@webpack/common";
 
 export async function authorizeUser(triggerModal: boolean = true) {
+    if (!apiUrl) return false;
     const isAuthorized = await getAuthorization();
 
     if (isAuthorized === false) {
@@ -18,7 +19,7 @@ export async function authorizeUser(triggerModal: boolean = true) {
             {...props}
             scopes={["identify", "connections"]}
             responseType="code"
-            redirectUri="https://themes.sincord.org/api/user/auth"
+            redirectUri={`${apiUrl}/user/auth`}
             permissions={0n}
             clientId="1464006702125940736"
             cancelCompletesFlow={false}

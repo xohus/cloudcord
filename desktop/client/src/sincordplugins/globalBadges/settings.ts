@@ -87,10 +87,9 @@ export const settings = definePluginSettings({
     apiUrl: {
         type: OptionType.STRING,
         description: "API to use",
-        default: "https://badges.sincord.org/",
+        default: "",
         restartNeeded: false,
         isValid: (value => {
-            if (!value) return false;
             return true;
         })
     }

@@ -156,7 +156,7 @@ export function SincordTranslatorModal() {
                         <img
                             className="vc-translate-modal-icon"
                             role="presentation"
-                            src="https://badge.sincord.org/translator.png"
+                            src="https://cdn.discordapp.com/emojis/1092089799109775453.png?size=64"
                             alt=""
                         />
                     </Flex>

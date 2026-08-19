@@ -93,7 +93,7 @@ export default settings;
 
 const BadgeSettings = () => {
     const [images, setImages] = useState([
-        { src: "https://badge.sincord.org/donor.webp", shown: settings.store.showSincordDonor, title: "Sincord donor badges", key: "SincordDonor", position: settings.store.SincordDonorPosition },
+        { src: "https://cdn.discordapp.com/emojis/1092089799109775453.png?size=64", shown: settings.store.showSincordDonor, title: "Sincord donor badges", key: "SincordDonor", position: settings.store.SincordDonorPosition },
         { src: "https://sincord.org/assets/favicon.png", shown: settings.store.showSincordContributor, title: "Sincord contributor badge", key: "SincordContributer", position: settings.store.SincordContributorPosition },
         { src: "https://cdn.discordapp.com/emojis/1026533070955872337.png", shown: settings.store.showVencordDonor, title: "Vencord donor badges", key: "VencordDonor", position: settings.store.VencordDonorPosition },
         { src: "https://cdn.discordapp.com/emojis/1092089799109775453.png", shown: settings.store.showVencordContributor, title: "Vencord contributor badge", key: "VencordContributer", position: settings.store.VencordContributorPosition },
