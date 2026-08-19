@@ -206,8 +206,8 @@ export default definePlugin({
             if (!item?.props) continue;
             const { key, props } = item;
 
-            if (key === "sincord_plugins" || key === "sincord_themes") {
-                const children = key === "sincord_plugins"
+            if (key === "cloudcord_plugins" || key === "cloudcord_themes") {
+                const children = key === "cloudcord_plugins"
                     ? buildPluginMenuEntries()
                     : buildThemeMenuEntries();
 

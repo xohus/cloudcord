@@ -283,7 +283,7 @@ function SincordSettings() {
     );
 }
 
-export default wrapTab(SincordSettings, "Sincord Settings");
+export default wrapTab(SincordSettings, "CloudCord Settings");
 
 export function isSincordDonor(userId: string): boolean {
     const donorBadges = BadgeAPI.getSincordDonorBadges(userId);

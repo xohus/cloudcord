@@ -9,26 +9,20 @@ import {
     AppsIcon,
     BackupRestoreIcon,
     CloudIcon,
-    LogIcon,
     MainSettingsIcon,
     PaintbrushIcon,
-    PatchHelperIcon,
     PluginsIcon,
     RobotIcon,
-    UpdaterIcon,
     UserIcon
 } from "@components/Icons";
 import {
     BackupAndRestoreTab,
     BotCordTab,
-    ChangelogTab,
     CloudTab,
     FakeProfileTab,
     OutsidePluginsTab,
-    PatchHelperTab,
     PluginsTab,
     ThemesTab,
-    UpdaterTab,
     VencordTab,
 } from "@components/settings";
 import { gitHashShort } from "@shared/vencordUserAgent";
@@ -260,8 +254,7 @@ export default definePlugin({
                 panelTitle: "Outside Plugins",
                 Component: OutsidePluginsTab,
                 Icon: AppsIcon
-            }),
-            ...this.customEntries.map(buildEntry)
+            })
         ].filter(isTruthy);
 
         const cloudcordSection: SettingsLayoutNode = {
