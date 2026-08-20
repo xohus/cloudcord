@@ -101,8 +101,6 @@ const enum SearchStatus {
     ALL,
     ENABLED,
     DISABLED,
-    SINCORD,
-    VENCORD,
     NEW,
     USER_PLUGINS,
     API_PLUGINS
@@ -114,7 +112,7 @@ export const ExcludedReasons: Record<"web" | "discordDesktop" | "vesktop" | "sin
     vesktop: "Vesktop/Sinbop apps",
     sinbop: "Vesktop/Sinbop apps",
     web: "Vesktop/Sinbop apps & Discord web",
-    dev: "Developer version of Sincord"
+    dev: "Developer version of CloudCord"
 };
 
 function ExcludedPluginsList({ search }: { search: string; }) {
@@ -217,12 +215,6 @@ export default function PluginSettings() {
             case SearchStatus.ENABLED:
                 if (!isPluginEnabled(plugin.name)) return false;
                 break;
-            case SearchStatus.SINCORD:
-                if (!PluginMeta[plugin.name].folderName.startsWith("src/sincordplugins/")) return false;
-                break;
-            case SearchStatus.VENCORD:
-                if (!PluginMeta[plugin.name].folderName.startsWith("src/plugins/")) return false;
-                break;
             case SearchStatus.NEW:
                 if (!newPluginsSet?.has(plugin.name)) return false;
                 break;
@@ -280,7 +272,7 @@ export default function PluginSettings() {
 
             if (isRequired) {
                 const tooltipText = p.required || !depMap[p.name]
-                    ? "This plugin is required for Sincord to function."
+                    ? "This plugin is required for CloudCord to function."
                     : <PluginDependencyList deps={depMap[p.name]?.filter(d => settings.plugins[d].enabled)} />;
 
                 requiredPlugins.push(
@@ -421,8 +413,6 @@ export default function PluginSettings() {
                             { label: "Show All", value: SearchStatus.ALL, default: true },
                             { label: "Show Enabled", value: SearchStatus.ENABLED },
                             { label: "Show Disabled", value: SearchStatus.DISABLED },
-                            { label: "Show Sincord", value: SearchStatus.SINCORD },
-                            { label: "Show Vencord", value: SearchStatus.VENCORD },
                             { label: "Show New", value: SearchStatus.NEW },
                             hasUserPlugins && { label: "Show UserPlugins", value: SearchStatus.USER_PLUGINS },
                             { label: "Show API Plugins", value: SearchStatus.API_PLUGINS },

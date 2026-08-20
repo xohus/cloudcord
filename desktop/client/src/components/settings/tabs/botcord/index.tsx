@@ -9,13 +9,13 @@ import { Card } from "@components/Card";
 import { Divider } from "@components/Divider";
 import { FormSwitch } from "@components/FormSwitch";
 import { Heading, HeadingTertiary } from "@components/Heading";
-import { OpenExternalIcon, RobotIcon, RestartIcon, DeleteIcon } from "@components/Icons";
+import { DeleteIcon, OpenExternalIcon, RobotIcon } from "@components/Icons";
 import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { DataStore } from "@api/index";
 import { Margins } from "@utils/margins";
 import { relaunch } from "@utils/native";
-import { Alerts, AuthenticationStore, React, TextInput, Toasts, useMemo, useState } from "@webpack/common";
+import { Alerts, React, TextInput, Toasts, useEffect, useState } from "@webpack/common";
 
 const DS_BOT_TOKENS = "CloudCord_BotTokens";
 const DS_ACTIVE_BOT = "CloudCord_ActiveBot";
@@ -30,21 +30,26 @@ interface BotAccount {
 function BotCordComponent() {
     const [token, setToken] = useState("");
     const [botName, setBotName] = useState("");
-    const [savedBots, setSavedBots] = useState<BotAccount[]>(() => {
-        try {
-            return JSON.parse(localStorage.getItem(DS_BOT_TOKENS) || "[]");
-        } catch {
-            return [];
-        }
-    });
-    const [activeBot, setActiveBot] = useState<string>(() => localStorage.getItem(DS_ACTIVE_BOT) || "");
+    const [savedBots, setSavedBots] = useState<BotAccount[]>([]);
+    const [activeBot, setActiveBot] = useState("");
     const [showToken, setShowToken] = useState(false);
+
+    useEffect(() => {
+        void Promise.all([
+            DataStore.get<BotAccount[]>(DS_BOT_TOKENS),
+            DataStore.get<string>(DS_ACTIVE_BOT)
+        ]).then(([bots, active]) => {
+            setSavedBots(Array.isArray(bots) ? bots : []);
+            setActiveBot(active ?? "");
+        }).catch(() => {
+            setSavedBots([]);
+            setActiveBot("");
+        });
+    }, []);
 
     const saveBotsList = (list: BotAccount[]) => {
         setSavedBots(list);
-        try {
-            localStorage.setItem(DS_BOT_TOKENS, JSON.stringify(list));
-        } catch { }
+        void DataStore.set(DS_BOT_TOKENS, list);
     };
 
     const handleAddBot = () => {
@@ -69,8 +74,10 @@ function BotCordComponent() {
             cancelText: "Cancel",
             onConfirm() {
                 try {
-                    localStorage.setItem(DS_ACTIVE_BOT, botToken);
-                    localStorage.setItem("token", `"${botToken}"`);
+                    const storage = globalThis.localStorage;
+                    if (!storage) throw new Error("Discord token storage is unavailable in this client version");
+                    void DataStore.set(DS_ACTIVE_BOT, botToken);
+                    storage.setItem("token", `"${botToken}"`);
                     relaunch();
                 } catch (e: any) {
                     Toasts.show({ id: "bot-login-fail", message: "Failed to switch account: " + e.message, type: Toasts.Type.FAILURE });
@@ -83,7 +90,7 @@ function BotCordComponent() {
         const updated = savedBots.filter(b => b.token !== botToken);
         saveBotsList(updated);
         if (activeBot === botToken) {
-            localStorage.removeItem(DS_ACTIVE_BOT);
+            void DataStore.del(DS_ACTIVE_BOT);
             setActiveBot("");
         }
         Toasts.show({ id: "bot-deleted", message: "Bot removed from list", type: Toasts.Type.SUCCESS });

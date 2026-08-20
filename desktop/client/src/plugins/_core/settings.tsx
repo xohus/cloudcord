@@ -6,7 +6,6 @@
 
 import { definePluginSettings } from "@api/Settings";
 import {
-    AppsIcon,
     BackupRestoreIcon,
     CloudIcon,
     MainSettingsIcon,
@@ -20,7 +19,6 @@ import {
     BotCordTab,
     CloudTab,
     FakeProfileTab,
-    OutsidePluginsTab,
     PluginsTab,
     ThemesTab,
     VencordTab,
@@ -247,13 +245,6 @@ export default definePlugin({
                 panelTitle: "Backup & Restore",
                 Component: BackupAndRestoreTab,
                 Icon: BackupRestoreIcon
-            }),
-            buildEntry({
-                key: "cloudcord_outside_plugins",
-                title: "Outside Plugins",
-                panelTitle: "Outside Plugins",
-                Component: OutsidePluginsTab,
-                Icon: AppsIcon
             })
         ].filter(isTruthy);
 

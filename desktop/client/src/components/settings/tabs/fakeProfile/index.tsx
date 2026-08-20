@@ -8,23 +8,13 @@ import { Button } from "@components/Button";
 import { Card } from "@components/Card";
 import { Divider } from "@components/Divider";
 import { Heading } from "@components/Heading";
-import { UserIcon, OpenExternalIcon } from "@components/Icons";
+import { UserIcon } from "@components/Icons";
 import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { Margins } from "@utils/margins";
-import { openModal } from "@utils/modal";
 import { React } from "@webpack/common";
 
 function FakeProfileTabComponent() {
-    const handleOpenModal = () => {
-        try {
-            const fakeProfile = (window as any).Vencord?.Plugins?.plugins?.fakeProfile;
-            if (fakeProfile?.settingsAboutComponent) {
-                // Trigger the modal opener from the plugin
-            }
-        } catch { }
-    };
-
     return (
         <SettingsTab>
             <Paragraph className={Margins.bottom16}>
@@ -42,18 +32,8 @@ function FakeProfileTabComponent() {
 
                 <Button
                     onClick={() => {
-                        const btn = document.querySelector(".vc-profile-spoofer-btn") as HTMLElement;
-                        if (btn) {
-                            btn.click();
-                        } else {
-                            const fp = (window as any).Vencord?.Plugins?.plugins?.fakeProfile;
-                            if (fp) {
-                                openModal((props: any) => {
-                                    const modalComp = fp.settingsAboutComponent?.();
-                                    return modalComp || <div style={{ padding: 20 }}>Fake Profile Customizer</div>;
-                                });
-                            }
-                        }
+                        const profileSpoofer = (window as any).Vencord?.Plugins?.plugins?.ProfileSpoofer;
+                        profileSpoofer?.toolboxActions?.["Open Profile Spoofer"]?.();
                     }}
                 >
                     Open Profile Editor

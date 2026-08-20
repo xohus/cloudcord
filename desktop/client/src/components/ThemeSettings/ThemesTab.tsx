@@ -22,17 +22,15 @@ import { isPluginEnabled } from "@api/PluginManager";
 import { Settings, type ThemeActivationMode, useSettings } from "@api/Settings";
 import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
-import { ErrorCard } from "@components/ErrorCard";
 import { Flex } from "@components/Flex";
 import { FormSwitch } from "@components/FormSwitch";
 import { Heading } from "@components/Heading";
-import { CogWheel, DeleteIcon, FolderIcon, PaintbrushIcon, PencilIcon, PluginIcon, PlusIcon, RestartIcon } from "@components/Icons";
 import { Link } from "@components/Link";
+import { CogWheel, DeleteIcon, FolderIcon, PaintbrushIcon, PencilIcon, PluginIcon, PlusIcon, RestartIcon } from "@components/Icons";
 import { Notice } from "@components/Notice";
 import { Paragraph } from "@components/Paragraph";
 import { AddonCard, openPluginModal, QuickAction, QuickActionCard, SettingsTab, wrapTab } from "@components/settings";
 import { OnlineThemeCard } from "@components/settings/OnlineThemeCard";
-import { CspBlockedUrls, useCspErrors } from "@utils/cspViolations";
 import { classNameFactory } from "@utils/css";
 import { copyWithToast, openInviteModal } from "@utils/discord";
 import { Margins } from "@utils/margins";
@@ -799,7 +797,6 @@ function ThemesTab() {
 
     return (
         <SettingsTab>
-            <CspErrorCard />
 
             <Heading className={Margins.top16}>Theme Management</Heading>
             <Paragraph className={Margins.bottom16}>
@@ -1014,66 +1011,6 @@ function ThemesTab() {
                 </div>
             )}
         </SettingsTab>
-    );
-}
-
-export function CspErrorCard() {
-    if (IS_WEB) return null;
-
-    const errors = useCspErrors();
-    const forceUpdate = useForceUpdater();
-
-    if (!errors.length) return null;
-
-    const isImgurHtmlDomain = (url: string) => url.startsWith("https://imgur.com/");
-
-    const allowUrl = async (url: string) => {
-        const { origin: baseUrl, host } = new URL(url);
-
-        const result = await VencordNative.csp.requestAddOverride(baseUrl, ["connect-src", "img-src", "style-src", "font-src"], "Sincord Themes");
-        if (result !== "ok") return;
-
-        CspBlockedUrls.forEach(url => {
-            if (new URL(url).host === host) {
-                CspBlockedUrls.delete(url);
-            }
-        });
-
-        forceUpdate();
-
-        Alerts.show({
-            title: "Restart Required",
-            body: "A restart is required to apply this change",
-            confirmText: "Restart now",
-            cancelText: "Later!",
-            onConfirm: relaunch
-        });
-    };
-
-    const hasImgurHtmlDomain = errors.some(isImgurHtmlDomain);
-
-    return (
-        <ErrorCard className={classes(cl("error-card"), Margins.top16)}>
-            <Heading className={Margins.bottom8}>Blocked Resources</Heading>
-            <Paragraph className={Margins.bottom8}>
-                Some resources were blocked from disallowed domains. Move them to GitHub or Imgur, or allow trusted domains below.
-            </Paragraph>
-
-            {errors.map(url => (
-                <div key={url} className={cl("csp-row")}>
-                    <Link href={url}>{url}</Link>
-                    <Button size="small" variant="secondary" onClick={() => allowUrl(url)} disabled={isImgurHtmlDomain(url)}>
-                        Allow
-                    </Button>
-                </div>
-            ))}
-
-            {hasImgurHtmlDomain && (
-                <Paragraph color="text-subtle" className={Margins.top8}>
-                    Imgur links should be direct links like <code>https://i.imgur.com/...</code>
-                </Paragraph>
-            )}
-        </ErrorCard>
     );
 }
 
