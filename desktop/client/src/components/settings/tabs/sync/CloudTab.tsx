@@ -29,6 +29,7 @@ import { Notice } from "@components/Notice";
 import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { localStorage } from "@utils/localStorage";
+import { CLOUDCORD_FAVICON } from "@utils/cloudCordAssets";
 import { Margins } from "@utils/margins";
 import { useForceUpdater } from "@utils/react";
 import { findComponentByCodeLazy } from "@webpack";
@@ -41,7 +42,7 @@ const providerOptions = [
     {
         label: "StoreCloud",
         value: "https://cloudcord.xohus.lol/",
-        icon: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png",
+        icon: CLOUDCORD_FAVICON,
         default: true
     },
     {
@@ -156,10 +157,15 @@ function CloudTab() {
 
             <FormSwitch
                 title="Enable Settings Sync"
-                description="When enabled, your settings can be synced to and from the cloud. Use the actions below to manually sync."
+                description={isAuthenticated
+                    ? "When enabled, your settings can be synced to and from the cloud. Use the actions below to manually sync."
+                    : "Enable this to connect your account and turn on synchronization."}
                 value={cloud.settingsSync}
-                onChange={v => { cloud.settingsSync = v; }}
-                disabled={!isAuthenticated}
+                onChange={async v => {
+                    if (v && !cloud.authenticated) await authorizeCloud();
+                    cloud.settingsSync = v && cloud.authenticated;
+                    forceUpdate();
+                }}
                 hideBorder
             />
 

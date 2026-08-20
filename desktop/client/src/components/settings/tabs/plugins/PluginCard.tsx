@@ -7,9 +7,10 @@
 import { showNotice } from "@api/Notices";
 import { hasAnyVisibleSettings, isPluginEnabled, pluginRequiresRestart, startDependenciesRecursive, startPlugin, stopPlugin } from "@api/PluginManager";
 import { Settings } from "@api/Settings";
-import { CloudCordIcon, CogWheel, InfoIcon } from "@components/Icons";
+import { CogWheel, InfoIcon } from "@components/Icons";
 import { AddonCard } from "@components/settings/AddonCard";
 import { classNameFactory } from "@utils/css";
+import { CLOUDCORD_FAVICON } from "@utils/cloudCordAssets";
 import { Logger } from "@utils/Logger";
 import { Plugin } from "@utils/types";
 import { React, showToast, Toasts } from "@webpack/common";
@@ -103,7 +104,7 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
     const pluginDetails = pluginInfo.find(p => p.condition);
 
     const sourceBadge = isCloudCordPlugin ? (
-        <CloudCordIcon width={22} height={22} aria-label="CloudCord" />
+        <img src={CLOUDCORD_FAVICON} alt="CloudCord" style={{ width: 22, height: 22, display: "block", objectFit: "contain" }} />
     ) : pluginDetails ? (
         <img
             src={pluginDetails.src}

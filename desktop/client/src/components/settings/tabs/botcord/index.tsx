@@ -123,6 +123,7 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
     const [bubblePosition, setBubblePosition] = useState({ x: 24, y: 80 });
     const dragOffset = useRef({ x: 0, y: 0 });
     const didDrag = useRef(false);
+    const composerRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         void requestBotApi<BotGuild[]>(token, "/users/@me/guilds")
@@ -242,7 +243,7 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
     };
 
     return (
-        <div style={{ position: "fixed", inset: 0, zIndex: 1000000, background: "var(--background-base-lowest, #111214)", color: "var(--text-default, white)", padding: "48px 36px 36px", overflow: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000000, background: "var(--background-base-lowest, #111214)", color: "var(--text-default, white)", padding: "48px 36px 36px", overflow: "auto", pointerEvents: "auto", WebkitAppRegion: "no-drag" } as React.CSSProperties}>
             <div style={{ position: "fixed", top: 0, right: 0, zIndex: 1000002, display: "flex", WebkitAppRegion: "no-drag" } as React.CSSProperties}>
                 <button aria-label="Minimize Discord" title="Minimize" onClick={() => controlDiscordWindow("minimize")} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 20, cursor: "pointer" }}>−</button>
                 <button aria-label="Maximize Discord" title="Maximize or restore" onClick={() => controlDiscordWindow("maximize")} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 16, cursor: "pointer" }}>□</button>
@@ -306,19 +307,30 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
                         <div style={{ display: "flex", gap: 8 }}>
                             <Button size="small" variant="secondary" onClick={() => void chooseImage()}>Add Image</Button>
                             <textarea
+                                ref={composerRef}
                                 aria-label={`Message #${selectedChannel.name}`}
                                 placeholder={`Message #${selectedChannel.name}`}
                                 value={messageText}
                                 onChange={event => setMessageText(event.currentTarget.value)}
+                                onPointerDown={event => {
+                                    event.stopPropagation();
+                                    composerRef.current?.focus();
+                                }}
+                                onClick={event => event.stopPropagation()}
+                                onInput={event => setMessageText(event.currentTarget.value)}
                                 onKeyDown={event => {
+                                    event.nativeEvent.stopImmediatePropagation();
                                     event.stopPropagation();
                                     if (event.key === "Enter" && !event.shiftKey) {
                                         event.preventDefault();
                                         void sendMessage();
                                     }
                                 }}
-                                onKeyUp={event => event.stopPropagation()}
-                                style={{ flex: 1, minHeight: 42, maxHeight: 120, resize: "vertical", padding: "10px 12px", border: 0, borderRadius: 8, background: "var(--channeltextarea-background, var(--background-secondary))", color: "var(--text-normal)", font: "inherit", outline: "none" }}
+                                onKeyUp={event => {
+                                    event.nativeEvent.stopImmediatePropagation();
+                                    event.stopPropagation();
+                                }}
+                                style={{ flex: 1, minHeight: 42, maxHeight: 120, resize: "vertical", padding: "10px 12px", border: 0, borderRadius: 8, background: "var(--channeltextarea-background, var(--background-secondary))", color: "var(--text-normal)", font: "inherit", outline: "none", pointerEvents: "auto", WebkitAppRegion: "no-drag" } as React.CSSProperties}
                             />
                             <Button size="small" disabled={sending || !messageText.trim() && !pendingImage} onClick={() => void sendMessage()}>{sending ? "Sending…" : "Send"}</Button>
                         </div>
