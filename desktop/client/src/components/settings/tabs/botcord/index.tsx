@@ -14,11 +14,12 @@ import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { DataStore } from "@api/index";
 import { Margins } from "@utils/margins";
-import { relaunch } from "@utils/native";
+import { findByPropsLazy } from "@webpack";
 import { Alerts, React, TextInput, Toasts, useEffect, useState } from "@webpack/common";
 
 const DS_BOT_TOKENS = "CloudCord_BotTokens";
 const DS_ACTIVE_BOT = "CloudCord_ActiveBot";
+const LoginTokenActions = findByPropsLazy("loginToken");
 
 interface BotAccount {
     name: string;
@@ -72,13 +73,10 @@ function BotCordComponent() {
             body: "Logging in as a bot will reload Discord with bot credentials. Do you want to proceed?",
             confirmText: "Login & Reload",
             cancelText: "Cancel",
-            onConfirm() {
+            async onConfirm() {
                 try {
-                    const storage = globalThis.localStorage;
-                    if (!storage) throw new Error("Discord token storage is unavailable in this client version");
-                    void DataStore.set(DS_ACTIVE_BOT, botToken);
-                    storage.setItem("token", `"${botToken}"`);
-                    relaunch();
+                    await DataStore.set(DS_ACTIVE_BOT, botToken);
+                    await LoginTokenActions.loginToken(botToken);
                 } catch (e: any) {
                     Toasts.show({ id: "bot-login-fail", message: "Failed to switch account: " + e.message, type: Toasts.Type.FAILURE });
                 }

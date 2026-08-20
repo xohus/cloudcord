@@ -20,6 +20,7 @@ import { openPluginModal } from "./PluginModal";
 
 const logger = new Logger("PluginCard");
 const cl = classNameFactory("vc-plugins-");
+const CLOUDCORD_FAVICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 interface PluginCardProps extends React.HTMLProps<HTMLDivElement> {
     plugin: Plugin;
     disabled?: boolean;
@@ -32,10 +33,12 @@ interface PluginCardProps extends React.HTMLProps<HTMLDivElement> {
 export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, onMouseLeave, isNew }: PluginCardProps) {
     const settings = Settings.plugins[plugin.name];
     const pluginMeta = PluginMeta[plugin.name];
-    const isSincordPlugin = pluginMeta.folderName.startsWith("src/sincordplugins/") ?? false;
-    const isVencordPlugin = pluginMeta.folderName.startsWith("src/plugins/") ?? false;
     const isUserPlugin = pluginMeta?.userPlugin ?? false;
-    const isModifiedPlugin = plugin.isModified ?? false;
+    const isCloudCordPlugin = !isUserPlugin && [
+        "src/plugins/",
+        "src/sincordplugins/",
+        "src/cloudcordplugins/"
+    ].some(prefix => pluginMeta.folderName.startsWith(prefix));
 
     const isEnabled = () => isPluginEnabled(plugin.name);
 
@@ -91,22 +94,10 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
 
     const pluginInfo = [
         {
-            condition: isModifiedPlugin,
-            src: "https://sincord.org/assets/icons/sincord/modified.png",
-            alt: "Modified",
-            title: "Modified Vencord Plugin"
-        },
-        {
-            condition: isSincordPlugin,
-            src: "https://sincord.org/assets/favicon.png",
-            alt: "Sincord",
-            title: "Sincord Plugin"
-        },
-        {
-            condition: isVencordPlugin,
-            src: "https://sincord.org/assets/icons/vencord/icon-light.png",
-            alt: "Vencord",
-            title: "Vencord Plugin"
+            condition: isCloudCordPlugin,
+            src: CLOUDCORD_FAVICON,
+            alt: "CloudCord",
+            title: "CloudCord Plugin"
         },
         {
             condition: isUserPlugin,
