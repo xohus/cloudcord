@@ -199,17 +199,24 @@ async function readDiscordError(response: Response) {
 }
 
 async function botFetch<T>(token: string, path: string): Promise<T> {
-    const response = await fetch(`https://discord.com/api/v10${path}`, { headers: { Authorization: `Bot ${normalizeBotToken(token)}` } });
-    if (!response.ok) {
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const response = await fetch(`https://discord.com/api/v10${path}`, { headers: { Authorization: `Bot ${normalizeBotToken(token)}`, Accept: "application/json" } });
+        if (response.ok) return response.json();
+
         const message = await readDiscordError(response);
+        if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+            await new Promise(resolve => setTimeout(resolve, 400 * (attempt + 1)));
+            continue;
+        }
+        if (response.status === 403) throw new Error("This bot needs View Channel and Read Message History permissions (403).");
         throw new Error(message ? `${message} (${response.status})` : `Discord API request failed (${response.status}).`);
     }
-    return response.json();
+    throw new Error("Discord did not respond after three attempts.");
 }
 
 export function getBotGuilds(token: string) { return botFetch<any[]>(token, "/users/@me/guilds"); }
 export function getBotGuildChannels(token: string, guildId: string) { return botFetch<any[]>(token, `/guilds/${guildId}/channels`); }
-export function getBotChannelMessages(token: string, channelId: string) { return botFetch<any[]>(token, `/channels/${channelId}/messages?limit=50`); }
+export function getBotChannelMessages(token: string, channelId: string) { return botFetch<any[]>(token, `/channels/${channelId}/messages?limit=25`); }
 export async function getBotGuildMembers(token: string, guildId: string) {
     const members: any[] = [];
     let after = "0";

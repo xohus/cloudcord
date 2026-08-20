@@ -65,7 +65,7 @@ async function syncSettings() {
                 title: "StoreCloud",
                 body: "StoreCloud was disabled because this account is not connected. Reconnect it from the StoreCloud settings tab.",
                 color: "var(--yellow-360)",
-                onClick: () => SettingsRouter.openUserSettings("cloudcord_store_cloud")
+                onClick: () => SettingsRouter.openUserSettings("cloudcord_cloud_sync")
             });
             // Disable cloud sync globally
             Settings.cloud.authenticated = false;
@@ -84,7 +84,7 @@ async function syncSettings() {
             body: "We've noticed you have cloud integrations enabled in another client! Due to limitations, you will " +
                 "need to re-authenticate to continue using them. Click here to go to the settings page to do so!",
             color: "var(--yellow-360)",
-            onClick: () => SettingsRouter.openUserSettings("cloudcord_store_cloud")
+            onClick: () => SettingsRouter.openUserSettings("cloudcord_cloud_sync")
         });
         return;
     }

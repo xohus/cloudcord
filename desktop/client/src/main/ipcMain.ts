@@ -65,16 +65,33 @@ ipcMain.handle(IpcEvents.BOTCORD_API_REQUEST, async (_, token: string, path: str
         return { ok: false, status: 0, error: "BotCord blocked an unsupported Discord API path" };
 
     try {
-        const response = await net.fetch(`https://discord.com/api/v10${path}`, {
-            method: "GET",
-            headers: { Authorization: `Bot ${cleanToken}` }
-        });
-        const text = await response.text();
-        let data: unknown = null;
-        try { data = text ? JSON.parse(text) : null; } catch { data = text; }
-        return response.ok
-            ? { ok: true, status: response.status, data }
-            : { ok: false, status: response.status, error: (data as any)?.message || `Discord request failed (${response.status})` };
+        for (let attempt = 0; attempt < 3; attempt++) {
+            const response = await net.fetch(`https://discord.com/api/v10${path}`, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bot ${cleanToken}`,
+                    Accept: "application/json",
+                    "User-Agent": "DiscordBot (https://github.com/xohus/cloudcord, 1.0)"
+                }
+            });
+            const text = await response.text();
+            let data: unknown = null;
+            try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+            if (response.ok) return { ok: true, status: response.status, data };
+
+            if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+                const retryAfter = Math.min(Number((data as any)?.retry_after ?? 0) * 1000 || 400 * (attempt + 1), 5000);
+                await new Promise(resolve => setTimeout(resolve, retryAfter));
+                continue;
+            }
+
+            const discordMessage = (data as any)?.message;
+            const error = response.status === 403
+                ? "This bot needs View Channel and Read Message History permissions"
+                : discordMessage || `Discord request failed (${response.status})`;
+            return { ok: false, status: response.status, error: `${error} (${response.status})` };
+        }
+        return { ok: false, status: 0, error: "Discord did not respond after three attempts" };
     } catch (error: any) {
         return { ok: false, status: 0, error: error?.message || "Discord network request failed" };
     }

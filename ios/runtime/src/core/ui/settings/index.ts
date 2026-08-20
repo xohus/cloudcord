@@ -29,7 +29,7 @@ export default function initSettings() {
             },
             {
                 key: "STORE_CLOUD",
-                title: () => "StoreCloud",
+                title: () => "CloudSync",
                 icon: { uri: PupuIcon },
                 render: () => import("@core/ui/settings/pages/StoreCloud")
             },

@@ -183,10 +183,10 @@ jobs:
               return (
                   <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
                       <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
-                          <TableRowGroup title="StoreCloud">
+                          <TableRowGroup title="CloudSync">
                               <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
                                   <Text variant="heading-md/semibold" color="text-normal">
-                                      StoreCloud
+                                      CloudSync
                                   </Text>
                                   <Text variant="text-sm/medium" color="text-muted">
                                       Connect StoreCloud to sync supported settings and manage cloud backups on this device.
@@ -1446,7 +1446,7 @@ jobs:
 
               store_cloud_item = f'''            {{
                   key: "STORE_CLOUD",
-                  title: () => "StoreCloud",
+                  title: () => "CloudSync",
                   icon: {{ uri: "{CLOUDCORD_ICON}" }},
                   render: () => import("@core/ui/settings/pages/StoreCloud")
               }},'''

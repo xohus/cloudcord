@@ -140,7 +140,7 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
         setError("");
         setLoading(true);
         try {
-            const result = await botFetch<BotMessage[]>(`/channels/${channel.id}/messages?limit=50`);
+            const result = await botFetch<BotMessage[]>(`/channels/${channel.id}/messages?limit=25`);
             setMessages(result.reverse());
         } catch (e: any) {
             setMessages([]);

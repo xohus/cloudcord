@@ -307,7 +307,7 @@ func loop() {
 						),
 						g.Dummy(0, 2),
 						g.Style().SetFontSize(13).SetColor(g.StyleColorText, textMuted).To(
-							g.Label("BotCord  |  Fake Profile  |  StoreCloud  |  Plugins  |  Themes"),
+							g.Label("BotCord  |  Fake Profile  |  CloudSync  |  Plugins  |  Themes"),
 						),
 					),
 				),

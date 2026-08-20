@@ -36,9 +36,9 @@ export default function StoreCloud() {
     return (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
             <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
-                <TableRowGroup title="StoreCloud">
+                <TableRowGroup title="CloudSync">
                     <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
-                        <Text variant="heading-md/semibold" color="text-normal">StoreCloud</Text>
+                        <Text variant="heading-md/semibold" color="text-normal">CloudSync</Text>
                         <Text variant="text-sm/medium" color="text-muted">
                             Sync supported CloudCord settings and manage backups across mobile devices.
                         </Text>

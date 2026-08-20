@@ -26,7 +26,6 @@ import { Flex } from "@components/Flex";
 import { FormSwitch } from "@components/FormSwitch";
 import { Heading } from "@components/Heading";
 import { CloudDownloadIcon, CloudUploadIcon, SkullIcon } from "@components/Icons";
-import { Link } from "@components/Link";
 import { Notice } from "@components/Notice";
 import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
@@ -34,13 +33,7 @@ import { localStorage } from "@utils/localStorage";
 import { Margins } from "@utils/margins";
 import { useForceUpdater } from "@utils/react";
 import { findComponentByCodeLazy } from "@webpack";
-import { Alerts, SearchableSelect, Select, useState } from "@webpack/common";
-
-const ICON_STYLE: React.CSSProperties = { width: 20, height: 20, borderRadius: 4, verticalAlign: "middle" };
-
-function VencordIcon() {
-    return <img src="https://raw.githubusercontent.com/Vendicated/Vencord/main/browser/icon.png" alt="StoreCloud" style={ICON_STYLE} />;
-}
+import { Alerts, Select } from "@webpack/common";
 
 const RefreshIcon = findComponentByCodeLazy("M4 12a8 8 0 0 1 14.93-4H15");
 const TrashIcon = findComponentByCodeLazy("2.81h8.36a3");
@@ -54,10 +47,6 @@ function validateUrl(url: string) {
     }
 }
 
-const cloudBackendOptions = [
-    { label: "Vencord Cloud (third-party)", value: "https://api.vencord.dev/" }
-];
-
 const syncDirectionOptions = [
     { label: "Two-way sync (changes go both directions)", value: "both" },
     { label: "This device is the source (upload only)", value: "push" },
@@ -67,33 +56,22 @@ const syncDirectionOptions = [
 
 function CloudTab() {
     const settings = useSettings(["cloud.authenticated", "cloud.url", "cloud.settingsSync"]);
-    const [inputKey, setInputKey] = useState(0);
     const forceUpdate = useForceUpdater();
 
     const { cloud } = settings;
     const isAuthenticated = cloud.authenticated;
     const syncEnabled = isAuthenticated && cloud.settingsSync;
 
-    async function changeUrl(url: string) {
-        cloud.url = url;
-        cloud.authenticated = false;
-
-        await deauthorizeCloud();
-        await authorizeCloud();
-
-        setInputKey(prev => prev + 1);
-    }
-
     return (
         <SettingsTab>
-            <Heading className={Margins.top16}>StoreCloud</Heading>
+            <Heading className={Margins.top16}>CloudSync</Heading>
             <Paragraph className={Margins.bottom16}>
                 StoreCloud keeps supported CloudCord settings synchronized across devices and Discord installations.
             </Paragraph>
 
             <Notice.Info className={Margins.bottom16}>
                 StoreCloud does not send data anywhere until you choose and authorize a backend.
-                You can explicitly select the third-party <Link href="https://api.vencord.dev/">Vencord Cloud service</Link> or enter a compatible self-hosted backend below.
+                Enter your StoreCloud server URL below when the service is configured.
             </Notice.Info>
 
             <FormSwitch
@@ -112,26 +90,16 @@ function CloudTab() {
 
             <Divider className={Margins.top20} />
 
-            <Heading className={Margins.top20}>Cloud Backend</Heading>
+            <Heading className={Margins.top20}>StoreCloud Provider</Heading>
             <Paragraph className={Margins.bottom16}>
-                StoreCloud uses a Vencord-compatible backend. You may also enter a compatible self-hosted instance.
+                CloudSync uses StoreCloud as its provider on desktop and mobile. A compatible server URL is required before authorization.
             </Paragraph>
-
-            <div className={Margins.bottom8}>
-                <SearchableSelect
-                    options={cloudBackendOptions}
-                    value={cloudBackendOptions.find(o => o.value === cloud.url)?.value}
-                    onChange={v => changeUrl(v)}
-                    closeOnSelect={true}
-                    renderOptionPrefix={() => <VencordIcon />}
-                />
-            </div>
 
             <Flex gap="8px" alignItems="center">
                 <div style={{ flex: 1 }}>
                     <CheckedTextInput
-                        key={`backendUrl-${inputKey}`}
                         initialValue={cloud.url}
+                        placeholder="StoreCloud backend URL"
                         onChange={async v => {
                             cloud.url = v;
                             cloud.authenticated = false;

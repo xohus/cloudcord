@@ -130,7 +130,7 @@ function handleAuthFailure() {
         title: "StoreCloud",
         body: "StoreCloud was disabled because this account is not connected. Reconnect in StoreCloud settings.",
         color: "var(--yellow-360)",
-        onClick: () => SettingsRouter.openUserSettings("cloudcord_store_cloud"),
+        onClick: () => SettingsRouter.openUserSettings("cloudcord_cloud_sync"),
     });
     Settings.cloud.authenticated = false;
 }
