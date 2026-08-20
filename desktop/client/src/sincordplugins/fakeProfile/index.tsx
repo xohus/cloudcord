@@ -1,6 +1,9 @@
 /*
- * Sincord, a Discord client mod
- * Copyright (c) 2026 Sincord contributors
+ * CloudCord Fake Profile
+ * Originally created by xohus for CloudCord on iOS and Android.
+ * Adapted and substantially expanded for CloudCord Desktop by xohus.
+ * Copyright (c) 2026 xohus and CloudCord contributors
+ * Portions copyright (c) 2026 Sincord contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 

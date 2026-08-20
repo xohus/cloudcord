@@ -1,6 +1,8 @@
 /*
  * CloudCord, a Discord client mod
- * Copyright (c) 2026 CloudCord contributors
+ * Fake Profile originally created by xohus for CloudCord on iOS and Android,
+ * then adapted and expanded for CloudCord Desktop.
+ * Copyright (c) 2026 xohus and CloudCord contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
