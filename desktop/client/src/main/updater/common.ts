@@ -16,7 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 
-export const ASAR_FILE = IS_VESKTOP ? "vesktop.asar" : IS_EQUIBOP ? "sinbop.asar" : "desktop.asar";
+export const ASAR_FILE = IS_VESKTOP ? "vesktop.asar" : IS_EQUIBOP ? "sinbop.asar" : "cloudcord.asar";
 
 export function serializeErrors(func: (...args: any[]) => any) {
     return async function () {

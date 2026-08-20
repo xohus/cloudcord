@@ -14,18 +14,146 @@ import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { DataStore } from "@api/index";
 import { Margins } from "@utils/margins";
-import { findByPropsLazy } from "@webpack";
-import { Alerts, React, TextInput, Toasts, useEffect, useState } from "@webpack/common";
+import { Alerts, createRoot, React, TextInput, Toasts, useEffect, useRef, useState } from "@webpack/common";
+import type { Root } from "react-dom/client";
 
 const DS_BOT_TOKENS = "CloudCord_BotTokens";
 const DS_ACTIVE_BOT = "CloudCord_ActiveBot";
-const LoginTokenActions = findByPropsLazy("loginToken");
+const normalizeBotToken = (value: string) => value.replace(/^Bot\s+/i, "").trim();
 
 interface BotAccount {
     name: string;
     token: string;
     botId?: string;
     avatar?: string;
+}
+
+interface BotIdentity {
+    id: string;
+    username: string;
+    global_name?: string;
+    avatar?: string;
+}
+
+interface BotGuild {
+    id: string;
+    name: string;
+    icon?: string;
+}
+
+let botCordOverlayRoot: Root | null = null;
+let botCordOverlayContainer: HTMLDivElement | null = null;
+
+function closeBotCordOverlay() {
+    botCordOverlayRoot?.unmount();
+    botCordOverlayContainer?.remove();
+    botCordOverlayRoot = null;
+    botCordOverlayContainer = null;
+}
+
+function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
+    const [guilds, setGuilds] = useState<BotGuild[]>([]);
+    const [error, setError] = useState("");
+    const [bubblePosition, setBubblePosition] = useState({ x: 24, y: 80 });
+    const dragOffset = useRef({ x: 0, y: 0 });
+    const didDrag = useRef(false);
+
+    useEffect(() => {
+        void fetch("https://discord.com/api/v10/users/@me/guilds", {
+            headers: { Authorization: `Bot ${token}` }
+        }).then(async response => {
+            if (!response.ok) throw new Error("Discord rejected the bot guild request");
+            setGuilds(await response.json());
+        }).catch(e => setError(e.message));
+    }, [token]);
+
+    const startDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+        didDrag.current = false;
+        dragOffset.current = {
+            x: event.clientX - bubblePosition.x,
+            y: event.clientY - bubblePosition.y
+        };
+        event.currentTarget.setPointerCapture(event.pointerId);
+    };
+
+    const drag = (event: React.PointerEvent<HTMLButtonElement>) => {
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) return;
+        didDrag.current = true;
+        setBubblePosition({
+            x: Math.max(8, Math.min(window.innerWidth - 64, event.clientX - dragOffset.current.x)),
+            y: Math.max(40, Math.min(window.innerHeight - 64, event.clientY - dragOffset.current.y))
+        });
+    };
+
+    const finishDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
+        if (event.currentTarget.hasPointerCapture(event.pointerId))
+            event.currentTarget.releasePointerCapture(event.pointerId);
+    };
+
+    const displayName = bot.global_name || bot.username;
+
+    return (
+        <div style={{ position: "fixed", inset: 0, zIndex: 1000000, background: "var(--background-base-lowest, #111214)", color: "var(--text-default, white)", padding: "48px 36px 36px", overflow: "auto" }}>
+            <header style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
+                <RobotIcon style={{ width: 34, height: 34 }} />
+                <div>
+                    <Heading tag="h1">BotCord</Heading>
+                    <Paragraph>Connected as {displayName}. Your normal Discord account is still running underneath.</Paragraph>
+                </div>
+            </header>
+
+            {error && <Card style={{ padding: 16, marginBottom: 18, color: "var(--text-danger)" }}>{error}</Card>}
+
+            <Heading tag="h2" className={Margins.bottom16}>Bot Servers ({guilds.length})</Heading>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+                {guilds.map(guild => (
+                    <Card key={guild.id} style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
+                        {guild.icon
+                            ? <img src={`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`} alt="" style={{ width: 38, height: 38, borderRadius: "50%" }} />
+                            : <RobotIcon style={{ width: 38, height: 38 }} />}
+                        <div style={{ fontWeight: 600 }}>{guild.name}</div>
+                    </Card>
+                ))}
+            </div>
+
+            <button
+                aria-label="Return to normal Discord"
+                title="Return to normal Discord (drag to move)"
+                onPointerDown={startDrag}
+                onPointerMove={drag}
+                onPointerUp={finishDrag}
+                onClick={() => { if (!didDrag.current) closeBotCordOverlay(); }}
+                style={{
+                    position: "fixed",
+                    left: bubblePosition.x,
+                    top: bubblePosition.y,
+                    width: 56,
+                    height: 56,
+                    borderRadius: "50%",
+                    border: "2px solid var(--brand-500, #5865f2)",
+                    background: "var(--background-surface-high, #2b2d31)",
+                    color: "white",
+                    display: "grid",
+                    placeItems: "center",
+                    cursor: "grab",
+                    boxShadow: "0 8px 24px rgba(0, 0, 0, .45)",
+                    zIndex: 1000001,
+                    touchAction: "none"
+                }}
+            >
+                <RobotIcon style={{ width: 28, height: 28 }} />
+            </button>
+        </div>
+    );
+}
+
+function openBotCordOverlay(bot: BotIdentity, token: string) {
+    closeBotCordOverlay();
+    botCordOverlayContainer = document.createElement("div");
+    botCordOverlayContainer.id = "cloudcord-botcord-overlay";
+    document.body.append(botCordOverlayContainer);
+    botCordOverlayRoot = createRoot(botCordOverlayContainer);
+    botCordOverlayRoot.render(<BotCordOverlay bot={bot} token={token} />);
 }
 
 function BotCordComponent() {
@@ -54,7 +182,7 @@ function BotCordComponent() {
     };
 
     const handleAddBot = () => {
-        const trimmed = token.trim();
+        const trimmed = normalizeBotToken(token);
         if (!trimmed) {
             Toasts.show({ id: "bot-token-empty", message: "Please enter a valid bot token", type: Toasts.Type.FAILURE });
             return;
@@ -67,18 +195,30 @@ function BotCordComponent() {
         Toasts.show({ id: "bot-token-added", message: `Saved ${name} successfully!`, type: Toasts.Type.SUCCESS });
     };
 
-    const handleLoginAsBot = (botToken: string, name: string) => {
+    const handleActivateBot = (botToken: string, name: string) => {
+        const isActive = activeBot === normalizeBotToken(botToken);
         Alerts.show({
-            title: `Switch to ${name}?`,
-            body: "Logging in as a bot will reload Discord with bot credentials. Do you want to proceed?",
-            confirmText: "Login & Reload",
+            title: `${isActive ? "Open" : "Activate"} ${name}?`,
+            body: "CloudCord will validate this bot with Discord and use it inside BotCord. Your Discord user account will stay signed in.",
+            confirmText: isActive ? "Open BotCord" : "Activate Bot",
             cancelText: "Cancel",
             async onConfirm() {
                 try {
-                    await DataStore.set(DS_ACTIVE_BOT, botToken);
-                    await LoginTokenActions.loginToken(botToken);
+                    const cleanToken = normalizeBotToken(botToken);
+                    const response = await fetch("https://discord.com/api/v10/users/@me", {
+                        headers: { Authorization: `Bot ${cleanToken}` }
+                    });
+                    if (!response.ok)
+                        throw new Error("Invalid bot token or Discord rejected the request");
+
+                    const bot = await response.json() as BotIdentity;
+
+                    await DataStore.set(DS_ACTIVE_BOT, cleanToken);
+                    setActiveBot(cleanToken);
+                    openBotCordOverlay(bot, cleanToken);
+                    Toasts.show({ id: "bot-activated", message: `${name} is now active in BotCord`, type: Toasts.Type.SUCCESS });
                 } catch (e: any) {
-                    Toasts.show({ id: "bot-login-fail", message: "Failed to switch account: " + e.message, type: Toasts.Type.FAILURE });
+                    Toasts.show({ id: "bot-activate-fail", message: "Failed to activate bot: " + e.message, type: Toasts.Type.FAILURE });
                 }
             }
         });
@@ -87,7 +227,8 @@ function BotCordComponent() {
     const handleDeleteBot = (botToken: string) => {
         const updated = savedBots.filter(b => b.token !== botToken);
         saveBotsList(updated);
-        if (activeBot === botToken) {
+        if (activeBot === normalizeBotToken(botToken)) {
+            closeBotCordOverlay();
             void DataStore.del(DS_ACTIVE_BOT);
             setActiveBot("");
         }
@@ -97,7 +238,7 @@ function BotCordComponent() {
     return (
         <SettingsTab>
             <Paragraph className={Margins.bottom16}>
-                BotCord lets you manage, test, and login directly with Discord Bot tokens inside CloudCord.
+                BotCord manages and tests Discord bots in a separate session without replacing your Discord user account.
             </Paragraph>
 
             <Card style={{ padding: "16px", marginBottom: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -150,9 +291,9 @@ function BotCordComponent() {
                             <div style={{ display: "flex", gap: "8px" }}>
                                 <Button
                                     size="small"
-                                    onClick={() => handleLoginAsBot(bot.token, bot.name)}
+                                    onClick={() => handleActivateBot(bot.token, bot.name)}
                                 >
-                                    Login
+                                    {activeBot === normalizeBotToken(bot.token) ? "Open" : "Activate"}
                                 </Button>
                                 <Button
                                     size="small"

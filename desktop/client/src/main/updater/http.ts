@@ -19,21 +19,23 @@
 import { fetchBuffer, fetchJson } from "@main/utils/http";
 import { IpcEvents } from "@shared/IpcEvents";
 import { VENCORD_USER_AGENT } from "@shared/vencordUserAgent";
+import { createHash } from "crypto";
 import { ipcMain } from "electron";
-import { writeFileSync } from "original-fs";
+import { copyFileSync, existsSync, renameSync, unlinkSync, writeFileSync } from "original-fs";
 
 import gitHash from "~git-hash";
 import gitRemote from "~git-remote";
 
 import { ASAR_FILE, serializeErrors } from "./common";
 
-const API_BASE = `https://cloudcord.xohus.lol/api/proxy`;
-let PendingUpdate: string | null = null;
+const API_BASE = `https://api.github.com/repos/${gitRemote}`;
+let PendingUpdate: { asarUrl: string; checksumUrl: string; } | null = null;
 
 async function githubGet<T = any>(endpoint: string) {
     return fetchJson<T>(API_BASE + endpoint, {
         headers: {
-            "X-CC-Client": "1",
+            Accept: "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28",
             "User-Agent": VENCORD_USER_AGENT
         }
     });
@@ -43,7 +45,7 @@ async function calculateGitChanges() {
     const isOutdated = await fetchUpdates();
     if (!isOutdated) return [];
 
-    const data = await githubGet(`/compare/${gitHash}...HEAD`);
+    const data = await githubGet<any>(`/compare/${gitHash}...main`);
 
     return data.commits.map((c: any) => ({
         hash: c.sha,
@@ -53,27 +55,71 @@ async function calculateGitChanges() {
 }
 
 async function fetchUpdates() {
-    const data = await githubGet("/releases/latest");
+    const data = await githubGet<any>("/releases/latest");
 
-    const hash = data.name.slice(data.name.lastIndexOf(" ") + 1);
+    const hash = data.name?.slice(data.name.lastIndexOf(" ") + 1);
     if (hash === gitHash)
         return false;
 
-    const asset = data.assets.find(a => a.name === ASAR_FILE);
-    PendingUpdate = asset.browser_download_url;
+    const asset = data.assets.find((a: any) => a.name === ASAR_FILE);
+    const checksum = data.assets.find((a: any) => a.name === `${ASAR_FILE}.sha256`);
+    if (!asset || !checksum)
+        throw new Error(`Latest CloudCord release is missing ${ASAR_FILE} or its checksum`);
+
+    PendingUpdate = {
+        asarUrl: asset.browser_download_url,
+        checksumUrl: checksum.browser_download_url
+    };
 
     return true;
+}
+
+function validateAsar(data: Buffer) {
+    if (data.length < 1024 || data.readUInt32LE(0) !== 4)
+        throw new Error("Downloaded CloudCord update is not a valid ASAR archive");
+
+    const headerLength = data.readUInt32LE(12);
+    if (headerLength <= 0 || headerLength > data.length - 16)
+        throw new Error("Downloaded CloudCord update has an invalid ASAR header");
+
+    const header = JSON.parse(data.subarray(16, 16 + headerLength).toString("utf8"));
+    if (!header?.files?.["package.json"] || !header?.files?.["patcher.js"])
+        throw new Error("Downloaded CloudCord update is missing required runtime files");
 }
 
 async function applyUpdates() {
     if (!PendingUpdate) return true;
 
-    const data = await fetchBuffer(PendingUpdate, {
-        headers: {
-            "X-CC-Client": "1"
-        }
-    });
-    writeFileSync(__dirname, data, { flush: true });
+    const pending = PendingUpdate;
+    const [data, checksumData] = await Promise.all([
+        fetchBuffer(pending.asarUrl),
+        fetchBuffer(pending.checksumUrl)
+    ]);
+    const expectedHash = checksumData.toString("utf8").trim().split(/\s+/)[0]?.toLowerCase();
+    const actualHash = createHash("sha256").update(data).digest("hex");
+    if (!expectedHash || expectedHash !== actualHash)
+        throw new Error("Downloaded CloudCord update failed SHA-256 verification");
+
+    validateAsar(data);
+
+    const asarPath = __dirname;
+    if (!asarPath.toLowerCase().endsWith(".asar"))
+        throw new Error(`Refusing to update unexpected runtime path: ${asarPath}`);
+
+    const newPath = `${asarPath}.new`;
+    const backupPath = `${asarPath}.backup`;
+    writeFileSync(newPath, data, { flush: true });
+
+    try {
+        if (existsSync(backupPath)) unlinkSync(backupPath);
+        copyFileSync(asarPath, backupPath);
+        unlinkSync(asarPath);
+        renameSync(newPath, asarPath);
+    } catch (error) {
+        if (existsSync(newPath)) unlinkSync(newPath);
+        if (!existsSync(asarPath) && existsSync(backupPath)) renameSync(backupPath, asarPath);
+        throw error;
+    }
 
     PendingUpdate = null;
 

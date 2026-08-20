@@ -75,7 +75,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          pnpm build
+          pnpm build --standalone
 
       - name: Verify desktop runtime output
         shell: bash
@@ -155,6 +155,7 @@ jobs:
           npm install -g @electron/asar --quiet 2>/dev/null || true
           asar pack desktop/client/dist/desktop desktop/client/dist/desktop.asar
           cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord.asar
+          sha256sum desktop/client/dist/cloudcord.asar > desktop/client/dist/cloudcord.asar.sha256
           cp desktop/client/dist/desktop.asar desktop/client/dist/runtime
           cp desktop/client/dist/desktop.asar desktop/client/dist/desktop-test.asar
           cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord-test.asar
@@ -169,6 +170,7 @@ jobs:
           files: |
             desktop/client/dist/desktop.asar
             desktop/client/dist/cloudcord.asar
+            desktop/client/dist/cloudcord.asar.sha256
             desktop/client/dist/runtime
             desktop/client/dist/CloudCordSetup.exe
             desktop/client/dist/cloudcord.exe
