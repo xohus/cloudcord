@@ -183,17 +183,19 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
     };
 
     const sendMessage = async () => {
-        if (!selectedChannel || (!messageText.trim() && !pendingImage)) return;
+        const content = composerRef.current?.value ?? messageText;
+        if (!selectedChannel || (!content.trim() && !pendingImage)) return;
         setError("");
         setSending(true);
         try {
             const sent = await requestBotApi<BotMessage>(token, `/channels/${selectedChannel.id}/messages`, {
                 method: "POST",
-                body: { content: messageText.trim(), allowed_mentions: { parse: ["users", "roles", "everyone"] } },
+                body: { content: content.trim(), allowed_mentions: { parse: ["users", "roles", "everyone"] } },
                 files: pendingImage ? [pendingImage] : undefined
             });
             setMessages(previous => [...previous, sent]);
             setMessageText("");
+            if (composerRef.current) composerRef.current.value = "";
             setPendingImage(null);
         } catch (e: any) { setError(e.message); }
         finally { setSending(false); }
@@ -310,8 +312,7 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
                                 ref={composerRef}
                                 aria-label={`Message #${selectedChannel.name}`}
                                 placeholder={`Message #${selectedChannel.name}`}
-                                value={messageText}
-                                onChange={event => setMessageText(event.currentTarget.value)}
+                                defaultValue=""
                                 onPointerDown={event => {
                                     event.stopPropagation();
                                     composerRef.current?.focus();
@@ -319,7 +320,6 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
                                 onClick={event => event.stopPropagation()}
                                 onInput={event => setMessageText(event.currentTarget.value)}
                                 onKeyDown={event => {
-                                    event.nativeEvent.stopImmediatePropagation();
                                     event.stopPropagation();
                                     if (event.key === "Enter" && !event.shiftKey) {
                                         event.preventDefault();
@@ -327,7 +327,6 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
                                     }
                                 }}
                                 onKeyUp={event => {
-                                    event.nativeEvent.stopImmediatePropagation();
                                     event.stopPropagation();
                                 }}
                                 style={{ flex: 1, minHeight: 42, maxHeight: 120, resize: "vertical", padding: "10px 12px", border: 0, borderRadius: 8, background: "var(--channeltextarea-background, var(--background-secondary))", color: "var(--text-normal)", font: "inherit", outline: "none", pointerEvents: "auto", WebkitAppRegion: "no-drag" } as React.CSSProperties}
@@ -341,7 +340,12 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
                     {members.length === 0 && <Paragraph>Member list unavailable. Enable the Server Members Intent for this bot.</Paragraph>}
                     {members.map(member => <div key={member.user.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0" }}>
                         <img src={avatarUrl(member.user)} alt="" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
-                        <button onClick={() => setMessageText(text => `${text}<@${member.user.id}> `)} style={{ minWidth: 0, flex: 1, border: 0, background: "transparent", color: "inherit", textAlign: "left", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis" }} title="Add mention">{member.nick || member.user.global_name || member.user.username}</button>
+                        <button onClick={() => {
+                            const next = `${composerRef.current?.value ?? messageText}<@${member.user.id}> `;
+                            if (composerRef.current) composerRef.current.value = next;
+                            setMessageText(next);
+                            composerRef.current?.focus();
+                        }} style={{ minWidth: 0, flex: 1, border: 0, background: "transparent", color: "inherit", textAlign: "left", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis" }} title="Add mention">{member.nick || member.user.global_name || member.user.username}</button>
                         <button onClick={() => void openDm(member)} style={{ border: 0, background: "transparent", color: "var(--text-link)", cursor: "pointer" }}>DM</button>
                     </div>)}
                 </Card>
