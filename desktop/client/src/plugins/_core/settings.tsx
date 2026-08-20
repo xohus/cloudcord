@@ -180,8 +180,8 @@ export default definePlugin({
             }),
             buildEntry({
                 key: "cloudcord_botcord",
-                title: "BotCord",
-                panelTitle: "BotCord",
+                title: "BotCord (Down)",
+                panelTitle: "BotCord — Temporarily Unavailable",
                 Component: BotCordTab,
                 Icon: RobotIcon
             }),

@@ -11,6 +11,7 @@ import { FormSwitch } from "@components/FormSwitch";
 import { Heading, HeadingTertiary } from "@components/Heading";
 import { DeleteIcon, OpenExternalIcon, RobotIcon } from "@components/Icons";
 import { Paragraph } from "@components/Paragraph";
+import { Notice } from "@components/Notice";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { DataStore } from "@api/index";
 import { Margins } from "@utils/margins";
@@ -18,6 +19,7 @@ import { Alerts, closeModal, openModal, Parser, React, TextInput, Toasts, useEff
 
 const DS_BOT_TOKENS = "CloudCord_BotTokens";
 const DS_ACTIVE_BOT = "CloudCord_ActiveBot";
+const BOTCORD_AVAILABLE = false;
 const normalizeBotToken = (value: string) => value.replace(/^Bot\s+/i, "").trim();
 
 function controlDiscordWindow(action: "minimize" | "maximize" | "close") {
@@ -470,6 +472,9 @@ function BotCordComponent() {
 
     return (
         <SettingsTab>
+            {!BOTCORD_AVAILABLE && <Notice.Warning className={Margins.bottom16}>
+                BotCord is temporarily unavailable on CloudCord Desktop while stability work is completed. Saved bots and tokens remain stored locally.
+            </Notice.Warning>}
             <Paragraph className={Margins.bottom16}>
                 BotCord manages and tests Discord bots in a separate session without replacing your Discord user account.
             </Paragraph>
@@ -488,7 +493,7 @@ function BotCordComponent() {
                     onChange={setToken}
                 />
                 <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-                    <Button onClick={handleAddBot}>Save Bot</Button>
+                    <Button disabled={!BOTCORD_AVAILABLE} onClick={handleAddBot}>Save Bot</Button>
                     <Button
                         variant="link"
                         onClick={() => setShowToken(!showToken)}
@@ -524,6 +529,7 @@ function BotCordComponent() {
                             <div style={{ display: "flex", gap: "8px" }}>
                                 <Button
                                     size="small"
+                                    disabled={!BOTCORD_AVAILABLE}
                                     onClick={() => handleActivateBot(bot.token, bot.name)}
                                 >
                                     {activeBot === normalizeBotToken(bot.token) ? "Open" : "Activate"}
