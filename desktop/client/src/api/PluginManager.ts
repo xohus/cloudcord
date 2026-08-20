@@ -435,7 +435,13 @@ export const initPluginManager = onlyOnce(function init() {
     }
 
     for (const p of neededApiPlugins) {
-        Plugins[p].isDependency = true;
+        const plugin = Plugins[p];
+        if (!plugin) {
+            logger.warn(new Error(`Missing automatically required API plugin ${p}`));
+            continue;
+        }
+
+        plugin.isDependency = true;
         settings[p].enabled = true;
     }
 

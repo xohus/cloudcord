@@ -31,11 +31,11 @@ import { getEntryPoint, isPluginFile, parseDevs, parseSincordDevs, parseFile, Pl
     let dirs: string[];
 
     if (sincordFlag) {
-        dirs = ["src/sincordplugins/_core", "src/sincordplugins"];
+        dirs = ["src/sincordplugins/_api", "src/sincordplugins/_core", "src/sincordplugins"];
     } else if (vencordFlag) {
         dirs = ["src/plugins", "src/plugins/_core"];
     } else {
-        dirs = ["src/plugins", "src/plugins/_core", "src/sincordplugins/_core", "src/sincordplugins"];
+        dirs = ["src/plugins", "src/plugins/_core", "src/sincordplugins/_api", "src/sincordplugins/_core", "src/sincordplugins"];
     }
 
     const outputPath = args.find(a => !a.startsWith("--")) ?? null;
