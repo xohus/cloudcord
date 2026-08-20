@@ -82,13 +82,27 @@ async function buildLocalData(): Promise<Map<string, Uint8Array>> {
     const encoder = new TextEncoder();
     const data = new Map<string, Uint8Array>();
 
-    data.set("settings", encoder.encode(JSON.stringify(VencordNative.settings.get())));
+    const sensitiveKey = /(auth|authorization|cookie|credential|password|secret|session|token)/i;
+    const sanitize = (value: unknown): unknown => {
+        if (Array.isArray(value)) return value.map(sanitize);
+        if (!value || typeof value !== "object") return value;
+
+        return Object.fromEntries(Object.entries(value as Record<string, unknown>)
+            .filter(([key]) => !sensitiveKey.test(key))
+            .map(([key, child]) => [key, sanitize(child)]));
+    };
+
+    data.set("settings", encoder.encode(JSON.stringify(sanitize(VencordNative.settings.get()))));
 
     const quickCss = await VencordNative.quickCss.get();
     if (quickCss) data.set("quickCss", encoder.encode(quickCss));
 
     const dataStoreEntries = await DataStore.entries();
-    if (dataStoreEntries) data.set("dataStore", encoder.encode(JSON.stringify(dataStoreEntries)));
+    for (const [key, value] of dataStoreEntries ?? []) {
+        if (typeof key !== "string") continue;
+        if (sensitiveKey.test(key)) continue;
+        data.set(`dataStore/${key}`, encoder.encode(JSON.stringify(sanitize(value))));
+    }
 
     return data;
 }

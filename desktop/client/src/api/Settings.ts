@@ -147,7 +147,7 @@ const DefaultSettings: Settings = {
 
     cloud: {
         authenticated: false,
-        url: "",
+        url: "https://cloudcord.xohus.lol/",
         settingsSync: false,
         settingsSyncVersion: 0
     },
@@ -159,9 +159,9 @@ const DefaultSettings: Settings = {
 
 const settings = !IS_REPORTER ? VencordNative.settings.get() : {} as Settings;
 mergeDefaults(settings, DefaultSettings);
-const migratedLegacyCloud = settings.cloud.url === "https://cloud.sincord.org/";
+const migratedLegacyCloud = !settings.cloud.url || settings.cloud.url === "https://cloud.sincord.org/";
 if (migratedLegacyCloud) {
-    settings.cloud.url = "";
+    settings.cloud.url = "https://cloudcord.xohus.lol/";
     settings.cloud.authenticated = false;
 }
 
