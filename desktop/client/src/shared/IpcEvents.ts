@@ -57,4 +57,7 @@ export const enum IpcEvents {
     TRAY_CHECK_UPDATES = "VencordTrayCheckUpdates",
     TRAY_ABOUT = "VencordTrayAbout",
     SUPPORTS_WINDOWS_MATERIAL = "VencordSupportsWindowsMaterial",
+    WINDOW_MINIMIZE = "CloudCordWindowMinimize",
+    WINDOW_MAXIMIZE = "CloudCordWindowMaximize",
+    WINDOW_CLOSE = "CloudCordWindowClose",
 }

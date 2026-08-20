@@ -87,6 +87,12 @@ export default {
         }
     },
 
+    window: {
+        minimize: () => invoke<void>(IpcEvents.WINDOW_MINIMIZE),
+        maximize: () => invoke<void>(IpcEvents.WINDOW_MAXIMIZE),
+        close: () => invoke<void>(IpcEvents.WINDOW_CLOSE),
+    },
+
     csp: {
         /**
          * Note: Only supports full explicit matches, not wildcards.

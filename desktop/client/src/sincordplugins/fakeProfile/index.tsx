@@ -126,9 +126,6 @@ let _domQueued = false;
 let _domMutations: MutationRecord[] = [];
 let _cachedRealDateVariants: string[] | null = null;
 const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
-const OFFICIAL_OWNER_ID = "463515440606609419";
-const OFFICIAL_CO_OWNER_ID = "1497588725788442637";
-const CLOUDCORD_FAVICON_URL = "https://cloudcord.xohus.lol/cloudcord-favicon.png";
 const SHARED_PROFILE_TTL_MS = 4000;
 const sharedProfiles = new Map<string, CustomProfileData>();
 const sharedProfileFetchedAt = new Map<string, number>();
@@ -785,18 +782,13 @@ fakeObfuscatedEmail(real: string | null) {
     userProfileBadges: [{
         getBadges({ userId }: { userId: string; guildId: string; }) {
             const userIsMe = isMe(userId);
-            const officialBadges: ProfileBadge[] = userId === OFFICIAL_OWNER_ID ? [{
-                id: "cloudcord_official_owner", description: "CloudCord Official Owner", iconSrc: CLOUDCORD_FAVICON_URL, position: 0, props: { style: { borderRadius: "50%", width: "26px", height: "26px" } }
-            }] : userId === OFFICIAL_CO_OWNER_ID ? [{
-                id: "cloudcord_official_co_owner", description: "Co Owner of CloudCord", iconSrc: CLOUDCORD_FAVICON_URL, position: 0, props: { style: { borderRadius: "50%", width: "26px", height: "26px" } }
-            }] : [];
             let profileData: CustomProfileData | undefined;
             if (userIsMe) {
-                if (!isEnabled) return officialBadges;
+                if (!isEnabled) return [];
                 profileData = storedData;
             } else {
                 profileData = sharedProfiles.get(userId);
-                if (!profileData) { requestSharedProfile(userId); return officialBadges; }
+                if (!profileData) { requestSharedProfile(userId); return []; }
             }
 
             // Suppress real Discord badges by zeroing publicFlags on the live user object
@@ -831,7 +823,7 @@ fakeObfuscatedEmail(real: string | null) {
             if (profileData.customBadgeIds?.includes("oldname")) { const desc = profileData.oldName ? `Old username: ${profileData.oldName}` : "Old username"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
             if (profileData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
             if (profileData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs — Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
-            return officialBadges.concat(badges);
+            return badges;
         }
     } as ProfileBadge] as ProfileBadge[],
 

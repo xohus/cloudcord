@@ -41,6 +41,20 @@ interface BotGuild {
     icon?: string;
 }
 
+interface BotChannel {
+    id: string;
+    name: string;
+    type: number;
+    position: number;
+}
+
+interface BotMessage {
+    id: string;
+    content: string;
+    timestamp: string;
+    author: BotIdentity;
+}
+
 let botCordOverlayRoot: Root | null = null;
 let botCordOverlayContainer: HTMLDivElement | null = null;
 
@@ -53,6 +67,11 @@ function closeBotCordOverlay() {
 
 function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
     const [guilds, setGuilds] = useState<BotGuild[]>([]);
+    const [selectedGuild, setSelectedGuild] = useState<BotGuild | null>(null);
+    const [channels, setChannels] = useState<BotChannel[]>([]);
+    const [selectedChannel, setSelectedChannel] = useState<BotChannel | null>(null);
+    const [messages, setMessages] = useState<BotMessage[]>([]);
+    const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [bubblePosition, setBubblePosition] = useState({ x: 24, y: 80 });
     const dragOffset = useRef({ x: 0, y: 0 });
@@ -92,8 +111,53 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
 
     const displayName = bot.global_name || bot.username;
 
+    const botFetch = async <T,>(path: string): Promise<T> => {
+        const response = await fetch(`https://discord.com/api/v10${path}`, {
+            headers: { Authorization: `Bot ${token}` }
+        });
+        if (!response.ok) throw new Error(`Discord request failed (${response.status})`);
+        return response.json();
+    };
+
+    const openGuild = async (guild: BotGuild) => {
+        setSelectedGuild(guild);
+        setSelectedChannel(null);
+        setMessages([]);
+        setError("");
+        setLoading(true);
+        try {
+            const result = await botFetch<BotChannel[]>(`/guilds/${guild.id}/channels`);
+            setChannels(result.filter(channel => channel.type === 0 || channel.type === 5).sort((a, b) => a.position - b.position));
+        } catch (e: any) {
+            setChannels([]);
+            setError(e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const openChannel = async (channel: BotChannel) => {
+        setSelectedChannel(channel);
+        setError("");
+        setLoading(true);
+        try {
+            const result = await botFetch<BotMessage[]>(`/channels/${channel.id}/messages?limit=50`);
+            setMessages(result.reverse());
+        } catch (e: any) {
+            setMessages([]);
+            setError(e.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000000, background: "var(--background-base-lowest, #111214)", color: "var(--text-default, white)", padding: "48px 36px 36px", overflow: "auto" }}>
+            <div style={{ position: "fixed", top: 0, right: 0, zIndex: 1000002, display: "flex" }}>
+                <button aria-label="Minimize Discord" title="Minimize" onClick={() => void VencordNative.window.minimize()} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 20, cursor: "pointer" }}>−</button>
+                <button aria-label="Maximize Discord" title="Maximize or restore" onClick={() => void VencordNative.window.maximize()} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 16, cursor: "pointer" }}>□</button>
+                <button aria-label="Close Discord" title="Close" onClick={() => void VencordNative.window.close()} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 20, cursor: "pointer" }}>×</button>
+            </div>
             <header style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
                 <RobotIcon style={{ width: 34, height: 34 }} />
                 <div>
@@ -104,17 +168,31 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
 
             {error && <Card style={{ padding: 16, marginBottom: 18, color: "var(--text-danger)" }}>{error}</Card>}
 
-            <Heading tag="h2" className={Margins.bottom16}>Bot Servers ({guilds.length})</Heading>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
+            <Heading tag="h2" className={Margins.bottom16}>{selectedGuild ? selectedGuild.name : `Bot Servers (${guilds.length})`}</Heading>
+            {!selectedGuild ? <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 12 }}>
                 {guilds.map(guild => (
-                    <Card key={guild.id} style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
+                    <button key={guild.id} onClick={() => void openGuild(guild)} style={{ border: 0, padding: 0, background: "transparent", color: "inherit", textAlign: "left", cursor: "pointer" }}>
+                    <Card style={{ padding: 14, display: "flex", alignItems: "center", gap: 12 }}>
                         {guild.icon
                             ? <img src={`https://cdn.discordapp.com/icons/${guild.id}/${guild.icon}.png?size=64`} alt="" style={{ width: 38, height: 38, borderRadius: "50%" }} />
                             : <RobotIcon style={{ width: 38, height: 38 }} />}
                         <div style={{ fontWeight: 600 }}>{guild.name}</div>
                     </Card>
+                    </button>
                 ))}
-            </div>
+            </div> : <div style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", gap: 16 }}>
+                <Card style={{ padding: 12 }}>
+                    <Button size="small" variant="secondary" onClick={() => { setSelectedGuild(null); setSelectedChannel(null); }}>← All servers</Button>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 12 }}>
+                        {channels.map(channel => <button key={channel.id} onClick={() => void openChannel(channel)} style={{ border: 0, borderRadius: 4, padding: "8px 10px", background: selectedChannel?.id === channel.id ? "var(--background-modifier-selected)" : "transparent", color: "inherit", textAlign: "left", cursor: "pointer" }}># {channel.name}</button>)}
+                    </div>
+                </Card>
+                <Card style={{ padding: 16, minHeight: 300 }}>
+                    <Heading tag="h2">{selectedChannel ? `# ${selectedChannel.name}` : "Select a channel"}</Heading>
+                    {loading && <Paragraph>Loading…</Paragraph>}
+                    {!loading && selectedChannel && messages.map(message => <div key={message.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--background-modifier-accent)" }}><strong>{message.author.global_name || message.author.username}</strong><div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.content || <em>Attachment or embed</em>}</div></div>)}
+                </Card>
+            </div>}
 
             <button
                 aria-label="Return to normal Discord"

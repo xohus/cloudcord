@@ -70,6 +70,12 @@ window.VencordNative = {
         onRendererCssUpdate: NOOP,
     },
 
+    window: {
+        minimize: NOOP_ASYNC,
+        maximize: NOOP_ASYNC,
+        close: NOOP_ASYNC,
+    },
+
     updater: {
         getRepo: async () => ({ ok: true, value: "https://github.com/xohus/cloudcord" }),
         getUpdates: async () => ({ ok: true, value: [] }),

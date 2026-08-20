@@ -39,6 +39,18 @@ mkdirSync(THEMES_DIR, { recursive: true });
 
 registerCspIpcHandlers();
 
+function getSenderWindow(sender: Electron.WebContents) {
+    return BrowserWindow.fromWebContents(sender);
+}
+
+ipcMain.handle(IpcEvents.WINDOW_MINIMIZE, ({ sender }) => getSenderWindow(sender)?.minimize());
+ipcMain.handle(IpcEvents.WINDOW_MAXIMIZE, ({ sender }) => {
+    const window = getSenderWindow(sender);
+    if (!window) return;
+    window.isMaximized() ? window.unmaximize() : window.maximize();
+});
+ipcMain.handle(IpcEvents.WINDOW_CLOSE, ({ sender }) => getSenderWindow(sender)?.close());
+
 export function ensureSafePath(basePath: string, path: string) {
     const normalizedBasePath = normalize(basePath + "/");
     const newPath = join(basePath, path);
