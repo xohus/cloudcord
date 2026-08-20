@@ -147,7 +147,7 @@ const DefaultSettings: Settings = {
 
     cloud: {
         authenticated: false,
-        url: "https://cloud.sincord.org/",
+        url: "",
         settingsSync: false,
         settingsSyncVersion: 0
     },
@@ -159,6 +159,11 @@ const DefaultSettings: Settings = {
 
 const settings = !IS_REPORTER ? VencordNative.settings.get() : {} as Settings;
 mergeDefaults(settings, DefaultSettings);
+const migratedLegacyCloud = settings.cloud.url === "https://cloud.sincord.org/";
+if (migratedLegacyCloud) {
+    settings.cloud.url = "";
+    settings.cloud.authenticated = false;
+}
 
 export const SettingsStore = new SettingsStoreClass(settings, {
     readOnly: true,
@@ -200,6 +205,7 @@ export const SettingsStore = new SettingsStoreClass(settings, {
 });
 
 if (!IS_REPORTER) {
+    if (migratedLegacyCloud) void VencordNative.settings.set(settings, "cloud");
     SettingsStore.addGlobalChangeListener((_, path) => {
         SettingsStore.plain.cloud.settingsSyncVersion = Date.now();
         VencordNative.settings.set(SettingsStore.plain, path);

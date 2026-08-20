@@ -127,10 +127,10 @@ async function applyDownloads(downloads: SyncResponse["downloads"]) {
 
 function handleAuthFailure() {
     showNotification({
-        title: "Cloud Settings",
-        body: "Cloud sync was disabled because this account isn't connected. Reconnect in Cloud Settings.",
+        title: "StoreCloud",
+        body: "StoreCloud was disabled because this account is not connected. Reconnect in StoreCloud settings.",
         color: "var(--yellow-360)",
-        onClick: () => SettingsRouter.openUserSettings("sincord_cloud_panel"),
+        onClick: () => SettingsRouter.openUserSettings("cloudcord_store_cloud"),
     });
     Settings.cloud.authenticated = false;
 }

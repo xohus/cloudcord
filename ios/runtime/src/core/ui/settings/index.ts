@@ -28,6 +28,12 @@ export default function initSettings() {
                 useTrailing: () => `(${version})`
             },
             {
+                key: "STORE_CLOUD",
+                title: () => "StoreCloud",
+                icon: { uri: PupuIcon },
+                render: () => import("@core/ui/settings/pages/StoreCloud")
+            },
+            {
                 key: "BUNNY_PLUGINS",
                 title: () => Strings.PLUGINS,
                 icon: findAssetId("AppsIcon"),

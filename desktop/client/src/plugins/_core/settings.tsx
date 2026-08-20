@@ -193,9 +193,9 @@ export default definePlugin({
                 Icon: UserIcon
             }),
             buildEntry({
-                key: "cloudcord_cloud_sync",
-                title: "Cloud Sync",
-                panelTitle: "Cloud Sync",
+                key: "cloudcord_store_cloud",
+                title: "StoreCloud",
+                panelTitle: "StoreCloud",
                 Component: CloudTab,
                 Icon: CloudIcon
             }),

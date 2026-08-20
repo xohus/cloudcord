@@ -38,12 +38,8 @@ import { Alerts, SearchableSelect, Select, useState } from "@webpack/common";
 
 const ICON_STYLE: React.CSSProperties = { width: 20, height: 20, borderRadius: 4, verticalAlign: "middle" };
 
-function SincordIcon() {
-    return <img src="https://sincord.org/assets/favicon.png" alt="Sincord" style={ICON_STYLE} />;
-}
-
 function VencordIcon() {
-    return <img src="https://sincord.org/assets/icons/vencord/icon-light.png" alt="Vencord" style={ICON_STYLE} />;
+    return <img src="https://raw.githubusercontent.com/Vendicated/Vencord/main/browser/icon.png" alt="StoreCloud" style={ICON_STYLE} />;
 }
 
 const RefreshIcon = findComponentByCodeLazy("M4 12a8 8 0 0 1 14.93-4H15");
@@ -59,8 +55,7 @@ function validateUrl(url: string) {
 }
 
 const cloudBackendOptions = [
-    { label: "Sincord Cloud", value: "https://cloud.sincord.org/" },
-    { label: "Vencord Cloud", value: "https://api.vencord.dev/" }
+    { label: "Vencord Cloud (third-party)", value: "https://api.vencord.dev/" }
 ];
 
 const syncDirectionOptions = [
@@ -91,21 +86,21 @@ function CloudTab() {
 
     return (
         <SettingsTab>
-            <Heading className={Margins.top16}>Cloud Integration</Heading>
+            <Heading className={Margins.top16}>StoreCloud</Heading>
             <Paragraph className={Margins.bottom16}>
-                Sincord's cloud integration allows you to sync your settings across multiple devices and Discord installations. Your data is securely stored and can be easily restored at any time.
+                StoreCloud keeps supported CloudCord settings synchronized across devices and Discord installations.
             </Paragraph>
 
             <Notice.Info className={Margins.bottom16}>
-                We use our own <Link href="https://github.com/Sincord/Equicloud">Equicloud backend</Link> with enhanced features.
-                View our <Link href="https://sincord.org/cloud/policy">privacy policy</Link> to see what we store and how we use your data.
-                Equicloud is BSD 3.0 licensed, so you can self-host if preferred.
+                StoreCloud does not send data anywhere until you choose and authorize a backend.
+                You can explicitly select the third-party <Link href="https://api.vencord.dev/">Vencord Cloud service</Link> or enter a compatible self-hosted backend below.
             </Notice.Info>
 
             <FormSwitch
-                title="Enable Cloud Integration"
+                title="Enable StoreCloud"
                 description="Connect to the cloud backend for settings synchronization. This will request authorization if you haven't set up cloud integration yet."
                 value={isAuthenticated}
+                disabled={!cloud.url}
                 onChange={v => {
                     if (v)
                         authorizeCloud();
@@ -119,7 +114,7 @@ function CloudTab() {
 
             <Heading className={Margins.top20}>Cloud Backend</Heading>
             <Paragraph className={Margins.bottom16}>
-                Choose which cloud backend to use for storing your settings. You can switch between Sincord's and Vencord's cloud services, or use a self-hosted instance.
+                StoreCloud uses a Vencord-compatible backend. You may also enter a compatible self-hosted instance.
             </Paragraph>
 
             <div className={Margins.bottom8}>
@@ -128,7 +123,7 @@ function CloudTab() {
                     value={cloudBackendOptions.find(o => o.value === cloud.url)?.value}
                     onChange={v => changeUrl(v)}
                     closeOnSelect={true}
-                    renderOptionPrefix={o => o?.value?.includes("sincord") ? <SincordIcon /> : <VencordIcon />}
+                    renderOptionPrefix={() => <VencordIcon />}
                 />
             </div>
 
@@ -164,7 +159,7 @@ function CloudTab() {
 
             <Heading className={Margins.top20}>Settings Sync</Heading>
             <Paragraph className={Margins.bottom16}>
-                Synchronize your Sincord settings to the cloud. This makes it easy to keep your configuration consistent across multiple devices without manual import/export.
+                Synchronize your CloudCord settings with StoreCloud to keep supported configuration consistent across devices.
             </Paragraph>
 
             <FormSwitch

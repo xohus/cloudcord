@@ -45,7 +45,7 @@ jobs:
             cp "../assets/cloudcord-logo.png" "src/assets/icons/kettu.png"
           fi
 
-          mkdir -p src/core/ui/settings/pages/CloudSync
+          mkdir -p src/core/ui/settings/pages/StoreCloud
           mkdir -p src/core/ui/settings/pages/FakeProfile
           mkdir -p src/core/ui/settings/pages/BotCord
           mkdir -p src/core/ui/botcord
@@ -86,7 +86,7 @@ jobs:
           }
           TSX
 
-          cat > src/core/ui/settings/pages/CloudSync/index.tsx <<'TSX'
+          cat > src/core/ui/settings/pages/StoreCloud/index.tsx <<'TSX'
           import { VdPluginManager } from "@core/vendetta/plugins";
           import { useProxy } from "@core/vendetta/storage";
           import ScaledPluginSettings from "@core/ui/settings/components/ScaledPluginSettings";
@@ -97,9 +97,9 @@ jobs:
           import { ScrollView, View } from "react-native";
 
           const PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
-          const CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png";
+          const STORECLOUD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 
-          export default function CloudSync() {
+          export default function StoreCloud() {
               useProxy(VdPluginManager.plugins);
 
               const [busy, setBusy] = useState(false);
@@ -116,18 +116,18 @@ jobs:
                   try {
                       if (!VdPluginManager.plugins[PLUGIN_URL]) {
                           await VdPluginManager.installPlugin(PLUGIN_URL, true);
-                          showToast("Cloud Sync installed", findAssetId("Check"));
+                          showToast("StoreCloud installed", findAssetId("Check"));
                       } else if (!VdPluginManager.plugins[PLUGIN_URL].enabled) {
                           await VdPluginManager.startPlugin(PLUGIN_URL);
-                          showToast("Cloud Sync started", findAssetId("Check"));
+                          showToast("StoreCloud started", findAssetId("Check"));
                       } else {
-                          showToast("Cloud Sync is already enabled", findAssetId("Check"));
+                          showToast("StoreCloud is already enabled", findAssetId("Check"));
                       }
 
                       setRefresh(x => x + 1);
                   } catch (error: any) {
-                      console.error("[CloudCord] Cloud Sync install/start failed", error);
-                      showToast(error?.message ?? "Cloud Sync failed");
+                      console.error("[CloudCord] StoreCloud install/start failed", error);
+                      showToast(error?.message ?? "StoreCloud failed");
                   } finally {
                       setBusy(false);
                   }
@@ -146,11 +146,11 @@ jobs:
                       await VdPluginManager.fetchPlugin(PLUGIN_URL);
                       await VdPluginManager.startPlugin(PLUGIN_URL);
 
-                      showToast("Cloud Sync refreshed", findAssetId("Check"));
+                      showToast("StoreCloud refreshed", findAssetId("Check"));
                       setRefresh(x => x + 1);
                   } catch (error: any) {
-                      console.error("[CloudCord] Cloud Sync refresh failed", error);
-                      showToast(error?.message ?? "Cloud Sync refresh failed");
+                      console.error("[CloudCord] StoreCloud refresh failed", error);
+                      showToast(error?.message ?? "StoreCloud refresh failed");
                   } finally {
                       setBusy(false);
                   }
@@ -166,46 +166,46 @@ jobs:
                           await VdPluginManager.removePlugin(PLUGIN_URL);
                       }
 
-                      showToast("Cloud Sync removed");
+                      showToast("StoreCloud removed");
                       setRefresh(x => x + 1);
                   } catch (error: any) {
-                      console.error("[CloudCord] Cloud Sync remove failed", error);
-                      showToast(error?.message ?? "Cloud Sync remove failed");
+                      console.error("[CloudCord] StoreCloud remove failed", error);
+                      showToast(error?.message ?? "StoreCloud remove failed");
                   } finally {
                       setBusy(false);
                   }
               }
 
               if (SettingsComponent) {
-                  return <ScaledPluginSettings key={`cloud-sync-settings-${refresh}`} component={SettingsComponent} />;
+                  return <ScaledPluginSettings key={`storecloud-settings-${refresh}`} component={SettingsComponent} />;
               }
 
               return (
                   <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
                       <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
-                          <TableRowGroup title="Cloud Sync">
+                          <TableRowGroup title="StoreCloud">
                               <View style={{ paddingHorizontal: 12, paddingBottom: 12 }}>
                                   <Text variant="heading-md/semibold" color="text-normal">
-                                      Cloud Sync
+                                      StoreCloud
                                   </Text>
                                   <Text variant="text-sm/medium" color="text-muted">
-                                      Install the official Cloud Sync plugin to connect, sync, add backup files, and save backups to your device.
+                                      Connect StoreCloud to sync supported settings and manage cloud backups on this device.
                                   </Text>
                               </View>
 
                               <TableRow
                                   arrow
-                                  label={plugin ? "Start Cloud Sync" : "Install Cloud Sync"}
-                                  subLabel={busy ? "Please wait..." : "Loads the official Cloud Sync plugin UI"}
-                                  icon={<TableRow.Icon source={{ uri: CLOUDSYNC_ICON }} />}
+                                  label={plugin ? "Start StoreCloud" : "Enable StoreCloud"}
+                                  subLabel={busy ? "Please wait..." : "Loads the StoreCloud sync engine"}
+                                  icon={<TableRow.Icon source={{ uri: STORECLOUD_ICON }} />}
                                   onPress={installOrStart}
                               />
 
                               {plugin && (
                                   <TableRow
                                       arrow
-                                      label="Refresh Cloud Sync"
-                                      subLabel="Refetches the official plugin"
+                                      label="Refresh StoreCloud"
+                                      subLabel="Refreshes the StoreCloud sync engine"
                                       icon={<TableRow.Icon source={findAssetId("RetryIcon")!} />}
                                       onPress={refetchPlugin}
                                   />
@@ -214,8 +214,8 @@ jobs:
                               {plugin && (
                                   <TableRow
                                       arrow
-                                      label="Remove Cloud Sync"
-                                      subLabel="Uninstalls the Cloud Sync plugin"
+                                      label="Disable StoreCloud"
+                                      subLabel="Removes the StoreCloud sync engine"
                                       icon={<TableRow.Icon source={findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")!} />}
                                       onPress={removePlugin}
                                   />
@@ -225,7 +225,7 @@ jobs:
                           <Card border="strong">
                               <View style={{ padding: 12 }}>
                                   <Text variant="text-sm/medium" color="text-muted">
-                                      This tab uses the official Cloud Sync plugin. The plugin itself handles OAuth, sync, backups, and files.
+                                      StoreCloud uses the existing mobile sync engine for OAuth, settings synchronization, backups, and files.
                                   </Text>
                               </View>
                           </Card>
@@ -1317,7 +1317,6 @@ jobs:
           DISCORD_URL = "https://discord.gg/5naTPJYemX"
           GITHUB_URL = "https://github.com/xohus/cloudcord"
           CLOUDCORD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
-          CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png"
 
           replacements = {
               "KettuTweak": "CloudCord",
@@ -1440,16 +1439,16 @@ jobs:
               )
 
               text = re.sub(
-                  r'\n\s*\{\s*key:\s*"CLOUD_SYNC"[\s\S]*?(?:render:\s*\(\) => import\("[^"]+"\)|onPress:\s*\(\) => [^\n]+)[\s\S]*?\n\s*\},',
+                  r'\n\s*\{\s*key:\s*"(?:CLOUD_SYNC|STORE_CLOUD)"[\s\S]*?(?:render:\s*\(\) => import\("[^"]+"\)|onPress:\s*\(\) => [^\n]+)[\s\S]*?\n\s*\},',
                   '',
                   text
               )
 
-              cloud_sync_item = f'''            {{
-                  key: "CLOUD_SYNC",
-                  title: () => "Cloud Sync",
-                  icon: {{ uri: "{CLOUDSYNC_ICON}" }},
-                  render: () => import("@core/ui/settings/pages/CloudSync")
+              store_cloud_item = f'''            {{
+                  key: "STORE_CLOUD",
+                  title: () => "StoreCloud",
+                  icon: {{ uri: "{CLOUDCORD_ICON}" }},
+                  render: () => import("@core/ui/settings/pages/StoreCloud")
               }},'''
 
               botcord_item = f'''            {{
@@ -1473,8 +1472,8 @@ jobs:
                   items.append(botcord_item)
               if 'key: "FAKE_PROFILE"' not in text:
                   items.append(fake_profile_item)
-              if 'key: "CLOUD_SYNC"' not in text:
-                  items.append(cloud_sync_item)
+              if 'key: "STORE_CLOUD"' not in text:
+                  items.append(store_cloud_item)
 
               if items:
                   text = re.sub(

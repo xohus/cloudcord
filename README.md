@@ -70,9 +70,9 @@ The number is how many times CloudCord has been obtained from the official relea
 
 | Platform | Package | Support |
 | :---: | :---: | --- |
-| <img src="assets/readme/platforms/ios.svg" width="28" height="28" alt="iOS" /> **iOS / iPadOS** | `.ipa` | Mobile runtime, Cloud Sync, Fake Profile, plugins, themes and fonts |
-| <img src="assets/readme/platforms/android.svg" width="28" height="28" alt="Android" /> **Android** | `.apk` | Mobile runtime, Cloud Sync, Fake Profile, plugins, themes and fonts |
-| <img src="assets/readme/platforms/windows.svg" width="28" height="28" alt="Windows" /> **Windows desktop** | `.exe` | Installer, automatic updates, BotCord, shared Fake Profile, Cloud Sync, plugins, themes and fonts |
+| <img src="assets/readme/platforms/ios.svg" width="28" height="28" alt="iOS" /> **iOS / iPadOS** | `.ipa` | Mobile runtime, StoreCloud, Fake Profile, plugins, themes and fonts |
+| <img src="assets/readme/platforms/android.svg" width="28" height="28" alt="Android" /> **Android** | `.apk` | Mobile runtime, StoreCloud, Fake Profile, plugins, themes and fonts |
+| <img src="assets/readme/platforms/windows.svg" width="28" height="28" alt="Windows" /> **Windows desktop** | `.exe` | Installer, automatic updates, BotCord, shared Fake Profile, StoreCloud, plugins, themes and fonts |
 
 ## CloudCord at a glance
 
@@ -123,7 +123,7 @@ CloudCord keeps its main features directly inside the client settings. Each tab 
 | <img src="assets/cloudcord-favicon.png" width="28" height="28" alt="General" /> | **General** | Core CloudCord controls, client options and runtime controls |
 | <img src="assets/readme/tabs/botcord.svg" width="28" height="28" alt="BotCord" /> | **BotCord** | Bot accounts, DMs, servers, channels, members, messaging and media |
 | <img src="ios/assets/fakeprofile-icon.png" width="28" height="28" alt="Fake Profile" /> | **Fake Profile** | Complete local and opt-in shared profiles, badges, media and decorations |
-| <img src="assets/readme/tabs/cloud-sync.svg" width="28" height="28" alt="Cloud Sync" /> | **Cloud Sync** | Sync supported CloudCord settings and backups |
+| <img src="assets/readme/tabs/cloud-sync.svg" width="28" height="28" alt="StoreCloud" /> | **StoreCloud** | Sync supported CloudCord settings and backups |
 | <img src="assets/readme/tabs/plugins.svg" width="28" height="28" alt="Plugins" /> | **Plugins** | Enable or disable all plugins, configure them, and add trusted outside plugins from repository links |
 | <img src="assets/readme/tabs/plugin-browser.svg" width="28" height="28" alt="Plugin Browser" /> | **Plugin Browser** | Browse and manage available plugins |
 | <img src="assets/readme/tabs/themes.svg" width="28" height="28" alt="Themes" /> | **Themes** | Install and manage client themes |
