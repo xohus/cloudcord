@@ -14,7 +14,7 @@ import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { DataStore } from "@api/index";
 import { Margins } from "@utils/margins";
-import { Alerts, createRoot, React, TextInput, Toasts, useEffect, useRef, useState } from "@webpack/common";
+import { Alerts, createRoot, Parser, React, TextInput, Toasts, useEffect, useRef, useState } from "@webpack/common";
 import type { Root } from "react-dom/client";
 
 const DS_BOT_TOKENS = "CloudCord_BotTokens";
@@ -70,7 +70,17 @@ interface BotMessage {
     timestamp: string;
     author: BotIdentity;
     attachments?: Array<{ id: string; filename: string; url: string; content_type?: string; width?: number; height?: number; }>;
-    embeds?: Array<{ title?: string; description?: string; url?: string; image?: { url: string; }; thumbnail?: { url: string; }; }>;
+    embeds?: Array<{
+        title?: string;
+        description?: string;
+        url?: string;
+        color?: number;
+        author?: { name: string; icon_url?: string; };
+        fields?: Array<{ name: string; value: string; inline?: boolean; }>;
+        footer?: { text: string; icon_url?: string; };
+        image?: { url: string; };
+        thumbnail?: { url: string; };
+    }>;
 }
 
 interface BotMember {
@@ -107,6 +117,7 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
     const [members, setMembers] = useState<BotMember[]>([]);
     const [messageText, setMessageText] = useState("");
     const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
+    const [sending, setSending] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [bubblePosition, setBubblePosition] = useState({ x: 24, y: 80 });
@@ -173,6 +184,7 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
     const sendMessage = async () => {
         if (!selectedChannel || (!messageText.trim() && !pendingImage)) return;
         setError("");
+        setSending(true);
         try {
             const sent = await requestBotApi<BotMessage>(token, `/channels/${selectedChannel.id}/messages`, {
                 method: "POST",
@@ -183,6 +195,7 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
             setMessageText("");
             setPendingImage(null);
         } catch (e: any) { setError(e.message); }
+        finally { setSending(false); }
     };
 
     const chooseImage = async () => {
@@ -257,39 +270,57 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
                     </Card>
                     </button>
                 ))}
-            </div> : <div style={{ display: "grid", gridTemplateColumns: "220px minmax(320px, 1fr) 220px", gap: 16 }}>
+            </div> : <div style={{ display: "grid", gridTemplateColumns: "220px minmax(320px, 1fr) 220px", gap: 16, height: "calc(100vh - 150px)", minHeight: 420 }}>
                 <Card style={{ padding: 12 }}>
                     <Button size="small" variant="secondary" onClick={() => { setSelectedGuild(null); setSelectedChannel(null); }}>← All servers</Button>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 12 }}>
                         {channels.map(channel => <button key={channel.id} onClick={() => void openChannel(channel)} style={{ border: 0, borderRadius: 4, padding: "8px 10px", background: selectedChannel?.id === channel.id ? "var(--background-modifier-selected)" : "transparent", color: "inherit", textAlign: "left", cursor: "pointer" }}># {channel.name}</button>)}
                     </div>
                 </Card>
-                <Card style={{ padding: 16, minHeight: 420, display: "flex", flexDirection: "column" }}>
+                <Card style={{ padding: 16, minHeight: 0, display: "flex", flexDirection: "column", overflow: "hidden" }}>
                     <Heading tag="h2">{selectedChannel ? `# ${selectedChannel.name}` : "Select a channel"}</Heading>
                     {loading && <Paragraph>Loading…</Paragraph>}
-                    <div style={{ flex: 1, overflowY: "auto", maxHeight: "calc(100vh - 230px)" }}>
+                    <div style={{ flex: "1 1 auto", minHeight: 0, overflowY: "auto" }}>
                         {!loading && selectedChannel && messages.map(message => <div key={message.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--background-modifier-accent)", display: "flex", gap: 10 }}>
                             <img src={avatarUrl(message.author)} alt="" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
                             <div style={{ minWidth: 0 }}>
                                 <strong>{message.author.global_name || message.author.username}</strong>
-                                <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.content}</div>
+                                {message.content && <div style={{ overflowWrap: "anywhere" }}>{Parser.parse(message.content, true, { channelId: selectedChannel.id, viewingChannelId: selectedChannel.id })}</div>}
                                 {message.attachments?.map(attachment => attachment.content_type?.startsWith("image/")
                                     ? <img key={attachment.id} src={attachment.url} alt={attachment.filename} style={{ display: "block", maxWidth: "min(480px, 100%)", maxHeight: 360, objectFit: "contain", borderRadius: 8, marginTop: 8 }} />
                                     : <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer">{attachment.filename}</a>)}
-                                {message.embeds?.map((embed, index) => <div key={index} style={{ marginTop: 8, padding: 10, borderLeft: "4px solid var(--brand-500)", background: "var(--background-secondary)" }}>
-                                    {embed.title && <strong>{embed.title}</strong>}
-                                    {embed.description && <div>{embed.description}</div>}
-                                    {(embed.image?.url || embed.thumbnail?.url) && <img src={embed.image?.url || embed.thumbnail?.url} alt="" style={{ display: "block", maxWidth: "min(480px, 100%)", maxHeight: 360, objectFit: "contain", borderRadius: 8, marginTop: 8 }} />}
+                                {message.embeds?.map((embed, index) => <div key={index} style={{ position: "relative", marginTop: 8, padding: 12, paddingRight: embed.thumbnail?.url ? 92 : 12, borderLeft: `4px solid ${embed.color == null ? "var(--brand-500)" : `#${embed.color.toString(16).padStart(6, "0")}`}`, borderRadius: 4, background: "var(--background-secondary)", maxWidth: 520 }}>
+                                    {embed.author && <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600 }}>{embed.author.icon_url && <img src={embed.author.icon_url} alt="" style={{ width: 20, height: 20, borderRadius: "50%" }} />}{embed.author.name}</div>}
+                                    {embed.title && <div style={{ fontWeight: 700, marginTop: 6 }}>{embed.url ? <a href={embed.url} target="_blank" rel="noreferrer">{embed.title}</a> : embed.title}</div>}
+                                    {embed.description && <div style={{ marginTop: 6 }}>{Parser.parse(embed.description, true, { channelId: selectedChannel.id, viewingChannelId: selectedChannel.id })}</div>}
+                                    {embed.fields && <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", gap: 10, marginTop: 10 }}>{embed.fields.map((field, fieldIndex) => <div key={fieldIndex} style={{ gridColumn: field.inline ? "span 1" : "1 / -1", minWidth: 0 }}><strong>{field.name}</strong><div>{Parser.parse(field.value, true, { channelId: selectedChannel.id, viewingChannelId: selectedChannel.id })}</div></div>)}</div>}
+                                    {embed.thumbnail?.url && <img src={embed.thumbnail.url} alt="" style={{ position: "absolute", top: 12, right: 12, width: 64, height: 64, objectFit: "cover", borderRadius: 4 }} />}
+                                    {embed.image?.url && <img src={embed.image.url} alt="" style={{ display: "block", maxWidth: "min(480px, 100%)", maxHeight: 360, objectFit: "contain", borderRadius: 8, marginTop: 8 }} />}
+                                    {embed.footer && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12 }}>{embed.footer.icon_url && <img src={embed.footer.icon_url} alt="" style={{ width: 18, height: 18, borderRadius: "50%" }} />}{embed.footer.text}</div>}
                                 </div>)}
                             </div>
                         </div>)}
                     </div>
-                    {selectedChannel && <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+                    {selectedChannel && <div style={{ flex: "0 0 auto", display: "flex", flexDirection: "column", gap: 8, paddingTop: 12, marginTop: 8, borderTop: "1px solid var(--background-modifier-accent)" }}>
                         {pendingImage && <div>Attached: {pendingImage.name} <button onClick={() => setPendingImage(null)}>Remove</button></div>}
                         <div style={{ display: "flex", gap: 8 }}>
                             <Button size="small" variant="secondary" onClick={() => void chooseImage()}>Add Image</Button>
-                            <div style={{ flex: 1 }}><TextInput placeholder="Message, @mention, or paste an ID…" value={messageText} onChange={setMessageText} /></div>
-                            <Button size="small" disabled={!messageText.trim() && !pendingImage} onClick={() => void sendMessage()}>Send</Button>
+                            <textarea
+                                aria-label={`Message #${selectedChannel.name}`}
+                                placeholder={`Message #${selectedChannel.name}`}
+                                value={messageText}
+                                onChange={event => setMessageText(event.currentTarget.value)}
+                                onKeyDown={event => {
+                                    event.stopPropagation();
+                                    if (event.key === "Enter" && !event.shiftKey) {
+                                        event.preventDefault();
+                                        void sendMessage();
+                                    }
+                                }}
+                                onKeyUp={event => event.stopPropagation()}
+                                style={{ flex: 1, minHeight: 42, maxHeight: 120, resize: "vertical", padding: "10px 12px", border: 0, borderRadius: 8, background: "var(--channeltextarea-background, var(--background-secondary))", color: "var(--text-normal)", font: "inherit", outline: "none" }}
+                            />
+                            <Button size="small" disabled={sending || !messageText.trim() && !pendingImage} onClick={() => void sendMessage()}>{sending ? "Sending…" : "Send"}</Button>
                         </div>
                     </div>}
                 </Card>

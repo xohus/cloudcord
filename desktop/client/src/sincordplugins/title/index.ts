@@ -15,7 +15,7 @@ const rootTitle = { base: null as string | null };
 export const settings = definePluginSettings({
     title: {
         type: OptionType.STRING,
-        default: "Sincord",
+        default: "CloudCord",
         description: "Window title prefix",
         onChange: setTitle,
     },
@@ -44,6 +44,8 @@ export default definePlugin({
     ],
 
     start() {
+        // Migrate the legacy default without overwriting a title the user chose.
+        if (settings.store.title === "Sincord") settings.store.title = "CloudCord";
         setTitle(settings.store.title);
     },
 

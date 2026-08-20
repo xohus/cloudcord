@@ -7,7 +7,7 @@
 import { showNotice } from "@api/Notices";
 import { hasAnyVisibleSettings, isPluginEnabled, pluginRequiresRestart, startDependenciesRecursive, startPlugin, stopPlugin } from "@api/PluginManager";
 import { Settings } from "@api/Settings";
-import { CogWheel, InfoIcon } from "@components/Icons";
+import { CloudCordIcon, CogWheel, InfoIcon } from "@components/Icons";
 import { AddonCard } from "@components/settings/AddonCard";
 import { classNameFactory } from "@utils/css";
 import { Logger } from "@utils/Logger";
@@ -20,7 +20,6 @@ import { openPluginModal } from "./PluginModal";
 
 const logger = new Logger("PluginCard");
 const cl = classNameFactory("vc-plugins-");
-const CLOUDCORD_FAVICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 interface PluginCardProps extends React.HTMLProps<HTMLDivElement> {
     plugin: Plugin;
     disabled?: boolean;
@@ -94,12 +93,6 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
 
     const pluginInfo = [
         {
-            condition: isCloudCordPlugin,
-            src: CLOUDCORD_FAVICON,
-            alt: "CloudCord",
-            title: "CloudCord Plugin"
-        },
-        {
             condition: isUserPlugin,
             src: "https://sincord.org/assets/icons/misc/userplugin.png",
             alt: "User",
@@ -109,15 +102,17 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
 
     const pluginDetails = pluginInfo.find(p => p.condition);
 
-    const sourceBadge = pluginDetails ? (
+    const sourceBadge = isCloudCordPlugin ? (
+        <CloudCordIcon width={22} height={22} aria-label="CloudCord" />
+    ) : pluginDetails ? (
         <img
             src={pluginDetails.src}
             alt={pluginDetails.alt}
-            className={cl("source")}
+            style={{ width: 22, height: 22, display: "block", objectFit: "contain" }}
         />
     ) : null;
 
-    const tooltip = pluginDetails?.title || "Unknown Plugin";
+    const tooltip = isCloudCordPlugin ? "CloudCord Plugin" : pluginDetails?.title || "Unknown Plugin";
 
     return (
         <AddonCard
