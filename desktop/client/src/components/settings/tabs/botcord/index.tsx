@@ -14,8 +14,7 @@ import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { DataStore } from "@api/index";
 import { Margins } from "@utils/margins";
-import { Alerts, createRoot, Parser, React, TextInput, Toasts, useEffect, useRef, useState } from "@webpack/common";
-import type { Root } from "react-dom/client";
+import { Alerts, closeModal, openModal, Parser, React, TextInput, Toasts, useEffect, useRef, useState } from "@webpack/common";
 
 const DS_BOT_TOKENS = "CloudCord_BotTokens";
 const DS_ACTIVE_BOT = "CloudCord_ActiveBot";
@@ -98,17 +97,14 @@ const avatarUrl = (user: BotIdentity, size = 64) => user.avatar
     ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}`
     : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(user.id) >> 22n) % 6}.png`;
 
-let botCordOverlayRoot: Root | null = null;
-let botCordOverlayContainer: HTMLDivElement | null = null;
+let botCordModalKey: string | undefined;
 
 function closeBotCordOverlay() {
-    botCordOverlayRoot?.unmount();
-    botCordOverlayContainer?.remove();
-    botCordOverlayRoot = null;
-    botCordOverlayContainer = null;
+    if (botCordModalKey) closeModal(botCordModalKey);
+    botCordModalKey = undefined;
 }
 
-function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
+function BotCordOverlay({ bot, token, onClose }: { bot: BotIdentity; token: string; onClose(): void; }) {
     const [guilds, setGuilds] = useState<BotGuild[]>([]);
     const [selectedGuild, setSelectedGuild] = useState<BotGuild | null>(null);
     const [channels, setChannels] = useState<BotChannel[]>([]);
@@ -357,7 +353,7 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
                 onPointerDown={startDrag}
                 onPointerMove={drag}
                 onPointerUp={finishDrag}
-                onClick={() => { if (!didDrag.current) closeBotCordOverlay(); }}
+                onClick={() => { if (!didDrag.current) onClose(); }}
                 style={{
                     position: "fixed",
                     left: bubblePosition.x,
@@ -384,11 +380,19 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
 
 function openBotCordOverlay(bot: BotIdentity, token: string) {
     closeBotCordOverlay();
-    botCordOverlayContainer = document.createElement("div");
-    botCordOverlayContainer.id = "cloudcord-botcord-overlay";
-    document.body.append(botCordOverlayContainer);
-    botCordOverlayRoot = createRoot(botCordOverlayContainer);
-    botCordOverlayRoot.render(<BotCordOverlay bot={bot} token={token} />);
+    // Use Discord's modal host so its focus trap includes BotCord's composer.
+    // A body-level React root is visible, but Discord prevents it from receiving
+    // keyboard input while Settings or the activation confirmation owns focus.
+    botCordModalKey = openModal(props => (
+        <BotCordOverlay
+            bot={bot}
+            token={token}
+            onClose={() => {
+                botCordModalKey = undefined;
+                props.onClose();
+            }}
+        />
+    ));
 }
 
 function BotCordComponent() {
