@@ -18,6 +18,7 @@
 
 import { onceDefined } from "@shared/onceDefined";
 import electron, { app, BrowserWindowConstructorOptions, Menu } from "electron";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "original-fs";
 import { dirname, join } from "path";
 
 import { RendererSettings } from "./settings";
@@ -25,6 +26,26 @@ import { patchTrayMenu } from "./trayMenu";
 import { IS_VANILLA } from "./utils/constants";
 
 console.log("[CloudCord] Starting up...");
+
+// Older RealCord installers rewrote discord_desktop_core/index.js and wrapped
+// Electron's BrowserWindow class a second time. That breaks Discord's own
+// minimise/maximise/close IPC handlers when CloudCord is also installed.
+// Restore only that exact legacy loader marker and leave all other files alone.
+try {
+    const modulesDir = join(dirname(process.execPath), "modules");
+    for (const moduleName of readdirSync(modulesDir)) {
+        if (!moduleName.startsWith("discord_desktop_core-")) continue;
+        const coreDir = join(modulesDir, moduleName, "discord_desktop_core");
+        const indexPath = join(coreDir, "index.js");
+        if (!existsSync(indexPath) || !existsSync(join(coreDir, "core.asar"))) continue;
+        const index = readFileSync(indexPath, "utf8");
+        if (!index.includes("realcord-loader.js")) continue;
+        writeFileSync(indexPath, "module.exports = require('./core.asar');\n");
+        console.log("[CloudCord] Removed conflicting legacy RealCord core loader");
+    }
+} catch (err) {
+    console.warn("[CloudCord] Could not check for a legacy RealCord core loader", err);
+}
 
 // Our injector file at app/index.js
 const injectorPath = require.main!.filename;

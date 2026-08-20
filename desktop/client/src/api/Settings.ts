@@ -98,6 +98,7 @@ export interface Settings {
         url: string;
         settingsSync: boolean;
         settingsSyncVersion: number;
+        providerMigrated: boolean;
     };
 
     ignoreResetWarning: boolean;
@@ -149,7 +150,8 @@ const DefaultSettings: Settings = {
         authenticated: false,
         url: "https://cloudcord.xohus.lol/",
         settingsSync: false,
-        settingsSyncVersion: 0
+        settingsSyncVersion: 0,
+        providerMigrated: true
     },
 
     ignoreResetWarning: false,
@@ -158,11 +160,13 @@ const DefaultSettings: Settings = {
 };
 
 const settings = !IS_REPORTER ? VencordNative.settings.get() : {} as Settings;
+const migrateDefaultProvider = settings.cloud?.providerMigrated !== true;
 mergeDefaults(settings, DefaultSettings);
-const migratedLegacyCloud = !settings.cloud.url || settings.cloud.url === "https://cloud.sincord.org/";
+const migratedLegacyCloud = migrateDefaultProvider || !settings.cloud.url || settings.cloud.url === "https://cloud.sincord.org/";
 if (migratedLegacyCloud) {
     settings.cloud.url = "https://cloudcord.xohus.lol/";
     settings.cloud.authenticated = false;
+    settings.cloud.providerMigrated = true;
 }
 
 export const SettingsStore = new SettingsStoreClass(settings, {

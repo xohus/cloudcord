@@ -55,33 +55,60 @@ ipcMain.handle(IpcEvents.WINDOW_CLOSE, ({ sender }) => getSenderWindow(sender)?.
 
 const BOTCORD_ALLOWED_PATHS = [
     /^\/users\/@me(?:\/guilds)?$/,
+    /^\/users\/@me\/channels$/,
     /^\/guilds\/\d{17,20}\/channels$/,
+    /^\/guilds\/\d{17,20}\/members\?limit=(?:[1-9]\d{0,2}|1000)$/,
     /^\/channels\/\d{17,20}\/messages\?limit=(?:[1-9]|[1-4]\d|50)$/,
+    /^\/channels\/\d{17,20}\/messages$/,
 ];
 
-ipcMain.handle(IpcEvents.BOTCORD_API_REQUEST, async (_, token: string, path: string) => {
+ipcMain.handle(IpcEvents.BOTCORD_API_REQUEST, async (_, token: string, path: string, options: {
+    method?: "GET" | "POST";
+    body?: Record<string, unknown>;
+    files?: Array<{ name: string; type: string; data: string; }>;
+} = {}) => {
     const cleanToken = token.replace(/^Bot\s+/i, "").trim();
     if (cleanToken.length < 20 || /\s/.test(cleanToken))
         return { ok: false, status: 0, error: "Invalid bot token" };
     if (!BOTCORD_ALLOWED_PATHS.some(pattern => pattern.test(path)))
         return { ok: false, status: 0, error: "BotCord blocked an unsupported Discord API path" };
+    const method = options.method ?? "GET";
+    const isMessageCreate = /^\/channels\/\d{17,20}\/messages$/.test(path);
+    const isDmCreate = path === "/users/@me/channels";
+    if (method === "POST" ? !isMessageCreate && !isDmCreate : isMessageCreate || isDmCreate)
+        return { ok: false, status: 0, error: "BotCord blocked an invalid request method" };
 
     try {
         for (let attempt = 0; attempt < 3; attempt++) {
             const response = await net.fetch(`https://discord.com/api/v10${path}`, {
-                method: "GET",
+                method,
                 headers: {
                     Authorization: `Bot ${cleanToken}`,
                     Accept: "application/json",
-                    "User-Agent": "DiscordBot (https://github.com/xohus/cloudcord, 1.0)"
-                }
+                    "User-Agent": "DiscordBot (https://github.com/xohus/cloudcord, 1.0)",
+                    ...(!options.files?.length && method === "POST" ? { "Content-Type": "application/json" } : {})
+                },
+                body: method === "POST"
+                    ? options.files?.length
+                        ? (() => {
+                            const form = new FormData();
+                            form.append("payload_json", JSON.stringify(options.body ?? {}));
+                            for (const [index, file] of options.files.slice(0, 4).entries()) {
+                                const bytes = Buffer.from(file.data, "base64");
+                                if (bytes.length > 10 * 1024 * 1024) throw new Error("Images must be 10 MB or smaller");
+                                form.append(`files[${index}]`, new Blob([new Uint8Array(bytes)], { type: file.type }), file.name);
+                            }
+                            return form;
+                        })()
+                        : JSON.stringify(options.body ?? {})
+                    : undefined
             });
             const text = await response.text();
             let data: unknown = null;
             try { data = text ? JSON.parse(text) : null; } catch { data = text; }
             if (response.ok) return { ok: true, status: response.status, data };
 
-            if ((response.status === 429 || response.status >= 500) && attempt < 2) {
+            if ((response.status === 429 || method === "GET" && response.status >= 500) && attempt < 2) {
                 const retryAfter = Math.min(Number((data as any)?.retry_after ?? 0) * 1000 || 400 * (attempt + 1), 5000);
                 await new Promise(resolve => setTimeout(resolve, retryAfter));
                 continue;
@@ -89,7 +116,9 @@ ipcMain.handle(IpcEvents.BOTCORD_API_REQUEST, async (_, token: string, path: str
 
             const discordMessage = (data as any)?.message;
             const error = response.status === 403
-                ? "This bot needs View Channel and Read Message History permissions"
+                ? method === "POST"
+                    ? "This bot cannot send messages or open this DM with its current permissions"
+                    : "This bot needs View Channel and Read Message History permissions"
                 : discordMessage || `Discord request failed (${response.status})`;
             return { ok: false, status: response.status, error: `${error} (${response.status})` };
         }

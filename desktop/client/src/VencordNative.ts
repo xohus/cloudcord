@@ -88,13 +88,17 @@ export default {
     },
 
     window: {
-        minimize: () => invoke<void>(IpcEvents.WINDOW_MINIMIZE),
-        maximize: () => invoke<void>(IpcEvents.WINDOW_MAXIMIZE),
-        close: () => invoke<void>(IpcEvents.WINDOW_CLOSE),
+        minimize: () => DiscordNative?.window?.minimize ? DiscordNative.window.minimize() : invoke<void>(IpcEvents.WINDOW_MINIMIZE),
+        maximize: () => DiscordNative?.window?.maximize ? DiscordNative.window.maximize() : invoke<void>(IpcEvents.WINDOW_MAXIMIZE),
+        close: () => DiscordNative?.window?.close ? DiscordNative.window.close() : invoke<void>(IpcEvents.WINDOW_CLOSE),
     },
 
     botCord: {
-        request: <T = unknown>(token: string, path: string) => invoke<{ ok: boolean; status: number; data?: T; error?: string; }>(IpcEvents.BOTCORD_API_REQUEST, token, path),
+        request: <T = unknown>(token: string, path: string, options?: {
+            method?: "GET" | "POST";
+            body?: Record<string, unknown>;
+            files?: Array<{ name: string; type: string; data: string; }>;
+        }) => invoke<{ ok: boolean; status: number; data?: T; error?: string; }>(IpcEvents.BOTCORD_API_REQUEST, token, path, options),
     },
 
     csp: {

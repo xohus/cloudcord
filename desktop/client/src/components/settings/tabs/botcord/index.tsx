@@ -31,8 +31,8 @@ function controlDiscordWindow(action: "minimize" | "maximize" | "close") {
     void VencordNative.window[action]();
 }
 
-async function requestBotApi<T>(token: string, path: string): Promise<T> {
-    const result = await VencordNative.botCord.request<T>(normalizeBotToken(token), path);
+async function requestBotApi<T>(token: string, path: string, options?: Parameters<typeof VencordNative.botCord.request>[2]): Promise<T> {
+    const result = await VencordNative.botCord.request<T>(normalizeBotToken(token), path, options);
     if (!result.ok) throw new Error(result.error || `Discord request failed (${result.status})`);
     return result.data as T;
 }
@@ -69,7 +69,24 @@ interface BotMessage {
     content: string;
     timestamp: string;
     author: BotIdentity;
+    attachments?: Array<{ id: string; filename: string; url: string; content_type?: string; width?: number; height?: number; }>;
+    embeds?: Array<{ title?: string; description?: string; url?: string; image?: { url: string; }; thumbnail?: { url: string; }; }>;
 }
+
+interface BotMember {
+    nick?: string;
+    user: BotIdentity;
+}
+
+interface PendingImage {
+    name: string;
+    type: string;
+    data: string;
+}
+
+const avatarUrl = (user: BotIdentity, size = 64) => user.avatar
+    ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=${size}`
+    : `https://cdn.discordapp.com/embed/avatars/${Number(BigInt(user.id) >> 22n) % 6}.png`;
 
 let botCordOverlayRoot: Root | null = null;
 let botCordOverlayContainer: HTMLDivElement | null = null;
@@ -87,6 +104,9 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
     const [channels, setChannels] = useState<BotChannel[]>([]);
     const [selectedChannel, setSelectedChannel] = useState<BotChannel | null>(null);
     const [messages, setMessages] = useState<BotMessage[]>([]);
+    const [members, setMembers] = useState<BotMember[]>([]);
+    const [messageText, setMessageText] = useState("");
+    const [pendingImage, setPendingImage] = useState<PendingImage | null>(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState("");
     const [bubblePosition, setBubblePosition] = useState({ x: 24, y: 80 });
@@ -132,17 +152,65 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
         setSelectedGuild(guild);
         setSelectedChannel(null);
         setMessages([]);
+        setMembers([]);
         setError("");
         setLoading(true);
         try {
-            const result = await botFetch<BotChannel[]>(`/guilds/${guild.id}/channels`);
+            const [result, guildMembers] = await Promise.all([
+                botFetch<BotChannel[]>(`/guilds/${guild.id}/channels`),
+                botFetch<BotMember[]>(`/guilds/${guild.id}/members?limit=1000`).catch(() => [])
+            ]);
             setChannels(result.filter(channel => channel.type === 0 || channel.type === 5).sort((a, b) => a.position - b.position));
+            setMembers(guildMembers);
         } catch (e: any) {
             setChannels([]);
             setError(e.message);
         } finally {
             setLoading(false);
         }
+    };
+
+    const sendMessage = async () => {
+        if (!selectedChannel || (!messageText.trim() && !pendingImage)) return;
+        setError("");
+        try {
+            const sent = await requestBotApi<BotMessage>(token, `/channels/${selectedChannel.id}/messages`, {
+                method: "POST",
+                body: { content: messageText.trim(), allowed_mentions: { parse: ["users", "roles", "everyone"] } },
+                files: pendingImage ? [pendingImage] : undefined
+            });
+            setMessages(previous => [...previous, sent]);
+            setMessageText("");
+            setPendingImage(null);
+        } catch (e: any) { setError(e.message); }
+    };
+
+    const chooseImage = async () => {
+        try {
+            const [file] = await DiscordNative.fileManager.openFiles({
+                filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
+                properties: ["openFile"]
+            });
+            if (!file) return;
+            if (file.data.byteLength > 10 * 1024 * 1024) throw new Error("Images must be 10 MB or smaller");
+            let binary = "";
+            const bytes = new Uint8Array(file.data);
+            for (let i = 0; i < bytes.length; i += 0x8000)
+                binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+            const name = file.name ?? "image.png";
+            const extension = name.split(".").pop()?.toLowerCase();
+            const type = extension === "gif" ? "image/gif" : extension === "webp" ? "image/webp" : extension === "png" ? "image/png" : "image/jpeg";
+            setPendingImage({ name, type, data: btoa(binary) });
+        } catch (e: any) { setError(e.message); }
+    };
+
+    const openDm = async (member: BotMember) => {
+        try {
+            const channel = await requestBotApi<BotChannel>(token, "/users/@me/channels", { method: "POST", body: { recipient_id: member.user.id } });
+            setSelectedChannel({ ...channel, name: member.nick || member.user.global_name || member.user.username, position: 0 });
+            setMessages([]);
+            await openChannel({ ...channel, name: member.nick || member.user.global_name || member.user.username, position: 0 });
+        } catch (e: any) { setError(e.message); }
     };
 
     const openChannel = async (channel: BotChannel) => {
@@ -189,17 +257,50 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
                     </Card>
                     </button>
                 ))}
-            </div> : <div style={{ display: "grid", gridTemplateColumns: "240px minmax(0, 1fr)", gap: 16 }}>
+            </div> : <div style={{ display: "grid", gridTemplateColumns: "220px minmax(320px, 1fr) 220px", gap: 16 }}>
                 <Card style={{ padding: 12 }}>
                     <Button size="small" variant="secondary" onClick={() => { setSelectedGuild(null); setSelectedChannel(null); }}>← All servers</Button>
                     <div style={{ display: "flex", flexDirection: "column", gap: 4, marginTop: 12 }}>
                         {channels.map(channel => <button key={channel.id} onClick={() => void openChannel(channel)} style={{ border: 0, borderRadius: 4, padding: "8px 10px", background: selectedChannel?.id === channel.id ? "var(--background-modifier-selected)" : "transparent", color: "inherit", textAlign: "left", cursor: "pointer" }}># {channel.name}</button>)}
                     </div>
                 </Card>
-                <Card style={{ padding: 16, minHeight: 300 }}>
+                <Card style={{ padding: 16, minHeight: 420, display: "flex", flexDirection: "column" }}>
                     <Heading tag="h2">{selectedChannel ? `# ${selectedChannel.name}` : "Select a channel"}</Heading>
                     {loading && <Paragraph>Loading…</Paragraph>}
-                    {!loading && selectedChannel && messages.map(message => <div key={message.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--background-modifier-accent)" }}><strong>{message.author.global_name || message.author.username}</strong><div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.content || <em>Attachment or embed</em>}</div></div>)}
+                    <div style={{ flex: 1, overflowY: "auto", maxHeight: "calc(100vh - 230px)" }}>
+                        {!loading && selectedChannel && messages.map(message => <div key={message.id} style={{ padding: "10px 0", borderBottom: "1px solid var(--background-modifier-accent)", display: "flex", gap: 10 }}>
+                            <img src={avatarUrl(message.author)} alt="" style={{ width: 36, height: 36, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                            <div style={{ minWidth: 0 }}>
+                                <strong>{message.author.global_name || message.author.username}</strong>
+                                <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{message.content}</div>
+                                {message.attachments?.map(attachment => attachment.content_type?.startsWith("image/")
+                                    ? <img key={attachment.id} src={attachment.url} alt={attachment.filename} style={{ display: "block", maxWidth: "min(480px, 100%)", maxHeight: 360, objectFit: "contain", borderRadius: 8, marginTop: 8 }} />
+                                    : <a key={attachment.id} href={attachment.url} target="_blank" rel="noreferrer">{attachment.filename}</a>)}
+                                {message.embeds?.map((embed, index) => <div key={index} style={{ marginTop: 8, padding: 10, borderLeft: "4px solid var(--brand-500)", background: "var(--background-secondary)" }}>
+                                    {embed.title && <strong>{embed.title}</strong>}
+                                    {embed.description && <div>{embed.description}</div>}
+                                    {(embed.image?.url || embed.thumbnail?.url) && <img src={embed.image?.url || embed.thumbnail?.url} alt="" style={{ display: "block", maxWidth: "min(480px, 100%)", maxHeight: 360, objectFit: "contain", borderRadius: 8, marginTop: 8 }} />}
+                                </div>)}
+                            </div>
+                        </div>)}
+                    </div>
+                    {selectedChannel && <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
+                        {pendingImage && <div>Attached: {pendingImage.name} <button onClick={() => setPendingImage(null)}>Remove</button></div>}
+                        <div style={{ display: "flex", gap: 8 }}>
+                            <Button size="small" variant="secondary" onClick={() => void chooseImage()}>Add Image</Button>
+                            <div style={{ flex: 1 }}><TextInput placeholder="Message, @mention, or paste an ID…" value={messageText} onChange={setMessageText} /></div>
+                            <Button size="small" disabled={!messageText.trim() && !pendingImage} onClick={() => void sendMessage()}>Send</Button>
+                        </div>
+                    </div>}
+                </Card>
+                <Card style={{ padding: 12, overflowY: "auto", maxHeight: "calc(100vh - 130px)" }}>
+                    <Heading tag="h2">Members ({members.length})</Heading>
+                    {members.length === 0 && <Paragraph>Member list unavailable. Enable the Server Members Intent for this bot.</Paragraph>}
+                    {members.map(member => <div key={member.user.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0" }}>
+                        <img src={avatarUrl(member.user)} alt="" style={{ width: 30, height: 30, borderRadius: "50%", objectFit: "cover" }} />
+                        <button onClick={() => setMessageText(text => `${text}<@${member.user.id}> `)} style={{ minWidth: 0, flex: 1, border: 0, background: "transparent", color: "inherit", textAlign: "left", cursor: "pointer", overflow: "hidden", textOverflow: "ellipsis" }} title="Add mention">{member.nick || member.user.global_name || member.user.username}</button>
+                        <button onClick={() => void openDm(member)} style={{ border: 0, background: "transparent", color: "var(--text-link)", cursor: "pointer" }}>DM</button>
+                    </div>)}
                 </Card>
             </div>}
 

@@ -55,7 +55,9 @@ function ProviderLabel({ label, value }: { label: string; value: string; }) {
     const icon = providerOptions.find(provider => provider.value === value)?.icon ?? providerOptions[0].icon;
     return (
         <Flex gap="8px" alignItems="center">
-            <img src={icon} alt="" style={{ width: 20, height: 20, borderRadius: "50%" }} />
+            <span style={{ width: 22, minWidth: 22, height: 22, display: "inline-flex", alignItems: "center", justifyContent: "center", overflow: "hidden" }}>
+                <img src={icon} alt="" width={22} height={22} style={{ width: 22, minWidth: 22, maxWidth: 22, height: 22, minHeight: 22, maxHeight: 22, display: "block", objectFit: "contain", objectPosition: "center", flexShrink: 0 }} />
+            </span>
             <span>{label}</span>
         </Flex>
     );
