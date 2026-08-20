@@ -93,6 +93,10 @@ export default {
         close: () => invoke<void>(IpcEvents.WINDOW_CLOSE),
     },
 
+    botCord: {
+        request: <T = unknown>(token: string, path: string) => invoke<{ ok: boolean; status: number; data?: T; error?: string; }>(IpcEvents.BOTCORD_API_REQUEST, token, path),
+    },
+
     csp: {
         /**
          * Note: Only supports full explicit matches, not wildcards.

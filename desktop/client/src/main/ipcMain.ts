@@ -22,7 +22,7 @@ import "./settings";
 
 import { debounce } from "@shared/debounce";
 import { IpcEvents } from "@shared/IpcEvents";
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, net, shell, systemPreferences } from "electron";
 import monacoHtml from "file://monacoWin.html?minify&base64";
 import { FSWatcher, mkdirSync, readFileSync, watch, writeFileSync } from "fs";
 import { open, readdir, readFile, unlink } from "fs/promises";
@@ -50,6 +50,35 @@ ipcMain.handle(IpcEvents.WINDOW_MAXIMIZE, ({ sender }) => {
     window.isMaximized() ? window.unmaximize() : window.maximize();
 });
 ipcMain.handle(IpcEvents.WINDOW_CLOSE, ({ sender }) => getSenderWindow(sender)?.close());
+
+const BOTCORD_ALLOWED_PATHS = [
+    /^\/users\/@me(?:\/guilds)?$/,
+    /^\/guilds\/\d{17,20}\/channels$/,
+    /^\/channels\/\d{17,20}\/messages\?limit=(?:[1-9]|[1-4]\d|50)$/,
+];
+
+ipcMain.handle(IpcEvents.BOTCORD_API_REQUEST, async (_, token: string, path: string) => {
+    const cleanToken = token.replace(/^Bot\s+/i, "").trim();
+    if (cleanToken.length < 20 || /\s/.test(cleanToken))
+        return { ok: false, status: 0, error: "Invalid bot token" };
+    if (!BOTCORD_ALLOWED_PATHS.some(pattern => pattern.test(path)))
+        return { ok: false, status: 0, error: "BotCord blocked an unsupported Discord API path" };
+
+    try {
+        const response = await net.fetch(`https://discord.com/api/v10${path}`, {
+            method: "GET",
+            headers: { Authorization: `Bot ${cleanToken}` }
+        });
+        const text = await response.text();
+        let data: unknown = null;
+        try { data = text ? JSON.parse(text) : null; } catch { data = text; }
+        return response.ok
+            ? { ok: true, status: response.status, data }
+            : { ok: false, status: response.status, error: (data as any)?.message || `Discord request failed (${response.status})` };
+    } catch (error: any) {
+        return { ok: false, status: 0, error: error?.message || "Discord network request failed" };
+    }
+});
 
 export function ensureSafePath(basePath: string, path: string) {
     const normalizedBasePath = normalize(basePath + "/");

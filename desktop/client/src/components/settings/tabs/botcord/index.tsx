@@ -21,6 +21,12 @@ const DS_BOT_TOKENS = "CloudCord_BotTokens";
 const DS_ACTIVE_BOT = "CloudCord_ActiveBot";
 const normalizeBotToken = (value: string) => value.replace(/^Bot\s+/i, "").trim();
 
+async function requestBotApi<T>(token: string, path: string): Promise<T> {
+    const result = await VencordNative.botCord.request<T>(normalizeBotToken(token), path);
+    if (!result.ok) throw new Error(result.error || `Discord request failed (${result.status})`);
+    return result.data as T;
+}
+
 interface BotAccount {
     name: string;
     token: string;
@@ -78,12 +84,9 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
     const didDrag = useRef(false);
 
     useEffect(() => {
-        void fetch("https://discord.com/api/v10/users/@me/guilds", {
-            headers: { Authorization: `Bot ${token}` }
-        }).then(async response => {
-            if (!response.ok) throw new Error("Discord rejected the bot guild request");
-            setGuilds(await response.json());
-        }).catch(e => setError(e.message));
+        void requestBotApi<BotGuild[]>(token, "/users/@me/guilds")
+            .then(setGuilds)
+            .catch(e => setError(e.message));
     }, [token]);
 
     const startDrag = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -112,11 +115,7 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
     const displayName = bot.global_name || bot.username;
 
     const botFetch = async <T,>(path: string): Promise<T> => {
-        const response = await fetch(`https://discord.com/api/v10${path}`, {
-            headers: { Authorization: `Bot ${token}` }
-        });
-        if (!response.ok) throw new Error(`Discord request failed (${response.status})`);
-        return response.json();
+        return requestBotApi<T>(token, path);
     };
 
     const openGuild = async (guild: BotGuild) => {
@@ -283,13 +282,7 @@ function BotCordComponent() {
             async onConfirm() {
                 try {
                     const cleanToken = normalizeBotToken(botToken);
-                    const response = await fetch("https://discord.com/api/v10/users/@me", {
-                        headers: { Authorization: `Bot ${cleanToken}` }
-                    });
-                    if (!response.ok)
-                        throw new Error("Invalid bot token or Discord rejected the request");
-
-                    const bot = await response.json() as BotIdentity;
+                    const bot = await requestBotApi<BotIdentity>(cleanToken, "/users/@me");
 
                     await DataStore.set(DS_ACTIVE_BOT, cleanToken);
                     setActiveBot(cleanToken);

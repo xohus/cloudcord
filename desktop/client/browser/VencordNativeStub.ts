@@ -76,6 +76,18 @@ window.VencordNative = {
         close: NOOP_ASYNC,
     },
 
+    botCord: {
+        async request(token: string, path: string) {
+            try {
+                const response = await fetch(`https://discord.com/api/v10${path}`, { headers: { Authorization: `Bot ${token}` } });
+                const data = await response.json();
+                return response.ok ? { ok: true, status: response.status, data } : { ok: false, status: response.status, error: data?.message };
+            } catch (error: any) {
+                return { ok: false, status: 0, error: error?.message || "Discord network request failed" };
+            }
+        },
+    },
+
     updater: {
         getRepo: async () => ({ ok: true, value: "https://github.com/xohus/cloudcord" }),
         getUpdates: async () => ({ ok: true, value: [] }),

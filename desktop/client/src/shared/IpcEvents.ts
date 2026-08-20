@@ -60,4 +60,5 @@ export const enum IpcEvents {
     WINDOW_MINIMIZE = "CloudCordWindowMinimize",
     WINDOW_MAXIMIZE = "CloudCordWindowMaximize",
     WINDOW_CLOSE = "CloudCordWindowClose",
+    BOTCORD_API_REQUEST = "CloudCordBotCordApiRequest",
 }
