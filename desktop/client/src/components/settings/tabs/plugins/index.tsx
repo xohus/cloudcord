@@ -93,6 +93,15 @@ function ReloadRequiredCard({ required, enabledPlugins, openWarningModal, resetC
                     Disable All Plugins
                 </Button>
             )}
+            {!required && (
+                <Button
+                    variant="secondary"
+                    size="small"
+                    onClick={() => Vencord.Plugins.plugins.UserpluginInstaller?.toolboxActions?.["Add Plugin from Link"]?.()}
+                >
+                    Add Plugin from Link
+                </Button>
+            )}
         </Card>
     );
 }

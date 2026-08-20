@@ -6,10 +6,10 @@
 
 import { NativeSettings } from "@main/settings";
 import { exec, spawn } from "child_process";
-import { BrowserWindow, dialog, shell, WebContentsView } from "electron";
+import { app, BrowserWindow, dialog, shell, WebContentsView } from "electron";
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { mkdir, readdir, readFile, rm } from "fs/promises";
-import { basename, join } from "path";
+import { join } from "path";
 import yaml from "yaml-js";
 
 // @ts-ignore fuck off
@@ -23,13 +23,32 @@ const PLUGIN_META_REGEX = /export default definePlugin\((?:\s|\/(?:\/|\*).*)*{\s
 // if edited, also edit in misc/constants.ts!!!
 const CLONE_LINK_REGEX = /https:\/\/(?:((?:git(?:hub|lab)\.com|git\.(?:[a-zA-Z0-9]|\.)+|codeberg\.org))\/(?!user-attachments)((?:[a-zA-Z0-9]|-)+)\/((?:[a-zA-Z0-9]|-|\.)+)(?:\.git)?|(plugins\.(nin0)\.dev)\/((?:[a-zA-Z0-9]|-|\.)+))(?:\/)?/;
 
-const vencordPath = ["desktop", "sinbop"].includes(basename(__dirname)) ? join(__dirname, "../") : __dirname;
+const customBuildRoot = join(app.getPath("userData"), "..", "CloudCord", "custom-build");
+const customClientRoot = join(customBuildRoot, "desktop", "client");
+const userPluginsRoot = join(customClientRoot, "src", "userplugins");
+
+function run(command: string, args: string[], cwd: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+        const proc = spawn(command, args, { cwd, shell: process.platform === "win32" });
+        let stderr = "";
+        proc.stderr?.on("data", data => stderr += String(data));
+        proc.once("error", reject);
+        proc.once("close", code => code === 0 ? resolve() : reject(new Error(stderr.trim() || `${command} exited with code ${code}`)));
+    });
+}
+
+async function ensureCustomBuildCheckout() {
+    if (!existsSync(join(customClientRoot, "package.json"))) {
+        await mkdir(join(customBuildRoot, ".."), { recursive: true });
+        await run("git", ["clone", "--depth", "1", "https://github.com/xohus/cloudcord.git", customBuildRoot], join(customBuildRoot, ".."));
+    } else {
+        await run("git", ["pull", "--ff-only"], customBuildRoot);
+    }
+    await mkdir(userPluginsRoot, { recursive: true });
+}
 
 export async function ensurePluginsDirectory(_: any) {
-    if (!IS_DEV) return;
-    try {
-        await mkdir(join(vencordPath, "../src/userplugins"), { recursive: true });
-    } catch(e) { }
+    await ensureCustomBuildCheckout();
 }
 
 export async function rmPlugin(_, name: string): Promise<string> {
@@ -48,7 +67,7 @@ export async function rmPlugin(_, name: string): Promise<string> {
         });
 
         if (deleteReqDialog.response !== 1) return reject("User rejected");
-        await rm(join(vencordPath, "../src/userplugins", name), { recursive: true });
+        await rm(join(userPluginsRoot, name), { recursive: true });
 
         await build();
         resolve("Done");
@@ -57,7 +76,7 @@ export async function rmPlugin(_, name: string): Promise<string> {
 
 export async function isUpdateAvailableForPlugin(_, name: string): Promise<boolean> {
     return new Promise(resolve => {
-        const pluginDir = join(vencordPath, "../src/userplugins", name);
+        const pluginDir = join(userPluginsRoot, name);
         const otherProc = exec("git fetch", {
             cwd: pluginDir
         });
@@ -83,6 +102,7 @@ export async function isUpdateAvailableForPlugin(_, name: string): Promise<boole
 export function initPluginInstall(_, link: string, source: string, owner: string, repo: string): Promise<string> {
     // eslint-disable-next-line
     return new Promise(async (resolve, reject) => {
+        await ensureCustomBuildCheckout();
         const verifiedRegex = link.match(CLONE_LINK_REGEX)!;
         const idpl = source === "plugins.nin0.dev" ? 1 : 0;
         if (![4, 7].includes(verifiedRegex.length) || verifiedRegex[0] !== link || verifiedRegex[[1, 4][idpl]] !== source || verifiedRegex[[2, 5][idpl]] !== owner || verifiedRegex[[3, 6][idpl]] !== repo) return reject("Invalid link");
@@ -110,7 +130,7 @@ export function initPluginInstall(_, link: string, source: string, owner: string
         }
 
         // Get plugin meta
-        const meta = await getPluginMeta(join(vencordPath, "..", "src", "userplugins", repo));
+        const meta = await getPluginMeta(join(userPluginsRoot, repo));
 
         // Review plugin
         const win = new BrowserWindow({
@@ -140,7 +160,7 @@ export function initPluginInstall(_, link: string, source: string, owner: string
             switch (win.webContents.getTitle() as "abortInstall" | "reviewCode" | "install") {
                 case "abortInstall": {
                     win.close();
-                    await rm(join(vencordPath, "..", "src", "userplugins", repo), {
+                    await rm(join(userPluginsRoot, repo), {
                         recursive: true
                     });
                     return reject("Rejected by user");
@@ -166,18 +186,24 @@ export function initPluginInstall(_, link: string, source: string, owner: string
 }
 
 async function build(): Promise<any> {
-    return new Promise((resolve, reject) => {
-        const proc = exec("pnpm build --dev", {
-            cwd: join(vencordPath, ".."),
-            shell: process.env.SHELL || process.env.ComSpec || "/bin/sh"
-        });
-        proc.once("close", () => {
-            if (proc.exitCode !== 0) {
-                reject("Failed to build Vencord, try building from console");
-            }
-            resolve("Success");
-        });
-    });
+    await run("pnpm", ["install", "--frozen-lockfile"], customClientRoot);
+    await run("pnpm", ["build"], customClientRoot);
+    const outputAsar = join(customClientRoot, "dist", "cloudcord-custom.asar");
+    await run("pnpm", ["exec", "asar", "pack", "dist/desktop", outputAsar], customClientRoot);
+    if (!__dirname.endsWith(".asar")) {
+        throw new Error("Custom ASAR replacement is only available from an installed CloudCord archive");
+    }
+
+    const fs = await import("fs/promises");
+    const backupAsar = `${__dirname}.userplugins-backup`;
+    await fs.copyFile(__dirname, backupAsar);
+    try {
+        await fs.copyFile(outputAsar, __dirname);
+    } catch (error) {
+        await fs.copyFile(backupAsar, __dirname);
+        throw error;
+    }
+    return "Success";
 }
 
 async function getPluginMeta(path: string, extra: object = {}): Promise<{
@@ -238,21 +264,21 @@ async function getPluginMeta(path: string, extra: object = {}): Promise<{
 async function cloneRepo(link: string, repo: string): Promise<void> {
     return new Promise((resolve, reject) => {
         const proc = spawn("git", ["clone", link], {
-            cwd: join(vencordPath, "..", "src", "userplugins")
+            cwd: userPluginsRoot
         });
         proc.once("close", async () => {
             if (proc.exitCode !== 0) {
-                if (!existsSync(join(vencordPath, "..", "src", "userplugins", repo)))
+                if (!existsSync(join(userPluginsRoot, repo)))
                     return reject("Failed to clone");
                 const deleteReqDialog = await dialog.showMessageBox({
                     title: "Error",
                     message: "Plugin already exists",
                     type: "error",
-                    detail: `The plugin that you tried to clone already exists at ${join(vencordPath, "..", "src", "userplugins")}.\nWould you like to reclone it? Only do this if you want to reinstall or update the plugin.`,
+                    detail: `The plugin that you tried to clone already exists at ${userPluginsRoot}.\nWould you like to reclone it? Only do this if you want to reinstall or update the plugin.`,
                     buttons: ["No", "Yes"]
                 });
                 if (deleteReqDialog.response !== 1) return reject("User rejected");
-                await rm(join(vencordPath, "..", "src", "userplugins", repo), {
+                await rm(join(userPluginsRoot, repo), {
                     recursive: true
                 });
                 await cloneRepo(link, repo);
@@ -285,7 +311,8 @@ function generateUpdatePluginContent(meta: {
 }
 
 export async function getUserplugins() {
-    const folderContents = await readdir(join(vencordPath, "..", "src", "userplugins"), {
+    await ensureCustomBuildCheckout();
+    const folderContents = await readdir(userPluginsRoot, {
         withFileTypes: true
     });
     const plugins = await Promise.allSettled(
@@ -305,7 +332,7 @@ export async function getUserplugins() {
 
 export async function updatePlugin(_, directory: string) {
     return new Promise((resolve, reject) => {
-        const pluginDir = join(vencordPath, "../src/userplugins", directory);
+        const pluginDir = join(userPluginsRoot, directory);
 
         async function doStuff() {
             const pluginMeta = await getPluginMeta(pluginDir);

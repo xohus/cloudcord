@@ -9,6 +9,7 @@ import "./misc/style.css";
 import { showNotification } from "@api/Notifications";
 import { definePluginSettings } from "@api/Settings";
 import { Button } from "@components/Button";
+import { openSettingsTabModal } from "@components/settings";
 import { Notice } from "@components/Notice";
 import plSettings from "@plugins/_core/settings";
 import { Devs } from "@utils/constants";
@@ -56,7 +57,7 @@ export default definePlugin({
     description: "Install userplugins with a simple button click",
     settingsAboutComponent: () => (
         <Notice.Warning>
-            Sincord does not moderate userplugins and takes no responsibility for anything that may result from installing them.
+            CloudCord does not moderate userplugins and takes no responsibility for anything that may result from installing them.
             Only install userplugins from developers you trust. Doing so is entirely at your own risk.
         </Notice.Warning>
     ),
@@ -83,6 +84,11 @@ export default definePlugin({
         panelTitle: "UserPlugins",
         Component: SettingsTab,
         Icon: AppsIcon
+    },
+    toolboxActions: {
+        "Add Plugin from Link"() {
+            openSettingsTabModal(SettingsTab);
+        }
     },
     async start() {
         if (!VencordNative.pluginHelpers.UserpluginInstaller) return void Alerts.show({
