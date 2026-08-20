@@ -20,7 +20,6 @@ import { useSettings } from "@api/Settings";
 import { authorizeCloud, deauthorizeCloud } from "@api/SettingsSync/cloudSetup";
 import { deleteCloudSettings, eraseAllCloudData, getCloudSettings, putCloudSettings } from "@api/SettingsSync/cloudSync";
 import { Button } from "@components/Button";
-import { CheckedTextInput } from "@components/CheckedTextInput";
 import { Divider } from "@components/Divider";
 import { Flex } from "@components/Flex";
 import { FormSwitch } from "@components/FormSwitch";
@@ -38,13 +37,28 @@ import { Alerts, Select } from "@webpack/common";
 const RefreshIcon = findComponentByCodeLazy("M4 12a8 8 0 0 1 14.93-4H15");
 const TrashIcon = findComponentByCodeLazy("2.81h8.36a3");
 
-function validateUrl(url: string) {
-    try {
-        new URL(url);
-        return true;
-    } catch {
-        return "Invalid URL";
+const providerOptions = [
+    {
+        label: "StoreCloud",
+        value: "https://cloudcord.xohus.lol/",
+        icon: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png",
+        default: true
+    },
+    {
+        label: "VenCloud",
+        value: "https://api.vencord.dev/",
+        icon: "https://vencord.dev/assets/favicon.png"
     }
+];
+
+function ProviderLabel({ label, value }: { label: string; value: string; }) {
+    const icon = providerOptions.find(provider => provider.value === value)?.icon ?? providerOptions[0].icon;
+    return (
+        <Flex gap="8px" alignItems="center">
+            <img src={icon} alt="" style={{ width: 20, height: 20, borderRadius: "50%" }} />
+            <span>{label}</span>
+        </Flex>
+    );
 }
 
 const syncDirectionOptions = [
@@ -70,8 +84,7 @@ function CloudTab() {
             </Paragraph>
 
             <Notice.Info className={Margins.bottom16}>
-                StoreCloud does not send data anywhere until you choose and authorize a backend.
-                Enter your StoreCloud server URL below when the service is configured.
+                StoreCloud is CloudCord's default provider. Nothing is uploaded until you connect your Discord account and enable synchronization.
             </Notice.Info>
 
             <FormSwitch
@@ -90,22 +103,31 @@ function CloudTab() {
 
             <Divider className={Margins.top20} />
 
-            <Heading className={Margins.top20}>StoreCloud Provider</Heading>
+            <Heading className={Margins.top20}>Cloud Provider</Heading>
             <Paragraph className={Margins.bottom16}>
-                CloudSync uses StoreCloud as its provider on desktop and mobile. A compatible server URL is required before authorization.
+                Choose StoreCloud for the official CloudCord service, or VenCloud for Vencord's compatible service.
             </Paragraph>
 
             <Flex gap="8px" alignItems="center">
                 <div style={{ flex: 1 }}>
-                    <CheckedTextInput
-                        initialValue={cloud.url}
-                        placeholder="StoreCloud backend URL"
-                        onChange={async v => {
-                            cloud.url = v;
-                            cloud.authenticated = false;
+                    <Select
+                        options={providerOptions}
+                        placeholder="Choose a cloud provider"
+                        isSelected={value => value === cloud.url}
+                        serialize={value => value}
+                        select={async value => {
+                            if (value === cloud.url) return;
                             await deauthorizeCloud();
+                            cloud.url = value;
+                            cloud.authenticated = false;
+                            cloud.settingsSync = false;
+                            forceUpdate();
                         }}
-                        validate={validateUrl}
+                        renderOptionLabel={option => <ProviderLabel label={option.label} value={option.value} />}
+                        renderOptionValue={selected => {
+                            const option = selected[0] ?? providerOptions[0];
+                            return <ProviderLabel label={option.label} value={option.value} />;
+                        }}
                     />
                 </div>
                 <Button

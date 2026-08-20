@@ -21,6 +21,16 @@ const DS_BOT_TOKENS = "CloudCord_BotTokens";
 const DS_ACTIVE_BOT = "CloudCord_ActiveBot";
 const normalizeBotToken = (value: string) => value.replace(/^Bot\s+/i, "").trim();
 
+function controlDiscordWindow(action: "minimize" | "maximize" | "close") {
+    const discordAction = DiscordNative?.window?.[action];
+    if (typeof discordAction === "function") {
+        discordAction.call(DiscordNative.window);
+        return;
+    }
+
+    void VencordNative.window[action]();
+}
+
 async function requestBotApi<T>(token: string, path: string): Promise<T> {
     const result = await VencordNative.botCord.request<T>(normalizeBotToken(token), path);
     if (!result.ok) throw new Error(result.error || `Discord request failed (${result.status})`);
@@ -152,10 +162,10 @@ function BotCordOverlay({ bot, token }: { bot: BotIdentity; token: string; }) {
 
     return (
         <div style={{ position: "fixed", inset: 0, zIndex: 1000000, background: "var(--background-base-lowest, #111214)", color: "var(--text-default, white)", padding: "48px 36px 36px", overflow: "auto" }}>
-            <div style={{ position: "fixed", top: 0, right: 0, zIndex: 1000002, display: "flex" }}>
-                <button aria-label="Minimize Discord" title="Minimize" onClick={() => void VencordNative.window.minimize()} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 20, cursor: "pointer" }}>−</button>
-                <button aria-label="Maximize Discord" title="Maximize or restore" onClick={() => void VencordNative.window.maximize()} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 16, cursor: "pointer" }}>□</button>
-                <button aria-label="Close Discord" title="Close" onClick={() => void VencordNative.window.close()} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 20, cursor: "pointer" }}>×</button>
+            <div style={{ position: "fixed", top: 0, right: 0, zIndex: 1000002, display: "flex", WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+                <button aria-label="Minimize Discord" title="Minimize" onClick={() => controlDiscordWindow("minimize")} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 20, cursor: "pointer" }}>−</button>
+                <button aria-label="Maximize Discord" title="Maximize or restore" onClick={() => controlDiscordWindow("maximize")} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 16, cursor: "pointer" }}>□</button>
+                <button aria-label="Close Discord" title="Close" onClick={() => controlDiscordWindow("close")} style={{ width: 46, height: 34, border: 0, background: "transparent", color: "inherit", fontSize: 20, cursor: "pointer" }}>×</button>
             </div>
             <header style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 28 }}>
                 <RobotIcon style={{ width: 34, height: 34 }} />

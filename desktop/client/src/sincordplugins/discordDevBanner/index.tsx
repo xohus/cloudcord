@@ -17,24 +17,7 @@ export default definePlugin({
     tags: ["Appearance", "Console", "Developers"],
     authors: [SincordDevs.KrystalSkull, Devs.thororen],
     settings,
-    patches: [
-        {
-            find: '"isHideDevBanner"',
-            replacement: [
-                {
-                    match: '"staging"===window.GLOBAL_ENV.RELEASE_CHANNEL',
-                    replace: "true"
-                },
-                {
-                    match: /children:\[.{0,80}#{intl::BUILD_OVERRIDE}.{0,15}\{\}\)\]/,
-                    replace: "children:$self.makeDevBanner()"
-                },
-                {
-                    match: /children:\[.{0,80}#{intl::uyrfYF::raw}.{0,50}\{\}\)\]/,
-                    replace: "children:$self.makeDevBanner()"
-                },
-            ]
-        }
-    ],
+    // CloudCord does not force Discord's internal developer banner to display.
+    patches: [],
     makeDevBanner,
 });

@@ -40,7 +40,9 @@ mkdirSync(THEMES_DIR, { recursive: true });
 registerCspIpcHandlers();
 
 function getSenderWindow(sender: Electron.WebContents) {
-    return BrowserWindow.fromWebContents(sender);
+    return BrowserWindow.fromWebContents(sender)
+        ?? BrowserWindow.getFocusedWindow()
+        ?? BrowserWindow.getAllWindows().find(window => !window.isDestroyed() && window.getTitle() === "Discord");
 }
 
 ipcMain.handle(IpcEvents.WINDOW_MINIMIZE, ({ sender }) => getSenderWindow(sender)?.minimize());
