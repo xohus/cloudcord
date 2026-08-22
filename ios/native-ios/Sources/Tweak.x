@@ -297,6 +297,18 @@ static void registerBridgeMethods(void)
 {
     BridgeRegistry *b = [BridgeRegistry shared];
 
+    [b registerMethod:@"realcord.config"
+             callback:^id(NSArray *args) {
+                 NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+                 NSMutableDictionary *config = [NSMutableDictionary dictionary];
+                 for (NSString *key in @[@"protectionEnabled", @"nitroTier", @"subscriberDate", @"customUsername", @"customDisplayName", @"enabledPlugins"])
+                 {
+                     id value = [defaults objectForKey:key];
+                     if (value) config[key] = value;
+                 }
+                 return config;
+             }];
+
     [b registerMethod:@"updater.clear"
              callback:^id(NSArray *args) {
                  NSFileManager *fm = [NSFileManager defaultManager];

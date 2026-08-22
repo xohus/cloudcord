@@ -242,11 +242,12 @@ jobs:
           import { after, instead } from "@lib/api/patcher";
           import { onJsxCreate } from "@lib/api/react/jsx";
           import { settings } from "@lib/api/settings";
+          import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByNameLazy, findByProps, findByStoreName } from "@metro";
           import { FluxDispatcher } from "@metro/common";
           import { Card, Stack, Text } from "@metro/common/components";
           import { useEffect, useReducer } from "react";
-          import { Alert, Image, Pressable, ScrollView, TextInput, View } from "react-native";
+          import { Alert, Image, NativeModules, Pressable, ScrollView, TextInput, View } from "react-native";
 
           type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
           type PreviewSettings = {
@@ -328,6 +329,64 @@ jobs:
           let preview = defaultPreview();
           let configReady = false;
           let initPromise: Promise<void> | null = null;
+          let realCordSyncTimer: ReturnType<typeof setInterval> | null = null;
+          const realCordManagedPlugins = new Set<string>();
+
+          const REALCORD_NITRO_MONTHS: Record<string, number> = {
+              bronze: 1, silver: 3, gold: 6, platinum: 12,
+              diamond: 24, emerald: 36, ruby: 60, opal: 72
+          };
+
+          async function pullRealCordConfiguration() {
+              if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName !== "RealCord") return;
+              const reader = NativeModules.FileReaderModule ?? NativeModules.RCTFileReaderModule;
+              if (typeof reader?.readAsDataURL !== "function") return;
+              try {
+                  const response = await reader.readAsDataURL({ rain: { method: "realcord.config", args: [] } });
+                  const config = response?.result;
+                  if (!config || typeof config !== "object") return;
+                  const username = String(config.customUsername || "").trim();
+                  const displayName = String(config.customDisplayName || "").trim();
+                  const tier = String(config.nitroTier || "").toLowerCase();
+                  const requestedPlugins = new Set(
+                      (Array.isArray(config.enabledPlugins) ? config.enabledPlugins : [])
+                          .map((value: unknown) => String(value).toLowerCase().replace(/[^a-z0-9]/g, ""))
+                  );
+                  const next = {
+                      ...preview,
+                      enabled: Boolean(username || displayName || REALCORD_NITRO_MONTHS[tier]),
+                      username: username || preview.username,
+                      displayName: displayName || preview.displayName,
+                      nitroMonths: REALCORD_NITRO_MONTHS[tier] || 0,
+                      replaceBadges: true
+                  } satisfies PreviewSettings;
+                  if (JSON.stringify(next) !== JSON.stringify(preview)) {
+                      rootSettings.fakeProfile = next;
+                      preview = next;
+                      refreshPreview();
+                  }
+
+                  for (const [id, manifest] of registeredPlugins) {
+                      const normalizedId = id.toLowerCase().replace(/[^a-z0-9]/g, "");
+                      const normalizedName = String(manifest?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                      const requested = requestedPlugins.has(normalizedId) || requestedPlugins.has(normalizedName);
+                      try {
+                          if (requested) {
+                              if (!isPluginInstalled(id)) await installPlugin(id, true);
+                              else if (!isPluginEnabled(id)) await enablePlugin(id, true);
+                              realCordManagedPlugins.add(id);
+                          } else if (realCordManagedPlugins.has(id) && isPluginEnabled(id)) {
+                              disablePlugin(id);
+                              realCordManagedPlugins.delete(id);
+                          }
+                      } catch (error) {
+                          console.warn(`[RealCord] Could not apply mobile plugin ${id}`, error);
+                      }
+                  }
+              } catch (error: any) {
+                  diagnostics.last = error?.message || "Could not read RealCord profile configuration";
+              }
+          }
 
           function bindSavedPreview() {
               if (configReady) return;
@@ -978,6 +1037,10 @@ jobs:
                   try {
                       await awaitStorage(settings);
                       bindSavedPreview();
+                      await pullRealCordConfiguration();
+                      if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName === "RealCord" && !realCordSyncTimer) {
+                          realCordSyncTimer = setInterval(pullRealCordConfiguration, 3000);
+                      }
                       ensurePatches();
                       await pullOwnSharedProfile();
                       if (preview.enabled) { refreshPreview(); queueSharedPublish(); }
