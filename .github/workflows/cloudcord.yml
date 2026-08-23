@@ -331,6 +331,7 @@ jobs:
           let initPromise: Promise<void> | null = null;
           let realCordSyncTimer: ReturnType<typeof setInterval> | null = null;
           const realCordManagedPlugins = new Set<string>();
+          let realCordConfigFingerprint = "";
 
           const REALCORD_NITRO_MONTHS: Record<string, number> = {
               bronze: 1, silver: 3, gold: 6, platinum: 12,
@@ -345,6 +346,9 @@ jobs:
                   const response = await reader.readAsDataURL({ rain: { method: "realcord.config", args: [] } });
                   const config = response?.result;
                   if (!config || typeof config !== "object") return;
+                  const fingerprint = `${JSON.stringify(config)}:${registeredPlugins.size}`;
+                  if (fingerprint === realCordConfigFingerprint) return;
+                  realCordConfigFingerprint = fingerprint;
                   const username = String(config.customUsername || "").trim();
                   const displayName = String(config.customDisplayName || "").trim();
                   const tier = String(config.nitroTier || "").toLowerCase();
@@ -1046,7 +1050,7 @@ jobs:
                       bindSavedPreview();
                       await pullRealCordConfiguration();
                       if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName === "RealCord" && !realCordSyncTimer) {
-                          realCordSyncTimer = setInterval(pullRealCordConfiguration, 3000);
+                          realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
                       await pullOwnSharedProfile();
