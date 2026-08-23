@@ -53,7 +53,6 @@ jobs:
           mkdir -p src/lib/api
           rm -rf src/core/plugins
           cp -R ../ios/runtime/src/core/plugins src/core/plugins
-          cp ../ios/runtime/src/lib/utils/constants.ts src/lib/utils/constants.ts
           rm -rf src/core/plugins/messagefix
           cat > src/core/plugins/index.ts <<'TS'
           import type { PluginInstanceInternal } from "@lib/addons/plugins/types";
