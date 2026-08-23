@@ -83,6 +83,7 @@ export default defineCorePlugin({
                     fetch("https://codeberg.org/raincord/badges/raw/branch/main/badges.json"),
                     fetch("https://codeberg.org/raincord/badges/raw/branch/main/assets/roles/roles.json"),
                 ]);
+                if (!badgesRes.ok || !rolesRes.ok) throw new Error("Badge service unavailable");
 
                 const badgesData: BadgeData = await badgesRes.json();
                 const rolesData: RolesData = await rolesRes.json();
@@ -122,6 +123,9 @@ export default defineCorePlugin({
                 });
 
                 FluxDispatcher.dispatch({ type: "USER_UPDATE", user: { id: userId } });
+            } catch (error) {
+                console.warn("[CloudCord Badges] Could not load optional badge data", error);
+                badgesCache.set(userId, []);
             } finally {
                 pendingRequests.delete(userId);
             }

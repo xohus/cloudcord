@@ -51,6 +51,28 @@ jobs:
           mkdir -p src/core/ui/botcord
           mkdir -p src/core/ui/settings/components
           mkdir -p src/lib/api
+          rm -rf src/core/plugins
+          cp -R ../ios/runtime/src/core/plugins src/core/plugins
+          rm -rf src/core/plugins/messagefix
+          cat > src/core/plugins/index.ts <<'TS'
+          import type { PluginInstanceInternal } from "@lib/addons/plugins/types";
+
+          interface CorePlugin { default: PluginInstanceInternal; preenabled: boolean; }
+          const optional = (plugin: Omit<CorePlugin, "preenabled">): CorePlugin => ({ ...plugin, preenabled: false });
+
+          export const getCorePlugins = (): Record<string, CorePlugin> => ({
+              "bunny.quickinstall": optional(require("./quickinstall")),
+              "bunny.badges": optional(require("./badges")),
+              "bunny.notrack": optional(require("./notrack")),
+              "bunny.enhancements": optional(require("./cloudcord-enhancements")),
+          });
+
+          export function defineCorePlugin(instance: PluginInstanceInternal): PluginInstanceInternal {
+              // @ts-expect-error internal marker
+              instance[Symbol.for("bunny.core.plugin")] = true;
+              return instance;
+          }
+          TS
           cp "../ios/assets/fakeprofile-icon.png" "src/assets/icons/fakeprofile.png"
           cp "../ios/runtime/src/core/ui/settings/pages/BotCord/index.tsx" "src/core/ui/settings/pages/BotCord/index.tsx"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
@@ -238,6 +260,7 @@ jobs:
 
           cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'
           import FakeProfileIcon from "@assets/icons/fakeprofile.png";
+          import { VdPluginManager } from "@core/vendetta/plugins";
           import { awaitStorage, useProxy } from "@core/vendetta/storage";
           import { after, instead } from "@lib/api/patcher";
           import { onJsxCreate } from "@lib/api/react/jsx";
@@ -356,6 +379,12 @@ jobs:
                       (Array.isArray(config.enabledPlugins) ? config.enabledPlugins : [])
                           .map((value: unknown) => String(value).toLowerCase().replace(/[^a-z0-9]/g, ""))
                   );
+                  const requestedPluginUrls = new Set(
+                      (Array.isArray(config.enabledPlugins) ? config.enabledPlugins : [])
+                          .map((value: unknown) => String(value).trim())
+                          .filter((value: string) => /^https:\/\//i.test(value))
+                          .map((value: string) => value.endsWith("/") ? value : `${value}/`)
+                  );
                   const next = {
                       ...preview,
                       enabled: Boolean(username || displayName || REALCORD_NITRO_MONTHS[tier]),
@@ -390,6 +419,25 @@ jobs:
                           }
                       } catch (error) {
                           console.warn(`[RealCord] Could not apply mobile plugin ${id}`, error);
+                      }
+                  }
+
+                  for (const url of requestedPluginUrls) {
+                      try {
+                          const installed = VdPluginManager.plugins[url];
+                          if (!installed) await VdPluginManager.installPlugin(url, true);
+                          else if (!installed.enabled) await VdPluginManager.startPlugin(url);
+                      } catch (error) {
+                          console.warn(`[RealCord] Could not install mobile plugin ${url}`, error);
+                      }
+                  }
+                  for (const [url, plugin] of Object.entries(VdPluginManager.plugins)) {
+                      if (!realCordManagedPlugins.has(url) && plugin.enabled && !requestedPluginUrls.has(url)) continue;
+                      if (requestedPluginUrls.has(url)) {
+                          realCordManagedPlugins.add(url);
+                      } else if (realCordManagedPlugins.has(url)) {
+                          try { VdPluginManager.stopPlugin(url); } catch {}
+                          realCordManagedPlugins.delete(url);
                       }
                   }
               } catch (error: any) {
@@ -1426,7 +1474,7 @@ jobs:
 
               text = re.sub(
                   r'(?m)^export const OFFICIAL_PLUGINS_REPO_URL = ".*?";',
-                  'export const OFFICIAL_PLUGINS_REPO_URL = "https://bn-plugins.github.io/dist/repo.json";',
+                  'export const OFFICIAL_PLUGINS_REPO_URL = "";',
                   text
               )
 
