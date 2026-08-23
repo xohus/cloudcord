@@ -374,6 +374,11 @@ jobs:
                   }
 
                   for (const [id, manifest] of registeredPlugins) {
+                      if (id === "bunny.messagefix") {
+                          if (isPluginEnabled(id)) disablePlugin(id);
+                          realCordManagedPlugins.delete(id);
+                          continue;
+                      }
                       const normalizedId = id.toLowerCase().replace(/[^a-z0-9]/g, "");
                       const normalizedName = String((manifest as any)?.display?.name || (manifest as any)?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
                       const requested = requestedPlugins.has(normalizedId) || requestedPlugins.has(normalizedName);
