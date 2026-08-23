@@ -1,0 +1,69 @@
+name: Build CloudCord iOS 341.0
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          brew install ldid
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+
+      - name: Download private Discord 341.0 base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download ios-base-341 \
+            --repo xohus/cloudcord \
+            --pattern Discord-341.0-base.ipa \
+            --output Discord-341.0-base.ipa
+
+      - name: Build sideload runtime
+        working-directory: ios/native-ios
+        env:
+          THEOS: ${{ runner.temp }}/theos
+        run: |
+          sed -i '' 's/^BUNDLE_NAME = CloudCordResources$/BUNDLE_NAME = BunnyResources/' Makefile
+          sed -i '' 's/^TWEAK_NAME = CloudCordTweak$/LIBRARY_NAME = CloudCordTweak/' Makefile
+          sed -i '' 's#$(THEOS_MAKE_PATH)/tweak.mk#$(THEOS_MAKE_PATH)/library.mk#' Makefile
+          cat > Sources/SubstrateCompat.m <<'OBJC'
+          #import <objc/runtime.h>
+          void MSHookMessageEx(Class targetClass, SEL selector, IMP replacement, IMP *original) {
+              Method method = class_getInstanceMethod(targetClass, selector);
+              if (!method) return;
+              IMP previous = method_getImplementation(method);
+              if (original) *original = previous;
+              method_setImplementation(method, replacement);
+          }
+          OBJC
+          make package FINALPACKAGE=1
+
+      - name: Package Discord 341.0 IPA
+        run: |
+          python3 ios/scripts/package-cloudcord-ipa.py \
+            --discord-ipa Discord-341.0-base.ipa \
+            --runtime-deb "$(find ios/native-ios/packages -name '*.deb' -print -quit)" \
+            --output cloudcord0.ipa
+          unzip -p cloudcord0.ipa Payload/Discord.app/Info.plist | grep -q '<string>341.0</string>'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CloudCord-iOS-341.0
+          path: cloudcord0.ipa
+
+      - name: Publish CloudCord iOS download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: new_beta
+          name: CloudCord iOS Beta
+          prerelease: true
+          make_latest: false
+          files: cloudcord0.ipa
