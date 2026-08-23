@@ -1421,6 +1421,12 @@ jobs:
               text = constants.read_text(encoding="utf-8", errors="ignore")
 
               text = re.sub(
+                  r'(?m)^export const OFFICIAL_PLUGINS_REPO_URL = ".*?";',
+                  'export const OFFICIAL_PLUGINS_REPO_URL = "https://bn-plugins.github.io/dist/repo.json";',
+                  text
+              )
+
+              text = re.sub(
                   r'export const DISCORD_SERVER = ".*?";',
                   f'export const DISCORD_SERVER = "{DISCORD_URL}";',
                   text
