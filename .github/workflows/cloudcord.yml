@@ -283,8 +283,6 @@ jobs:
           const useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
           const badgeRenderProps = new Map<string, Record<string, any>>();
           const simpleSheets = findByProps("showSimpleActionSheet") as any;
-          const alertApi = findByProps("openAlert", "dismissAlert") as any;
-          const alertComponents = findByProps("AlertModal", "AlertActions") as any;
           const overriddenKeys = new Set([
               "username", "globalName", "displayName", "publicFlags", "flags", "badges", "profileBadges",
               "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "getPreviewBanner", "hasFlag",
@@ -333,7 +331,6 @@ jobs:
           let initPromise: Promise<void> | null = null;
           let realCordSyncTimer: ReturnType<typeof setInterval> | null = null;
           const realCordManagedPlugins = new Set<string>();
-          let realCordSubscriberDate = "";
 
           const REALCORD_NITRO_MONTHS: Record<string, number> = {
               bronze: 1, silver: 3, gold: 6, platinum: 12,
@@ -351,10 +348,6 @@ jobs:
                   const username = String(config.customUsername || "").trim();
                   const displayName = String(config.customDisplayName || "").trim();
                   const tier = String(config.nitroTier || "").toLowerCase();
-                  const timestamp = Number(config.subscriberDate || 0);
-                  realCordSubscriberDate = timestamp > 0
-                      ? new Date(timestamp * 1000).toLocaleDateString()
-                      : "";
                   const requestedPlugins = new Set(
                       (Array.isArray(config.enabledPlugins) ? config.enabledPlugins : [])
                           .map((value: unknown) => String(value).toLowerCase().replace(/[^a-z0-9]/g, ""))
@@ -410,41 +403,6 @@ jobs:
               } satisfies PreviewSettings;
               preview = rootSettings.fakeProfile as PreviewSettings;
               configReady = true;
-          }
-
-          const REALCORD_MILESTONES = [
-              ["bronze", "Bronze", "1 Month"], ["silver", "Silver", "3 Months"],
-              ["gold", "Gold", "6 Months"], ["platinum", "Platinum", "1 Year"],
-              ["diamond", "Diamond", "2 Years"], ["emerald", "Emerald", "3 Years"],
-              ["ruby", "Ruby", "5 Years"], ["opal", "Opal", "6+ Years"]
-          ] as const;
-
-          function realCordMilestoneImage(tier: string) {
-              return `https://raw.githubusercontent.com/xohus/realcord/main/mobile/ios/ControlPanel/RealCordControl/Resources/NitroMilestones/${tier}.png`;
-          }
-
-          function openRealCordNitroMilestones() {
-              if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName !== "RealCord") return;
-              const AlertModal = alertComponents?.AlertModal;
-              if (!AlertModal || !alertApi?.openAlert) return;
-              const selectedTier = Object.entries(REALCORD_NITRO_MONTHS).find(([, months]) => months === preview.nitroMonths)?.[0] || "silver";
-              alertApi.openAlert("realcord-nitro-milestones", <AlertModal
-                  title="Celebrate Your Nitro Milestones in Style"
-                  content="Your badge will automatically evolve over time."
-                  extraContent={<View style={{ width: "100%", backgroundColor: "#0b0b0e", borderRadius: 18, padding: 14 }}>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "space-around", gap: 10 }}>
-                          {REALCORD_MILESTONES.map(([tier, label, duration]) => {
-                              const selected = tier === selectedTier;
-                              return <View key={tier} style={{ width: "29%", minHeight: selected ? 150 : 122, alignItems: "center", justifyContent: "center", paddingVertical: 10, borderRadius: 12, backgroundColor: selected ? "#17181d" : "transparent", borderWidth: selected ? 1 : 0, borderColor: "#35363d" }}>
-                                  <Image source={{ uri: realCordMilestoneImage(tier) }} resizeMode="contain" style={{ width: 72, height: 72 }} />
-                                  <Text variant="text-md/semibold" color="text-normal">{label}</Text>
-                                  <Text variant="text-xs/normal" color="text-muted">{duration}</Text>
-                                  {selected && realCordSubscriberDate ? <Text variant="text-xs/normal" color="text-muted" style={{ textAlign: "center", marginTop: 6 }}>Subscriber since{`\n${realCordSubscriberDate}`}</Text> : null}
-                              </View>;
-                          })}
-                      </View>
-                  </View>}
-              />);
           }
 
           const diagnostics = {
@@ -850,9 +808,6 @@ jobs:
                           const props = badgeRenderProps.get(rendered?.props?.id);
                           if (props) {
                               Object.assign(rendered.props, props);
-                              if (rendered?.props?.id === "fakeprofile-nitro" && (globalThis as any).__CLOUDCORD_LOADER__?.loaderName === "RealCord") {
-                                  rendered.props.onPress = openRealCordNitroMilestones;
-                              }
                           }
                       });
                       diagnostics.patches += 1;
@@ -1631,6 +1586,11 @@ jobs:
                       "        initSettings(),",
                       "        initSettings(),\n        initializeFakeProfile(),"
                   )
+
+              text = text.replace(
+                  "        initSettings(),",
+                  '        ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName === "RealCord" ? Promise.resolve() : initSettings()),'
+              )
 
               if "await initLegacyRuntimeRefresh();" not in text:
                   text = text.replace(
