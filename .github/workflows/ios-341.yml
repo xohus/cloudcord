@@ -34,6 +34,16 @@ jobs:
           sed -i '' 's/^BUNDLE_NAME = CloudCordResources$/BUNDLE_NAME = BunnyResources/' Makefile
           sed -i '' 's/^TWEAK_NAME = CloudCordTweak$/LIBRARY_NAME = CloudCordTweak/' Makefile
           sed -i '' 's#$(THEOS_MAKE_PATH)/tweak.mk#$(THEOS_MAKE_PATH)/library.mk#' Makefile
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("Sources/Sideloading.x")
+          text = source.read_text()
+          text = text.replace(
+              "NSMutableDictionary *info    = [%orig mutableCopy];",
+              "NSDictionary *originalInfo = %orig;\n    NSMutableDictionary *info = [originalInfo mutableCopy];",
+          )
+          source.write_text(text)
+          PY
           cat > Sources/SubstrateCompat.m <<'OBJC'
           #import <objc/runtime.h>
           void MSHookMessageEx(Class targetClass, SEL selector, IMP replacement, IMP *original) {
