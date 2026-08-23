@@ -377,6 +377,12 @@ export async function updatePlugins() {
             enabled: preenabled ?? true
         };
 
+        // MessageFix replaces Discord's sendMessage implementation and causes
+        // stale composer text on current mobile builds. RealCord does not need it.
+        if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName === "RealCord" && id === "bunny.messagefix") {
+            pluginSettings[id] = { enabled: false };
+        }
+
         registeredPlugins.set(id, instance.manifest);
         corePluginInstances.set(id, instance);
     }
