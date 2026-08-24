@@ -613,6 +613,21 @@ static void registerBridgeMethods(void)
         }
 
         cloudcordDirectory = getPyoncordDirectory();
+
+        // Discord 341 can retain an incompatible native theme in the app container
+        // across reinstalls. Remove it once so its transparent colors cannot be
+        // applied before the verified CloudCord runtime has initialized.
+        NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+        if (![defaults boolForKey:@"CloudCordThemeResetForDiscord341"])
+        {
+            [[NSFileManager defaultManager]
+                removeItemAtURL:[cloudcordDirectory
+                                    URLByAppendingPathComponent:@"current-theme.json"]
+                         error:nil];
+            [defaults setBool:YES forKey:@"CloudCordThemeResetForDiscord341"];
+            BunnyLog(@"Cleared the pre-341 cached theme");
+        }
+
         loaderConfig      = [[LoaderConfig alloc] init];
         [loaderConfig loadConfig];
 
