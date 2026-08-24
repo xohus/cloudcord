@@ -5,6 +5,13 @@ permissions:
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ios-341.yml"
+      - "ios/native-ios/**"
+      - "ios/scripts/package-cloudcord-ipa.py"
 
 jobs:
   build:
