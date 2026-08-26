@@ -152,6 +152,11 @@ export default definePlugin({
                     match: /(?<=forceOpen:.{0,40}?ariaHidden:!0,)children:(?=.{0,50}?(\i)\.id)/,
                     replace: "children:$1.component?$self.renderBadgeComponent({...$1}) :"
                 },
+                // Path with Discord's 2026-04 badge discovery experiment enabled
+                {
+                    match: /(?<=fallbackIconSrc:.{0,50}?)children:(?=.{0,50}?(\i)\.id)/,
+                    replace: "children:$1.component?$self.renderBadgeComponent({...$1}):"
+                },
                 // handle onClick and onContextMenu
                 {
                     match: /href:(\i)\.link/,
