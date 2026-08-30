@@ -787,8 +787,12 @@ fakeObfuscatedEmail(real: string | null) {
                 if (!isEnabled) return [];
                 profileData = storedData;
             } else {
+                // Keep checking the shared profile after its short cache window. Previously
+                // desktop stopped requesting as soon as one response was cached, so later
+                // changes made on mobile could never appear until Discord restarted.
+                requestSharedProfile(userId);
                 profileData = sharedProfiles.get(userId);
-                if (!profileData) { requestSharedProfile(userId); return []; }
+                if (!profileData) return [];
             }
 
             // Suppress real Discord badges by zeroing publicFlags on the live user object
