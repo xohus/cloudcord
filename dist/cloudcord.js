@@ -2219,7 +2219,7 @@
       HTTP_REGEX_MULTI = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
       BUNNY_PROXY_PREFIX = "https://bn-plugins.github.io/vd-proxy";
       NEXPID_PLUGINS_REPO_URL = "https://revenge.nexpid.xyz";
-      OFFICIAL_PLUGINS_REPO_URL = "";
+      OFFICIAL_PLUGINS_REPO_URL = "https://bn-plugins.github.io/dist/repo.json";
       VD_PROXY_PREFIX = "https://vd-plugins.github.io/proxy";
       VD_DISCORD_SERVER_ID = "1015931589865246730";
       VD_PLUGINS_CHANNEL_ID = "1091880384561684561";
@@ -3872,15 +3872,12 @@
             continue;
           }
           exportsKeysLength = Reflect.ownKeys(actualExports).length;
-          if (_source[prop] && exportsKeysLength >= _source[prop]) {
+          if (_source[prop] && exportsKeysLength <= _source[prop]) {
             continue;
           }
           _module[prop] = actualExports[prop];
           _source[prop] = Reflect.ownKeys(actualExports).length;
           cacher.cacheId(id);
-          if (exportsKeysLength === 1) {
-            redesignProps.delete(prop);
-          }
         }
       }
       cacher.finish();
@@ -4387,7 +4384,7 @@
       init_storage();
       init_settings();
       import_react_native5 = __toESM(require_react_native());
-      CURRENT_RUNTIME_URL = "https://raw.githubusercontent.com/xohus/cloudcord/main/dist/cc.js";
+      CURRENT_RUNTIME_URL = "https://cloudcord.xohus.lol/api/proxy/raw/dist/cc.js";
     }
   });
 
@@ -4485,6 +4482,745 @@
     }
   });
 
+  // src/core/i18n/default.json
+  var default_default;
+  var init_default = __esm({
+    "src/core/i18n/default.json"() {
+      default_default = {
+        ABOUT: "About",
+        ACTIONS: "Actions",
+        ARE_YOU_SURE_TO_CLEAR_DATA: "Are you sure you wish to clear the data of {name}?",
+        ARE_YOU_SURE_TO_DELETE_PLUGIN: "Are you sure you wish to delete {name}? This will clear all of the plugin's data.",
+        ARE_YOU_SURE_TO_DELETE_THEME: "Are you sure you wish to delete {name}?",
+        ASSET_BROWSER: "Asset Browser",
+        BRAND: "Brand",
+        PUPU: "CloudCord",
+        PUPU_URL: "CloudCord URL",
+        BROWSER: "Addon Browser",
+        BYTECODE: "Bytecode",
+        CANCEL: "Cancel",
+        CLEAR: "Clear",
+        CLEAR_BUNDLE: "Clear JS Bundle",
+        CLEAR_BUNDLE_DESC: "Clear the cached bundle. This will force a re-download of the bundle next app launch.",
+        CLEAR_DATA: "Clear data",
+        CLEAR_DATA_FAILED: "Failed to clear data for {name}",
+        CLEAR_DATA_SUCCESSFUL: "Cleared data for {name}",
+        CODEBERG: "",
+        CODENAME: "Codename",
+        COMMAND_DEBUG_DESC: "Send CloudCord debug info.",
+        COMMAND_DEBUG_OPT_EPHEMERALLY: "Send debug info ephemerally.",
+        COMMAND_EVAL_DESC: "Evaluate JavaScript code.",
+        COMMAND_EVAL_OPT_ASYNC: "Whether to support 'await' in code. Must explicitly return for result (default: false)",
+        COMMAND_EVAL_OPT_CODE: "The code to evaluate.",
+        COMMAND_PLUGINS_DESC: "Send list of installed plugins.",
+        COMMAND_PLUGINS_OPT_EPHEMERALLY: "Send plugins list ephemerally.",
+        COMPONENT: "Component",
+        CONFIRMATION_LINK_IS_A_TYPE: "This link is a **{urlType, select, plugin {Plugin} theme {Theme} other {Add-on}}**, would you like to install it?",
+        CONNECT_TO_DEBUG_WEBSOCKET: "Connect to debug WebSocket",
+        CONNECT_TO_REACT_DEVTOOLS: "Connect to React DevTools",
+        CONTINUE: "Continue",
+        COPIED_TO_CLIPBOARD: "Copied to clipboard",
+        COPY_URL: "Copy URL",
+        DEBUG: "Debug",
+        DEBUGGER_URL: "RainDevTools URL",
+        AUTO_DEBUGGER: "Automatically connect to RainDevTools",
+        DEVTOOLS_URL: "React DevTools URL",
+        AUTO_DEVTOOLS: "Automatically connect to React Devtools",
+        DELETE: "Delete",
+        DESC_EXTRACT_FONTS_FROM_THEME: 'Looks out for "fonts" field in your currently applied theme and install it.',
+        DEVELOPER: "Developer",
+        DEVELOPER_SETTINGS: "Developer Settings",
+        DISABLE_THEME: "Disable Theme",
+        DISABLE_UPDATES: "Disable Updates",
+        DISCORD_SERVER: "Discord Server",
+        DONE: "Done",
+        ENABLE_EVAL_COMMAND: "Enable /eval command",
+        ENABLE_EVAL_COMMAND_DESC: "Evaluate JavaScript directly from a command. Be cautious when using this command as it may pose a security risk. Make sure to know what you are doing.",
+        ENABLE_UPDATES: "Enable Updates",
+        ERROR_BOUNDARY_TOOLS_LABEL: "ErrorBoundary Tools",
+        EXTRACT: "Extract",
+        FONT_NAME: "Font Name",
+        FONTS: "Fonts",
+        GENERAL: "General",
+        GITHUB: "GitHub",
+        HOLD_UP: "Hold Up",
+        INFO: "Info",
+        INSTALL: "Install",
+        INSTALL_ADDON: "Install an add-on",
+        INSTALL_FONT: "Install a font",
+        INSTALL_PLUGIN: "Install a plugin",
+        INSTALL_REACT_DEVTOOLS: "Install React DevTools",
+        INSTALL_THEME: "Install a theme",
+        LABEL_EXTRACT_FONTS_FROM_THEME: "Extract font from theme",
+        LINKS: "Links",
+        LOAD_FROM_CUSTOM_URL: "Load from custom URL",
+        LOAD_FROM_CUSTOM_URL_DEC: "Load CloudCord from a custom endpoint.",
+        LOAD_REACT_DEVTOOLS: "Load React DevTools",
+        LOADER: "Loader",
+        MACHINE_ID: "Machine ID",
+        MANUFACTURER: "Manufacturer",
+        MESSAGE: "Message",
+        MISCELLANEOUS: "Miscellaneous",
+        MODAL_RELOAD_REQUIRED: "Reload app?",
+        MODAL_RELOAD_REQUIRED_DESC: "A reload is required to see the changes. Do you want to reload now?",
+        MODAL_THEME_REFETCHED: "Theme refetched",
+        MODAL_THEME_REFETCHED_DESC: "A reload is required to see the changes. Do you want to reload now?",
+        MODAL_UNPROXIED_PLUGIN_DESC: "The plugin you are trying to install has not been proxied/verified by staff. Are you sure you want to continue?",
+        MODAL_UNPROXIED_PLUGIN_HEADER: "Unproxied Plugin",
+        MODEL: "Model",
+        MODELID: "Model Identifier",
+        OPEN_IN_BROWSER: "Open in Browser",
+        OPERATING_SYSTEM: "Operating System",
+        OVERFLOW_PLUGIN_SETTINGS: "Plugin Settings",
+        PLATFORM: "Platform",
+        PLUGIN_REFETCH_FAILED: "Failed to refetch plugin",
+        PLUGIN_REFETCH_SUCCESSFUL: "Successfully refetched plugin",
+        PLUGINS: "Plugins",
+        REFETCH: "Refetch",
+        RELOAD: "Reload",
+        RELOAD_DISCORD: "Reload Discord",
+        RELOAD_IN_NORMAL_MODE: "Reload in Normal Mode",
+        RELOAD_IN_NORMAL_MODE_DESC: "Safe mode currently enabled, tap to reload in normal mode",
+        RELOAD_IN_SAFE_MODE: "Reload in Safe Mode",
+        RELOAD_IN_SAFE_MODE_DESC: "Tap to reload Discord without loading addons",
+        REMOVE: "Remove",
+        RESTART_REQUIRED_TO_TAKE_EFFECT: "Restart is required to take effect",
+        RETRY: "Retry",
+        RETRY_RENDER: "Retry Render",
+        SAFE_MODE: "Safe Mode",
+        SAFE_MODE_NOTICE_FONTS: "You are in safe mode, meaning fonts have been temporarily disabled. {enabled, select, true {If a font appears to be causing the issue, you can press below to disable it persistently.} other {}}",
+        SAFE_MODE_NOTICE_PLUGINS: "You are in safe mode, so plugins cannot be loaded. Disable any misbehaving plugins, then return to Normal Mode from the General settings page.",
+        SAFE_MODE_NOTICE_THEMES: "You are in safe mode, meaning themes have been temporarily disabled. {enabled, select, true {If a theme appears to be causing the issue, you can press below to disable it persistently.} other {}}",
+        SEARCH: "Search",
+        SEPARATOR: ", ",
+        SETTINGS_ACTIVATE_DISCORD_EXPERIMENTS: "Activate Discord Experiments",
+        SETTINGS_ACTIVATE_DISCORD_EXPERIMENTS_DESC: "Warning: Messing with this feature may lead to account termination. I heavily discourage using this and am not responsible for anything that happens if you use it",
+        STACK_TRACE: "Stack Trace",
+        SUCCESSFULLY_INSTALLED: "Successfully installed",
+        THEME_EXTRACTOR_DESC: "This pack overrides the following: {fonts}",
+        THEME_REFETCH_FAILED: "Failed to refetch theme",
+        THEME_REFETCH_SUCCESSFUL: "Successfully refetched theme",
+        THEMES: "Themes",
+        THEMES_RELOAD_FOR_CHANGES: "Reload the app to fully apply changes",
+        TOASTS_INSTALLED_PLUGIN: "Installed plugin",
+        TOASTS_PLUGIN_UPDATE: "{update, select, true {Enabled} other {Disabled}} updates for {name}",
+        UH_OH: "Uh Oh",
+        UNINSTALL: "Uninstall",
+        UNINSTALL_TITLE: "Uninstall {title}",
+        URL_PLACEHOLDER: "https://github.com/xohus/cloudcord",
+        VERSION: "Version",
+        VERSIONS: "Versions"
+      };
+    }
+  });
+
+  // src/core/i18n/index.ts
+  function fetchLocale(locale) {
+    var resolvedLocale = _lastSetLocale = languageMap[locale] ?? locale;
+    logger.log("[i18n] fetchLocale called:", locale, "->", resolvedLocale);
+    if (!_loadedLocale.has(resolvedLocale)) {
+      _loadedLocale.add(resolvedLocale);
+      if (resolvedLocale.toLowerCase().startsWith("en")) {
+        logger.log("[i18n] Using local default.json for English locale");
+        _loadedStrings[resolvedLocale] = default_default;
+        _currentLocale = resolvedLocale;
+      } else {
+        fetch(`https://codeberg.org/cocobo1/kettu-i18n/raw/branch/main/base/${resolvedLocale}.json`).then((r) => r.json()).then((strings) => {
+          logger.log("[i18n] Loaded strings for:", resolvedLocale);
+          _loadedStrings[resolvedLocale] = strings;
+          _currentLocale = resolvedLocale;
+        }).catch((e) => logger.error(`[i18n] Error fetching strings for ${resolvedLocale}: ${e}`));
+      }
+    } else {
+      _currentLocale = resolvedLocale;
+    }
+  }
+  function initFetchI18nStrings() {
+    var attempts = 0;
+    var checkAndFetch = () => {
+      attempts++;
+      try {
+        var LocaleStore = findByStoreName("LocaleStore");
+        logger.log("[i18n] Attempt", attempts, "- LocaleStore:", !!LocaleStore);
+        if (!LocaleStore) {
+          logger.log("[i18n] LocaleStore not found yet");
+          return false;
+        }
+        if (LocaleStore?._isInitialized !== true) {
+          logger.log("[i18n] LocaleStore not initialized yet");
+          return false;
+        }
+        var locale = LocaleStore.locale;
+        if (locale) {
+          logger.log("[i18n] Using LocaleStore:", locale);
+          fetchLocale(locale);
+          return true;
+        }
+      } catch (e) {
+        logger.log("[i18n] Error:", e);
+      }
+      return false;
+    };
+    var tryTimes = () => {
+      if (checkAndFetch())
+        return;
+      if (attempts < 15) {
+        setTimeout(tryTimes, 500);
+      }
+    };
+    tryTimes();
+    var cb = (e) => {
+      if (e?.settings?.changes?.loading) {
+        logger.log("[i18n] Settings loading, skipping...");
+        return;
+      }
+      var locale = e?.settings?.changes?.protoToSave?.localization?.locale?.value;
+      logger.log("[i18n] Locale changed:", locale);
+      if (locale) {
+        logger.log("[i18n] Found locale in event:", locale);
+        fetchLocale(locale);
+      }
+    };
+    FluxDispatcher.subscribe("USER_SETTINGS_PROTO_UPDATE_EDIT_INFO", cb);
+    return () => {
+      FluxDispatcher.unsubscribe("USER_SETTINGS_PROTO_UPDATE_EDIT_INFO", cb);
+    };
+  }
+  function formatString(key, val) {
+    var str = Strings[key];
+    return new IntlMessageFormat(str).format(val);
+  }
+  var IntlMessageFormat, _currentLocale, _lastSetLocale, _loadedLocale, _loadedStrings, Strings, languageMap;
+  var init_i18n = __esm({
+    "src/core/i18n/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_logger();
+      init_common();
+      init_wrappers();
+      init_default();
+      IntlMessageFormat = findByNameLazy("MessageFormat");
+      _currentLocale = null;
+      _lastSetLocale = null;
+      _loadedLocale = /* @__PURE__ */ new Set();
+      _loadedStrings = {};
+      Strings = new Proxy({}, {
+        get: (_t, prop) => {
+          if (_currentLocale && _loadedStrings[_currentLocale]?.[prop]) {
+            return _loadedStrings[_currentLocale]?.[prop];
+          }
+          return default_default[prop];
+        }
+      });
+      languageMap = {
+        "ar-SA": "ar",
+        "bn-BD": "bn",
+        "ca-ES": "ca",
+        "de-DE": "de",
+        "es-ES": "es",
+        "es-419": "es",
+        "fa-IR": "fa",
+        "fi-FI": "fi",
+        "fr-FR": "fr",
+        "hi-IN": "hi",
+        "hr-HR": "hr",
+        "hu-HU": "hu",
+        "id-ID": "id",
+        "it-IT": "it",
+        "ja-JP": "ja",
+        "pl-PL": "pl",
+        "pt-BR": "pt_BR",
+        "ru-RU": "ru",
+        "sk-SK": "sk",
+        "sv-SE": "sv",
+        "tr-TR": "tr",
+        "vi-VN": "vi"
+      };
+    }
+  });
+
+  // src/core/vendetta/plugins.ts
+  var plugins, pluginInstance, VdPluginManager;
+  var init_plugins = __esm({
+    "src/core/vendetta/plugins.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_storage();
+      init_settings();
+      init_utils();
+      init_constants();
+      init_logger();
+      plugins = wrapSync(createStorage(createMMKVBackend("VENDETTA_PLUGINS")));
+      pluginInstance = {};
+      VdPluginManager = {
+        plugins,
+        pluginFetch(url2) {
+          return _async_to_generator(function* () {
+            if (url2.startsWith(VD_PROXY_PREFIX)) {
+              url2 = url2.replace("https://bunny-mod.github.io/plugins-proxy", BUNNY_PROXY_PREFIX).replace(VD_PROXY_PREFIX, BUNNY_PROXY_PREFIX);
+            }
+            return yield safeFetch(url2, {
+              cache: "no-store"
+            });
+          })();
+        },
+        fetchPlugin(id) {
+          return _async_to_generator(function* () {
+            if (!id.endsWith("/"))
+              id += "/";
+            var existingPlugin = plugins[id];
+            var pluginManifest;
+            try {
+              pluginManifest = yield (yield this.pluginFetch(id + "manifest.json")).json();
+            } catch (e) {
+              throw new Error(`Failed to fetch manifest for ${id}`);
+            }
+            var pluginJs;
+            if (existingPlugin?.manifest.hash !== pluginManifest.hash) {
+              try {
+                pluginJs = yield (yield this.pluginFetch(id + (pluginManifest.main || "index.js"))).text();
+              } catch (e) {
+              }
+            }
+            if (!pluginJs && !existingPlugin)
+              throw new Error(`Failed to fetch JS for ${id}`);
+            plugins[id] = {
+              id,
+              manifest: pluginManifest,
+              enabled: existingPlugin?.enabled ?? false,
+              update: existingPlugin?.update ?? true,
+              js: pluginJs ?? existingPlugin.js
+            };
+          }).call(this);
+        },
+        installPlugin(id, enabled = true) {
+          return _async_to_generator(function* () {
+            if (!id.endsWith("/"))
+              id += "/";
+            if (typeof id !== "string" || id in plugins)
+              throw new Error("Plugin already installed");
+            yield this.fetchPlugin(id);
+            if (enabled)
+              yield this.startPlugin(id);
+          }).call(this);
+        },
+        /**
+         * @internal
+         */
+        evalPlugin(plugin) {
+          return _async_to_generator(function* () {
+            var vendettaForPlugins = {
+              ...globalThis.vendetta,
+              plugin: {
+                id: plugin.id,
+                manifest: plugin.manifest,
+                // Wrapping this with wrapSync is NOT an option.
+                storage: yield createStorage(createMMKVBackend(plugin.id))
+              },
+              logger: new LoggerClass(`CloudCord \xBB ${plugin.manifest.name}`)
+            };
+            var pluginString = `vendetta=>{return ${plugin.js}}
+//# sourceURL=${plugin.id}`;
+            var raw = (0, eval)(pluginString)(vendettaForPlugins);
+            var ret = typeof raw === "function" ? raw() : raw;
+            return ret?.default ?? ret ?? {};
+          })();
+        },
+        startPlugin(id) {
+          return _async_to_generator(function* () {
+            if (!id.endsWith("/"))
+              id += "/";
+            var plugin = plugins[id];
+            if (plugin.id.includes("xxjust") == true || plugin.id.includes("DevNjay") == true) {
+              return;
+            }
+            if (!plugin)
+              throw new Error("Attempted to start non-existent plugin");
+            try {
+              if (!settings.safeMode?.enabled) {
+                var pluginRet = yield this.evalPlugin(plugin);
+                pluginInstance[id] = pluginRet;
+                pluginRet.onLoad?.();
+              }
+              plugin.enabled = true;
+            } catch (e) {
+              logger.error(`Plugin ${plugin.id} errored whilst loading, and will be unloaded`, e);
+              try {
+                pluginInstance[plugin.id]?.onUnload?.();
+              } catch (e2) {
+                logger.error(`Plugin ${plugin.id} errored whilst unloading`, e2);
+              }
+              delete pluginInstance[id];
+              plugin.enabled = false;
+            }
+          }).call(this);
+        },
+        stopPlugin(id, disable = true) {
+          if (!id.endsWith("/"))
+            id += "/";
+          var plugin = plugins[id];
+          var pluginRet = pluginInstance[id];
+          if (!plugin)
+            throw new Error("Attempted to stop non-existent plugin");
+          if (!settings.safeMode?.enabled) {
+            try {
+              pluginRet?.onUnload?.();
+            } catch (e) {
+              logger.error(`Plugin ${plugin.id} errored whilst unloading`, e);
+            }
+            delete pluginInstance[id];
+          }
+          if (disable)
+            plugin.enabled = false;
+        },
+        removePlugin(id) {
+          return _async_to_generator(function* () {
+            if (!id.endsWith("/"))
+              id += "/";
+            var plugin = plugins[id];
+            if (plugin.enabled)
+              this.stopPlugin(id);
+            delete plugins[id];
+            yield purgeStorage(id);
+          }).call(this);
+        },
+        /**
+         * @internal
+         */
+        initPlugins() {
+          return _async_to_generator(function* () {
+            yield awaitStorage(settings, plugins);
+            var allIds = Object.keys(plugins);
+            if (!settings.safeMode?.enabled) {
+              allSettled(allIds.filter((pl) => plugins[pl].enabled).map((pl) => _async_to_generator(function* () {
+                return plugins[pl].update && (yield this.fetchPlugin(pl).catch((e) => logger.error(e.message))), yield this.startPlugin(pl);
+              }).call(this)));
+              allIds.filter((pl) => !plugins[pl].enabled && plugins[pl].update).forEach((pl) => this.fetchPlugin(pl));
+            }
+            return () => this.stopAllPlugins();
+          }).call(this);
+        },
+        stopAllPlugins() {
+          return Object.keys(pluginInstance).forEach((p) => this.stopPlugin(p, false));
+        },
+        getSettings: (id) => pluginInstance[id]?.settings
+      };
+    }
+  });
+
+  // src/lib/api/assets/index.ts
+  var assets_exports = {};
+  __export(assets_exports, {
+    filterAssets: () => filterAssets,
+    findAsset: () => findAsset,
+    findAssetId: () => findAssetId,
+    iterateAssets: () => iterateAssets
+  });
+  function* iterateAssets() {
+    var { flagsIndex } = getMetroCache();
+    var yielded = /* @__PURE__ */ new Set();
+    for (var id in flagsIndex) {
+      if (flagsIndex[id] & ModuleFlags.ASSET) {
+        var assetId = requireModule(Number(id));
+        if (typeof assetId !== "number" || yielded.has(assetId))
+          continue;
+        yield getAssetById(assetId);
+        yielded.add(assetId);
+      }
+    }
+  }
+  function getAssetById(id) {
+    var asset = assetsModule.getAssetByID(id);
+    if (!asset)
+      return asset;
+    return Object.assign(asset, {
+      id
+    });
+  }
+  function findAsset(param) {
+    if (typeof param === "number")
+      return getAssetById(param);
+    if (typeof param === "string" && _nameToAssetCache[param]) {
+      return _nameToAssetCache[param];
+    }
+    for (var asset of iterateAssets()) {
+      if (typeof param === "string" && asset.name === param) {
+        _nameToAssetCache[param] = asset;
+        return asset;
+      } else if (typeof param === "function" && param(asset)) {
+        return asset;
+      }
+    }
+  }
+  function filterAssets(param) {
+    var filteredAssets = [];
+    for (var asset of iterateAssets()) {
+      if (typeof param === "string" ? asset.name === param : param(asset)) {
+        filteredAssets.push(asset);
+      }
+    }
+    return filteredAssets;
+  }
+  function findAssetId(name) {
+    return findAsset(name)?.id;
+  }
+  var _nameToAssetCache;
+  var init_assets = __esm({
+    "src/lib/api/assets/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_caches();
+      init_enums();
+      init_modules2();
+      init_patches();
+      _nameToAssetCache = {};
+    }
+  });
+
+  // src/lib/ui/components/wrappers/AlertModal.tsx
+  function AlertModal2(props) {
+    var forwardFailedModal = findByFilePath("modules/forwarding/native/ForwardFailedAlertModal.tsx");
+    if (!forwardFailedModal && "extraContent" in props) {
+      props.content = /* @__PURE__ */ jsxs(import_react_native6.View, {
+        style: {
+          gap: 16
+        },
+        children: [
+          /* @__PURE__ */ jsx(Text, {
+            variant: "text-md/medium",
+            color: "text-muted",
+            children: props.content
+          }),
+          /* @__PURE__ */ jsx(import_react_native6.View, {
+            children: props.extraContent
+          })
+        ]
+      });
+      delete props.extraContent;
+    }
+    return /* @__PURE__ */ jsx(_AlertModal, {
+      ...props
+    });
+  }
+  var import_react_native6, _AlertModal, _AlertActionButton, AlertActionButton2;
+  var init_AlertModal = __esm({
+    "src/lib/ui/components/wrappers/AlertModal.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_lazy();
+      init_metro();
+      init_components();
+      import_react_native6 = __toESM(require_react_native());
+      ({ AlertModal: _AlertModal, AlertActionButton: _AlertActionButton } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
+      AlertActionButton2 = _AlertActionButton;
+    }
+  });
+
+  // src/lib/ui/components/wrappers/index.ts
+  var wrappers_exports = {};
+  __export(wrappers_exports, {
+    AlertActionButton: () => AlertActionButton2,
+    AlertModal: () => AlertModal2
+  });
+  var init_wrappers2 = __esm({
+    "src/lib/ui/components/wrappers/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_AlertModal();
+    }
+  });
+
+  // src/lib/ui/color.ts
+  function isSemanticColor(sym) {
+    return colorResolver.isSemanticColor(sym);
+  }
+  function resolveSemanticColor(sym, theme = ThemeStore2.theme) {
+    return colorResolver.resolveSemanticColor(theme, sym);
+  }
+  var color, semanticColors, rawColors, ThemeStore2, colorResolver;
+  var init_color = __esm({
+    "src/lib/ui/color.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_common();
+      init_wrappers();
+      color = findByProps("SemanticColor");
+      semanticColors = color?.default?.colors ?? constants?.ThemeColorMap;
+      rawColors = color?.default?.unsafe_rawColors ?? constants?.Colors;
+      ThemeStore2 = findByStoreNameLazy("ThemeStore");
+      colorResolver = color.default.meta ??= color.default.internal;
+    }
+  });
+
+  // src/lib/ui/styles.ts
+  var styles_exports = {};
+  __export(styles_exports, {
+    TextStyleSheet: () => TextStyleSheet,
+    ThemeContext: () => ThemeContext,
+    createLegacyClassComponentStyles: () => createLegacyClassComponentStyles,
+    createStyles: () => createStyles,
+    createThemedStyleSheet: () => createThemedStyleSheet
+  });
+  function createStyles(sheet) {
+    return proxyLazy(() => Styles.createStyles(sheet));
+  }
+  function createLegacyClassComponentStyles(sheet) {
+    return proxyLazy(() => Styles.createLegacyClassComponentStyles(sheet));
+  }
+  function createThemedStyleSheet(sheet) {
+    for (var key in sheet) {
+      sheet[key] = new Proxy(import_react_native7.StyleSheet.flatten(sheet[key]), {
+        get(target, prop, receiver) {
+          var res = Reflect.get(target, prop, receiver);
+          return isSemanticColor(res) ? resolveSemanticColor(res) : res;
+        }
+      });
+    }
+    return sheet;
+  }
+  var import_react_native7, Styles, ThemeContext, TextStyleSheet;
+  var init_styles = __esm({
+    "src/lib/ui/styles.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_lazy();
+      init_wrappers();
+      init_color();
+      import_react_native7 = __toESM(require_react_native());
+      Styles = findByPropsLazy("createStyles");
+      ({ ThemeContext } = lazyDestructure(() => findByProps("ThemeContext"), {
+        hint: "object"
+      }));
+      ({ TextStyleSheet } = lazyDestructure(() => findByProps("TextStyleSheet")));
+    }
+  });
+
+  // src/lib/ui/components/Codeblock.tsx
+  function Codeblock({ selectable, style, children }) {
+    if (!selectable)
+      return /* @__PURE__ */ jsx(TextBasedCodeblock, {
+        style,
+        children
+      });
+    return import_react_native8.Platform.select({
+      ios: /* @__PURE__ */ jsx(InputBasedCodeblock, {
+        style,
+        children
+      }),
+      default: /* @__PURE__ */ jsx(TextBasedCodeblock, {
+        style,
+        children,
+        selectable: true
+      })
+    });
+  }
+  var import_react_native8, useStyles, InputBasedCodeblock, TextBasedCodeblock;
+  var init_Codeblock = __esm({
+    "src/lib/ui/components/Codeblock.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_common();
+      init_color();
+      init_styles();
+      import_react_native8 = __toESM(require_react_native());
+      useStyles = createStyles({
+        codeBlock: {
+          fontFamily: constants.Fonts.CODE_NORMAL,
+          fontSize: 12,
+          textAlignVertical: "center",
+          backgroundColor: semanticColors.CARD_BACKGROUND_DEFAULT,
+          color: semanticColors.TEXT_DEFAULT,
+          borderWidth: 1,
+          borderRadius: 12,
+          borderColor: semanticColors.BORDER_SUBTLE,
+          padding: 10
+        }
+      });
+      InputBasedCodeblock = ({ style, children }) => /* @__PURE__ */ jsx(import_react_native8.TextInput, {
+        editable: false,
+        multiline: true,
+        style: [
+          useStyles().codeBlock,
+          style && style
+        ],
+        value: children
+      });
+      TextBasedCodeblock = ({ selectable, style, children }) => /* @__PURE__ */ jsx(import_react_native8.Text, {
+        selectable,
+        style: [
+          useStyles().codeBlock,
+          style && style
+        ],
+        children
+      });
+    }
+  });
+
+  // src/lib/ui/sheets.ts
+  var sheets_exports = {};
+  __export(sheets_exports, {
+    hideSheet: () => hideSheet,
+    showSheet: () => showSheet
+  });
+  function showSheet(key, lazyImport, props) {
+    if (!("then" in lazyImport))
+      lazyImport = Promise.resolve({
+        default: lazyImport
+      });
+    actionSheet.openLazy(lazyImport, key, props ?? {});
+  }
+  function hideSheet(key) {
+    actionSheet.hideActionSheet(key);
+  }
+  var actionSheet;
+  var init_sheets = __esm({
+    "src/lib/ui/sheets.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_wrappers();
+      actionSheet = findByPropsLazy("openLazy", "hideActionSheet");
+    }
+  });
+
+  // src/core/ui/reporter/utils/isStack.tsx
+  function isComponentStack(error) {
+    return "componentStack" in error && typeof error.componentStack === "string";
+  }
+  function hasStack(error) {
+    return !!error.stack;
+  }
+  var init_isStack = __esm({
+    "src/core/ui/reporter/utils/isStack.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+    }
+  });
+
+  // src/core/ui/reporter/utils/parseComponentStack.tsx
+  function parseComponentStack(componentStack) {
+    return componentStack.split(/[\s|\n]+?in /).filter(Boolean);
+  }
+  var init_parseComponentStack = __esm({
+    "src/core/ui/reporter/utils/parseComponentStack.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+    }
+  });
+
   // globals:react
   var require_react = __commonJS({
     "globals:react"(exports, module) {
@@ -4494,12 +5230,2509 @@
     }
   });
 
+  // src/core/ui/reporter/components/ErrorComponentStackCard.tsx
+  function ErrorComponentStackCard(props) {
+    var [collapsed, setCollapsed] = (0, import_react.useState)(true);
+    var stack;
+    try {
+      stack = parseComponentStack(props.componentStack);
+      stack = collapsed ? stack.slice(0, 4) : stack;
+    } catch (e) {
+      return;
+    }
+    return /* @__PURE__ */ jsx(Card, {
+      children: /* @__PURE__ */ jsxs(import_react_native9.View, {
+        style: {
+          gap: 8
+        },
+        children: [
+          /* @__PURE__ */ jsx(Text, {
+            variant: "heading-lg/bold",
+            children: "Component Stack"
+          }),
+          /* @__PURE__ */ jsx(import_react_native9.View, {
+            style: {
+              gap: 4
+            },
+            children: stack.map((component) => /* @__PURE__ */ jsxs(import_react_native9.View, {
+              style: {
+                flexDirection: "row"
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-md/bold",
+                  color: "text-muted",
+                  children: "<"
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-md/bold",
+                  children: component
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-md/bold",
+                  color: "text-muted",
+                  children: "/>"
+                })
+              ]
+            }))
+          }),
+          collapsed && /* @__PURE__ */ jsx(Text, {
+            children: "..."
+          }),
+          /* @__PURE__ */ jsxs(import_react_native9.View, {
+            style: {
+              gap: 8,
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center"
+            },
+            children: [
+              /* @__PURE__ */ jsx(Button, {
+                variant: "secondary",
+                text: `Show ${collapsed ? "more" : "less"}`,
+                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native9.Image, {
+                  style: {
+                    transform: [
+                      {
+                        rotate: `${collapsed ? 0 : 180}deg`
+                      }
+                    ]
+                  },
+                  source: findAssetId("down_arrow")
+                }),
+                onPress: () => setCollapsed((v2) => !v2)
+              }),
+              /* @__PURE__ */ jsx(Button, {
+                variant: "secondary",
+                text: "Copy",
+                icon: findAssetId("CopyIcon"),
+                onPress: () => clipboard.setString(props.componentStack)
+              })
+            ]
+          })
+        ]
+      })
+    });
+  }
+  var import_react, import_react_native9;
+  var init_ErrorComponentStackCard = __esm({
+    "src/core/ui/reporter/components/ErrorComponentStackCard.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_parseComponentStack();
+      init_assets();
+      init_common();
+      init_components();
+      import_react = __toESM(require_react());
+      import_react_native9 = __toESM(require_react_native());
+    }
+  });
+
+  // src/core/ui/reporter/utils/parseErrorStack.ts
+  function isInternalBytecodeSourceUrl(sourceUrl) {
+    return sourceUrl === "InternalBytecode.js";
+  }
+  function parseLine(line) {
+    var asFrame = line.match(RE_FRAME);
+    if (asFrame) {
+      return {
+        type: "FRAME",
+        functionName: asFrame[1],
+        location: asFrame[2] === "native" ? {
+          type: "NATIVE"
+        } : asFrame[3] === "address at " ? isInternalBytecodeSourceUrl(asFrame[4]) ? {
+          type: "INTERNAL_BYTECODE",
+          sourceUrl: asFrame[4],
+          line1Based: Number.parseInt(asFrame[5], 10),
+          virtualOffset0Based: Number.parseInt(asFrame[6], 10)
+        } : {
+          type: "BYTECODE",
+          sourceUrl: asFrame[4],
+          line1Based: Number.parseInt(asFrame[5], 10),
+          virtualOffset0Based: Number.parseInt(asFrame[6], 10)
+        } : {
+          type: "SOURCE",
+          sourceUrl: asFrame[4],
+          line1Based: Number.parseInt(asFrame[5], 10),
+          column1Based: Number.parseInt(asFrame[6], 10)
+        }
+      };
+    }
+    var asSkipped = line.match(RE_SKIPPED);
+    if (asSkipped) {
+      return {
+        type: "SKIPPED",
+        count: Number.parseInt(asSkipped[1], 10)
+      };
+    }
+  }
+  function parseHermesStack(stack) {
+    var lines = stack.split(/\n/);
+    var entries = [];
+    var lastMessageLine = -1;
+    for (var i = 0; i < lines.length; ++i) {
+      var line = lines[i];
+      if (!line) {
+        continue;
+      }
+      var entry = parseLine(line);
+      if (entry) {
+        entries.push(entry);
+        continue;
+      }
+      if (RE_COMPONENT_NO_STACK.test(line)) {
+        continue;
+      }
+      lastMessageLine = i;
+      entries = [];
+    }
+    var message = lines.slice(0, lastMessageLine + 1).join("\n");
+    return {
+      message,
+      entries
+    };
+  }
+  function convertHermesStack(stack) {
+    var frames = [];
+    for (var entry of stack.entries) {
+      if (entry.type !== "FRAME") {
+        continue;
+      }
+      var { location, functionName } = entry;
+      if (location.type === "NATIVE" || location.type === "INTERNAL_BYTECODE") {
+        continue;
+      }
+      frames.push({
+        methodName: functionName,
+        file: location.sourceUrl,
+        lineNumber: location.line1Based,
+        column: location.type === "SOURCE" ? location.column1Based - 1 : location.virtualOffset0Based
+      });
+    }
+    return frames;
+  }
+  function parseErrorStack(errorStack) {
+    if (errorStack == null) {
+      return [];
+    }
+    var parsedStack = Array.isArray(errorStack) ? errorStack : convertHermesStack(parseHermesStack(errorStack));
+    return parsedStack;
+  }
+  var RE_FRAME, RE_SKIPPED, RE_COMPONENT_NO_STACK;
+  var init_parseErrorStack = __esm({
+    "src/core/ui/reporter/utils/parseErrorStack.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      RE_FRAME = /^ {4}at (.+?)(?: \((native)\)?| \((address at )?(.*?):(\d+):(\d+)\))$/;
+      RE_SKIPPED = /^ {4}... skipping (\d+) frames$/;
+      RE_COMPONENT_NO_STACK = /^ {4}at .*$/;
+    }
+  });
+
+  // src/core/ui/reporter/components/ErrorStackCard.tsx
+  function ErrorStackCard(props) {
+    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
+    var stack;
+    try {
+      var parsedErrorStack = parseErrorStack(props.error.stack);
+      stack = collapsed ? parsedErrorStack.slice(0, 4) : parsedErrorStack;
+    } catch (e) {
+      return null;
+    }
+    return /* @__PURE__ */ jsx(Card, {
+      children: /* @__PURE__ */ jsxs(import_react_native10.View, {
+        style: {
+          gap: 12
+        },
+        children: [
+          /* @__PURE__ */ jsx(Text, {
+            variant: "heading-lg/bold",
+            children: "Call Stack"
+          }),
+          /* @__PURE__ */ jsx(import_react_native10.View, {
+            style: {
+              gap: 4
+            },
+            children: stack.map((f, id) => /* @__PURE__ */ jsx(Line, {
+              id,
+              frame: f
+            }))
+          }),
+          collapsed && /* @__PURE__ */ jsx(Text, {
+            children: "..."
+          }),
+          /* @__PURE__ */ jsxs(import_react_native10.View, {
+            style: {
+              gap: 8,
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center"
+            },
+            children: [
+              /* @__PURE__ */ jsx(Button, {
+                variant: "secondary",
+                text: `Show ${collapsed ? "more" : "less"}`,
+                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native10.Image, {
+                  style: {
+                    transform: [
+                      {
+                        rotate: `${collapsed ? 0 : 180}deg`
+                      }
+                    ]
+                  },
+                  source: findAssetId("down_arrow")
+                }),
+                onPress: () => setCollapsed((v2) => !v2)
+              }),
+              /* @__PURE__ */ jsx(Button, {
+                variant: "secondary",
+                text: "Copy",
+                icon: findAssetId("CopyIcon"),
+                onPress: () => clipboard.setString(props.error.stack)
+              })
+            ]
+          })
+        ]
+      })
+    });
+  }
+  function Line(props) {
+    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
+    return /* @__PURE__ */ jsxs(import_react_native10.Pressable, {
+      onPress: () => setCollapsed((v2) => !v2),
+      children: [
+        /* @__PURE__ */ jsx(Text, {
+          style: {
+            fontFamily: constants.Fonts.CODE_BOLD
+          },
+          children: props.frame.methodName
+        }),
+        /* @__PURE__ */ jsx(Text, {
+          style: {
+            fontFamily: constants.Fonts.CODE_NORMAL
+          },
+          ellipsizeMode: "middle",
+          numberOfLines: collapsed ? 1 : void 0,
+          children: /* @__PURE__ */ jsxs(Text, {
+            color: "text-muted",
+            children: [
+              props.frame.file === INDEX_BUNDLE_FILE ? "jsbundle" : props.frame.file,
+              ":",
+              props.frame.lineNumber,
+              ":",
+              props.frame.column
+            ]
+          })
+        })
+      ]
+    }, props.id);
+  }
+  var import_react2, import_react_native10;
+  var init_ErrorStackCard = __esm({
+    "src/core/ui/reporter/components/ErrorStackCard.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_parseErrorStack();
+      init_assets();
+      init_common();
+      init_components();
+      import_react2 = __toESM(require_react());
+      import_react_native10 = __toESM(require_react_native());
+      init_ErrorCard();
+    }
+  });
+
+  // src/core/ui/reporter/components/ErrorDetailsActionSheet.tsx
+  function ErrorDetailsActionSheet(props) {
+    return /* @__PURE__ */ jsx(ActionSheet, {
+      children: /* @__PURE__ */ jsxs(import_react_native11.View, {
+        style: {
+          gap: 12,
+          paddingVertical: 12
+        },
+        children: [
+          /* @__PURE__ */ jsx(Text, {
+            variant: "heading-lg/extrabold",
+            children: "Error"
+          }),
+          /* @__PURE__ */ jsx(Codeblock, {
+            selectable: true,
+            children: props.error.message
+          }),
+          hasStack(props.error) && /* @__PURE__ */ jsx(ErrorStackCard, {
+            error: props.error
+          }),
+          isComponentStack(props.error) ? /* @__PURE__ */ jsx(ErrorComponentStackCard, {
+            componentStack: props.error.componentStack
+          }) : null
+        ]
+      })
+    });
+  }
+  var import_react_native11;
+  var init_ErrorDetailsActionSheet = __esm({
+    "src/core/ui/reporter/components/ErrorDetailsActionSheet.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_isStack();
+      init_components2();
+      init_components();
+      import_react_native11 = __toESM(require_react_native());
+      init_ErrorComponentStackCard();
+      init_ErrorStackCard();
+    }
+  });
+
+  // src/core/ui/reporter/components/ErrorCard.tsx
+  function ErrorCard(props) {
+    return /* @__PURE__ */ jsx(Card, {
+      children: /* @__PURE__ */ jsxs(Stack, {
+        children: [
+          props.header && typeof props.header !== "string" ? props.header : /* @__PURE__ */ jsx(Text, {
+            variant: "heading-lg/bold",
+            children: props.header ?? Strings.UH_OH
+          }),
+          /* @__PURE__ */ jsx(Codeblock, {
+            selectable: true,
+            children: String(props.error)
+          }),
+          /* @__PURE__ */ jsxs(TwinButtons, {
+            children: [
+              props.onRetryRender && /* @__PURE__ */ jsx(Button, {
+                variant: "destructive",
+                // icon={findAssetId("RetryIcon")}
+                text: Strings.RETRY_RENDER,
+                onPress: props.onRetryRender
+              }),
+              props.error instanceof Error ? /* @__PURE__ */ jsx(Button, {
+                text: "Details",
+                // icon={findAssetId("CircleInformationIcon-primary")}
+                onPress: () => showSheet("BunnyErrorDetailsActionSheet", ErrorDetailsActionSheet, {
+                  error: props.error
+                })
+              }) : null
+            ]
+          })
+        ]
+      })
+    });
+  }
+  var INDEX_BUNDLE_FILE;
+  var init_ErrorCard = __esm({
+    "src/core/ui/reporter/components/ErrorCard.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_i18n();
+      init_components2();
+      init_sheets();
+      init_components();
+      init_ErrorDetailsActionSheet();
+      INDEX_BUNDLE_FILE = globalThis.HermesInternal.getFunctionLocation(globalThis.__r).fileName;
+    }
+  });
+
+  // src/lib/ui/components/ErrorBoundary.tsx
+  var _React_Component, ErrorBoundary;
+  var init_ErrorBoundary = __esm({
+    "src/lib/ui/components/ErrorBoundary.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_call_super();
+      init_class_call_check();
+      init_create_class();
+      init_define_property();
+      init_inherits();
+      init_jsxRuntime();
+      init_ErrorCard();
+      init_common();
+      init_styles();
+      ErrorBoundary = /* @__PURE__ */ function(_superClass) {
+        "use strict";
+        _inherits(ErrorBoundary2, _superClass);
+        function ErrorBoundary2(props) {
+          _class_call_check(this, ErrorBoundary2);
+          var _this;
+          _this = _call_super(this, ErrorBoundary2, [
+            props
+          ]);
+          _this.state = {
+            hasErr: false
+          };
+          return _this;
+        }
+        _create_class(ErrorBoundary2, [
+          {
+            key: "render",
+            value: function render() {
+              if (!this.state.hasErr)
+                return this.props.children;
+              return /* @__PURE__ */ jsx(ErrorCard, {
+                error: this.state.error,
+                onRetryRender: () => this.setState({
+                  hasErr: false
+                })
+              });
+            }
+          }
+        ]);
+        return ErrorBoundary2;
+      }(_React_Component = React2.Component);
+      _define_property(ErrorBoundary, "contextType", ThemeContext);
+      _define_property(ErrorBoundary, "getDerivedStateFromError", (error) => ({
+        hasErr: true,
+        error
+      }));
+    }
+  });
+
+  // src/lib/ui/components/Search.tsx
+  function SearchIcon() {
+    return /* @__PURE__ */ jsx(import_react_native12.Image, {
+      style: {
+        width: 16,
+        height: 16
+      },
+      source: findAssetId("icon-search")
+    });
+  }
+  var import_react_native12, Search_default;
+  var init_Search = __esm({
+    "src/lib/ui/components/Search.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_i18n();
+      init_assets();
+      init_components();
+      init_ErrorBoundary();
+      import_react_native12 = __toESM(require_react_native());
+      Search_default = ({ onChangeText, placeholder, style, isRound }) => {
+        var [query, setQuery] = React.useState("");
+        var onChange = (value) => {
+          setQuery(value);
+          onChangeText?.(value);
+        };
+        return /* @__PURE__ */ jsx(ErrorBoundary, {
+          children: /* @__PURE__ */ jsx(import_react_native12.View, {
+            style,
+            children: /* @__PURE__ */ jsx(TextInput, {
+              grow: true,
+              isClearable: true,
+              leadingIcon: SearchIcon,
+              placeholder: placeholder ?? Strings.SEARCH,
+              onChange,
+              returnKeyType: "search",
+              size: "md",
+              autoCapitalize: "none",
+              autoCorrect: false,
+              isRound,
+              value: query
+            })
+          })
+        });
+      };
+    }
+  });
+
+  // src/lib/ui/components/Summary.tsx
+  function Summary({ label, icon, noPadding = false, noAnimation = false, children }) {
+    var [hidden, setHidden] = React.useState(true);
+    return /* @__PURE__ */ jsxs(Fragment, {
+      children: [
+        /* @__PURE__ */ jsx(TableRow, {
+          label,
+          icon: icon && /* @__PURE__ */ jsx(TableRow.Icon, {
+            source: findAssetId(icon)
+          }),
+          trailing: /* @__PURE__ */ jsx(LegacyFormRow.Arrow, {
+            style: {
+              transform: [
+                {
+                  rotate: `${hidden ? 180 : 90}deg`
+                }
+              ]
+            }
+          }),
+          onPress: () => {
+            setHidden(!hidden);
+            if (!noAnimation)
+              import_react_native13.LayoutAnimation.configureNext(import_react_native13.LayoutAnimation.Presets.easeInEaseOut);
+          }
+        }),
+        !hidden && /* @__PURE__ */ jsx(Fragment, {
+          children: /* @__PURE__ */ jsx(import_react_native13.View, {
+            style: !noPadding && {
+              paddingHorizontal: 15
+            },
+            children
+          })
+        })
+      ]
+    });
+  }
+  var import_react_native13;
+  var init_Summary = __esm({
+    "src/lib/ui/components/Summary.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_assets();
+      init_components();
+      import_react_native13 = __toESM(require_react_native());
+    }
+  });
+
+  // src/lib/ui/components/index.ts
+  var components_exports2 = {};
+  __export(components_exports2, {
+    Codeblock: () => Codeblock,
+    ErrorBoundary: () => ErrorBoundary,
+    Search: () => Search_default,
+    Summary: () => Summary,
+    wrappers: () => wrappers_exports
+  });
+  var init_components2 = __esm({
+    "src/lib/ui/components/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_wrappers2();
+      init_Codeblock();
+      init_ErrorBoundary();
+      init_Search();
+      init_Summary();
+    }
+  });
+
+  // src/lib/ui/toasts.ts
+  var toasts_exports = {};
+  __export(toasts_exports, {
+    showToast: () => showToast
+  });
+  var uuid4, showToast;
+  var init_toasts = __esm({
+    "src/lib/ui/toasts.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_i18n();
+      init_assets();
+      init_lazy();
+      init_common();
+      init_wrappers();
+      ({ uuid4 } = lazyDestructure(() => findByProps("uuid4")));
+      showToast = (content, asset) => toasts.open({
+        // ? In build 182205/44707, Discord changed their toasts, source is no longer used, rather icon, and a key is needed.
+        // TODO: We could probably have the developer specify a key themselves, but this works to fix toasts
+        key: `vd-toast-${uuid4()}`,
+        content,
+        source: asset,
+        icon: asset
+      });
+      showToast.showCopyToClipboard = (message = Strings.COPIED_TO_CLIPBOARD) => {
+        showToast(message, findAssetId("toast_copy_link"));
+      };
+    }
+  });
+
+  // src/core/plugins/quickinstall/forumPost.tsx
+  function useExtractThreadContent(thread, _firstMessage = null, actionSheet3 = false) {
+    if (thread.guild_id !== KETTU_DISCORD_SERVER_ID)
+      return;
+    var postType;
+    if (thread.parent_id === KETTU_PLUGINS_CHANNEL_ID) {
+      postType = "Plugin";
+    } else if (thread.parent_id === KETTU_THEMES_CHANNEL_ID && isThemeSupported()) {
+      postType = "Theme";
+    } else
+      return;
+    var { firstMessage } = actionSheet3 ? useFirstForumPostMessage(thread) : {
+      firstMessage: _firstMessage
+    };
+    var urls = firstMessage?.content?.match(HTTP_REGEX_MULTI)?.filter(postMap[postType].urlsFilter);
+    if (!urls || !urls[0])
+      return;
+    if (postType === "Plugin" && !urls[0].endsWith("/"))
+      urls[0] += "/";
+    return [
+      postType,
+      urls[0]
+    ];
+  }
+  function useInstaller(thread, firstMessage = null, actionSheet3 = false) {
+    var [postType, url2] = useExtractThreadContent(thread, firstMessage, actionSheet3) ?? [];
+    useProxy(VdPluginManager.plugins);
+    useProxy(themes);
+    var [isInstalling, setIsInstalling] = React.useState(false);
+    if (!postType || !url2)
+      return [
+        true
+      ];
+    var isInstalled = Boolean(postMap[postType].storage[url2]);
+    var installOrRemove = () => _async_to_generator(function* () {
+      setIsInstalling(true);
+      try {
+        yield postMap[postType].installOrRemove(url2);
+      } catch (e) {
+        showToast(e.message, findAssetId("Small"));
+      } finally {
+        setIsInstalling(false);
+      }
+    })();
+    return [
+      false,
+      postType,
+      isInstalled,
+      isInstalling,
+      installOrRemove
+    ];
+  }
+  var useFirstForumPostMessage, forumReactions, postMap, installButtonPatch, forumPost_default;
+  var init_forumPost = __esm({
+    "src/core/plugins/quickinstall/forumPost.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_jsxRuntime();
+      init_i18n();
+      init_plugins();
+      init_storage();
+      init_themes();
+      init_assets();
+      init_loader();
+      init_patcher();
+      init_constants();
+      init_lazy();
+      init_components();
+      init_wrappers();
+      init_components2();
+      init_toasts();
+      ({ useFirstForumPostMessage } = lazyDestructure(() => findByProps("useFirstForumPostMessage")));
+      forumReactions = findByPropsLazy("MostCommonForumPostReaction");
+      postMap = {
+        Plugin: {
+          storage: VdPluginManager.plugins,
+          urlsFilter: (url2) => url2.startsWith(VD_PROXY_PREFIX),
+          installOrRemove: (url2) => {
+            var isInstalled = postMap.Plugin.storage[url2];
+            return isInstalled ? VdPluginManager.removePlugin(url2) : VdPluginManager.installPlugin(url2);
+          }
+        },
+        Theme: {
+          storage: themes,
+          urlsFilter: (url2) => url2.endsWith(".json"),
+          installOrRemove: (url2) => {
+            var isInstalled = postMap.Theme.storage[url2];
+            return isInstalled ? removeTheme(url2) : installTheme(url2);
+          }
+        }
+      };
+      installButtonPatch = () => after("MostCommonForumPostReaction", forumReactions, ([{ thread, firstMessage }], res) => {
+        var [shouldReturn, _2, installed, loading, installOrRemove] = useInstaller(thread, firstMessage, true);
+        if (shouldReturn)
+          return;
+        return /* @__PURE__ */ jsxs(Fragment, {
+          children: [
+            res,
+            /* @__PURE__ */ jsx(ErrorBoundary, {
+              children: /* @__PURE__ */ jsx(Button, {
+                size: "sm",
+                loading,
+                disabled: loading,
+                // variant={installed ? "destructive" : "primary"} crashes older version because "destructive" was renamed from "danger" and there's no sane way for compat check horror
+                variant: installed ? "secondary" : "primary",
+                text: installed ? Strings.UNINSTALL : Strings.INSTALL,
+                onPress: installOrRemove,
+                icon: findAssetId(installed ? "ic_message_delete" : "DownloadIcon"),
+                style: {
+                  marginLeft: 8
+                }
+              })
+            })
+          ]
+        });
+      });
+      forumPost_default = () => {
+        var patches3 = [
+          // actionSheetPatch(),
+          installButtonPatch()
+        ];
+        return () => patches3.map((p) => p());
+      };
+    }
+  });
+
+  // src/lib/ui/components/InputAlert.tsx
+  function InputAlert({ title, confirmText, confirmColor, onConfirm, cancelText, placeholder, initialValue = "", secureTextEntry }) {
+    var [value, setValue] = React.useState(initialValue);
+    var [error, setError] = React.useState("");
+    function onConfirmWrapper() {
+      var asyncOnConfirm = Promise.resolve(onConfirm(value));
+      asyncOnConfirm.then(() => {
+        Alerts.close();
+      }).catch((e) => {
+        setError(e.message);
+      });
+    }
+    return /* @__PURE__ */ jsx(LegacyAlert, {
+      title,
+      confirmText,
+      confirmColor,
+      isConfirmButtonDisabled: error.length !== 0,
+      onConfirm: onConfirmWrapper,
+      cancelText,
+      onCancel: () => Alerts.close(),
+      children: /* @__PURE__ */ jsx(LegacyFormInput, {
+        placeholder,
+        value,
+        onChange: (v2) => {
+          setValue(typeof v2 === "string" ? v2 : v2.text);
+          if (error)
+            setError("");
+        },
+        returnKeyType: "done",
+        onSubmitEditing: onConfirmWrapper,
+        error: error || void 0,
+        secureTextEntry,
+        autoFocus: true,
+        showBorder: true,
+        style: {
+          alignSelf: "stretch"
+        }
+      })
+    });
+  }
+  var Alerts;
+  var init_InputAlert = __esm({
+    "src/lib/ui/components/InputAlert.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      init_components();
+      init_wrappers();
+      Alerts = findByPropsLazy("openLazy", "close");
+    }
+  });
+
+  // src/core/vendetta/alerts.ts
+  function showConfirmationAlert(options) {
+    var internalOptions = options;
+    internalOptions.body = options.content;
+    delete internalOptions.content;
+    internalOptions.isDismissable ??= true;
+    return Alerts2.show(internalOptions);
+  }
+  var Alerts2, showCustomAlert, showInputAlert;
+  var init_alerts = __esm({
+    "src/core/vendetta/alerts.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_wrappers();
+      init_InputAlert();
+      Alerts2 = findByPropsLazy("openLazy", "close");
+      showCustomAlert = (component, props) => Alerts2.openLazy({
+        importer: () => _async_to_generator(function* () {
+          return () => React.createElement(component, props);
+        })()
+      });
+      showInputAlert = (options) => showCustomAlert(InputAlert, options);
+    }
+  });
+
+  // src/core/plugins/quickinstall/url.tsx
+  function typeFromUrl(url2) {
+    if (url2.startsWith(VD_PROXY_PREFIX)) {
+      return "plugin";
+    } else if (url2.endsWith(".json") && isThemeSupported()) {
+      return "theme";
+    }
+  }
+  function installWithToast(type, url2) {
+    (type === "plugin" ? VdPluginManager.installPlugin.bind(VdPluginManager) : installTheme)(url2).then(() => {
+      showToast(Strings.SUCCESSFULLY_INSTALLED, findAssetId("Check"));
+    }).catch((e) => {
+      showToast(e.message, findAssetId("Small"));
+    });
+  }
+  var import_react_native14, showSimpleActionSheet, handleClick, getChannelId, getChannel, url_default;
+  var init_url = __esm({
+    "src/core/plugins/quickinstall/url.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_i18n();
+      init_alerts();
+      init_plugins();
+      init_themes();
+      init_assets();
+      init_loader();
+      init_patcher();
+      init_constants();
+      init_lazy();
+      init_common();
+      init_filters();
+      init_finders();
+      init_wrappers();
+      init_toasts();
+      import_react_native14 = __toESM(require_react_native());
+      showSimpleActionSheet = findExports(byMutableProp("showSimpleActionSheet"));
+      handleClick = findByPropsLazy("handleClick");
+      ({ getChannelId } = lazyDestructure(() => channels));
+      ({ getChannel } = lazyDestructure(() => findByProps("getChannel")));
+      url_default = () => {
+        var patches3 = new Array();
+        patches3.push(after("showSimpleActionSheet", showSimpleActionSheet, (args) => {
+          if (args[0].key !== "LongPressUrl")
+            return;
+          var { header: { title: url2 }, options } = args[0];
+          var urlType = typeFromUrl(url2);
+          if (!urlType)
+            return;
+          options.push({
+            label: Strings.INSTALL_ADDON,
+            onPress: () => installWithToast(urlType, url2)
+          });
+        }));
+        patches3.push(instead("handleClick", handleClick, function(args, orig) {
+          return _async_to_generator(function* () {
+            var { href: url2 } = args[0];
+            var urlType = typeFromUrl(url2);
+            if (!urlType)
+              return orig.apply(this, args);
+            if (urlType === "theme" && getChannel(getChannelId())?.parent_id !== VD_THEMES_CHANNEL_ID)
+              return orig.apply(this, args);
+            showConfirmationAlert({
+              title: Strings.HOLD_UP,
+              content: formatString("CONFIRMATION_LINK_IS_A_TYPE", {
+                urlType
+              }),
+              onConfirm: () => installWithToast(urlType, url2),
+              confirmText: Strings.INSTALL,
+              cancelText: Strings.CANCEL,
+              secondaryConfirmText: Strings.OPEN_IN_BROWSER,
+              onConfirmSecondary: () => import_react_native14.Linking.openURL(url2)
+            });
+          }).call(this);
+        }));
+        return () => patches3.forEach((p) => p());
+      };
+    }
+  });
+
+  // src/core/plugins/quickinstall/index.ts
+  var quickinstall_exports = {};
+  __export(quickinstall_exports, {
+    default: () => quickinstall_default
+  });
+  var patches, quickinstall_default;
+  var init_quickinstall = __esm({
+    "src/core/plugins/quickinstall/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_plugins2();
+      init_forumPost();
+      init_url();
+      patches = [];
+      quickinstall_default = defineCorePlugin({
+        manifest: {
+          id: "bunny.quickinstall",
+          version: "1.0.0",
+          type: "plugin",
+          spec: 3,
+          main: "",
+          display: {
+            name: "QuickInstall",
+            description: "Quickly install Vendetta plugins and themes",
+            authors: [
+              {
+                name: "Vendetta Team"
+              }
+            ]
+          }
+        },
+        start() {
+          patches = [
+            forumPost_default(),
+            url_default()
+          ];
+        },
+        stop() {
+          patches.forEach((p) => p());
+        }
+      });
+    }
+  });
+
+  // src/core/plugins/badges/index.tsx
+  var badges_exports = {};
+  __export(badges_exports, {
+    default: () => badges_default
+  });
+  var useBadgesModule, badgesCache, badgeProps, pendingRequests, badges_default;
+  var init_badges = __esm({
+    "src/core/plugins/badges/index.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_patcher();
+      init_jsx();
+      init_metro();
+      init_plugins2();
+      init_common();
+      useBadgesModule = findByNameLazy("useBadges", false);
+      badgesCache = /* @__PURE__ */ new Map();
+      badgeProps = /* @__PURE__ */ new Map();
+      pendingRequests = /* @__PURE__ */ new Set();
+      badges_default = defineCorePlugin({
+        manifest: {
+          id: "bunny.badges",
+          version: "1.1.0",
+          type: "plugin",
+          spec: 3,
+          main: "",
+          display: {
+            name: "Badges",
+            description: "Adds badges to user's profile",
+            authors: [
+              {
+                name: "cocobo1"
+              },
+              {
+                name: "pylixonly"
+              }
+            ]
+          }
+        },
+        start() {
+          onJsxCreate("ProfileBadge", (component, ret) => {
+            if (ret.props.id?.startsWith("rain-")) {
+              var cachedProps = badgeProps.get(ret.props.id);
+              if (cachedProps) {
+                ret.props.source = cachedProps.source;
+                ret.props.label = cachedProps.label;
+                ret.props.id = cachedProps.id;
+              }
+            }
+          });
+          onJsxCreate("RenderedBadge", (component, ret) => {
+            if (ret.props.id?.startsWith("rain-")) {
+              var cachedProps = badgeProps.get(ret.props.id);
+              if (cachedProps) {
+                Object.assign(ret.props, cachedProps);
+              }
+            }
+          });
+          var fetchAndProcessBadges = (userId) => _async_to_generator(function* () {
+            if (pendingRequests.has(userId))
+              return;
+            pendingRequests.add(userId);
+            try {
+              var [badgesRes, rolesRes] = yield Promise.all([
+                fetch("https://codeberg.org/raincord/badges/raw/branch/main/badges.json"),
+                fetch("https://codeberg.org/raincord/badges/raw/branch/main/assets/roles/roles.json")
+              ]);
+              var badgesData = yield badgesRes.json();
+              var rolesData = yield rolesRes.json();
+              var userBadgeData = badgesData[userId] || {
+                roles: [],
+                custom: []
+              };
+              var allBadges = [];
+              if (userBadgeData.roles) {
+                userBadgeData.roles.forEach((roleName) => {
+                  var roleData = rolesData[roleName];
+                  if (roleData) {
+                    allBadges.push({
+                      label: roleData.label,
+                      url: roleData.url
+                    });
+                  }
+                });
+              }
+              if (userBadgeData.custom) {
+                allBadges.push(...userBadgeData.custom);
+              }
+              badgesCache.set(userId, allBadges);
+              allBadges.forEach((badge, i) => {
+                var badgeId = `rain-${userId}-${i}`;
+                badgeProps.set(badgeId, {
+                  id: badgeId,
+                  source: {
+                    uri: badge.url
+                  },
+                  label: badge.label,
+                  userId
+                });
+              });
+              FluxDispatcher.dispatch({
+                type: "USER_UPDATE",
+                user: {
+                  id: userId
+                }
+              });
+            } finally {
+              pendingRequests.delete(userId);
+            }
+          })();
+          after("default", useBadgesModule, ([user], result) => {
+            if (!user)
+              return;
+            var userId = user.userId;
+            var cached = badgesCache.get(userId);
+            if (!cached) {
+              if (!pendingRequests.has(userId)) {
+                fetchAndProcessBadges(userId);
+              }
+              return;
+            }
+            cached.forEach((badge, i) => {
+              var badgeId = `rain-${userId}-${i}`;
+              result.unshift({
+                id: badgeId,
+                description: badge.label,
+                icon: " _"
+              });
+            });
+          });
+        }
+      });
+    }
+  });
+
+  // src/core/plugins/notrack/index.ts
+  var notrack_exports = {};
+  __export(notrack_exports, {
+    default: () => notrack_default
+  });
+  function patchNetwork() {
+    var analyticsTest = /client-analytics\.braintreegateway\.com|discord\.com\/api\/v9\/(science|track)|app\.adjust\..*|.*\.ingest\.sentry\.io/;
+    try {
+      var unpatch = instead("send", XMLHttpRequest.prototype, function(args, orig) {
+        if (this.__sentry_xhr__?.url && analyticsTest.test(this.__sentry_xhr__.url)) {
+          return void 0;
+        }
+        return orig.apply(this, args);
+      });
+      return unpatch;
+    } catch (e) {
+      return () => false;
+    }
+  }
+  function patchConsole() {
+    var sentrified = {};
+    try {
+      Object.keys(console).forEach((key) => {
+        var consoleFunc = console[key];
+        if (consoleFunc) {
+          sentrified[key] = consoleFunc;
+          var originalFunc = consoleFunc.__sentry_original__;
+          console[key] = originalFunc ?? consoleFunc;
+        }
+      });
+    } catch (e) {
+      logger.log("Failed to de-sentrify console functions!", e);
+    }
+    return () => {
+      Object.keys(sentrified).forEach((key) => {
+        if (sentrified[key]) {
+          console[key] = sentrified[key];
+        }
+      });
+    };
+  }
+  function patchMiscellaneous() {
+    var miscPatches = [
+      // Global analytics utilities
+      AnalyticsUtils?.AnalyticsActionHandlers && noop("handleTrack", AnalyticsUtils.AnalyticsActionHandlers),
+      AnalyticsUtils?.AnalyticsActionHandlers && noop("handleFingerprint", AnalyticsUtils.AnalyticsActionHandlers),
+      // Super properties tracking
+      SuperPropUtils && noop("track", SuperPropUtils),
+      // Voice state metadata tracking
+      VoiceStateUtils && noop("trackWithMetadata", VoiceStateUtils),
+      // Crash reporter
+      CrashReportUtils && noop("submitLiveCrashReport", CrashReportUtils),
+      // Metrics
+      MetricsUtils?._metrics && noop("push", MetricsUtils._metrics)
+    ].filter(Boolean);
+    return () => miscPatches.forEach((p) => p());
+  }
+  function patchSentry() {
+    var sentryPatches = [];
+    if (Sentry.initializer) {
+      sentryPatches.push(noop("initSentry", Sentry.initializer));
+    }
+    if (Sentry.main && Sentry.main.addBreadcrumb) {
+      sentryPatches.push(noop("addBreadcrumb", Sentry.main));
+    }
+    if (Sentry.client) {
+      try {
+        Sentry.client.getOptions().enabled = false;
+        Sentry.client.close();
+        if (Sentry.main) {
+          if (Sentry.main.getStackTop) {
+            Sentry.main.getStackTop().scope.clear();
+          }
+          if (Sentry.main.getScope) {
+            Sentry.main.getScope().clear();
+          }
+        }
+      } catch (e) {
+      }
+    }
+    return () => {
+      try {
+        sentryPatches.forEach((p) => p());
+        if (Sentry.client) {
+          Sentry.client.getOptions().enabled = true;
+          Sentry.client.open();
+        }
+      } catch (e) {
+      }
+    };
+  }
+  var patches2, AnalyticsUtils, SuperPropUtils, VoiceStateUtils, CrashReportUtils, MetricsUtils, sentryGlobal, sentryHub, sentryClient, Sentry, noop, notrack_default;
+  var init_notrack = __esm({
+    "src/core/plugins/notrack/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_plugins2();
+      init_metro();
+      init_patcher();
+      init_logger();
+      patches2 = [];
+      AnalyticsUtils = findByProps("AnalyticsActionHandlers");
+      SuperPropUtils = findByProps("encodeProperties", "track");
+      VoiceStateUtils = findByProps("getVoiceStateMetadata");
+      CrashReportUtils = findByProps("submitLiveCrashReport");
+      MetricsUtils = findByProps("_metrics");
+      sentryGlobal = globalThis.__SENTRY__;
+      sentryHub = sentryGlobal?.hub;
+      sentryClient = sentryHub?.getClient();
+      Sentry = {
+        initializer: findByProps("initSentry"),
+        main: sentryHub,
+        client: sentryClient
+      };
+      noop = (prop, parent) => {
+        try {
+          return instead(prop, parent, () => void 0);
+        } catch (e) {
+          return () => false;
+        }
+      };
+      notrack_default = defineCorePlugin({
+        manifest: {
+          id: "bunny.notrack",
+          version: "1.0.0",
+          type: "plugin",
+          spec: 3,
+          main: "",
+          display: {
+            name: "NoTrack",
+            description: "Disables Discord's telemetry",
+            authors: [
+              {
+                name: "maisymoe"
+              }
+            ]
+          }
+        },
+        start() {
+          patches2 = [
+            patchNetwork(),
+            patchConsole(),
+            patchMiscellaneous(),
+            patchSentry()
+          ].filter(Boolean);
+          logger.log("NoTrack: Enabled - all telemetry tracking disabled");
+        },
+        stop() {
+          patches2.forEach((p) => p?.());
+          patches2 = [];
+          logger.log("NoTrack: Disabled - telemetry tracking restored");
+        }
+      });
+    }
+  });
+
+  // src/core/plugins/messagefix/index.ts
+  var messagefix_exports = {};
+  __export(messagefix_exports, {
+    default: () => messagefix_default
+  });
+  var MessageActions, originalSendMessage, messagefix_default;
+  var init_messagefix = __esm({
+    "src/core/plugins/messagefix/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_plugins2();
+      init_metro();
+      init_logger();
+      MessageActions = findByProps("sendMessage");
+      messagefix_default = defineCorePlugin({
+        manifest: {
+          id: "bunny.messagefix",
+          version: "1.0.0",
+          type: "plugin",
+          spec: 3,
+          main: "",
+          display: {
+            name: "MessageFix",
+            description: "Ensures messages include the required nonce parameter",
+            authors: [
+              {
+                name: "Win8.1VMUser"
+              },
+              {
+                name: "kmmiio99o.dev"
+              }
+            ]
+          }
+        },
+        start() {
+          originalSendMessage = MessageActions.sendMessage;
+          MessageActions.sendMessage = function(channelId, message, replyRef, options) {
+            options = options || {};
+            options.nonce = options.nonce || (BigInt(Date.now() - 14200704e5) << 22n).toString();
+            return originalSendMessage.call(this, channelId, message, replyRef, options);
+          };
+          logger.log("MessageFix: Enabled - adding nonce to all messages");
+        },
+        stop() {
+          if (originalSendMessage)
+            MessageActions.sendMessage = originalSendMessage;
+          logger.log("MessageFix: Disabled");
+        }
+      });
+    }
+  });
+
+  // src/core/plugins/index.ts
+  function defineCorePlugin(instance) {
+    instance[Symbol.for("bunny.core.plugin")] = true;
+    return instance;
+  }
+  var getCorePlugins;
+  var init_plugins2 = __esm({
+    "src/core/plugins/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      getCorePlugins = () => ({
+        "bunny.quickinstall": (init_quickinstall(), __toCommonJS(quickinstall_exports)),
+        "bunny.badges": (init_badges(), __toCommonJS(badges_exports)),
+        "bunny.notrack": (init_notrack(), __toCommonJS(notrack_exports)),
+        "bunny.messagefix": (init_messagefix(), __toCommonJS(messagefix_exports))
+      });
+    }
+  });
+
+  // src/lib/api/commands/types.ts
+  var ApplicationCommandInputType, ApplicationCommandOptionType, ApplicationCommandType;
+  var init_types = __esm({
+    "src/lib/api/commands/types.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      ApplicationCommandInputType = /* @__PURE__ */ function(ApplicationCommandInputType2) {
+        ApplicationCommandInputType2[ApplicationCommandInputType2["BUILT_IN"] = 0] = "BUILT_IN";
+        ApplicationCommandInputType2[ApplicationCommandInputType2["BUILT_IN_TEXT"] = 1] = "BUILT_IN_TEXT";
+        ApplicationCommandInputType2[ApplicationCommandInputType2["BUILT_IN_INTEGRATION"] = 2] = "BUILT_IN_INTEGRATION";
+        ApplicationCommandInputType2[ApplicationCommandInputType2["BOT"] = 3] = "BOT";
+        ApplicationCommandInputType2[ApplicationCommandInputType2["PLACEHOLDER"] = 4] = "PLACEHOLDER";
+        return ApplicationCommandInputType2;
+      }({});
+      ApplicationCommandOptionType = /* @__PURE__ */ function(ApplicationCommandOptionType2) {
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["SUB_COMMAND"] = 1] = "SUB_COMMAND";
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["SUB_COMMAND_GROUP"] = 2] = "SUB_COMMAND_GROUP";
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["STRING"] = 3] = "STRING";
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["INTEGER"] = 4] = "INTEGER";
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["BOOLEAN"] = 5] = "BOOLEAN";
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["USER"] = 6] = "USER";
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["CHANNEL"] = 7] = "CHANNEL";
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["ROLE"] = 8] = "ROLE";
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["MENTIONABLE"] = 9] = "MENTIONABLE";
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["NUMBER"] = 10] = "NUMBER";
+        ApplicationCommandOptionType2[ApplicationCommandOptionType2["ATTACHMENT"] = 11] = "ATTACHMENT";
+        return ApplicationCommandOptionType2;
+      }({});
+      ApplicationCommandType = /* @__PURE__ */ function(ApplicationCommandType2) {
+        ApplicationCommandType2[ApplicationCommandType2["CHAT"] = 1] = "CHAT";
+        ApplicationCommandType2[ApplicationCommandType2["USER"] = 2] = "USER";
+        ApplicationCommandType2[ApplicationCommandType2["MESSAGE"] = 3] = "MESSAGE";
+        return ApplicationCommandType2;
+      }({});
+    }
+  });
+
+  // src/core/commands/eval.ts
+  var eval_exports = {};
+  __export(eval_exports, {
+    default: () => eval_default
+  });
+  function wrapInJSCodeblock(resString) {
+    return "```js\n" + resString.replaceAll("`", "`" + ZERO_WIDTH_SPACE_CHARACTER) + "\n```";
+  }
+  var util, AsyncFunction, ZERO_WIDTH_SPACE_CHARACTER, eval_default;
+  var init_eval = __esm({
+    "src/core/commands/eval.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_i18n();
+      init_types();
+      init_settings();
+      init_common();
+      init_wrappers();
+      util = findByPropsLazy("inspect");
+      AsyncFunction = (() => _async_to_generator(function* () {
+        return void 0;
+      })()).constructor;
+      ZERO_WIDTH_SPACE_CHARACTER = "\u200B";
+      eval_default = () => ({
+        name: "eval",
+        description: Strings.COMMAND_EVAL_DESC,
+        shouldHide: () => settings.enableEvalCommand === true,
+        options: [
+          {
+            name: "code",
+            type: ApplicationCommandOptionType.STRING,
+            description: Strings.COMMAND_EVAL_OPT_CODE,
+            required: true
+          },
+          {
+            name: "async",
+            type: ApplicationCommandOptionType.BOOLEAN,
+            description: Strings.COMMAND_EVAL_OPT_ASYNC
+          }
+        ],
+        execute(_0, _1) {
+          return _async_to_generator(function* ([code, async], ctx) {
+            try {
+              var res = util.inspect(async?.value ? yield AsyncFunction(code.value)() : eval?.(code.value));
+              var trimmedRes = res.length > 2e3 ? res.slice(0, 2e3) + "..." : res;
+              messageUtil.sendBotMessage(ctx.channel.id, wrapInJSCodeblock(trimmedRes));
+            } catch (err) {
+              messageUtil.sendBotMessage(ctx.channel.id, wrapInJSCodeblock(err?.stack ?? err));
+            }
+          }).apply(this, arguments);
+        }
+      });
+    }
+  });
+
+  // src/lib/api/debug.ts
+  var debug_exports = {};
+  __export(debug_exports, {
+    connectRdt: () => connectRdt,
+    connectToDebugger: () => connectToDebugger2,
+    disconnectFromDebugger: () => disconnectFromDebugger2,
+    disconnectRdt: () => disconnectRdt,
+    getDebugInfo: () => getDebugInfo,
+    initDebugger: () => initDebugger,
+    isConnectedToDebugger: () => isConnectedToDebugger2,
+    patchLogHook: () => patchLogHook,
+    rdtClient: () => rdtClient,
+    rdtConnected: () => rdtConnected,
+    toggleSafeMode: () => toggleSafeMode,
+    useIsRdtConnected: () => useIsRdtConnected,
+    versionHash: () => versionHash
+  });
+  function toggleSafeMode() {
+    return _async_to_generator(function* () {
+      settings.safeMode = {
+        ...settings.safeMode,
+        enabled: !settings.safeMode?.enabled
+      };
+      if (isThemeSupported()) {
+        if (getThemeFromLoader()?.id)
+          settings.safeMode.currentThemeId = getThemeFromLoader().id;
+        if (settings.safeMode?.enabled) {
+          yield selectTheme(null);
+        } else if (settings.safeMode?.currentThemeId) {
+          yield selectTheme(themes[settings.safeMode?.currentThemeId]);
+        }
+      }
+      setTimeout(BundleUpdaterManager.reload, 400);
+    })();
+  }
+  function serializeMessage2(msg) {
+    return JSON.stringify(msg);
+  }
+  function sendLog2(level, ...args) {
+    if (socket2?.readyState === WebSocket.OPEN) {
+      var message = {
+        type: "log",
+        data: {
+          level,
+          message: args
+        }
+      };
+      socket2.send(serializeMessage2(message));
+    }
+  }
+  function patchConsoleAndLogger2() {
+    originalConsoleLog2 = console.log;
+    console.log = function(...args) {
+      originalConsoleLog2.apply(console, args);
+      sendLog2("default", ...args);
+    };
+    originalConsoleError2 = console.error;
+    console.error = function(...args) {
+      originalConsoleError2.apply(console, args);
+      sendLog2("error", ...args);
+    };
+    originalConsoleWarn2 = console.warn;
+    console.warn = function(...args) {
+      originalConsoleWarn2.apply(console, args);
+      sendLog2("warn", ...args);
+    };
+    if (logger) {
+      originalLoggerLog2 = logger.log;
+      logger.log = function(...args) {
+        originalLoggerLog2.apply(logger, args);
+        sendLog2("default", ...args);
+      };
+      originalLoggerError2 = logger.error;
+      logger.error = function(...args) {
+        originalLoggerError2.apply(logger, args);
+        sendLog2("error", ...args);
+      };
+      originalLoggerWarn2 = logger.warn;
+      logger.warn = function(...args) {
+        originalLoggerWarn2.apply(logger, args);
+        sendLog2("warn", ...args);
+      };
+    }
+  }
+  function unpatchConsoleAndLogger2() {
+    if (originalConsoleLog2) {
+      console.log = originalConsoleLog2;
+      originalConsoleLog2 = void 0;
+    }
+    if (originalConsoleError2) {
+      console.error = originalConsoleError2;
+      originalConsoleError2 = void 0;
+    }
+    if (originalConsoleWarn2) {
+      console.warn = originalConsoleWarn2;
+      originalConsoleWarn2 = void 0;
+    }
+    if (logger) {
+      if (originalLoggerLog2) {
+        logger.log = originalLoggerLog2;
+        originalLoggerLog2 = void 0;
+      }
+      if (originalLoggerError2) {
+        logger.error = originalLoggerError2;
+        originalLoggerError2 = void 0;
+      }
+      if (originalLoggerWarn2) {
+        logger.warn = originalLoggerWarn2;
+        originalLoggerWarn2 = void 0;
+      }
+    }
+  }
+  function connectToDebugger2(url2) {
+    if (socket2 !== void 0 && socket2.readyState !== WebSocket.CLOSED) {
+      unpatchConsoleAndLogger2();
+      socket2.close();
+    }
+    if (!url2) {
+      showToast("Invalid debugger URL!", findAssetId("Small"));
+      return;
+    }
+    try {
+      socket2 = new WebSocket(`ws://${url2}`);
+      socket2.addEventListener("open", () => {
+        showToast("Connected to debugger.", findAssetId("Check"));
+        var hello = {
+          type: "hello",
+          data: {
+            version: VERSION2
+          }
+        };
+        socket2?.send(serializeMessage2(hello));
+        patchConsoleAndLogger2();
+      });
+      socket2.addEventListener("message", (message) => {
+        try {
+          var data = JSON.parse(message.data);
+          if (data.type === "run" && data.data?.code) {
+            try {
+              (0, eval)(data.data.code);
+            } catch (e) {
+              console.error("Error executing remote code:", e);
+            }
+          }
+        } catch (e) {
+          try {
+            (0, eval)(message.data);
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      });
+      socket2.addEventListener("close", () => {
+        showToast("Disconnected from debugger.", findAssetId("Small"));
+        unpatchConsoleAndLogger2();
+      });
+      socket2.addEventListener("error", (err) => {
+        console.log(`Debugger error: ${err.message}`);
+        showToast("An error occurred with the debugger connection!", findAssetId("Small"));
+        unpatchConsoleAndLogger2();
+      });
+    } catch (e) {
+      logger.error("Failed to connect to debugger:", e);
+      showToast("Failed to connect to debugger!", findAssetId("Small"));
+    }
+  }
+  function disconnectFromDebugger2() {
+    if (socket2) {
+      unpatchConsoleAndLogger2();
+      socket2.close();
+      socket2 = void 0;
+      showToast("Disconnected from debugger.", findAssetId("Check"));
+    }
+  }
+  function isConnectedToDebugger2() {
+    return socket2?.readyState === WebSocket.OPEN;
+  }
+  function bump() {
+    for (var x2 of changeHooks)
+      x2(rdtConnected);
+  }
+  function cleanupRdt() {
+    rdtClient = null;
+    rdtConnected = false;
+    bump();
+  }
+  function connectRdt(url2, quiet) {
+    if (!isReactDevToolsPreloaded() || rdtClient)
+      return;
+    var base = url2.split(":").slice(0, -1).join(":");
+    var ws = rdtClient = new WebSocket(`ws://${base}:${rdtPort}`);
+    ws.addEventListener("open", () => {
+      if (!quiet)
+        showToast("Connected to React DevTools", findAssetId("CheckmarkSmallIcon"));
+      rdtConnected = true;
+      bump();
+    });
+    ws.addEventListener("close", () => {
+      cleanupRdt();
+    });
+    ws.addEventListener("error", (e) => {
+      cleanupRdt();
+      var err = e?.message ?? e?.stack ?? String(e);
+      logger.error("React DevTools error:", err);
+      if (!quiet)
+        showToast(err, findAssetId("CircleXIcon-primary"));
+    });
+    var devTools = globalThis[getReactDevToolsProp() || "__vendetta_rdc"];
+    if (devTools?.connectToDevTools) {
+      devTools.connectToDevTools({
+        websocket: ws,
+        resolveRNStyle: import_react_native15.StyleSheet.flatten
+      });
+    }
+  }
+  function disconnectRdt() {
+    rdtClient?.close();
+  }
+  function useIsRdtConnected() {
+    var [connected, update] = React.useState(rdtConnected);
+    React.useEffect(() => {
+      changeHooks.add(update);
+      return () => void changeHooks.delete(update);
+    }, []);
+    return connected;
+  }
+  function patchLogHook() {
+    var unpatch = after("nativeLoggingHook", globalThis, (args) => {
+      if (socket2?.readyState === WebSocket.OPEN) {
+        sendLog2(args[1] === "error" ? "error" : args[1] === "warn" ? "warn" : "default", args[0]);
+      }
+      logger.log(args[0]);
+    });
+    return () => {
+      socket2 && socket2.close();
+      unpatch();
+    };
+  }
+  function getDebugInfo() {
+    var hermesProps = globalThis.HermesInternal.getRuntimeProperties();
+    var hermesVer = hermesProps["OSS Release Version"];
+    var padding = "for RN ";
+    var PlatformConstants = import_react_native15.Platform.constants;
+    var rnVer = PlatformConstants.reactNativeVersion;
+    return {
+      vendetta: {
+        version: versionHash.split("-")[0],
+        loader: getLoaderName()
+      },
+      bunny: {
+        version: versionHash,
+        loader: {
+          name: getLoaderName(),
+          version: getLoaderVersion()
+        }
+      },
+      discord: {
+        version: NativeClientInfoModule.getConstants().Version,
+        build: NativeClientInfoModule.getConstants().Build
+      },
+      react: {
+        version: React.version,
+        nativeVersion: hermesVer.startsWith(padding) ? hermesVer.substring(padding.length) : `${rnVer.major}.${rnVer.minor}.${rnVer.patch}`
+      },
+      hermes: {
+        version: hermesVer,
+        buildType: hermesProps.Build,
+        bytecodeVersion: hermesProps["Bytecode Version"]
+      },
+      ...import_react_native15.Platform.select({
+        android: {
+          os: {
+            name: "Android",
+            version: PlatformConstants.Release,
+            sdk: PlatformConstants.Version
+          }
+        },
+        ios: {
+          os: {
+            name: PlatformConstants.systemName,
+            version: PlatformConstants.osVersion
+          }
+        }
+      }),
+      ...import_react_native15.Platform.select({
+        android: {
+          device: {
+            manufacturer: PlatformConstants.Manufacturer,
+            brand: PlatformConstants.Brand,
+            model: PlatformConstants.Model,
+            codename: NativeDeviceModule.device
+          }
+        },
+        ios: {
+          device: {
+            manufacturer: NativeDeviceModule.deviceManufacturer,
+            brand: NativeDeviceModule.deviceBrand,
+            model: NativeDeviceModule.deviceModel,
+            codename: NativeDeviceModule.device
+          }
+        }
+      })
+    };
+  }
+  function initDebugger() {
+    if (settings.autoDebugger) {
+      try {
+        connectToDebugger2(settings.debuggerUrl);
+      } catch (e) {
+        logger.error("Failed to connect to Debugger during startup:", e);
+      }
+    }
+    if (settings.autoDevTools) {
+      try {
+        if (settings.devToolsUrl) {
+          connectRdt(settings.devToolsUrl, true);
+        }
+      } catch (e) {
+        logger.error("Failed to connect to ReactDevTools during startup:", e);
+      }
+    }
+  }
+  var import_react_native15, socket2, originalConsoleLog2, originalConsoleError2, originalConsoleWarn2, originalLoggerLog2, originalLoggerError2, originalLoggerWarn2, VERSION2, rdtPort, rdtClient, rdtConnected, changeHooks, versionHash;
+  var init_debug = __esm({
+    "src/lib/api/debug.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_themes();
+      init_assets();
+      init_loader();
+      init_modules();
+      init_patcher();
+      init_settings();
+      init_logger();
+      init_toasts();
+      import_react_native15 = __toESM(require_react_native());
+      VERSION2 = 1;
+      rdtPort = 8097;
+      rdtClient = null;
+      rdtConnected = false;
+      changeHooks = /* @__PURE__ */ new Set();
+      versionHash = "v1.4.3";
+    }
+  });
+
+  // src/core/commands/debug.ts
+  var debug_exports2 = {};
+  __export(debug_exports2, {
+    default: () => debug_default
+  });
+  var debug_default;
+  var init_debug2 = __esm({
+    "src/core/commands/debug.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_i18n();
+      init_types();
+      init_debug();
+      init_common();
+      debug_default = () => ({
+        name: "debug",
+        description: Strings.COMMAND_DEBUG_DESC,
+        options: [
+          {
+            name: "ephemeral",
+            type: ApplicationCommandOptionType.BOOLEAN,
+            description: Strings.COMMAND_DEBUG_OPT_EPHEMERALLY
+          }
+        ],
+        execute([ephemeral], ctx) {
+          var info = getDebugInfo();
+          if (info.device.codename === void 0) {
+            info.device.codename = "";
+          } else {
+            info.device.codename = "(" + info.device.codename + ")";
+          }
+          var content = [
+            "**CloudCord Debug Info**",
+            `> CloudCord: ${info.bunny.version} (${info.bunny.loader.name} ${info.bunny.loader.version})`,
+            `> Discord: ${info.discord.version} (${info.discord.build})`,
+            `> React: ${info.react.version} (RN ${info.react.nativeVersion})`,
+            `> Hermes: ${info.hermes.version} (bcv${info.hermes.bytecodeVersion})`,
+            `> System: ${info.os.name} ${info.os.version} ${info.os.sdk ? `(SDK ${info.os.sdk})` : ""}`.trimEnd(),
+            `> Device: ${info.device.model} ${info.device.codename}`
+          ].join("\n");
+          if (ephemeral?.value) {
+            messageUtil.sendBotMessage(ctx.channel.id, content);
+          } else {
+            var fixNonce = (BigInt(Date.now() - 14200704e5) << 22n).toString();
+            messageUtil.sendMessage(ctx.channel.id, {
+              content
+            }, void 0, {
+              nonce: fixNonce
+            });
+          }
+        }
+      });
+    }
+  });
+
+  // src/core/commands/plugins.ts
+  var plugins_exports = {};
+  __export(plugins_exports, {
+    default: () => plugins_default
+  });
+  var plugins_default;
+  var init_plugins3 = __esm({
+    "src/core/commands/plugins.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_i18n();
+      init_plugins();
+      init_types();
+      init_common();
+      plugins_default = () => ({
+        name: "plugins",
+        description: Strings.COMMAND_PLUGINS_DESC,
+        options: [
+          {
+            name: "ephemeral",
+            displayName: "ephemeral",
+            type: ApplicationCommandOptionType.BOOLEAN,
+            description: Strings.COMMAND_DEBUG_OPT_EPHEMERALLY
+          }
+        ],
+        execute([ephemeral], ctx) {
+          var plugins2 = Object.values(VdPluginManager.plugins).filter(Boolean);
+          plugins2.sort((a, b3) => a.manifest.name.localeCompare(b3.manifest.name));
+          var enabled = plugins2.filter((p) => p.enabled).map((p) => p.manifest.name);
+          var disabled = plugins2.filter((p) => !p.enabled).map((p) => p.manifest.name);
+          var content = [
+            `**Installed Plugins (${plugins2.length}):**`,
+            ...enabled.length > 0 ? [
+              `Enabled (${enabled.length}):`,
+              "> " + enabled.join(", ")
+            ] : [],
+            ...disabled.length > 0 ? [
+              `Disabled (${disabled.length}):`,
+              "> " + disabled.join(", ")
+            ] : []
+          ].join("\n");
+          if (ephemeral?.value) {
+            messageUtil.sendBotMessage(ctx.channel.id, content);
+          } else {
+            var fixNonce = (BigInt(Date.now() - 14200704e5) << 22n).toString();
+            messageUtil.sendMessage(ctx.channel.id, {
+              content
+            }, void 0, {
+              nonce: fixNonce
+            });
+          }
+        }
+      });
+    }
+  });
+
+  // src/lib/api/commands/index.ts
+  var commands_exports = {};
+  __export(commands_exports, {
+    patchCommands: () => patchCommands,
+    registerCommand: () => registerCommand
+  });
+  function patchCommands() {
+    var unpatch = after("getBuiltInCommands", commands, ([type], res) => {
+      return [
+        ...res,
+        ...commands2.filter((c2) => (type instanceof Array ? type.includes(c2.type) : type === c2.type) && c2.__bunny?.shouldHide?.() !== false)
+      ];
+    });
+    [
+      (init_eval(), __toCommonJS(eval_exports)),
+      (init_debug2(), __toCommonJS(debug_exports2)),
+      (init_plugins3(), __toCommonJS(plugins_exports))
+    ].forEach((r) => registerCommand(r.default()));
+    return () => {
+      commands2 = [];
+      unpatch();
+    };
+  }
+  function registerCommand(command) {
+    var builtInCommands;
+    try {
+      builtInCommands = commands.getBuiltInCommands(ApplicationCommandType.CHAT, true, false);
+    } catch (e) {
+      builtInCommands = commands.getBuiltInCommands(Object.values(ApplicationCommandType), true, false);
+    }
+    builtInCommands.sort((a, b3) => parseInt(b3.id) - parseInt(a.id));
+    var lastCommand = builtInCommands[builtInCommands.length - 1];
+    command.id = (parseInt(lastCommand.id, 10) - 1).toString();
+    command.__bunny = {
+      shouldHide: command.shouldHide
+    };
+    command.applicationId ??= "-1";
+    command.type ??= ApplicationCommandType.CHAT;
+    command.inputType = ApplicationCommandInputType.BUILT_IN;
+    command.displayName ??= command.name;
+    command.untranslatedName ??= command.name;
+    command.displayDescription ??= command.description;
+    command.untranslatedDescription ??= command.description;
+    if (command.options)
+      for (var opt of command.options) {
+        opt.displayName ??= opt.name;
+        opt.displayDescription ??= opt.description;
+      }
+    instead("execute", command, (args, orig) => {
+      Promise.resolve(orig.apply(command, args)).then((ret) => {
+        if (ret && typeof ret === "object") {
+          messageUtil.sendMessage(args[1].channel.id, ret);
+        }
+      }).catch((err) => {
+        logger.error("Failed to execute command", err);
+      });
+    });
+    commands2.push(command);
+    return () => commands2 = commands2.filter(({ id }) => id !== command.id);
+  }
+  var commands2;
+  var init_commands = __esm({
+    "src/lib/api/commands/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_types();
+      init_patcher();
+      init_logger();
+      init_common();
+      commands2 = [];
+    }
+  });
+
+  // src/lib/api/flux/index.ts
+  var flux_exports = {};
+  __export(flux_exports, {
+    dispatcher: () => dispatcher,
+    injectFluxInterceptor: () => injectFluxInterceptor,
+    intercept: () => intercept
+  });
+  function injectFluxInterceptor() {
+    var cb = (payload) => {
+      for (var intercept2 of intercepts) {
+        var res = intercept2(payload);
+        if (res == null) {
+          continue;
+        } else if (!res) {
+          payload[blockedSym] = true;
+        } else if (typeof res === "object") {
+          Object.assign(payload, res);
+          payload[modifiedSym] = true;
+        }
+      }
+      return blockedSym in payload;
+    };
+    (dispatcher._interceptors ??= []).unshift(cb);
+    return () => dispatcher._interceptors &&= dispatcher._interceptors.filter((v2) => v2 !== cb);
+  }
+  function intercept(cb) {
+    intercepts.push(cb);
+    return () => {
+      intercepts = intercepts.filter((i) => i !== cb);
+    };
+  }
+  var blockedSym, modifiedSym, dispatcher, intercepts;
+  var init_flux = __esm({
+    "src/lib/api/flux/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_common();
+      blockedSym = Symbol.for("bunny.flux.blocked");
+      modifiedSym = Symbol.for("bunny.flux.modified");
+      dispatcher = FluxDispatcher;
+      intercepts = [];
+    }
+  });
+
+  // src/lib/api/native/index.ts
+  var native_exports = {};
+  __export(native_exports, {
+    fs: () => fs_exports
+  });
+  var init_native = __esm({
+    "src/lib/api/native/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_fs();
+    }
+  });
+
+  // src/lib/api/react/index.ts
+  var react_exports = {};
+  __export(react_exports, {
+    jsx: () => jsx_exports
+  });
+  var init_react = __esm({
+    "src/lib/api/react/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsx();
+    }
+  });
+
+  // src/lib/api/index.ts
+  var api_exports = {};
+  __export(api_exports, {
+    assets: () => assets_exports,
+    commands: () => commands_exports,
+    debug: () => debug_exports,
+    flux: () => flux_exports,
+    native: () => native_exports,
+    patcher: () => patcher_exports,
+    react: () => react_exports,
+    settings: () => settings_exports,
+    storage: () => storage_exports
+  });
+  var init_api = __esm({
+    "src/lib/api/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_assets();
+      init_commands();
+      init_debug();
+      init_flux();
+      init_native();
+      init_patcher();
+      init_react();
+      init_settings();
+      init_storage2();
+    }
+  });
+
+  // src/lib/addons/plugins/api.ts
+  function shimDisposableFn(unpatches, f) {
+    var dummy = (...props) => {
+      var up = f(...props);
+      unpatches.push(up);
+      return up;
+    };
+    for (var key in f)
+      if (typeof f[key] === "function") {
+        dummy[key] = shimDisposableFn(unpatches, f[key]);
+      }
+    return dummy;
+  }
+  function createBunnyPluginApi(id) {
+    var disposers = new Array();
+    var object = {
+      ...globalThis.bunny,
+      api: {
+        ...globalThis.bunny.api,
+        patcher: {
+          before: shimDisposableFn(disposers, patcher_exports.before),
+          after: shimDisposableFn(disposers, patcher_exports.after),
+          instead: shimDisposableFn(disposers, patcher_exports.instead)
+        },
+        commands: {
+          ...globalThis.bunny.api.commands,
+          registerCommand: shimDisposableFn(disposers, registerCommand)
+        },
+        flux: {
+          ...globalThis.bunny.api.flux,
+          intercept: shimDisposableFn(disposers, globalThis.bunny.api.flux.intercept)
+        }
+      },
+      // Added something in here? Make sure to also update BunnyPluginProperty in ./types
+      plugin: {
+        createStorage: () => createStorage2(`plugins/storage/${id}.json`),
+        manifest: registeredPlugins.get(id),
+        logger
+      }
+    };
+    return {
+      object,
+      disposers
+    };
+  }
+  var init_api2 = __esm({
+    "src/lib/addons/plugins/api.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_api();
+      init_commands();
+      init_storage2();
+      init_logger();
+      init_plugins4();
+    }
+  });
+
+  // src/lib/addons/plugins/index.ts
+  var plugins_exports2 = {};
+  __export(plugins_exports2, {
+    apiObjects: () => apiObjects,
+    corePluginInstances: () => corePluginInstances,
+    deleteRepository: () => deleteRepository,
+    disablePlugin: () => disablePlugin,
+    enablePlugin: () => enablePlugin,
+    getPluginSettingsComponent: () => getPluginSettingsComponent,
+    initPlugins: () => initPlugins,
+    installPlugin: () => installPlugin,
+    isCorePlugin: () => isCorePlugin,
+    isGreaterVersion: () => isGreaterVersion,
+    isPluginEnabled: () => isPluginEnabled,
+    isPluginInstalled: () => isPluginInstalled,
+    pluginInstances: () => pluginInstances,
+    pluginRepositories: () => pluginRepositories,
+    pluginSettings: () => pluginSettings,
+    refreshPlugin: () => refreshPlugin,
+    registeredPlugins: () => registeredPlugins,
+    startPlugin: () => startPlugin,
+    stopPlugin: () => stopPlugin,
+    uninstallPlugin: () => uninstallPlugin,
+    updateAllRepository: () => updateAllRepository,
+    updateAndWritePlugin: () => updateAndWritePlugin,
+    updatePlugins: () => updatePlugins,
+    updateRepository: () => updateRepository
+  });
+  function assert(condition, id, attempt) {
+    if (!condition)
+      throw new Error(`[${id}] Attempted to ${attempt}`);
+  }
+  function isGreaterVersion(v1, v2) {
+    if (semver.gt(v1, v2))
+      return true;
+    var coerced = semver.coerce(v1);
+    if (coerced == null)
+      return false;
+    return semver.prerelease(v1)?.includes("dev") && semver.eq(coerced, v2);
+  }
+  function isExternalPlugin(manifest) {
+    return "parentRepository" in manifest;
+  }
+  function isCorePlugin(id) {
+    return corePluginInstances.has(id);
+  }
+  function getPluginSettingsComponent(id) {
+    var instance = pluginInstances.get(id);
+    if (!instance)
+      return null;
+    if (instance.SettingsComponent)
+      return instance.SettingsComponent;
+    return null;
+  }
+  function isPluginInstalled(id) {
+    return pluginSettings[id] != null;
+  }
+  function isPluginEnabled(id) {
+    return Boolean(pluginSettings[id]?.enabled);
+  }
+  function updateAndWritePlugin(repoUrl, id, fetchScript) {
+    return _async_to_generator(function* () {
+      var manifest = yield fetchJSON(repoUrl, `builds/${id}/manifest.json`);
+      manifest.parentRepository = repoUrl;
+      if (fetchScript) {
+        manifest.jsPath = `plugins/scripts/${id}.js`;
+        var js = yield fetchJS(repoUrl, `builds/${id}/index.js`);
+        yield writeFile(manifest.jsPath, js);
+      }
+      yield updateStorage(`plugins/manifests/${id}.json`, manifest);
+      if (registeredPlugins.has(id)) {
+        var existingManifest = registeredPlugins.get(id);
+        return Object.assign(existingManifest, manifest);
+      }
+      return manifest;
+    })();
+  }
+  function refreshPlugin(id, repoUrl) {
+    return _async_to_generator(function* () {
+      var manifest = registeredPlugins.get(id);
+      assert(manifest, id, "refresh a non-registered plugin");
+      assert(pluginInstances.get(id), id, "refresh a non-started plugin");
+      stopPlugin(id);
+      if (isExternalPlugin(manifest)) {
+        manifest = yield updateAndWritePlugin(repoUrl ?? manifest.parentRepository, id, true);
+      }
+      registeredPlugins.delete(id);
+      registeredPlugins.set(id, manifest);
+      yield startPlugin(id);
+    })();
+  }
+  function updateRepository(repoUrl) {
+    return _async_to_generator(function* () {
+      var repo = yield fetchJSON(repoUrl, "repo.json");
+      var storedRepo = pluginRepositories[repoUrl];
+      var updated = false;
+      if (!storedRepo) {
+        for (var id in repo) {
+          if (corePluginInstances.has(id)) {
+            throw new Error(`Plugins can't have the same ID as any of Bunny core plugin '${id}'`);
+          }
+        }
+        updated = true;
+        pluginRepositories[repoUrl] = repo;
+      } else {
+        for (var plugin in storedRepo)
+          if (!repo[plugin]) {
+            delete storedRepo[plugin];
+          }
+      }
+      var pluginIds = Object.keys(repo).filter((id2) => !id2.startsWith("$"));
+      yield Promise.all(pluginIds.map((pluginId) => _async_to_generator(function* () {
+        if (!storedRepo || !storedRepo[pluginId] || repo[pluginId].alwaysFetch || isGreaterVersion(repo[pluginId].version, storedRepo[pluginId].version)) {
+          updated = true;
+          pluginRepositories[repoUrl][pluginId] = repo[pluginId];
+          yield updateAndWritePlugin(repoUrl, pluginId, Boolean(storedRepo && pluginSettings[pluginId]));
+        } else {
+          var manifest2 = yield preloadStorageIfExists(`plugins/manifests/${pluginId}.json`);
+          if (!manifest2) {
+            yield updateAndWritePlugin(repoUrl, pluginId, Boolean(storedRepo && pluginSettings[pluginId]));
+          }
+        }
+      })()));
+      for (var id1 of pluginIds) {
+        var manifest = getPreloadedStorage(`plugins/manifests/${id1}.json`);
+        if (manifest === void 0)
+          continue;
+        var existing = registeredPlugins.get(id1);
+        if (existing && !isGreaterVersion(manifest.version, existing.version)) {
+          continue;
+        }
+        registeredPlugins.set(id1, manifest);
+      }
+      return updated;
+    })();
+  }
+  function deleteRepository(repoUrl) {
+    return _async_to_generator(function* () {
+      assert(repoUrl !== OFFICIAL_PLUGINS_REPO_URL, repoUrl, "delete the official repository");
+      assert(pluginRepositories[repoUrl], repoUrl, "delete a non-registered repository");
+      var promQueues = [];
+      for (var [id, manifest] of registeredPlugins) {
+        if (!isExternalPlugin(manifest) || manifest.parentRepository !== repoUrl)
+          continue;
+        if (isPluginInstalled(id)) {
+          promQueues.push(uninstallPlugin(id));
+        }
+        promQueues.push(purgeStorage2(`plugins/manifests/${id}.json`));
+        registeredPlugins.delete(id);
+      }
+      delete pluginRepositories[repoUrl];
+      yield Promise.all(promQueues);
+      updateAllRepository();
+    })();
+  }
+  function enablePlugin(id, start) {
+    return _async_to_generator(function* () {
+      assert(isPluginInstalled(id), id, "enable a non-installed plugin");
+      if (start)
+        yield startPlugin(id);
+      pluginSettings[id].enabled = true;
+    })();
+  }
+  function disablePlugin(id) {
+    assert(isPluginInstalled(id), id, "disable a non-installed plugin");
+    pluginInstances.has(id) && stopPlugin(id);
+    pluginSettings[id].enabled = false;
+  }
+  function installPlugin(id, start) {
+    return _async_to_generator(function* () {
+      var manifest = registeredPlugins.get(id);
+      assert(manifest, id, "install an non-registered plugin");
+      assert(!isPluginInstalled(id), id, "install an already installed plugin");
+      assert(isExternalPlugin(manifest), id, "install a core plugin");
+      yield updateAndWritePlugin(manifest.parentRepository, id, true);
+      pluginSettings[id] = {
+        enabled: true
+      };
+      if (start)
+        startPlugin(id);
+    })();
+  }
+  function uninstallPlugin(id) {
+    return _async_to_generator(function* () {
+      var manifest = registeredPlugins.get(id);
+      assert(manifest, id, "uninstall an unregistered plugin");
+      assert(isPluginInstalled(id), id, "uninstall a non-installed plugin");
+      assert(isExternalPlugin(manifest), id, "uninstall a core plugin");
+      pluginInstances.has(id) && stopPlugin(id);
+      delete pluginSettings[id];
+      yield purgeStorage2(`plugins/storage/${id}.json`);
+      yield removeFile(`plugins/scripts/${id}.js`);
+    })();
+  }
+  function startPlugin(_0) {
+    return _async_to_generator(function* (id, { throwIfDisabled = false, disableWhenThrown = true } = {}) {
+      var manifest = registeredPlugins.get(id);
+      assert(manifest, id, "start a non-registered plugin");
+      assert(isPluginInstalled(id), id, "start a non-installed plugin");
+      assert(!throwIfDisabled || pluginSettings[id]?.enabled, id, "start a disabled plugin");
+      assert(!pluginInstances.has(id), id, "start an already started plugin");
+      yield preloadStorageIfExists(`plugins/storage/${id}.json`);
+      var pluginInstance2;
+      if (isExternalPlugin(manifest)) {
+        try {
+          var iife = yield readFile(manifest.jsPath);
+          var instantiator = globalEvalWithSourceUrl(`(bunny,definePlugin)=>{${iife};return plugin?.default ?? plugin;}`, `bunny-plugin/${id}-${manifest.version}`);
+        } catch (error) {
+          throw new Error("An error occured while parsing plugin's code, possibly a syntax error?", {
+            cause: error
+          });
+        }
+        try {
+          var api = createBunnyPluginApi(id);
+          pluginInstance2 = instantiator(api.object, (p) => {
+            return Object.assign(p, {
+              manifest
+            });
+          });
+          if (!pluginInstance2)
+            throw new Error(`Plugin '${id}' does not export a valid plugin instance`);
+          apiObjects.set(id, api);
+          pluginInstances.set(id, pluginInstance2);
+        } catch (error) {
+          throw new Error("An error occured while instantiating plugin's code", {
+            cause: error
+          });
+        }
+      } else {
+        pluginInstance2 = corePluginInstances.get(id);
+        assert(pluginInstance2, id, "start a non-existent core plugin");
+        pluginInstances.set(id, pluginInstance2);
+      }
+      try {
+        pluginInstance2.start?.();
+        pluginSettings[id].enabled = true;
+      } catch (error) {
+        disableWhenThrown && disablePlugin(id);
+        throw new Error("An error occured while starting the plugin", {
+          cause: error
+        });
+      }
+    }).apply(this, arguments);
+  }
+  function stopPlugin(id) {
+    var instance = pluginInstances.get(id);
+    assert(instance, id, "stop a non-started plugin");
+    instance.stop?.();
+    var obj = apiObjects.get(id);
+    obj?.disposers.forEach((d) => d());
+    pluginInstances.delete(id);
+  }
+  function updateAllRepository() {
+    return _async_to_generator(function* () {
+      try {
+        yield updateRepository(OFFICIAL_PLUGINS_REPO_URL);
+      } catch (error) {
+        console.error("Failed to update official plugins repository", error);
+      }
+      yield allSettled(Object.keys(pluginRepositories).map((repo) => _async_to_generator(function* () {
+        if (repo !== OFFICIAL_PLUGINS_REPO_URL) {
+          yield updateRepository(repo);
+        }
+      })()));
+    })();
+  }
+  function updatePlugins() {
+    return _async_to_generator(function* () {
+      yield awaitStorage2(pluginRepositories, pluginSettings);
+      var corePlugins = getCorePlugins();
+      for (var id in corePlugins) {
+        var { default: instance, preenabled } = corePlugins[id];
+        pluginSettings[id] ??= {
+          enabled: preenabled ?? true
+        };
+        registeredPlugins.set(id, instance.manifest);
+        corePluginInstances.set(id, instance);
+      }
+      updateAllRepository();
+    })();
+  }
+  function initPlugins() {
+    return _async_to_generator(function* () {
+      yield awaitStorage2(pluginRepositories, pluginSettings);
+      allSettled([
+        ...registeredPlugins.keys()
+      ].map((id) => _async_to_generator(function* () {
+        if (isPluginEnabled(id)) {
+          startPlugin(id);
+        }
+      })()));
+    })();
+  }
+  var corePluginInstances, registeredPlugins, pluginInstances, apiObjects, pluginRepositories, pluginSettings, _fetch, fetchJS, fetchJSON;
+  var init_plugins4 = __esm({
+    "src/lib/addons/plugins/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_plugins2();
+      init_fs();
+      init_storage2();
+      init_utils();
+      init_constants();
+      init_common();
+      init_api2();
+      corePluginInstances = /* @__PURE__ */ new Map();
+      registeredPlugins = /* @__PURE__ */ new Map();
+      pluginInstances = /* @__PURE__ */ new Map();
+      apiObjects = /* @__PURE__ */ new Map();
+      pluginRepositories = createStorage2("plugins/repositories.json");
+      pluginSettings = createStorage2("plugins/settings.json");
+      _fetch = (repoUrl, path) => safeFetch(new URL(path, repoUrl), {
+        cache: "no-store"
+      });
+      fetchJS = (repoUrl, path) => _fetch(repoUrl, path).then((r) => r.text());
+      fetchJSON = (repoUrl, path) => _fetch(repoUrl, path).then((r) => r.json());
+    }
+  });
+
   // src/core/ui/settings/pages/FakeProfile/index.tsx
   var FakeProfile_exports = {};
   __export(FakeProfile_exports, {
     default: () => FakeProfile,
     initializeFakeProfile: () => initializeFakeProfile
   });
+  function pullRealCordConfiguration() {
+    return _async_to_generator(function* () {
+      if (globalThis.__CLOUDCORD_LOADER__?.loaderName !== "RealCord")
+        return;
+      var reader = import_react_native16.NativeModules.FileReaderModule ?? import_react_native16.NativeModules.RCTFileReaderModule;
+      if (typeof reader?.readAsDataURL !== "function")
+        return;
+      try {
+        var response = yield reader.readAsDataURL({
+          rain: {
+            method: "realcord.config",
+            args: []
+          }
+        });
+        var config = response?.result;
+        if (!config || typeof config !== "object")
+          return;
+        var fingerprint = `${JSON.stringify(config)}:${registeredPlugins.size}`;
+        if (fingerprint === realCordConfigFingerprint)
+          return;
+        realCordConfigFingerprint = fingerprint;
+        var username = String(config.customUsername || "").trim();
+        var displayName2 = String(config.customDisplayName || "").trim();
+        var tier = String(config.nitroTier || "").toLowerCase();
+        var requestedPlugins = new Set((Array.isArray(config.enabledPlugins) ? config.enabledPlugins : []).map((value) => String(value).toLowerCase().replace(/[^a-z0-9]/g, "")));
+        var next = {
+          ...preview,
+          enabled: Boolean(username || displayName2 || REALCORD_NITRO_MONTHS[tier]),
+          username: username || preview.username,
+          displayName: displayName2 || preview.displayName,
+          nitroMonths: REALCORD_NITRO_MONTHS[tier] || 0,
+          replaceBadges: true
+        };
+        if (JSON.stringify(next) !== JSON.stringify(preview)) {
+          rootSettings.fakeProfile = next;
+          preview = next;
+          refreshPreview();
+        }
+        for (var [id, manifest] of registeredPlugins) {
+          if (id === "bunny.messagefix") {
+            if (isPluginEnabled(id))
+              disablePlugin(id);
+            realCordManagedPlugins.delete(id);
+            continue;
+          }
+          var normalizedId = id.toLowerCase().replace(/[^a-z0-9]/g, "");
+          var normalizedName = String(manifest?.display?.name || manifest?.name || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+          var requested = requestedPlugins.has(normalizedId) || requestedPlugins.has(normalizedName);
+          try {
+            if (requested) {
+              if (!isPluginInstalled(id))
+                yield installPlugin(id, true);
+              else if (!isPluginEnabled(id))
+                yield enablePlugin(id, true);
+              realCordManagedPlugins.add(id);
+            } else if (realCordManagedPlugins.has(id) && isPluginEnabled(id)) {
+              disablePlugin(id);
+              realCordManagedPlugins.delete(id);
+            }
+          } catch (error) {
+            console.warn(`[RealCord] Could not apply mobile plugin ${id}`, error);
+          }
+        }
+      } catch (error) {
+        diagnostics.last = error?.message || "Could not read RealCord profile configuration";
+      }
+    })();
+  }
   function bindSavedPreview() {
     if (configReady)
       return;
@@ -4513,6 +7746,22 @@
     };
     preview = rootSettings.fakeProfile;
     configReady = true;
+  }
+  function localHasFakeBadges() {
+    return preview.nitroMonths > 0 || preview.boostMonths > 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
+  }
+  function shouldReplaceLocalBadges() {
+    return preview.replaceBadges && localHasFakeBadges();
+  }
+  function remoteReplaceBadges(data) {
+    return data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID);
+  }
+  function remoteHasFakeBadges(data) {
+    var custom = Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id) => id !== REPLACE_BADGES_SYNC_ID) : [];
+    return Number(data?.badgeFlags || 0) !== 0 || data?.nitro === true || Number(data?.nitroLevel ?? -1) >= 0 || Number(data?.boostMonths ?? -1) >= 0 || custom.length > 0;
+  }
+  function shouldReplaceSharedBadges(data) {
+    return remoteReplaceBadges(data) && remoteHasFakeBadges(data);
   }
   function shareableMedia(key) {
     return _async_to_generator(function* () {
@@ -4537,23 +7786,6 @@
       }
     })();
   }
-  var REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
-  function localHasFakeBadges() {
-    return preview.nitroMonths > 0 || preview.boostMonths > 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
-  }
-  function shouldReplaceLocalBadges() {
-    return preview.replaceBadges && localHasFakeBadges();
-  }
-  function remoteReplaceBadges(data) {
-    return data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID);
-  }
-  function remoteHasFakeBadges(data) {
-    var custom = Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id) => id !== REPLACE_BADGES_SYNC_ID) : [];
-    return Number(data?.badgeFlags || 0) !== 0 || data?.nitro === true || Number(data?.nitroLevel ?? -1) >= 0 || Number(data?.boostMonths ?? -1) >= 0 || custom.length > 0;
-  }
-  function shouldReplaceSharedBadges(data) {
-    return remoteReplaceBadges(data) && remoteHasFakeBadges(data);
-  }
   function ownSharedProfile() {
     return _async_to_generator(function* () {
       return {
@@ -4565,7 +7797,9 @@
         nitroLevel: Math.max(-1, NITRO_DURATIONS.indexOf(preview.nitroMonths) - 1),
         boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
         badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0),
-        customBadgeIds: preview.replaceBadges ? [REPLACE_BADGES_SYNC_ID] : []
+        customBadgeIds: preview.replaceBadges ? [
+          REPLACE_BADGES_SYNC_ID
+        ] : []
       };
     })();
   }
@@ -4770,7 +8004,14 @@
         uri: icon
       },
       label: description,
-      ...size ? { width: size, height: size, style: { width: size, height: size } } : {}
+      ...size ? {
+        width: size,
+        height: size,
+        style: {
+          width: size,
+          height: size
+        }
+      } : {}
     });
     result.push({
       id,
@@ -4934,7 +8175,7 @@
   }
   function connectBadgeRenderer() {
     try {
-      after("default", useBadgesModule, ([user], result) => {
+      after("default", useBadgesModule2, ([user], result) => {
         if (!Array.isArray(result))
           return;
         var id = String(user?.userId || user?.id || "");
@@ -4976,39 +8217,39 @@
                 addRenderedBadge(ordered, `cloudcord-shared-${flag}`, description, icon);
             }
           }
-          var existingShared = data && shouldReplaceSharedBadges(data) ? [] : result.filter((item) => {
+          var existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter((item) => {
             var badgeId2 = String(item?.id || "");
             return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("cloudcord-shared-");
           });
-          result.splice(0, result.length, ...ordered, ...existingShared);
+          result.splice(0, result.length, ...ordered, ...existing);
           return;
         }
         var officialOwner1 = id === CLOUDCORD_OFFICIAL_OWNER_ID;
         if (!preview.enabled) {
           if (!officialOwner1)
             return;
-          var existingOfficial = result.filter((item) => String(item?.id || "") !== CLOUDCORD_OFFICIAL_BADGE_ID);
-          var officialOnly = [];
-          addRenderedBadge(officialOnly, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
-          result.splice(0, result.length, ...officialOnly, ...existingOfficial);
+          var existing1 = result.filter((item) => String(item?.id || "") !== CLOUDCORD_OFFICIAL_BADGE_ID);
+          var ordered1 = [];
+          addRenderedBadge(ordered1, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
+          result.splice(0, result.length, ...ordered1, ...existing1);
           return;
         }
-        var existing = shouldReplaceLocalBadges() ? [] : result.filter((item) => {
+        var existing2 = shouldReplaceLocalBadges() ? [] : result.filter((item) => {
           var badgeId2 = String(item?.id || "");
           return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("fakeprofile-");
         });
-        var ordered1 = [];
+        var ordered2 = [];
         if (officialOwner1)
-          addRenderedBadge(ordered1, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
-        addRenderedBadge(ordered1, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
-        addRenderedBadge(ordered1, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
+          addRenderedBadge(ordered2, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
+        addRenderedBadge(ordered2, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
+        addRenderedBadge(ordered2, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
         for (var [badgeId, description1, , icon1] of BADGES) {
           if (!preview.selectedBadges?.[badgeId])
             continue;
           var id1 = `fakeprofile-${badgeId}`;
-          addRenderedBadge(ordered1, id1, description1, icon1);
+          addRenderedBadge(ordered2, id1, description1, icon1);
         }
-        result.splice(0, result.length, ...ordered1, ...existing);
+        result.splice(0, result.length, ...ordered2, ...existing2);
       });
       diagnostics.patches += 1;
     } catch (error) {
@@ -5021,8 +8262,9 @@
       try {
         onJsxCreate(component, (_component, rendered) => {
           var props = badgeRenderProps.get(rendered?.props?.id);
-          if (props)
+          if (props) {
             Object.assign(rendered.props, props);
+          }
         });
         diagnostics.patches += 1;
       } catch (e) {
@@ -5320,6 +8562,10 @@
       try {
         yield awaitStorage(settings);
         bindSavedPreview();
+        yield pullRealCordConfiguration();
+        if (globalThis.__CLOUDCORD_LOADER__?.loaderName === "RealCord" && !realCordSyncTimer) {
+          realCordSyncTimer = setInterval(pullRealCordConfiguration, 5e3);
+        }
         ensurePatches();
         yield pullOwnSharedProfile();
         if (preview.enabled) {
@@ -5341,7 +8587,7 @@
           height: Number(asset.height)
         };
       return yield new Promise((resolve, reject) => {
-        import_react_native6.Image.getSize(uri, (width, height) => resolve({
+        import_react_native16.Image.getSize(uri, (width, height) => resolve({
           width,
           height
         }), reject);
@@ -5505,7 +8751,7 @@
     })();
   }
   function ActionButton({ label, onPress, muted = false }) {
-    return /* @__PURE__ */ jsx(import_react_native6.Pressable, {
+    return /* @__PURE__ */ jsx(import_react_native16.Pressable, {
       onPress,
       style: ({ pressed }) => ({
         width: "100%",
@@ -5529,7 +8775,7 @@
     });
   }
   function ToggleRow({ label, subLabel, value, onPress, accent = false }) {
-    return /* @__PURE__ */ jsxs(import_react_native6.Pressable, {
+    return /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
       onPress,
       style: ({ pressed }) => ({
         width: "100%",
@@ -5543,7 +8789,7 @@
         opacity: pressed ? 0.8 : 1
       }),
       children: [
-        /* @__PURE__ */ jsxs(import_react_native6.View, {
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
           style: {
             flex: 1,
             minWidth: 0,
@@ -5567,7 +8813,7 @@
             }) : null
           ]
         }),
-        /* @__PURE__ */ jsx(import_react_native6.View, {
+        /* @__PURE__ */ jsx(import_react_native16.View, {
           style: {
             width: 48,
             height: 28,
@@ -5576,7 +8822,7 @@
             alignItems: value ? "flex-end" : "flex-start",
             backgroundColor: value ? "#50fa9b" : "#4b4f58"
           },
-          children: /* @__PURE__ */ jsx(import_react_native6.View, {
+          children: /* @__PURE__ */ jsx(import_react_native16.View, {
             style: {
               width: 22,
               height: 22,
@@ -5589,7 +8835,7 @@
     });
   }
   function DurationSelect({ label, value, onPress }) {
-    return /* @__PURE__ */ jsxs(import_react_native6.Pressable, {
+    return /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
       onPress,
       style: ({ pressed }) => ({
         width: "100%",
@@ -5602,7 +8848,7 @@
         backgroundColor: pressed ? "rgba(120,231,255,0.16)" : "rgba(255,255,255,0.04)"
       }),
       children: [
-        /* @__PURE__ */ jsxs(import_react_native6.View, {
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
           style: {
             flex: 1,
             minWidth: 0,
@@ -5626,7 +8872,7 @@
             })
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native6.View, {
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
           style: {
             maxWidth: "48%",
             flexDirection: "row",
@@ -5660,8 +8906,8 @@
   }
   function FakeProfile() {
     useProxy(settings);
-    var [, redraw] = (0, import_react.useReducer)((value) => value + 1, 0);
-    (0, import_react.useEffect)(() => {
+    var [, redraw] = (0, import_react3.useReducer)((value) => value + 1, 0);
+    (0, import_react3.useEffect)(() => {
       initializeFakeProfile();
       redraw();
     }, []);
@@ -5680,7 +8926,7 @@
       } catch (error) {
         diagnostics.last = error?.message || "Could not open the picker.";
         redraw();
-        import_react_native6.Alert.alert("FakeProfile", diagnostics.last);
+        import_react_native16.Alert.alert("FakeProfile", diagnostics.last);
       }
     })();
     var clearMedia = (field) => {
@@ -5721,7 +8967,7 @@
     };
     var MediaEditor = ({ label, field, banner: banner2 = false }) => {
       var value = preview[field];
-      return /* @__PURE__ */ jsxs(import_react_native6.View, {
+      return /* @__PURE__ */ jsxs(import_react_native16.View, {
         style: {
           width: "100%",
           gap: 9,
@@ -5742,7 +8988,7 @@
             },
             children: banner2 ? "Automatically fitted to 600 x 240" : "Automatically fitted to a square"
           }),
-          /* @__PURE__ */ jsxs(import_react_native6.View, {
+          /* @__PURE__ */ jsxs(import_react_native16.View, {
             style: {
               width: "100%",
               gap: 8
@@ -5759,7 +9005,7 @@
               })
             ]
           }),
-          value?.uri && /* @__PURE__ */ jsxs(import_react_native6.View, {
+          value?.uri && /* @__PURE__ */ jsxs(import_react_native16.View, {
             style: {
               width: "100%",
               borderRadius: 12,
@@ -5767,7 +9013,7 @@
               backgroundColor: "#1f2023"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native6.View, {
+              /* @__PURE__ */ jsx(import_react_native16.View, {
                 style: banner2 ? {
                   width: "100%",
                   aspectRatio: 2.5,
@@ -5780,7 +9026,7 @@
                   alignSelf: "center",
                   marginVertical: 12
                 },
-                children: /* @__PURE__ */ jsx(import_react_native6.Image, {
+                children: /* @__PURE__ */ jsx(import_react_native16.Image, {
                   source: {
                     uri: value.uri
                   },
@@ -5791,7 +9037,7 @@
                   }
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native6.View, {
+              /* @__PURE__ */ jsxs(import_react_native16.View, {
                 style: {
                   flexDirection: "row",
                   alignItems: "center",
@@ -5808,7 +9054,7 @@
                     },
                     children: value.name
                   }),
-                  /* @__PURE__ */ jsx(import_react_native6.Pressable, {
+                  /* @__PURE__ */ jsx(import_react_native16.Pressable, {
                     onPress: () => clearMedia(field),
                     style: {
                       paddingHorizontal: 10,
@@ -5833,7 +9079,7 @@
     };
     var avatar = mediaUri("avatarMedia");
     var banner = mediaUri("bannerMedia");
-    return /* @__PURE__ */ jsx(import_react_native6.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native16.ScrollView, {
       style: {
         flex: 1,
         width: "100%"
@@ -5849,13 +9095,13 @@
       keyboardShouldPersistTaps: "handled",
       nestedScrollEnabled: true,
       showsVerticalScrollIndicator: true,
-      children: /* @__PURE__ */ jsxs(Stack, {
-        spacing: 16,
+      children: /* @__PURE__ */ jsxs(import_react_native16.View, {
         style: {
-          width: "100%"
+          width: "100%",
+          gap: 16
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native6.View, {
+          /* @__PURE__ */ jsxs(import_react_native16.View, {
             style: {
               width: "100%",
               flexDirection: "row",
@@ -5863,14 +9109,14 @@
               gap: 12
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native6.View, {
+              /* @__PURE__ */ jsx(import_react_native16.View, {
                 style: {
                   width: 52,
                   height: 52,
                   alignItems: "center",
                   justifyContent: "center"
                 },
-                children: /* @__PURE__ */ jsx(import_react_native6.Image, {
+                children: /* @__PURE__ */ jsx(import_react_native16.Image, {
                   source: {
                     uri: fakeprofile_default
                   },
@@ -5881,7 +9127,7 @@
                   }
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native6.View, {
+              /* @__PURE__ */ jsxs(import_react_native16.View, {
                 style: {
                   flex: 1,
                   minWidth: 0
@@ -5903,13 +9149,13 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native6.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native16.View, {
               style: {
                 borderRadius: 14,
                 overflow: "hidden"
               },
               children: [
-                banner ? /* @__PURE__ */ jsx(import_react_native6.Image, {
+                banner ? /* @__PURE__ */ jsx(import_react_native16.Image, {
                   source: {
                     uri: banner
                   },
@@ -5918,19 +9164,19 @@
                     width: "100%",
                     height: 118
                   }
-                }) : /* @__PURE__ */ jsx(import_react_native6.View, {
+                }) : /* @__PURE__ */ jsx(import_react_native16.View, {
                   style: {
                     height: 118,
                     backgroundColor: "#5865f2"
                   }
                 }),
-                /* @__PURE__ */ jsxs(import_react_native6.View, {
+                /* @__PURE__ */ jsxs(import_react_native16.View, {
                   style: {
                     paddingHorizontal: 16,
                     paddingBottom: 16
                   },
                   children: [
-                    avatar ? /* @__PURE__ */ jsx(import_react_native6.Image, {
+                    avatar ? /* @__PURE__ */ jsx(import_react_native16.Image, {
                       source: {
                         uri: avatar
                       },
@@ -5942,7 +9188,7 @@
                         borderWidth: 5,
                         borderColor: "#1f2023"
                       }
-                    }) : /* @__PURE__ */ jsx(import_react_native6.View, {
+                    }) : /* @__PURE__ */ jsx(import_react_native16.View, {
                       style: {
                         width: 82,
                         height: 82,
@@ -5984,7 +9230,7 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native6.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native16.View, {
               style: {
                 padding: 14,
                 gap: 14
@@ -5997,7 +9243,7 @@
                   accent: true,
                   onPress: () => update("enabled", !preview.enabled, true)
                 }),
-                /* @__PURE__ */ jsxs(import_react_native6.View, {
+                /* @__PURE__ */ jsxs(import_react_native16.View, {
                   style: {
                     gap: 8
                   },
@@ -6007,7 +9253,7 @@
                       color: "text-normal",
                       children: "Display name"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native6.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native16.TextInput, {
                       defaultValue: preview.displayName,
                       placeholder: "Preview Name",
                       placeholderTextColor: "#777",
@@ -6021,7 +9267,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native6.View, {
+                /* @__PURE__ */ jsxs(import_react_native16.View, {
                   style: {
                     gap: 8
                   },
@@ -6031,7 +9277,7 @@
                       color: "text-normal",
                       children: "Username"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native6.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native16.TextInput, {
                       defaultValue: preview.username,
                       placeholder: "preview",
                       placeholderTextColor: "#777",
@@ -6079,7 +9325,7 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native6.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native16.View, {
               style: {
                 padding: 14,
                 gap: 10
@@ -6111,7 +9357,7 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native6.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native16.View, {
               style: {
                 padding: 14,
                 gap: 5
@@ -6177,7 +9423,7 @@
       })
     });
   }
-  var import_react, import_react_native6, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, defaultPreview, preview, configReady, initPromise, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer;
+  var import_react3, import_react_native16, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -6190,11 +9436,12 @@
       init_patcher();
       init_jsx();
       init_settings();
+      init_plugins4();
       init_metro();
       init_common();
       init_components();
-      import_react = __toESM(require_react());
-      import_react_native6 = __toESM(require_react_native());
+      import_react3 = __toESM(require_react());
+      import_react_native16 = __toESM(require_react_native());
       BADGES = [
         [
           "bug1",
@@ -6254,7 +9501,7 @@
       CLOUDCORD_OFFICIAL_OWNER_ID = "463515440606609419";
       CLOUDCORD_OFFICIAL_BADGE_ID = "cloudcord-official-owner";
       CLOUDCORD_OFFICIAL_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
-      useBadgesModule = findByNameLazy("useBadges", false);
+      useBadgesModule2 = findByNameLazy("useBadges", false);
       useUserProfileModule = findByNameLazy("useUserProfile", false);
       useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
       badgeRenderProps = /* @__PURE__ */ new Map();
@@ -6395,6 +9642,19 @@
       preview = defaultPreview();
       configReady = false;
       initPromise = null;
+      realCordSyncTimer = null;
+      realCordManagedPlugins = /* @__PURE__ */ new Set();
+      realCordConfigFingerprint = "";
+      REALCORD_NITRO_MONTHS = {
+        bronze: 1,
+        silver: 3,
+        gold: 6,
+        platinum: 12,
+        diamond: 24,
+        emerald: 36,
+        ruby: 60,
+        opal: 72
+      };
       diagnostics = {
         patches: 0,
         userStore: false,
@@ -6412,1538 +9672,7 @@
       sharedProfiles = /* @__PURE__ */ new Map();
       sharedRequests = /* @__PURE__ */ new Set();
       publishTimer = null;
-    }
-  });
-
-  // src/core/ui/reporter/utils/isStack.tsx
-  function isComponentStack(error) {
-    return "componentStack" in error && typeof error.componentStack === "string";
-  }
-  function hasStack(error) {
-    return !!error.stack;
-  }
-  var init_isStack = __esm({
-    "src/core/ui/reporter/utils/isStack.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-    }
-  });
-
-  // src/lib/api/assets/index.ts
-  var assets_exports = {};
-  __export(assets_exports, {
-    filterAssets: () => filterAssets,
-    findAsset: () => findAsset,
-    findAssetId: () => findAssetId,
-    iterateAssets: () => iterateAssets
-  });
-  function* iterateAssets() {
-    var { flagsIndex } = getMetroCache();
-    var yielded = /* @__PURE__ */ new Set();
-    for (var id in flagsIndex) {
-      if (flagsIndex[id] & ModuleFlags.ASSET) {
-        var assetId = requireModule(Number(id));
-        if (typeof assetId !== "number" || yielded.has(assetId))
-          continue;
-        yield getAssetById(assetId);
-        yielded.add(assetId);
-      }
-    }
-  }
-  function getAssetById(id) {
-    var asset = assetsModule.getAssetByID(id);
-    if (!asset)
-      return asset;
-    return Object.assign(asset, {
-      id
-    });
-  }
-  function findAsset(param) {
-    if (typeof param === "number")
-      return getAssetById(param);
-    if (typeof param === "string" && _nameToAssetCache[param]) {
-      return _nameToAssetCache[param];
-    }
-    for (var asset of iterateAssets()) {
-      if (typeof param === "string" && asset.name === param) {
-        _nameToAssetCache[param] = asset;
-        return asset;
-      } else if (typeof param === "function" && param(asset)) {
-        return asset;
-      }
-    }
-  }
-  function filterAssets(param) {
-    var filteredAssets = [];
-    for (var asset of iterateAssets()) {
-      if (typeof param === "string" ? asset.name === param : param(asset)) {
-        filteredAssets.push(asset);
-      }
-    }
-    return filteredAssets;
-  }
-  function findAssetId(name) {
-    return findAsset(name)?.id;
-  }
-  var _nameToAssetCache;
-  var init_assets = __esm({
-    "src/lib/api/assets/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_caches();
-      init_enums();
-      init_modules2();
-      init_patches();
-      _nameToAssetCache = {};
-    }
-  });
-
-  // src/core/i18n/default.json
-  var default_default;
-  var init_default = __esm({
-    "src/core/i18n/default.json"() {
-      default_default = {
-        ABOUT: "About",
-        ACTIONS: "Actions",
-        ARE_YOU_SURE_TO_CLEAR_DATA: "Are you sure you wish to clear the data of {name}?",
-        ARE_YOU_SURE_TO_DELETE_PLUGIN: "Are you sure you wish to delete {name}? This will clear all of the plugin's data.",
-        ARE_YOU_SURE_TO_DELETE_THEME: "Are you sure you wish to delete {name}?",
-        ASSET_BROWSER: "Asset Browser",
-        BRAND: "Brand",
-        PUPU: "CloudCord",
-        PUPU_URL: "CloudCord URL",
-        BROWSER: "Addon Browser",
-        BYTECODE: "Bytecode",
-        CANCEL: "Cancel",
-        CLEAR: "Clear",
-        CLEAR_BUNDLE: "Clear JS Bundle",
-        CLEAR_BUNDLE_DESC: "Clear the cached bundle. This will force a re-download of the bundle next app launch.",
-        CLEAR_DATA: "Clear data",
-        CLEAR_DATA_FAILED: "Failed to clear data for {name}",
-        CLEAR_DATA_SUCCESSFUL: "Cleared data for {name}",
-        CODEBERG: "",
-        CODENAME: "Codename",
-        COMMAND_DEBUG_DESC: "Send CloudCord debug info.",
-        COMMAND_DEBUG_OPT_EPHEMERALLY: "Send debug info ephemerally.",
-        COMMAND_EVAL_DESC: "Evaluate JavaScript code.",
-        COMMAND_EVAL_OPT_ASYNC: "Whether to support 'await' in code. Must explicitly return for result (default: false)",
-        COMMAND_EVAL_OPT_CODE: "The code to evaluate.",
-        COMMAND_PLUGINS_DESC: "Send list of installed plugins.",
-        COMMAND_PLUGINS_OPT_EPHEMERALLY: "Send plugins list ephemerally.",
-        COMPONENT: "Component",
-        CONFIRMATION_LINK_IS_A_TYPE: "This link is a **{urlType, select, plugin {Plugin} theme {Theme} other {Add-on}}**, would you like to install it?",
-        CONNECT_TO_DEBUG_WEBSOCKET: "Connect to debug WebSocket",
-        CONNECT_TO_REACT_DEVTOOLS: "Connect to React DevTools",
-        CONTINUE: "Continue",
-        COPIED_TO_CLIPBOARD: "Copied to clipboard",
-        COPY_URL: "Copy URL",
-        DEBUG: "Debug",
-        DEBUGGER_URL: "RainDevTools URL",
-        AUTO_DEBUGGER: "Automatically connect to RainDevTools",
-        DEVTOOLS_URL: "React DevTools URL",
-        AUTO_DEVTOOLS: "Automatically connect to React Devtools",
-        DELETE: "Delete",
-        DESC_EXTRACT_FONTS_FROM_THEME: 'Looks out for "fonts" field in your currently applied theme and install it.',
-        DEVELOPER: "Developer",
-        DEVELOPER_SETTINGS: "Developer Settings",
-        DISABLE_THEME: "Disable Theme",
-        DISABLE_UPDATES: "Disable Updates",
-        DISCORD_SERVER: "Discord Server",
-        DONE: "Done",
-        ENABLE_EVAL_COMMAND: "Enable /eval command",
-        ENABLE_EVAL_COMMAND_DESC: "Evaluate JavaScript directly from a command. Be cautious when using this command as it may pose a security risk. Make sure to know what you are doing.",
-        ENABLE_UPDATES: "Enable Updates",
-        ERROR_BOUNDARY_TOOLS_LABEL: "ErrorBoundary Tools",
-        EXTRACT: "Extract",
-        FONT_NAME: "Font Name",
-        FONTS: "Fonts",
-        GENERAL: "General",
-        GITHUB: "GitHub",
-        HOLD_UP: "Hold Up",
-        INFO: "Info",
-        INSTALL: "Install",
-        INSTALL_ADDON: "Install an add-on",
-        INSTALL_FONT: "Install a font",
-        INSTALL_PLUGIN: "Install a plugin",
-        INSTALL_REACT_DEVTOOLS: "Install React DevTools",
-        INSTALL_THEME: "Install a theme",
-        LABEL_EXTRACT_FONTS_FROM_THEME: "Extract font from theme",
-        LINKS: "Links",
-        LOAD_FROM_CUSTOM_URL: "Load from custom URL",
-        LOAD_FROM_CUSTOM_URL_DEC: "Load CloudCord from a custom endpoint.",
-        LOAD_REACT_DEVTOOLS: "Load React DevTools",
-        LOADER: "Loader",
-        MACHINE_ID: "Machine ID",
-        MANUFACTURER: "Manufacturer",
-        MESSAGE: "Message",
-        MISCELLANEOUS: "Miscellaneous",
-        MODAL_RELOAD_REQUIRED: "Reload app?",
-        MODAL_RELOAD_REQUIRED_DESC: "A reload is required to see the changes. Do you want to reload now?",
-        MODAL_THEME_REFETCHED: "Theme refetched",
-        MODAL_THEME_REFETCHED_DESC: "A reload is required to see the changes. Do you want to reload now?",
-        MODAL_UNPROXIED_PLUGIN_DESC: "The plugin you are trying to install has not been proxied/verified by staff. Are you sure you want to continue?",
-        MODAL_UNPROXIED_PLUGIN_HEADER: "Unproxied Plugin",
-        MODEL: "Model",
-        MODELID: "Model Identifier",
-        OPEN_IN_BROWSER: "Open in Browser",
-        OPERATING_SYSTEM: "Operating System",
-        OVERFLOW_PLUGIN_SETTINGS: "Plugin Settings",
-        PLATFORM: "Platform",
-        PLUGIN_REFETCH_FAILED: "Failed to refetch plugin",
-        PLUGIN_REFETCH_SUCCESSFUL: "Successfully refetched plugin",
-        PLUGINS: "Plugins",
-        REFETCH: "Refetch",
-        RELOAD: "Reload",
-        RELOAD_DISCORD: "Reload Discord",
-        RELOAD_IN_NORMAL_MODE: "Reload in Normal Mode",
-        RELOAD_IN_NORMAL_MODE_DESC: "Safe mode currently enabled, tap to reload in normal mode",
-        RELOAD_IN_SAFE_MODE: "Reload in Safe Mode",
-        RELOAD_IN_SAFE_MODE_DESC: "Tap to reload Discord without loading addons",
-        REMOVE: "Remove",
-        RESTART_REQUIRED_TO_TAKE_EFFECT: "Restart is required to take effect",
-        RETRY: "Retry",
-        RETRY_RENDER: "Retry Render",
-        SAFE_MODE: "Safe Mode",
-        SAFE_MODE_NOTICE_FONTS: "You are in safe mode, meaning fonts have been temporarily disabled. {enabled, select, true {If a font appears to be causing the issue, you can press below to disable it persistently.} other {}}",
-        SAFE_MODE_NOTICE_PLUGINS: "You are in safe mode, so plugins cannot be loaded. Disable any misbehaving plugins, then return to Normal Mode from the General settings page.",
-        SAFE_MODE_NOTICE_THEMES: "You are in safe mode, meaning themes have been temporarily disabled. {enabled, select, true {If a theme appears to be causing the issue, you can press below to disable it persistently.} other {}}",
-        SEARCH: "Search",
-        SEPARATOR: ", ",
-        SETTINGS_ACTIVATE_DISCORD_EXPERIMENTS: "Activate Discord Experiments",
-        SETTINGS_ACTIVATE_DISCORD_EXPERIMENTS_DESC: "Warning: Messing with this feature may lead to account termination. I heavily discourage using this and am not responsible for anything that happens if you use it",
-        STACK_TRACE: "Stack Trace",
-        SUCCESSFULLY_INSTALLED: "Successfully installed",
-        THEME_EXTRACTOR_DESC: "This pack overrides the following: {fonts}",
-        THEME_REFETCH_FAILED: "Failed to refetch theme",
-        THEME_REFETCH_SUCCESSFUL: "Successfully refetched theme",
-        THEMES: "Themes",
-        THEMES_RELOAD_FOR_CHANGES: "Reload the app to fully apply changes",
-        TOASTS_INSTALLED_PLUGIN: "Installed plugin",
-        TOASTS_PLUGIN_UPDATE: "{update, select, true {Enabled} other {Disabled}} updates for {name}",
-        UH_OH: "Uh Oh",
-        UNINSTALL: "Uninstall",
-        UNINSTALL_TITLE: "Uninstall {title}",
-        URL_PLACEHOLDER: "https://github.com/xohus/cloudcord",
-        VERSION: "Version",
-        VERSIONS: "Versions"
-      };
-    }
-  });
-
-  // src/core/i18n/index.ts
-  function fetchLocale(locale) {
-    var resolvedLocale = _lastSetLocale = languageMap[locale] ?? locale;
-    logger.log("[i18n] fetchLocale called:", locale, "->", resolvedLocale);
-    if (!_loadedLocale.has(resolvedLocale)) {
-      _loadedLocale.add(resolvedLocale);
-      if (resolvedLocale.toLowerCase().startsWith("en")) {
-        logger.log("[i18n] Using local default.json for English locale");
-        _loadedStrings[resolvedLocale] = default_default;
-        _currentLocale = resolvedLocale;
-      } else {
-        fetch(`https://codeberg.org/cocobo1/kettu-i18n/raw/branch/main/base/${resolvedLocale}.json`).then((r) => r.json()).then((strings) => {
-          logger.log("[i18n] Loaded strings for:", resolvedLocale);
-          _loadedStrings[resolvedLocale] = strings;
-          _currentLocale = resolvedLocale;
-        }).catch((e) => logger.error(`[i18n] Error fetching strings for ${resolvedLocale}: ${e}`));
-      }
-    } else {
-      _currentLocale = resolvedLocale;
-    }
-  }
-  function initFetchI18nStrings() {
-    var attempts = 0;
-    var checkAndFetch = () => {
-      attempts++;
-      try {
-        var LocaleStore = findByStoreName("LocaleStore");
-        logger.log("[i18n] Attempt", attempts, "- LocaleStore:", !!LocaleStore);
-        if (!LocaleStore) {
-          logger.log("[i18n] LocaleStore not found yet");
-          return false;
-        }
-        if (LocaleStore?._isInitialized !== true) {
-          logger.log("[i18n] LocaleStore not initialized yet");
-          return false;
-        }
-        var locale = LocaleStore.locale;
-        if (locale) {
-          logger.log("[i18n] Using LocaleStore:", locale);
-          fetchLocale(locale);
-          return true;
-        }
-      } catch (e) {
-        logger.log("[i18n] Error:", e);
-      }
-      return false;
-    };
-    var tryTimes = () => {
-      if (checkAndFetch())
-        return;
-      if (attempts < 15) {
-        setTimeout(tryTimes, 500);
-      }
-    };
-    tryTimes();
-    var cb = (e) => {
-      if (e?.settings?.changes?.loading) {
-        logger.log("[i18n] Settings loading, skipping...");
-        return;
-      }
-      var locale = e?.settings?.changes?.protoToSave?.localization?.locale?.value;
-      logger.log("[i18n] Locale changed:", locale);
-      if (locale) {
-        logger.log("[i18n] Found locale in event:", locale);
-        fetchLocale(locale);
-      }
-    };
-    FluxDispatcher.subscribe("USER_SETTINGS_PROTO_UPDATE_EDIT_INFO", cb);
-    return () => {
-      FluxDispatcher.unsubscribe("USER_SETTINGS_PROTO_UPDATE_EDIT_INFO", cb);
-    };
-  }
-  function formatString(key, val) {
-    var str = Strings[key];
-    return new IntlMessageFormat(str).format(val);
-  }
-  var IntlMessageFormat, _currentLocale, _lastSetLocale, _loadedLocale, _loadedStrings, Strings, languageMap;
-  var init_i18n = __esm({
-    "src/core/i18n/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_logger();
-      init_common();
-      init_wrappers();
-      init_default();
-      IntlMessageFormat = findByNameLazy("MessageFormat");
-      _currentLocale = null;
-      _lastSetLocale = null;
-      _loadedLocale = /* @__PURE__ */ new Set();
-      _loadedStrings = {};
-      Strings = new Proxy({}, {
-        get: (_t, prop) => {
-          if (_currentLocale && _loadedStrings[_currentLocale]?.[prop]) {
-            return _loadedStrings[_currentLocale]?.[prop];
-          }
-          return default_default[prop];
-        }
-      });
-      languageMap = {
-        "ar-SA": "ar",
-        "bn-BD": "bn",
-        "ca-ES": "ca",
-        "de-DE": "de",
-        "es-ES": "es",
-        "es-419": "es",
-        "fa-IR": "fa",
-        "fi-FI": "fi",
-        "fr-FR": "fr",
-        "hi-IN": "hi",
-        "hr-HR": "hr",
-        "hu-HU": "hu",
-        "id-ID": "id",
-        "it-IT": "it",
-        "ja-JP": "ja",
-        "pl-PL": "pl",
-        "pt-BR": "pt_BR",
-        "ru-RU": "ru",
-        "sk-SK": "sk",
-        "sv-SE": "sv",
-        "tr-TR": "tr",
-        "vi-VN": "vi"
-      };
-    }
-  });
-
-  // src/lib/ui/toasts.ts
-  var toasts_exports = {};
-  __export(toasts_exports, {
-    showToast: () => showToast
-  });
-  var uuid4, showToast;
-  var init_toasts = __esm({
-    "src/lib/ui/toasts.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_i18n();
-      init_assets();
-      init_lazy();
-      init_common();
-      init_wrappers();
-      ({ uuid4 } = lazyDestructure(() => findByProps("uuid4")));
-      showToast = (content, asset) => toasts.open({
-        // ? In build 182205/44707, Discord changed their toasts, source is no longer used, rather icon, and a key is needed.
-        // TODO: We could probably have the developer specify a key themselves, but this works to fix toasts
-        key: `vd-toast-${uuid4()}`,
-        content,
-        source: asset,
-        icon: asset
-      });
-      showToast.showCopyToClipboard = (message = Strings.COPIED_TO_CLIPBOARD) => {
-        showToast(message, findAssetId("toast_copy_link"));
-      };
-    }
-  });
-
-  // src/lib/api/debug.ts
-  var debug_exports = {};
-  __export(debug_exports, {
-    connectRdt: () => connectRdt,
-    connectToDebugger: () => connectToDebugger2,
-    disconnectFromDebugger: () => disconnectFromDebugger2,
-    disconnectRdt: () => disconnectRdt,
-    getDebugInfo: () => getDebugInfo,
-    initDebugger: () => initDebugger,
-    isConnectedToDebugger: () => isConnectedToDebugger2,
-    patchLogHook: () => patchLogHook,
-    rdtClient: () => rdtClient,
-    rdtConnected: () => rdtConnected,
-    toggleSafeMode: () => toggleSafeMode,
-    useIsRdtConnected: () => useIsRdtConnected,
-    versionHash: () => versionHash
-  });
-  function toggleSafeMode() {
-    return _async_to_generator(function* () {
-      settings.safeMode = {
-        ...settings.safeMode,
-        enabled: !settings.safeMode?.enabled
-      };
-      if (isThemeSupported()) {
-        if (getThemeFromLoader()?.id)
-          settings.safeMode.currentThemeId = getThemeFromLoader().id;
-        if (settings.safeMode?.enabled) {
-          yield selectTheme(null);
-        } else if (settings.safeMode?.currentThemeId) {
-          yield selectTheme(themes[settings.safeMode?.currentThemeId]);
-        }
-      }
-      setTimeout(BundleUpdaterManager.reload, 400);
-    })();
-  }
-  function serializeMessage2(msg) {
-    return JSON.stringify(msg);
-  }
-  function sendLog2(level, ...args) {
-    if (socket2?.readyState === WebSocket.OPEN) {
-      var message = {
-        type: "log",
-        data: {
-          level,
-          message: args
-        }
-      };
-      socket2.send(serializeMessage2(message));
-    }
-  }
-  function patchConsoleAndLogger2() {
-    originalConsoleLog2 = console.log;
-    console.log = function(...args) {
-      originalConsoleLog2.apply(console, args);
-      sendLog2("default", ...args);
-    };
-    originalConsoleError2 = console.error;
-    console.error = function(...args) {
-      originalConsoleError2.apply(console, args);
-      sendLog2("error", ...args);
-    };
-    originalConsoleWarn2 = console.warn;
-    console.warn = function(...args) {
-      originalConsoleWarn2.apply(console, args);
-      sendLog2("warn", ...args);
-    };
-    if (logger) {
-      originalLoggerLog2 = logger.log;
-      logger.log = function(...args) {
-        originalLoggerLog2.apply(logger, args);
-        sendLog2("default", ...args);
-      };
-      originalLoggerError2 = logger.error;
-      logger.error = function(...args) {
-        originalLoggerError2.apply(logger, args);
-        sendLog2("error", ...args);
-      };
-      originalLoggerWarn2 = logger.warn;
-      logger.warn = function(...args) {
-        originalLoggerWarn2.apply(logger, args);
-        sendLog2("warn", ...args);
-      };
-    }
-  }
-  function unpatchConsoleAndLogger2() {
-    if (originalConsoleLog2) {
-      console.log = originalConsoleLog2;
-      originalConsoleLog2 = void 0;
-    }
-    if (originalConsoleError2) {
-      console.error = originalConsoleError2;
-      originalConsoleError2 = void 0;
-    }
-    if (originalConsoleWarn2) {
-      console.warn = originalConsoleWarn2;
-      originalConsoleWarn2 = void 0;
-    }
-    if (logger) {
-      if (originalLoggerLog2) {
-        logger.log = originalLoggerLog2;
-        originalLoggerLog2 = void 0;
-      }
-      if (originalLoggerError2) {
-        logger.error = originalLoggerError2;
-        originalLoggerError2 = void 0;
-      }
-      if (originalLoggerWarn2) {
-        logger.warn = originalLoggerWarn2;
-        originalLoggerWarn2 = void 0;
-      }
-    }
-  }
-  function connectToDebugger2(url2) {
-    if (socket2 !== void 0 && socket2.readyState !== WebSocket.CLOSED) {
-      unpatchConsoleAndLogger2();
-      socket2.close();
-    }
-    if (!url2) {
-      showToast("Invalid debugger URL!", findAssetId("Small"));
-      return;
-    }
-    try {
-      socket2 = new WebSocket(`ws://${url2}`);
-      socket2.addEventListener("open", () => {
-        showToast("Connected to debugger.", findAssetId("Check"));
-        var hello = {
-          type: "hello",
-          data: {
-            version: VERSION2
-          }
-        };
-        socket2?.send(serializeMessage2(hello));
-        patchConsoleAndLogger2();
-      });
-      socket2.addEventListener("message", (message) => {
-        try {
-          var data = JSON.parse(message.data);
-          if (data.type === "run" && data.data?.code) {
-            try {
-              (0, eval)(data.data.code);
-            } catch (e) {
-              console.error("Error executing remote code:", e);
-            }
-          }
-        } catch (e) {
-          try {
-            (0, eval)(message.data);
-          } catch (err) {
-            console.error(err);
-          }
-        }
-      });
-      socket2.addEventListener("close", () => {
-        showToast("Disconnected from debugger.", findAssetId("Small"));
-        unpatchConsoleAndLogger2();
-      });
-      socket2.addEventListener("error", (err) => {
-        console.log(`Debugger error: ${err.message}`);
-        showToast("An error occurred with the debugger connection!", findAssetId("Small"));
-        unpatchConsoleAndLogger2();
-      });
-    } catch (e) {
-      logger.error("Failed to connect to debugger:", e);
-      showToast("Failed to connect to debugger!", findAssetId("Small"));
-    }
-  }
-  function disconnectFromDebugger2() {
-    if (socket2) {
-      unpatchConsoleAndLogger2();
-      socket2.close();
-      socket2 = void 0;
-      showToast("Disconnected from debugger.", findAssetId("Check"));
-    }
-  }
-  function isConnectedToDebugger2() {
-    return socket2?.readyState === WebSocket.OPEN;
-  }
-  function bump() {
-    for (var x2 of changeHooks)
-      x2(rdtConnected);
-  }
-  function cleanupRdt() {
-    rdtClient = null;
-    rdtConnected = false;
-    bump();
-  }
-  function connectRdt(url2, quiet) {
-    if (!isReactDevToolsPreloaded() || rdtClient)
-      return;
-    var base = url2.split(":").slice(0, -1).join(":");
-    var ws = rdtClient = new WebSocket(`ws://${base}:${rdtPort}`);
-    ws.addEventListener("open", () => {
-      if (!quiet)
-        showToast("Connected to React DevTools", findAssetId("CheckmarkSmallIcon"));
-      rdtConnected = true;
-      bump();
-    });
-    ws.addEventListener("close", () => {
-      cleanupRdt();
-    });
-    ws.addEventListener("error", (e) => {
-      cleanupRdt();
-      var err = e?.message ?? e?.stack ?? String(e);
-      logger.error("React DevTools error:", err);
-      if (!quiet)
-        showToast(err, findAssetId("CircleXIcon-primary"));
-    });
-    var devTools = globalThis[getReactDevToolsProp() || "__vendetta_rdc"];
-    if (devTools?.connectToDevTools) {
-      devTools.connectToDevTools({
-        websocket: ws,
-        resolveRNStyle: import_react_native7.StyleSheet.flatten
-      });
-    }
-  }
-  function disconnectRdt() {
-    rdtClient?.close();
-  }
-  function useIsRdtConnected() {
-    var [connected, update] = React.useState(rdtConnected);
-    React.useEffect(() => {
-      changeHooks.add(update);
-      return () => void changeHooks.delete(update);
-    }, []);
-    return connected;
-  }
-  function patchLogHook() {
-    var unpatch = after("nativeLoggingHook", globalThis, (args) => {
-      if (socket2?.readyState === WebSocket.OPEN) {
-        sendLog2(args[1] === "error" ? "error" : args[1] === "warn" ? "warn" : "default", args[0]);
-      }
-      logger.log(args[0]);
-    });
-    return () => {
-      socket2 && socket2.close();
-      unpatch();
-    };
-  }
-  function getDebugInfo() {
-    var hermesProps = globalThis.HermesInternal.getRuntimeProperties();
-    var hermesVer = hermesProps["OSS Release Version"];
-    var padding = "for RN ";
-    var PlatformConstants = import_react_native7.Platform.constants;
-    var rnVer = PlatformConstants.reactNativeVersion;
-    return {
-      vendetta: {
-        version: versionHash.split("-")[0],
-        loader: getLoaderName()
-      },
-      bunny: {
-        version: versionHash,
-        loader: {
-          name: getLoaderName(),
-          version: getLoaderVersion()
-        }
-      },
-      discord: {
-        version: NativeClientInfoModule.getConstants().Version,
-        build: NativeClientInfoModule.getConstants().Build
-      },
-      react: {
-        version: React.version,
-        nativeVersion: hermesVer.startsWith(padding) ? hermesVer.substring(padding.length) : `${rnVer.major}.${rnVer.minor}.${rnVer.patch}`
-      },
-      hermes: {
-        version: hermesVer,
-        buildType: hermesProps.Build,
-        bytecodeVersion: hermesProps["Bytecode Version"]
-      },
-      ...import_react_native7.Platform.select({
-        android: {
-          os: {
-            name: "Android",
-            version: PlatformConstants.Release,
-            sdk: PlatformConstants.Version
-          }
-        },
-        ios: {
-          os: {
-            name: PlatformConstants.systemName,
-            version: PlatformConstants.osVersion
-          }
-        }
-      }),
-      ...import_react_native7.Platform.select({
-        android: {
-          device: {
-            manufacturer: PlatformConstants.Manufacturer,
-            brand: PlatformConstants.Brand,
-            model: PlatformConstants.Model,
-            codename: NativeDeviceModule.device
-          }
-        },
-        ios: {
-          device: {
-            manufacturer: NativeDeviceModule.deviceManufacturer,
-            brand: NativeDeviceModule.deviceBrand,
-            model: NativeDeviceModule.deviceModel,
-            codename: NativeDeviceModule.device
-          }
-        }
-      })
-    };
-  }
-  function initDebugger() {
-    if (settings.autoDebugger) {
-      try {
-        connectToDebugger2(settings.debuggerUrl);
-      } catch (e) {
-        logger.error("Failed to connect to Debugger during startup:", e);
-      }
-    }
-    if (settings.autoDevTools) {
-      try {
-        if (settings.devToolsUrl) {
-          connectRdt(settings.devToolsUrl, true);
-        }
-      } catch (e) {
-        logger.error("Failed to connect to ReactDevTools during startup:", e);
-      }
-    }
-  }
-  var import_react_native7, socket2, originalConsoleLog2, originalConsoleError2, originalConsoleWarn2, originalLoggerLog2, originalLoggerError2, originalLoggerWarn2, VERSION2, rdtPort, rdtClient, rdtConnected, changeHooks, versionHash;
-  var init_debug = __esm({
-    "src/lib/api/debug.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_themes();
-      init_assets();
-      init_loader();
-      init_modules();
-      init_patcher();
-      init_settings();
-      init_logger();
-      init_toasts();
-      import_react_native7 = __toESM(require_react_native());
-      VERSION2 = 1;
-      rdtPort = 8097;
-      rdtClient = null;
-      rdtConnected = false;
-      changeHooks = /* @__PURE__ */ new Set();
-      versionHash = "v0.1";
-    }
-  });
-
-  // src/lib/ui/components/wrappers/AlertModal.tsx
-  function AlertModal2(props) {
-    var forwardFailedModal = findByFilePath("modules/forwarding/native/ForwardFailedAlertModal.tsx");
-    if (!forwardFailedModal && "extraContent" in props) {
-      props.content = /* @__PURE__ */ jsxs(import_react_native8.View, {
-        style: {
-          gap: 16
-        },
-        children: [
-          /* @__PURE__ */ jsx(Text, {
-            variant: "text-md/medium",
-            color: "text-muted",
-            children: props.content
-          }),
-          /* @__PURE__ */ jsx(import_react_native8.View, {
-            children: props.extraContent
-          })
-        ]
-      });
-      delete props.extraContent;
-    }
-    return /* @__PURE__ */ jsx(_AlertModal, {
-      ...props
-    });
-  }
-  var import_react_native8, _AlertModal, _AlertActionButton, AlertActionButton2;
-  var init_AlertModal = __esm({
-    "src/lib/ui/components/wrappers/AlertModal.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_lazy();
-      init_metro();
-      init_components();
-      import_react_native8 = __toESM(require_react_native());
-      ({ AlertModal: _AlertModal, AlertActionButton: _AlertActionButton } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
-      AlertActionButton2 = _AlertActionButton;
-    }
-  });
-
-  // src/lib/ui/components/wrappers/index.ts
-  var wrappers_exports = {};
-  __export(wrappers_exports, {
-    AlertActionButton: () => AlertActionButton2,
-    AlertModal: () => AlertModal2
-  });
-  var init_wrappers2 = __esm({
-    "src/lib/ui/components/wrappers/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_AlertModal();
-    }
-  });
-
-  // src/lib/ui/color.ts
-  function isSemanticColor(sym) {
-    return colorResolver.isSemanticColor(sym);
-  }
-  function resolveSemanticColor(sym, theme = ThemeStore2.theme) {
-    return colorResolver.resolveSemanticColor(theme, sym);
-  }
-  var color, semanticColors, rawColors, ThemeStore2, colorResolver;
-  var init_color = __esm({
-    "src/lib/ui/color.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_common();
-      init_wrappers();
-      color = findByProps("SemanticColor");
-      semanticColors = color?.default?.colors ?? constants?.ThemeColorMap;
-      rawColors = color?.default?.unsafe_rawColors ?? constants?.Colors;
-      ThemeStore2 = findByStoreNameLazy("ThemeStore");
-      colorResolver = color.default.meta ??= color.default.internal;
-    }
-  });
-
-  // src/lib/ui/styles.ts
-  var styles_exports = {};
-  __export(styles_exports, {
-    TextStyleSheet: () => TextStyleSheet,
-    ThemeContext: () => ThemeContext,
-    createLegacyClassComponentStyles: () => createLegacyClassComponentStyles,
-    createStyles: () => createStyles,
-    createThemedStyleSheet: () => createThemedStyleSheet
-  });
-  function createStyles(sheet) {
-    return proxyLazy(() => Styles.createStyles(sheet));
-  }
-  function createLegacyClassComponentStyles(sheet) {
-    return proxyLazy(() => Styles.createLegacyClassComponentStyles(sheet));
-  }
-  function createThemedStyleSheet(sheet) {
-    for (var key in sheet) {
-      sheet[key] = new Proxy(import_react_native9.StyleSheet.flatten(sheet[key]), {
-        get(target, prop, receiver) {
-          var res = Reflect.get(target, prop, receiver);
-          return isSemanticColor(res) ? resolveSemanticColor(res) : res;
-        }
-      });
-    }
-    return sheet;
-  }
-  var import_react_native9, Styles, ThemeContext, TextStyleSheet;
-  var init_styles = __esm({
-    "src/lib/ui/styles.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_lazy();
-      init_wrappers();
-      init_color();
-      import_react_native9 = __toESM(require_react_native());
-      Styles = findByPropsLazy("createStyles");
-      ({ ThemeContext } = lazyDestructure(() => findByProps("ThemeContext"), {
-        hint: "object"
-      }));
-      ({ TextStyleSheet } = lazyDestructure(() => findByProps("TextStyleSheet")));
-    }
-  });
-
-  // src/lib/ui/components/Codeblock.tsx
-  function Codeblock({ selectable, style, children }) {
-    if (!selectable)
-      return /* @__PURE__ */ jsx(TextBasedCodeblock, {
-        style,
-        children
-      });
-    return import_react_native10.Platform.select({
-      ios: /* @__PURE__ */ jsx(InputBasedCodeblock, {
-        style,
-        children
-      }),
-      default: /* @__PURE__ */ jsx(TextBasedCodeblock, {
-        style,
-        children,
-        selectable: true
-      })
-    });
-  }
-  var import_react_native10, useStyles, InputBasedCodeblock, TextBasedCodeblock;
-  var init_Codeblock = __esm({
-    "src/lib/ui/components/Codeblock.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_common();
-      init_color();
-      init_styles();
-      import_react_native10 = __toESM(require_react_native());
-      useStyles = createStyles({
-        codeBlock: {
-          fontFamily: constants.Fonts.CODE_NORMAL,
-          fontSize: 12,
-          textAlignVertical: "center",
-          backgroundColor: semanticColors.CARD_BACKGROUND_DEFAULT,
-          color: semanticColors.TEXT_DEFAULT,
-          borderWidth: 1,
-          borderRadius: 12,
-          borderColor: semanticColors.BORDER_SUBTLE,
-          padding: 10
-        }
-      });
-      InputBasedCodeblock = ({ style, children }) => /* @__PURE__ */ jsx(import_react_native10.TextInput, {
-        editable: false,
-        multiline: true,
-        style: [
-          useStyles().codeBlock,
-          style && style
-        ],
-        value: children
-      });
-      TextBasedCodeblock = ({ selectable, style, children }) => /* @__PURE__ */ jsx(import_react_native10.Text, {
-        selectable,
-        style: [
-          useStyles().codeBlock,
-          style && style
-        ],
-        children
-      });
-    }
-  });
-
-  // src/lib/ui/sheets.ts
-  var sheets_exports = {};
-  __export(sheets_exports, {
-    hideSheet: () => hideSheet,
-    showSheet: () => showSheet
-  });
-  function showSheet(key, lazyImport, props) {
-    if (!("then" in lazyImport))
-      lazyImport = Promise.resolve({
-        default: lazyImport
-      });
-    actionSheet.openLazy(lazyImport, key, props ?? {});
-  }
-  function hideSheet(key) {
-    actionSheet.hideActionSheet(key);
-  }
-  var actionSheet;
-  var init_sheets = __esm({
-    "src/lib/ui/sheets.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_wrappers();
-      actionSheet = findByPropsLazy("openLazy", "hideActionSheet");
-    }
-  });
-
-  // src/core/ui/reporter/utils/parseComponentStack.tsx
-  function parseComponentStack(componentStack) {
-    return componentStack.split(/[\s|\n]+?in /).filter(Boolean);
-  }
-  var init_parseComponentStack = __esm({
-    "src/core/ui/reporter/utils/parseComponentStack.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-    }
-  });
-
-  // src/core/ui/reporter/components/ErrorComponentStackCard.tsx
-  function ErrorComponentStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
-    var stack;
-    try {
-      stack = parseComponentStack(props.componentStack);
-      stack = collapsed ? stack.slice(0, 4) : stack;
-    } catch (e) {
-      return;
-    }
-    return /* @__PURE__ */ jsx(Card, {
-      children: /* @__PURE__ */ jsxs(import_react_native11.View, {
-        style: {
-          gap: 8
-        },
-        children: [
-          /* @__PURE__ */ jsx(Text, {
-            variant: "heading-lg/bold",
-            children: "Component Stack"
-          }),
-          /* @__PURE__ */ jsx(import_react_native11.View, {
-            style: {
-              gap: 4
-            },
-            children: stack.map((component) => /* @__PURE__ */ jsxs(import_react_native11.View, {
-              style: {
-                flexDirection: "row"
-              },
-              children: [
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "text-md/bold",
-                  color: "text-muted",
-                  children: "<"
-                }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "text-md/bold",
-                  children: component
-                }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "text-md/bold",
-                  color: "text-muted",
-                  children: "/>"
-                })
-              ]
-            }))
-          }),
-          collapsed && /* @__PURE__ */ jsx(Text, {
-            children: "..."
-          }),
-          /* @__PURE__ */ jsxs(import_react_native11.View, {
-            style: {
-              gap: 8,
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "center"
-            },
-            children: [
-              /* @__PURE__ */ jsx(Button, {
-                variant: "secondary",
-                text: `Show ${collapsed ? "more" : "less"}`,
-                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native11.Image, {
-                  style: {
-                    transform: [
-                      {
-                        rotate: `${collapsed ? 0 : 180}deg`
-                      }
-                    ]
-                  },
-                  source: findAssetId("down_arrow")
-                }),
-                onPress: () => setCollapsed((v2) => !v2)
-              }),
-              /* @__PURE__ */ jsx(Button, {
-                variant: "secondary",
-                text: "Copy",
-                icon: findAssetId("CopyIcon"),
-                onPress: () => clipboard.setString(props.componentStack)
-              })
-            ]
-          })
-        ]
-      })
-    });
-  }
-  var import_react2, import_react_native11;
-  var init_ErrorComponentStackCard = __esm({
-    "src/core/ui/reporter/components/ErrorComponentStackCard.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_parseComponentStack();
-      init_assets();
-      init_common();
-      init_components();
-      import_react2 = __toESM(require_react());
-      import_react_native11 = __toESM(require_react_native());
-    }
-  });
-
-  // src/core/ui/reporter/utils/parseErrorStack.ts
-  function isInternalBytecodeSourceUrl(sourceUrl) {
-    return sourceUrl === "InternalBytecode.js";
-  }
-  function parseLine(line) {
-    var asFrame = line.match(RE_FRAME);
-    if (asFrame) {
-      return {
-        type: "FRAME",
-        functionName: asFrame[1],
-        location: asFrame[2] === "native" ? {
-          type: "NATIVE"
-        } : asFrame[3] === "address at " ? isInternalBytecodeSourceUrl(asFrame[4]) ? {
-          type: "INTERNAL_BYTECODE",
-          sourceUrl: asFrame[4],
-          line1Based: Number.parseInt(asFrame[5], 10),
-          virtualOffset0Based: Number.parseInt(asFrame[6], 10)
-        } : {
-          type: "BYTECODE",
-          sourceUrl: asFrame[4],
-          line1Based: Number.parseInt(asFrame[5], 10),
-          virtualOffset0Based: Number.parseInt(asFrame[6], 10)
-        } : {
-          type: "SOURCE",
-          sourceUrl: asFrame[4],
-          line1Based: Number.parseInt(asFrame[5], 10),
-          column1Based: Number.parseInt(asFrame[6], 10)
-        }
-      };
-    }
-    var asSkipped = line.match(RE_SKIPPED);
-    if (asSkipped) {
-      return {
-        type: "SKIPPED",
-        count: Number.parseInt(asSkipped[1], 10)
-      };
-    }
-  }
-  function parseHermesStack(stack) {
-    var lines = stack.split(/\n/);
-    var entries = [];
-    var lastMessageLine = -1;
-    for (var i = 0; i < lines.length; ++i) {
-      var line = lines[i];
-      if (!line) {
-        continue;
-      }
-      var entry = parseLine(line);
-      if (entry) {
-        entries.push(entry);
-        continue;
-      }
-      if (RE_COMPONENT_NO_STACK.test(line)) {
-        continue;
-      }
-      lastMessageLine = i;
-      entries = [];
-    }
-    var message = lines.slice(0, lastMessageLine + 1).join("\n");
-    return {
-      message,
-      entries
-    };
-  }
-  function convertHermesStack(stack) {
-    var frames = [];
-    for (var entry of stack.entries) {
-      if (entry.type !== "FRAME") {
-        continue;
-      }
-      var { location, functionName } = entry;
-      if (location.type === "NATIVE" || location.type === "INTERNAL_BYTECODE") {
-        continue;
-      }
-      frames.push({
-        methodName: functionName,
-        file: location.sourceUrl,
-        lineNumber: location.line1Based,
-        column: location.type === "SOURCE" ? location.column1Based - 1 : location.virtualOffset0Based
-      });
-    }
-    return frames;
-  }
-  function parseErrorStack(errorStack) {
-    if (errorStack == null) {
-      return [];
-    }
-    var parsedStack = Array.isArray(errorStack) ? errorStack : convertHermesStack(parseHermesStack(errorStack));
-    return parsedStack;
-  }
-  var RE_FRAME, RE_SKIPPED, RE_COMPONENT_NO_STACK;
-  var init_parseErrorStack = __esm({
-    "src/core/ui/reporter/utils/parseErrorStack.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      RE_FRAME = /^ {4}at (.+?)(?: \((native)\)?| \((address at )?(.*?):(\d+):(\d+)\))$/;
-      RE_SKIPPED = /^ {4}... skipping (\d+) frames$/;
-      RE_COMPONENT_NO_STACK = /^ {4}at .*$/;
-    }
-  });
-
-  // src/core/ui/reporter/components/ErrorStackCard.tsx
-  function ErrorStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
-    var stack;
-    try {
-      var parsedErrorStack = parseErrorStack(props.error.stack);
-      stack = collapsed ? parsedErrorStack.slice(0, 4) : parsedErrorStack;
-    } catch (e) {
-      return null;
-    }
-    return /* @__PURE__ */ jsx(Card, {
-      children: /* @__PURE__ */ jsxs(import_react_native12.View, {
-        style: {
-          gap: 12
-        },
-        children: [
-          /* @__PURE__ */ jsx(Text, {
-            variant: "heading-lg/bold",
-            children: "Call Stack"
-          }),
-          /* @__PURE__ */ jsx(import_react_native12.View, {
-            style: {
-              gap: 4
-            },
-            children: stack.map((f, id) => /* @__PURE__ */ jsx(Line, {
-              id,
-              frame: f
-            }))
-          }),
-          collapsed && /* @__PURE__ */ jsx(Text, {
-            children: "..."
-          }),
-          /* @__PURE__ */ jsxs(import_react_native12.View, {
-            style: {
-              gap: 8,
-              flexDirection: "row",
-              justifyContent: "center",
-              alignItems: "center"
-            },
-            children: [
-              /* @__PURE__ */ jsx(Button, {
-                variant: "secondary",
-                text: `Show ${collapsed ? "more" : "less"}`,
-                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native12.Image, {
-                  style: {
-                    transform: [
-                      {
-                        rotate: `${collapsed ? 0 : 180}deg`
-                      }
-                    ]
-                  },
-                  source: findAssetId("down_arrow")
-                }),
-                onPress: () => setCollapsed((v2) => !v2)
-              }),
-              /* @__PURE__ */ jsx(Button, {
-                variant: "secondary",
-                text: "Copy",
-                icon: findAssetId("CopyIcon"),
-                onPress: () => clipboard.setString(props.error.stack)
-              })
-            ]
-          })
-        ]
-      })
-    });
-  }
-  function Line(props) {
-    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
-    return /* @__PURE__ */ jsxs(import_react_native12.Pressable, {
-      onPress: () => setCollapsed((v2) => !v2),
-      children: [
-        /* @__PURE__ */ jsx(Text, {
-          style: {
-            fontFamily: constants.Fonts.CODE_BOLD
-          },
-          children: props.frame.methodName
-        }),
-        /* @__PURE__ */ jsx(Text, {
-          style: {
-            fontFamily: constants.Fonts.CODE_NORMAL
-          },
-          ellipsizeMode: "middle",
-          numberOfLines: collapsed ? 1 : void 0,
-          children: /* @__PURE__ */ jsxs(Text, {
-            color: "text-muted",
-            children: [
-              props.frame.file === INDEX_BUNDLE_FILE ? "jsbundle" : props.frame.file,
-              ":",
-              props.frame.lineNumber,
-              ":",
-              props.frame.column
-            ]
-          })
-        })
-      ]
-    }, props.id);
-  }
-  var import_react3, import_react_native12;
-  var init_ErrorStackCard = __esm({
-    "src/core/ui/reporter/components/ErrorStackCard.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_parseErrorStack();
-      init_assets();
-      init_common();
-      init_components();
-      import_react3 = __toESM(require_react());
-      import_react_native12 = __toESM(require_react_native());
-      init_ErrorCard();
-    }
-  });
-
-  // src/core/ui/reporter/components/ErrorDetailsActionSheet.tsx
-  function ErrorDetailsActionSheet(props) {
-    return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native13.View, {
-        style: {
-          gap: 12,
-          paddingVertical: 12
-        },
-        children: [
-          /* @__PURE__ */ jsx(Text, {
-            variant: "heading-lg/extrabold",
-            children: "Error"
-          }),
-          /* @__PURE__ */ jsx(Codeblock, {
-            selectable: true,
-            children: props.error.message
-          }),
-          hasStack(props.error) && /* @__PURE__ */ jsx(ErrorStackCard, {
-            error: props.error
-          }),
-          isComponentStack(props.error) ? /* @__PURE__ */ jsx(ErrorComponentStackCard, {
-            componentStack: props.error.componentStack
-          }) : null
-        ]
-      })
-    });
-  }
-  var import_react_native13;
-  var init_ErrorDetailsActionSheet = __esm({
-    "src/core/ui/reporter/components/ErrorDetailsActionSheet.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_isStack();
-      init_components2();
-      init_components();
-      import_react_native13 = __toESM(require_react_native());
-      init_ErrorComponentStackCard();
-      init_ErrorStackCard();
-    }
-  });
-
-  // src/core/ui/reporter/components/ErrorCard.tsx
-  function ErrorCard(props) {
-    return /* @__PURE__ */ jsx(Card, {
-      children: /* @__PURE__ */ jsxs(Stack, {
-        children: [
-          props.header && typeof props.header !== "string" ? props.header : /* @__PURE__ */ jsx(Text, {
-            variant: "heading-lg/bold",
-            children: props.header ?? Strings.UH_OH
-          }),
-          /* @__PURE__ */ jsx(Codeblock, {
-            selectable: true,
-            children: String(props.error)
-          }),
-          /* @__PURE__ */ jsxs(TwinButtons, {
-            children: [
-              props.onRetryRender && /* @__PURE__ */ jsx(Button, {
-                variant: "destructive",
-                // icon={findAssetId("RetryIcon")}
-                text: Strings.RETRY_RENDER,
-                onPress: props.onRetryRender
-              }),
-              props.error instanceof Error ? /* @__PURE__ */ jsx(Button, {
-                text: "Details",
-                // icon={findAssetId("CircleInformationIcon-primary")}
-                onPress: () => showSheet("BunnyErrorDetailsActionSheet", ErrorDetailsActionSheet, {
-                  error: props.error
-                })
-              }) : null
-            ]
-          })
-        ]
-      })
-    });
-  }
-  var INDEX_BUNDLE_FILE;
-  var init_ErrorCard = __esm({
-    "src/core/ui/reporter/components/ErrorCard.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_i18n();
-      init_components2();
-      init_sheets();
-      init_components();
-      init_ErrorDetailsActionSheet();
-      INDEX_BUNDLE_FILE = globalThis.HermesInternal.getFunctionLocation(globalThis.__r).fileName;
-    }
-  });
-
-  // src/lib/ui/components/ErrorBoundary.tsx
-  var _React_Component, ErrorBoundary;
-  var init_ErrorBoundary = __esm({
-    "src/lib/ui/components/ErrorBoundary.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_call_super();
-      init_class_call_check();
-      init_create_class();
-      init_define_property();
-      init_inherits();
-      init_jsxRuntime();
-      init_ErrorCard();
-      init_common();
-      init_styles();
-      ErrorBoundary = /* @__PURE__ */ function(_superClass) {
-        "use strict";
-        _inherits(ErrorBoundary2, _superClass);
-        function ErrorBoundary2(props) {
-          _class_call_check(this, ErrorBoundary2);
-          var _this;
-          _this = _call_super(this, ErrorBoundary2, [
-            props
-          ]);
-          _this.state = {
-            hasErr: false
-          };
-          return _this;
-        }
-        _create_class(ErrorBoundary2, [
-          {
-            key: "render",
-            value: function render() {
-              if (!this.state.hasErr)
-                return this.props.children;
-              return /* @__PURE__ */ jsx(ErrorCard, {
-                error: this.state.error,
-                onRetryRender: () => this.setState({
-                  hasErr: false
-                })
-              });
-            }
-          }
-        ]);
-        return ErrorBoundary2;
-      }(_React_Component = React2.Component);
-      _define_property(ErrorBoundary, "contextType", ThemeContext);
-      _define_property(ErrorBoundary, "getDerivedStateFromError", (error) => ({
-        hasErr: true,
-        error
-      }));
-    }
-  });
-
-  // src/lib/ui/components/Search.tsx
-  function SearchIcon() {
-    return /* @__PURE__ */ jsx(import_react_native14.Image, {
-      style: {
-        width: 16,
-        height: 16
-      },
-      source: findAssetId("icon-search")
-    });
-  }
-  var import_react_native14, Search_default;
-  var init_Search = __esm({
-    "src/lib/ui/components/Search.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_i18n();
-      init_assets();
-      init_components();
-      init_ErrorBoundary();
-      import_react_native14 = __toESM(require_react_native());
-      Search_default = ({ onChangeText, placeholder, style, isRound }) => {
-        var [query, setQuery] = React.useState("");
-        var onChange = (value) => {
-          setQuery(value);
-          onChangeText?.(value);
-        };
-        return /* @__PURE__ */ jsx(ErrorBoundary, {
-          children: /* @__PURE__ */ jsx(import_react_native14.View, {
-            style,
-            children: /* @__PURE__ */ jsx(TextInput, {
-              grow: true,
-              isClearable: true,
-              leadingIcon: SearchIcon,
-              placeholder: placeholder ?? Strings.SEARCH,
-              onChange,
-              returnKeyType: "search",
-              size: "md",
-              autoCapitalize: "none",
-              autoCorrect: false,
-              isRound,
-              value: query
-            })
-          })
-        });
-      };
-    }
-  });
-
-  // src/lib/ui/components/Summary.tsx
-  function Summary({ label, icon, noPadding = false, noAnimation = false, children }) {
-    var [hidden, setHidden] = React.useState(true);
-    return /* @__PURE__ */ jsxs(Fragment, {
-      children: [
-        /* @__PURE__ */ jsx(TableRow, {
-          label,
-          icon: icon && /* @__PURE__ */ jsx(TableRow.Icon, {
-            source: findAssetId(icon)
-          }),
-          trailing: /* @__PURE__ */ jsx(LegacyFormRow.Arrow, {
-            style: {
-              transform: [
-                {
-                  rotate: `${hidden ? 180 : 90}deg`
-                }
-              ]
-            }
-          }),
-          onPress: () => {
-            setHidden(!hidden);
-            if (!noAnimation)
-              import_react_native15.LayoutAnimation.configureNext(import_react_native15.LayoutAnimation.Presets.easeInEaseOut);
-          }
-        }),
-        !hidden && /* @__PURE__ */ jsx(Fragment, {
-          children: /* @__PURE__ */ jsx(import_react_native15.View, {
-            style: !noPadding && {
-              paddingHorizontal: 15
-            },
-            children
-          })
-        })
-      ]
-    });
-  }
-  var import_react_native15;
-  var init_Summary = __esm({
-    "src/lib/ui/components/Summary.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_assets();
-      init_components();
-      import_react_native15 = __toESM(require_react_native());
-    }
-  });
-
-  // src/lib/ui/components/index.ts
-  var components_exports2 = {};
-  __export(components_exports2, {
-    Codeblock: () => Codeblock,
-    ErrorBoundary: () => ErrorBoundary,
-    Search: () => Search_default,
-    Summary: () => Summary,
-    wrappers: () => wrappers_exports
-  });
-  var init_components2 = __esm({
-    "src/lib/ui/components/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_wrappers2();
-      init_Codeblock();
-      init_ErrorBoundary();
-      init_Search();
-      init_Summary();
+      REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
     }
   });
 
@@ -7956,7 +9685,7 @@
         children: /* @__PURE__ */ jsxs(SafeAreaView, {
           style: styles.container,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native16.View, {
+            /* @__PURE__ */ jsxs(import_react_native17.View, {
               style: {
                 gap: 4
               },
@@ -7984,7 +9713,7 @@
                 })
               ]
             }),
-            /* @__PURE__ */ jsxs(import_react_native16.ScrollView, {
+            /* @__PURE__ */ jsxs(import_react_native17.ScrollView, {
               fadingEdgeLength: 64,
               contentContainerStyle: {
                 gap: 12
@@ -8027,7 +9756,7 @@
       })
     });
   }
-  var import_react_native16, useStyles2;
+  var import_react_native17, useStyles2;
   var init_ErrorBoundaryScreen = __esm({
     "src/core/ui/reporter/components/ErrorBoundaryScreen.tsx"() {
       "use strict";
@@ -8042,7 +9771,7 @@
       init_styles();
       init_common();
       init_components();
-      import_react_native16 = __toESM(require_react_native());
+      import_react_native17 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
       useStyles2 = createStyles({
@@ -8522,7 +10251,7 @@
         version: debugInfo.device.manufacturer,
         icon: "WrenchIcon"
       },
-      ...import_react_native17.Platform.OS !== "ios" ? [
+      ...import_react_native18.Platform.OS !== "ios" ? [
         {
           label: Strings.BRAND,
           version: debugInfo.device.brand,
@@ -8534,16 +10263,19 @@
         version: debugInfo.device.model,
         icon: "MobilePhoneIcon"
       },
-      {
-        label: import_react_native17.Platform.select({
-          android: Strings.CODENAME,
-          ios: Strings.MODELID
-        }),
-        version: debugInfo.device.codename,
-        icon: "TagIcon"
-      }
+      // this is renamed now on android but i cant be bothered to find it
+      ...import_react_native18.Platform.OS !== "android" ? [
+        {
+          label: import_react_native18.Platform.select({
+            android: Strings.CODENAME,
+            ios: Strings.MODELID
+          }),
+          version: debugInfo.device.codename,
+          icon: "TagIcon"
+        }
+      ] : []
     ];
-    return /* @__PURE__ */ jsx(import_react_native17.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
       style: {
         flex: 1
       },
@@ -8577,7 +10309,7 @@
       })
     });
   }
-  var import_react_native17;
+  var import_react_native18;
   var init_About = __esm({
     "src/core/ui/settings/pages/General/About.tsx"() {
       "use strict";
@@ -8591,7 +10323,7 @@
       init_debug();
       init_settings();
       init_components();
-      import_react_native17 = __toESM(require_react_native());
+      import_react_native18 = __toESM(require_react_native());
     }
   });
 
@@ -8602,7 +10334,7 @@
     openAlert: () => openAlert
   });
   var openAlert, dismissAlert;
-  var init_alerts = __esm({
+  var init_alerts2 = __esm({
     "src/lib/ui/alerts.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
@@ -8622,7 +10354,7 @@
     useProxy(settings);
     var debugInfo = getDebugInfo();
     var navigation2 = NavigationNative.useNavigation();
-    return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
       style: {
         flex: 1
       },
@@ -8681,7 +10413,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("Discord")
                 }),
-                onPress: () => import_react_native18.Linking.openURL(DISCORD_SERVER)
+                onPress: () => import_react_native19.Linking.openURL(DISCORD_SERVER)
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
@@ -8689,7 +10421,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("img_account_sync_github_white")
                 }),
-                onPress: () => import_react_native18.Linking.openURL(GITHUB)
+                onPress: () => import_react_native19.Linking.openURL(GITHUB)
               })
             ]
           }),
@@ -8764,7 +10496,7 @@
       })
     });
   }
-  var import_react_native18;
+  var import_react_native19;
   var init_General = __esm({
     "src/core/ui/settings/pages/General/index.tsx"() {
       "use strict";
@@ -8780,11 +10512,11 @@
       init_debug();
       init_modules();
       init_settings();
-      init_alerts();
+      init_alerts2();
       init_constants();
       init_common();
       init_components();
-      import_react_native18 = __toESM(require_react_native());
+      import_react_native19 = __toESM(require_react_native());
     }
   });
 
@@ -8999,16 +10731,32 @@
   }
   function botFetch(token, path) {
     return _async_to_generator(function* () {
-      var response = yield fetch(`https://discord.com/api/v10${path}`, {
-        headers: {
-          Authorization: `Bot ${normalizeBotToken(token)}`
-        }
-      });
-      if (!response.ok) {
+      var _loop2 = function* (attempt2) {
+        var response = yield fetch(`https://discord.com/api/v10${path}`, {
+          headers: {
+            Authorization: `Bot ${normalizeBotToken(token)}`,
+            Accept: "application/json"
+          }
+        });
+        if (response.ok)
+          return {
+            v: response.json()
+          };
         var message = yield readDiscordError(response);
+        if ((response.status === 429 || response.status >= 500) && attempt2 < 2) {
+          yield new Promise((resolve) => setTimeout(resolve, 400 * (attempt2 + 1)));
+          return "continue";
+        }
+        if (response.status === 403)
+          throw new Error("This bot needs View Channel and Read Message History permissions (403).");
         throw new Error(message ? `${message} (${response.status})` : `Discord API request failed (${response.status}).`);
+      };
+      for (var attempt = 0; attempt < 3; attempt++) {
+        var _ret = yield* _loop2(attempt);
+        if (_type_of(_ret) === "object")
+          return _ret.v;
       }
-      return response.json();
+      throw new Error("Discord did not respond after three attempts.");
     })();
   }
   function getBotGuilds(token) {
@@ -9018,7 +10766,7 @@
     return botFetch(token, `/guilds/${guildId}/channels`);
   }
   function getBotChannelMessages(token, channelId) {
-    return botFetch(token, `/channels/${channelId}/messages?limit=50`);
+    return botFetch(token, `/channels/${channelId}/messages?limit=25`);
   }
   function getBotGuildMembers(token, guildId) {
     return _async_to_generator(function* () {
@@ -9123,6 +10871,7 @@
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_async_to_generator();
+      init_type_of();
       init_modules();
       import_react4 = __toESM(require_react());
       FILE_PATH = "botcord/accounts.json";
@@ -9164,7 +10913,7 @@
     var uri = avatarUrl(user, 128);
     var colors = getNativeColors();
     if (uri)
-      return /* @__PURE__ */ jsx(import_react_native19.Image, {
+      return /* @__PURE__ */ jsx(import_react_native20.Image, {
         source: {
           uri
         },
@@ -9175,7 +10924,7 @@
         }
       });
     var label = displayName(user).trim().slice(0, 2).toUpperCase() || "?";
-    return /* @__PURE__ */ jsx(import_react_native19.View, {
+    return /* @__PURE__ */ jsx(import_react_native20.View, {
       style: {
         width: size,
         height: size,
@@ -9198,17 +10947,17 @@
       minute: "2-digit"
     }) : "";
     var reactionCount = message.reactions?.reduce((sum, reaction) => sum + (reaction.count || 0), 0) || 0;
-    return /* @__PURE__ */ jsxs(import_react_native19.View, {
+    return /* @__PURE__ */ jsxs(import_react_native20.View, {
       style: styles.row,
       children: [
         /* @__PURE__ */ jsx(ApiAvatar, {
           user: author,
           size: 40
         }),
-        /* @__PURE__ */ jsxs(import_react_native19.View, {
+        /* @__PURE__ */ jsxs(import_react_native20.View, {
           style: styles.messageBody,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native19.View, {
+            /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: styles.nameLine,
               children: [
                 /* @__PURE__ */ jsx(Text, {
@@ -9232,7 +10981,7 @@
               variant: "text-md/normal",
               children: message.content
             }),
-            !!message.attachments?.length && /* @__PURE__ */ jsx(import_react_native19.View, {
+            !!message.attachments?.length && /* @__PURE__ */ jsx(import_react_native20.View, {
               style: {
                 marginTop: 6,
                 gap: 6
@@ -9241,7 +10990,7 @@
                 var uri = attachment.url || attachment.proxy_url;
                 var type = String(attachment.content_type || "");
                 var isImage = type.startsWith("image/") || /\.(png|jpe?g|gif|webp)(?:$|\?)/i.test(String(uri || attachment.filename || ""));
-                return isImage && uri ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+                return isImage && uri ? /* @__PURE__ */ jsx(import_react_native20.Image, {
                   source: {
                     uri
                   },
@@ -9284,7 +11033,7 @@
   }
   function AccountSheet({ accounts, active, onMain }) {
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native20.View, {
         style: {
           paddingHorizontal: 12,
           paddingBottom: 20
@@ -9642,15 +11391,15 @@
     };
     if (channel) {
       var dmUser = channel.recipients?.[0];
-      return /* @__PURE__ */ jsxs(import_react_native19.KeyboardAvoidingView, {
+      return /* @__PURE__ */ jsxs(import_react_native20.KeyboardAvoidingView, {
         style: styles.root,
-        behavior: import_react_native19.Platform.OS === "ios" ? "padding" : void 0,
+        behavior: import_react_native20.Platform.OS === "ios" ? "padding" : void 0,
         keyboardVerticalOffset: 0,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native19.View, {
+          /* @__PURE__ */ jsxs(import_react_native20.View, {
             style: styles.header,
             children: [
-              /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native20.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Back",
                 onPress: returnFromChat,
@@ -9666,7 +11415,7 @@
                   opacity: pressed ? 0.7 : 1,
                   zIndex: 20
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native20.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 15,
@@ -9679,7 +11428,7 @@
                 user: dmUser,
                 size: 32
               }) : null,
-              /* @__PURE__ */ jsxs(import_react_native19.View, {
+              /* @__PURE__ */ jsxs(import_react_native20.View, {
                 style: {
                   flex: 1
                 },
@@ -9706,7 +11455,7 @@
               })
             ]
           }),
-          error ? /* @__PURE__ */ jsx(import_react_native19.View, {
+          error ? /* @__PURE__ */ jsx(import_react_native20.View, {
             style: {
               paddingHorizontal: 12,
               paddingVertical: 8
@@ -9726,7 +11475,7 @@
             },
             children: "Loading"
           }) : null,
-          /* @__PURE__ */ jsx(import_react_native19.FlatList, {
+          /* @__PURE__ */ jsx(import_react_native20.FlatList, {
             ref: listRef,
             style: {
               flex: 1
@@ -9739,13 +11488,13 @@
             contentContainerStyle: {
               paddingVertical: 6
             },
-            keyboardDismissMode: import_react_native19.Platform.OS === "ios" ? "interactive" : "on-drag",
+            keyboardDismissMode: import_react_native20.Platform.OS === "ios" ? "interactive" : "on-drag",
             keyboardShouldPersistTaps: "handled",
             onContentSizeChange: () => listRef.current?.scrollToEnd?.({
               animated: false
             })
           }),
-          selectedImage ? /* @__PURE__ */ jsxs(import_react_native19.View, {
+          selectedImage ? /* @__PURE__ */ jsxs(import_react_native20.View, {
             style: {
               height: 72,
               paddingHorizontal: 10,
@@ -9756,7 +11505,7 @@
               backgroundColor: tokens.colors.BACKGROUND_PRIMARY
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native19.Image, {
+              /* @__PURE__ */ jsx(import_react_native20.Image, {
                 source: {
                   uri: selectedImage.uri
                 },
@@ -9767,7 +11516,7 @@
                   backgroundColor: tokens.colors.BACKGROUND_SECONDARY
                 }
               }),
-              /* @__PURE__ */ jsx(import_react_native19.Text, {
+              /* @__PURE__ */ jsx(import_react_native20.Text, {
                 numberOfLines: 1,
                 style: {
                   flex: 1,
@@ -9776,7 +11525,7 @@
                 },
                 children: selectedImage.name
               }),
-              /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native20.Pressable, {
                 onPress: () => setSelectedImage(null),
                 hitSlop: 8,
                 style: ({ pressed }) => ({
@@ -9788,7 +11537,7 @@
                   backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native20.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 13,
@@ -9799,10 +11548,10 @@
               })
             ]
           }) : null,
-          /* @__PURE__ */ jsxs(import_react_native19.View, {
+          /* @__PURE__ */ jsxs(import_react_native20.View, {
             style: styles.composer,
             children: [
-              /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native20.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Add photo",
                 onPress: pickImage,
@@ -9817,7 +11566,7 @@
                   backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native20.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 13,
@@ -9826,7 +11575,7 @@
                   children: "Photo"
                 })
               }),
-              /* @__PURE__ */ jsx(import_react_native19.TextInput, {
+              /* @__PURE__ */ jsx(import_react_native20.TextInput, {
                 value: composer,
                 placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
                 placeholderTextColor: nativeColors.muted,
@@ -9851,7 +11600,7 @@
                   fontSize: 16
                 }
               }),
-              /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native20.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Send message",
                 disabled: !composer.trim() && !selectedImage,
@@ -9867,7 +11616,7 @@
                   opacity: !composer.trim() && !selectedImage ? 0.45 : pressed ? 0.72 : 1,
                   backgroundColor: nativeColors.brand
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native20.Text, {
                   style: {
                     color: nativeColors.inverse,
                     fontSize: 13,
@@ -9881,13 +11630,13 @@
         ]
       });
     }
-    return /* @__PURE__ */ jsxs(import_react_native19.View, {
+    return /* @__PURE__ */ jsxs(import_react_native20.View, {
       style: styles.root,
       children: [
-        /* @__PURE__ */ jsxs(import_react_native19.View, {
+        /* @__PURE__ */ jsxs(import_react_native20.View, {
           style: styles.header,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native19.View, {
+            /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
                 flex: 1
               },
@@ -9905,7 +11654,7 @@
                 })
               ]
             }),
-            screen === "members" ? /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+            screen === "members" ? /* @__PURE__ */ jsx(import_react_native20.Pressable, {
               accessibilityRole: "button",
               accessibilityLabel: "Back",
               onPress: openMessages,
@@ -9916,7 +11665,7 @@
                 justifyContent: "center",
                 opacity: pressed ? 0.65 : 1
               }),
-              children: /* @__PURE__ */ jsx(import_react_native19.Text, {
+              children: /* @__PURE__ */ jsx(import_react_native20.Text, {
                 style: {
                   color: nativeColors.text,
                   fontSize: 16,
@@ -9939,7 +11688,7 @@
             })
           ]
         }),
-        error ? /* @__PURE__ */ jsx(import_react_native19.View, {
+        error ? /* @__PURE__ */ jsx(import_react_native20.View, {
           style: {
             paddingHorizontal: 12,
             paddingVertical: 8
@@ -9959,10 +11708,10 @@
           },
           children: "Loading"
         }) : null,
-        /* @__PURE__ */ jsxs(import_react_native19.View, {
+        /* @__PURE__ */ jsxs(import_react_native20.View, {
           style: styles.navigator,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native19.View, {
+            /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: styles.guildRail,
               children: [
                 /* @__PURE__ */ jsx(PressableScale, {
@@ -9975,7 +11724,7 @@
                     onPress: openMessages
                   })
                 }),
-                /* @__PURE__ */ jsx(import_react_native19.FlatList, {
+                /* @__PURE__ */ jsx(import_react_native20.FlatList, {
                   data: guilds,
                   keyExtractor: (g2) => g2.id,
                   showsVerticalScrollIndicator: false,
@@ -9984,12 +11733,12 @@
                     return /* @__PURE__ */ jsx(PressableScale, {
                       onPress: () => openGuild(item),
                       style: styles.guildButton,
-                      children: uri ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+                      children: uri ? /* @__PURE__ */ jsx(import_react_native20.Image, {
                         source: {
                           uri
                         },
                         style: styles.guildImage
-                      }) : /* @__PURE__ */ jsx(import_react_native19.View, {
+                      }) : /* @__PURE__ */ jsx(import_react_native20.View, {
                         style: styles.guildImage,
                         children: /* @__PURE__ */ jsx(Text, {
                           variant: "text-sm/semibold",
@@ -10001,11 +11750,11 @@
                 })
               ]
             }),
-            /* @__PURE__ */ jsx(import_react_native19.View, {
+            /* @__PURE__ */ jsx(import_react_native20.View, {
               style: styles.sidebar,
               children: screen === "messages" ? /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  /* @__PURE__ */ jsxs(import_react_native20.View, {
                     style: styles.sidebarHeader,
                     children: [
                       /* @__PURE__ */ jsx(Text, {
@@ -10023,7 +11772,7 @@
                       })
                     ]
                   }),
-                  /* @__PURE__ */ jsx(import_react_native19.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native20.FlatList, {
                     data: recentDMs,
                     keyExtractor: (dm) => dm.channelId,
                     renderItem: ({ item }) => /* @__PURE__ */ jsxs(PressableScale, {
@@ -10034,7 +11783,7 @@
                           user: item.recipient,
                           size: 36
                         }),
-                        /* @__PURE__ */ jsxs(import_react_native19.View, {
+                        /* @__PURE__ */ jsxs(import_react_native20.View, {
                           style: {
                             flex: 1
                           },
@@ -10053,7 +11802,7 @@
                         })
                       ]
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native19.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native20.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -10065,7 +11814,7 @@
                 ]
               }) : screen === "members" ? /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  /* @__PURE__ */ jsxs(import_react_native20.View, {
                     style: styles.sidebarHeader,
                     children: [
                       /* @__PURE__ */ jsx(Button, {
@@ -10074,7 +11823,7 @@
                         text: "Back",
                         onPress: openMessages
                       }),
-                      /* @__PURE__ */ jsxs(import_react_native19.View, {
+                      /* @__PURE__ */ jsxs(import_react_native20.View, {
                         style: {
                           flex: 1
                         },
@@ -10092,7 +11841,7 @@
                       })
                     ]
                   }),
-                  /* @__PURE__ */ jsx(import_react_native19.View, {
+                  /* @__PURE__ */ jsx(import_react_native20.View, {
                     style: styles.search,
                     children: /* @__PURE__ */ jsx(TextInput, {
                       size: "md",
@@ -10101,7 +11850,7 @@
                       onChange: (value) => setMemberSearch(typeof value === "string" ? value : value?.nativeEvent?.text ?? "")
                     })
                   }),
-                  /* @__PURE__ */ jsx(import_react_native19.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native20.FlatList, {
                     data: filteredMembers,
                     keyExtractor: (member, i) => member.user?.id || String(i),
                     keyboardShouldPersistTaps: "handled",
@@ -10117,7 +11866,7 @@
                           user: item.user,
                           size: 36
                         }),
-                        /* @__PURE__ */ jsxs(import_react_native19.View, {
+                        /* @__PURE__ */ jsxs(import_react_native20.View, {
                           style: {
                             flex: 1
                           },
@@ -10141,7 +11890,7 @@
                         })
                       ]
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native19.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native20.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -10153,7 +11902,7 @@
                 ]
               }) : /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsx(import_react_native19.View, {
+                  /* @__PURE__ */ jsx(import_react_native20.View, {
                     style: styles.sidebarHeader,
                     children: /* @__PURE__ */ jsx(Text, {
                       variant: "heading-md/semibold",
@@ -10161,7 +11910,7 @@
                       children: guild?.name
                     })
                   }),
-                  /* @__PURE__ */ jsx(import_react_native19.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native20.FlatList, {
                     data: [
                       ...textChannels(null),
                       ...categories.flatMap((cat) => [
@@ -10187,7 +11936,7 @@
                         children: item.name
                       })
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native19.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native20.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -10221,7 +11970,7 @@
         activeId: active.id,
         onExit: () => setOpened(false)
       });
-    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
       style: {
         flex: 1
       },
@@ -10235,7 +11984,7 @@
         },
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native19.View, {
+          /* @__PURE__ */ jsxs(import_react_native20.View, {
             children: [
               /* @__PURE__ */ jsx(Text, {
                 variant: "heading-xl/bold",
@@ -10279,7 +12028,7 @@
           /* @__PURE__ */ jsx(TableRowGroup, {
             title: "Add Bot Account",
             children: /* @__PURE__ */ jsx(TableRow, {
-              label: /* @__PURE__ */ jsxs(import_react_native19.View, {
+              label: /* @__PURE__ */ jsxs(import_react_native20.View, {
                 style: {
                   width: "100%",
                   gap: 10
@@ -10327,7 +12076,7 @@
       })
     });
   }
-  var import_react5, import_react_native19, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
+  var import_react5, import_react_native20, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -10344,7 +12093,7 @@
       init_common();
       init_components();
       import_react5 = __toESM(require_react());
-      import_react_native19 = __toESM(require_react_native());
+      import_react_native20 = __toESM(require_react_native());
       useStyles3 = createStyles({
         root: {
           flex: 1,
@@ -10454,180 +12203,9 @@
     }
   });
 
-  // src/core/vendetta/plugins.ts
-  var plugins, pluginInstance, VdPluginManager;
-  var init_plugins = __esm({
-    "src/core/vendetta/plugins.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_storage();
-      init_settings();
-      init_utils();
-      init_constants();
-      init_logger();
-      plugins = wrapSync(createStorage(createMMKVBackend("VENDETTA_PLUGINS")));
-      pluginInstance = {};
-      VdPluginManager = {
-        plugins,
-        pluginFetch(url2) {
-          return _async_to_generator(function* () {
-            if (url2.startsWith(VD_PROXY_PREFIX)) {
-              url2 = url2.replace("https://bunny-mod.github.io/plugins-proxy", BUNNY_PROXY_PREFIX).replace(VD_PROXY_PREFIX, BUNNY_PROXY_PREFIX);
-            }
-            return yield safeFetch(url2, {
-              cache: "no-store"
-            });
-          })();
-        },
-        fetchPlugin(id) {
-          return _async_to_generator(function* () {
-            if (!id.endsWith("/"))
-              id += "/";
-            var existingPlugin = plugins[id];
-            var pluginManifest;
-            try {
-              pluginManifest = yield (yield this.pluginFetch(id + "manifest.json")).json();
-            } catch (e) {
-              throw new Error(`Failed to fetch manifest for ${id}`);
-            }
-            var pluginJs;
-            if (existingPlugin?.manifest.hash !== pluginManifest.hash) {
-              try {
-                pluginJs = yield (yield this.pluginFetch(id + (pluginManifest.main || "index.js"))).text();
-              } catch (e) {
-              }
-            }
-            if (!pluginJs && !existingPlugin)
-              throw new Error(`Failed to fetch JS for ${id}`);
-            plugins[id] = {
-              id,
-              manifest: pluginManifest,
-              enabled: existingPlugin?.enabled ?? false,
-              update: existingPlugin?.update ?? true,
-              js: pluginJs ?? existingPlugin.js
-            };
-          }).call(this);
-        },
-        installPlugin(id, enabled = true) {
-          return _async_to_generator(function* () {
-            if (!id.endsWith("/"))
-              id += "/";
-            if (typeof id !== "string" || id in plugins)
-              throw new Error("Plugin already installed");
-            yield this.fetchPlugin(id);
-            if (enabled)
-              yield this.startPlugin(id);
-          }).call(this);
-        },
-        /**
-         * @internal
-         */
-        evalPlugin(plugin) {
-          return _async_to_generator(function* () {
-            var vendettaForPlugins = {
-              ...globalThis.vendetta,
-              plugin: {
-                id: plugin.id,
-                manifest: plugin.manifest,
-                // Wrapping this with wrapSync is NOT an option.
-                storage: yield createStorage(createMMKVBackend(plugin.id))
-              },
-              logger: new LoggerClass(`CloudCord \xBB ${plugin.manifest.name}`)
-            };
-            var pluginString = `vendetta=>{return ${plugin.js}}
-//# sourceURL=${plugin.id}`;
-            var raw = (0, eval)(pluginString)(vendettaForPlugins);
-            var ret = typeof raw === "function" ? raw() : raw;
-            return ret?.default ?? ret ?? {};
-          })();
-        },
-        startPlugin(id) {
-          return _async_to_generator(function* () {
-            if (!id.endsWith("/"))
-              id += "/";
-            var plugin = plugins[id];
-            if (plugin.id.includes("xxjust") == true || plugin.id.includes("DevNjay") == true) {
-              return;
-            }
-            if (!plugin)
-              throw new Error("Attempted to start non-existent plugin");
-            try {
-              if (!settings.safeMode?.enabled) {
-                var pluginRet = yield this.evalPlugin(plugin);
-                pluginInstance[id] = pluginRet;
-                pluginRet.onLoad?.();
-              }
-              plugin.enabled = true;
-            } catch (e) {
-              logger.error(`Plugin ${plugin.id} errored whilst loading, and will be unloaded`, e);
-              try {
-                pluginInstance[plugin.id]?.onUnload?.();
-              } catch (e2) {
-                logger.error(`Plugin ${plugin.id} errored whilst unloading`, e2);
-              }
-              delete pluginInstance[id];
-              plugin.enabled = false;
-            }
-          }).call(this);
-        },
-        stopPlugin(id, disable = true) {
-          if (!id.endsWith("/"))
-            id += "/";
-          var plugin = plugins[id];
-          var pluginRet = pluginInstance[id];
-          if (!plugin)
-            throw new Error("Attempted to stop non-existent plugin");
-          if (!settings.safeMode?.enabled) {
-            try {
-              pluginRet?.onUnload?.();
-            } catch (e) {
-              logger.error(`Plugin ${plugin.id} errored whilst unloading`, e);
-            }
-            delete pluginInstance[id];
-          }
-          if (disable)
-            plugin.enabled = false;
-        },
-        removePlugin(id) {
-          return _async_to_generator(function* () {
-            if (!id.endsWith("/"))
-              id += "/";
-            var plugin = plugins[id];
-            if (plugin.enabled)
-              this.stopPlugin(id);
-            delete plugins[id];
-            yield purgeStorage(id);
-          }).call(this);
-        },
-        /**
-         * @internal
-         */
-        initPlugins() {
-          return _async_to_generator(function* () {
-            yield awaitStorage(settings, plugins);
-            var allIds = Object.keys(plugins);
-            if (!settings.safeMode?.enabled) {
-              allSettled(allIds.filter((pl) => plugins[pl].enabled).map((pl) => _async_to_generator(function* () {
-                return plugins[pl].update && (yield this.fetchPlugin(pl).catch((e) => logger.error(e.message))), yield this.startPlugin(pl);
-              }).call(this)));
-              allIds.filter((pl) => !plugins[pl].enabled && plugins[pl].update).forEach((pl) => this.fetchPlugin(pl));
-            }
-            return () => this.stopAllPlugins();
-          }).call(this);
-        },
-        stopAllPlugins() {
-          return Object.keys(pluginInstance).forEach((p) => this.stopPlugin(p, false));
-        },
-        getSettings: (id) => pluginInstance[id]?.settings
-      };
-    }
-  });
-
   // src/core/ui/settings/components/ScaledPluginSettings.tsx
   function ScaledPluginSettings({ component: Component }) {
-    return /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
       style: {
         flex: 1
       },
@@ -10636,7 +12214,7 @@
         paddingHorizontal: 12
       },
       showsVerticalScrollIndicator: true,
-      children: /* @__PURE__ */ jsx(import_react_native20.View, {
+      children: /* @__PURE__ */ jsx(import_react_native21.View, {
         style: {
           width: "100%",
           paddingRight: 24,
@@ -10646,23 +12224,23 @@
       })
     });
   }
-  var import_react_native20;
+  var import_react_native21;
   var init_ScaledPluginSettings = __esm({
     "src/core/ui/settings/components/ScaledPluginSettings.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      import_react_native20 = __toESM(require_react_native());
+      import_react_native21 = __toESM(require_react_native());
     }
   });
 
-  // src/core/ui/settings/pages/CloudSync/index.tsx
-  var CloudSync_exports = {};
-  __export(CloudSync_exports, {
-    default: () => CloudSync
+  // src/core/ui/settings/pages/StoreCloud/index.tsx
+  var StoreCloud_exports = {};
+  __export(StoreCloud_exports, {
+    default: () => StoreCloud
   });
-  function CloudSync() {
+  function StoreCloud() {
     useProxy(VdPluginManager.plugins);
     var [busy, setBusy] = (0, import_react6.useState)(false);
     var [refresh, setRefresh] = (0, import_react6.useState)(0);
@@ -10676,17 +12254,17 @@
         try {
           if (!VdPluginManager.plugins[PLUGIN_URL]) {
             yield VdPluginManager.installPlugin(PLUGIN_URL, true);
-            showToast("Cloud Sync installed", findAssetId("Check"));
+            showToast("StoreCloud installed", findAssetId("Check"));
           } else if (!VdPluginManager.plugins[PLUGIN_URL].enabled) {
             yield VdPluginManager.startPlugin(PLUGIN_URL);
-            showToast("Cloud Sync started", findAssetId("Check"));
+            showToast("StoreCloud started", findAssetId("Check"));
           } else {
-            showToast("Cloud Sync is already enabled", findAssetId("Check"));
+            showToast("StoreCloud is already enabled", findAssetId("Check"));
           }
           setRefresh((x2) => x2 + 1);
         } catch (error) {
-          console.error("[CloudCord] Cloud Sync install/start failed", error);
-          showToast(error?.message ?? "Cloud Sync failed");
+          console.error("[CloudCord] StoreCloud install/start failed", error);
+          showToast(error?.message ?? "StoreCloud failed");
         } finally {
           setBusy(false);
         }
@@ -10703,11 +12281,11 @@
           }
           yield VdPluginManager.fetchPlugin(PLUGIN_URL);
           yield VdPluginManager.startPlugin(PLUGIN_URL);
-          showToast("Cloud Sync refreshed", findAssetId("Check"));
+          showToast("StoreCloud refreshed", findAssetId("Check"));
           setRefresh((x2) => x2 + 1);
         } catch (error) {
-          console.error("[CloudCord] Cloud Sync refresh failed", error);
-          showToast(error?.message ?? "Cloud Sync refresh failed");
+          console.error("[CloudCord] StoreCloud refresh failed", error);
+          showToast(error?.message ?? "StoreCloud refresh failed");
         } finally {
           setBusy(false);
         }
@@ -10722,11 +12300,11 @@
           if (VdPluginManager.plugins[PLUGIN_URL]) {
             yield VdPluginManager.removePlugin(PLUGIN_URL);
           }
-          showToast("Cloud Sync removed");
+          showToast("StoreCloud removed");
           setRefresh((x2) => x2 + 1);
         } catch (error) {
-          console.error("[CloudCord] Cloud Sync remove failed", error);
-          showToast(error?.message ?? "Cloud Sync remove failed");
+          console.error("[CloudCord] StoreCloud remove failed", error);
+          showToast(error?.message ?? "StoreCloud remove failed");
         } finally {
           setBusy(false);
         }
@@ -10735,9 +12313,9 @@
     if (SettingsComponent) {
       return /* @__PURE__ */ jsx(ScaledPluginSettings, {
         component: SettingsComponent
-      }, `cloud-sync-settings-${refresh}`);
+      }, `storecloud-settings-${refresh}`);
     }
-    return /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native22.ScrollView, {
       style: {
         flex: 1
       },
@@ -10752,9 +12330,9 @@
         spacing: 24,
         children: [
           /* @__PURE__ */ jsxs(TableRowGroup, {
-            title: "Cloud Sync",
+            title: "CloudSync",
             children: [
-              /* @__PURE__ */ jsxs(import_react_native21.View, {
+              /* @__PURE__ */ jsxs(import_react_native22.View, {
                 style: {
                   paddingHorizontal: 12,
                   paddingBottom: 12
@@ -10763,30 +12341,30 @@
                   /* @__PURE__ */ jsx(Text, {
                     variant: "heading-md/semibold",
                     color: "text-normal",
-                    children: "Cloud Sync"
+                    children: "CloudSync"
                   }),
                   /* @__PURE__ */ jsx(Text, {
                     variant: "text-sm/medium",
                     color: "text-muted",
-                    children: "Install the official Cloud Sync plugin to connect, sync, add backup files, and save backups to your device."
+                    children: "Connect StoreCloud to sync supported settings and manage cloud backups on this device."
                   })
                 ]
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
-                label: plugin ? "Start Cloud Sync" : "Install Cloud Sync",
-                subLabel: busy ? "Please wait..." : "Loads the official Cloud Sync plugin UI",
+                label: plugin ? "Start StoreCloud" : "Enable StoreCloud",
+                subLabel: busy ? "Please wait..." : "Loads the StoreCloud sync engine",
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: {
-                    uri: CLOUDSYNC_ICON
+                    uri: STORECLOUD_ICON
                   }
                 }),
                 onPress: installOrStart
               }),
               plugin && /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
-                label: "Refresh Cloud Sync",
-                subLabel: "Refetches the official plugin",
+                label: "Refresh StoreCloud",
+                subLabel: "Refreshes the StoreCloud sync engine",
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("RetryIcon")
                 }),
@@ -10794,8 +12372,8 @@
               }),
               plugin && /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
-                label: "Remove Cloud Sync",
-                subLabel: "Uninstalls the Cloud Sync plugin",
+                label: "Disable StoreCloud",
+                subLabel: "Removes the StoreCloud sync engine",
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")
                 }),
@@ -10805,14 +12383,14 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsx(import_react_native21.View, {
+            children: /* @__PURE__ */ jsx(import_react_native22.View, {
               style: {
                 padding: 12
               },
               children: /* @__PURE__ */ jsx(Text, {
                 variant: "text-sm/medium",
                 color: "text-muted",
-                children: "This tab uses the official Cloud Sync plugin. The plugin itself handles OAuth, sync, backups, and files."
+                children: "StoreCloud uses the existing mobile sync engine for OAuth, settings synchronization, backups, and files."
               })
             })
           })
@@ -10820,9 +12398,9 @@
       })
     });
   }
-  var import_react6, import_react_native21, PLUGIN_URL, CLOUDSYNC_ICON;
-  var init_CloudSync = __esm({
-    "src/core/ui/settings/pages/CloudSync/index.tsx"() {
+  var import_react6, import_react_native22, PLUGIN_URL, STORECLOUD_ICON;
+  var init_StoreCloud = __esm({
+    "src/core/ui/settings/pages/StoreCloud/index.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
@@ -10835,9 +12413,9 @@
       init_toasts();
       init_components();
       import_react6 = __toESM(require_react());
-      import_react_native21 = __toESM(require_react_native());
+      import_react_native22 = __toESM(require_react_native());
       PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
-      CLOUDSYNC_ICON = "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png";
+      STORECLOUD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
     }
   });
 
@@ -11674,10 +13252,10 @@
   });
 
   // src/core/ui/components/AddonPage.tsx
-  function InputAlert(props) {
-    var [value, setValue] = React.useState("");
-    var [error, setError] = React.useState("");
-    var [isFetching, setIsFetching] = React.useState(false);
+  function InputAlert2(props) {
+    var [value, setValue] = (0, import_react7.useState)("");
+    var [error, setError] = (0, import_react7.useState)("");
+    var [isFetching, setIsFetching] = (0, import_react7.useState)(false);
     function onConfirmWrapper() {
       setIsFetching(true);
       props.fetchFn(value).then(() => dismissAlert("AddonInputAlert")).catch((e) => e instanceof Error ? setError(e.message) : String(e)).finally(() => setIsFetching(false));
@@ -11704,7 +13282,7 @@
             state: error ? "error" : void 0,
             errorMessage: error || void 0
           }),
-          /* @__PURE__ */ jsx(import_react_native22.ScrollView, {
+          /* @__PURE__ */ jsx(import_react_native23.ScrollView, {
             horizontal: true,
             showsHorizontalScrollIndicator: false,
             style: {
@@ -11739,7 +13317,7 @@
     });
   }
   function AddonPage({ CardComponent, ...props }) {
-    var [search, setSearch] = React.useState("");
+    var [search, setSearch] = (0, import_react7.useState)("");
     var [sortFn, setSortFn] = React.useState(() => null);
     var { bottom: bottomInset } = useSafeAreaInsets();
     var navigation2 = NavigationNative.useNavigation();
@@ -11779,7 +13357,7 @@
         };
       var { label, onPress, fetchFn } = props.installAction;
       if (fetchFn) {
-        openAlert("AddonInputAlert", /* @__PURE__ */ jsx(InputAlert, {
+        openAlert("AddonInputAlert", /* @__PURE__ */ jsx(InputAlert2, {
           label: label ?? "Install",
           fetchFn
         }));
@@ -11788,7 +13366,7 @@
       }
     }, []);
     if (results.length === 0 && !search) {
-      return /* @__PURE__ */ jsxs(import_react_native22.View, {
+      return /* @__PURE__ */ jsxs(import_react_native23.View, {
         style: {
           gap: 32,
           flexGrow: 1,
@@ -11796,13 +13374,13 @@
           alignItems: "center"
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native22.View, {
+          /* @__PURE__ */ jsxs(import_react_native23.View, {
             style: {
               gap: 8,
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native22.Image, {
+              /* @__PURE__ */ jsx(import_react_native23.Image, {
                 source: findAssetId("empty_quick_switcher")
               }),
               /* @__PURE__ */ jsx(Text, {
@@ -11821,12 +13399,12 @@
         ]
       });
     }
-    var headerElement = /* @__PURE__ */ jsxs(import_react_native22.View, {
+    var headerElement = /* @__PURE__ */ jsxs(import_react_native23.View, {
       style: {
         paddingBottom: 8
       },
       children: [
-        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native22.View, {
+        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native23.View, {
           style: {
             marginBottom: 10
           },
@@ -11838,7 +13416,7 @@
             props.safeModeHint?.footer
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native22.View, {
+        /* @__PURE__ */ jsxs(import_react_native23.View, {
           style: {
             flexDirection: "row",
             gap: 8
@@ -11855,7 +13433,7 @@
               icon: findAssetId("ArrowsUpDownIcon"),
               variant: "tertiary",
               disabled: !!search,
-              onPress: () => showSimpleActionSheet({
+              onPress: () => showSimpleActionSheet2({
                 key: "AddonListSortOptions",
                 header: {
                   title: "Sort Options",
@@ -11879,14 +13457,14 @@
           extraData: search,
           estimatedItemSize: 136,
           ListHeaderComponent: headerElement,
-          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native22.View, {
+          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native23.View, {
             style: {
               gap: 12,
               padding: 12,
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native22.Image, {
+              /* @__PURE__ */ jsx(import_react_native23.Image, {
                 source: findAssetId("devices_not_found")
               }),
               /* @__PURE__ */ jsx(Text, {
@@ -11901,7 +13479,7 @@
             paddingHorizontal: 12,
             paddingBottom: 90
           },
-          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native22.View, {
+          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native23.View, {
             style: {
               height: 8
             }
@@ -11920,7 +13498,7 @@
       ]
     });
   }
-  var import_fuzzysort, import_react7, import_react_native22, showSimpleActionSheet, hideActionSheet;
+  var import_fuzzysort, import_react7, import_react_native23, showSimpleActionSheet2, hideActionSheet;
   var init_AddonPage = __esm({
     "src/core/ui/components/AddonPage.tsx"() {
       "use strict";
@@ -11929,7 +13507,7 @@
       init_jsxRuntime();
       init_assets();
       init_settings();
-      init_alerts();
+      init_alerts2();
       init_sheets();
       init_isValidHttpUrl();
       init_lazy();
@@ -11940,8 +13518,8 @@
       init_dist();
       import_fuzzysort = __toESM(require_fuzzysort());
       import_react7 = __toESM(require_react());
-      import_react_native22 = __toESM(require_react_native());
-      ({ showSimpleActionSheet, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
+      import_react_native23 = __toESM(require_react_native());
+      ({ showSimpleActionSheet: showSimpleActionSheet2, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
     }
   });
 
@@ -11973,1466 +13551,6 @@
           padding: 4
         }
       });
-    }
-  });
-
-  // src/core/plugins/quickinstall/forumPost.tsx
-  function useExtractThreadContent(thread, _firstMessage = null, actionSheet3 = false) {
-    if (thread.guild_id !== KETTU_DISCORD_SERVER_ID)
-      return;
-    var postType;
-    if (thread.parent_id === KETTU_PLUGINS_CHANNEL_ID) {
-      postType = "Plugin";
-    } else if (thread.parent_id === KETTU_THEMES_CHANNEL_ID && isThemeSupported()) {
-      postType = "Theme";
-    } else
-      return;
-    var { firstMessage } = actionSheet3 ? useFirstForumPostMessage(thread) : {
-      firstMessage: _firstMessage
-    };
-    var urls = firstMessage?.content?.match(HTTP_REGEX_MULTI)?.filter(postMap[postType].urlsFilter);
-    if (!urls || !urls[0])
-      return;
-    if (postType === "Plugin" && !urls[0].endsWith("/"))
-      urls[0] += "/";
-    return [
-      postType,
-      urls[0]
-    ];
-  }
-  function useInstaller(thread, firstMessage = null, actionSheet3 = false) {
-    var [postType, url2] = useExtractThreadContent(thread, firstMessage, actionSheet3) ?? [];
-    useProxy(VdPluginManager.plugins);
-    useProxy(themes);
-    var [isInstalling, setIsInstalling] = React.useState(false);
-    if (!postType || !url2)
-      return [
-        true
-      ];
-    var isInstalled = Boolean(postMap[postType].storage[url2]);
-    var installOrRemove = () => _async_to_generator(function* () {
-      setIsInstalling(true);
-      try {
-        yield postMap[postType].installOrRemove(url2);
-      } catch (e) {
-        showToast(e.message, findAssetId("Small"));
-      } finally {
-        setIsInstalling(false);
-      }
-    })();
-    return [
-      false,
-      postType,
-      isInstalled,
-      isInstalling,
-      installOrRemove
-    ];
-  }
-  var useFirstForumPostMessage, forumReactions, postMap, installButtonPatch, forumPost_default;
-  var init_forumPost = __esm({
-    "src/core/plugins/quickinstall/forumPost.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_jsxRuntime();
-      init_i18n();
-      init_plugins();
-      init_storage();
-      init_themes();
-      init_assets();
-      init_loader();
-      init_patcher();
-      init_constants();
-      init_lazy();
-      init_components();
-      init_wrappers();
-      init_components2();
-      init_toasts();
-      ({ useFirstForumPostMessage } = lazyDestructure(() => findByProps("useFirstForumPostMessage")));
-      forumReactions = findByPropsLazy("MostCommonForumPostReaction");
-      postMap = {
-        Plugin: {
-          storage: VdPluginManager.plugins,
-          urlsFilter: (url2) => url2.startsWith(VD_PROXY_PREFIX),
-          installOrRemove: (url2) => {
-            var isInstalled = postMap.Plugin.storage[url2];
-            return isInstalled ? VdPluginManager.removePlugin(url2) : VdPluginManager.installPlugin(url2);
-          }
-        },
-        Theme: {
-          storage: themes,
-          urlsFilter: (url2) => url2.endsWith(".json"),
-          installOrRemove: (url2) => {
-            var isInstalled = postMap.Theme.storage[url2];
-            return isInstalled ? removeTheme(url2) : installTheme(url2);
-          }
-        }
-      };
-      installButtonPatch = () => after("MostCommonForumPostReaction", forumReactions, ([{ thread, firstMessage }], res) => {
-        var [shouldReturn, _2, installed, loading, installOrRemove] = useInstaller(thread, firstMessage, true);
-        if (shouldReturn)
-          return;
-        return /* @__PURE__ */ jsxs(Fragment, {
-          children: [
-            res,
-            /* @__PURE__ */ jsx(ErrorBoundary, {
-              children: /* @__PURE__ */ jsx(Button, {
-                size: "sm",
-                loading,
-                disabled: loading,
-                // variant={installed ? "destructive" : "primary"} crashes older version because "destructive" was renamed from "danger" and there's no sane way for compat check horror
-                variant: installed ? "secondary" : "primary",
-                text: installed ? Strings.UNINSTALL : Strings.INSTALL,
-                onPress: installOrRemove,
-                icon: findAssetId(installed ? "ic_message_delete" : "DownloadIcon"),
-                style: {
-                  marginLeft: 8
-                }
-              })
-            })
-          ]
-        });
-      });
-      forumPost_default = () => {
-        var patches3 = [
-          // actionSheetPatch(),
-          installButtonPatch()
-        ];
-        return () => patches3.map((p) => p());
-      };
-    }
-  });
-
-  // src/lib/ui/components/InputAlert.tsx
-  function InputAlert2({ title, confirmText, confirmColor, onConfirm, cancelText, placeholder, initialValue = "", secureTextEntry }) {
-    var [value, setValue] = React.useState(initialValue);
-    var [error, setError] = React.useState("");
-    function onConfirmWrapper() {
-      var asyncOnConfirm = Promise.resolve(onConfirm(value));
-      asyncOnConfirm.then(() => {
-        Alerts.close();
-      }).catch((e) => {
-        setError(e.message);
-      });
-    }
-    return /* @__PURE__ */ jsx(LegacyAlert, {
-      title,
-      confirmText,
-      confirmColor,
-      isConfirmButtonDisabled: error.length !== 0,
-      onConfirm: onConfirmWrapper,
-      cancelText,
-      onCancel: () => Alerts.close(),
-      children: /* @__PURE__ */ jsx(LegacyFormInput, {
-        placeholder,
-        value,
-        onChange: (v2) => {
-          setValue(typeof v2 === "string" ? v2 : v2.text);
-          if (error)
-            setError("");
-        },
-        returnKeyType: "done",
-        onSubmitEditing: onConfirmWrapper,
-        error: error || void 0,
-        secureTextEntry,
-        autoFocus: true,
-        showBorder: true,
-        style: {
-          alignSelf: "stretch"
-        }
-      })
-    });
-  }
-  var Alerts;
-  var init_InputAlert = __esm({
-    "src/lib/ui/components/InputAlert.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      init_components();
-      init_wrappers();
-      Alerts = findByPropsLazy("openLazy", "close");
-    }
-  });
-
-  // src/core/vendetta/alerts.ts
-  function showConfirmationAlert(options) {
-    var internalOptions = options;
-    internalOptions.body = options.content;
-    delete internalOptions.content;
-    internalOptions.isDismissable ??= true;
-    return Alerts2.show(internalOptions);
-  }
-  var Alerts2, showCustomAlert, showInputAlert;
-  var init_alerts2 = __esm({
-    "src/core/vendetta/alerts.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_wrappers();
-      init_InputAlert();
-      Alerts2 = findByPropsLazy("openLazy", "close");
-      showCustomAlert = (component, props) => Alerts2.openLazy({
-        importer: () => _async_to_generator(function* () {
-          return () => React.createElement(component, props);
-        })()
-      });
-      showInputAlert = (options) => showCustomAlert(InputAlert2, options);
-    }
-  });
-
-  // src/core/plugins/quickinstall/url.tsx
-  function typeFromUrl(url2) {
-    if (url2.startsWith(VD_PROXY_PREFIX)) {
-      return "plugin";
-    } else if (url2.endsWith(".json") && isThemeSupported()) {
-      return "theme";
-    }
-  }
-  function installWithToast(type, url2) {
-    (type === "plugin" ? VdPluginManager.installPlugin.bind(VdPluginManager) : installTheme)(url2).then(() => {
-      showToast(Strings.SUCCESSFULLY_INSTALLED, findAssetId("Check"));
-    }).catch((e) => {
-      showToast(e.message, findAssetId("Small"));
-    });
-  }
-  var import_react_native23, showSimpleActionSheet2, handleClick, getChannelId, getChannel, url_default;
-  var init_url = __esm({
-    "src/core/plugins/quickinstall/url.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_i18n();
-      init_alerts2();
-      init_plugins();
-      init_themes();
-      init_assets();
-      init_loader();
-      init_patcher();
-      init_constants();
-      init_lazy();
-      init_common();
-      init_filters();
-      init_finders();
-      init_wrappers();
-      init_toasts();
-      import_react_native23 = __toESM(require_react_native());
-      showSimpleActionSheet2 = findExports(byMutableProp("showSimpleActionSheet"));
-      handleClick = findByPropsLazy("handleClick");
-      ({ getChannelId } = lazyDestructure(() => channels));
-      ({ getChannel } = lazyDestructure(() => findByProps("getChannel")));
-      url_default = () => {
-        var patches3 = new Array();
-        patches3.push(after("showSimpleActionSheet", showSimpleActionSheet2, (args) => {
-          if (args[0].key !== "LongPressUrl")
-            return;
-          var { header: { title: url2 }, options } = args[0];
-          var urlType = typeFromUrl(url2);
-          if (!urlType)
-            return;
-          options.push({
-            label: Strings.INSTALL_ADDON,
-            onPress: () => installWithToast(urlType, url2)
-          });
-        }));
-        patches3.push(instead("handleClick", handleClick, function(args, orig) {
-          return _async_to_generator(function* () {
-            var { href: url2 } = args[0];
-            var urlType = typeFromUrl(url2);
-            if (!urlType)
-              return orig.apply(this, args);
-            if (urlType === "theme" && getChannel(getChannelId())?.parent_id !== VD_THEMES_CHANNEL_ID)
-              return orig.apply(this, args);
-            showConfirmationAlert({
-              title: Strings.HOLD_UP,
-              content: formatString("CONFIRMATION_LINK_IS_A_TYPE", {
-                urlType
-              }),
-              onConfirm: () => installWithToast(urlType, url2),
-              confirmText: Strings.INSTALL,
-              cancelText: Strings.CANCEL,
-              secondaryConfirmText: Strings.OPEN_IN_BROWSER,
-              onConfirmSecondary: () => import_react_native23.Linking.openURL(url2)
-            });
-          }).call(this);
-        }));
-        return () => patches3.forEach((p) => p());
-      };
-    }
-  });
-
-  // src/core/plugins/quickinstall/index.ts
-  var quickinstall_exports = {};
-  __export(quickinstall_exports, {
-    default: () => quickinstall_default
-  });
-  var patches, quickinstall_default;
-  var init_quickinstall = __esm({
-    "src/core/plugins/quickinstall/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_plugins2();
-      init_forumPost();
-      init_url();
-      patches = [];
-      quickinstall_default = defineCorePlugin({
-        manifest: {
-          id: "bunny.quickinstall",
-          version: "1.0.0",
-          type: "plugin",
-          spec: 3,
-          main: "",
-          display: {
-            name: "QuickInstall",
-            description: "Quickly install Vendetta plugins and themes",
-            authors: [
-              {
-                name: "Vendetta Team"
-              }
-            ]
-          }
-        },
-        start() {
-          patches = [
-            forumPost_default(),
-            url_default()
-          ];
-        },
-        stop() {
-          patches.forEach((p) => p());
-        }
-      });
-    }
-  });
-
-  // src/core/plugins/badges/index.tsx
-  var badges_exports = {};
-  __export(badges_exports, {
-    default: () => badges_default
-  });
-  var useBadgesModule2, badgesCache, badgeProps, pendingRequests, badges_default;
-  var init_badges = __esm({
-    "src/core/plugins/badges/index.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_patcher();
-      init_jsx();
-      init_metro();
-      init_plugins2();
-      init_common();
-      useBadgesModule2 = findByNameLazy("useBadges", false);
-      badgesCache = /* @__PURE__ */ new Map();
-      badgeProps = /* @__PURE__ */ new Map();
-      pendingRequests = /* @__PURE__ */ new Set();
-      badges_default = defineCorePlugin({
-        manifest: {
-          id: "bunny.badges",
-          version: "1.1.0",
-          type: "plugin",
-          spec: 3,
-          main: "",
-          display: {
-            name: "Badges",
-            description: "Adds badges to user's profile",
-            authors: [
-              {
-                name: "cocobo1"
-              },
-              {
-                name: "pylixonly"
-              }
-            ]
-          }
-        },
-        start() {
-          onJsxCreate("ProfileBadge", (component, ret) => {
-            if (ret.props.id?.startsWith("rain-")) {
-              var cachedProps = badgeProps.get(ret.props.id);
-              if (cachedProps) {
-                ret.props.source = cachedProps.source;
-                ret.props.label = cachedProps.label;
-                ret.props.id = cachedProps.id;
-              }
-            }
-          });
-          onJsxCreate("RenderedBadge", (component, ret) => {
-            if (ret.props.id?.startsWith("rain-")) {
-              var cachedProps = badgeProps.get(ret.props.id);
-              if (cachedProps) {
-                Object.assign(ret.props, cachedProps);
-              }
-            }
-          });
-          var fetchAndProcessBadges = (userId) => _async_to_generator(function* () {
-            if (pendingRequests.has(userId))
-              return;
-            pendingRequests.add(userId);
-            try {
-              var [badgesRes, rolesRes] = yield Promise.all([
-                fetch("https://codeberg.org/raincord/badges/raw/branch/main/badges.json"),
-                fetch("https://codeberg.org/raincord/badges/raw/branch/main/assets/roles/roles.json")
-              ]);
-              var badgesData = yield badgesRes.json();
-              var rolesData = yield rolesRes.json();
-              var userBadgeData = badgesData[userId] || {
-                roles: [],
-                custom: []
-              };
-              var allBadges = [];
-              if (userBadgeData.roles) {
-                userBadgeData.roles.forEach((roleName) => {
-                  var roleData = rolesData[roleName];
-                  if (roleData) {
-                    allBadges.push({
-                      label: roleData.label,
-                      url: roleData.url
-                    });
-                  }
-                });
-              }
-              if (userBadgeData.custom) {
-                allBadges.push(...userBadgeData.custom);
-              }
-              badgesCache.set(userId, allBadges);
-              allBadges.forEach((badge, i) => {
-                var badgeId = `rain-${userId}-${i}`;
-                badgeProps.set(badgeId, {
-                  id: badgeId,
-                  source: {
-                    uri: badge.url
-                  },
-                  label: badge.label,
-                  userId
-                });
-              });
-              FluxDispatcher.dispatch({
-                type: "USER_UPDATE",
-                user: {
-                  id: userId
-                }
-              });
-            } finally {
-              pendingRequests.delete(userId);
-            }
-          })();
-          after("default", useBadgesModule2, ([user], result) => {
-            if (!user)
-              return;
-            var userId = user.userId;
-            var cached = badgesCache.get(userId);
-            if (!cached) {
-              if (!pendingRequests.has(userId)) {
-                fetchAndProcessBadges(userId);
-              }
-              return;
-            }
-            cached.forEach((badge, i) => {
-              var badgeId = `rain-${userId}-${i}`;
-              result.unshift({
-                id: badgeId,
-                description: badge.label,
-                icon: " _"
-              });
-            });
-          });
-        }
-      });
-    }
-  });
-
-  // src/core/plugins/notrack/index.ts
-  var notrack_exports = {};
-  __export(notrack_exports, {
-    default: () => notrack_default
-  });
-  function patchNetwork() {
-    var analyticsTest = /client-analytics\.braintreegateway\.com|discord\.com\/api\/v9\/(science|track)|app\.adjust\..*|.*\.ingest\.sentry\.io/;
-    try {
-      var unpatch = instead("send", XMLHttpRequest.prototype, function(args, orig) {
-        if (this.__sentry_xhr__?.url && analyticsTest.test(this.__sentry_xhr__.url)) {
-          return void 0;
-        }
-        return orig.apply(this, args);
-      });
-      return unpatch;
-    } catch (e) {
-      return () => false;
-    }
-  }
-  function patchConsole() {
-    var sentrified = {};
-    try {
-      Object.keys(console).forEach((key) => {
-        var consoleFunc = console[key];
-        if (consoleFunc) {
-          sentrified[key] = consoleFunc;
-          var originalFunc = consoleFunc.__sentry_original__;
-          console[key] = originalFunc ?? consoleFunc;
-        }
-      });
-    } catch (e) {
-      logger.log("Failed to de-sentrify console functions!", e);
-    }
-    return () => {
-      Object.keys(sentrified).forEach((key) => {
-        if (sentrified[key]) {
-          console[key] = sentrified[key];
-        }
-      });
-    };
-  }
-  function patchMiscellaneous() {
-    var miscPatches = [
-      // Global analytics utilities
-      AnalyticsUtils?.AnalyticsActionHandlers && noop("handleTrack", AnalyticsUtils.AnalyticsActionHandlers),
-      AnalyticsUtils?.AnalyticsActionHandlers && noop("handleFingerprint", AnalyticsUtils.AnalyticsActionHandlers),
-      // Super properties tracking
-      SuperPropUtils && noop("track", SuperPropUtils),
-      // Voice state metadata tracking
-      VoiceStateUtils && noop("trackWithMetadata", VoiceStateUtils),
-      // Crash reporter
-      CrashReportUtils && noop("submitLiveCrashReport", CrashReportUtils),
-      // Metrics
-      MetricsUtils?._metrics && noop("push", MetricsUtils._metrics)
-    ].filter(Boolean);
-    return () => miscPatches.forEach((p) => p());
-  }
-  function patchSentry() {
-    var sentryPatches = [];
-    if (Sentry.initializer) {
-      sentryPatches.push(noop("initSentry", Sentry.initializer));
-    }
-    if (Sentry.main && Sentry.main.addBreadcrumb) {
-      sentryPatches.push(noop("addBreadcrumb", Sentry.main));
-    }
-    if (Sentry.client) {
-      try {
-        Sentry.client.getOptions().enabled = false;
-        Sentry.client.close();
-        if (Sentry.main) {
-          if (Sentry.main.getStackTop) {
-            Sentry.main.getStackTop().scope.clear();
-          }
-          if (Sentry.main.getScope) {
-            Sentry.main.getScope().clear();
-          }
-        }
-      } catch (e) {
-      }
-    }
-    return () => {
-      try {
-        sentryPatches.forEach((p) => p());
-        if (Sentry.client) {
-          Sentry.client.getOptions().enabled = true;
-          Sentry.client.open();
-        }
-      } catch (e) {
-      }
-    };
-  }
-  var patches2, AnalyticsUtils, SuperPropUtils, VoiceStateUtils, CrashReportUtils, MetricsUtils, sentryGlobal, sentryHub, sentryClient, Sentry, noop, notrack_default;
-  var init_notrack = __esm({
-    "src/core/plugins/notrack/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_plugins2();
-      init_metro();
-      init_patcher();
-      init_logger();
-      patches2 = [];
-      AnalyticsUtils = findByProps("AnalyticsActionHandlers");
-      SuperPropUtils = findByProps("encodeProperties", "track");
-      VoiceStateUtils = findByProps("getVoiceStateMetadata");
-      CrashReportUtils = findByProps("submitLiveCrashReport");
-      MetricsUtils = findByProps("_metrics");
-      sentryGlobal = globalThis.__SENTRY__;
-      sentryHub = sentryGlobal?.hub;
-      sentryClient = sentryHub?.getClient();
-      Sentry = {
-        initializer: findByProps("initSentry"),
-        main: sentryHub,
-        client: sentryClient
-      };
-      noop = (prop, parent) => {
-        try {
-          return instead(prop, parent, () => void 0);
-        } catch (e) {
-          return () => false;
-        }
-      };
-      notrack_default = defineCorePlugin({
-        manifest: {
-          id: "bunny.notrack",
-          version: "1.0.0",
-          type: "plugin",
-          spec: 3,
-          main: "",
-          display: {
-            name: "NoTrack",
-            description: "Disables Discord's telemetry",
-            authors: [
-              {
-                name: "maisymoe"
-              }
-            ]
-          }
-        },
-        start() {
-          patches2 = [
-            patchNetwork(),
-            patchConsole(),
-            patchMiscellaneous(),
-            patchSentry()
-          ].filter(Boolean);
-          logger.log("NoTrack: Enabled - all telemetry tracking disabled");
-        },
-        stop() {
-          patches2.forEach((p) => p?.());
-          patches2 = [];
-          logger.log("NoTrack: Disabled - telemetry tracking restored");
-        }
-      });
-    }
-  });
-
-  // src/core/plugins/messagefix/index.ts
-  var messagefix_exports = {};
-  __export(messagefix_exports, {
-    default: () => messagefix_default
-  });
-  var MessageActions, originalSendMessage, messagefix_default;
-  var init_messagefix = __esm({
-    "src/core/plugins/messagefix/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_plugins2();
-      init_metro();
-      init_logger();
-      MessageActions = findByProps("sendMessage");
-      messagefix_default = defineCorePlugin({
-        manifest: {
-          id: "bunny.messagefix",
-          version: "1.0.0",
-          type: "plugin",
-          spec: 3,
-          main: "",
-          display: {
-            name: "MessageFix",
-            description: "Ensures messages include the required nonce parameter",
-            authors: [
-              {
-                name: "Win8.1VMUser"
-              },
-              {
-                name: "kmmiio99o.dev"
-              }
-            ]
-          }
-        },
-        start() {
-          originalSendMessage = MessageActions.sendMessage;
-          MessageActions.sendMessage = function(channelId, message, replyRef, options) {
-            options = options || {};
-            options.nonce = options.nonce || (BigInt(Date.now() - 14200704e5) << 22n).toString();
-            return originalSendMessage.call(this, channelId, message, replyRef, options);
-          };
-          logger.log("MessageFix: Enabled - adding nonce to all messages");
-        },
-        stop() {
-          if (originalSendMessage)
-            MessageActions.sendMessage = originalSendMessage;
-          logger.log("MessageFix: Disabled");
-        }
-      });
-    }
-  });
-
-  // src/core/plugins/index.ts
-  function defineCorePlugin(instance) {
-    instance[Symbol.for("bunny.core.plugin")] = true;
-    return instance;
-  }
-  var getCorePlugins;
-  var init_plugins2 = __esm({
-    "src/core/plugins/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      getCorePlugins = () => ({
-        "bunny.quickinstall": (init_quickinstall(), __toCommonJS(quickinstall_exports)),
-        "bunny.badges": (init_badges(), __toCommonJS(badges_exports)),
-        "bunny.notrack": (init_notrack(), __toCommonJS(notrack_exports)),
-        "bunny.messagefix": (init_messagefix(), __toCommonJS(messagefix_exports))
-      });
-    }
-  });
-
-  // src/lib/api/commands/types.ts
-  var ApplicationCommandInputType, ApplicationCommandOptionType, ApplicationCommandType;
-  var init_types = __esm({
-    "src/lib/api/commands/types.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      ApplicationCommandInputType = /* @__PURE__ */ function(ApplicationCommandInputType2) {
-        ApplicationCommandInputType2[ApplicationCommandInputType2["BUILT_IN"] = 0] = "BUILT_IN";
-        ApplicationCommandInputType2[ApplicationCommandInputType2["BUILT_IN_TEXT"] = 1] = "BUILT_IN_TEXT";
-        ApplicationCommandInputType2[ApplicationCommandInputType2["BUILT_IN_INTEGRATION"] = 2] = "BUILT_IN_INTEGRATION";
-        ApplicationCommandInputType2[ApplicationCommandInputType2["BOT"] = 3] = "BOT";
-        ApplicationCommandInputType2[ApplicationCommandInputType2["PLACEHOLDER"] = 4] = "PLACEHOLDER";
-        return ApplicationCommandInputType2;
-      }({});
-      ApplicationCommandOptionType = /* @__PURE__ */ function(ApplicationCommandOptionType2) {
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["SUB_COMMAND"] = 1] = "SUB_COMMAND";
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["SUB_COMMAND_GROUP"] = 2] = "SUB_COMMAND_GROUP";
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["STRING"] = 3] = "STRING";
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["INTEGER"] = 4] = "INTEGER";
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["BOOLEAN"] = 5] = "BOOLEAN";
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["USER"] = 6] = "USER";
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["CHANNEL"] = 7] = "CHANNEL";
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["ROLE"] = 8] = "ROLE";
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["MENTIONABLE"] = 9] = "MENTIONABLE";
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["NUMBER"] = 10] = "NUMBER";
-        ApplicationCommandOptionType2[ApplicationCommandOptionType2["ATTACHMENT"] = 11] = "ATTACHMENT";
-        return ApplicationCommandOptionType2;
-      }({});
-      ApplicationCommandType = /* @__PURE__ */ function(ApplicationCommandType2) {
-        ApplicationCommandType2[ApplicationCommandType2["CHAT"] = 1] = "CHAT";
-        ApplicationCommandType2[ApplicationCommandType2["USER"] = 2] = "USER";
-        ApplicationCommandType2[ApplicationCommandType2["MESSAGE"] = 3] = "MESSAGE";
-        return ApplicationCommandType2;
-      }({});
-    }
-  });
-
-  // src/core/commands/eval.ts
-  var eval_exports = {};
-  __export(eval_exports, {
-    default: () => eval_default
-  });
-  function wrapInJSCodeblock(resString) {
-    return "```js\n" + resString.replaceAll("`", "`" + ZERO_WIDTH_SPACE_CHARACTER) + "\n```";
-  }
-  var util, AsyncFunction, ZERO_WIDTH_SPACE_CHARACTER, eval_default;
-  var init_eval = __esm({
-    "src/core/commands/eval.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_i18n();
-      init_types();
-      init_settings();
-      init_common();
-      init_wrappers();
-      util = findByPropsLazy("inspect");
-      AsyncFunction = (() => _async_to_generator(function* () {
-        return void 0;
-      })()).constructor;
-      ZERO_WIDTH_SPACE_CHARACTER = "\u200B";
-      eval_default = () => ({
-        name: "eval",
-        description: Strings.COMMAND_EVAL_DESC,
-        shouldHide: () => settings.enableEvalCommand === true,
-        options: [
-          {
-            name: "code",
-            type: ApplicationCommandOptionType.STRING,
-            description: Strings.COMMAND_EVAL_OPT_CODE,
-            required: true
-          },
-          {
-            name: "async",
-            type: ApplicationCommandOptionType.BOOLEAN,
-            description: Strings.COMMAND_EVAL_OPT_ASYNC
-          }
-        ],
-        execute(_0, _1) {
-          return _async_to_generator(function* ([code, async], ctx) {
-            try {
-              var res = util.inspect(async?.value ? yield AsyncFunction(code.value)() : eval?.(code.value));
-              var trimmedRes = res.length > 2e3 ? res.slice(0, 2e3) + "..." : res;
-              messageUtil.sendBotMessage(ctx.channel.id, wrapInJSCodeblock(trimmedRes));
-            } catch (err) {
-              messageUtil.sendBotMessage(ctx.channel.id, wrapInJSCodeblock(err?.stack ?? err));
-            }
-          }).apply(this, arguments);
-        }
-      });
-    }
-  });
-
-  // src/core/commands/debug.ts
-  var debug_exports2 = {};
-  __export(debug_exports2, {
-    default: () => debug_default
-  });
-  var debug_default;
-  var init_debug2 = __esm({
-    "src/core/commands/debug.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_i18n();
-      init_types();
-      init_debug();
-      init_common();
-      debug_default = () => ({
-        name: "debug",
-        description: Strings.COMMAND_DEBUG_DESC,
-        options: [
-          {
-            name: "ephemeral",
-            type: ApplicationCommandOptionType.BOOLEAN,
-            description: Strings.COMMAND_DEBUG_OPT_EPHEMERALLY
-          }
-        ],
-        execute([ephemeral], ctx) {
-          var info = getDebugInfo();
-          var content = [
-            "**CloudCord Debug Info**",
-            `> CloudCord: ${info.bunny.version} (${info.bunny.loader.name} ${info.bunny.loader.version})`,
-            `> Discord: ${info.discord.version} (${info.discord.build})`,
-            `> React: ${info.react.version} (RN ${info.react.nativeVersion})`,
-            `> Hermes: ${info.hermes.version} (bcv${info.hermes.bytecodeVersion})`,
-            `> System: ${info.os.name} ${info.os.version} ${info.os.sdk ? `(SDK ${info.os.sdk})` : ""}`.trimEnd(),
-            `> Device: ${info.device.model} (${info.device.codename})`
-          ].join("\n");
-          if (ephemeral?.value) {
-            messageUtil.sendBotMessage(ctx.channel.id, content);
-          } else {
-            var fixNonce = (BigInt(Date.now() - 14200704e5) << 22n).toString();
-            messageUtil.sendMessage(ctx.channel.id, {
-              content
-            }, void 0, {
-              nonce: fixNonce
-            });
-          }
-        }
-      });
-    }
-  });
-
-  // src/core/commands/plugins.ts
-  var plugins_exports = {};
-  __export(plugins_exports, {
-    default: () => plugins_default
-  });
-  var plugins_default;
-  var init_plugins3 = __esm({
-    "src/core/commands/plugins.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_i18n();
-      init_plugins();
-      init_types();
-      init_common();
-      plugins_default = () => ({
-        name: "plugins",
-        description: Strings.COMMAND_PLUGINS_DESC,
-        options: [
-          {
-            name: "ephemeral",
-            displayName: "ephemeral",
-            type: ApplicationCommandOptionType.BOOLEAN,
-            description: Strings.COMMAND_DEBUG_OPT_EPHEMERALLY
-          }
-        ],
-        execute([ephemeral], ctx) {
-          var plugins2 = Object.values(VdPluginManager.plugins).filter(Boolean);
-          plugins2.sort((a, b3) => a.manifest.name.localeCompare(b3.manifest.name));
-          var enabled = plugins2.filter((p) => p.enabled).map((p) => p.manifest.name);
-          var disabled = plugins2.filter((p) => !p.enabled).map((p) => p.manifest.name);
-          var content = [
-            `**Installed Plugins (${plugins2.length}):**`,
-            ...enabled.length > 0 ? [
-              `Enabled (${enabled.length}):`,
-              "> " + enabled.join(", ")
-            ] : [],
-            ...disabled.length > 0 ? [
-              `Disabled (${disabled.length}):`,
-              "> " + disabled.join(", ")
-            ] : []
-          ].join("\n");
-          if (ephemeral?.value) {
-            messageUtil.sendBotMessage(ctx.channel.id, content);
-          } else {
-            var fixNonce = (BigInt(Date.now() - 14200704e5) << 22n).toString();
-            messageUtil.sendMessage(ctx.channel.id, {
-              content
-            }, void 0, {
-              nonce: fixNonce
-            });
-          }
-        }
-      });
-    }
-  });
-
-  // src/lib/api/commands/index.ts
-  var commands_exports = {};
-  __export(commands_exports, {
-    patchCommands: () => patchCommands,
-    registerCommand: () => registerCommand
-  });
-  function patchCommands() {
-    var unpatch = after("getBuiltInCommands", commands, ([type], res) => {
-      return [
-        ...res,
-        ...commands2.filter((c2) => (type instanceof Array ? type.includes(c2.type) : type === c2.type) && c2.__bunny?.shouldHide?.() !== false)
-      ];
-    });
-    [
-      (init_eval(), __toCommonJS(eval_exports)),
-      (init_debug2(), __toCommonJS(debug_exports2)),
-      (init_plugins3(), __toCommonJS(plugins_exports))
-    ].forEach((r) => registerCommand(r.default()));
-    return () => {
-      commands2 = [];
-      unpatch();
-    };
-  }
-  function registerCommand(command) {
-    var builtInCommands;
-    try {
-      builtInCommands = commands.getBuiltInCommands(ApplicationCommandType.CHAT, true, false);
-    } catch (e) {
-      builtInCommands = commands.getBuiltInCommands(Object.values(ApplicationCommandType), true, false);
-    }
-    builtInCommands.sort((a, b3) => parseInt(b3.id) - parseInt(a.id));
-    var lastCommand = builtInCommands[builtInCommands.length - 1];
-    command.id = (parseInt(lastCommand.id, 10) - 1).toString();
-    command.__bunny = {
-      shouldHide: command.shouldHide
-    };
-    command.applicationId ??= "-1";
-    command.type ??= ApplicationCommandType.CHAT;
-    command.inputType = ApplicationCommandInputType.BUILT_IN;
-    command.displayName ??= command.name;
-    command.untranslatedName ??= command.name;
-    command.displayDescription ??= command.description;
-    command.untranslatedDescription ??= command.description;
-    if (command.options)
-      for (var opt of command.options) {
-        opt.displayName ??= opt.name;
-        opt.displayDescription ??= opt.description;
-      }
-    instead("execute", command, (args, orig) => {
-      Promise.resolve(orig.apply(command, args)).then((ret) => {
-        if (ret && typeof ret === "object") {
-          messageUtil.sendMessage(args[1].channel.id, ret);
-        }
-      }).catch((err) => {
-        logger.error("Failed to execute command", err);
-      });
-    });
-    commands2.push(command);
-    return () => commands2 = commands2.filter(({ id }) => id !== command.id);
-  }
-  var commands2;
-  var init_commands = __esm({
-    "src/lib/api/commands/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_types();
-      init_patcher();
-      init_logger();
-      init_common();
-      commands2 = [];
-    }
-  });
-
-  // src/lib/api/flux/index.ts
-  var flux_exports = {};
-  __export(flux_exports, {
-    dispatcher: () => dispatcher,
-    injectFluxInterceptor: () => injectFluxInterceptor,
-    intercept: () => intercept
-  });
-  function injectFluxInterceptor() {
-    var cb = (payload) => {
-      for (var intercept2 of intercepts) {
-        var res = intercept2(payload);
-        if (res == null) {
-          continue;
-        } else if (!res) {
-          payload[blockedSym] = true;
-        } else if (typeof res === "object") {
-          Object.assign(payload, res);
-          payload[modifiedSym] = true;
-        }
-      }
-      return blockedSym in payload;
-    };
-    (dispatcher._interceptors ??= []).unshift(cb);
-    return () => dispatcher._interceptors &&= dispatcher._interceptors.filter((v2) => v2 !== cb);
-  }
-  function intercept(cb) {
-    intercepts.push(cb);
-    return () => {
-      intercepts = intercepts.filter((i) => i !== cb);
-    };
-  }
-  var blockedSym, modifiedSym, dispatcher, intercepts;
-  var init_flux = __esm({
-    "src/lib/api/flux/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_common();
-      blockedSym = Symbol.for("bunny.flux.blocked");
-      modifiedSym = Symbol.for("bunny.flux.modified");
-      dispatcher = FluxDispatcher;
-      intercepts = [];
-    }
-  });
-
-  // src/lib/api/native/index.ts
-  var native_exports = {};
-  __export(native_exports, {
-    fs: () => fs_exports
-  });
-  var init_native = __esm({
-    "src/lib/api/native/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_fs();
-    }
-  });
-
-  // src/lib/api/react/index.ts
-  var react_exports = {};
-  __export(react_exports, {
-    jsx: () => jsx_exports
-  });
-  var init_react = __esm({
-    "src/lib/api/react/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsx();
-    }
-  });
-
-  // src/lib/api/index.ts
-  var api_exports = {};
-  __export(api_exports, {
-    assets: () => assets_exports,
-    commands: () => commands_exports,
-    debug: () => debug_exports,
-    flux: () => flux_exports,
-    native: () => native_exports,
-    patcher: () => patcher_exports,
-    react: () => react_exports,
-    settings: () => settings_exports,
-    storage: () => storage_exports
-  });
-  var init_api = __esm({
-    "src/lib/api/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_assets();
-      init_commands();
-      init_debug();
-      init_flux();
-      init_native();
-      init_patcher();
-      init_react();
-      init_settings();
-      init_storage2();
-    }
-  });
-
-  // src/lib/addons/plugins/api.ts
-  function shimDisposableFn(unpatches, f) {
-    var dummy = (...props) => {
-      var up = f(...props);
-      unpatches.push(up);
-      return up;
-    };
-    for (var key in f)
-      if (typeof f[key] === "function") {
-        dummy[key] = shimDisposableFn(unpatches, f[key]);
-      }
-    return dummy;
-  }
-  function createBunnyPluginApi(id) {
-    var disposers = new Array();
-    var object = {
-      ...globalThis.bunny,
-      api: {
-        ...globalThis.bunny.api,
-        patcher: {
-          before: shimDisposableFn(disposers, patcher_exports.before),
-          after: shimDisposableFn(disposers, patcher_exports.after),
-          instead: shimDisposableFn(disposers, patcher_exports.instead)
-        },
-        commands: {
-          ...globalThis.bunny.api.commands,
-          registerCommand: shimDisposableFn(disposers, registerCommand)
-        },
-        flux: {
-          ...globalThis.bunny.api.flux,
-          intercept: shimDisposableFn(disposers, globalThis.bunny.api.flux.intercept)
-        }
-      },
-      // Added something in here? Make sure to also update BunnyPluginProperty in ./types
-      plugin: {
-        createStorage: () => createStorage2(`plugins/storage/${id}.json`),
-        manifest: registeredPlugins.get(id),
-        logger
-      }
-    };
-    return {
-      object,
-      disposers
-    };
-  }
-  var init_api2 = __esm({
-    "src/lib/addons/plugins/api.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_api();
-      init_commands();
-      init_storage2();
-      init_logger();
-      init_plugins4();
-    }
-  });
-
-  // src/lib/addons/plugins/index.ts
-  var plugins_exports2 = {};
-  __export(plugins_exports2, {
-    apiObjects: () => apiObjects,
-    corePluginInstances: () => corePluginInstances,
-    deleteRepository: () => deleteRepository,
-    disablePlugin: () => disablePlugin,
-    enablePlugin: () => enablePlugin,
-    getPluginSettingsComponent: () => getPluginSettingsComponent,
-    initPlugins: () => initPlugins,
-    installPlugin: () => installPlugin,
-    isCorePlugin: () => isCorePlugin,
-    isGreaterVersion: () => isGreaterVersion,
-    isPluginEnabled: () => isPluginEnabled,
-    isPluginInstalled: () => isPluginInstalled,
-    pluginInstances: () => pluginInstances,
-    pluginRepositories: () => pluginRepositories,
-    pluginSettings: () => pluginSettings,
-    refreshPlugin: () => refreshPlugin,
-    registeredPlugins: () => registeredPlugins,
-    startPlugin: () => startPlugin,
-    stopPlugin: () => stopPlugin,
-    uninstallPlugin: () => uninstallPlugin,
-    updateAllRepository: () => updateAllRepository,
-    updateAndWritePlugin: () => updateAndWritePlugin,
-    updatePlugins: () => updatePlugins,
-    updateRepository: () => updateRepository
-  });
-  function assert(condition, id, attempt) {
-    if (!condition)
-      throw new Error(`[${id}] Attempted to ${attempt}`);
-  }
-  function isGreaterVersion(v1, v2) {
-    if (semver.gt(v1, v2))
-      return true;
-    var coerced = semver.coerce(v1);
-    if (coerced == null)
-      return false;
-    return semver.prerelease(v1)?.includes("dev") && semver.eq(coerced, v2);
-  }
-  function isExternalPlugin(manifest) {
-    return "parentRepository" in manifest;
-  }
-  function isCorePlugin(id) {
-    return corePluginInstances.has(id);
-  }
-  function getPluginSettingsComponent(id) {
-    var instance = pluginInstances.get(id);
-    if (!instance)
-      return null;
-    if (instance.SettingsComponent)
-      return instance.SettingsComponent;
-    return null;
-  }
-  function isPluginInstalled(id) {
-    return pluginSettings[id] != null;
-  }
-  function isPluginEnabled(id) {
-    return Boolean(pluginSettings[id]?.enabled);
-  }
-  function updateAndWritePlugin(repoUrl, id, fetchScript) {
-    return _async_to_generator(function* () {
-      var manifest = yield fetchJSON(repoUrl, `builds/${id}/manifest.json`);
-      manifest.parentRepository = repoUrl;
-      if (fetchScript) {
-        manifest.jsPath = `plugins/scripts/${id}.js`;
-        var js = yield fetchJS(repoUrl, `builds/${id}/index.js`);
-        yield writeFile(manifest.jsPath, js);
-      }
-      yield updateStorage(`plugins/manifests/${id}.json`, manifest);
-      if (registeredPlugins.has(id)) {
-        var existingManifest = registeredPlugins.get(id);
-        return Object.assign(existingManifest, manifest);
-      }
-      return manifest;
-    })();
-  }
-  function refreshPlugin(id, repoUrl) {
-    return _async_to_generator(function* () {
-      var manifest = registeredPlugins.get(id);
-      assert(manifest, id, "refresh a non-registered plugin");
-      assert(pluginInstances.get(id), id, "refresh a non-started plugin");
-      stopPlugin(id);
-      if (isExternalPlugin(manifest)) {
-        manifest = yield updateAndWritePlugin(repoUrl ?? manifest.parentRepository, id, true);
-      }
-      registeredPlugins.delete(id);
-      registeredPlugins.set(id, manifest);
-      yield startPlugin(id);
-    })();
-  }
-  function updateRepository(repoUrl) {
-    return _async_to_generator(function* () {
-      var repo = yield fetchJSON(repoUrl, "repo.json");
-      var storedRepo = pluginRepositories[repoUrl];
-      var updated = false;
-      if (!storedRepo) {
-        for (var id in repo) {
-          if (corePluginInstances.has(id)) {
-            throw new Error(`Plugins can't have the same ID as any of Bunny core plugin '${id}'`);
-          }
-        }
-        updated = true;
-        pluginRepositories[repoUrl] = repo;
-      } else {
-        for (var plugin in storedRepo)
-          if (!repo[plugin]) {
-            delete storedRepo[plugin];
-          }
-      }
-      var pluginIds = Object.keys(repo).filter((id2) => !id2.startsWith("$"));
-      yield Promise.all(pluginIds.map((pluginId) => _async_to_generator(function* () {
-        if (!storedRepo || !storedRepo[pluginId] || repo[pluginId].alwaysFetch || isGreaterVersion(repo[pluginId].version, storedRepo[pluginId].version)) {
-          updated = true;
-          pluginRepositories[repoUrl][pluginId] = repo[pluginId];
-          yield updateAndWritePlugin(repoUrl, pluginId, Boolean(storedRepo && pluginSettings[pluginId]));
-        } else {
-          var manifest2 = yield preloadStorageIfExists(`plugins/manifests/${pluginId}.json`);
-          if (!manifest2) {
-            yield updateAndWritePlugin(repoUrl, pluginId, Boolean(storedRepo && pluginSettings[pluginId]));
-          }
-        }
-      })()));
-      for (var id1 of pluginIds) {
-        var manifest = getPreloadedStorage(`plugins/manifests/${id1}.json`);
-        if (manifest === void 0)
-          continue;
-        var existing = registeredPlugins.get(id1);
-        if (existing && !isGreaterVersion(manifest.version, existing.version)) {
-          continue;
-        }
-        registeredPlugins.set(id1, manifest);
-      }
-      return updated;
-    })();
-  }
-  function deleteRepository(repoUrl) {
-    return _async_to_generator(function* () {
-      assert(repoUrl !== OFFICIAL_PLUGINS_REPO_URL, repoUrl, "delete the official repository");
-      assert(pluginRepositories[repoUrl], repoUrl, "delete a non-registered repository");
-      var promQueues = [];
-      for (var [id, manifest] of registeredPlugins) {
-        if (!isExternalPlugin(manifest) || manifest.parentRepository !== repoUrl)
-          continue;
-        if (isPluginInstalled(id)) {
-          promQueues.push(uninstallPlugin(id));
-        }
-        promQueues.push(purgeStorage2(`plugins/manifests/${id}.json`));
-        registeredPlugins.delete(id);
-      }
-      delete pluginRepositories[repoUrl];
-      yield Promise.all(promQueues);
-      updateAllRepository();
-    })();
-  }
-  function enablePlugin(id, start) {
-    return _async_to_generator(function* () {
-      assert(isPluginInstalled(id), id, "enable a non-installed plugin");
-      if (start)
-        yield startPlugin(id);
-      pluginSettings[id].enabled = true;
-    })();
-  }
-  function disablePlugin(id) {
-    assert(isPluginInstalled(id), id, "disable a non-installed plugin");
-    pluginInstances.has(id) && stopPlugin(id);
-    pluginSettings[id].enabled = false;
-  }
-  function installPlugin(id, start) {
-    return _async_to_generator(function* () {
-      var manifest = registeredPlugins.get(id);
-      assert(manifest, id, "install an non-registered plugin");
-      assert(!isPluginInstalled(id), id, "install an already installed plugin");
-      assert(isExternalPlugin(manifest), id, "install a core plugin");
-      yield updateAndWritePlugin(manifest.parentRepository, id, true);
-      pluginSettings[id] = {
-        enabled: true
-      };
-      if (start)
-        startPlugin(id);
-    })();
-  }
-  function uninstallPlugin(id) {
-    return _async_to_generator(function* () {
-      var manifest = registeredPlugins.get(id);
-      assert(manifest, id, "uninstall an unregistered plugin");
-      assert(isPluginInstalled(id), id, "uninstall a non-installed plugin");
-      assert(isExternalPlugin(manifest), id, "uninstall a core plugin");
-      pluginInstances.has(id) && stopPlugin(id);
-      delete pluginSettings[id];
-      yield purgeStorage2(`plugins/storage/${id}.json`);
-      yield removeFile(`plugins/scripts/${id}.js`);
-    })();
-  }
-  function startPlugin(_0) {
-    return _async_to_generator(function* (id, { throwIfDisabled = false, disableWhenThrown = true } = {}) {
-      var manifest = registeredPlugins.get(id);
-      assert(manifest, id, "start a non-registered plugin");
-      assert(isPluginInstalled(id), id, "start a non-installed plugin");
-      assert(!throwIfDisabled || pluginSettings[id]?.enabled, id, "start a disabled plugin");
-      assert(!pluginInstances.has(id), id, "start an already started plugin");
-      yield preloadStorageIfExists(`plugins/storage/${id}.json`);
-      var pluginInstance2;
-      if (isExternalPlugin(manifest)) {
-        try {
-          var iife = yield readFile(manifest.jsPath);
-          var instantiator = globalEvalWithSourceUrl(`(bunny,definePlugin)=>{${iife};return plugin?.default ?? plugin;}`, `bunny-plugin/${id}-${manifest.version}`);
-        } catch (error) {
-          throw new Error("An error occured while parsing plugin's code, possibly a syntax error?", {
-            cause: error
-          });
-        }
-        try {
-          var api = createBunnyPluginApi(id);
-          pluginInstance2 = instantiator(api.object, (p) => {
-            return Object.assign(p, {
-              manifest
-            });
-          });
-          if (!pluginInstance2)
-            throw new Error(`Plugin '${id}' does not export a valid plugin instance`);
-          apiObjects.set(id, api);
-          pluginInstances.set(id, pluginInstance2);
-        } catch (error) {
-          throw new Error("An error occured while instantiating plugin's code", {
-            cause: error
-          });
-        }
-      } else {
-        pluginInstance2 = corePluginInstances.get(id);
-        assert(pluginInstance2, id, "start a non-existent core plugin");
-        pluginInstances.set(id, pluginInstance2);
-      }
-      try {
-        pluginInstance2.start?.();
-        pluginSettings[id].enabled = true;
-      } catch (error) {
-        disableWhenThrown && disablePlugin(id);
-        throw new Error("An error occured while starting the plugin", {
-          cause: error
-        });
-      }
-    }).apply(this, arguments);
-  }
-  function stopPlugin(id) {
-    var instance = pluginInstances.get(id);
-    assert(instance, id, "stop a non-started plugin");
-    instance.stop?.();
-    var obj = apiObjects.get(id);
-    obj?.disposers.forEach((d) => d());
-    pluginInstances.delete(id);
-  }
-  function updateAllRepository() {
-    return _async_to_generator(function* () {
-      try {
-        yield updateRepository(OFFICIAL_PLUGINS_REPO_URL);
-      } catch (error) {
-        console.error("Failed to update official plugins repository", error);
-      }
-      yield allSettled(Object.keys(pluginRepositories).map((repo) => _async_to_generator(function* () {
-        if (repo !== OFFICIAL_PLUGINS_REPO_URL) {
-          yield updateRepository(repo);
-        }
-      })()));
-    })();
-  }
-  function updatePlugins() {
-    return _async_to_generator(function* () {
-      yield awaitStorage2(pluginRepositories, pluginSettings);
-      var corePlugins = getCorePlugins();
-      for (var id in corePlugins) {
-        var { default: instance, preenabled } = corePlugins[id];
-        pluginSettings[id] ??= {
-          enabled: preenabled ?? true
-        };
-        registeredPlugins.set(id, instance.manifest);
-        corePluginInstances.set(id, instance);
-      }
-      updateAllRepository();
-    })();
-  }
-  function initPlugins() {
-    return _async_to_generator(function* () {
-      yield awaitStorage2(pluginRepositories, pluginSettings);
-      allSettled([
-        ...registeredPlugins.keys()
-      ].map((id) => _async_to_generator(function* () {
-        if (isPluginEnabled(id)) {
-          startPlugin(id);
-        }
-      })()));
-    })();
-  }
-  var corePluginInstances, registeredPlugins, pluginInstances, apiObjects, pluginRepositories, pluginSettings, _fetch, fetchJS, fetchJSON;
-  var init_plugins4 = __esm({
-    "src/lib/addons/plugins/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_plugins2();
-      init_fs();
-      init_storage2();
-      init_utils();
-      init_constants();
-      init_common();
-      init_api2();
-      corePluginInstances = /* @__PURE__ */ new Map();
-      registeredPlugins = /* @__PURE__ */ new Map();
-      pluginInstances = /* @__PURE__ */ new Map();
-      apiObjects = /* @__PURE__ */ new Map();
-      pluginRepositories = createStorage2("plugins/repositories.json");
-      pluginSettings = createStorage2("plugins/settings.json");
-      _fetch = (repoUrl, path) => safeFetch(new URL(path, repoUrl), {
-        cache: "no-store"
-      });
-      fetchJS = (repoUrl, path) => _fetch(repoUrl, path).then((r) => r.text());
-      fetchJSON = (repoUrl, path) => _fetch(repoUrl, path).then((r) => r.json());
     }
   });
 
@@ -13524,7 +13642,7 @@
   }
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
-    var [, forceUpdate] = React.useReducer(() => ({}), 0);
+    var [, forceUpdate] = (0, import_react8.useReducer)(() => ({}), 0);
     var cardContextValue = (0, import_react8.useMemo)(() => ({
       plugin,
       result
@@ -13955,7 +14073,7 @@
       init_components();
       init_common();
       init_toasts();
-      init_alerts2();
+      init_alerts();
       init_plugins();
       init_storage();
       init_storage2();
@@ -14380,6 +14498,7 @@
           padding: 0
         },
         headerLeading: {
+          flex: 1,
           flexDirection: "column",
           justifyContent: "center",
           scale: 1.2
@@ -14391,16 +14510,18 @@
           alignItems: "center"
         },
         headerLabel: {
-          ...TextStyleSheet["heading-md/semibold"],
-          color: semanticColors.MOBILE_TEXT_HEADING_PRIMARY
+          ...TextStyleSheet["heading-lg/semibold"]
+        },
+        headerLabelCompact: {
+          ...TextStyleSheet["text-md/semibold"]
         },
         headerSubtitle: {
-          ...TextStyleSheet["text-md/semibold"],
+          ...TextStyleSheet["text-sm/semibold"],
           color: semanticColors.TEXT_MUTED
         },
         descriptionLabel: {
           ...TextStyleSheet["text-md/semibold"],
-          color: semanticColors.TEXT_NORMAL
+          color: "text-strong"
         },
         actions: {
           flexDirection: "row-reverse",
@@ -14408,7 +14529,7 @@
           gap: 5
         },
         iconStyle: {
-          tintColor: semanticColors.INTERACTIVE_ICON_DEFAULT,
+          tintColor: semanticColors.LOGO_PRIMARY,
           opacity: 0.2,
           height: 64,
           width: 64,
@@ -14631,7 +14752,7 @@
       import_react10 = __toESM(require_react());
       import_react_native29 = __toESM(require_react_native());
       init_toasts();
-      init_alerts2();
+      init_alerts();
       init_themes();
       init_i18n();
       init_color();
@@ -15529,7 +15650,7 @@
       init_async_to_generator();
       init_jsxRuntime();
       init_i18n();
-      init_alerts2();
+      init_alerts();
       init_storage();
       init_fonts();
       init_assets();
@@ -16197,7 +16318,7 @@
       init_common();
       init_sheets();
       init_wrappers2();
-      init_alerts();
+      init_alerts2();
       init_components();
       init_lazy();
       init_metro();
@@ -16830,7 +16951,7 @@ Type: ${asset.type}`,
             uri: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
           },
           render: () => Promise.resolve().then(() => (init_General(), General_exports)),
-          useTrailing: () => `(${"v0.1"})`
+          useTrailing: () => `(${"v1.4.3"})`
         },
         {
           key: "BOTCORD",
@@ -16847,12 +16968,12 @@ Type: ${asset.type}`,
           render: () => Promise.resolve().then(() => (init_FakeProfile(), FakeProfile_exports))
         },
         {
-          key: "CLOUD_SYNC",
-          title: () => "Cloud Sync",
+          key: "STORE_CLOUD",
+          title: () => "CloudSync",
           icon: {
-            uri: "https://images.weserv.nl/?url=raw.githubusercontent.com/nexpid/CloudSync/main/assets/icon-bright.svg&w=128&h=128&output=png"
+            uri: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
           },
-          render: () => Promise.resolve().then(() => (init_CloudSync(), CloudSync_exports))
+          render: () => Promise.resolve().then(() => (init_StoreCloud(), StoreCloud_exports))
         },
         {
           key: "BUNNY_PLUGINS",
@@ -16944,7 +17065,7 @@ Type: ${asset.type}`,
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      init_alerts2();
+      init_alerts();
       init_storage();
       init_storage();
       init_themes();
@@ -17246,7 +17367,7 @@ Type: ${asset.type}`,
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
-      init_alerts();
+      init_alerts2();
       init_components2();
       init_settings2();
       init_sheets();
@@ -17360,7 +17481,7 @@ Type: ${asset.type}`,
           patchJsx(),
           initVendettaObject(),
           initFetchI18nStrings(),
-          initSettings(),
+          globalThis.__CLOUDCORD_LOADER__?.loaderName === "RealCord" ? Promise.resolve() : initSettings(),
           initializeFakeProfile(),
           fixes_default(),
           patchErrorBoundary(),
@@ -17398,7 +17519,7 @@ Type: ${asset.type}`,
         alert([
           "Failed to load CloudCord!\n",
           `Build Number: ${ClientInfoManager.getConstants().Build}`,
-          `CloudCord: ${"v0.1"}`,
+          `CloudCord: ${"v1.4.3"}`,
           stack || e?.toString?.()
         ].join("\n"));
       }
