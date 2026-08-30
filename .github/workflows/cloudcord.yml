@@ -312,6 +312,7 @@ jobs:
               [2, "https://cdn.discordapp.com/badge-icons/0e4080d1d333bc7ad29ef6528b6f2fb7.png"],
               [1, "https://cdn.discordapp.com/badge-icons/51040c70d4f20a921ad6674ff86fc95c.png"]
           ];
+          const BOOST_ICON_BY_MONTHS = new Map(BOOST_ICONS);
 
           const rootSettings = settings as any;
           const defaultPreview = (): PreviewSettings => ({
@@ -521,8 +522,8 @@ jobs:
                       enabled: true,
                       username: data.username || preview.username,
                       displayName: data.globalName || data.displayName || preview.displayName,
-                      avatarMedia: data.avatar ? { uri: data.avatar } : preview.avatarMedia,
-                      bannerMedia: data.banner ? { uri: data.banner } : preview.bannerMedia,
+                      avatarMedia: data.avatar ? { uri: data.avatar } : null,
+                      bannerMedia: data.banner ? { uri: data.banner } : null,
                       nitroMonths: data.nitro ? (NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1) : 0,
                       boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
                       replaceBadges: remoteReplaceBadges(data),
@@ -621,6 +622,11 @@ jobs:
               return values.find(([minimum]) => months >= minimum)?.[1] || "";
           }
 
+          function boosterIcon(months: number) {
+              if (!months) return "";
+              return BOOST_ICON_BY_MONTHS.get(months) || milestoneIcon(months, BOOST_ICONS);
+          }
+
           function addRenderedBadge(result: any[], id: string, description: string, icon: string, size?: number) {
               if (!icon || result.some(item => item?.id === id)) return;
               badgeRenderProps.set(id, { id, source: { uri: icon }, label: description, ...(size ? { width: size, height: size, style: { width: size, height: size } } : {}) });
@@ -634,7 +640,7 @@ jobs:
                   result.push({ id: "fakeprofile-nitro", description: `Nitro ${durationLabel(preview.nitroMonths)}`, icon: " _", iconSrc: icon, source: { uri: icon } });
               }
               if (preview.boostMonths > 0) {
-                  const icon = milestoneIcon(preview.boostMonths, BOOST_ICONS);
+                  const icon = boosterIcon(preview.boostMonths);
                   result.push({ id: "fakeprofile-boost", description: `Server Booster ${durationLabel(preview.boostMonths)}`, icon: " _", iconSrc: icon, source: { uri: icon } });
               }
               for (const [id, description, , icon] of BADGES) {
@@ -753,7 +759,7 @@ jobs:
                               const nitroMonths = [1, 2, 3, 6, 12, 24, 36, 72][Number(data.nitroLevel)] || 0;
                               const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
                               addRenderedBadge(ordered, "cloudcord-shared-nitro", `Nitro ${durationLabel(nitroMonths)}`, milestoneIcon(nitroMonths, NITRO_ICONS));
-                              addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster ${durationLabel(boostMonths)}`, milestoneIcon(boostMonths, BOOST_ICONS));
+                              addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster ${durationLabel(boostMonths)}`, boosterIcon(boostMonths));
                               for (const [, description, flag, icon] of BADGES) {
                                   if ((Number(data.badgeFlags || 0) & flag) !== 0) addRenderedBadge(ordered, `cloudcord-shared-${flag}`, description, icon);
                               }
@@ -792,7 +798,7 @@ jobs:
                           ordered,
                           "fakeprofile-boost",
                           `Server Booster ${durationLabel(preview.boostMonths)}`,
-                          milestoneIcon(preview.boostMonths, BOOST_ICONS)
+                          boosterIcon(preview.boostMonths)
                       );
                       for (const [badgeId, description, , icon] of BADGES) {
                           if (!preview.selectedBadges?.[badgeId]) continue;
@@ -1227,12 +1233,17 @@ jobs:
 
               const clearMedia = (field: "avatarMedia" | "bannerMedia") => {
                   try {
-                      (preview as any)[field] = null;
+                      rootSettings.fakeProfile = {
+                          ...preview,
+                          [field]: null,
+                          selectedBadges: { ...(preview.selectedBadges || {}) }
+                      } satisfies PreviewSettings;
+                      preview = rootSettings.fakeProfile as PreviewSettings;
                       clearCache();
                       diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
-                      redraw();
                       refreshPreview();
                       queueSharedPublish();
+                      redraw();
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Could not clear the image";
                       redraw();
