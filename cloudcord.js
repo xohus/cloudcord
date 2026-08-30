@@ -7797,6 +7797,7 @@
         nitroLevel: Math.max(-1, NITRO_DURATIONS.indexOf(preview.nitroMonths) - 1),
         boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
         avatarDecoration: preview.avatarDecoration || null,
+        avatarDecorationSku: preview.avatarDecorationSku || null,
         primaryColor: colorNumber(preview.primaryColor),
         accentColor: colorNumber(preview.accentColor),
         badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0),
@@ -7875,6 +7876,7 @@
           nitroMonths: data.nitro ? NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1 : 0,
           boostMonths: data.boostMonths >= 0 ? BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0 : 0,
           avatarDecoration: String(data.avatarDecoration || ""),
+          avatarDecorationSku: String(data.avatarDecorationSku || ""),
           primaryColor: colorHex(data.primaryColor, preview.primaryColor),
           accentColor: colorHex(data.accentColor, preview.accentColor),
           replaceBadges: remoteReplaceBadges(data),
@@ -7919,8 +7921,8 @@
     }
     if (data.avatarDecoration)
       setOwnValue(cloned, "avatarDecorationData", {
-        asset: data.avatarDecoration,
-        skuId: "cloudcord-decoration"
+        asset: decorationAsset(data.avatarDecoration),
+        skuId: data.avatarDecorationSku || "cloudcord-decoration"
       });
     if (data.primaryColor != null)
       setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
@@ -8029,6 +8031,91 @@
   function colorHex(value, fallback) {
     var number = Number(value);
     return Number.isFinite(number) ? `#${Math.max(0, Math.min(16777215, number)).toString(16).padStart(6, "0").toUpperCase()}` : fallback;
+  }
+  function decorationAsset(value) {
+    var raw = String(value || "");
+    if (!/^https?:/i.test(raw))
+      return raw;
+    try {
+      return decodeURIComponent(new URL(raw).pathname.split("/").pop() || "").replace(/\.png$/i, "");
+    } catch (e) {
+      return raw;
+    }
+  }
+  function decorationUri(asset) {
+    var raw = String(asset || "");
+    if (/^(?:https?:|data:)/i.test(raw))
+      return raw;
+    return `https://cdn.discordapp.com/avatar-decoration-presets/${encodeURIComponent(raw)}.png?size=160&passthrough=true`;
+  }
+  function findDecorationCatalog() {
+    var roots = [];
+    for (var name of [
+      "CollectiblesStore",
+      "CollectiblesShopStore",
+      "AvatarDecorationStore"
+    ]) {
+      var store = safeStore(name);
+      if (store)
+        roots.push(store);
+    }
+    try {
+      var module = findByProps("getCollectiblesCategories");
+      roots.push(module?.getCollectiblesCategories?.(), module);
+    } catch (e) {
+    }
+    try {
+      var module1 = findByProps("fetchCollectiblesCategories");
+      module1?.fetchCollectiblesCategories?.();
+      roots.push(module1);
+    } catch (e) {
+    }
+    var found = /* @__PURE__ */ new Map();
+    var seen = /* @__PURE__ */ new Set();
+    var visit = (value, depth = 0) => {
+      if (value == null || depth > 7 || seen.has(value))
+        return;
+      if (typeof value !== "object")
+        return;
+      seen.add(value);
+      var decoration = value.avatarDecoration || value.avatar_decoration || value.decoration || value.avatarDecorationData;
+      var asset = String(decoration?.asset || value.asset || "");
+      var looksLikeDecoration = !!decoration || /decoration/i.test(String(value.type || value.productType || value.name || ""));
+      if (asset && looksLikeDecoration) {
+        var skuId = String(value.skuId || value.sku_id || value.sku?.id || decoration?.skuId || decoration?.sku_id || "");
+        var label = String(value.name || value.title || value.label || value.sku?.name || "Discord decoration");
+        found.set(`${asset}:${skuId}`, {
+          asset,
+          skuId,
+          label,
+          uri: decorationUri(asset)
+        });
+      }
+      if (Array.isArray(value))
+        for (var item of value)
+          visit(item, depth + 1);
+      else
+        for (var [key, child] of Object.entries(value))
+          if (!/dispatcher|listeners|actionHandlers/i.test(key))
+            visit(child, depth + 1);
+    };
+    for (var root of roots) {
+      visit(root);
+      for (var getter of [
+        "getCategories",
+        "getProducts",
+        "getItems",
+        "getCollectiblesCategories"
+      ]) {
+        try {
+          visit(root?.[getter]?.());
+        } catch (e) {
+        }
+      }
+    }
+    return [
+      ...found.values()
+    ];
   }
   function boosterIcon(months) {
     if (!months)
@@ -8163,8 +8250,8 @@
     setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
     setOwnValue(cloned, "hasFlag", (flag2) => !!(flags & flag2));
     setOwnValue(cloned, "avatarDecorationData", preview.avatarDecoration ? {
-      asset: preview.avatarDecoration,
-      skuId: "cloudcord-decoration"
+      asset: decorationAsset(preview.avatarDecoration),
+      skuId: preview.avatarDecorationSku || "cloudcord-decoration"
     } : null);
     if (primaryColor != null)
       setOwnValue(cloned, "primaryColor", primaryColor);
@@ -8959,9 +9046,132 @@
       ]
     });
   }
+  function ColorPickerRow({ label, value, onSelect }) {
+    return /* @__PURE__ */ jsxs(import_react_native16.View, {
+      style: {
+        gap: 8
+      },
+      children: [
+        /* @__PURE__ */ jsx(Text, {
+          variant: "text-sm/bold",
+          color: "text-normal",
+          children: label
+        }),
+        /* @__PURE__ */ jsx(import_react_native16.View, {
+          style: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 9
+          },
+          children: PROFILE_COLORS.map((color2) => /* @__PURE__ */ jsx(import_react_native16.Pressable, {
+            accessibilityLabel: `${label} ${color2}`,
+            onPress: () => onSelect(color2),
+            style: ({ pressed }) => ({
+              width: 34,
+              height: 34,
+              borderRadius: 17,
+              backgroundColor: color2,
+              borderWidth: value.toUpperCase() === color2 ? 3 : 1,
+              borderColor: value.toUpperCase() === color2 ? "#ffffff" : "rgba(255,255,255,0.25)",
+              opacity: pressed ? 0.65 : 1
+            })
+          }, color2))
+        }),
+        /* @__PURE__ */ jsx(import_react_native16.TextInput, {
+          value,
+          placeholder: "#5865F2",
+          placeholderTextColor: "#777",
+          autoCapitalize: "characters",
+          autoCorrect: false,
+          onChangeText: onSelect,
+          style: {
+            color: "#fff",
+            backgroundColor: value || "#1f2023",
+            borderRadius: 9,
+            padding: 12
+          }
+        })
+      ]
+    });
+  }
+  function DecorationGallery({ onSelect }) {
+    var [items, setItems] = (0, import_react3.useState)(() => findDecorationCatalog());
+    (0, import_react3.useEffect)(() => {
+      var timer = setTimeout(() => setItems(findDecorationCatalog()), 900);
+      return () => clearTimeout(timer);
+    }, []);
+    return /* @__PURE__ */ jsx(import_react_native16.ScrollView, {
+      contentContainerStyle: {
+        padding: 12,
+        paddingBottom: 100
+      },
+      children: items.length ? /* @__PURE__ */ jsx(import_react_native16.View, {
+        style: {
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 10
+        },
+        children: items.map((item) => /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
+          onPress: () => onSelect(item),
+          style: ({ pressed }) => ({
+            width: "31%",
+            minWidth: 96,
+            padding: 8,
+            borderRadius: 12,
+            alignItems: "center",
+            gap: 6,
+            backgroundColor: "rgba(255,255,255,0.05)",
+            opacity: pressed ? 0.65 : 1
+          }),
+          children: [
+            /* @__PURE__ */ jsx(import_react_native16.Image, {
+              source: {
+                uri: item.uri
+              },
+              style: {
+                width: 78,
+                height: 78
+              }
+            }),
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-xs/medium",
+              color: "text-normal",
+              numberOfLines: 2,
+              style: {
+                textAlign: "center"
+              },
+              children: item.label
+            })
+          ]
+        }, `${item.asset}:${item.skuId}`))
+      }) : /* @__PURE__ */ jsxs(import_react_native16.View, {
+        style: {
+          padding: 24,
+          gap: 8,
+          alignItems: "center"
+        },
+        children: [
+          /* @__PURE__ */ jsx(Text, {
+            variant: "heading-md/semibold",
+            color: "text-normal",
+            children: "No decorations loaded"
+          }),
+          /* @__PURE__ */ jsx(Text, {
+            variant: "text-sm/medium",
+            color: "text-muted",
+            style: {
+              textAlign: "center"
+            },
+            children: "Open Discord's Shop once, then return here to load its decoration catalog."
+          })
+        ]
+      })
+    });
+  }
   function FakeProfile() {
     useProxy(settings);
     var [, redraw] = (0, import_react3.useReducer)((value) => value + 1, 0);
+    var navigation2 = NavigationNative.useNavigation();
     (0, import_react3.useEffect)(() => {
       initializeFakeProfile();
       redraw();
@@ -9385,6 +9595,19 @@
                   value: preview.boostMonths,
                   onPress: () => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)
                 }),
+                /* @__PURE__ */ jsx(ActionButton, {
+                  label: "Browse Discord decorations",
+                  onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                    title: "Avatar Decorations",
+                    render: () => /* @__PURE__ */ jsx(DecorationGallery, {
+                      onSelect: (item) => {
+                        update("avatarDecoration", item.uri, true);
+                        update("avatarDecorationSku", item.skuId, true);
+                        navigation2.goBack();
+                      }
+                    })
+                  })
+                }),
                 /* @__PURE__ */ jsxs(import_react_native16.View, {
                   style: {
                     gap: 8
@@ -9396,7 +9619,7 @@
                       children: "Avatar decoration URL"
                     }),
                     /* @__PURE__ */ jsx(import_react_native16.TextInput, {
-                      defaultValue: preview.avatarDecoration,
+                      value: preview.avatarDecoration,
                       placeholder: "https://...",
                       placeholderTextColor: "#777",
                       autoCapitalize: "none",
@@ -9411,57 +9634,23 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native16.View, {
-                  style: {
-                    gap: 8
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Primary profile color"
-                    }),
-                    /* @__PURE__ */ jsx(import_react_native16.TextInput, {
-                      defaultValue: preview.primaryColor,
-                      placeholder: "#5865F2",
-                      placeholderTextColor: "#777",
-                      autoCapitalize: "characters",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("primaryColor", value, true),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: preview.primaryColor || "#1f2023",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
-                  ]
+                preview.avatarDecoration ? /* @__PURE__ */ jsx(ActionButton, {
+                  label: "Clear decoration",
+                  muted: true,
+                  onPress: () => {
+                    update("avatarDecoration", "", true);
+                    update("avatarDecorationSku", "", true);
+                  }
+                }) : null,
+                /* @__PURE__ */ jsx(ColorPickerRow, {
+                  label: "Primary profile color",
+                  value: preview.primaryColor,
+                  onSelect: (value) => update("primaryColor", value, true)
                 }),
-                /* @__PURE__ */ jsxs(import_react_native16.View, {
-                  style: {
-                    gap: 8
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Accent profile color"
-                    }),
-                    /* @__PURE__ */ jsx(import_react_native16.TextInput, {
-                      defaultValue: preview.accentColor,
-                      placeholder: "#EB459E",
-                      placeholderTextColor: "#777",
-                      autoCapitalize: "characters",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("accentColor", value, true),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: preview.accentColor || "#1f2023",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
-                  ]
+                /* @__PURE__ */ jsx(ColorPickerRow, {
+                  label: "Accent profile color",
+                  value: preview.accentColor,
+                  onSelect: (value) => update("accentColor", value, true)
                 }),
                 /* @__PURE__ */ jsx(MediaEditor, {
                   label: "Profile picture",
@@ -9583,7 +9772,7 @@
       })
     });
   }
-  var import_react3, import_react_native16, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID;
+  var import_react3, import_react_native16, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -9802,6 +9991,7 @@
         nitroMonths: 0,
         boostMonths: 0,
         avatarDecoration: "",
+        avatarDecorationSku: "",
         primaryColor: "#5865F2",
         accentColor: "#EB459E",
         replaceBadges: false,
@@ -9841,6 +10031,26 @@
       sharedRequests = /* @__PURE__ */ new Set();
       publishTimer = null;
       REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
+      PROFILE_COLORS = [
+        "#5865F2",
+        "#4752C4",
+        "#57F287",
+        "#FEE75C",
+        "#EB459E",
+        "#ED4245",
+        "#FFFFFF",
+        "#B5BAC1",
+        "#80848E",
+        "#2B2D31",
+        "#1E1F22",
+        "#000000",
+        "#00A8FC",
+        "#00D4AA",
+        "#9B59B6",
+        "#E67E22",
+        "#E91E63",
+        "#607D8B"
+      ];
     }
   });
 
