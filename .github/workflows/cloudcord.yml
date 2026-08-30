@@ -263,6 +263,7 @@ jobs:
               boostMonths: number;
               avatarDecoration: string;
               avatarDecorationSku: string;
+              profileColorsEnabled: boolean;
               primaryColor: string;
               accentColor: string;
               replaceBadges: boolean;
@@ -332,6 +333,7 @@ jobs:
               boostMonths: 0,
               avatarDecoration: "",
               avatarDecorationSku: "",
+              profileColorsEnabled: false,
               primaryColor: "#5865F2",
               accentColor: "#EB459E",
               replaceBadges: false,
@@ -490,8 +492,9 @@ jobs:
                   boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
                   avatarDecoration: preview.avatarDecoration || null,
                   avatarDecorationSku: preview.avatarDecorationSku || null,
-                  primaryColor: colorNumber(preview.primaryColor),
-                  accentColor: colorNumber(preview.accentColor),
+                  profileColorsEnabled: preview.profileColorsEnabled,
+                  primaryColor: preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null,
+                  accentColor: preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null,
                   badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0),
                   customBadgeIds: preview.replaceBadges ? [REPLACE_BADGES_SYNC_ID] : []
               };
@@ -543,6 +546,7 @@ jobs:
                       boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
                       avatarDecoration: String(data.avatarDecoration || ""),
                       avatarDecorationSku: String(data.avatarDecorationSku || ""),
+                      profileColorsEnabled: data.profileColorsEnabled === true || data.primaryColor != null || data.accentColor != null,
                       primaryColor: colorHex(data.primaryColor, preview.primaryColor),
                       accentColor: colorHex(data.accentColor, preview.accentColor),
                       replaceBadges: remoteReplaceBadges(data),
@@ -575,9 +579,11 @@ jobs:
               if (data.globalName) { setOwnValue(cloned, "globalName", data.globalName); setOwnValue(cloned, "displayName", data.globalName); }
               if (data.avatar) { setOwnValue(cloned, "avatarURL", data.avatar); setOwnValue(cloned, "avatarUrl", data.avatar); setOwnValue(cloned, "getAvatarURL", () => data.avatar); }
               if (data.avatarDecoration) setOwnValue(cloned, "avatarDecorationData", { asset: decorationAsset(data.avatarDecoration), skuId: data.avatarDecorationSku || "cloudcord-decoration" });
-              if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
-              if (data.accentColor != null) setOwnValue(cloned, "accentColor", Number(data.accentColor));
-              if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor || data.accentColor), Number(data.accentColor || data.primaryColor)]);
+              if (data.profileColorsEnabled === true) {
+                  if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
+                  if (data.accentColor != null) setOwnValue(cloned, "accentColor", Number(data.accentColor));
+                  if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor || data.accentColor), Number(data.accentColor || data.primaryColor)]);
+              }
               if (data.banner) { setOwnValue(cloned, "banner", data.banner); setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "getBannerURL", () => data.banner); }
               if (shouldReplaceSharedBadges(data)) {
                   setOwnValue(cloned, "publicFlags", 0);
@@ -598,9 +604,11 @@ jobs:
               if (cloned.user) setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
               if (data.banner) { setOwnValue(cloned, "banner", data.banner); setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "bannerSrc", data.banner); }
               if (data.bio != null) setOwnValue(cloned, "bio", data.bio);
-              if (data.accentColor != null) setOwnValue(cloned, "accentColor", data.accentColor);
-              if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", data.primaryColor);
-              if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor || data.accentColor), Number(data.accentColor || data.primaryColor)]);
+              if (data.profileColorsEnabled === true) {
+                  if (data.accentColor != null) setOwnValue(cloned, "accentColor", data.accentColor);
+                  if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", data.primaryColor);
+                  if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor || data.accentColor), Number(data.accentColor || data.primaryColor)]);
+              }
               setOwnValue(cloned, "userId", userId);
               return cloned;
           }
@@ -774,8 +782,8 @@ jobs:
               const username = preview.username || original.username;
               const avatar = mediaUri("avatarMedia");
               const banner = mediaUri("bannerMedia");
-              const primaryColor = colorNumber(preview.primaryColor);
-              const accentColor = colorNumber(preview.accentColor);
+              const primaryColor = preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null;
+              const accentColor = preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null;
               let selectedFlags = 0;
               for (const [id, , flag] of BADGES) if (preview.selectedBadges?.[id]) selectedFlags |= flag;
               const flags = shouldReplaceLocalBadges() ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
@@ -1499,7 +1507,7 @@ jobs:
 
                           <Card border="strong">
                                   <View style={{ borderRadius: 14, overflow: "hidden" }}>
-                                  {banner ? <Image source={{ uri: banner }} resizeMode="cover" style={{ width: "100%", height: 118 }} /> : <View style={{ height: 118, backgroundColor: preview.primaryColor || "#5865f2" }} />}
+                                  {banner ? <Image source={{ uri: banner }} resizeMode="cover" style={{ width: "100%", height: 118 }} /> : <View style={{ height: 118, backgroundColor: preview.profileColorsEnabled ? (preview.primaryColor || "#5865f2") : "#5865f2" }} />}
                                   <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
                                       <View style={{ width: 94, height: 94, marginTop: -47, alignItems: "center", justifyContent: "center" }}>
                                           {avatar ? <Image source={{ uri: avatar }} style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: "#1f2023" }} /> : <View style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: "#1f2023", backgroundColor: "#777" }} />}
@@ -1537,8 +1545,11 @@ jobs:
                                       <TextInput value={preview.avatarDecoration} placeholder="https://..." placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("avatarDecoration", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   {preview.avatarDecoration ? <ActionButton label="Clear decoration" muted onPress={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} /> : null}
-                                  <ColorPickerRow label="Primary profile color" value={preview.primaryColor} onSelect={value => update("primaryColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Primary Color", render: () => <CustomColorPicker title="Primary profile color" initialColor={preview.primaryColor} onApply={color => { update("primaryColor", color, true); navigation.goBack(); }} /> })} />
-                                  <ColorPickerRow label="Accent profile color" value={preview.accentColor} onSelect={value => update("accentColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Accent Color", render: () => <CustomColorPicker title="Accent profile color" initialColor={preview.accentColor} onApply={color => { update("accentColor", color, true); navigation.goBack(); }} /> })} />
+                                  <ToggleRow label="Use custom profile colors" subLabel="Turn off to use Discord's normal profile colors" value={preview.profileColorsEnabled} onPress={() => update("profileColorsEnabled", !preview.profileColorsEnabled, true)} />
+                                  {preview.profileColorsEnabled ? <>
+                                      <ColorPickerRow label="Primary profile color" value={preview.primaryColor} onSelect={value => update("primaryColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Primary Color", render: () => <CustomColorPicker title="Primary profile color" initialColor={preview.primaryColor} onApply={color => { update("primaryColor", color, true); navigation.goBack(); }} /> })} />
+                                      <ColorPickerRow label="Accent profile color" value={preview.accentColor} onSelect={value => update("accentColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Accent Color", render: () => <CustomColorPicker title="Accent profile color" initialColor={preview.accentColor} onApply={color => { update("accentColor", color, true); navigation.goBack(); }} /> })} />
+                                  </> : null}
                                   <MediaEditor label="Profile picture" field="avatarMedia" />
                                   <MediaEditor label="Banner" field="bannerMedia" banner />
                                   <ActionButton label="Apply preview" onPress={() => { diagnostics.last = "Preview refreshed"; refreshPreview(); redraw(); }} />
