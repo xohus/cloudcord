@@ -291,6 +291,7 @@ jobs:
           const useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
           const badgeRenderProps = new Map<string, Record<string, any>>();
           const simpleSheets = findByProps("showSimpleActionSheet") as any;
+          const LinearGradient = (findByProps("LinearGradient") as any)?.LinearGradient as any;
           const overriddenKeys = new Set([
               "username", "globalName", "displayName", "publicFlags", "flags", "badges", "profileBadges",
               "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "getPreviewBanner", "hasFlag",
@@ -678,7 +679,7 @@ jobs:
               return `https://cdn.discordapp.com/avatar-decoration-presets/${encodeURIComponent(raw)}.png?size=160&passthrough=true`;
           }
 
-          function findDecorationCatalog() {
+          async function findDecorationCatalog() {
               const roots: any[] = [];
               for (const name of ["CollectiblesStore", "CollectiblesShopStore", "AvatarDecorationStore"]) {
                   const store = safeStore(name);
@@ -686,12 +687,16 @@ jobs:
               }
               try {
                   const module = findByProps("getCollectiblesCategories") as any;
-                  roots.push(module?.getCollectiblesCategories?.(), module);
+                  roots.push(await module?.getCollectiblesCategories?.(), module);
               } catch {}
               try {
                   const module = findByProps("fetchCollectiblesCategories") as any;
-                  module?.fetchCollectiblesCategories?.();
-                  roots.push(module);
+                  roots.push(await module?.fetchCollectiblesCategories?.(), module);
+              } catch {}
+              try {
+                  const api = findByProps("getAPIBaseURL", "get") as any;
+                  const response = await api?.get?.({ url: "/collectibles-categories", oldFormErrors: true });
+                  roots.push(response?.body, response);
               } catch {}
 
               const found = new Map<string, { asset: string; skuId: string; label: string; uri: string }>();
@@ -708,7 +713,8 @@ jobs:
                       const label = String(value.name || value.title || value.label || value.sku?.name || "Discord decoration");
                       found.set(`${asset}:${skuId}`, { asset, skuId, label, uri: decorationUri(asset) });
                   }
-                  if (Array.isArray(value)) for (const item of value) visit(item, depth + 1);
+                  if (value instanceof Map) for (const item of value.values()) visit(item, depth + 1);
+                  else if (Array.isArray(value)) for (const item of value) visit(item, depth + 1);
                   else for (const [key, child] of Object.entries(value)) if (!/dispatcher|listeners|actionHandlers/i.test(key)) visit(child, depth + 1);
               };
               for (const root of roots) {
@@ -1314,19 +1320,27 @@ jobs:
               "#00A8FC", "#00D4AA", "#9B59B6", "#E67E22", "#E91E63", "#607D8B"
           ];
 
-          function hslToHex(hue: number, saturation: number, lightness: number) {
+          function hsvToHex(hue: number, saturation: number, brightness: number) {
               const s = saturation / 100;
-              const l = lightness / 100;
-              const chroma = (1 - Math.abs(2 * l - 1)) * s;
+              const v = brightness / 100;
+              const chroma = v * s;
               const x = chroma * (1 - Math.abs((hue / 60) % 2 - 1));
-              const match = l - chroma / 2;
+              const match = v - chroma;
               const [r, g, b] = hue < 60 ? [chroma, x, 0] : hue < 120 ? [x, chroma, 0] : hue < 180 ? [0, chroma, x] : hue < 240 ? [0, x, chroma] : hue < 300 ? [x, 0, chroma] : [chroma, 0, x];
               return `#${[r, g, b].map(channel => Math.round((channel + match) * 255).toString(16).padStart(2, "0")).join("").toUpperCase()}`;
           }
 
-          const CUSTOM_COLOR_GRID = [25, 40, 55, 70, 85].flatMap(lightness =>
-              Array.from({ length: 18 }, (_, index) => hslToHex(index * 20, 100, lightness))
-          );
+          function hexToHsv(value: string) {
+              const number = colorNumber(value) ?? 0x5865F2;
+              const r = ((number >> 16) & 255) / 255;
+              const g = ((number >> 8) & 255) / 255;
+              const b = (number & 255) / 255;
+              const max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
+              let hue = 0;
+              if (delta) hue = max === r ? 60 * (((g - b) / delta) % 6) : max === g ? 60 * ((b - r) / delta + 2) : 60 * ((r - g) / delta + 4);
+              if (hue < 0) hue += 360;
+              return { hue, saturation: max ? delta / max * 100 : 0, brightness: max * 100 };
+          }
 
           function ColorPickerRow({ label, value, onSelect, onOpen }: { label: string; value: string; onSelect: (color: string) => void; onOpen: () => void }) {
               return (
@@ -1344,22 +1358,46 @@ jobs:
           }
 
           function CustomColorPicker({ title, initialColor, onApply }: { title: string; initialColor: string; onApply: (color: string) => void }) {
-              const [color, setColor] = useState(initialColor || "#5865F2");
+              const initial = hexToHsv(initialColor);
+              const [hue, setHue] = useState(initial.hue);
+              const [saturation, setSaturation] = useState(initial.saturation);
+              const [brightness, setBrightness] = useState(initial.brightness);
+              const [color, setColor] = useState(hsvToHex(initial.hue, initial.saturation, initial.brightness));
+              const [squareSize, setSquareSize] = useState({ width: 1, height: 1 });
+              const [hueWidth, setHueWidth] = useState(1);
               const validColor = colorNumber(color) != null ? color : "#5865F2";
+              const syncHsv = (nextHue: number, nextSaturation: number, nextBrightness: number) => {
+                  setHue(nextHue); setSaturation(nextSaturation); setBrightness(nextBrightness);
+                  setColor(hsvToHex(nextHue, nextSaturation, nextBrightness));
+              };
+              const pickSquare = (event: any) => syncHsv(hue, Math.max(0, Math.min(100, event.nativeEvent.locationX / squareSize.width * 100)), Math.max(0, Math.min(100, 100 - event.nativeEvent.locationY / squareSize.height * 100)));
+              const pickHue = (event: any) => syncHsv(Math.max(0, Math.min(359, event.nativeEvent.locationX / hueWidth * 360)), saturation, brightness);
+              const changeHex = (next: string) => {
+                  setColor(next);
+                  if (colorNumber(next) != null) {
+                      const hsv = hexToHsv(next);
+                      setHue(hsv.hue); setSaturation(hsv.saturation); setBrightness(hsv.brightness);
+                  }
+              };
+              const hueColor = hsvToHex(hue, 100, 100);
               return (
                   <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 16 }} keyboardShouldPersistTaps="handled">
                       <Text variant="heading-lg/semibold" color="text-normal">{title}</Text>
                       <View style={{ height: 96, borderRadius: 16, backgroundColor: validColor, borderWidth: 2, borderColor: "rgba(255,255,255,0.35)", alignItems: "center", justifyContent: "center" }}>
                           <Text variant="heading-md/bold" style={{ color: "#ffffff", textShadowColor: "#000000", textShadowRadius: 4 }}>{validColor.toUpperCase()}</Text>
                       </View>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }}>
-                          {CUSTOM_COLOR_GRID.map((entry, index) => (
-                              <Pressable key={`${entry}-${index}`} onPress={() => setColor(entry)} style={({ pressed }) => ({ width: 31, height: 31, borderRadius: 6, backgroundColor: entry, borderWidth: validColor.toUpperCase() === entry ? 3 : 0, borderColor: "#ffffff", opacity: pressed ? 0.6 : 1 })} />
-                          ))}
+                      <View onLayout={event => setSquareSize(event.nativeEvent.layout)} onStartShouldSetResponder={() => true} onMoveShouldSetResponder={() => true} onResponderGrant={pickSquare} onResponderMove={pickSquare} style={{ width: "100%", aspectRatio: 1, maxHeight: 360, borderRadius: 12, overflow: "hidden", backgroundColor: hueColor }}>
+                          {LinearGradient ? <LinearGradient colors={["#FFFFFF", hueColor]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }} /> : null}
+                          {LinearGradient ? <LinearGradient colors={["transparent", "#000000"]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }} /> : null}
+                          <View pointerEvents="none" style={{ position: "absolute", left: `${saturation}%`, top: `${100 - brightness}%`, width: 22, height: 22, marginLeft: -11, marginTop: -11, borderRadius: 11, borderWidth: 3, borderColor: "#FFFFFF", backgroundColor: "transparent" }} />
+                      </View>
+                      <View onLayout={event => setHueWidth(event.nativeEvent.layout.width)} onStartShouldSetResponder={() => true} onMoveShouldSetResponder={() => true} onResponderGrant={pickHue} onResponderMove={pickHue} style={{ height: 42, borderRadius: 10, overflow: "hidden" }}>
+                          {LinearGradient ? <LinearGradient colors={["#FF0000", "#FFFF00", "#00FF00", "#00FFFF", "#0000FF", "#FF00FF", "#FF0000"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }} /> : <View style={{ flex: 1, backgroundColor: hueColor }} />}
+                          <View pointerEvents="none" style={{ position: "absolute", left: `${hue / 3.6}%`, top: 0, bottom: 0, width: 6, marginLeft: -3, borderWidth: 2, borderColor: "#FFFFFF", borderRadius: 3 }} />
                       </View>
                       <View style={{ gap: 8 }}>
                           <Text variant="text-sm/bold" color="text-normal">Exact hex color</Text>
-                          <TextInput value={color} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} maxLength={7} onChangeText={setColor} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                          <TextInput value={color} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} maxLength={7} onChangeText={changeHex} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
                       </View>
                       <ActionButton label="Apply color" onPress={() => colorNumber(color) != null && onApply(color.toUpperCase())} />
                   </ScrollView>
@@ -1367,10 +1405,13 @@ jobs:
           }
 
           function DecorationGallery({ onSelect }: { onSelect: (item: { asset: string; skuId: string; uri: string }) => void }) {
-              const [items, setItems] = useState(() => findDecorationCatalog());
+              const [items, setItems] = useState<Array<{ asset: string; skuId: string; label: string; uri: string }>>([]);
+              const [loading, setLoading] = useState(true);
               useEffect(() => {
-                  const timer = setTimeout(() => setItems(findDecorationCatalog()), 900);
-                  return () => clearTimeout(timer);
+                  let active = true;
+                  void findDecorationCatalog().then(result => { if (active) { setItems(result); setLoading(false); } });
+                  const timer = setTimeout(() => void findDecorationCatalog().then(result => { if (active) { setItems(result); setLoading(false); } }), 1200);
+                  return () => { active = false; clearTimeout(timer); };
               }, []);
               return (
                   <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 100 }}>
@@ -1385,8 +1426,8 @@ jobs:
                           </View>
                       ) : (
                           <View style={{ padding: 24, gap: 8, alignItems: "center" }}>
-                              <Text variant="heading-md/semibold" color="text-normal">No decorations loaded</Text>
-                              <Text variant="text-sm/medium" color="text-muted" style={{ textAlign: "center" }}>Open Discord's Shop once, then return here to load its decoration catalog.</Text>
+                              <Text variant="heading-md/semibold" color="text-normal">{loading ? "Loading decorations..." : "No decorations loaded"}</Text>
+                              {!loading ? <Text variant="text-sm/medium" color="text-muted" style={{ textAlign: "center" }}>Open Discord's Shop once, then return here to refresh its decoration catalog.</Text> : null}
                           </View>
                       )}
                   </ScrollView>
