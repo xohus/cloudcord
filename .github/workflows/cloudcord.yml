@@ -60,9 +60,12 @@ jobs:
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
           import type { ComponentType } from "react";
-          import { ScrollView, View } from "react-native";
+          import { ScrollView, Text, View } from "react-native";
 
           export default function ScaledPluginSettings({ component: Component }: { component: ComponentType<any> }) {
+              if (typeof Component !== "function") {
+                  return <View style={{ padding: 16 }}><Text style={{ color: "#ffffff" }}>This plugin does not provide a mobile-compatible settings component.</Text></View>;
+              }
               return (
                   <ScrollView
                       style={{ flex: 1 }}
@@ -258,6 +261,9 @@ jobs:
               bannerMedia: MediaValue;
               nitroMonths: number;
               boostMonths: number;
+              avatarDecoration: string;
+              primaryColor: string;
+              accentColor: string;
               replaceBadges: boolean;
               selectedBadges: Record<string, boolean>;
           };
@@ -286,7 +292,7 @@ jobs:
           const overriddenKeys = new Set([
               "username", "globalName", "displayName", "publicFlags", "flags", "badges", "profileBadges",
               "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "getPreviewBanner", "hasFlag",
-              "premiumType", "premiumSince", "premiumGuildSince", "user", "userProfile", "guildMemberProfile", "displayProfile", "profile"
+              "premiumType", "premiumSince", "premiumGuildSince", "avatarDecorationData", "primaryColor", "accentColor", "themeColors", "user", "userProfile", "guildMemberProfile", "displayProfile", "profile"
           ]);
 
           const NITRO_DURATIONS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
@@ -323,6 +329,9 @@ jobs:
               bannerMedia: null,
               nitroMonths: 0,
               boostMonths: 0,
+              avatarDecoration: "",
+              primaryColor: "#5865F2",
+              accentColor: "#EB459E",
               replaceBadges: false,
               selectedBadges: {}
           });
@@ -477,6 +486,9 @@ jobs:
                   nitro: preview.nitroMonths > 0,
                   nitroLevel: Math.max(-1, NITRO_DURATIONS.indexOf(preview.nitroMonths) - 1),
                   boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
+                  avatarDecoration: preview.avatarDecoration || null,
+                  primaryColor: colorNumber(preview.primaryColor),
+                  accentColor: colorNumber(preview.accentColor),
                   badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0),
                   customBadgeIds: preview.replaceBadges ? [REPLACE_BADGES_SYNC_ID] : []
               };
@@ -526,6 +538,9 @@ jobs:
                       bannerMedia: data.banner ? { uri: data.banner } : null,
                       nitroMonths: data.nitro ? (NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1) : 0,
                       boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
+                      avatarDecoration: String(data.avatarDecoration || ""),
+                      primaryColor: colorHex(data.primaryColor, preview.primaryColor),
+                      accentColor: colorHex(data.accentColor, preview.accentColor),
                       replaceBadges: remoteReplaceBadges(data),
                       selectedBadges
                   } satisfies PreviewSettings;
@@ -555,6 +570,10 @@ jobs:
               if (data.username) setOwnValue(cloned, "username", data.username);
               if (data.globalName) { setOwnValue(cloned, "globalName", data.globalName); setOwnValue(cloned, "displayName", data.globalName); }
               if (data.avatar) { setOwnValue(cloned, "avatarURL", data.avatar); setOwnValue(cloned, "avatarUrl", data.avatar); setOwnValue(cloned, "getAvatarURL", () => data.avatar); }
+              if (data.avatarDecoration) setOwnValue(cloned, "avatarDecorationData", { asset: data.avatarDecoration, skuId: "cloudcord-decoration" });
+              if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
+              if (data.accentColor != null) setOwnValue(cloned, "accentColor", Number(data.accentColor));
+              if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor || data.accentColor), Number(data.accentColor || data.primaryColor)]);
               if (data.banner) { setOwnValue(cloned, "banner", data.banner); setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "getBannerURL", () => data.banner); }
               if (shouldReplaceSharedBadges(data)) {
                   setOwnValue(cloned, "publicFlags", 0);
@@ -576,6 +595,8 @@ jobs:
               if (data.banner) { setOwnValue(cloned, "banner", data.banner); setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "bannerSrc", data.banner); }
               if (data.bio != null) setOwnValue(cloned, "bio", data.bio);
               if (data.accentColor != null) setOwnValue(cloned, "accentColor", data.accentColor);
+              if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", data.primaryColor);
+              if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor || data.accentColor), Number(data.accentColor || data.primaryColor)]);
               setOwnValue(cloned, "userId", userId);
               return cloned;
           }
@@ -620,6 +641,16 @@ jobs:
 
           function milestoneIcon(months: number, values: Array<[number, string]>) {
               return values.find(([minimum]) => months >= minimum)?.[1] || "";
+          }
+
+          function colorNumber(value: string) {
+              const normalized = String(value || "").trim().replace(/^#/, "");
+              return /^[0-9a-f]{6}$/i.test(normalized) ? Number.parseInt(normalized, 16) : null;
+          }
+
+          function colorHex(value: unknown, fallback: string) {
+              const number = Number(value);
+              return Number.isFinite(number) ? `#${Math.max(0, Math.min(0xffffff, number)).toString(16).padStart(6, "0").toUpperCase()}` : fallback;
           }
 
           function boosterIcon(months: number) {
@@ -684,6 +715,8 @@ jobs:
               const username = preview.username || original.username;
               const avatar = mediaUri("avatarMedia");
               const banner = mediaUri("bannerMedia");
+              const primaryColor = colorNumber(preview.primaryColor);
+              const accentColor = colorNumber(preview.accentColor);
               let selectedFlags = 0;
               for (const [id, , flag] of BADGES) if (preview.selectedBadges?.[id]) selectedFlags |= flag;
               const flags = shouldReplaceLocalBadges() ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
@@ -696,6 +729,10 @@ jobs:
               setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
               setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
               setOwnValue(cloned, "hasFlag", (flag: number) => !!(flags & flag));
+              setOwnValue(cloned, "avatarDecorationData", preview.avatarDecoration ? { asset: preview.avatarDecoration, skuId: "cloudcord-decoration" } : null);
+              if (primaryColor != null) setOwnValue(cloned, "primaryColor", primaryColor);
+              if (accentColor != null) setOwnValue(cloned, "accentColor", accentColor);
+              if (primaryColor != null || accentColor != null) setOwnValue(cloned, "themeColors", [primaryColor ?? accentColor, accentColor ?? primaryColor]);
               if (preview.nitroMonths > 0) {
                   setOwnValue(cloned, "premiumType", 2);
                   setOwnValue(cloned, "premiumSince", monthsAgo(preview.nitroMonths));
@@ -1316,10 +1353,13 @@ jobs:
                           </View>
 
                           <Card border="strong">
-                              <View style={{ borderRadius: 14, overflow: "hidden" }}>
-                                  {banner ? <Image source={{ uri: banner }} resizeMode="cover" style={{ width: "100%", height: 118 }} /> : <View style={{ height: 118, backgroundColor: "#5865f2" }} />}
+                                  <View style={{ borderRadius: 14, overflow: "hidden" }}>
+                                  {banner ? <Image source={{ uri: banner }} resizeMode="cover" style={{ width: "100%", height: 118 }} /> : <View style={{ height: 118, backgroundColor: preview.primaryColor || "#5865f2" }} />}
                                   <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-                                      {avatar ? <Image source={{ uri: avatar }} style={{ width: 82, height: 82, borderRadius: 41, marginTop: -41, borderWidth: 5, borderColor: "#1f2023" }} /> : <View style={{ width: 82, height: 82, borderRadius: 41, marginTop: -41, borderWidth: 5, borderColor: "#1f2023", backgroundColor: "#777" }} />}
+                                      <View style={{ width: 94, height: 94, marginTop: -47, alignItems: "center", justifyContent: "center" }}>
+                                          {avatar ? <Image source={{ uri: avatar }} style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: "#1f2023" }} /> : <View style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: "#1f2023", backgroundColor: "#777" }} />}
+                                          {preview.avatarDecoration ? <Image pointerEvents="none" source={{ uri: preview.avatarDecoration }} style={{ position: "absolute", width: 94, height: 94 }} /> : null}
+                                      </View>
                                       <Text variant="heading-md/semibold" color="text-normal" style={{ marginTop: 10 }}>{preview.displayName || "Preview Name"}</Text>
                                       <Text variant="text-sm/medium" color="text-muted">@{preview.username || "preview"}</Text>
                                       <Text variant="text-xs/bold" style={{ color: "#7ee787", marginTop: 8 }}>PREVIEW</Text>
@@ -1346,6 +1386,18 @@ jobs:
                                   </View>
                                   <DurationSelect label="Nitro duration" value={preview.nitroMonths} onPress={() => chooseDuration("nitroMonths", "Choose Nitro duration", NITRO_DURATIONS)} />
                                   <DurationSelect label="Server booster duration" value={preview.boostMonths} onPress={() => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)} />
+                                  <View style={{ gap: 8 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Avatar decoration URL</Text>
+                                      <TextInput defaultValue={preview.avatarDecoration} placeholder="https://..." placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("avatarDecoration", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                  </View>
+                                  <View style={{ gap: 8 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Primary profile color</Text>
+                                      <TextInput defaultValue={preview.primaryColor} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} onChangeText={value => update("primaryColor", value, true)} style={{ color: "#fff", backgroundColor: preview.primaryColor || "#1f2023", borderRadius: 9, padding: 12 }} />
+                                  </View>
+                                  <View style={{ gap: 8 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Accent profile color</Text>
+                                      <TextInput defaultValue={preview.accentColor} placeholder="#EB459E" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} onChangeText={value => update("accentColor", value, true)} style={{ color: "#fff", backgroundColor: preview.accentColor || "#1f2023", borderRadius: 9, padding: 12 }} />
+                                  </View>
                                   <MediaEditor label="Profile picture" field="avatarMedia" />
                                   <MediaEditor label="Banner" field="bannerMedia" banner />
                                   <ActionButton label="Apply preview" onPress={() => { diagnostics.last = "Preview refreshed"; refreshPreview(); redraw(); }} />
@@ -1632,7 +1684,11 @@ jobs:
               patched_forms_code = r'''
           const makeIcon = (leading: any) => leading;
 
-          const PatchedFormRow = (props: any) => createElement(commonComponents.TableRow, {
+          const CompatRow = commonComponents.TableRow ?? (Forms as any).FormRow ?? common.ReactNative.View;
+          const CompatSwitchRow = commonComponents.TableSwitchRow ?? (Forms as any).FormSwitchRow ?? CompatRow;
+          const CompatSection = commonComponents.TableRowGroup ?? (Forms as any).FormSection ?? common.ReactNative.View;
+
+          const PatchedFormRow = (props: any) => createElement(CompatRow, {
               label: props.label,
               subLabel: props.subLabel,
               icon: makeIcon(props.leading),
@@ -1642,10 +1698,10 @@ jobs:
               arrow: props.arrow
           });
 
-          (PatchedFormRow as any).Icon = (Forms as any).FormRow?.Icon ?? commonComponents.TableRow.Icon;
-          (PatchedFormRow as any).Arrow = (Forms as any).FormRow?.Arrow ?? commonComponents.TableRow.Arrow;
+          (PatchedFormRow as any).Icon = (Forms as any).FormRow?.Icon ?? commonComponents.TableRow?.Icon ?? (() => null);
+          (PatchedFormRow as any).Arrow = (Forms as any).FormRow?.Arrow ?? commonComponents.TableRow?.Arrow ?? (() => null);
 
-          const PatchedFormSwitchRow = (props: any) => createElement(commonComponents.TableSwitchRow, {
+          const PatchedFormSwitchRow = (props: any) => createElement(CompatSwitchRow, {
               label: props.label,
               subLabel: props.subLabel,
               icon: makeIcon(props.leading),
@@ -1654,7 +1710,7 @@ jobs:
               disabled: props.disabled
           });
 
-          const PatchedFormSection = (props: any) => createElement(commonComponents.TableRowGroup, {
+          const PatchedFormSection = (props: any) => createElement(CompatSection, {
               title: props.title,
               ...props
           }, props.children);
