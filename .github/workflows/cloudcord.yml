@@ -264,6 +264,7 @@ jobs:
               username: string;
               avatarMedia: MediaValue;
               bannerMedia: MediaValue;
+              nitroEnabled: boolean;
               nitroMonths: number;
               boostMonths: number;
               avatarDecoration: string;
@@ -271,6 +272,11 @@ jobs:
               profileColorsEnabled: boolean;
               primaryColor: string;
               accentColor: string;
+              bio: string;
+              pronouns: string;
+              createdAt: string;
+              signupDate: string;
+              oldName: string;
               replaceBadges: boolean;
               selectedBadges: Record<string, boolean>;
           };
@@ -279,12 +285,12 @@ jobs:
               ["staff", "Discord Staff", 1, "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png"],
               ["partner", "Partner", 2, "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png"],
               ["hypesquad", "HypeSquad Events", 4, "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png"],
-              ["bug1", "Bug Hunter 1", 8, "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"],
+              ["bug1", "Bug Hunter Lvl 1", 8, "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"],
               ["bravery", "HypeSquad Bravery", 64, "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png"],
               ["brilliance", "HypeSquad Brilliance", 128, "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png"],
               ["balance", "HypeSquad Balance", 256, "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png"],
               ["early", "Early Supporter", 512, "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"],
-              ["bug2", "Bug Hunter 2", 16384, "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"],
+              ["bug2", "Bug Hunter Lvl 2", 16384, "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"],
               ["vdev", "Verified Developer", 131072, "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"],
               ["mod", "Former Moderator", 262144, "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"],
               ["active", "Active Developer", 4194304, "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png"],
@@ -306,7 +312,7 @@ jobs:
           const overriddenKeys = new Set([
               "username", "globalName", "displayName", "publicFlags", "flags", "badges", "profileBadges",
               "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "getPreviewBanner", "hasFlag",
-              "premiumType", "premiumSince", "premiumGuildSince", "avatarDecorationData", "primaryColor", "accentColor", "themeColors", "user", "userProfile", "guildMemberProfile", "displayProfile", "profile"
+              "premiumType", "premiumSince", "premiumGuildSince", "avatarDecorationData", "primaryColor", "accentColor", "themeColors", "bio", "pronouns", "createdAt", "joinedAt", "memberSince", "user", "userProfile", "guildMemberProfile", "displayProfile", "profile"
           ]);
 
           const NITRO_DURATIONS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
@@ -319,8 +325,13 @@ jobs:
               [6, "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png"],
               [3, "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png"],
               [2, "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png"],
-              [1, "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png"]
+              [1, "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png"],
+              [0, "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png"]
           ];
+          const NITRO_LABELS = new Map<number, string>([
+              [0, "Nitro (0 months)"], [1, "Bronze (1 month)"], [2, "Silver (2 months)"], [3, "Gold (3 months)"],
+              [6, "Platinum (6 months)"], [12, "Diamond (12 months)"], [24, "Emerald (24 months)"], [36, "Ruby (36 months)"], [72, "Opal (72 months)"]
+          ]);
           const BOOST_ICONS: Array<[number, string]> = [
               [24, "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png"],
               [18, "https://cdn.discordapp.com/badge-icons/7142225d31238f6387d9f09efaa02759.png"],
@@ -341,6 +352,7 @@ jobs:
               username: "preview",
               avatarMedia: null,
               bannerMedia: null,
+              nitroEnabled: false,
               nitroMonths: 0,
               boostMonths: 0,
               avatarDecoration: "",
@@ -348,6 +360,11 @@ jobs:
               profileColorsEnabled: false,
               primaryColor: "#5865F2",
               accentColor: "#EB459E",
+              bio: "",
+              pronouns: "",
+              createdAt: "",
+              signupDate: "",
+              oldName: "",
               replaceBadges: false,
               selectedBadges: {}
           });
@@ -387,6 +404,7 @@ jobs:
                       enabled: Boolean(username || displayName || REALCORD_NITRO_MONTHS[tier]),
                       username: username || preview.username,
                       displayName: displayName || preview.displayName,
+                      nitroEnabled: Boolean(REALCORD_NITRO_MONTHS[tier]),
                       nitroMonths: REALCORD_NITRO_MONTHS[tier] || 0,
                       replaceBadges: true
                   } satisfies PreviewSettings;
@@ -429,6 +447,7 @@ jobs:
               rootSettings.fakeProfile = {
                   ...defaultPreview(),
                   ...(saved && typeof saved === "object" ? saved : {}),
+                  nitroEnabled: saved?.nitroEnabled ?? Number(saved?.nitroMonths || 0) > 0,
                   selectedBadges: { ...(saved?.selectedBadges || {}) }
               } satisfies PreviewSettings;
               preview = rootSettings.fakeProfile as PreviewSettings;
@@ -456,7 +475,7 @@ jobs:
           const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
 
           function localHasFakeBadges() {
-              return preview.nitroMonths > 0 || preview.boostMonths > 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
+              return preview.nitroEnabled || preview.boostMonths > 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
           }
 
           function shouldReplaceLocalBadges() {
@@ -467,9 +486,13 @@ jobs:
               return data?.replaceRealBadges === true || (Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID));
           }
 
+          function remoteNitroEnabled(data: any) {
+              return data?.nitro === true || data?.nitro == null && Number(data?.nitroLevel ?? -1) >= 0;
+          }
+
           function remoteHasFakeBadges(data: any) {
               const custom = Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id: string) => id !== REPLACE_BADGES_SYNC_ID) : [];
-              return Number(data?.badgeFlags || 0) !== 0 || data?.nitro === true || Number(data?.nitroLevel ?? -1) >= 0 || Number(data?.boostMonths ?? -1) >= 0 || custom.length > 0;
+              return Number(data?.badgeFlags || 0) !== 0 || remoteNitroEnabled(data) || Number(data?.boostMonths ?? -1) >= 0 || custom.length > 0;
           }
 
           function shouldReplaceSharedBadges(data: any) {
@@ -499,14 +522,20 @@ jobs:
                   globalName: preview.displayName,
                   avatar: await shareableMedia("avatarMedia"),
                   banner: await shareableMedia("bannerMedia"),
-                  nitro: preview.nitroMonths > 0,
-                  nitroLevel: Math.max(-1, NITRO_DURATIONS.indexOf(preview.nitroMonths) - 1),
+                  nitro: preview.nitroEnabled,
+                  nitroLevel: preview.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(preview.nitroMonths)) : -1,
                   boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
                   avatarDecoration: preview.avatarDecoration || null,
                   avatarDecorationSku: preview.avatarDecorationSku || null,
                   profileColorsEnabled: preview.profileColorsEnabled,
                   primaryColor: preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null,
                   accentColor: preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null,
+                  bio: preview.bio,
+                  pronouns: preview.pronouns,
+                  createdAt: preview.createdAt || null,
+                  signupDate: preview.signupDate || null,
+                  joinedSince: preview.signupDate || null,
+                  oldName: preview.oldName,
                   badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && preview.selectedBadges?.[id] ? flags | flag : flags, 0),
                   customBadgeIds: [
                       ...BADGES.filter(([id, , , , customId]) => customId && preview.selectedBadges?.[id]).map(([, , , , customId]) => customId as string),
@@ -560,13 +589,19 @@ jobs:
                       displayName: data.globalName || data.displayName || preview.displayName,
                       avatarMedia: data.avatar ? { uri: data.avatar } : null,
                       bannerMedia: data.banner ? { uri: data.banner } : null,
-                      nitroMonths: data.nitro ? (NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1) : 0,
+                      nitroEnabled: remoteNitroEnabled(data),
+                      nitroMonths: remoteNitroEnabled(data) ? (NITRO_DURATIONS[Number(data.nitroLevel)] || 0) : 0,
                       boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
                       avatarDecoration: String(data.avatarDecoration || ""),
                       avatarDecorationSku: String(data.avatarDecorationSku || ""),
                       profileColorsEnabled: data.profileColorsEnabled === true || data.primaryColor != null || data.accentColor != null,
                       primaryColor: colorHex(data.primaryColor, preview.primaryColor),
                       accentColor: colorHex(data.accentColor, preview.accentColor),
+                      bio: String(data.bio || ""),
+                      pronouns: String(data.pronouns || ""),
+                      createdAt: String(data.createdAt || ""),
+                      signupDate: String(data.signupDate || data.joinedSince || ""),
+                      oldName: String(data.oldName || ""),
                       replaceBadges: remoteReplaceBadges(data),
                       selectedBadges
                   } satisfies PreviewSettings;
@@ -622,6 +657,11 @@ jobs:
               if (cloned.user) setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
               if (data.banner) { setOwnValue(cloned, "banner", data.banner); setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "bannerSrc", data.banner); }
               if (data.bio != null) setOwnValue(cloned, "bio", data.bio);
+              if (data.pronouns != null) setOwnValue(cloned, "pronouns", data.pronouns);
+              const createdAt = profileDate(data.createdAt);
+              const joinedAt = profileDate(data.signupDate || data.joinedSince);
+              if (createdAt) setOwnValue(cloned, "createdAt", createdAt);
+              if (joinedAt) { setOwnValue(cloned, "joinedAt", joinedAt); setOwnValue(cloned, "memberSince", joinedAt); }
               if (data.profileColorsEnabled === true) {
                   if (data.accentColor != null) setOwnValue(cloned, "accentColor", data.accentColor);
                   if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", data.primaryColor);
@@ -660,6 +700,12 @@ jobs:
               return date;
           }
 
+          function profileDate(value: unknown) {
+              if (!value) return null;
+              const date = new Date(`${String(value).slice(0, 10)}T12:00:00Z`);
+              return Number.isNaN(date.getTime()) ? null : date;
+          }
+
           function durationLabel(months: number) {
               if (!months) return "None";
               if (months % 12 === 0) {
@@ -667,6 +713,11 @@ jobs:
                   return `${years} ${years === 1 ? "year" : "years"}`;
               }
               return `${months} ${months === 1 ? "month" : "months"}`;
+          }
+
+          function boosterLabel(months: number) {
+              if (!months) return "None";
+              return `${months} ${months === 1 ? "Month" : "Months"}`;
           }
 
           function milestoneIcon(months: number, values: Array<[number, string]>) {
@@ -764,19 +815,20 @@ jobs:
 
           function selectedBadgeObjects(existing: any) {
               const result: any[] = [];
-              if (preview.nitroMonths > 0) {
+              if (preview.nitroEnabled) {
                   const icon = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
-                  result.push({ id: "fakeprofile-nitro", description: `Nitro ${durationLabel(preview.nitroMonths)}`, icon: " _", iconSrc: icon, source: { uri: icon } });
+                  result.push({ id: "fakeprofile-nitro", description: NITRO_LABELS.get(preview.nitroMonths) || "Nitro", icon: " _", iconSrc: icon, source: { uri: icon } });
               }
               if (preview.boostMonths > 0) {
                   const icon = boosterIcon(preview.boostMonths);
-                  result.push({ id: "fakeprofile-boost", description: `Server Booster ${durationLabel(preview.boostMonths)}`, icon: " _", iconSrc: icon, source: { uri: icon } });
+                  result.push({ id: "fakeprofile-boost", description: `Server Booster — ${boosterLabel(preview.boostMonths)}`, icon: " _", iconSrc: icon, source: { uri: icon } });
               }
               for (const [id, description, , icon] of BADGES) {
                   if (!preview.selectedBadges?.[id]) continue;
                   const badgeId = `fakeprofile-${id}`;
                   if (!result.some(item => item?.id === badgeId)) {
-                      result.push({ id: badgeId, description, icon: " _", iconSrc: icon, source: { uri: icon } });
+                      const label = id === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description;
+                      result.push({ id: badgeId, description: label, icon: " _", iconSrc: icon, source: { uri: icon } });
                   }
               }
               if (!shouldReplaceLocalBadges() && Array.isArray(existing)) {
@@ -822,6 +874,12 @@ jobs:
               setOwnValue(cloned, "username", username);
               setOwnValue(cloned, "globalName", displayName);
               setOwnValue(cloned, "displayName", displayName);
+              setOwnValue(cloned, "bio", preview.bio);
+              setOwnValue(cloned, "pronouns", preview.pronouns);
+              const createdAt = profileDate(preview.createdAt);
+              const joinedAt = profileDate(preview.signupDate);
+              if (createdAt) setOwnValue(cloned, "createdAt", createdAt);
+              if (joinedAt) { setOwnValue(cloned, "joinedAt", joinedAt); setOwnValue(cloned, "memberSince", joinedAt); }
               setOwnValue(cloned, "publicFlags", flags);
               setOwnValue(cloned, "flags", flags);
               setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
@@ -831,7 +889,7 @@ jobs:
               if (primaryColor != null) setOwnValue(cloned, "primaryColor", primaryColor);
               if (accentColor != null) setOwnValue(cloned, "accentColor", accentColor);
               if (primaryColor != null || accentColor != null) setOwnValue(cloned, "themeColors", [primaryColor ?? accentColor, accentColor ?? primaryColor]);
-              if (preview.nitroMonths > 0) {
+              if (preview.nitroEnabled) {
                   setOwnValue(cloned, "premiumType", 2);
                   setOwnValue(cloned, "premiumSince", monthsAgo(preview.nitroMonths));
               }
@@ -891,14 +949,15 @@ jobs:
                           const ordered: any[] = [];
                           if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
                           if (data) {
-                              const nitroMonths = [1, 2, 3, 6, 12, 24, 36, 72][Number(data.nitroLevel)] || 0;
+                              const nitroMonths = [0, 1, 2, 3, 6, 12, 24, 36, 72][Number(data.nitroLevel)] || 0;
                               const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
-                              addRenderedBadge(ordered, "cloudcord-shared-nitro", `Nitro ${durationLabel(nitroMonths)}`, milestoneIcon(nitroMonths, NITRO_ICONS));
-                              addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster ${durationLabel(boostMonths)}`, boosterIcon(boostMonths));
+                              if (remoteNitroEnabled(data)) addRenderedBadge(ordered, "cloudcord-shared-nitro", NITRO_LABELS.get(nitroMonths) || "Nitro", milestoneIcon(nitroMonths, NITRO_ICONS));
+                              addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster — ${boosterLabel(boostMonths)}`, boosterIcon(boostMonths));
                               const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
                               for (const [id, description, flag, icon, customId] of BADGES) {
                                   const selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
-                                  if (selected) addRenderedBadge(ordered, `cloudcord-shared-${customId || id}`, description, icon);
+                                  const label = id === "oldname" && data.oldName ? `Originally Known As: ${data.oldName}` : description;
+                                  if (selected) addRenderedBadge(ordered, `cloudcord-shared-${customId || id}`, label, icon);
                               }
                           }
                           const existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter(item => {
@@ -925,22 +984,23 @@ jobs:
                       });
                       const ordered: any[] = [];
                       if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
-                      addRenderedBadge(
+                      if (preview.nitroEnabled) addRenderedBadge(
                           ordered,
                           "fakeprofile-nitro",
-                          `Nitro ${durationLabel(preview.nitroMonths)}`,
+                          NITRO_LABELS.get(preview.nitroMonths) || "Nitro",
                           milestoneIcon(preview.nitroMonths, NITRO_ICONS)
                       );
                       addRenderedBadge(
                           ordered,
                           "fakeprofile-boost",
-                          `Server Booster ${durationLabel(preview.boostMonths)}`,
+                          `Server Booster — ${boosterLabel(preview.boostMonths)}`,
                           boosterIcon(preview.boostMonths)
                       );
                       for (const [badgeId, description, , icon] of BADGES) {
                           if (!preview.selectedBadges?.[badgeId]) continue;
                           const id = `fakeprofile-${badgeId}`;
-                          addRenderedBadge(ordered, id, description, icon);
+                          const label = badgeId === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description;
+                          addRenderedBadge(ordered, id, label, icon);
                       }
                       result.splice(0, result.length, ...ordered, ...existing);
                   });
@@ -1156,6 +1216,12 @@ jobs:
                   });
               }
 
+              const snowflakeUtils = findByProps("extractTimestamp") as any;
+              addPatch("extractTimestamp", snowflakeUtils, (args, original) => {
+                  const createdAt = profileDate(preview.createdAt);
+                  return preview.enabled && createdAt && String(args?.[0] || "") === currentUserId ? createdAt.getTime() : original(...args);
+              });
+
               connectBadgeRenderer();
               connectMediaRenderer();
 
@@ -1334,7 +1400,7 @@ jobs:
                           <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>Profile appearance</Text>
                       </View>
                       <View style={{ maxWidth: "48%", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: "#243c46" }}>
-                          <Text variant="text-xs/bold" style={{ color: "#78e7ff" }} numberOfLines={1}>{durationLabel(value)}</Text>
+                          <Text variant="text-xs/bold" style={{ color: "#78e7ff" }} numberOfLines={1}>{label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value)}</Text>
                           <Text variant="text-sm/bold" style={{ color: "#78e7ff" }}>v</Text>
                       </View>
                   </Pressable>
@@ -1518,8 +1584,9 @@ jobs:
                               onClose: () => simpleSheets.hideActionSheet?.(key)
                           },
                           options: values.map(months => ({
-                              label: durationLabel(months),
+                              label: field === "boostMonths" ? boosterLabel(months) : durationLabel(months),
                               onPress: () => {
+                                  if (field === "nitroMonths") update("nitroEnabled", true, true);
                                   update(field, months, true);
                                   diagnostics.last = `${title}: ${durationLabel(months)}`;
                                   simpleSheets.hideActionSheet?.(key);
@@ -1605,7 +1672,24 @@ jobs:
                                       <Text variant="text-sm/bold" color="text-normal">Username</Text>
                                       <TextInput defaultValue={preview.username} placeholder="preview" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
                                   </View>
-                                  <DurationSelect label="Nitro duration" value={preview.nitroMonths} onPress={() => chooseDuration("nitroMonths", "Choose Nitro duration", NITRO_DURATIONS)} />
+                                  <View style={{ gap: 8 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Bio</Text>
+                                      <TextInput defaultValue={preview.bio} placeholder="My description..." placeholderTextColor="#777" multiline onChangeText={value => update("bio", value, true)} style={{ minHeight: 88, color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12, textAlignVertical: "top" }} />
+                                  </View>
+                                  <View style={{ gap: 8 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Pronouns</Text>
+                                      <TextInput defaultValue={preview.pronouns} placeholder="he/him" placeholderTextColor="#777" onChangeText={value => update("pronouns", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                  </View>
+                                  <View style={{ gap: 8 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Account creation date</Text>
+                                      <TextInput defaultValue={preview.createdAt} placeholder="2010-06-29" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("createdAt", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                  </View>
+                                  <View style={{ gap: 8 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Joined since date</Text>
+                                      <TextInput defaultValue={preview.signupDate} placeholder="2010-06-29" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("signupDate", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                  </View>
+                                  <ToggleRow label="Simulate Nitro" subLabel="Enables the Nitro badge, banner, and profile colors" value={preview.nitroEnabled} onPress={() => update("nitroEnabled", !preview.nitroEnabled, true)} />
+                                  {preview.nitroEnabled ? <DurationSelect label="Nitro badge" value={preview.nitroMonths} onPress={() => chooseDuration("nitroMonths", "Choose Nitro badge", NITRO_DURATIONS)} /> : null}
                                   <DurationSelect label="Server booster duration" value={preview.boostMonths} onPress={() => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)} />
                                   <ActionButton label="Browse Discord decorations" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Avatar Decorations", render: () => <DecorationGallery onSelect={item => { update("avatarDecoration", item.uri, true); update("avatarDecorationSku", item.skuId, true); navigation.goBack(); }} /> })} />
                                   <View style={{ gap: 8 }}>
@@ -1641,6 +1725,10 @@ jobs:
                                           onPress={() => update("selectedBadges", { ...preview.selectedBadges, [id]: !preview.selectedBadges?.[id] }, true)}
                                       />
                                   ))}
+                                  {preview.selectedBadges?.oldname ? <View style={{ gap: 8, marginTop: 4 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Previous username displayed in tooltip</Text>
+                                      <TextInput defaultValue={preview.oldName} placeholder="OldUser#0000" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("oldName", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                  </View> : null}
                               </View>
                           </Card>
 

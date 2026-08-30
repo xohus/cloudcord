@@ -100,6 +100,18 @@ function getDecorationUrl(assetId: string, animated = false): string {
     return `https://cdn.discordapp.com/media/v1/collectibles-shop/${assetId}/${animated ? "animated" : "static"}`;
 }
 
+function sharedDecorationAsset(value: unknown): string {
+    const raw = String(value || "");
+    if (!/^https?:/i.test(raw)) return raw;
+    try {
+        const parts = new URL(raw).pathname.split("/").filter(Boolean);
+        const last = parts.pop() || "";
+        const asset = /^(?:static|animated)$/i.test(last) ? parts.pop() || "" : last;
+        return decodeURIComponent(asset).replace(/\.(?:png|gif|webp)$/i, "");
+    }
+    catch { return raw; }
+}
+
 interface CustomProfileData {
     username?: string; globalName?: string; avatar?: string; banner?: string;
     bio?: string; accentColor?: number; accentColor2?: number; pronouns?: string;
@@ -136,17 +148,18 @@ function fromSharedProfile(data: any): CustomProfileData {
     return {
         username: data?.username || "", globalName: data?.globalName || data?.displayName || "",
         avatar: data?.avatar || "", banner: data?.banner || "", bio: data?.bio || "",
-        pronouns: data?.pronouns || "", accentColor: data?.accentColor,
-        accentColor2: data?.accentColor2, badgeFlags: data?.badgeFlags || 0,
+        pronouns: data?.pronouns || "", accentColor: data?.primaryColor ?? data?.accentColor,
+        accentColor2: data?.primaryColor != null ? data?.accentColor : data?.accentColor2, badgeFlags: data?.badgeFlags || 0,
         nitro: !!(data?.nitro || data?.nitroLevel >= 0), nitroLevel: data?.nitroLevel,
         boostMonths: data?.boostMonths, customBadgeIds: Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id: string) => id !== REPLACE_BADGES_SYNC_ID) : [],
-        decorationAsset: data?.decorationAsset, replaceRealBadges: data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID)
+        oldName: data?.oldName || "", createdAt: data?.createdAt || "", signupDate: data?.signupDate || data?.joinedSince || "",
+        decorationAsset: sharedDecorationAsset(data?.decorationAsset || data?.avatarDecoration), replaceRealBadges: data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID)
     };
 }
 
 function hasFakeBadges(data: CustomProfileData | undefined): boolean {
     if (!data) return false;
-    return Number(data.badgeFlags ?? 0) !== 0 || Number(data.nitroLevel ?? -1) >= 0 || Number(data.boostMonths ?? -1) >= 0 || (data.customBadgeIds?.length ?? 0) > 0;
+    return Number(data.badgeFlags ?? 0) !== 0 || data.nitro === true && Number(data.nitroLevel ?? -1) >= 0 || Number(data.boostMonths ?? -1) >= 0 || (data.customBadgeIds?.length ?? 0) > 0;
 }
 
 function shouldReplaceBadges(data: CustomProfileData | undefined): boolean {
@@ -157,7 +170,16 @@ function toSharedProfile(data: CustomProfileData) {
     const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds.filter(id => id !== REPLACE_BADGES_SYNC_ID) : [];
     if (data.replaceRealBadges === true) customBadgeIds.push(REPLACE_BADGES_SYNC_ID);
     const { replaceRealBadges, ...rest } = data;
-    return { ...rest, customBadgeIds, displayName: data.globalName };
+    return {
+        ...rest,
+        customBadgeIds,
+        displayName: data.globalName,
+        joinedSince: data.signupDate,
+        avatarDecoration: data.decorationAsset ? getDecorationUrl(data.decorationAsset) : null,
+        profileColorsEnabled: data.accentColor != null,
+        primaryColor: data.accentColor,
+        accentColor: data.accentColor2 ?? data.accentColor
+    };
 }
 
 async function publishSharedProfile(): Promise<void> {
@@ -222,6 +244,8 @@ function decorateSharedProfile(profile: any, data: CustomProfileData) {
     if (data.bio) merged.bio = data.bio;
     if (data.pronouns) merged.pronouns = data.pronouns;
     if (data.banner) merged.banner = data.banner;
+    if (data.createdAt) merged.createdAt = new Date(data.createdAt + "T12:00:00Z");
+    if (data.signupDate) { merged.joinedAt = new Date(data.signupDate + "T12:00:00Z"); merged.memberSince = merged.joinedAt; }
     if (data.accentColor != null) merged.accentColor = data.accentColor;
     if (data.accentColor != null) merged.themeColors = [data.accentColor, data.accentColor2 ?? data.accentColor];
     if (shouldReplaceBadges(data)) {
@@ -232,14 +256,14 @@ function decorateSharedProfile(profile: any, data: CustomProfileData) {
     if (data.nitro) {
         merged.premiumType = 2;
         const nl = data.nitroLevel ?? 0;
-        const LEVEL_MONTHS = [1, 2, 3, 6, 12, 24, 36, 72];
-        const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[nl] ?? 1)); merged.premiumSince = since;
-        const bm = data.boostMonths ?? -1;
-        if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const bs = new Date(); bs.setMonth(bs.getMonth() - (BOOST_M[bm] ?? 1)); merged.premiumGuildSince = bs; }
-        else merged.premiumGuildSince = null;
+        const LEVEL_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
+        const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[nl] ?? 0)); merged.premiumSince = since;
     } else {
-        merged.premiumType = 0; merged.premiumSince = null; merged.premiumGuildSince = null;
+        merged.premiumType = 0; merged.premiumSince = null;
     }
+    const bm = data.boostMonths ?? -1;
+    if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const bs = new Date(); bs.setMonth(bs.getMonth() - (BOOST_M[bm] ?? 1)); merged.premiumGuildSince = bs; }
+    else merged.premiumGuildSince = null;
     return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
 }
 
@@ -485,11 +509,11 @@ function BadgePicker({ selected, onChange, nitroType, onNitroType, boostLevel, o
         </div>
         <div className="cp-section-label" style={{ marginTop: 8 }}>Special Badges</div>
         <div className="cp-badges">
-            <BadgeBtn label="Completed a quest" icon="https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png" active={customIds.includes("quest")} onClick={() => onCustomIds(customIds.includes("quest") ? customIds.filter(x => x !== "quest") : [...customIds, "quest"])} />
+            <BadgeBtn label="Completed a Quest" icon="https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png" active={customIds.includes("quest")} onClick={() => onCustomIds(customIds.includes("quest") ? customIds.filter(x => x !== "quest") : [...customIds, "quest"])} />
             <BadgeBtn label="Orbs — Apprentice" icon="https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png" active={customIds.includes("orbs")} onClick={() => onCustomIds(customIds.includes("orbs") ? customIds.filter(x => x !== "orbs") : [...customIds, "orbs"])} />
-            <BadgeBtn label="Old username" icon={OLD_NAME_BADGE_ICON} active={hasOldName} onClick={() => onCustomIds(hasOldName ? customIds.filter(x => x !== "oldname") : [...customIds, "oldname"])} />
+            <BadgeBtn label="Originally Known As" icon={OLD_NAME_BADGE_ICON} active={hasOldName} onClick={() => onCustomIds(hasOldName ? customIds.filter(x => x !== "oldname") : [...customIds, "oldname"])} />
         </div>
-        {hasOldName && <div className="cp-field" style={{ marginTop: 6 }}><div className="cp-section-label">Old username displayed in tooltip</div><input className="cp-input" value={oldName} placeholder="OldUser#0000" onChange={e => onOldName(e.target.value)} /></div>}
+        {hasOldName && <div className="cp-field" style={{ marginTop: 6 }}><div className="cp-section-label">Previous username displayed in tooltip</div><input className="cp-input" value={oldName} placeholder="OldUser#0000" onChange={e => onOldName(e.target.value)} /></div>}
         <div className="cp-section-label" style={{ marginTop: 8 }}>Boost Badge (Server Booster)</div>
         <div className="cp-badges">
             <BadgeBtn label="None" active={boostLevel === -1} onClick={() => onBoostLevel(-1)} />
@@ -594,9 +618,9 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                 </div>
             </div>
             <Field label="Account creation date" value={data.createdAt ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("createdAt", v)} />
-            <Field label="Signup date (shown in profile)" value={data.signupDate ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("signupDate", v)} />
+            <Field label="Joined since date" value={data.signupDate ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("signupDate", v)} />
             <div className="cp-divider" />
-            <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); if (v >= 1) set("nitro", true); }} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
+            <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
             <div className="cp-divider" />
             <div className="cp-section-label">Avatar decoration</div>
             <div className="cp-badges" style={{ flexWrap: "wrap", gap: 6 }}>
@@ -673,12 +697,12 @@ export default definePlugin({
         }
         if (storedData.nitro) {
             clone.premiumType = 2;
-            const LEVEL_MONTHS = [1, 2, 3, 6, 12, 24, 36, 72];
-            const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[storedData.nitroLevel!] ?? 1)); clone.premiumSince = since;
-            const bm = storedData.boostMonths ?? -1;
-            if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const boostSince = new Date(); boostSince.setMonth(boostSince.getMonth() - (BOOST_M[bm] ?? 1)); clone.premiumGuildSince = boostSince; }
-            else clone.premiumGuildSince = null;
-        } else { clone.premiumType = 0; clone.premiumSince = null; clone.premiumGuildSince = null; }
+            const LEVEL_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
+            const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[storedData.nitroLevel!] ?? 0)); clone.premiumSince = since;
+        } else { clone.premiumType = 0; clone.premiumSince = null; }
+        const bm = storedData.boostMonths ?? -1;
+        if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const boostSince = new Date(); boostSince.setMonth(boostSince.getMonth() - (BOOST_M[bm] ?? 1)); clone.premiumGuildSince = boostSince; }
+        else clone.premiumGuildSince = null;
         cachedOriginalUser = user; cachedFakeUser = clone; cachedDataHash = _dataVersion;
         return clone;
     },
@@ -719,14 +743,14 @@ export default definePlugin({
         }
         if (shared.nitro) {
             clone.premiumType = 2;
-            const LEVEL_MONTHS = [1, 2, 3, 6, 12, 24, 36, 72];
-            const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[shared.nitroLevel ?? 0] ?? 1)); clone.premiumSince = since;
-            const bm = shared.boostMonths ?? -1;
-            if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const boostSince = new Date(); boostSince.setMonth(boostSince.getMonth() - (BOOST_M[bm] ?? 1)); clone.premiumGuildSince = boostSince; }
-            else clone.premiumGuildSince = null;
+            const LEVEL_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
+            const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[shared.nitroLevel ?? 0] ?? 0)); clone.premiumSince = since;
         } else {
-            clone.premiumType = 0; clone.premiumSince = null; clone.premiumGuildSince = null;
+            clone.premiumType = 0; clone.premiumSince = null;
         }
+        const bm = shared.boostMonths ?? -1;
+        if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const boostSince = new Date(); boostSince.setMonth(boostSince.getMonth() - (BOOST_M[bm] ?? 1)); clone.premiumGuildSince = boostSince; }
+        else clone.premiumGuildSince = null;
         return clone;
     },
 
@@ -744,12 +768,12 @@ export default definePlugin({
                 merged.premiumType = 2;
                 if (storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
                 const nl = storedData.nitroLevel ?? 0;
-                const LEVEL_MONTHS = [1, 2, 3, 6, 12, 24, 36, 72];
-                const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[nl] ?? 1)); merged.premiumSince = since;
-                const bm = storedData.boostMonths ?? -1;
-                if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const bs = new Date(); bs.setMonth(bs.getMonth() - (BOOST_M[bm] ?? 1)); merged.premiumGuildSince = bs; }
-                else merged.premiumGuildSince = null;
-            } else { merged.premiumType = 0; merged.premiumSince = null; merged.premiumGuildSince = null; }
+                const LEVEL_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
+                const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[nl] ?? 0)); merged.premiumSince = since;
+            } else { merged.premiumType = 0; merged.premiumSince = null; }
+            const bm = storedData.boostMonths ?? -1;
+            if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const bs = new Date(); bs.setMonth(bs.getMonth() - (BOOST_M[bm] ?? 1)); merged.premiumGuildSince = bs; }
+            else merged.premiumGuildSince = null;
             if (shouldReplaceBadges(storedData)) {
                 merged.publicFlags = storedData.badgeFlags != null ? storedData.badgeFlags : 0;
                 merged.flags = merged.publicFlags;
@@ -808,24 +832,24 @@ fakeObfuscatedEmail(real: string | null) {
 
             const style = { borderRadius: "50%", width: "26px", height: "26px" };
             const nl = profileData.nitroLevel ?? -1; const bm = profileData.boostMonths ?? -1;
-            const hasNitroFake = nl >= 0 && nl < NITRO_LEVELS.length; const hasBoostFake = bm >= 0 && bm < BOOST_ICONS.length;
+            const hasNitroFake = !!profileData.nitro && nl >= 0 && nl < NITRO_LEVELS.length; const hasBoostFake = bm >= 0 && bm < BOOST_ICONS.length;
             const f = profileData.badgeFlags ?? 0; const badges: ProfileBadge[] = [];
             if (f & FLAG.STAFF) badges.push({ id: "sp_staff", description: "Discord Staff", iconSrc: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png", position: 0, props: { style } });
-            if (hasNitroFake) badges.push({ id: "sp_nitro", description: "Nitro Subscriber", iconSrc: NITRO_LEVELS[nl].icon, position: 0, props: { style } });
-            if (f & FLAG.PARTNER) badges.push({ id: "sp_partner", description: "Partnered Server Owner", iconSrc: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png", position: 0, props: { style } });
-            if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Discord Certified Moderator", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
+            if (hasNitroFake) badges.push({ id: "sp_nitro", description: NITRO_LEVELS[nl].label, iconSrc: NITRO_LEVELS[nl].icon, position: 0, props: { style } });
+            if (f & FLAG.PARTNER) badges.push({ id: "sp_partner", description: "Partner", iconSrc: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png", position: 0, props: { style } });
+            if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Former Moderator", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
             if (f & FLAG.HYPESQUAD) badges.push({ id: "sp_hypesquad", description: "HypeSquad Events", iconSrc: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png", position: 0, props: { style } });
             if (f & FLAG.BRAVERY) badges.push({ id: "sp_bravery", description: "HypeSquad Bravery", iconSrc: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png", position: 0, props: { style } });
             if (f & FLAG.BRILLIANCE) badges.push({ id: "sp_brilliance", description: "HypeSquad Brilliance", iconSrc: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png", position: 0, props: { style } });
             if (f & FLAG.BALANCE) badges.push({ id: "sp_balance", description: "HypeSquad Balance", iconSrc: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png", position: 0, props: { style } });
-            if (f & FLAG.BUG_HUNTER_1) badges.push({ id: "sp_bh1", description: "Bug Hunter Level 1", iconSrc: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png", position: 0, props: { style } });
-            if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Bug Hunter Level 2", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
-            if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Early Verified Bot Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
+            if (f & FLAG.BUG_HUNTER_1) badges.push({ id: "sp_bh1", description: "Bug Hunter Lvl 1", iconSrc: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png", position: 0, props: { style } });
+            if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Bug Hunter Lvl 2", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
+            if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Verified Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
             if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", position: 0, props: { style } });
             if (hasBoostFake) badges.push({ id: "sp_boost", description: `Server Booster — ${BOOST_LABELS[bm]}`, iconSrc: BOOST_ICONS[bm], position: 0, props: { style } });
-            if (profileData.customBadgeIds?.includes("oldname")) { const desc = profileData.oldName ? `Old username: ${profileData.oldName}` : "Old username"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
-            if (profileData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
+            if (profileData.customBadgeIds?.includes("oldname")) { const desc = profileData.oldName ? `Originally Known As: ${profileData.oldName}` : "Originally Known As"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
+            if (profileData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a Quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
             if (profileData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs — Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
             return badges;
         }
