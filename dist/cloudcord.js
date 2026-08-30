@@ -9046,7 +9046,44 @@
       ]
     });
   }
-  function ColorPickerRow({ label, value, onSelect }) {
+  function hslToHex(hue, saturation, lightness) {
+    var s = saturation / 100;
+    var l = lightness / 100;
+    var chroma4 = (1 - Math.abs(2 * l - 1)) * s;
+    var x2 = chroma4 * (1 - Math.abs(hue / 60 % 2 - 1));
+    var match = l - chroma4 / 2;
+    var [r, g2, b3] = hue < 60 ? [
+      chroma4,
+      x2,
+      0
+    ] : hue < 120 ? [
+      x2,
+      chroma4,
+      0
+    ] : hue < 180 ? [
+      0,
+      chroma4,
+      x2
+    ] : hue < 240 ? [
+      0,
+      x2,
+      chroma4
+    ] : hue < 300 ? [
+      x2,
+      0,
+      chroma4
+    ] : [
+      chroma4,
+      0,
+      x2
+    ];
+    return `#${[
+      r,
+      g2,
+      b3
+    ].map((channel) => Math.round((channel + match) * 255).toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+  }
+  function ColorPickerRow({ label, value, onSelect, onOpen }) {
     return /* @__PURE__ */ jsxs(import_react_native16.View, {
       style: {
         gap: 8
@@ -9077,6 +9114,11 @@
             })
           }, color2))
         }),
+        /* @__PURE__ */ jsx(ActionButton, {
+          label: "Open custom color picker",
+          muted: true,
+          onPress: onOpen
+        }),
         /* @__PURE__ */ jsx(import_react_native16.TextInput, {
           value,
           placeholder: "#5865F2",
@@ -9090,6 +9132,95 @@
             borderRadius: 9,
             padding: 12
           }
+        })
+      ]
+    });
+  }
+  function CustomColorPicker({ title, initialColor, onApply }) {
+    var [color2, setColor] = (0, import_react3.useState)(initialColor || "#5865F2");
+    var validColor = colorNumber(color2) != null ? color2 : "#5865F2";
+    return /* @__PURE__ */ jsxs(import_react_native16.ScrollView, {
+      contentContainerStyle: {
+        padding: 16,
+        paddingBottom: 100,
+        gap: 16
+      },
+      keyboardShouldPersistTaps: "handled",
+      children: [
+        /* @__PURE__ */ jsx(Text, {
+          variant: "heading-lg/semibold",
+          color: "text-normal",
+          children: title
+        }),
+        /* @__PURE__ */ jsx(import_react_native16.View, {
+          style: {
+            height: 96,
+            borderRadius: 16,
+            backgroundColor: validColor,
+            borderWidth: 2,
+            borderColor: "rgba(255,255,255,0.35)",
+            alignItems: "center",
+            justifyContent: "center"
+          },
+          children: /* @__PURE__ */ jsx(Text, {
+            variant: "heading-md/bold",
+            style: {
+              color: "#ffffff",
+              textShadowColor: "#000000",
+              textShadowRadius: 4
+            },
+            children: validColor.toUpperCase()
+          })
+        }),
+        /* @__PURE__ */ jsx(import_react_native16.View, {
+          style: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 5
+          },
+          children: CUSTOM_COLOR_GRID.map((entry, index) => /* @__PURE__ */ jsx(import_react_native16.Pressable, {
+            onPress: () => setColor(entry),
+            style: ({ pressed }) => ({
+              width: 31,
+              height: 31,
+              borderRadius: 6,
+              backgroundColor: entry,
+              borderWidth: validColor.toUpperCase() === entry ? 3 : 0,
+              borderColor: "#ffffff",
+              opacity: pressed ? 0.6 : 1
+            })
+          }, `${entry}-${index}`))
+        }),
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
+          style: {
+            gap: 8
+          },
+          children: [
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/bold",
+              color: "text-normal",
+              children: "Exact hex color"
+            }),
+            /* @__PURE__ */ jsx(import_react_native16.TextInput, {
+              value: color2,
+              placeholder: "#5865F2",
+              placeholderTextColor: "#777",
+              autoCapitalize: "characters",
+              autoCorrect: false,
+              maxLength: 7,
+              onChangeText: setColor,
+              style: {
+                color: "#fff",
+                backgroundColor: "#1f2023",
+                borderRadius: 9,
+                padding: 12
+              }
+            })
+          ]
+        }),
+        /* @__PURE__ */ jsx(ActionButton, {
+          label: "Apply color",
+          onPress: () => colorNumber(color2) != null && onApply(color2.toUpperCase())
         })
       ]
     });
@@ -9645,12 +9776,34 @@
                 /* @__PURE__ */ jsx(ColorPickerRow, {
                   label: "Primary profile color",
                   value: preview.primaryColor,
-                  onSelect: (value) => update("primaryColor", value, true)
+                  onSelect: (value) => update("primaryColor", value, true),
+                  onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                    title: "Primary Color",
+                    render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
+                      title: "Primary profile color",
+                      initialColor: preview.primaryColor,
+                      onApply: (color2) => {
+                        update("primaryColor", color2, true);
+                        navigation2.goBack();
+                      }
+                    })
+                  })
                 }),
                 /* @__PURE__ */ jsx(ColorPickerRow, {
                   label: "Accent profile color",
                   value: preview.accentColor,
-                  onSelect: (value) => update("accentColor", value, true)
+                  onSelect: (value) => update("accentColor", value, true),
+                  onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                    title: "Accent Color",
+                    render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
+                      title: "Accent profile color",
+                      initialColor: preview.accentColor,
+                      onApply: (color2) => {
+                        update("accentColor", color2, true);
+                        navigation2.goBack();
+                      }
+                    })
+                  })
                 }),
                 /* @__PURE__ */ jsx(MediaEditor, {
                   label: "Profile picture",
@@ -9772,7 +9925,7 @@
       })
     });
   }
-  var import_react3, import_react_native16, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react3, import_react_native16, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS, CUSTOM_COLOR_GRID;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -10051,6 +10204,15 @@
         "#E91E63",
         "#607D8B"
       ];
+      CUSTOM_COLOR_GRID = [
+        25,
+        40,
+        55,
+        70,
+        85
+      ].flatMap((lightness) => Array.from({
+        length: 18
+      }, (_2, index) => hslToHex(index * 20, 100, lightness)));
     }
   });
 
