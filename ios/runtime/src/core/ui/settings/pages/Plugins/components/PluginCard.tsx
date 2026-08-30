@@ -12,7 +12,7 @@ import {
 } from "@metro/common/components";
 import { showSheet } from "@ui/sheets";
 import chroma from "chroma-js";
-import { createContext, useContext, useMemo } from "react";
+import { createContext, useContext, useMemo, useReducer } from "react";
 import { Image, View } from "react-native";
 import { isCorePlugin } from "@lib/addons/plugins";
 
@@ -148,7 +148,7 @@ export default function PluginCard({
   plugin.usePluginState();
 
   
-const [, forceUpdate] = React.useReducer(() => ({}), 0);
+const [, forceUpdate] = useReducer(() => ({}), 0);
 const cardContextValue = useMemo(() => ({ plugin, result }), [plugin, result]);
     const core = isCorePlugin(plugin.id);
 

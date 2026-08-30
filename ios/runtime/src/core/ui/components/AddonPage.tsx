@@ -11,7 +11,7 @@ import { AlertActionButton, AlertModal, Button, FlashList, FloatingActionButton,
 import { ErrorBoundary, Search } from "@ui/components";
 import { isNotNil } from "es-toolkit";
 import fuzzysort from "fuzzysort";
-import { ComponentType, ReactNode, useCallback, useEffect, useMemo } from "react";
+import { ComponentType, ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import { Image, ScrollView, View } from "react-native";
 
 const { showSimpleActionSheet, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet"));
@@ -43,9 +43,9 @@ interface AddonPageProps<T extends object, I = any> {
 }
 
 function InputAlert(props: { label: string, fetchFn: (url: string) => Promise<void>; }) {
-    const [value, setValue] = React.useState("");
-    const [error, setError] = React.useState("");
-    const [isFetching, setIsFetching] = React.useState(false);
+    const [value, setValue] = useState("");
+    const [error, setError] = useState("");
+    const [isFetching, setIsFetching] = useState(false);
 
     function onConfirmWrapper() {
         setIsFetching(true);
@@ -110,8 +110,8 @@ function InputAlert(props: { label: string, fetchFn: (url: string) => Promise<vo
 }
 
 export default function AddonPage<T extends object>({ CardComponent, ...props }: AddonPageProps<T>) {
-    const [search, setSearch] = React.useState("");
-    const [sortFn, setSortFn] = React.useState<((a: T, b: T) => number) | null>(() => null);
+    const [search, setSearch] = useState("");
+    const [sortFn, setSortFn] = useState<((a: T, b: T) => number) | null>(() => null);
     const { bottom: bottomInset } = useSafeAreaInsets();
     const navigation = NavigationNative.useNavigation();
 

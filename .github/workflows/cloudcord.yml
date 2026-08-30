@@ -245,7 +245,7 @@ jobs:
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByNameLazy, findByProps, findByStoreName } from "@metro";
           import { FluxDispatcher } from "@metro/common";
-          import { Card, Stack, Text } from "@metro/common/components";
+          import { Card, Text } from "@metro/common/components";
           import { useEffect, useReducer } from "react";
           import { Alert, Image, NativeModules, Pressable, ScrollView, TextInput, View } from "react-native";
 
@@ -1295,7 +1295,7 @@ jobs:
 
               return (
                   <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator>
-                      <Stack spacing={16} style={{ width: "100%" }}>
+                      <View style={{ width: "100%", gap: 16 }}>
                           <View style={{ width: "100%", flexDirection: "row", alignItems: "center", gap: 12 }}>
                               <View style={{ width: 52, height: 52, alignItems: "center", justifyContent: "center" }}><Image source={{ uri: FakeProfileIcon }} style={{ width: 48, height: 48, resizeMode: "contain" }} /></View>
                               <View style={{ flex: 1, minWidth: 0 }}>
@@ -1372,7 +1372,7 @@ jobs:
                                   <Text variant="text-xs/medium" color="text-muted">Last action: {diagnostics.last}</Text>
                               </View>
                           </Card>
-                      </Stack>
+                      </View>
                   </ScrollView>
               );
           }
@@ -1683,6 +1683,26 @@ jobs:
               )
 
               plugin_info.write_text(text, encoding="utf-8")
+
+          addon_page = Path("src/core/ui/components/AddonPage.tsx")
+          if addon_page.exists():
+              text = addon_page.read_text(encoding="utf-8", errors="ignore")
+              text = text.replace(
+                  'ComponentType, ReactNode, useCallback, useEffect, useMemo } from "react";',
+                  'ComponentType, ReactNode, useCallback, useEffect, useMemo, useState } from "react";'
+              )
+              text = text.replace('React.useState(', 'useState(')
+              addon_page.write_text(text, encoding="utf-8")
+
+          plugin_card = Path("src/core/ui/settings/pages/Plugins/components/PluginCard.tsx")
+          if plugin_card.exists():
+              text = plugin_card.read_text(encoding="utf-8", errors="ignore")
+              text = text.replace(
+                  'createContext, useContext, useMemo } from "react";',
+                  'createContext, useContext, useMemo, useReducer } from "react";'
+              )
+              text = text.replace('React.useReducer(', 'useReducer(')
+              plugin_card.write_text(text, encoding="utf-8")
 
           vd_plugin_info = Path("src/core/ui/settings/pages/Plugins/sheets/VdPluginInfoActionSheet.tsx")
           if vd_plugin_info.exists():

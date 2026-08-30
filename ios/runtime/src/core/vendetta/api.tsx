@@ -24,7 +24,6 @@ import { createElement, useEffect } from "react";
 import { View } from "react-native";
 
 import { VdPluginManager, VendettaPlugin } from "./plugins";
-import { VdPluginManager, VendettaPlugin } from "./plugins";
 export async function createVdPluginObject(plugin: VendettaPlugin) {
     return {
         ...window.vendetta,
