@@ -9329,10 +9329,13 @@
         profileColorsEnabled: preview.profileColorsEnabled,
         primaryColor: preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null,
         accentColor: preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null,
-        badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0),
-        customBadgeIds: preview.replaceBadges ? [
-          REPLACE_BADGES_SYNC_ID
-        ] : []
+        badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && preview.selectedBadges?.[id] ? flags | flag : flags, 0),
+        customBadgeIds: [
+          ...BADGES.filter(([id, , , , customId]) => customId && preview.selectedBadges?.[id]).map(([, , , , customId]) => customId),
+          ...preview.replaceBadges ? [
+            REPLACE_BADGES_SYNC_ID
+          ] : []
+        ]
       };
     })();
   }
@@ -9389,8 +9392,10 @@
         var selectedBadges = {
           ...preview.selectedBadges || {}
         };
-        for (var [id, , flag] of BADGES)
-          selectedBadges[id] = !!(Number(data.badgeFlags || 0) & flag);
+        var customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
+        for (var [id, , flag, , customId] of BADGES) {
+          selectedBadges[id] = customId ? customBadgeIds.includes(customId) : !!(Number(data.badgeFlags || 0) & flag);
+        }
         rootSettings.fakeProfile = preview = {
           ...preview,
           enabled: true,
@@ -9916,9 +9921,11 @@
             ][Number(data.boostMonths)] || 0;
             addRenderedBadge(ordered, "cloudcord-shared-nitro", `Nitro ${durationLabel(nitroMonths)}`, milestoneIcon(nitroMonths, NITRO_ICONS));
             addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster ${durationLabel(boostMonths)}`, boosterIcon(boostMonths));
-            for (var [, description, flag, icon] of BADGES) {
-              if ((Number(data.badgeFlags || 0) & flag) !== 0)
-                addRenderedBadge(ordered, `cloudcord-shared-${flag}`, description, icon);
+            var customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
+            for (var [id1, description, flag, icon, customId] of BADGES) {
+              var selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
+              if (selected)
+                addRenderedBadge(ordered, `cloudcord-shared-${customId || id1}`, description, icon);
             }
           }
           var existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter((item) => {
@@ -9950,8 +9957,8 @@
         for (var [badgeId, description1, , icon1] of BADGES) {
           if (!preview.selectedBadges?.[badgeId])
             continue;
-          var id1 = `fakeprofile-${badgeId}`;
-          addRenderedBadge(ordered2, id1, description1, icon1);
+          var id2 = `fakeprofile-${badgeId}`;
+          addRenderedBadge(ordered2, id2, description1, icon1);
         }
         result.splice(0, result.length, ...ordered2, ...existing2);
       });
@@ -11694,22 +11701,28 @@
       import_react_native16 = __toESM(require_react_native());
       BADGES = [
         [
-          "bug1",
-          "Bug Hunter 1",
-          8,
-          "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"
+          "staff",
+          "Discord Staff",
+          1,
+          "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png"
         ],
         [
-          "bug2",
-          "Bug Hunter 2",
-          16384,
-          "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"
+          "partner",
+          "Partner",
+          2,
+          "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png"
         ],
         [
           "hypesquad",
           "HypeSquad Events",
           4,
           "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png"
+        ],
+        [
+          "bug1",
+          "Bug Hunter 1",
+          8,
+          "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"
         ],
         [
           "bravery",
@@ -11730,22 +11743,55 @@
           "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png"
         ],
         [
-          "mod",
-          "Former Moderator",
-          262144,
-          "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"
-        ],
-        [
           "early",
           "Early Supporter",
           512,
           "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"
         ],
         [
+          "bug2",
+          "Bug Hunter 2",
+          16384,
+          "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"
+        ],
+        [
           "vdev",
           "Verified Developer",
           131072,
           "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"
+        ],
+        [
+          "mod",
+          "Former Moderator",
+          262144,
+          "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"
+        ],
+        [
+          "active",
+          "Active Developer",
+          4194304,
+          "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png"
+        ],
+        [
+          "oldname",
+          "Originally Known As",
+          0,
+          "https://cdn.discordapp.com/badge-icons/6de6d34650760ba5551a79732e98ed60.png",
+          "oldname"
+        ],
+        [
+          "quest",
+          "Completed a Quest",
+          0,
+          "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png",
+          "quest"
+        ],
+        [
+          "orbs",
+          "Orbs \u2014 Apprentice",
+          0,
+          "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png",
+          "orbs"
         ]
       ];
       CLOUDCORD_OFFICIAL_OWNER_ID = "463515440606609419";
