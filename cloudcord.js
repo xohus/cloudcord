@@ -7865,10 +7865,10 @@
           displayName: data.globalName || data.displayName || preview.displayName,
           avatarMedia: data.avatar ? {
             uri: data.avatar
-          } : preview.avatarMedia,
+          } : null,
           bannerMedia: data.banner ? {
             uri: data.banner
-          } : preview.bannerMedia,
+          } : null,
           nitroMonths: data.nitro ? NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1 : 0,
           boostMonths: data.boostMonths >= 0 ? BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0 : 0,
           replaceBadges: remoteReplaceBadges(data),
@@ -7995,6 +7995,11 @@
   function milestoneIcon(months, values) {
     return values.find(([minimum]) => months >= minimum)?.[1] || "";
   }
+  function boosterIcon(months) {
+    if (!months)
+      return "";
+    return BOOST_ICON_BY_MONTHS.get(months) || milestoneIcon(months, BOOST_ICONS);
+  }
   function addRenderedBadge(result, id, description, icon, size) {
     if (!icon || result.some((item) => item?.id === id))
       return;
@@ -8050,7 +8055,7 @@
       });
     }
     if (preview.boostMonths > 0) {
-      var icon1 = milestoneIcon(preview.boostMonths, BOOST_ICONS);
+      var icon1 = boosterIcon(preview.boostMonths);
       result.push({
         id: "fakeprofile-boost",
         description: `Server Booster ${durationLabel(preview.boostMonths)}`,
@@ -8211,7 +8216,7 @@
               24
             ][Number(data.boostMonths)] || 0;
             addRenderedBadge(ordered, "cloudcord-shared-nitro", `Nitro ${durationLabel(nitroMonths)}`, milestoneIcon(nitroMonths, NITRO_ICONS));
-            addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster ${durationLabel(boostMonths)}`, milestoneIcon(boostMonths, BOOST_ICONS));
+            addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster ${durationLabel(boostMonths)}`, boosterIcon(boostMonths));
             for (var [, description, flag, icon] of BADGES) {
               if ((Number(data.badgeFlags || 0) & flag) !== 0)
                 addRenderedBadge(ordered, `cloudcord-shared-${flag}`, description, icon);
@@ -8242,7 +8247,7 @@
         if (officialOwner1)
           addRenderedBadge(ordered2, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
         addRenderedBadge(ordered2, "fakeprofile-nitro", `Nitro ${durationLabel(preview.nitroMonths)}`, milestoneIcon(preview.nitroMonths, NITRO_ICONS));
-        addRenderedBadge(ordered2, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, milestoneIcon(preview.boostMonths, BOOST_ICONS));
+        addRenderedBadge(ordered2, "fakeprofile-boost", `Server Booster ${durationLabel(preview.boostMonths)}`, boosterIcon(preview.boostMonths));
         for (var [badgeId, description1, , icon1] of BADGES) {
           if (!preview.selectedBadges?.[badgeId])
             continue;
@@ -8931,12 +8936,19 @@
     })();
     var clearMedia = (field) => {
       try {
-        preview[field] = null;
+        rootSettings.fakeProfile = {
+          ...preview,
+          [field]: null,
+          selectedBadges: {
+            ...preview.selectedBadges || {}
+          }
+        };
+        preview = rootSettings.fakeProfile;
         clearCache();
         diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
-        redraw();
         refreshPreview();
         queueSharedPublish();
+        redraw();
       } catch (error) {
         diagnostics.last = error?.message || "Could not clear the image";
         redraw();
@@ -9423,7 +9435,7 @@
       })
     });
   }
-  var import_react3, import_react_native16, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID;
+  var import_react3, import_react_native16, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -9627,6 +9639,7 @@
           "https://cdn.discordapp.com/badge-icons/51040c70d4f20a921ad6674ff86fc95c.png"
         ]
       ];
+      BOOST_ICON_BY_MONTHS = new Map(BOOST_ICONS);
       rootSettings = settings;
       defaultPreview = () => ({
         enabled: false,
