@@ -1306,7 +1306,21 @@ jobs:
               "#00A8FC", "#00D4AA", "#9B59B6", "#E67E22", "#E91E63", "#607D8B"
           ];
 
-          function ColorPickerRow({ label, value, onSelect }: { label: string; value: string; onSelect: (color: string) => void }) {
+          function hslToHex(hue: number, saturation: number, lightness: number) {
+              const s = saturation / 100;
+              const l = lightness / 100;
+              const chroma = (1 - Math.abs(2 * l - 1)) * s;
+              const x = chroma * (1 - Math.abs((hue / 60) % 2 - 1));
+              const match = l - chroma / 2;
+              const [r, g, b] = hue < 60 ? [chroma, x, 0] : hue < 120 ? [x, chroma, 0] : hue < 180 ? [0, chroma, x] : hue < 240 ? [0, x, chroma] : hue < 300 ? [x, 0, chroma] : [chroma, 0, x];
+              return `#${[r, g, b].map(channel => Math.round((channel + match) * 255).toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+          }
+
+          const CUSTOM_COLOR_GRID = [25, 40, 55, 70, 85].flatMap(lightness =>
+              Array.from({ length: 18 }, (_, index) => hslToHex(index * 20, 100, lightness))
+          );
+
+          function ColorPickerRow({ label, value, onSelect, onOpen }: { label: string; value: string; onSelect: (color: string) => void; onOpen: () => void }) {
               return (
                   <View style={{ gap: 8 }}>
                       <Text variant="text-sm/bold" color="text-normal">{label}</Text>
@@ -1315,8 +1329,32 @@ jobs:
                               <Pressable key={color} accessibilityLabel={`${label} ${color}`} onPress={() => onSelect(color)} style={({ pressed }) => ({ width: 34, height: 34, borderRadius: 17, backgroundColor: color, borderWidth: value.toUpperCase() === color ? 3 : 1, borderColor: value.toUpperCase() === color ? "#ffffff" : "rgba(255,255,255,0.25)", opacity: pressed ? 0.65 : 1 })} />
                           ))}
                       </View>
+                      <ActionButton label="Open custom color picker" muted onPress={onOpen} />
                       <TextInput value={value} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} onChangeText={onSelect} style={{ color: "#fff", backgroundColor: value || "#1f2023", borderRadius: 9, padding: 12 }} />
                   </View>
+              );
+          }
+
+          function CustomColorPicker({ title, initialColor, onApply }: { title: string; initialColor: string; onApply: (color: string) => void }) {
+              const [color, setColor] = useState(initialColor || "#5865F2");
+              const validColor = colorNumber(color) != null ? color : "#5865F2";
+              return (
+                  <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 16 }} keyboardShouldPersistTaps="handled">
+                      <Text variant="heading-lg/semibold" color="text-normal">{title}</Text>
+                      <View style={{ height: 96, borderRadius: 16, backgroundColor: validColor, borderWidth: 2, borderColor: "rgba(255,255,255,0.35)", alignItems: "center", justifyContent: "center" }}>
+                          <Text variant="heading-md/bold" style={{ color: "#ffffff", textShadowColor: "#000000", textShadowRadius: 4 }}>{validColor.toUpperCase()}</Text>
+                      </View>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 5 }}>
+                          {CUSTOM_COLOR_GRID.map((entry, index) => (
+                              <Pressable key={`${entry}-${index}`} onPress={() => setColor(entry)} style={({ pressed }) => ({ width: 31, height: 31, borderRadius: 6, backgroundColor: entry, borderWidth: validColor.toUpperCase() === entry ? 3 : 0, borderColor: "#ffffff", opacity: pressed ? 0.6 : 1 })} />
+                          ))}
+                      </View>
+                      <View style={{ gap: 8 }}>
+                          <Text variant="text-sm/bold" color="text-normal">Exact hex color</Text>
+                          <TextInput value={color} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} maxLength={7} onChangeText={setColor} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                      </View>
+                      <ActionButton label="Apply color" onPress={() => colorNumber(color) != null && onApply(color.toUpperCase())} />
+                  </ScrollView>
               );
           }
 
@@ -1499,8 +1537,8 @@ jobs:
                                       <TextInput value={preview.avatarDecoration} placeholder="https://..." placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("avatarDecoration", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   {preview.avatarDecoration ? <ActionButton label="Clear decoration" muted onPress={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} /> : null}
-                                  <ColorPickerRow label="Primary profile color" value={preview.primaryColor} onSelect={value => update("primaryColor", value, true)} />
-                                  <ColorPickerRow label="Accent profile color" value={preview.accentColor} onSelect={value => update("accentColor", value, true)} />
+                                  <ColorPickerRow label="Primary profile color" value={preview.primaryColor} onSelect={value => update("primaryColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Primary Color", render: () => <CustomColorPicker title="Primary profile color" initialColor={preview.primaryColor} onApply={color => { update("primaryColor", color, true); navigation.goBack(); }} /> })} />
+                                  <ColorPickerRow label="Accent profile color" value={preview.accentColor} onSelect={value => update("accentColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Accent Color", render: () => <CustomColorPicker title="Accent profile color" initialColor={preview.accentColor} onApply={color => { update("accentColor", color, true); navigation.goBack(); }} /> })} />
                                   <MediaEditor label="Profile picture" field="avatarMedia" />
                                   <MediaEditor label="Banner" field="bannerMedia" banner />
                                   <ActionButton label="Apply preview" onPress={() => { diagnostics.last = "Preview refreshed"; refreshPreview(); redraw(); }} />
