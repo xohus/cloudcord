@@ -247,9 +247,9 @@ jobs:
           import { settings } from "@lib/api/settings";
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByNameLazy, findByProps, findByStoreName } from "@metro";
-          import { FluxDispatcher } from "@metro/common";
+          import { FluxDispatcher, NavigationNative } from "@metro/common";
           import { Card, Text } from "@metro/common/components";
-          import { useEffect, useReducer } from "react";
+          import { useEffect, useReducer, useState } from "react";
           import { Alert, Image, NativeModules, Pressable, ScrollView, TextInput, View } from "react-native";
 
           type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
@@ -262,6 +262,7 @@ jobs:
               nitroMonths: number;
               boostMonths: number;
               avatarDecoration: string;
+              avatarDecorationSku: string;
               primaryColor: string;
               accentColor: string;
               replaceBadges: boolean;
@@ -330,6 +331,7 @@ jobs:
               nitroMonths: 0,
               boostMonths: 0,
               avatarDecoration: "",
+              avatarDecorationSku: "",
               primaryColor: "#5865F2",
               accentColor: "#EB459E",
               replaceBadges: false,
@@ -487,6 +489,7 @@ jobs:
                   nitroLevel: Math.max(-1, NITRO_DURATIONS.indexOf(preview.nitroMonths) - 1),
                   boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
                   avatarDecoration: preview.avatarDecoration || null,
+                  avatarDecorationSku: preview.avatarDecorationSku || null,
                   primaryColor: colorNumber(preview.primaryColor),
                   accentColor: colorNumber(preview.accentColor),
                   badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0),
@@ -539,6 +542,7 @@ jobs:
                       nitroMonths: data.nitro ? (NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1) : 0,
                       boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
                       avatarDecoration: String(data.avatarDecoration || ""),
+                      avatarDecorationSku: String(data.avatarDecorationSku || ""),
                       primaryColor: colorHex(data.primaryColor, preview.primaryColor),
                       accentColor: colorHex(data.accentColor, preview.accentColor),
                       replaceBadges: remoteReplaceBadges(data),
@@ -570,7 +574,7 @@ jobs:
               if (data.username) setOwnValue(cloned, "username", data.username);
               if (data.globalName) { setOwnValue(cloned, "globalName", data.globalName); setOwnValue(cloned, "displayName", data.globalName); }
               if (data.avatar) { setOwnValue(cloned, "avatarURL", data.avatar); setOwnValue(cloned, "avatarUrl", data.avatar); setOwnValue(cloned, "getAvatarURL", () => data.avatar); }
-              if (data.avatarDecoration) setOwnValue(cloned, "avatarDecorationData", { asset: data.avatarDecoration, skuId: "cloudcord-decoration" });
+              if (data.avatarDecoration) setOwnValue(cloned, "avatarDecorationData", { asset: decorationAsset(data.avatarDecoration), skuId: data.avatarDecorationSku || "cloudcord-decoration" });
               if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
               if (data.accentColor != null) setOwnValue(cloned, "accentColor", Number(data.accentColor));
               if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor || data.accentColor), Number(data.accentColor || data.primaryColor)]);
@@ -653,6 +657,61 @@ jobs:
               return Number.isFinite(number) ? `#${Math.max(0, Math.min(0xffffff, number)).toString(16).padStart(6, "0").toUpperCase()}` : fallback;
           }
 
+          function decorationAsset(value: string) {
+              const raw = String(value || "");
+              if (!/^https?:/i.test(raw)) return raw;
+              try { return decodeURIComponent(new URL(raw).pathname.split("/").pop() || "").replace(/\.png$/i, ""); }
+              catch { return raw; }
+          }
+
+          function decorationUri(asset: string) {
+              const raw = String(asset || "");
+              if (/^(?:https?:|data:)/i.test(raw)) return raw;
+              return `https://cdn.discordapp.com/avatar-decoration-presets/${encodeURIComponent(raw)}.png?size=160&passthrough=true`;
+          }
+
+          function findDecorationCatalog() {
+              const roots: any[] = [];
+              for (const name of ["CollectiblesStore", "CollectiblesShopStore", "AvatarDecorationStore"]) {
+                  const store = safeStore(name);
+                  if (store) roots.push(store);
+              }
+              try {
+                  const module = findByProps("getCollectiblesCategories") as any;
+                  roots.push(module?.getCollectiblesCategories?.(), module);
+              } catch {}
+              try {
+                  const module = findByProps("fetchCollectiblesCategories") as any;
+                  module?.fetchCollectiblesCategories?.();
+                  roots.push(module);
+              } catch {}
+
+              const found = new Map<string, { asset: string; skuId: string; label: string; uri: string }>();
+              const seen = new Set<any>();
+              const visit = (value: any, depth = 0) => {
+                  if (value == null || depth > 7 || seen.has(value)) return;
+                  if (typeof value !== "object") return;
+                  seen.add(value);
+                  const decoration = value.avatarDecoration || value.avatar_decoration || value.decoration || value.avatarDecorationData;
+                  const asset = String(decoration?.asset || value.asset || "");
+                  const looksLikeDecoration = !!decoration || /decoration/i.test(String(value.type || value.productType || value.name || ""));
+                  if (asset && looksLikeDecoration) {
+                      const skuId = String(value.skuId || value.sku_id || value.sku?.id || decoration?.skuId || decoration?.sku_id || "");
+                      const label = String(value.name || value.title || value.label || value.sku?.name || "Discord decoration");
+                      found.set(`${asset}:${skuId}`, { asset, skuId, label, uri: decorationUri(asset) });
+                  }
+                  if (Array.isArray(value)) for (const item of value) visit(item, depth + 1);
+                  else for (const [key, child] of Object.entries(value)) if (!/dispatcher|listeners|actionHandlers/i.test(key)) visit(child, depth + 1);
+              };
+              for (const root of roots) {
+                  visit(root);
+                  for (const getter of ["getCategories", "getProducts", "getItems", "getCollectiblesCategories"]) {
+                      try { visit(root?.[getter]?.()); } catch {}
+                  }
+              }
+              return [...found.values()];
+          }
+
           function boosterIcon(months: number) {
               if (!months) return "";
               return BOOST_ICON_BY_MONTHS.get(months) || milestoneIcon(months, BOOST_ICONS);
@@ -729,7 +788,7 @@ jobs:
               setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
               setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
               setOwnValue(cloned, "hasFlag", (flag: number) => !!(flags & flag));
-              setOwnValue(cloned, "avatarDecorationData", preview.avatarDecoration ? { asset: preview.avatarDecoration, skuId: "cloudcord-decoration" } : null);
+              setOwnValue(cloned, "avatarDecorationData", preview.avatarDecoration ? { asset: decorationAsset(preview.avatarDecoration), skuId: preview.avatarDecorationSku || "cloudcord-decoration" } : null);
               if (primaryColor != null) setOwnValue(cloned, "primaryColor", primaryColor);
               if (accentColor != null) setOwnValue(cloned, "accentColor", accentColor);
               if (primaryColor != null || accentColor != null) setOwnValue(cloned, "themeColors", [primaryColor ?? accentColor, accentColor ?? primaryColor]);
@@ -1241,9 +1300,57 @@ jobs:
               );
           }
 
+          const PROFILE_COLORS = [
+              "#5865F2", "#4752C4", "#57F287", "#FEE75C", "#EB459E", "#ED4245",
+              "#FFFFFF", "#B5BAC1", "#80848E", "#2B2D31", "#1E1F22", "#000000",
+              "#00A8FC", "#00D4AA", "#9B59B6", "#E67E22", "#E91E63", "#607D8B"
+          ];
+
+          function ColorPickerRow({ label, value, onSelect }: { label: string; value: string; onSelect: (color: string) => void }) {
+              return (
+                  <View style={{ gap: 8 }}>
+                      <Text variant="text-sm/bold" color="text-normal">{label}</Text>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 9 }}>
+                          {PROFILE_COLORS.map(color => (
+                              <Pressable key={color} accessibilityLabel={`${label} ${color}`} onPress={() => onSelect(color)} style={({ pressed }) => ({ width: 34, height: 34, borderRadius: 17, backgroundColor: color, borderWidth: value.toUpperCase() === color ? 3 : 1, borderColor: value.toUpperCase() === color ? "#ffffff" : "rgba(255,255,255,0.25)", opacity: pressed ? 0.65 : 1 })} />
+                          ))}
+                      </View>
+                      <TextInput value={value} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} onChangeText={onSelect} style={{ color: "#fff", backgroundColor: value || "#1f2023", borderRadius: 9, padding: 12 }} />
+                  </View>
+              );
+          }
+
+          function DecorationGallery({ onSelect }: { onSelect: (item: { asset: string; skuId: string; uri: string }) => void }) {
+              const [items, setItems] = useState(() => findDecorationCatalog());
+              useEffect(() => {
+                  const timer = setTimeout(() => setItems(findDecorationCatalog()), 900);
+                  return () => clearTimeout(timer);
+              }, []);
+              return (
+                  <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 100 }}>
+                      {items.length ? (
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
+                              {items.map(item => (
+                                  <Pressable key={`${item.asset}:${item.skuId}`} onPress={() => onSelect(item)} style={({ pressed }) => ({ width: "31%", minWidth: 96, padding: 8, borderRadius: 12, alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.05)", opacity: pressed ? 0.65 : 1 })}>
+                                      <Image source={{ uri: item.uri }} style={{ width: 78, height: 78 }} />
+                                      <Text variant="text-xs/medium" color="text-normal" numberOfLines={2} style={{ textAlign: "center" }}>{item.label}</Text>
+                                  </Pressable>
+                              ))}
+                          </View>
+                      ) : (
+                          <View style={{ padding: 24, gap: 8, alignItems: "center" }}>
+                              <Text variant="heading-md/semibold" color="text-normal">No decorations loaded</Text>
+                              <Text variant="text-sm/medium" color="text-muted" style={{ textAlign: "center" }}>Open Discord's Shop once, then return here to load its decoration catalog.</Text>
+                          </View>
+                      )}
+                  </ScrollView>
+              );
+          }
+
           export default function FakeProfile() {
               useProxy(settings);
               const [, redraw] = useReducer(value => value + 1, 0);
+              const navigation = NavigationNative.useNavigation();
 
               useEffect(() => {
                   initializeFakeProfile();
@@ -1386,18 +1493,14 @@ jobs:
                                   </View>
                                   <DurationSelect label="Nitro duration" value={preview.nitroMonths} onPress={() => chooseDuration("nitroMonths", "Choose Nitro duration", NITRO_DURATIONS)} />
                                   <DurationSelect label="Server booster duration" value={preview.boostMonths} onPress={() => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)} />
+                                  <ActionButton label="Browse Discord decorations" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Avatar Decorations", render: () => <DecorationGallery onSelect={item => { update("avatarDecoration", item.uri, true); update("avatarDecorationSku", item.skuId, true); navigation.goBack(); }} /> })} />
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Avatar decoration URL</Text>
-                                      <TextInput defaultValue={preview.avatarDecoration} placeholder="https://..." placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("avatarDecoration", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                      <TextInput value={preview.avatarDecoration} placeholder="https://..." placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("avatarDecoration", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
                                   </View>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Primary profile color</Text>
-                                      <TextInput defaultValue={preview.primaryColor} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} onChangeText={value => update("primaryColor", value, true)} style={{ color: "#fff", backgroundColor: preview.primaryColor || "#1f2023", borderRadius: 9, padding: 12 }} />
-                                  </View>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Accent profile color</Text>
-                                      <TextInput defaultValue={preview.accentColor} placeholder="#EB459E" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} onChangeText={value => update("accentColor", value, true)} style={{ color: "#fff", backgroundColor: preview.accentColor || "#1f2023", borderRadius: 9, padding: 12 }} />
-                                  </View>
+                                  {preview.avatarDecoration ? <ActionButton label="Clear decoration" muted onPress={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} /> : null}
+                                  <ColorPickerRow label="Primary profile color" value={preview.primaryColor} onSelect={value => update("primaryColor", value, true)} />
+                                  <ColorPickerRow label="Accent profile color" value={preview.accentColor} onSelect={value => update("accentColor", value, true)} />
                                   <MediaEditor label="Profile picture" field="avatarMedia" />
                                   <MediaEditor label="Banner" field="bannerMedia" banner />
                                   <ActionButton label="Apply preview" onPress={() => { diagnostics.last = "Preview refreshed"; refreshPreview(); redraw(); }} />
