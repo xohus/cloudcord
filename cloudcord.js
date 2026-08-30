@@ -7796,6 +7796,9 @@
         nitro: preview.nitroMonths > 0,
         nitroLevel: Math.max(-1, NITRO_DURATIONS.indexOf(preview.nitroMonths) - 1),
         boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
+        avatarDecoration: preview.avatarDecoration || null,
+        primaryColor: colorNumber(preview.primaryColor),
+        accentColor: colorNumber(preview.accentColor),
         badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0),
         customBadgeIds: preview.replaceBadges ? [
           REPLACE_BADGES_SYNC_ID
@@ -7871,6 +7874,9 @@
           } : null,
           nitroMonths: data.nitro ? NITRO_DURATIONS[Number(data.nitroLevel) + 1] || 1 : 0,
           boostMonths: data.boostMonths >= 0 ? BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0 : 0,
+          avatarDecoration: String(data.avatarDecoration || ""),
+          primaryColor: colorHex(data.primaryColor, preview.primaryColor),
+          accentColor: colorHex(data.accentColor, preview.accentColor),
           replaceBadges: remoteReplaceBadges(data),
           selectedBadges
         };
@@ -7911,6 +7917,20 @@
       setOwnValue(cloned, "avatarUrl", data.avatar);
       setOwnValue(cloned, "getAvatarURL", () => data.avatar);
     }
+    if (data.avatarDecoration)
+      setOwnValue(cloned, "avatarDecorationData", {
+        asset: data.avatarDecoration,
+        skuId: "cloudcord-decoration"
+      });
+    if (data.primaryColor != null)
+      setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
+    if (data.accentColor != null)
+      setOwnValue(cloned, "accentColor", Number(data.accentColor));
+    if (data.primaryColor != null || data.accentColor != null)
+      setOwnValue(cloned, "themeColors", [
+        Number(data.primaryColor || data.accentColor),
+        Number(data.accentColor || data.primaryColor)
+      ]);
     if (data.banner) {
       setOwnValue(cloned, "banner", data.banner);
       setOwnValue(cloned, "bannerURL", data.banner);
@@ -7944,6 +7964,13 @@
       setOwnValue(cloned, "bio", data.bio);
     if (data.accentColor != null)
       setOwnValue(cloned, "accentColor", data.accentColor);
+    if (data.primaryColor != null)
+      setOwnValue(cloned, "primaryColor", data.primaryColor);
+    if (data.primaryColor != null || data.accentColor != null)
+      setOwnValue(cloned, "themeColors", [
+        Number(data.primaryColor || data.accentColor),
+        Number(data.accentColor || data.primaryColor)
+      ]);
     setOwnValue(cloned, "userId", userId);
     return cloned;
   }
@@ -7994,6 +8021,14 @@
   }
   function milestoneIcon(months, values) {
     return values.find(([minimum]) => months >= minimum)?.[1] || "";
+  }
+  function colorNumber(value) {
+    var normalized = String(value || "").trim().replace(/^#/, "");
+    return /^[0-9a-f]{6}$/i.test(normalized) ? Number.parseInt(normalized, 16) : null;
+  }
+  function colorHex(value, fallback) {
+    var number = Number(value);
+    return Number.isFinite(number) ? `#${Math.max(0, Math.min(16777215, number)).toString(16).padStart(6, "0").toUpperCase()}` : fallback;
   }
   function boosterIcon(months) {
     if (!months)
@@ -8112,6 +8147,8 @@
     var username = preview.username || original.username;
     var avatar = mediaUri("avatarMedia");
     var banner = mediaUri("bannerMedia");
+    var primaryColor = colorNumber(preview.primaryColor);
+    var accentColor = colorNumber(preview.accentColor);
     var selectedFlags = 0;
     for (var [id, , flag] of BADGES)
       if (preview.selectedBadges?.[id])
@@ -8125,6 +8162,19 @@
     setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
     setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
     setOwnValue(cloned, "hasFlag", (flag2) => !!(flags & flag2));
+    setOwnValue(cloned, "avatarDecorationData", preview.avatarDecoration ? {
+      asset: preview.avatarDecoration,
+      skuId: "cloudcord-decoration"
+    } : null);
+    if (primaryColor != null)
+      setOwnValue(cloned, "primaryColor", primaryColor);
+    if (accentColor != null)
+      setOwnValue(cloned, "accentColor", accentColor);
+    if (primaryColor != null || accentColor != null)
+      setOwnValue(cloned, "themeColors", [
+        primaryColor ?? accentColor,
+        accentColor ?? primaryColor
+      ]);
     if (preview.nitroMonths > 0) {
       setOwnValue(cloned, "premiumType", 2);
       setOwnValue(cloned, "premiumSince", monthsAgo(preview.nitroMonths));
@@ -9179,7 +9229,7 @@
                 }) : /* @__PURE__ */ jsx(import_react_native16.View, {
                   style: {
                     height: 118,
-                    backgroundColor: "#5865f2"
+                    backgroundColor: preview.primaryColor || "#5865f2"
                   }
                 }),
                 /* @__PURE__ */ jsxs(import_react_native16.View, {
@@ -9188,28 +9238,48 @@
                     paddingBottom: 16
                   },
                   children: [
-                    avatar ? /* @__PURE__ */ jsx(import_react_native16.Image, {
-                      source: {
-                        uri: avatar
+                    /* @__PURE__ */ jsxs(import_react_native16.View, {
+                      style: {
+                        width: 94,
+                        height: 94,
+                        marginTop: -47,
+                        alignItems: "center",
+                        justifyContent: "center"
                       },
-                      style: {
-                        width: 82,
-                        height: 82,
-                        borderRadius: 41,
-                        marginTop: -41,
-                        borderWidth: 5,
-                        borderColor: "#1f2023"
-                      }
-                    }) : /* @__PURE__ */ jsx(import_react_native16.View, {
-                      style: {
-                        width: 82,
-                        height: 82,
-                        borderRadius: 41,
-                        marginTop: -41,
-                        borderWidth: 5,
-                        borderColor: "#1f2023",
-                        backgroundColor: "#777"
-                      }
+                      children: [
+                        avatar ? /* @__PURE__ */ jsx(import_react_native16.Image, {
+                          source: {
+                            uri: avatar
+                          },
+                          style: {
+                            width: 82,
+                            height: 82,
+                            borderRadius: 41,
+                            borderWidth: 5,
+                            borderColor: "#1f2023"
+                          }
+                        }) : /* @__PURE__ */ jsx(import_react_native16.View, {
+                          style: {
+                            width: 82,
+                            height: 82,
+                            borderRadius: 41,
+                            borderWidth: 5,
+                            borderColor: "#1f2023",
+                            backgroundColor: "#777"
+                          }
+                        }),
+                        preview.avatarDecoration ? /* @__PURE__ */ jsx(import_react_native16.Image, {
+                          pointerEvents: "none",
+                          source: {
+                            uri: preview.avatarDecoration
+                          },
+                          style: {
+                            position: "absolute",
+                            width: 94,
+                            height: 94
+                          }
+                        }) : null
+                      ]
                     }),
                     /* @__PURE__ */ jsx(Text, {
                       variant: "heading-md/semibold",
@@ -9314,6 +9384,84 @@
                   label: "Server booster duration",
                   value: preview.boostMonths,
                   onPress: () => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)
+                }),
+                /* @__PURE__ */ jsxs(import_react_native16.View, {
+                  style: {
+                    gap: 8
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "Avatar decoration URL"
+                    }),
+                    /* @__PURE__ */ jsx(import_react_native16.TextInput, {
+                      defaultValue: preview.avatarDecoration,
+                      placeholder: "https://...",
+                      placeholderTextColor: "#777",
+                      autoCapitalize: "none",
+                      autoCorrect: false,
+                      onChangeText: (value) => update("avatarDecoration", value, true),
+                      style: {
+                        color: "#fff",
+                        backgroundColor: "#1f2023",
+                        borderRadius: 9,
+                        padding: 12
+                      }
+                    })
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(import_react_native16.View, {
+                  style: {
+                    gap: 8
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "Primary profile color"
+                    }),
+                    /* @__PURE__ */ jsx(import_react_native16.TextInput, {
+                      defaultValue: preview.primaryColor,
+                      placeholder: "#5865F2",
+                      placeholderTextColor: "#777",
+                      autoCapitalize: "characters",
+                      autoCorrect: false,
+                      onChangeText: (value) => update("primaryColor", value, true),
+                      style: {
+                        color: "#fff",
+                        backgroundColor: preview.primaryColor || "#1f2023",
+                        borderRadius: 9,
+                        padding: 12
+                      }
+                    })
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(import_react_native16.View, {
+                  style: {
+                    gap: 8
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "Accent profile color"
+                    }),
+                    /* @__PURE__ */ jsx(import_react_native16.TextInput, {
+                      defaultValue: preview.accentColor,
+                      placeholder: "#EB459E",
+                      placeholderTextColor: "#777",
+                      autoCapitalize: "characters",
+                      autoCorrect: false,
+                      onChangeText: (value) => update("accentColor", value, true),
+                      style: {
+                        color: "#fff",
+                        backgroundColor: preview.accentColor || "#1f2023",
+                        borderRadius: 9,
+                        padding: 12
+                      }
+                    })
+                  ]
                 }),
                 /* @__PURE__ */ jsx(MediaEditor, {
                   label: "Profile picture",
@@ -9538,6 +9686,10 @@
         "premiumType",
         "premiumSince",
         "premiumGuildSince",
+        "avatarDecorationData",
+        "primaryColor",
+        "accentColor",
+        "themeColors",
         "user",
         "userProfile",
         "guildMemberProfile",
@@ -9649,6 +9801,9 @@
         bannerMedia: null,
         nitroMonths: 0,
         boostMonths: 0,
+        avatarDecoration: "",
+        primaryColor: "#5865F2",
+        accentColor: "#EB459E",
         replaceBadges: false,
         selectedBadges: {}
       });
@@ -12218,6 +12373,19 @@
 
   // src/core/ui/settings/components/ScaledPluginSettings.tsx
   function ScaledPluginSettings({ component: Component }) {
+    if (typeof Component !== "function") {
+      return /* @__PURE__ */ jsx(import_react_native21.View, {
+        style: {
+          padding: 16
+        },
+        children: /* @__PURE__ */ jsx(import_react_native21.Text, {
+          style: {
+            color: "#ffffff"
+          },
+          children: "This plugin does not provide a mobile-compatible settings component."
+        })
+      });
+    }
     return /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
       style: {
         flex: 1
@@ -17071,7 +17239,7 @@ Type: ${asset.type}`,
   });
 
   // src/core/vendetta/api.tsx
-  var import_react15, import_react_native38, makeIcon, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react15, import_react_native38, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -17104,7 +17272,10 @@ Type: ${asset.type}`,
       import_react_native38 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
-      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(TableRow, {
+      CompatRow = TableRow ?? Forms.FormRow ?? ReactNative.View;
+      CompatSwitchRow = TableSwitchRow ?? Forms.FormSwitchRow ?? CompatRow;
+      CompatSection = TableRowGroup ?? Forms.FormSection ?? ReactNative.View;
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -17113,9 +17284,9 @@ Type: ${asset.type}`,
         disabled: props.disabled,
         arrow: props.arrow
       });
-      PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow.Icon;
-      PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow.Arrow;
-      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(TableSwitchRow, {
+      PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow?.Icon ?? (() => null);
+      PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow?.Arrow ?? (() => null);
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatSwitchRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -17123,7 +17294,7 @@ Type: ${asset.type}`,
         onValueChange: props.onValueChange,
         disabled: props.disabled
       });
-      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react15.createElement)(TableRowGroup, {
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatSection, {
         title: props.title,
         ...props
       }, props.children);
