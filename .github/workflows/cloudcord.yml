@@ -239,8 +239,13 @@ jobs:
           TSX
 
 
+          # Bundle a decoration catalog so the picker works even when Discord's
+          # internal collectibles stores/API are unavailable on mobile.
+          cp "../ios/assets/cloudcord-decorations.json" "src/assets/cloudcord-decorations.json"
+
           cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'
           import FakeProfileIcon from "@assets/icons/fakeprofile.png";
+          import bundledDecorationCatalog from "@assets/cloudcord-decorations.json";
           import { awaitStorage, useProxy } from "@core/vendetta/storage";
           import { after, instead } from "@lib/api/patcher";
           import { onJsxCreate } from "@lib/api/react/jsx";
@@ -700,6 +705,14 @@ jobs:
               } catch {}
 
               const found = new Map<string, { asset: string; skuId: string; label: string; uri: string }>();
+              for (const item of Array.isArray(bundledDecorationCatalog) ? bundledDecorationCatalog : []) {
+                  if (item?.category !== "decorations" || !item?.url) continue;
+                  const uri = String(item.url);
+                  const asset = decorationAsset(uri);
+                  if (!asset) continue;
+                  const label = String(item.label || item.name || "Discord decoration");
+                  found.set(`${asset}:`, { asset, skuId: "", label, uri });
+              }
               const seen = new Set<any>();
               const visit = (value: any, depth = 0) => {
                   if (value == null || depth > 7 || seen.has(value)) return;
