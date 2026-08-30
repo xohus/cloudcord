@@ -7798,8 +7798,9 @@
         boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
         avatarDecoration: preview.avatarDecoration || null,
         avatarDecorationSku: preview.avatarDecorationSku || null,
-        primaryColor: colorNumber(preview.primaryColor),
-        accentColor: colorNumber(preview.accentColor),
+        profileColorsEnabled: preview.profileColorsEnabled,
+        primaryColor: preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null,
+        accentColor: preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null,
         badgeFlags: BADGES.reduce((flags, [id, , flag]) => preview.selectedBadges?.[id] ? flags | flag : flags, 0),
         customBadgeIds: preview.replaceBadges ? [
           REPLACE_BADGES_SYNC_ID
@@ -7877,6 +7878,7 @@
           boostMonths: data.boostMonths >= 0 ? BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0 : 0,
           avatarDecoration: String(data.avatarDecoration || ""),
           avatarDecorationSku: String(data.avatarDecorationSku || ""),
+          profileColorsEnabled: data.profileColorsEnabled === true || data.primaryColor != null || data.accentColor != null,
           primaryColor: colorHex(data.primaryColor, preview.primaryColor),
           accentColor: colorHex(data.accentColor, preview.accentColor),
           replaceBadges: remoteReplaceBadges(data),
@@ -7924,15 +7926,17 @@
         asset: decorationAsset(data.avatarDecoration),
         skuId: data.avatarDecorationSku || "cloudcord-decoration"
       });
-    if (data.primaryColor != null)
-      setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
-    if (data.accentColor != null)
-      setOwnValue(cloned, "accentColor", Number(data.accentColor));
-    if (data.primaryColor != null || data.accentColor != null)
-      setOwnValue(cloned, "themeColors", [
-        Number(data.primaryColor || data.accentColor),
-        Number(data.accentColor || data.primaryColor)
-      ]);
+    if (data.profileColorsEnabled === true) {
+      if (data.primaryColor != null)
+        setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
+      if (data.accentColor != null)
+        setOwnValue(cloned, "accentColor", Number(data.accentColor));
+      if (data.primaryColor != null || data.accentColor != null)
+        setOwnValue(cloned, "themeColors", [
+          Number(data.primaryColor || data.accentColor),
+          Number(data.accentColor || data.primaryColor)
+        ]);
+    }
     if (data.banner) {
       setOwnValue(cloned, "banner", data.banner);
       setOwnValue(cloned, "bannerURL", data.banner);
@@ -7964,15 +7968,17 @@
     }
     if (data.bio != null)
       setOwnValue(cloned, "bio", data.bio);
-    if (data.accentColor != null)
-      setOwnValue(cloned, "accentColor", data.accentColor);
-    if (data.primaryColor != null)
-      setOwnValue(cloned, "primaryColor", data.primaryColor);
-    if (data.primaryColor != null || data.accentColor != null)
-      setOwnValue(cloned, "themeColors", [
-        Number(data.primaryColor || data.accentColor),
-        Number(data.accentColor || data.primaryColor)
-      ]);
+    if (data.profileColorsEnabled === true) {
+      if (data.accentColor != null)
+        setOwnValue(cloned, "accentColor", data.accentColor);
+      if (data.primaryColor != null)
+        setOwnValue(cloned, "primaryColor", data.primaryColor);
+      if (data.primaryColor != null || data.accentColor != null)
+        setOwnValue(cloned, "themeColors", [
+          Number(data.primaryColor || data.accentColor),
+          Number(data.accentColor || data.primaryColor)
+        ]);
+    }
     setOwnValue(cloned, "userId", userId);
     return cloned;
   }
@@ -8234,8 +8240,8 @@
     var username = preview.username || original.username;
     var avatar = mediaUri("avatarMedia");
     var banner = mediaUri("bannerMedia");
-    var primaryColor = colorNumber(preview.primaryColor);
-    var accentColor = colorNumber(preview.accentColor);
+    var primaryColor = preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null;
+    var accentColor = preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null;
     var selectedFlags = 0;
     for (var [id, , flag] of BADGES)
       if (preview.selectedBadges?.[id])
@@ -9570,7 +9576,7 @@
                 }) : /* @__PURE__ */ jsx(import_react_native16.View, {
                   style: {
                     height: 118,
-                    backgroundColor: preview.primaryColor || "#5865f2"
+                    backgroundColor: preview.profileColorsEnabled ? preview.primaryColor || "#5865f2" : "#5865f2"
                   }
                 }),
                 /* @__PURE__ */ jsxs(import_react_native16.View, {
@@ -9773,38 +9779,48 @@
                     update("avatarDecorationSku", "", true);
                   }
                 }) : null,
-                /* @__PURE__ */ jsx(ColorPickerRow, {
-                  label: "Primary profile color",
-                  value: preview.primaryColor,
-                  onSelect: (value) => update("primaryColor", value, true),
-                  onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                    title: "Primary Color",
-                    render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
-                      title: "Primary profile color",
-                      initialColor: preview.primaryColor,
-                      onApply: (color2) => {
-                        update("primaryColor", color2, true);
-                        navigation2.goBack();
-                      }
-                    })
-                  })
+                /* @__PURE__ */ jsx(ToggleRow, {
+                  label: "Use custom profile colors",
+                  subLabel: "Turn off to use Discord's normal profile colors",
+                  value: preview.profileColorsEnabled,
+                  onPress: () => update("profileColorsEnabled", !preview.profileColorsEnabled, true)
                 }),
-                /* @__PURE__ */ jsx(ColorPickerRow, {
-                  label: "Accent profile color",
-                  value: preview.accentColor,
-                  onSelect: (value) => update("accentColor", value, true),
-                  onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                    title: "Accent Color",
-                    render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
-                      title: "Accent profile color",
-                      initialColor: preview.accentColor,
-                      onApply: (color2) => {
-                        update("accentColor", color2, true);
-                        navigation2.goBack();
-                      }
+                preview.profileColorsEnabled ? /* @__PURE__ */ jsxs(Fragment, {
+                  children: [
+                    /* @__PURE__ */ jsx(ColorPickerRow, {
+                      label: "Primary profile color",
+                      value: preview.primaryColor,
+                      onSelect: (value) => update("primaryColor", value, true),
+                      onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                        title: "Primary Color",
+                        render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
+                          title: "Primary profile color",
+                          initialColor: preview.primaryColor,
+                          onApply: (color2) => {
+                            update("primaryColor", color2, true);
+                            navigation2.goBack();
+                          }
+                        })
+                      })
+                    }),
+                    /* @__PURE__ */ jsx(ColorPickerRow, {
+                      label: "Accent profile color",
+                      value: preview.accentColor,
+                      onSelect: (value) => update("accentColor", value, true),
+                      onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                        title: "Accent Color",
+                        render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
+                          title: "Accent profile color",
+                          initialColor: preview.accentColor,
+                          onApply: (color2) => {
+                            update("accentColor", color2, true);
+                            navigation2.goBack();
+                          }
+                        })
+                      })
                     })
-                  })
-                }),
+                  ]
+                }) : null,
                 /* @__PURE__ */ jsx(MediaEditor, {
                   label: "Profile picture",
                   field: "avatarMedia"
@@ -10145,6 +10161,7 @@
         boostMonths: 0,
         avatarDecoration: "",
         avatarDecorationSku: "",
+        profileColorsEnabled: false,
         primaryColor: "#5865F2",
         accentColor: "#EB459E",
         replaceBadges: false,
