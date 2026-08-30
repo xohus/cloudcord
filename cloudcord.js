@@ -8055,73 +8055,86 @@
     return `https://cdn.discordapp.com/avatar-decoration-presets/${encodeURIComponent(raw)}.png?size=160&passthrough=true`;
   }
   function findDecorationCatalog() {
-    var roots = [];
-    for (var name of [
-      "CollectiblesStore",
-      "CollectiblesShopStore",
-      "AvatarDecorationStore"
-    ]) {
-      var store = safeStore(name);
-      if (store)
-        roots.push(store);
-    }
-    try {
-      var module = findByProps("getCollectiblesCategories");
-      roots.push(module?.getCollectiblesCategories?.(), module);
-    } catch (e) {
-    }
-    try {
-      var module1 = findByProps("fetchCollectiblesCategories");
-      module1?.fetchCollectiblesCategories?.();
-      roots.push(module1);
-    } catch (e) {
-    }
-    var found = /* @__PURE__ */ new Map();
-    var seen = /* @__PURE__ */ new Set();
-    var visit = (value, depth = 0) => {
-      if (value == null || depth > 7 || seen.has(value))
-        return;
-      if (typeof value !== "object")
-        return;
-      seen.add(value);
-      var decoration = value.avatarDecoration || value.avatar_decoration || value.decoration || value.avatarDecorationData;
-      var asset = String(decoration?.asset || value.asset || "");
-      var looksLikeDecoration = !!decoration || /decoration/i.test(String(value.type || value.productType || value.name || ""));
-      if (asset && looksLikeDecoration) {
-        var skuId = String(value.skuId || value.sku_id || value.sku?.id || decoration?.skuId || decoration?.sku_id || "");
-        var label = String(value.name || value.title || value.label || value.sku?.name || "Discord decoration");
-        found.set(`${asset}:${skuId}`, {
-          asset,
-          skuId,
-          label,
-          uri: decorationUri(asset)
-        });
-      }
-      if (Array.isArray(value))
-        for (var item of value)
-          visit(item, depth + 1);
-      else
-        for (var [key, child] of Object.entries(value))
-          if (!/dispatcher|listeners|actionHandlers/i.test(key))
-            visit(child, depth + 1);
-    };
-    for (var root of roots) {
-      visit(root);
-      for (var getter of [
-        "getCategories",
-        "getProducts",
-        "getItems",
-        "getCollectiblesCategories"
+    return _async_to_generator(function* () {
+      var roots = [];
+      for (var name of [
+        "CollectiblesStore",
+        "CollectiblesShopStore",
+        "AvatarDecorationStore"
       ]) {
-        try {
-          visit(root?.[getter]?.());
-        } catch (e) {
+        var store = safeStore(name);
+        if (store)
+          roots.push(store);
+      }
+      try {
+        var module = findByProps("getCollectiblesCategories");
+        roots.push(yield module?.getCollectiblesCategories?.(), module);
+      } catch (e) {
+      }
+      try {
+        var module1 = findByProps("fetchCollectiblesCategories");
+        roots.push(yield module1?.fetchCollectiblesCategories?.(), module1);
+      } catch (e) {
+      }
+      try {
+        var api = findByProps("getAPIBaseURL", "get");
+        var response = yield api?.get?.({
+          url: "/collectibles-categories",
+          oldFormErrors: true
+        });
+        roots.push(response?.body, response);
+      } catch (e) {
+      }
+      var found = /* @__PURE__ */ new Map();
+      var seen = /* @__PURE__ */ new Set();
+      var visit = (value, depth = 0) => {
+        if (value == null || depth > 7 || seen.has(value))
+          return;
+        if (typeof value !== "object")
+          return;
+        seen.add(value);
+        var decoration = value.avatarDecoration || value.avatar_decoration || value.decoration || value.avatarDecorationData;
+        var asset = String(decoration?.asset || value.asset || "");
+        var looksLikeDecoration = !!decoration || /decoration/i.test(String(value.type || value.productType || value.name || ""));
+        if (asset && looksLikeDecoration) {
+          var skuId = String(value.skuId || value.sku_id || value.sku?.id || decoration?.skuId || decoration?.sku_id || "");
+          var label = String(value.name || value.title || value.label || value.sku?.name || "Discord decoration");
+          found.set(`${asset}:${skuId}`, {
+            asset,
+            skuId,
+            label,
+            uri: decorationUri(asset)
+          });
+        }
+        if (value instanceof Map)
+          for (var item of value.values())
+            visit(item, depth + 1);
+        else if (Array.isArray(value))
+          for (var item1 of value)
+            visit(item1, depth + 1);
+        else
+          for (var [key, child] of Object.entries(value))
+            if (!/dispatcher|listeners|actionHandlers/i.test(key))
+              visit(child, depth + 1);
+      };
+      for (var root of roots) {
+        visit(root);
+        for (var getter of [
+          "getCategories",
+          "getProducts",
+          "getItems",
+          "getCollectiblesCategories"
+        ]) {
+          try {
+            visit(root?.[getter]?.());
+          } catch (e) {
+          }
         }
       }
-    }
-    return [
-      ...found.values()
-    ];
+      return [
+        ...found.values()
+      ];
+    })();
   }
   function boosterIcon(months) {
     if (!months)
@@ -9052,12 +9065,12 @@
       ]
     });
   }
-  function hslToHex(hue, saturation, lightness) {
+  function hsvToHex(hue, saturation, brightness) {
     var s = saturation / 100;
-    var l = lightness / 100;
-    var chroma4 = (1 - Math.abs(2 * l - 1)) * s;
+    var v2 = brightness / 100;
+    var chroma4 = v2 * s;
     var x2 = chroma4 * (1 - Math.abs(hue / 60 % 2 - 1));
-    var match = l - chroma4 / 2;
+    var match = v2 - chroma4;
     var [r, g2, b3] = hue < 60 ? [
       chroma4,
       x2,
@@ -9088,6 +9101,23 @@
       g2,
       b3
     ].map((channel) => Math.round((channel + match) * 255).toString(16).padStart(2, "0")).join("").toUpperCase()}`;
+  }
+  function hexToHsv(value) {
+    var number = colorNumber(value) ?? 5793266;
+    var r = (number >> 16 & 255) / 255;
+    var g2 = (number >> 8 & 255) / 255;
+    var b3 = (number & 255) / 255;
+    var max = Math.max(r, g2, b3), min = Math.min(r, g2, b3), delta = max - min;
+    var hue = 0;
+    if (delta)
+      hue = max === r ? 60 * ((g2 - b3) / delta % 6) : max === g2 ? 60 * ((b3 - r) / delta + 2) : 60 * ((r - g2) / delta + 4);
+    if (hue < 0)
+      hue += 360;
+    return {
+      hue,
+      saturation: max ? delta / max * 100 : 0,
+      brightness: max * 100
+    };
   }
   function ColorPickerRow({ label, value, onSelect, onOpen }) {
     return /* @__PURE__ */ jsxs(import_react_native16.View, {
@@ -9143,8 +9173,35 @@
     });
   }
   function CustomColorPicker({ title, initialColor, onApply }) {
-    var [color2, setColor] = (0, import_react3.useState)(initialColor || "#5865F2");
+    var initial = hexToHsv(initialColor);
+    var [hue, setHue] = (0, import_react3.useState)(initial.hue);
+    var [saturation, setSaturation] = (0, import_react3.useState)(initial.saturation);
+    var [brightness, setBrightness] = (0, import_react3.useState)(initial.brightness);
+    var [color2, setColor] = (0, import_react3.useState)(hsvToHex(initial.hue, initial.saturation, initial.brightness));
+    var [squareSize, setSquareSize] = (0, import_react3.useState)({
+      width: 1,
+      height: 1
+    });
+    var [hueWidth, setHueWidth] = (0, import_react3.useState)(1);
     var validColor = colorNumber(color2) != null ? color2 : "#5865F2";
+    var syncHsv = (nextHue, nextSaturation, nextBrightness) => {
+      setHue(nextHue);
+      setSaturation(nextSaturation);
+      setBrightness(nextBrightness);
+      setColor(hsvToHex(nextHue, nextSaturation, nextBrightness));
+    };
+    var pickSquare = (event) => syncHsv(hue, Math.max(0, Math.min(100, event.nativeEvent.locationX / squareSize.width * 100)), Math.max(0, Math.min(100, 100 - event.nativeEvent.locationY / squareSize.height * 100)));
+    var pickHue = (event) => syncHsv(Math.max(0, Math.min(359, event.nativeEvent.locationX / hueWidth * 360)), saturation, brightness);
+    var changeHex = (next) => {
+      setColor(next);
+      if (colorNumber(next) != null) {
+        var hsv = hexToHsv(next);
+        setHue(hsv.hue);
+        setSaturation(hsv.saturation);
+        setBrightness(hsv.brightness);
+      }
+    };
+    var hueColor = hsvToHex(hue, 100, 100);
     return /* @__PURE__ */ jsxs(import_react_native16.ScrollView, {
       contentContainerStyle: {
         padding: 16,
@@ -9178,24 +9235,139 @@
             children: validColor.toUpperCase()
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native16.View, {
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
+          onLayout: (event) => setSquareSize(event.nativeEvent.layout),
+          onStartShouldSetResponder: () => true,
+          onMoveShouldSetResponder: () => true,
+          onResponderGrant: pickSquare,
+          onResponderMove: pickSquare,
           style: {
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 5
+            width: "100%",
+            aspectRatio: 1,
+            maxHeight: 360,
+            borderRadius: 12,
+            overflow: "hidden",
+            backgroundColor: hueColor
           },
-          children: CUSTOM_COLOR_GRID.map((entry, index) => /* @__PURE__ */ jsx(import_react_native16.Pressable, {
-            onPress: () => setColor(entry),
-            style: ({ pressed }) => ({
-              width: 31,
-              height: 31,
-              borderRadius: 6,
-              backgroundColor: entry,
-              borderWidth: validColor.toUpperCase() === entry ? 3 : 0,
-              borderColor: "#ffffff",
-              opacity: pressed ? 0.6 : 1
+          children: [
+            LinearGradient ? /* @__PURE__ */ jsx(LinearGradient, {
+              colors: [
+                "#FFFFFF",
+                hueColor
+              ],
+              start: {
+                x: 0,
+                y: 0
+              },
+              end: {
+                x: 1,
+                y: 0
+              },
+              style: {
+                position: "absolute",
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0
+              }
+            }) : null,
+            LinearGradient ? /* @__PURE__ */ jsx(LinearGradient, {
+              colors: [
+                "transparent",
+                "#000000"
+              ],
+              start: {
+                x: 0,
+                y: 0
+              },
+              end: {
+                x: 0,
+                y: 1
+              },
+              style: {
+                position: "absolute",
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0
+              }
+            }) : null,
+            /* @__PURE__ */ jsx(import_react_native16.View, {
+              pointerEvents: "none",
+              style: {
+                position: "absolute",
+                left: `${saturation}%`,
+                top: `${100 - brightness}%`,
+                width: 22,
+                height: 22,
+                marginLeft: -11,
+                marginTop: -11,
+                borderRadius: 11,
+                borderWidth: 3,
+                borderColor: "#FFFFFF",
+                backgroundColor: "transparent"
+              }
             })
-          }, `${entry}-${index}`))
+          ]
+        }),
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
+          onLayout: (event) => setHueWidth(event.nativeEvent.layout.width),
+          onStartShouldSetResponder: () => true,
+          onMoveShouldSetResponder: () => true,
+          onResponderGrant: pickHue,
+          onResponderMove: pickHue,
+          style: {
+            height: 42,
+            borderRadius: 10,
+            overflow: "hidden"
+          },
+          children: [
+            LinearGradient ? /* @__PURE__ */ jsx(LinearGradient, {
+              colors: [
+                "#FF0000",
+                "#FFFF00",
+                "#00FF00",
+                "#00FFFF",
+                "#0000FF",
+                "#FF00FF",
+                "#FF0000"
+              ],
+              start: {
+                x: 0,
+                y: 0
+              },
+              end: {
+                x: 1,
+                y: 0
+              },
+              style: {
+                position: "absolute",
+                top: 0,
+                right: 0,
+                bottom: 0,
+                left: 0
+              }
+            }) : /* @__PURE__ */ jsx(import_react_native16.View, {
+              style: {
+                flex: 1,
+                backgroundColor: hueColor
+              }
+            }),
+            /* @__PURE__ */ jsx(import_react_native16.View, {
+              pointerEvents: "none",
+              style: {
+                position: "absolute",
+                left: `${hue / 3.6}%`,
+                top: 0,
+                bottom: 0,
+                width: 6,
+                marginLeft: -3,
+                borderWidth: 2,
+                borderColor: "#FFFFFF",
+                borderRadius: 3
+              }
+            })
+          ]
         }),
         /* @__PURE__ */ jsxs(import_react_native16.View, {
           style: {
@@ -9214,7 +9386,7 @@
               autoCapitalize: "characters",
               autoCorrect: false,
               maxLength: 7,
-              onChangeText: setColor,
+              onChangeText: changeHex,
               style: {
                 color: "#fff",
                 backgroundColor: "#1f2023",
@@ -9232,10 +9404,26 @@
     });
   }
   function DecorationGallery({ onSelect }) {
-    var [items, setItems] = (0, import_react3.useState)(() => findDecorationCatalog());
+    var [items, setItems] = (0, import_react3.useState)([]);
+    var [loading, setLoading] = (0, import_react3.useState)(true);
     (0, import_react3.useEffect)(() => {
-      var timer = setTimeout(() => setItems(findDecorationCatalog()), 900);
-      return () => clearTimeout(timer);
+      var active = true;
+      void findDecorationCatalog().then((result) => {
+        if (active) {
+          setItems(result);
+          setLoading(false);
+        }
+      });
+      var timer = setTimeout(() => void findDecorationCatalog().then((result) => {
+        if (active) {
+          setItems(result);
+          setLoading(false);
+        }
+      }), 1200);
+      return () => {
+        active = false;
+        clearTimeout(timer);
+      };
     }, []);
     return /* @__PURE__ */ jsx(import_react_native16.ScrollView, {
       contentContainerStyle: {
@@ -9291,16 +9479,16 @@
           /* @__PURE__ */ jsx(Text, {
             variant: "heading-md/semibold",
             color: "text-normal",
-            children: "No decorations loaded"
+            children: loading ? "Loading decorations..." : "No decorations loaded"
           }),
-          /* @__PURE__ */ jsx(Text, {
+          !loading ? /* @__PURE__ */ jsx(Text, {
             variant: "text-sm/medium",
             color: "text-muted",
             style: {
               textAlign: "center"
             },
-            children: "Open Discord's Shop once, then return here to load its decoration catalog."
-          })
+            children: "Open Discord's Shop once, then return here to refresh its decoration catalog."
+          }) : null
         ]
       })
     });
@@ -9941,7 +10129,7 @@
       })
     });
   }
-  var import_react3, import_react_native16, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS, CUSTOM_COLOR_GRID;
+  var import_react3, import_react_native16, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -10024,6 +10212,7 @@
       useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
       badgeRenderProps = /* @__PURE__ */ new Map();
       simpleSheets = findByProps("showSimpleActionSheet");
+      LinearGradient = findByProps("LinearGradient")?.LinearGradient;
       overriddenKeys = /* @__PURE__ */ new Set([
         "username",
         "globalName",
@@ -10221,15 +10410,6 @@
         "#E91E63",
         "#607D8B"
       ];
-      CUSTOM_COLOR_GRID = [
-        25,
-        40,
-        55,
-        70,
-        85
-      ].flatMap((lightness) => Array.from({
-        length: 18
-      }, (_2, index) => hslToHex(index * 20, 100, lightness)));
     }
   });
 
