@@ -1961,33 +1961,15 @@ jobs:
           membership_gate = Path("src/core/ui/settings/pages/CloudCordVerification/index.tsx")
           membership_gate.parent.mkdir(parents=True, exist_ok=True)
           membership_gate.write_text(r'''import { findByProps } from "@metro";
+          import { AlertActionButton, AlertActions, AlertModal } from "@metro/common/components";
           import { dismissAlert, openAlert } from "@lib/ui/alerts";
-          import { Linking, Modal, Pressable, Text, View } from "react-native";
+          import { Linking } from "react-native";
 
           const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
           const VERIFY_URL = "https://cloudcord.xohus.lol/join";
           let shown = false;
 
-          function LockContent() {
-              return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
-                  <View style={{ width: "100%", maxWidth: 440, padding: 28, borderRadius: 16, borderWidth: 1, borderColor: "#3f4147", backgroundColor: "#1e1f22", alignItems: "center" }}>
-                      <View style={{ width: 52, height: 52, borderRadius: 15, marginBottom: 18, alignItems: "center", justifyContent: "center", backgroundColor: "#5865f2" }}>
-                          <Text style={{ color: "#ffffff", fontSize: 26, fontWeight: "800" }}>C</Text>
-                      </View>
-                      <Text style={{ color: "#f2f3f5", fontSize: 26, fontWeight: "800", marginBottom: 8 }}>Join CloudCord</Text>
-                      <Text style={{ color: "#b5bac1", fontSize: 15, lineHeight: 22, textAlign: "center", marginBottom: 24 }}>Join the official CloudCord server to finish setup and unlock CloudCord.</Text>
-                      <Pressable
-                          accessibilityRole="button"
-                          onPress={() => { void Linking.openURL(VERIFY_URL); shown = false; initializeCloudCordVerification(); }}
-                          style={({ pressed }) => ({ minWidth: 160, paddingVertical: 13, paddingHorizontal: 20, borderRadius: 8, alignItems: "center", backgroundColor: pressed ? "#4752c4" : "#5865f2" })}
-                      >
-                          <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "700" }}>Join Server</Text>
-                      </Pressable>
-                  </View>
-              </View>;
-          }
-
-          export function initializeCloudCordVerification() {
+          export function initializeCloudCordVerification(delay = 6000) {
               setTimeout(async () => {
                   try {
                       const response = await fetch(CONFIG_URL);
@@ -2003,23 +1985,26 @@ jobs:
                       if (shown) return;
                       shown = true;
                       openAlert("cloudcord-membership-verification", (
-                          <Modal
-                              visible
-                              transparent
-                              animationType="fade"
-                              presentationStyle="overFullScreen"
-                              statusBarTranslucent
-                              navigationBarTranslucent
-                              hardwareAccelerated
-                              onRequestClose={() => {}}
-                          >
-                              <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.88)" }}>
-                                  <LockContent />
-                              </View>
-                          </Modal>
+                          <AlertModal
+                              {...({
+                                  dismissible: false,
+                                  dismissable: false,
+                                  closeOnBackdropPress: false,
+                                  shouldDismissOnOverlayPress: false,
+                                  onDismiss: () => { shown = false; initializeCloudCordVerification(0); }
+                              } as any)}
+                              title="Join CloudCord"
+                              content="Join the official CloudCord server to finish setup and unlock CloudCord."
+                              actions={<AlertActions>
+                                  <AlertActionButton text="Join Server" variant="primary" onPress={() => {
+                                      void Linking.openURL(VERIFY_URL);
+                                      initializeCloudCordVerification(3000);
+                                  }} />
+                              </AlertActions>}
+                          />
                       ));
                   } catch {}
-              }, 6000);
+              }, delay);
           }
           ''', encoding="utf-8")
 
