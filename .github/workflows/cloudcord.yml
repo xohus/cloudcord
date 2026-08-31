@@ -1986,7 +1986,7 @@ jobs:
               oauthStartedAt = Date.now();
               const discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
               dismissAlert("cloudcord-membership-verification");
-              await new Promise(resolve => setTimeout(resolve, 250));
+              await new Promise(resolve => setTimeout(resolve, 1000));
               await Linking.openURL(discordUrl);
           }
 
