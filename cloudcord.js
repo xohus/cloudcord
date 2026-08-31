@@ -4446,6 +4446,25 @@
   });
 
   // src/core/ui/settings/pages/CloudCordVerification/index.tsx
+  function beginDiscordAuthorization() {
+    return _async_to_generator(function* () {
+      var response = yield fetch("https://cloudcord.xohus.lol/api/cloudcord/onboarding/start", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          accepted: true,
+          termsVersion: "2026-08-27"
+        })
+      });
+      var result = yield response.json();
+      if (!response.ok || !result?.authorizeUrl)
+        throw new Error(result?.error || "Could not start Discord authorization");
+      var discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
+      yield import_react_native6.Linking.openURL(discordUrl);
+    })();
+  }
   function initializeCloudCordVerification() {
     if (started)
       return;
@@ -4509,14 +4528,24 @@
                 color: "#b5bac1",
                 fontSize: 15,
                 lineHeight: 21,
-                marginBottom: 22,
+                marginBottom: 10,
                 textAlign: "center"
               },
               children: "Join the official CloudCord server to finish setup and unlock CloudCord."
             }),
+            /* @__PURE__ */ jsx(import_react_native6.Text, {
+              style: {
+                color: "#949ba4",
+                fontSize: 12,
+                lineHeight: 17,
+                marginBottom: 22,
+                textAlign: "center"
+              },
+              children: "By continuing, you accept the CloudCord Terms of Service and authorize Discord to add you to the official server."
+            }),
             /* @__PURE__ */ jsx(import_react_native6.Pressable, {
               accessibilityRole: "button",
-              onPress: () => void import_react_native6.Linking.openURL(VERIFY_URL),
+              onPress: () => void beginDiscordAuthorization(),
               style: ({ pressed }) => ({
                 width: "100%",
                 paddingVertical: 13,
@@ -4530,7 +4559,7 @@
                   fontSize: 16,
                   fontWeight: "700"
                 },
-                children: "Join Server"
+                children: "Accept Terms & Continue"
               })
             })
           ]
@@ -4543,7 +4572,7 @@
       setInterval(() => void check(), 1e4);
     }, 6e3);
   }
-  var import_react_native6, CONFIG_URL, VERIFY_URL, started;
+  var import_react_native6, CONFIG_URL, started;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4556,7 +4585,6 @@
       init_alerts();
       import_react_native6 = __toESM(require_react_native());
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
-      VERIFY_URL = "https://cloudcord.xohus.lol/join";
       started = false;
     }
   });
