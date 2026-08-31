@@ -1962,10 +1962,9 @@ jobs:
           membership_gate.parent.mkdir(parents=True, exist_ok=True)
           membership_gate.write_text(r'''import { findByProps } from "@metro";
           import { dismissAlert, openAlert } from "@lib/ui/alerts";
-          import { AppState, Image, Linking, Pressable, Text, View } from "react-native";
+          import { AppState, Linking, Pressable, Text, View } from "react-native";
 
           const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
-          const LOGO_URL = "https://cloudcord.xohus.lol/cloudcord-favicon.png";
           let started = false;
           let requiredGuildId: string | undefined;
           let checkMembership: (() => Promise<void>) | undefined;
@@ -1980,8 +1979,9 @@ jobs:
               if (!response.ok || !result?.authorizeUrl) throw new Error(result?.error || "Could not start Discord authorization");
               const discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
               dismissAlert("cloudcord-membership-verification");
+              await new Promise(resolve => setTimeout(resolve, 250));
               await Linking.openURL(discordUrl);
-              setTimeout(() => void checkMembership?.(), 750);
+              setTimeout(() => void checkMembership?.(), 1500);
           }
 
           export function initializeCloudCordVerification() {
@@ -2003,9 +2003,6 @@ jobs:
                       }
                       openAlert("cloudcord-membership-verification", (
                           <View style={{ width: 330, maxWidth: "90%", padding: 24, borderRadius: 16, borderWidth: 1, borderColor: "#3f4147", backgroundColor: "#1e1f22", alignItems: "center" }}>
-                              <View style={{ width: 48, height: 48, borderRadius: 14, marginBottom: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#5865f2" }}>
-                                  <Image source={{ uri: LOGO_URL }} resizeMode="contain" style={{ width: 38, height: 38 }} />
-                              </View>
                               <Text style={{ color: "#f2f3f5", fontSize: 24, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Join CloudCord</Text>
                               <Text style={{ color: "#b5bac1", fontSize: 15, lineHeight: 21, marginBottom: 10, textAlign: "center" }}>Join the official CloudCord server to finish setup and unlock CloudCord.</Text>
                               <Text style={{ color: "#949ba4", fontSize: 12, lineHeight: 17, marginBottom: 22, textAlign: "center" }}>By continuing, you accept the CloudCord Terms of Service and authorize Discord to add you to the official server.</Text>
