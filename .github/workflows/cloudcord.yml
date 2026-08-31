@@ -1968,6 +1968,7 @@ jobs:
           const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
           const VERIFY_URL = "https://cloudcord.xohus.lol/join";
           let shown = false;
+          let locked = false;
 
           export function initializeCloudCordVerification() {
               setTimeout(async () => {
@@ -1977,12 +1978,19 @@ jobs:
                       const config = await response.json();
                       if (!config?.enabled || !config.guildId) return;
                       const guildStore = findByProps("getGuilds", "getGuild") as any;
-                      if (guildStore?.getGuild?.(String(config.guildId)) || shown) return;
+                      if (guildStore?.getGuild?.(String(config.guildId))) { locked = false; return; }
+                      if (shown) return;
                       shown = true;
                       openAlert("cloudcord-membership-verification", (
                           <AlertModal
-                              title="CloudCord access locked"
-                              content="This account is not in the official CloudCord server. Join and verify with Discord to unlock CloudCord."
+                              {...({
+                                  dismissible: false,
+                                  dismissable: false,
+                                  onDismiss: () => { locked = true; shown = false; initializeCloudCordVerification(); },
+                                  onClose: () => { locked = true; shown = false; initializeCloudCordVerification(); }
+                              } as any)}
+                              title={locked ? "CloudCord access locked" : "Join CloudCord"}
+                              content={locked ? "This account is still not in the official CloudCord server. Use Join Server to unlock CloudCord." : "Join the official CloudCord server to finish setup and unlock CloudCord."}
                               actions={<AlertActions>
                                   <AlertActionButton text="Join Server" variant="primary" onPress={() => {
                                       dismissAlert("cloudcord-membership-verification");

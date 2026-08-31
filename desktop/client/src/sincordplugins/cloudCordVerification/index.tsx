@@ -11,6 +11,8 @@ const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config"
 const VERIFY_URL = "https://cloudcord.xohus.lol/join";
 let startupTimer: ReturnType<typeof setTimeout> | undefined;
 let shown = false;
+let locked = false;
+let authorizing = false;
 
 function showVerification() {
     if (shown) return;
@@ -18,25 +20,32 @@ function showVerification() {
     openModal(props => (
         <ConfirmModal
             {...props}
-            header="CloudCord access locked"
+            header={locked ? "CloudCord access locked" : "Join CloudCord"}
             confirmText="Join Server"
             cancelText="Stay locked"
             onConfirm={() => {
+                authorizing = true;
                 VencordNative.native.openExternal(VERIFY_URL);
                 shown = false;
-                startupTimer = setTimeout(checkMembership, 8000);
+                startupTimer = setTimeout(() => {
+                    authorizing = false;
+                    checkMembership();
+                }, 8000);
             }}
             onCancel={() => {
+                locked = true;
                 shown = false;
-                startupTimer = setTimeout(checkMembership, 300);
+                startupTimer = setTimeout(checkMembership, 0);
             }}
             onClose={() => {
                 props.onClose();
+                if (authorizing) return;
+                locked = true;
                 shown = false;
-                startupTimer = setTimeout(checkMembership, 8000);
+                startupTimer = setTimeout(checkMembership, 0);
             }}
         >
-            <Text>This account is not in the official CloudCord server. Join and verify with Discord to unlock CloudCord.</Text>
+            <Text>{locked ? "This account is still not in the official CloudCord server. Use Join Server to unlock CloudCord." : "Join the official CloudCord server to finish setup and unlock CloudCord."}</Text>
         </ConfirmModal>
     ));
 }
@@ -50,7 +59,10 @@ async function checkMembership() {
 
         // Discord's guild store is authoritative for the currently logged-in
         // account. Existing server members never see the verification screen.
-        if (GuildStore.getGuild(String(config.guildId))) return;
+        if (GuildStore.getGuild(String(config.guildId))) {
+            locked = false;
+            return;
+        }
         showVerification();
     } catch {
         // Do not block Discord startup when the website is temporarily offline.
@@ -71,5 +83,7 @@ export default definePlugin({
         if (startupTimer) clearTimeout(startupTimer);
         startupTimer = undefined;
         shown = false;
+        locked = false;
+        authorizing = false;
     }
 });
