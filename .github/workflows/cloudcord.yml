@@ -1969,6 +1969,25 @@ jobs:
           const BlurView = (findByProps("BlurView") as any)?.BlurView;
           let shown = false;
 
+          function LockContent() {
+              return <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 24 }}>
+                  <View style={{ width: "100%", maxWidth: 440, padding: 28, borderRadius: 16, borderWidth: 1, borderColor: "#3f4147", backgroundColor: "#1e1f22", alignItems: "center" }}>
+                      <View style={{ width: 52, height: 52, borderRadius: 15, marginBottom: 18, alignItems: "center", justifyContent: "center", backgroundColor: "#5865f2" }}>
+                          <Text style={{ color: "#ffffff", fontSize: 26, fontWeight: "800" }}>C</Text>
+                      </View>
+                      <Text style={{ color: "#f2f3f5", fontSize: 26, fontWeight: "800", marginBottom: 8 }}>Join CloudCord</Text>
+                      <Text style={{ color: "#b5bac1", fontSize: 15, lineHeight: 22, textAlign: "center", marginBottom: 24 }}>Join the official CloudCord server to finish setup and unlock CloudCord.</Text>
+                      <Pressable
+                          accessibilityRole="button"
+                          onPress={() => { void Linking.openURL(VERIFY_URL); shown = false; initializeCloudCordVerification(); }}
+                          style={({ pressed }) => ({ minWidth: 160, paddingVertical: 13, paddingHorizontal: 20, borderRadius: 8, alignItems: "center", backgroundColor: pressed ? "#4752c4" : "#5865f2" })}
+                      >
+                          <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "700" }}>Join Server</Text>
+                      </Pressable>
+                  </View>
+              </View>;
+          }
+
           export function initializeCloudCordVerification() {
               setTimeout(async () => {
                   try {
@@ -1995,25 +2014,9 @@ jobs:
                               hardwareAccelerated
                               onRequestClose={() => {}}
                           >
-                              <View style={{ flex: 1, backgroundColor: "transparent", alignItems: "center", justifyContent: "center", padding: 24 }}>
-                                  {BlurView
-                                      ? <BlurView pointerEvents="none" style={{ position: "absolute", zIndex: 0, top: 0, right: 0, bottom: 0, left: 0 }} blurType="dark" blurAmount={22} reducedTransparencyFallbackColor="#111214" />
-                                      : <View pointerEvents="none" style={{ position: "absolute", zIndex: 0, top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(0,0,0,0.72)" }} />}
-                                  <View style={{ zIndex: 10, elevation: 10, width: "100%", maxWidth: 440, padding: 28, borderRadius: 16, borderWidth: 1, borderColor: "#3f4147", backgroundColor: "#1e1f22", alignItems: "center" }}>
-                                      <View style={{ width: 52, height: 52, borderRadius: 15, marginBottom: 18, alignItems: "center", justifyContent: "center", backgroundColor: "#5865f2" }}>
-                                          <Text style={{ color: "#ffffff", fontSize: 26, fontWeight: "800" }}>C</Text>
-                                      </View>
-                                      <Text style={{ color: "#f2f3f5", fontSize: 26, fontWeight: "800", marginBottom: 8 }}>Join CloudCord</Text>
-                                      <Text style={{ color: "#b5bac1", fontSize: 15, lineHeight: 22, textAlign: "center", marginBottom: 24 }}>Join the official CloudCord server to finish setup and unlock CloudCord.</Text>
-                                      <Pressable
-                                          accessibilityRole="button"
-                                          onPress={() => { void Linking.openURL(VERIFY_URL); shown = false; initializeCloudCordVerification(); }}
-                                          style={({ pressed }) => ({ minWidth: 160, paddingVertical: 13, paddingHorizontal: 20, borderRadius: 8, alignItems: "center", backgroundColor: pressed ? "#4752c4" : "#5865f2" })}
-                                      >
-                                          <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "700" }}>Join Server</Text>
-                                      </Pressable>
-                                  </View>
-                              </View>
+                              {BlurView
+                                  ? <BlurView style={{ flex: 1 }} blurType="dark" blurAmount={22} reducedTransparencyFallbackColor="#111214"><LockContent /></BlurView>
+                                  : <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.72)" }}><LockContent /></View>}
                           </Modal>
                       ));
                   } catch {}
