@@ -9488,8 +9488,8 @@
         ]);
     }
     if (data.banner) {
-      setOwnValue(cloned, "banner", data.banner);
       setOwnValue(cloned, "bannerURL", data.banner);
+      setOwnValue(cloned, "bannerUrl", data.banner);
       setOwnValue(cloned, "getBannerURL", () => data.banner);
     }
     if (shouldReplaceSharedBadges(data)) {
@@ -9512,8 +9512,8 @@
     if (cloned.user)
       setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
     if (data.banner) {
-      setOwnValue(cloned, "banner", data.banner);
       setOwnValue(cloned, "bannerURL", data.banner);
+      setOwnValue(cloned, "bannerUrl", data.banner);
       setOwnValue(cloned, "bannerSrc", data.banner);
     }
     if (data.bio != null)
@@ -9890,7 +9890,6 @@
       setOwnValue(cloned, "getAvatarURL", () => avatar);
     }
     if (banner) {
-      setOwnValue(cloned, "banner", banner);
       setOwnValue(cloned, "bannerURL", banner);
       setOwnValue(cloned, "bannerUrl", banner);
       setOwnValue(cloned, "getBannerURL", () => banner);
@@ -10085,6 +10084,8 @@
             };
             props.avatarSrc = data.avatar;
             props.avatarURL = data.avatar;
+            props.resizeMode = "cover";
+            props.contentFit = "cover";
             if (props.user)
               props.user = cloneSharedUser(props.user, data);
             return;
@@ -10100,6 +10101,8 @@
           };
           props.avatarSrc = uri;
           props.avatarURL = uri;
+          props.resizeMode = "cover";
+          props.contentFit = "cover";
           if (props.user)
             props.user = cloneObject(props.user, "user");
         });
@@ -10127,6 +10130,8 @@
             };
             props.bannerSrc = data.banner;
             props.bannerURL = data.banner;
+            props.resizeMode = "cover";
+            props.contentFit = "cover";
             if (props.displayProfile)
               props.displayProfile = decorateSharedProfile(props.displayProfile, id, data);
             if (props.profile)
@@ -10144,6 +10149,8 @@
           };
           props.bannerSrc = uri;
           props.bannerURL = uri;
+          props.resizeMode = "cover";
+          props.contentFit = "cover";
           if (props.displayProfile)
             props.displayProfile = decorateProfileResult(props.displayProfile, id);
           if (props.profile)
