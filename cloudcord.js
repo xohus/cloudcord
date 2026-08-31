@@ -4458,104 +4458,128 @@
         shown = true;
         openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsx(import_react_native6.Modal, {
           visible: true,
+          transparent: true,
           animationType: "fade",
-          presentationStyle: "fullScreen",
+          presentationStyle: "overFullScreen",
           statusBarTranslucent: true,
           navigationBarTranslucent: true,
           hardwareAccelerated: true,
           onRequestClose: () => {
           },
-          children: /* @__PURE__ */ jsx(import_react_native6.View, {
+          children: /* @__PURE__ */ jsxs(import_react_native6.View, {
             style: {
               flex: 1,
-              backgroundColor: "#000000",
+              backgroundColor: "transparent",
               alignItems: "center",
               justifyContent: "center",
               padding: 24
             },
-            children: /* @__PURE__ */ jsxs(import_react_native6.View, {
-              style: {
-                width: "100%",
-                maxWidth: 440,
-                padding: 28,
-                borderRadius: 16,
-                borderWidth: 1,
-                borderColor: "#3f4147",
-                backgroundColor: "#1e1f22",
-                alignItems: "center"
-              },
-              children: [
-                /* @__PURE__ */ jsx(import_react_native6.View, {
-                  style: {
-                    width: 52,
-                    height: 52,
-                    borderRadius: 15,
-                    marginBottom: 18,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: "#5865f2"
-                  },
-                  children: /* @__PURE__ */ jsx(import_react_native6.Text, {
+            children: [
+              BlurView ? /* @__PURE__ */ jsx(BlurView, {
+                style: {
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  left: 0
+                },
+                blurType: "dark",
+                blurAmount: 22,
+                reducedTransparencyFallbackColor: "#111214"
+              }) : /* @__PURE__ */ jsx(import_react_native6.View, {
+                style: {
+                  position: "absolute",
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  left: 0,
+                  backgroundColor: "rgba(0,0,0,0.72)"
+                }
+              }),
+              /* @__PURE__ */ jsxs(import_react_native6.View, {
+                style: {
+                  width: "100%",
+                  maxWidth: 440,
+                  padding: 28,
+                  borderRadius: 16,
+                  borderWidth: 1,
+                  borderColor: "#3f4147",
+                  backgroundColor: "#1e1f22",
+                  alignItems: "center"
+                },
+                children: [
+                  /* @__PURE__ */ jsx(import_react_native6.View, {
                     style: {
-                      color: "#ffffff",
-                      fontSize: 26,
-                      fontWeight: "800"
+                      width: 52,
+                      height: 52,
+                      borderRadius: 15,
+                      marginBottom: 18,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "#5865f2"
                     },
-                    children: "C"
-                  })
-                }),
-                /* @__PURE__ */ jsx(import_react_native6.Text, {
-                  style: {
-                    color: "#f2f3f5",
-                    fontSize: 26,
-                    fontWeight: "800",
-                    marginBottom: 8
-                  },
-                  children: "Join CloudCord"
-                }),
-                /* @__PURE__ */ jsx(import_react_native6.Text, {
-                  style: {
-                    color: "#b5bac1",
-                    fontSize: 15,
-                    lineHeight: 22,
-                    textAlign: "center",
-                    marginBottom: 24
-                  },
-                  children: "Join the official CloudCord server to finish setup and unlock CloudCord."
-                }),
-                /* @__PURE__ */ jsx(import_react_native6.Pressable, {
-                  accessibilityRole: "button",
-                  onPress: () => {
-                    void import_react_native6.Linking.openURL(VERIFY_URL);
-                    shown = false;
-                    initializeCloudCordVerification();
-                  },
-                  style: ({ pressed }) => ({
-                    minWidth: 160,
-                    paddingVertical: 13,
-                    paddingHorizontal: 20,
-                    borderRadius: 8,
-                    alignItems: "center",
-                    backgroundColor: pressed ? "#4752c4" : "#5865f2"
+                    children: /* @__PURE__ */ jsx(import_react_native6.Text, {
+                      style: {
+                        color: "#ffffff",
+                        fontSize: 26,
+                        fontWeight: "800"
+                      },
+                      children: "C"
+                    })
                   }),
-                  children: /* @__PURE__ */ jsx(import_react_native6.Text, {
+                  /* @__PURE__ */ jsx(import_react_native6.Text, {
                     style: {
-                      color: "#ffffff",
-                      fontSize: 16,
-                      fontWeight: "700"
+                      color: "#f2f3f5",
+                      fontSize: 26,
+                      fontWeight: "800",
+                      marginBottom: 8
                     },
-                    children: "Join Server"
+                    children: "Join CloudCord"
+                  }),
+                  /* @__PURE__ */ jsx(import_react_native6.Text, {
+                    style: {
+                      color: "#b5bac1",
+                      fontSize: 15,
+                      lineHeight: 22,
+                      textAlign: "center",
+                      marginBottom: 24
+                    },
+                    children: "Join the official CloudCord server to finish setup and unlock CloudCord."
+                  }),
+                  /* @__PURE__ */ jsx(import_react_native6.Pressable, {
+                    accessibilityRole: "button",
+                    onPress: () => {
+                      void import_react_native6.Linking.openURL(VERIFY_URL);
+                      shown = false;
+                      initializeCloudCordVerification();
+                    },
+                    style: ({ pressed }) => ({
+                      minWidth: 160,
+                      paddingVertical: 13,
+                      paddingHorizontal: 20,
+                      borderRadius: 8,
+                      alignItems: "center",
+                      backgroundColor: pressed ? "#4752c4" : "#5865f2"
+                    }),
+                    children: /* @__PURE__ */ jsx(import_react_native6.Text, {
+                      style: {
+                        color: "#ffffff",
+                        fontSize: 16,
+                        fontWeight: "700"
+                      },
+                      children: "Join Server"
+                    })
                   })
-                })
-              ]
-            })
+                ]
+              })
+            ]
           })
         }));
       } catch (e) {
       }
     })(), 6e3);
   }
-  var import_react_native6, CONFIG_URL, VERIFY_URL, shown;
+  var import_react_native6, CONFIG_URL, VERIFY_URL, BlurView, shown;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4568,6 +4592,7 @@
       import_react_native6 = __toESM(require_react_native());
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
       VERIFY_URL = "https://cloudcord.xohus.lol/join";
+      BlurView = findByProps("BlurView")?.BlurView;
       shown = false;
     }
   });
