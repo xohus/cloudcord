@@ -4471,19 +4471,25 @@
     if (started)
       return;
     started = true;
-    var cleanupAttempts = 0;
-    var cleanup = setInterval(() => {
-      dismissAlert("cloudcord-membership-verification");
-      cleanupAttempts += 1;
-      if (cleanupAttempts >= 60)
-        clearInterval(cleanup);
-    }, 100);
-    return;
     var check = () => _async_to_generator(function* () {
       if (checking)
         return;
       checking = true;
       try {
+        if (!requiredGuildId || Date.now() - lastConfigFetch > 5e3) {
+          var response = yield fetch(CONFIG_URL);
+          if (!response.ok)
+            return;
+          var config = yield response.json();
+          lastConfigFetch = Date.now();
+          oauth2Off = config?.oauth2Off === true;
+          requiredGuildId = config?.enabled && config?.guildId ? String(config.guildId) : void 0;
+        }
+        if (oauth2Off || !requiredGuildId) {
+          gateVisible = false;
+          dismissAlert("cloudcord-membership-verification");
+          return;
+        }
         if (oauthVerified) {
           closeGate();
           return;
@@ -4545,15 +4551,6 @@
           } else {
             return;
           }
-        }
-        if (!requiredGuildId) {
-          var response = yield fetch(CONFIG_URL);
-          if (!response.ok)
-            return;
-          var config = yield response.json();
-          if (!config?.enabled || !config.guildId)
-            return;
-          requiredGuildId = String(config.guildId);
         }
         var guildStore = findByProps("getGuilds", "getGuild");
         if (guildStore?.getGuild?.(requiredGuildId)) {
@@ -4627,6 +4624,7 @@
           ]
         }));
       } catch (e) {
+        closeGate();
       } finally {
         checking = false;
       }
@@ -4641,7 +4639,7 @@
       setInterval(() => void check(), 1e3);
     }, 3e3);
   }
-  var import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership, oauthState, oauthStartedAt, oauthVerified, checking, gateVisible;
+  var import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership, oauthState, oauthStartedAt, oauthVerified, checking, gateVisible, oauth2Off, lastConfigFetch;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4659,6 +4657,8 @@
       oauthVerified = false;
       checking = false;
       gateVisible = false;
+      oauth2Off = false;
+      lastConfigFetch = 0;
     }
   });
 
