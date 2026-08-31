@@ -4462,6 +4462,11 @@
             dismissable: false,
             closeOnBackdropPress: false,
             shouldDismissOnOverlayPress: false,
+            backdropColor: "#000000",
+            backdropOpacity: 1,
+            overlayStyle: {
+              backgroundColor: "#000000"
+            },
             onDismiss: () => {
               shown = false;
               initializeCloudCordVerification();
