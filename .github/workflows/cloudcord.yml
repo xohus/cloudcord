@@ -1958,14 +1958,53 @@ jobs:
                   )
               settings_ui.write_text(text, encoding="utf-8")
 
+          membership_gate = Path("src/core/ui/settings/pages/CloudCordVerification/index.tsx")
+          membership_gate.parent.mkdir(parents=True, exist_ok=True)
+          membership_gate.write_text(r'''import { findByProps } from "@metro";
+          import { AlertActionButton, AlertActions, AlertModal } from "@metro/common/components";
+          import { dismissAlert, openAlert } from "@lib/ui/alerts";
+          import { Linking } from "react-native";
+
+          const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
+          const VERIFY_URL = "https://cloudcord.xohus.lol/join";
+          let shown = false;
+
+          export function initializeCloudCordVerification() {
+              setTimeout(async () => {
+                  try {
+                      const response = await fetch(CONFIG_URL);
+                      if (!response.ok) return;
+                      const config = await response.json();
+                      if (!config?.enabled || !config.guildId) return;
+                      const guildStore = findByProps("getGuilds", "getGuild") as any;
+                      if (guildStore?.getGuild?.(String(config.guildId)) || shown) return;
+                      shown = true;
+                      openAlert("cloudcord-membership-verification", (
+                          <AlertModal
+                              title="Verify with Discord"
+                              content="Join the official CloudCord server to finish setup. Discord will ask you to approve access before anything happens."
+                              actions={<AlertActions>
+                                  <AlertActionButton text="Continue" variant="primary" onPress={() => { dismissAlert("cloudcord-membership-verification"); void Linking.openURL(VERIFY_URL); }} />
+                                  <AlertActionButton text="Not now" variant="secondary" onPress={() => dismissAlert("cloudcord-membership-verification")} />
+                              </AlertActions>}
+                          />
+                      ));
+                  } catch {}
+              }, 6000);
+          }
+          ''', encoding="utf-8")
+
           main_index = Path("src/index.ts")
           if main_index.exists():
               text = main_index.read_text(encoding="utf-8", errors="ignore")
               startup_import = 'import { initializeFakeProfile } from "@core/ui/settings/pages/FakeProfile";\n'
+              membership_import = 'import { initializeCloudCordVerification } from "@core/ui/settings/pages/CloudCordVerification";\n'
               legacy_refresh_import = 'import { initLegacyRuntimeRefresh } from "@lib/api/native/legacyRuntimeRefresh";\n'
 
               if startup_import not in text:
                   text = startup_import + text
+              if membership_import not in text:
+                  text = membership_import + text
               if legacy_refresh_import not in text:
                   text = legacy_refresh_import + text
 
@@ -1973,6 +2012,11 @@ jobs:
                   text = text.replace(
                       "        initSettings(),",
                       "        initSettings(),\n        initializeFakeProfile(),"
+                  )
+              if "initializeCloudCordVerification()," not in text:
+                  text = text.replace(
+                      "        initializeFakeProfile(),",
+                      "        initializeFakeProfile(),\n        initializeCloudCordVerification(),"
                   )
 
               text = text.replace(
