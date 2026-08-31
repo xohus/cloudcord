@@ -4453,11 +4453,12 @@
       var result = yield response.json();
       if (!response.ok || !result?.authorizeUrl)
         throw new Error(result?.error || "Could not start Discord authorization");
+      oauthState = String(result.state);
+      oauthStartedAt = Date.now();
       var discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
       dismissAlert("cloudcord-membership-verification");
       yield new Promise((resolve) => setTimeout(resolve, 250));
       yield import_react_native6.Linking.openURL(discordUrl);
-      setTimeout(() => void checkMembership?.(), 1500);
     })();
   }
   function initializeCloudCordVerification() {
@@ -4465,7 +4466,61 @@
       return;
     started = true;
     var check = () => _async_to_generator(function* () {
+      if (checking)
+        return;
+      checking = true;
       try {
+        if (settings.cloudcordBlacklisted) {
+          openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsxs(import_react_native6.View, {
+            style: {
+              width: 330,
+              maxWidth: "90%",
+              padding: 24,
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: "#3f4147",
+              backgroundColor: "#1e1f22",
+              alignItems: "center"
+            },
+            children: [
+              /* @__PURE__ */ jsx(import_react_native6.Text, {
+                style: {
+                  color: "#f2f3f5",
+                  fontSize: 24,
+                  fontWeight: "800",
+                  marginBottom: 8,
+                  textAlign: "center"
+                },
+                children: "Access Blacklisted"
+              }),
+              /* @__PURE__ */ jsx(import_react_native6.Text, {
+                style: {
+                  color: "#b5bac1",
+                  fontSize: 15,
+                  lineHeight: 21,
+                  textAlign: "center"
+                },
+                children: "Discord authorization was denied, so this device cannot access CloudCord."
+              })
+            ]
+          }));
+          return;
+        }
+        if (oauthState) {
+          var statusResponse = yield fetch(`https://cloudcord.xohus.lol/api/cloudcord/onboarding/status/${encodeURIComponent(oauthState)}`);
+          var status = statusResponse.ok ? yield statusResponse.json() : {
+            status: "expired"
+          };
+          if (status.status === "blacklisted") {
+            settings.cloudcordBlacklisted = true;
+            oauthState = void 0;
+          } else if (status.status === "complete" || status.status === "error" || status.status === "expired" || Date.now() - oauthStartedAt > 6e4) {
+            oauthState = void 0;
+          } else {
+            dismissAlert("cloudcord-membership-verification");
+            return;
+          }
+        }
         if (!requiredGuildId) {
           var response = yield fetch(CONFIG_URL);
           if (!response.ok)
@@ -4544,6 +4599,8 @@
           ]
         }));
       } catch (e) {
+      } finally {
+        checking = false;
       }
     })();
     checkMembership = check;
@@ -4556,7 +4613,7 @@
       setInterval(() => void check(), 1e3);
     }, 3e3);
   }
-  var import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership;
+  var import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership, oauthState, oauthStartedAt, checking;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4565,10 +4622,13 @@
       init_async_to_generator();
       init_jsxRuntime();
       init_metro();
+      init_settings();
       init_alerts();
       import_react_native6 = __toESM(require_react_native());
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
       started = false;
+      oauthStartedAt = 0;
+      checking = false;
     }
   });
 
