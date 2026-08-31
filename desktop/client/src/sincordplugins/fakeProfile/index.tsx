@@ -243,7 +243,12 @@ function decorateSharedProfile(profile: any, data: CustomProfileData) {
     const merged: any = {};
     if (data.bio) merged.bio = data.bio;
     if (data.pronouns) merged.pronouns = data.pronouns;
-    if (data.banner) merged.banner = data.banner;
+    if (data.banner) {
+        merged.bannerURL = data.banner;
+        merged.bannerUrl = data.banner;
+        merged.bannerSrc = data.banner;
+        merged.getBannerURL = () => data.banner;
+    }
     if (data.createdAt) merged.createdAt = new Date(data.createdAt + "T12:00:00Z");
     if (data.signupDate) { merged.joinedAt = new Date(data.signupDate + "T12:00:00Z"); merged.memberSince = merged.joinedAt; }
     if (data.accentColor != null) merged.accentColor = data.accentColor;
@@ -761,7 +766,12 @@ export default definePlugin({
             if (storedData.bio) merged.bio = storedData.bio;
             if (storedData.pronouns) merged.pronouns = storedData.pronouns;
             if (storedData.accentColor != null) merged.accentColor = storedData.accentColor;
-            if (storedData.banner) merged.banner = storedData.banner;
+            if (storedData.banner) {
+                merged.bannerURL = storedData.banner;
+                merged.bannerUrl = storedData.banner;
+                merged.bannerSrc = storedData.banner;
+                merged.getBannerURL = () => storedData.banner;
+            }
             if (storedData.signupDate) { try { merged.joinedAt = new Date(storedData.signupDate + "T12:00:00Z"); } catch { } }
             if (storedData.decorationAsset) { merged.avatarDecoration = null; merged.avatarDecorationData = { asset: storedData.decorationAsset, skuId: storedData.decorationAsset }; }
             if (storedData.nitro) {

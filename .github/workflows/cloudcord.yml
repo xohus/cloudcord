@@ -637,7 +637,7 @@ jobs:
                   if (data.accentColor != null) setOwnValue(cloned, "accentColor", Number(data.accentColor));
                   if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor || data.accentColor), Number(data.accentColor || data.primaryColor)]);
               }
-              if (data.banner) { setOwnValue(cloned, "banner", data.banner); setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "getBannerURL", () => data.banner); }
+              if (data.banner) { setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "bannerUrl", data.banner); setOwnValue(cloned, "getBannerURL", () => data.banner); }
               if (shouldReplaceSharedBadges(data)) {
                   setOwnValue(cloned, "publicFlags", 0);
                   setOwnValue(cloned, "flags", 0);
@@ -655,7 +655,7 @@ jobs:
               if (!original || typeof original !== "object" || !data) return original;
               const cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
               if (cloned.user) setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
-              if (data.banner) { setOwnValue(cloned, "banner", data.banner); setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "bannerSrc", data.banner); }
+              if (data.banner) { setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "bannerUrl", data.banner); setOwnValue(cloned, "bannerSrc", data.banner); }
               if (data.bio != null) setOwnValue(cloned, "bio", data.bio);
               if (data.pronouns != null) setOwnValue(cloned, "pronouns", data.pronouns);
               const createdAt = profileDate(data.createdAt);
@@ -900,7 +900,6 @@ jobs:
                   setOwnValue(cloned, "getAvatarURL", () => avatar);
               }
               if (banner) {
-                  setOwnValue(cloned, "banner", banner);
                   setOwnValue(cloned, "bannerURL", banner);
                   setOwnValue(cloned, "bannerUrl", banner);
                   setOwnValue(cloned, "getBannerURL", () => banner);
@@ -1064,6 +1063,8 @@ jobs:
                               props.avatarSource = { uri: data.avatar };
                               props.avatarSrc = data.avatar;
                               props.avatarURL = data.avatar;
+                              props.resizeMode = "cover";
+                              props.contentFit = "cover";
                               if (props.user) props.user = cloneSharedUser(props.user, data);
                               return;
                           }
@@ -1073,6 +1074,8 @@ jobs:
                           props.avatarSource = { uri };
                           props.avatarSrc = uri;
                           props.avatarURL = uri;
+                          props.resizeMode = "cover";
+                          props.contentFit = "cover";
                           if (props.user) props.user = cloneObject(props.user, "user");
                       });
                       diagnostics.patches += 1;
@@ -1093,6 +1096,8 @@ jobs:
                               props.bannerSource = { uri: data.banner };
                               props.bannerSrc = data.banner;
                               props.bannerURL = data.banner;
+                              props.resizeMode = "cover";
+                              props.contentFit = "cover";
                               if (props.displayProfile) props.displayProfile = decorateSharedProfile(props.displayProfile, id, data);
                               if (props.profile) props.profile = decorateSharedProfile(props.profile, id, data);
                               return;
@@ -1103,6 +1108,8 @@ jobs:
                           props.bannerSource = { uri };
                           props.bannerSrc = uri;
                           props.bannerURL = uri;
+                          props.resizeMode = "cover";
+                          props.contentFit = "cover";
                           if (props.displayProfile) props.displayProfile = decorateProfileResult(props.displayProfile, id);
                           if (props.profile) props.profile = decorateProfileResult(props.profile, id);
                       });
