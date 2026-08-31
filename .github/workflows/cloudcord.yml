@@ -1971,6 +1971,7 @@ jobs:
           let checkMembership: (() => Promise<void>) | undefined;
           let oauthState: string | undefined;
           let oauthStartedAt = 0;
+          let oauthVerified = false;
           let checking = false;
 
           async function beginDiscordAuthorization() {
@@ -1996,6 +1997,10 @@ jobs:
                   if (checking) return;
                   checking = true;
                   try {
+                      if (oauthVerified) {
+                          dismissAlert("cloudcord-membership-verification");
+                          return;
+                      }
                       if ((settings as any).cloudcordBlacklisted) {
                           openAlert("cloudcord-membership-verification", (
                               <View style={{ width: 330, maxWidth: "90%", padding: 24, borderRadius: 16, borderWidth: 1, borderColor: "#3f4147", backgroundColor: "#1e1f22", alignItems: "center" }}>
@@ -2011,10 +2016,14 @@ jobs:
                           if (status.status === "blacklisted") {
                               (settings as any).cloudcordBlacklisted = true;
                               oauthState = undefined;
-                          } else if (status.status === "complete" || status.status === "error" || status.status === "expired" || Date.now() - oauthStartedAt > 60_000) {
+                          } else if (status.status === "complete") {
+                              oauthVerified = true;
+                              oauthState = undefined;
+                              dismissAlert("cloudcord-membership-verification");
+                              return;
+                          } else if (status.status === "error" || status.status === "expired" || Date.now() - oauthStartedAt > 60_000) {
                               oauthState = undefined;
                           } else {
-                              dismissAlert("cloudcord-membership-verification");
                               return;
                           }
                       }
