@@ -1961,9 +1961,8 @@ jobs:
           membership_gate = Path("src/core/ui/settings/pages/CloudCordVerification/index.tsx")
           membership_gate.parent.mkdir(parents=True, exist_ok=True)
           membership_gate.write_text(r'''import { findByProps } from "@metro";
-          import { AlertActionButton, AlertActions, AlertModal } from "@metro/common/components";
           import { dismissAlert, openAlert } from "@lib/ui/alerts";
-          import { Linking } from "react-native";
+          import { Linking, Pressable, Text, View } from "react-native";
 
           const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
           const VERIFY_URL = "https://cloudcord.xohus.lol/join";
@@ -1984,19 +1983,24 @@ jobs:
                           return;
                       }
                       openAlert("cloudcord-membership-verification", (
-                          <AlertModal
-                              title="Join CloudCord"
-                              content="Join the official CloudCord server to finish setup and unlock CloudCord."
-                              actions={<AlertActions>
-                                  <AlertActionButton text="Join Server" variant="primary" onPress={() => {
-                                      void Linking.openURL(VERIFY_URL);
-                                  }} />
-                              </AlertActions>}
-                          />
+                          <View style={{ width: 330, maxWidth: "90%", padding: 24, borderRadius: 16, borderWidth: 1, borderColor: "#3f4147", backgroundColor: "#1e1f22", alignItems: "center" }}>
+                              <View style={{ width: 48, height: 48, borderRadius: 14, marginBottom: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#5865f2" }}>
+                                  <Text style={{ color: "#ffffff", fontSize: 24, fontWeight: "800" }}>C</Text>
+                              </View>
+                              <Text style={{ color: "#f2f3f5", fontSize: 24, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Join CloudCord</Text>
+                              <Text style={{ color: "#b5bac1", fontSize: 15, lineHeight: 21, marginBottom: 22, textAlign: "center" }}>Join the official CloudCord server to finish setup and unlock CloudCord.</Text>
+                              <Pressable
+                                  accessibilityRole="button"
+                                  onPress={() => void Linking.openURL(VERIFY_URL)}
+                                  style={({ pressed }) => ({ width: "100%", paddingVertical: 13, borderRadius: 8, alignItems: "center", backgroundColor: pressed ? "#4752c4" : "#5865f2" })}
+                              >
+                                  <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "700" }}>Join Server</Text>
+                              </Pressable>
+                          </View>
                       ));
                   } catch {}
               };
-              setTimeout(() => { void check(); setInterval(() => void check(), 1000); }, 6000);
+              setTimeout(() => { void check(); setInterval(() => void check(), 10000); }, 6000);
           }
           ''', encoding="utf-8")
 
