@@ -4438,93 +4438,7 @@
   });
 
   // src/core/ui/settings/pages/CloudCordVerification/index.tsx
-  function LockContent() {
-    return /* @__PURE__ */ jsx(import_react_native6.View, {
-      style: {
-        flex: 1,
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 24
-      },
-      children: /* @__PURE__ */ jsxs(import_react_native6.View, {
-        style: {
-          width: "100%",
-          maxWidth: 440,
-          padding: 28,
-          borderRadius: 16,
-          borderWidth: 1,
-          borderColor: "#3f4147",
-          backgroundColor: "#1e1f22",
-          alignItems: "center"
-        },
-        children: [
-          /* @__PURE__ */ jsx(import_react_native6.View, {
-            style: {
-              width: 52,
-              height: 52,
-              borderRadius: 15,
-              marginBottom: 18,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "#5865f2"
-            },
-            children: /* @__PURE__ */ jsx(import_react_native6.Text, {
-              style: {
-                color: "#ffffff",
-                fontSize: 26,
-                fontWeight: "800"
-              },
-              children: "C"
-            })
-          }),
-          /* @__PURE__ */ jsx(import_react_native6.Text, {
-            style: {
-              color: "#f2f3f5",
-              fontSize: 26,
-              fontWeight: "800",
-              marginBottom: 8
-            },
-            children: "Join CloudCord"
-          }),
-          /* @__PURE__ */ jsx(import_react_native6.Text, {
-            style: {
-              color: "#b5bac1",
-              fontSize: 15,
-              lineHeight: 22,
-              textAlign: "center",
-              marginBottom: 24
-            },
-            children: "Join the official CloudCord server to finish setup and unlock CloudCord."
-          }),
-          /* @__PURE__ */ jsx(import_react_native6.Pressable, {
-            accessibilityRole: "button",
-            onPress: () => {
-              void import_react_native6.Linking.openURL(VERIFY_URL);
-              shown = false;
-              initializeCloudCordVerification();
-            },
-            style: ({ pressed }) => ({
-              minWidth: 160,
-              paddingVertical: 13,
-              paddingHorizontal: 20,
-              borderRadius: 8,
-              alignItems: "center",
-              backgroundColor: pressed ? "#4752c4" : "#5865f2"
-            }),
-            children: /* @__PURE__ */ jsx(import_react_native6.Text, {
-              style: {
-                color: "#ffffff",
-                fontSize: 16,
-                fontWeight: "700"
-              },
-              children: "Join Server"
-            })
-          })
-        ]
-      })
-    });
-  }
-  function initializeCloudCordVerification() {
+  function initializeCloudCordVerification(delay = 6e3) {
     setTimeout(() => _async_to_generator(function* () {
       try {
         var response = yield fetch(CONFIG_URL);
@@ -4542,27 +4456,33 @@
         if (shown)
           return;
         shown = true;
-        openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsx(import_react_native6.Modal, {
-          visible: true,
-          transparent: true,
-          animationType: "fade",
-          presentationStyle: "overFullScreen",
-          statusBarTranslucent: true,
-          navigationBarTranslucent: true,
-          hardwareAccelerated: true,
-          onRequestClose: () => {
+        openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsx(AlertModal, {
+          ...{
+            dismissible: false,
+            dismissable: false,
+            closeOnBackdropPress: false,
+            shouldDismissOnOverlayPress: false,
+            onDismiss: () => {
+              shown = false;
+              initializeCloudCordVerification(0);
+            }
           },
-          children: /* @__PURE__ */ jsx(import_react_native6.View, {
-            style: {
-              flex: 1,
-              backgroundColor: "rgba(0,0,0,0.88)"
-            },
-            children: /* @__PURE__ */ jsx(LockContent, {})
+          title: "Join CloudCord",
+          content: "Join the official CloudCord server to finish setup and unlock CloudCord.",
+          actions: /* @__PURE__ */ jsx(AlertActions, {
+            children: /* @__PURE__ */ jsx(AlertActionButton, {
+              text: "Join Server",
+              variant: "primary",
+              onPress: () => {
+                void import_react_native6.Linking.openURL(VERIFY_URL);
+                initializeCloudCordVerification(3e3);
+              }
+            })
           })
         }));
       } catch (e) {
       }
-    })(), 6e3);
+    })(), delay);
   }
   var import_react_native6, CONFIG_URL, VERIFY_URL, shown;
   var init_CloudCordVerification = __esm({
@@ -4573,6 +4493,7 @@
       init_async_to_generator();
       init_jsxRuntime();
       init_metro();
+      init_components();
       init_alerts();
       import_react_native6 = __toESM(require_react_native());
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
