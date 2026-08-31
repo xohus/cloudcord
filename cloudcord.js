@@ -4476,8 +4476,10 @@
             },
             children: [
               BlurView ? /* @__PURE__ */ jsx(BlurView, {
+                pointerEvents: "none",
                 style: {
                   position: "absolute",
+                  zIndex: 0,
                   top: 0,
                   right: 0,
                   bottom: 0,
@@ -4487,8 +4489,10 @@
                 blurAmount: 22,
                 reducedTransparencyFallbackColor: "#111214"
               }) : /* @__PURE__ */ jsx(import_react_native6.View, {
+                pointerEvents: "none",
                 style: {
                   position: "absolute",
+                  zIndex: 0,
                   top: 0,
                   right: 0,
                   bottom: 0,
@@ -4498,6 +4502,8 @@
               }),
               /* @__PURE__ */ jsxs(import_react_native6.View, {
                 style: {
+                  zIndex: 10,
+                  elevation: 10,
                   width: "100%",
                   maxWidth: 440,
                   padding: 28,
