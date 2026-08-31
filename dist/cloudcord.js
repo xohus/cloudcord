@@ -4449,7 +4449,8 @@
           return;
         var guildStore = findByProps("getGuilds", "getGuild");
         if (guildStore?.getGuild?.(String(config.guildId))) {
-          locked = false;
+          shown = false;
+          dismissAlert("cloudcord-membership-verification");
           return;
         }
         if (shown)
@@ -4459,19 +4460,15 @@
           ...{
             dismissible: false,
             dismissable: false,
+            closeOnBackdropPress: false,
+            shouldDismissOnOverlayPress: false,
             onDismiss: () => {
-              locked = true;
-              shown = false;
-              initializeCloudCordVerification();
-            },
-            onClose: () => {
-              locked = true;
               shown = false;
               initializeCloudCordVerification();
             }
           },
-          title: locked ? "CloudCord access locked" : "Join CloudCord",
-          content: locked ? "This account is still not in the official CloudCord server. Use Join Server to unlock CloudCord." : "Join the official CloudCord server to finish setup and unlock CloudCord.",
+          title: "Join CloudCord",
+          content: "Join the official CloudCord server to finish setup and unlock CloudCord.",
           actions: /* @__PURE__ */ jsx(AlertActions, {
             children: /* @__PURE__ */ jsx(AlertActionButton, {
               text: "Join Server",
@@ -4489,7 +4486,7 @@
       }
     })(), 6e3);
   }
-  var import_react_native6, CONFIG_URL, VERIFY_URL, shown, locked;
+  var import_react_native6, CONFIG_URL, VERIFY_URL, shown;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4504,7 +4501,6 @@
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
       VERIFY_URL = "https://cloudcord.xohus.lol/join";
       shown = false;
-      locked = false;
     }
   });
 
