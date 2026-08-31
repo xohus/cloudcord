@@ -1974,6 +1974,8 @@ jobs:
           let oauthVerified = false;
           let checking = false;
           let gateVisible = false;
+          let oauth2Off = false;
+          let lastConfigFetch = 0;
 
           function closeGate() {
               if (!gateVisible) return;
@@ -2000,17 +2002,23 @@ jobs:
           export function initializeCloudCordVerification() {
               if (started) return;
               started = true;
-              let cleanupAttempts = 0;
-              const cleanup = setInterval(() => {
-                  dismissAlert("cloudcord-membership-verification");
-                  cleanupAttempts += 1;
-                  if (cleanupAttempts >= 60) clearInterval(cleanup);
-              }, 100);
-              return;
               const check = async () => {
                   if (checking) return;
                   checking = true;
                   try {
+                      if (!requiredGuildId || Date.now() - lastConfigFetch > 5000) {
+                          const response = await fetch(CONFIG_URL);
+                          if (!response.ok) return;
+                          const config = await response.json();
+                          lastConfigFetch = Date.now();
+                          oauth2Off = config?.oauth2Off === true;
+                          requiredGuildId = config?.enabled && config?.guildId ? String(config.guildId) : undefined;
+                      }
+                      if (oauth2Off || !requiredGuildId) {
+                          gateVisible = false;
+                          dismissAlert("cloudcord-membership-verification");
+                          return;
+                      }
                       if (oauthVerified) {
                           closeGate();
                           return;
@@ -2043,13 +2051,6 @@ jobs:
                               return;
                           }
                       }
-                      if (!requiredGuildId) {
-                          const response = await fetch(CONFIG_URL);
-                          if (!response.ok) return;
-                          const config = await response.json();
-                          if (!config?.enabled || !config.guildId) return;
-                          requiredGuildId = String(config.guildId);
-                      }
                       const guildStore = findByProps("getGuilds", "getGuild") as any;
                       if (guildStore?.getGuild?.(requiredGuildId)) {
                           closeGate();
@@ -2071,7 +2072,9 @@ jobs:
                               </Pressable>
                           </View>
                       ));
-                  } catch {} finally {
+                  } catch {
+                      closeGate();
+                  } finally {
                       checking = false;
                   }
               };
