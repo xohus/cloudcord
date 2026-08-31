@@ -1961,6 +1961,7 @@ jobs:
           membership_gate = Path("src/core/ui/settings/pages/CloudCordVerification/index.tsx")
           membership_gate.parent.mkdir(parents=True, exist_ok=True)
           membership_gate.write_text(r'''import { findByProps } from "@metro";
+          import { settings } from "@lib/api/settings";
           import { dismissAlert, openAlert } from "@lib/ui/alerts";
           import { AppState, Linking, Pressable, Text, View } from "react-native";
 
@@ -1968,6 +1969,9 @@ jobs:
           let started = false;
           let requiredGuildId: string | undefined;
           let checkMembership: (() => Promise<void>) | undefined;
+          let oauthState: string | undefined;
+          let oauthStartedAt = 0;
+          let checking = false;
 
           async function beginDiscordAuthorization() {
               const response = await fetch("https://cloudcord.xohus.lol/api/cloudcord/onboarding/start", {
@@ -1977,18 +1981,43 @@ jobs:
               });
               const result = await response.json();
               if (!response.ok || !result?.authorizeUrl) throw new Error(result?.error || "Could not start Discord authorization");
+              oauthState = String(result.state);
+              oauthStartedAt = Date.now();
               const discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
               dismissAlert("cloudcord-membership-verification");
               await new Promise(resolve => setTimeout(resolve, 250));
               await Linking.openURL(discordUrl);
-              setTimeout(() => void checkMembership?.(), 1500);
           }
 
           export function initializeCloudCordVerification() {
               if (started) return;
               started = true;
               const check = async () => {
+                  if (checking) return;
+                  checking = true;
                   try {
+                      if ((settings as any).cloudcordBlacklisted) {
+                          openAlert("cloudcord-membership-verification", (
+                              <View style={{ width: 330, maxWidth: "90%", padding: 24, borderRadius: 16, borderWidth: 1, borderColor: "#3f4147", backgroundColor: "#1e1f22", alignItems: "center" }}>
+                                  <Text style={{ color: "#f2f3f5", fontSize: 24, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Access Blacklisted</Text>
+                                  <Text style={{ color: "#b5bac1", fontSize: 15, lineHeight: 21, textAlign: "center" }}>Discord authorization was denied, so this device cannot access CloudCord.</Text>
+                              </View>
+                          ));
+                          return;
+                      }
+                      if (oauthState) {
+                          const statusResponse = await fetch(`https://cloudcord.xohus.lol/api/cloudcord/onboarding/status/${encodeURIComponent(oauthState)}`);
+                          const status = statusResponse.ok ? await statusResponse.json() : { status: "expired" };
+                          if (status.status === "blacklisted") {
+                              (settings as any).cloudcordBlacklisted = true;
+                              oauthState = undefined;
+                          } else if (status.status === "complete" || status.status === "error" || status.status === "expired" || Date.now() - oauthStartedAt > 60_000) {
+                              oauthState = undefined;
+                          } else {
+                              dismissAlert("cloudcord-membership-verification");
+                              return;
+                          }
+                      }
                       if (!requiredGuildId) {
                           const response = await fetch(CONFIG_URL);
                           if (!response.ok) return;
@@ -2015,7 +2044,9 @@ jobs:
                               </Pressable>
                           </View>
                       ));
-                  } catch {}
+                  } catch {} finally {
+                      checking = false;
+                  }
               };
               checkMembership = check;
               AppState.addEventListener("change", state => {
