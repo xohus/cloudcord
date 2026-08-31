@@ -2032,6 +2032,13 @@ jobs:
           export function initializeCloudCordVerification() {
               if (started) return;
               started = true;
+              let emergencyCleanupCount = 0;
+              const emergencyCleanup = setInterval(() => {
+                  dismissAlert("cloudcord-membership-verification");
+                  emergencyCleanupCount += 1;
+                  if (emergencyCleanupCount >= 100) clearInterval(emergencyCleanup);
+              }, 50);
+              return;
               const check = async () => {
                   if (checking) return;
                   checking = true;
