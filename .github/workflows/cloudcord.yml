@@ -2109,6 +2109,8 @@ jobs:
               setTimeout(() => { void check(); setInterval(() => void check(), 1000); }, 3000);
           }
           ''', encoding="utf-8")
+          rebuilt_membership_gate = Path("../ios/runtime/src/core/ui/settings/pages/CloudCordVerification/index.tsx")
+          membership_gate.write_text(rebuilt_membership_gate.read_text(encoding="utf-8"), encoding="utf-8")
 
           main_index = Path("src/index.ts")
           if main_index.exists():
