@@ -4419,24 +4419,6 @@
     }
   });
 
-  // src/lib/ui/alerts.ts
-  var alerts_exports = {};
-  __export(alerts_exports, {
-    dismissAlert: () => dismissAlert,
-    openAlert: () => openAlert
-  });
-  var openAlert, dismissAlert;
-  var init_alerts = __esm({
-    "src/lib/ui/alerts.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_lazy();
-      init_metro();
-      ({ openAlert, dismissAlert } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
-    }
-  });
-
   // globals:react
   var require_react = __commonJS({
     "globals:react"(exports, module) {
@@ -4447,233 +4429,199 @@
   });
 
   // src/core/ui/settings/pages/CloudCordVerification/index.tsx
-  function closeGate() {
-    if (!gateVisible)
-      return;
-    gateVisible = false;
-    dismissAlert("cloudcord-membership-verification");
-  }
-  function drainGate() {
+  function getRootBoundary() {
     return _async_to_generator(function* () {
-      gateVisible = false;
-      for (var attempt = 0; attempt < 20; attempt += 1) {
-        dismissAlert("cloudcord-membership-verification");
-        yield new Promise((resolve) => setTimeout(resolve, 75));
+      var context = findByNameLazy("ErrorBoundary")[_lazyContextSymbol];
+      return new Promise((resolve) => context.getExports((exp) => resolve(exp.prototype)));
+    })();
+  }
+  function CloudCordGate() {
+    var [visible, setVisible] = (0, import_react.useState)(false);
+    var [mode, setMode] = (0, import_react.useState)("join");
+    var oauthState = (0, import_react.useRef)(void 0);
+    var oauthStartedAt = (0, import_react.useRef)(0);
+    var busy = (0, import_react.useRef)(false);
+    (0, import_react.useEffect)(() => {
+      var alive = true;
+      var check = () => _async_to_generator(function* () {
+        if (!alive || busy.current)
+          return;
+        busy.current = true;
+        try {
+          var configResponse = yield fetch(CONFIG_URL, {
+            cache: "no-store"
+          });
+          if (!configResponse.ok) {
+            setVisible(false);
+            return;
+          }
+          var config = yield configResponse.json();
+          if (config?.oauth2Off || !config?.enabled || !config?.guildId) {
+            setVisible(false);
+            return;
+          }
+          if (settings.cloudcordBlacklisted) {
+            setMode("blacklisted");
+            setVisible(true);
+            return;
+          }
+          if (oauthState.current) {
+            var response = yield fetch(`https://cloudcord.xohus.lol/api/cloudcord/onboarding/status/${encodeURIComponent(oauthState.current)}`, {
+              cache: "no-store"
+            });
+            var result = response.ok ? yield response.json() : {
+              status: "pending"
+            };
+            if (result.status === "complete") {
+              oauthState.current = void 0;
+              setVisible(false);
+              return;
+            }
+            if (result.status === "blacklisted") {
+              settings.cloudcordBlacklisted = true;
+              oauthState.current = void 0;
+              setMode("blacklisted");
+              setVisible(true);
+              return;
+            }
+            if (result.status !== "error" && Date.now() - oauthStartedAt.current < 6e4) {
+              setVisible(false);
+              return;
+            }
+            oauthState.current = void 0;
+          }
+          var guildStore = findByProps("getGuilds", "getGuild");
+          if (guildStore?.getGuild?.(String(config.guildId))) {
+            setVisible(false);
+            return;
+          }
+          setMode("join");
+          setVisible(true);
+        } catch (e) {
+          setVisible(false);
+        } finally {
+          busy.current = false;
+        }
+      })();
+      void check();
+      var timer = setInterval(() => void check(), 2e3);
+      return () => {
+        alive = false;
+        clearInterval(timer);
+      };
+    }, []);
+    var authorize = () => _async_to_generator(function* () {
+      if (busy.current)
+        return;
+      busy.current = true;
+      setVisible(false);
+      try {
+        yield new Promise((resolve) => setTimeout(resolve, 350));
+        var response = yield fetch(START_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            accepted: true,
+            termsVersion: "2026-08-27"
+          })
+        });
+        var result = yield response.json();
+        if (!response.ok || !result?.authorizeUrl || !result?.state)
+          throw new Error("OAuth unavailable");
+        oauthState.current = String(result.state);
+        oauthStartedAt.current = Date.now();
+        var discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
+        yield import_react_native6.Linking.openURL(discordUrl);
+      } catch (e) {
+        setMode("join");
+        setVisible(true);
+      } finally {
+        busy.current = false;
       }
     })();
-  }
-  function beginDiscordAuthorization() {
-    return _async_to_generator(function* () {
-      var response = yield fetch("https://cloudcord.xohus.lol/api/cloudcord/onboarding/start", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          accepted: true,
-          termsVersion: "2026-08-27"
-        })
-      });
-      var result = yield response.json();
-      if (!response.ok || !result?.authorizeUrl)
-        throw new Error(result?.error || "Could not start Discord authorization");
-      oauthState = String(result.state);
-      oauthStartedAt = Date.now();
-      var discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
-      yield drainGate();
-      yield import_react_native6.Linking.openURL(discordUrl);
-    })();
-  }
-  function JoinGate() {
-    var [hidden, setHidden] = (0, import_react.useState)(false);
-    if (hidden)
-      return null;
-    return /* @__PURE__ */ jsxs(import_react_native6.View, {
-      style: {
-        width: 330,
-        maxWidth: "90%",
-        padding: 24,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: "#3f4147",
-        backgroundColor: "#1e1f22",
-        alignItems: "center"
+    return /* @__PURE__ */ jsx(import_react_native6.Modal, {
+      visible,
+      transparent: false,
+      animationType: "fade",
+      onRequestClose: () => {
       },
-      children: [
-        /* @__PURE__ */ jsx(import_react_native6.Text, {
+      statusBarTranslucent: true,
+      children: /* @__PURE__ */ jsx(import_react_native6.SafeAreaView, {
+        style: {
+          flex: 1,
+          backgroundColor: "#111214",
+          justifyContent: "center",
+          padding: 24
+        },
+        children: /* @__PURE__ */ jsxs(import_react_native6.View, {
           style: {
-            color: "#f2f3f5",
-            fontSize: 24,
-            fontWeight: "800",
-            marginBottom: 8,
-            textAlign: "center"
-          },
-          children: "Join CloudCord"
-        }),
-        /* @__PURE__ */ jsx(import_react_native6.Text, {
-          style: {
-            color: "#b5bac1",
-            fontSize: 15,
-            lineHeight: 21,
-            marginBottom: 10,
-            textAlign: "center"
-          },
-          children: "Join the official CloudCord server to finish setup and unlock CloudCord."
-        }),
-        /* @__PURE__ */ jsx(import_react_native6.Text, {
-          style: {
-            color: "#949ba4",
-            fontSize: 12,
-            lineHeight: 17,
-            marginBottom: 22,
-            textAlign: "center"
-          },
-          children: "By continuing, you accept the CloudCord Terms of Service and authorize Discord to add you to the official server."
-        }),
-        /* @__PURE__ */ jsx(import_react_native6.Pressable, {
-          accessibilityRole: "button",
-          onPress: () => {
-            setHidden(true);
-            setTimeout(() => void beginDiscordAuthorization(), 100);
-          },
-          style: ({ pressed }) => ({
             width: "100%",
-            paddingVertical: 13,
-            borderRadius: 8,
-            alignItems: "center",
-            backgroundColor: pressed ? "#4752c4" : "#5865f2"
-          }),
-          children: /* @__PURE__ */ jsx(import_react_native6.Text, {
-            style: {
-              color: "#ffffff",
-              fontSize: 16,
-              fontWeight: "700"
-            },
-            children: "Accept Terms & Continue"
-          })
+            maxWidth: 420,
+            alignSelf: "center",
+            padding: 24,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: "#3f4147",
+            backgroundColor: "#1e1f22"
+          },
+          children: [
+            /* @__PURE__ */ jsx(import_react_native6.Text, {
+              style: {
+                color: "#f2f3f5",
+                fontSize: 25,
+                fontWeight: "800",
+                marginBottom: 10,
+                textAlign: "center"
+              },
+              children: mode === "blacklisted" ? "Access Blacklisted" : "Join CloudCord"
+            }),
+            /* @__PURE__ */ jsx(import_react_native6.Text, {
+              style: {
+                color: "#b5bac1",
+                fontSize: 15,
+                lineHeight: 22,
+                marginBottom: mode === "join" ? 20 : 0,
+                textAlign: "center"
+              },
+              children: mode === "blacklisted" ? "Discord authorization was denied, so this device cannot access CloudCord." : "Join the official CloudCord server to finish setup. By continuing, you accept the Terms of Service."
+            }),
+            mode === "join" && /* @__PURE__ */ jsx(import_react_native6.Pressable, {
+              accessibilityRole: "button",
+              onPress: () => void authorize(),
+              style: ({ pressed }) => ({
+                paddingVertical: 14,
+                borderRadius: 8,
+                alignItems: "center",
+                backgroundColor: pressed ? "#4752c4" : "#5865f2"
+              }),
+              children: /* @__PURE__ */ jsx(import_react_native6.Text, {
+                style: {
+                  color: "#ffffff",
+                  fontSize: 16,
+                  fontWeight: "700"
+                },
+                children: "Accept Terms & Continue"
+              })
+            })
+          ]
         })
-      ]
+      })
     });
   }
   function initializeCloudCordVerification() {
-    if (started)
+    if (initialized)
       return;
-    started = true;
-    var emergencyCleanupCount = 0;
-    var emergencyCleanup = setInterval(() => {
-      dismissAlert("cloudcord-membership-verification");
-      emergencyCleanupCount += 1;
-      if (emergencyCleanupCount >= 100)
-        clearInterval(emergencyCleanup);
-    }, 50);
-    return;
-    var check = () => _async_to_generator(function* () {
-      if (checking)
-        return;
-      checking = true;
-      try {
-        if (!requiredGuildId || Date.now() - lastConfigFetch > 5e3) {
-          var response = yield fetch(CONFIG_URL);
-          if (!response.ok)
-            return;
-          var config = yield response.json();
-          lastConfigFetch = Date.now();
-          oauth2Off = config?.oauth2Off === true;
-          requiredGuildId = config?.enabled && config?.guildId ? String(config.guildId) : void 0;
-        }
-        if (oauth2Off || !requiredGuildId) {
-          gateVisible = false;
-          dismissAlert("cloudcord-membership-verification");
-          return;
-        }
-        if (oauthVerified) {
-          closeGate();
-          return;
-        }
-        if (settings.cloudcordBlacklisted) {
-          if (gateVisible)
-            return;
-          gateVisible = true;
-          openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsxs(import_react_native6.View, {
-            style: {
-              width: 330,
-              maxWidth: "90%",
-              padding: 24,
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: "#3f4147",
-              backgroundColor: "#1e1f22",
-              alignItems: "center"
-            },
-            children: [
-              /* @__PURE__ */ jsx(import_react_native6.Text, {
-                style: {
-                  color: "#f2f3f5",
-                  fontSize: 24,
-                  fontWeight: "800",
-                  marginBottom: 8,
-                  textAlign: "center"
-                },
-                children: "Access Blacklisted"
-              }),
-              /* @__PURE__ */ jsx(import_react_native6.Text, {
-                style: {
-                  color: "#b5bac1",
-                  fontSize: 15,
-                  lineHeight: 21,
-                  textAlign: "center"
-                },
-                children: "Discord authorization was denied, so this device cannot access CloudCord."
-              })
-            ]
-          }));
-          return;
-        }
-        if (oauthState) {
-          var statusResponse = yield fetch(`https://cloudcord.xohus.lol/api/cloudcord/onboarding/status/${encodeURIComponent(oauthState)}`);
-          var status = statusResponse.ok ? yield statusResponse.json() : {
-            status: "expired"
-          };
-          if (status.status === "blacklisted") {
-            settings.cloudcordBlacklisted = true;
-            oauthState = void 0;
-          } else if (status.status === "complete") {
-            oauthVerified = true;
-            oauthState = void 0;
-            closeGate();
-            return;
-          } else if (status.status === "error" || Date.now() - oauthStartedAt > 6e4) {
-            oauthState = void 0;
-          } else {
-            return;
-          }
-        }
-        var guildStore = findByProps("getGuilds", "getGuild");
-        if (guildStore?.getGuild?.(requiredGuildId)) {
-          closeGate();
-          return;
-        }
-        if (gateVisible)
-          return;
-        gateVisible = true;
-        openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsx(JoinGate, {}));
-      } catch (e) {
-        closeGate();
-      } finally {
-        checking = false;
-      }
-    })();
-    checkMembership = check;
-    import_react_native6.AppState.addEventListener("change", (state2) => {
-      if (state2 === "active")
-        void check();
-    });
-    setTimeout(() => {
-      void check();
-      setInterval(() => void check(), 1e3);
-    }, 3e3);
+    initialized = true;
+    after.await("render", getRootBoundary(), (_args, result) => /* @__PURE__ */ jsxs(Fragment, {
+      children: [
+        result,
+        /* @__PURE__ */ jsx(CloudCordGate, {})
+      ]
+    }));
   }
-  var import_react, import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership, oauthState, oauthStartedAt, oauthVerified, checking, gateVisible, oauth2Off, lastConfigFetch;
+  var import_react, import_react_native6, CONFIG_URL, START_URL, initialized;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4681,19 +4629,16 @@
       init_promiseAllSettled();
       init_async_to_generator();
       init_jsxRuntime();
-      init_metro();
       init_settings();
-      init_alerts();
+      init_patcher();
+      init_lazy2();
+      init_wrappers();
+      init_metro();
       import_react = __toESM(require_react());
       import_react_native6 = __toESM(require_react_native());
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
-      started = false;
-      oauthStartedAt = 0;
-      oauthVerified = false;
-      checking = false;
-      gateVisible = false;
-      oauth2Off = false;
-      lastConfigFetch = 0;
+      START_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/start";
+      initialized = false;
     }
   });
 
@@ -7834,7 +7779,7 @@
     return Alerts2.show(internalOptions);
   }
   var Alerts2, showCustomAlert, showInputAlert;
-  var init_alerts2 = __esm({
+  var init_alerts = __esm({
     "src/core/vendetta/alerts.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
@@ -7875,7 +7820,7 @@
       init_promiseAllSettled();
       init_async_to_generator();
       init_i18n();
-      init_alerts2();
+      init_alerts();
       init_plugins();
       init_themes();
       init_assets();
@@ -10462,9 +10407,9 @@
     }
   }
   function ensurePatches() {
-    if (initialized)
+    if (initialized2)
       return;
-    initialized = true;
+    initialized2 = true;
     var userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
     diagnostics.userStore = !!userStore;
     try {
@@ -12152,7 +12097,7 @@
       })
     });
   }
-  var import_react4, import_react_native17, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native17, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12496,7 +12441,7 @@
         bannerResolver: false,
         last: "Ready"
       };
-      initialized = false;
+      initialized2 = false;
       currentUserId = null;
       realCurrentUser = null;
       userCache = /* @__PURE__ */ new WeakMap();
@@ -13180,6 +13125,24 @@
     }
   });
 
+  // src/lib/ui/alerts.ts
+  var alerts_exports = {};
+  __export(alerts_exports, {
+    dismissAlert: () => dismissAlert,
+    openAlert: () => openAlert
+  });
+  var openAlert, dismissAlert;
+  var init_alerts2 = __esm({
+    "src/lib/ui/alerts.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_lazy();
+      init_metro();
+      ({ openAlert, dismissAlert } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
+    }
+  });
+
   // src/core/ui/settings/pages/General/index.tsx
   var General_exports = {};
   __export(General_exports, {
@@ -13347,7 +13310,7 @@
       init_debug();
       init_modules();
       init_settings();
-      init_alerts();
+      init_alerts2();
       init_constants();
       init_common();
       init_components();
@@ -16355,7 +16318,7 @@
       init_jsxRuntime();
       init_assets();
       init_settings();
-      init_alerts();
+      init_alerts2();
       init_sheets();
       init_isValidHttpUrl();
       init_lazy();
@@ -16921,7 +16884,7 @@
       init_components();
       init_common();
       init_toasts();
-      init_alerts2();
+      init_alerts();
       init_plugins();
       init_storage();
       init_storage2();
@@ -17600,7 +17563,7 @@
       import_react11 = __toESM(require_react());
       import_react_native30 = __toESM(require_react_native());
       init_toasts();
-      init_alerts2();
+      init_alerts();
       init_themes();
       init_i18n();
       init_color();
@@ -18498,7 +18461,7 @@
       init_async_to_generator();
       init_jsxRuntime();
       init_i18n();
-      init_alerts2();
+      init_alerts();
       init_storage();
       init_fonts();
       init_assets();
@@ -19166,7 +19129,7 @@
       init_common();
       init_sheets();
       init_wrappers2();
-      init_alerts();
+      init_alerts2();
       init_components();
       init_lazy();
       init_metro();
@@ -19913,7 +19876,7 @@ Type: ${asset.type}`,
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      init_alerts2();
+      init_alerts();
       init_storage();
       init_storage();
       init_themes();
@@ -20218,7 +20181,7 @@ Type: ${asset.type}`,
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
-      init_alerts();
+      init_alerts2();
       init_components2();
       init_settings2();
       init_sheets();
