@@ -4437,6 +4437,15 @@
     }
   });
 
+  // globals:react
+  var require_react = __commonJS({
+    "globals:react"(exports, module) {
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      module.exports = require_depsModule()["react"];
+    }
+  });
+
   // src/core/ui/settings/pages/CloudCordVerification/index.tsx
   function closeGate() {
     if (!gateVisible)
@@ -4474,6 +4483,77 @@
       yield drainGate();
       yield import_react_native6.Linking.openURL(discordUrl);
     })();
+  }
+  function JoinGate() {
+    var [hidden, setHidden] = (0, import_react.useState)(false);
+    if (hidden)
+      return null;
+    return /* @__PURE__ */ jsxs(import_react_native6.View, {
+      style: {
+        width: 330,
+        maxWidth: "90%",
+        padding: 24,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: "#3f4147",
+        backgroundColor: "#1e1f22",
+        alignItems: "center"
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native6.Text, {
+          style: {
+            color: "#f2f3f5",
+            fontSize: 24,
+            fontWeight: "800",
+            marginBottom: 8,
+            textAlign: "center"
+          },
+          children: "Join CloudCord"
+        }),
+        /* @__PURE__ */ jsx(import_react_native6.Text, {
+          style: {
+            color: "#b5bac1",
+            fontSize: 15,
+            lineHeight: 21,
+            marginBottom: 10,
+            textAlign: "center"
+          },
+          children: "Join the official CloudCord server to finish setup and unlock CloudCord."
+        }),
+        /* @__PURE__ */ jsx(import_react_native6.Text, {
+          style: {
+            color: "#949ba4",
+            fontSize: 12,
+            lineHeight: 17,
+            marginBottom: 22,
+            textAlign: "center"
+          },
+          children: "By continuing, you accept the CloudCord Terms of Service and authorize Discord to add you to the official server."
+        }),
+        /* @__PURE__ */ jsx(import_react_native6.Pressable, {
+          accessibilityRole: "button",
+          onPress: () => {
+            setHidden(true);
+            setTimeout(() => void beginDiscordAuthorization(), 100);
+          },
+          style: ({ pressed }) => ({
+            width: "100%",
+            paddingVertical: 13,
+            borderRadius: 8,
+            alignItems: "center",
+            backgroundColor: pressed ? "#4752c4" : "#5865f2"
+          }),
+          children: /* @__PURE__ */ jsx(import_react_native6.Text, {
+            style: {
+              color: "#ffffff",
+              fontSize: 16,
+              fontWeight: "700"
+            },
+            children: "Accept Terms & Continue"
+          })
+        })
+      ]
+    });
   }
   function initializeCloudCordVerification() {
     if (started)
@@ -4568,69 +4648,7 @@
         if (gateVisible)
           return;
         gateVisible = true;
-        openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsxs(import_react_native6.View, {
-          style: {
-            width: 330,
-            maxWidth: "90%",
-            padding: 24,
-            borderRadius: 16,
-            borderWidth: 1,
-            borderColor: "#3f4147",
-            backgroundColor: "#1e1f22",
-            alignItems: "center"
-          },
-          children: [
-            /* @__PURE__ */ jsx(import_react_native6.Text, {
-              style: {
-                color: "#f2f3f5",
-                fontSize: 24,
-                fontWeight: "800",
-                marginBottom: 8,
-                textAlign: "center"
-              },
-              children: "Join CloudCord"
-            }),
-            /* @__PURE__ */ jsx(import_react_native6.Text, {
-              style: {
-                color: "#b5bac1",
-                fontSize: 15,
-                lineHeight: 21,
-                marginBottom: 10,
-                textAlign: "center"
-              },
-              children: "Join the official CloudCord server to finish setup and unlock CloudCord."
-            }),
-            /* @__PURE__ */ jsx(import_react_native6.Text, {
-              style: {
-                color: "#949ba4",
-                fontSize: 12,
-                lineHeight: 17,
-                marginBottom: 22,
-                textAlign: "center"
-              },
-              children: "By continuing, you accept the CloudCord Terms of Service and authorize Discord to add you to the official server."
-            }),
-            /* @__PURE__ */ jsx(import_react_native6.Pressable, {
-              accessibilityRole: "button",
-              onPress: () => void beginDiscordAuthorization(),
-              style: ({ pressed }) => ({
-                width: "100%",
-                paddingVertical: 13,
-                borderRadius: 8,
-                alignItems: "center",
-                backgroundColor: pressed ? "#4752c4" : "#5865f2"
-              }),
-              children: /* @__PURE__ */ jsx(import_react_native6.Text, {
-                style: {
-                  color: "#ffffff",
-                  fontSize: 16,
-                  fontWeight: "700"
-                },
-                children: "Accept Terms & Continue"
-              })
-            })
-          ]
-        }));
+        openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsx(JoinGate, {}));
       } catch (e) {
         closeGate();
       } finally {
@@ -4647,7 +4665,7 @@
       setInterval(() => void check(), 1e3);
     }, 3e3);
   }
-  var import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership, oauthState, oauthStartedAt, oauthVerified, checking, gateVisible, oauth2Off, lastConfigFetch;
+  var import_react, import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership, oauthState, oauthStartedAt, oauthVerified, checking, gateVisible, oauth2Off, lastConfigFetch;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4658,6 +4676,7 @@
       init_metro();
       init_settings();
       init_alerts();
+      import_react = __toESM(require_react());
       import_react_native6 = __toESM(require_react_native());
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
       started = false;
@@ -7000,18 +7019,9 @@
     }
   });
 
-  // globals:react
-  var require_react = __commonJS({
-    "globals:react"(exports, module) {
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      module.exports = require_depsModule()["react"];
-    }
-  });
-
   // src/core/ui/reporter/components/ErrorComponentStackCard.tsx
   function ErrorComponentStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
     var stack;
     try {
       stack = parseComponentStack(props.componentStack);
@@ -7093,7 +7103,7 @@
       })
     });
   }
-  var import_react, import_react_native10;
+  var import_react2, import_react_native10;
   var init_ErrorComponentStackCard = __esm({
     "src/core/ui/reporter/components/ErrorComponentStackCard.tsx"() {
       "use strict";
@@ -7104,7 +7114,7 @@
       init_assets();
       init_common();
       init_components();
-      import_react = __toESM(require_react());
+      import_react2 = __toESM(require_react());
       import_react_native10 = __toESM(require_react_native());
     }
   });
@@ -7213,7 +7223,7 @@
 
   // src/core/ui/reporter/components/ErrorStackCard.tsx
   function ErrorStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
     var stack;
     try {
       var parsedErrorStack = parseErrorStack(props.error.stack);
@@ -7279,7 +7289,7 @@
     });
   }
   function Line(props) {
-    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
     return /* @__PURE__ */ jsxs(import_react_native11.Pressable, {
       onPress: () => setCollapsed((v2) => !v2),
       children: [
@@ -7309,7 +7319,7 @@
       ]
     }, props.id);
   }
-  var import_react2, import_react_native11;
+  var import_react3, import_react_native11;
   var init_ErrorStackCard = __esm({
     "src/core/ui/reporter/components/ErrorStackCard.tsx"() {
       "use strict";
@@ -7320,7 +7330,7 @@
       init_assets();
       init_common();
       init_components();
-      import_react2 = __toESM(require_react());
+      import_react3 = __toESM(require_react());
       import_react_native11 = __toESM(require_react_native());
       init_ErrorCard();
     }
@@ -11041,15 +11051,15 @@
   }
   function CustomColorPicker({ title, initialColor, onApply }) {
     var initial = hexToHsv(initialColor);
-    var [hue, setHue] = (0, import_react3.useState)(initial.hue);
-    var [saturation, setSaturation] = (0, import_react3.useState)(initial.saturation);
-    var [brightness, setBrightness] = (0, import_react3.useState)(initial.brightness);
-    var [color2, setColor] = (0, import_react3.useState)(hsvToHex(initial.hue, initial.saturation, initial.brightness));
-    var [squareSize, setSquareSize] = (0, import_react3.useState)({
+    var [hue, setHue] = (0, import_react4.useState)(initial.hue);
+    var [saturation, setSaturation] = (0, import_react4.useState)(initial.saturation);
+    var [brightness, setBrightness] = (0, import_react4.useState)(initial.brightness);
+    var [color2, setColor] = (0, import_react4.useState)(hsvToHex(initial.hue, initial.saturation, initial.brightness));
+    var [squareSize, setSquareSize] = (0, import_react4.useState)({
       width: 1,
       height: 1
     });
-    var [hueWidth, setHueWidth] = (0, import_react3.useState)(1);
+    var [hueWidth, setHueWidth] = (0, import_react4.useState)(1);
     var validColor = colorNumber(color2) != null ? color2 : "#5865F2";
     var syncHsv = (nextHue, nextSaturation, nextBrightness) => {
       setHue(nextHue);
@@ -11271,9 +11281,9 @@
     });
   }
   function DecorationGallery({ onSelect }) {
-    var [items, setItems] = (0, import_react3.useState)([]);
-    var [loading, setLoading] = (0, import_react3.useState)(true);
-    (0, import_react3.useEffect)(() => {
+    var [items, setItems] = (0, import_react4.useState)([]);
+    var [loading, setLoading] = (0, import_react4.useState)(true);
+    (0, import_react4.useEffect)(() => {
       var active = true;
       void findDecorationCatalog().then((result) => {
         if (active) {
@@ -11362,9 +11372,9 @@
   }
   function FakeProfile() {
     useProxy(settings);
-    var [, redraw] = (0, import_react3.useReducer)((value) => value + 1, 0);
+    var [, redraw] = (0, import_react4.useReducer)((value) => value + 1, 0);
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react3.useEffect)(() => {
+    (0, import_react4.useEffect)(() => {
       initializeFakeProfile();
       redraw();
     }, []);
@@ -12134,7 +12144,7 @@
       })
     });
   }
-  var import_react3, import_react_native17, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native17, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12152,7 +12162,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react3 = __toESM(require_react());
+      import_react4 = __toESM(require_react());
       import_react_native17 = __toESM(require_react_native());
       BADGES = [
         [
@@ -13465,8 +13475,8 @@
     })();
   }
   function useBotCordState() {
-    var [value, setValue] = import_react4.default.useState(() => snapshot());
-    import_react4.default.useEffect(() => {
+    var [value, setValue] = import_react5.default.useState(() => snapshot());
+    import_react5.default.useEffect(() => {
       var active = true;
       var update = () => active && setValue(snapshot());
       listeners.add(update);
@@ -13681,7 +13691,7 @@
       return response.json();
     })();
   }
-  var import_react4, FILE_PATH, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners;
+  var import_react5, FILE_PATH, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners;
   var init_botcord = __esm({
     "src/lib/api/botcord.ts"() {
       "use strict";
@@ -13690,7 +13700,7 @@
       init_async_to_generator();
       init_type_of();
       init_modules();
-      import_react4 = __toESM(require_react());
+      import_react5 = __toESM(require_react());
       FILE_PATH = "botcord/accounts.json";
       MAX_FILE_BYTES = 256 * 1024;
       MAX_ACCOUNTS = 50;
@@ -13905,21 +13915,21 @@
     var navigation2 = NavigationNative.useNavigation();
     var state2 = useBotCordState();
     var active = accounts.find((a) => a.id === activeId) ?? accounts[0] ?? null;
-    var [guilds, setGuilds] = (0, import_react5.useState)([]);
-    var [channels2, setChannels] = (0, import_react5.useState)([]);
-    var [guild, setGuild] = (0, import_react5.useState)(null);
-    var [channel, setChannel] = (0, import_react5.useState)(null);
-    var [messages, setMessages] = (0, import_react5.useState)([]);
-    var [composer, setComposer] = (0, import_react5.useState)("");
-    var [selectedImage, setSelectedImage] = (0, import_react5.useState)(null);
-    var [loading, setLoading] = (0, import_react5.useState)(false);
-    var [error, setError] = (0, import_react5.useState)(null);
-    var [screen, setScreen] = (0, import_react5.useState)("messages");
-    var [members, setMembers] = (0, import_react5.useState)([]);
-    var [memberSearch, setMemberSearch] = (0, import_react5.useState)("");
-    var [memberStatus, setMemberStatus] = (0, import_react5.useState)("");
-    var listRef = (0, import_react5.useRef)(null);
-    (0, import_react5.useEffect)(() => {
+    var [guilds, setGuilds] = (0, import_react6.useState)([]);
+    var [channels2, setChannels] = (0, import_react6.useState)([]);
+    var [guild, setGuild] = (0, import_react6.useState)(null);
+    var [channel, setChannel] = (0, import_react6.useState)(null);
+    var [messages, setMessages] = (0, import_react6.useState)([]);
+    var [composer, setComposer] = (0, import_react6.useState)("");
+    var [selectedImage, setSelectedImage] = (0, import_react6.useState)(null);
+    var [loading, setLoading] = (0, import_react6.useState)(false);
+    var [error, setError] = (0, import_react6.useState)(null);
+    var [screen, setScreen] = (0, import_react6.useState)("messages");
+    var [members, setMembers] = (0, import_react6.useState)([]);
+    var [memberSearch, setMemberSearch] = (0, import_react6.useState)("");
+    var [memberStatus, setMemberStatus] = (0, import_react6.useState)("");
+    var listRef = (0, import_react6.useRef)(null);
+    (0, import_react6.useEffect)(() => {
       if (!active)
         return;
       setLoading(true);
@@ -13936,7 +13946,7 @@
     }, [
       active?.id
     ]);
-    (0, import_react5.useEffect)(() => {
+    (0, import_react6.useEffect)(() => {
       if (!active || !channel?.id)
         return;
       var disposed = false;
@@ -14772,12 +14782,12 @@
   }
   function BotCord() {
     var state2 = useBotCordState();
-    var [token, setToken] = (0, import_react5.useState)("");
-    var [adding, setAdding] = (0, import_react5.useState)(false);
-    var [error, setError] = (0, import_react5.useState)(null);
-    var [opened, setOpened] = (0, import_react5.useState)(false);
+    var [token, setToken] = (0, import_react6.useState)("");
+    var [adding, setAdding] = (0, import_react6.useState)(false);
+    var [error, setError] = (0, import_react6.useState)(null);
+    var [opened, setOpened] = (0, import_react6.useState)(false);
     var accounts = state2.accounts;
-    var active = (0, import_react5.useMemo)(() => accounts.find((a) => a.id === state2.activeAccountId) ?? accounts[0] ?? null, [
+    var active = (0, import_react6.useMemo)(() => accounts.find((a) => a.id === state2.activeAccountId) ?? accounts[0] ?? null, [
       accounts,
       state2.activeAccountId
     ]);
@@ -14893,7 +14903,7 @@
       })
     });
   }
-  var import_react5, import_react_native21, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
+  var import_react6, import_react_native21, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -14909,7 +14919,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react5 = __toESM(require_react());
+      import_react6 = __toESM(require_react());
       import_react_native21 = __toESM(require_react_native());
       useStyles3 = createStyles({
         root: {
@@ -15072,8 +15082,8 @@
   });
   function StoreCloud() {
     useProxy(VdPluginManager.plugins);
-    var [busy, setBusy] = (0, import_react6.useState)(false);
-    var [refresh, setRefresh] = (0, import_react6.useState)(0);
+    var [busy, setBusy] = (0, import_react7.useState)(false);
+    var [refresh, setRefresh] = (0, import_react7.useState)(0);
     var plugin = VdPluginManager.plugins[PLUGIN_URL];
     var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
     function installOrStart() {
@@ -15228,7 +15238,7 @@
       })
     });
   }
-  var import_react6, import_react_native23, PLUGIN_URL, STORECLOUD_ICON;
+  var import_react7, import_react_native23, PLUGIN_URL, STORECLOUD_ICON;
   var init_StoreCloud = __esm({
     "src/core/ui/settings/pages/StoreCloud/index.tsx"() {
       "use strict";
@@ -15242,7 +15252,7 @@
       init_assets();
       init_toasts();
       init_components();
-      import_react6 = __toESM(require_react());
+      import_react7 = __toESM(require_react());
       import_react_native23 = __toESM(require_react_native());
       PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
       STORECLOUD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
@@ -16083,9 +16093,9 @@
 
   // src/core/ui/components/AddonPage.tsx
   function InputAlert2(props) {
-    var [value, setValue] = (0, import_react7.useState)("");
-    var [error, setError] = (0, import_react7.useState)("");
-    var [isFetching, setIsFetching] = (0, import_react7.useState)(false);
+    var [value, setValue] = (0, import_react8.useState)("");
+    var [error, setError] = (0, import_react8.useState)("");
+    var [isFetching, setIsFetching] = (0, import_react8.useState)(false);
     function onConfirmWrapper() {
       setIsFetching(true);
       props.fetchFn(value).then(() => dismissAlert("AddonInputAlert")).catch((e) => e instanceof Error ? setError(e.message) : String(e)).finally(() => setIsFetching(false));
@@ -16147,11 +16157,11 @@
     });
   }
   function AddonPage({ CardComponent, ...props }) {
-    var [search, setSearch] = (0, import_react7.useState)("");
+    var [search, setSearch] = (0, import_react8.useState)("");
     var [sortFn, setSortFn] = React.useState(() => null);
     var { bottom: bottomInset } = useSafeAreaInsets();
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react7.useEffect)(() => {
+    (0, import_react8.useEffect)(() => {
       if (props.OptionsActionSheetComponent) {
         navigation2.setOptions({
           headerRight: () => /* @__PURE__ */ jsx(IconButton, {
@@ -16165,7 +16175,7 @@
     }, [
       navigation2
     ]);
-    var results = (0, import_react7.useMemo)(() => {
+    var results = (0, import_react8.useMemo)(() => {
       var values = props.items;
       if (props.resolveItem)
         values = values.map(props.resolveItem).filter(isNotNil);
@@ -16181,7 +16191,7 @@
       sortFn,
       search
     ]);
-    var onInstallPress = (0, import_react7.useCallback)(() => {
+    var onInstallPress = (0, import_react8.useCallback)(() => {
       if (!props.installAction)
         return () => {
         };
@@ -16328,7 +16338,7 @@
       ]
     });
   }
-  var import_fuzzysort, import_react7, import_react_native24, showSimpleActionSheet2, hideActionSheet;
+  var import_fuzzysort, import_react8, import_react_native24, showSimpleActionSheet2, hideActionSheet;
   var init_AddonPage = __esm({
     "src/core/ui/components/AddonPage.tsx"() {
       "use strict";
@@ -16347,7 +16357,7 @@
       init_components2();
       init_dist();
       import_fuzzysort = __toESM(require_fuzzysort());
-      import_react7 = __toESM(require_react());
+      import_react8 = __toESM(require_react());
       import_react_native24 = __toESM(require_react_native());
       ({ showSimpleActionSheet: showSimpleActionSheet2, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
     }
@@ -16472,8 +16482,8 @@
   }
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
-    var [, forceUpdate] = (0, import_react8.useReducer)(() => ({}), 0);
-    var cardContextValue = (0, import_react8.useMemo)(() => ({
+    var [, forceUpdate] = (0, import_react9.useReducer)(() => ({}), 0);
+    var cardContextValue = (0, import_react9.useMemo)(() => ({
       plugin,
       result
     }), [
@@ -16534,7 +16544,7 @@
       })
     });
   }
-  var import_chroma_js3, import_react8, import_react_native25, CardContext, useCardContext, Actions;
+  var import_chroma_js3, import_react9, import_react_native25, CardContext, useCardContext, Actions;
   var init_PluginCard = __esm({
     "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"() {
       "use strict";
@@ -16547,11 +16557,11 @@
       init_components();
       init_sheets();
       import_chroma_js3 = __toESM(require_chroma_js());
-      import_react8 = __toESM(require_react());
+      import_react9 = __toESM(require_react());
       import_react_native25 = __toESM(require_react_native());
       init_plugins4();
-      CardContext = /* @__PURE__ */ (0, import_react8.createContext)(null);
-      useCardContext = () => (0, import_react8.useContext)(CardContext);
+      CardContext = /* @__PURE__ */ (0, import_react9.createContext)(null);
+      useCardContext = () => (0, import_react9.useContext)(CardContext);
       Actions = () => {
         var { plugin } = useCardContext();
         var navigation2 = NavigationNative.useNavigation();
@@ -16704,7 +16714,7 @@
   }
   function PluginInfoActionSheet({ plugin, navigation: navigation2 }) {
     plugin.usePluginState();
-    var [loading, setLoading] = (0, import_react9.useState)(false);
+    var [loading, setLoading] = (0, import_react10.useState)(false);
     var isVendettaPlugin = plugin.id.includes("/");
     var isCorePlugin2 = plugin.id.startsWith("bunny.") || plugin.id.startsWith("vendetta.");
     var copyPluginUrl = () => {
@@ -16891,7 +16901,7 @@
       })
     });
   }
-  var import_react9, import_react_native27;
+  var import_react10, import_react_native27;
   var init_PluginInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx"() {
       "use strict";
@@ -16908,7 +16918,7 @@
       init_storage();
       init_storage2();
       init_assets();
-      import_react9 = __toESM(require_react());
+      import_react10 = __toESM(require_react());
       import_react_native27 = __toESM(require_react_native());
       init_TitleComponent();
       init_ScaledPluginSettings();
@@ -17429,11 +17439,11 @@
     });
   }
   function ThemeInfoActionSheet({ theme, navigation: navigation2 }) {
-    var [themeState, setThemeState] = (0, import_react10.useState)({
+    var [themeState, setThemeState] = (0, import_react11.useState)({
       ...theme
     });
-    var [loading, setLoading] = (0, import_react10.useState)(false);
-    (0, import_react10.useEffect)(() => {
+    var [loading, setLoading] = (0, import_react11.useState)(false);
+    (0, import_react11.useEffect)(() => {
       var interval = setInterval(() => {
         setThemeState({
           ...theme
@@ -17567,7 +17577,7 @@
       })
     });
   }
-  var import_react10, import_react_native30;
+  var import_react11, import_react_native30;
   var init_ThemeInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Themes/sheets/ThemeInfoActionSheet.tsx"() {
       "use strict";
@@ -17579,7 +17589,7 @@
       init_sheets();
       init_components();
       init_common();
-      import_react10 = __toESM(require_react());
+      import_react11 = __toESM(require_react());
       import_react_native30 = __toESM(require_react_native());
       init_toasts();
       init_alerts2();
@@ -17973,8 +17983,8 @@
   function RevengeFontsExtractor({ fonts: fonts2, setName }) {
     var currentTheme = getCurrentTheme().data;
     var themeFonts = currentTheme.fonts;
-    var [fontName, setFontName] = (0, import_react11.useState)(guessFontName(Object.values(themeFonts)));
-    var [error, setError] = (0, import_react11.useState)(void 0);
+    var [fontName, setFontName] = (0, import_react12.useState)(guessFontName(Object.values(themeFonts)));
+    var [error, setError] = (0, import_react12.useState)(void 0);
     return /* @__PURE__ */ jsxs(import_react_native32.View, {
       style: {
         padding: 8,
@@ -18025,9 +18035,9 @@
     });
   }
   function JsonFontImporter({ fonts: fonts2, setName, setSource }) {
-    var [fontLink, setFontLink] = (0, import_react11.useState)("");
-    var [saving, setSaving] = (0, import_react11.useState)(false);
-    var [error, setError] = (0, import_react11.useState)(void 0);
+    var [fontLink, setFontLink] = (0, import_react12.useState)("");
+    var [saving, setSaving] = (0, import_react12.useState)(false);
+    var [error, setError] = (0, import_react12.useState)(void 0);
     return /* @__PURE__ */ jsxs(import_react_native32.View, {
       style: {
         padding: 8,
@@ -18069,8 +18079,8 @@
     });
   }
   function EntryEditorActionSheet(props) {
-    var [familyName, setFamilyName] = (0, import_react11.useState)(props.name);
-    var [fontUrl, setFontUrl] = (0, import_react11.useState)(props.fontEntries[props.name]);
+    var [familyName, setFamilyName] = (0, import_react12.useState)(props.name);
+    var [fontUrl, setFontUrl] = (0, import_react12.useState)(props.fontEntries[props.name]);
     return /* @__PURE__ */ jsxs(import_react_native32.View, {
       style: {
         padding: 8,
@@ -18125,10 +18135,10 @@
     }), "FontEditorActionSheet");
   }
   function NewEntryRow({ fontName, fontEntry }) {
-    var nameRef = (0, import_react11.useRef)();
-    var urlRef = (0, import_react11.useRef)();
-    var [nameSet, setNameSet] = (0, import_react11.useState)(false);
-    var [error, setError] = (0, import_react11.useState)();
+    var nameRef = (0, import_react12.useRef)();
+    var urlRef = (0, import_react12.useRef)();
+    var [nameSet, setNameSet] = (0, import_react12.useState)(false);
+    var [error, setError] = (0, import_react12.useState)();
     return /* @__PURE__ */ jsxs(import_react_native32.View, {
       style: {
         flexDirection: "row",
@@ -18190,11 +18200,11 @@
     });
   }
   function FontEditor(props) {
-    var [name, setName] = (0, import_react11.useState)(props.name);
-    var [source, setSource] = (0, import_react11.useState)(props.name && fonts[props.name].source);
-    var [importing, setIsImporting] = (0, import_react11.useState)(false);
-    var [errors, setErrors] = (0, import_react11.useState)();
-    var memoEntry = (0, import_react11.useMemo)(() => {
+    var [name, setName] = (0, import_react12.useState)(props.name);
+    var [source, setSource] = (0, import_react12.useState)(props.name && fonts[props.name].source);
+    var [importing, setIsImporting] = (0, import_react12.useState)(false);
+    var [errors, setErrors] = (0, import_react12.useState)();
+    var memoEntry = (0, import_react12.useMemo)(() => {
       return createProxy(props.name ? {
         ...fonts[props.name].main
       } : {}).proxy;
@@ -18378,7 +18388,7 @@
       })
     });
   }
-  var import_react11, import_react_native32, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
+  var import_react12, import_react_native32, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
   var init_FontEditor = __esm({
     "src/core/ui/settings/pages/Fonts/FontEditor.tsx"() {
       "use strict";
@@ -18397,7 +18407,7 @@
       init_components();
       init_wrappers();
       init_components2();
-      import_react11 = __toESM(require_react());
+      import_react12 = __toESM(require_react());
       import_react_native32 = __toESM(require_react_native());
       actionSheet2 = findByPropsLazy("hideActionSheet");
       ({ openAlert: openAlert3 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -19170,11 +19180,11 @@
 
   // src/core/ui/hooks/useFS.ts
   function useFileExists(path, prefix) {
-    var [state2, setState] = (0, import_react12.useState)(2);
+    var [state2, setState] = (0, import_react13.useState)(2);
     var check = () => fileExists(path, {
       prefix
     }).then((exists) => setState(exists ? 1 : 0)).catch(() => setState(3));
-    var customFS = (0, import_react12.useMemo)(() => new Proxy(fs_exports, {
+    var customFS = (0, import_react13.useMemo)(() => new Proxy(fs_exports, {
       get(target, p, receiver) {
         var val = Reflect.get(target, p, receiver);
         if (typeof val !== "function")
@@ -19189,20 +19199,20 @@
         };
       }
     }), []);
-    (0, import_react12.useEffect)(() => void check(), []);
+    (0, import_react13.useEffect)(() => void check(), []);
     return [
       state2,
       customFS
     ];
   }
-  var import_react12, CheckState;
+  var import_react13, CheckState;
   var init_useFS = __esm({
     "src/core/ui/hooks/useFS.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_fs();
-      import_react12 = __toESM(require_react());
+      import_react13 = __toESM(require_react());
       CheckState = /* @__PURE__ */ function(CheckState2) {
         CheckState2[CheckState2["FALSE"] = 0] = "FALSE";
         CheckState2[CheckState2["TRUE"] = 1] = "TRUE";
@@ -19311,8 +19321,8 @@ Type: ${asset.type}`,
   function AssetBrowser() {
     var [search, setSearch] = React.useState("");
     var [showNonImages, setShowNonImages] = React.useState(false);
-    var all = (0, import_react13.useMemo)(() => Array.from(iterateAssets()), []);
-    var filteredData = (0, import_react13.useMemo)(() => {
+    var all = (0, import_react14.useMemo)(() => Array.from(iterateAssets()), []);
+    var filteredData = (0, import_react14.useMemo)(() => {
       var result = all.filter((a) => a.name.includes(search) || a.id.toString() === search);
       if (!showNonImages) {
         result = result.filter((a) => displayable2.has(a.type));
@@ -19405,7 +19415,7 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react13, import_react_native36, displayable2;
+  var import_react14, import_react_native36, displayable2;
   var init_AssetBrowser = __esm({
     "src/core/ui/settings/pages/Developer/AssetBrowser.tsx"() {
       "use strict";
@@ -19416,7 +19426,7 @@ Type: ${asset.type}`,
       init_assets();
       init_components();
       init_components2();
-      import_react13 = __toESM(require_react());
+      import_react14 = __toESM(require_react());
       import_react_native36 = __toESM(require_react_native());
       displayable2 = /* @__PURE__ */ new Set([
         "png",
@@ -19433,12 +19443,12 @@ Type: ${asset.type}`,
   });
   function Developer() {
     var [rdtFileExists, fs] = useFileExists("preloads/reactDevtools.js");
-    var [isDebuggerConnected, setIsDebuggerConnected] = (0, import_react14.useState)(isConnectedToDebugger2());
+    var [isDebuggerConnected, setIsDebuggerConnected] = (0, import_react15.useState)(isConnectedToDebugger2());
     var styles = useStyles5();
     var navigation2 = NavigationNative.useNavigation();
     useProxy(settings);
     useProxy(loaderConfig);
-    (0, import_react14.useEffect)(() => {
+    (0, import_react15.useEffect)(() => {
       var interval = setInterval(() => {
         setIsDebuggerConnected(isConnectedToDebugger2());
       }, 1e3);
@@ -19727,7 +19737,7 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react_native37, import_react_native38, import_react14, hideActionSheet4, showSimpleActionSheet5, openAlert5, AlertModal6, AlertActionButton6, RDT_EMBED_LINK, useStyles5;
+  var import_react_native37, import_react_native38, import_react15, hideActionSheet4, showSimpleActionSheet5, openAlert5, AlertModal6, AlertActionButton6, RDT_EMBED_LINK, useStyles5;
   var init_Developer = __esm({
     "src/core/ui/settings/pages/Developer/index.tsx"() {
       "use strict";
@@ -19753,7 +19763,7 @@ Type: ${asset.type}`,
       import_react_native37 = __toESM(require_react_native());
       import_react_native38 = __toESM(require_react_native());
       init_toasts();
-      import_react14 = __toESM(require_react());
+      import_react15 = __toESM(require_react());
       ({ hideActionSheet: hideActionSheet4 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet5 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       ({ openAlert: openAlert5 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -19888,7 +19898,7 @@ Type: ${asset.type}`,
   });
 
   // src/core/vendetta/api.tsx
-  var import_react15, import_react_native39, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react16, import_react_native39, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -19917,14 +19927,14 @@ Type: ${asset.type}`,
       init_styles();
       init_toasts();
       init_dist();
-      import_react15 = __toESM(require_react());
+      import_react16 = __toESM(require_react());
       import_react_native39 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
       CompatRow = TableRow ?? Forms.FormRow ?? ReactNative.View;
       CompatSwitchRow = TableSwitchRow ?? Forms.FormSwitchRow ?? CompatRow;
       CompatSection = TableRowGroup ?? Forms.FormSection ?? ReactNative.View;
-      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatRow, {
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -19935,7 +19945,7 @@ Type: ${asset.type}`,
       });
       PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow?.Icon ?? (() => null);
       PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow?.Arrow ?? (() => null);
-      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatSwitchRow, {
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatSwitchRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -19943,7 +19953,7 @@ Type: ${asset.type}`,
         onValueChange: props.onValueChange,
         disabled: props.disabled
       });
-      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatSection, {
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatSection, {
         title: props.title,
         ...props
       }, props.children);
@@ -19982,8 +19992,8 @@ Type: ${asset.type}`,
                     ...module,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
-                      (0, import_react15.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react15.createElement)(import_react_native39.View, null, children);
+                      (0, import_react16.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
+                      return /* @__PURE__ */ (0, import_react16.createElement)(import_react_native39.View, null, children);
                     }
                   };
                 }
