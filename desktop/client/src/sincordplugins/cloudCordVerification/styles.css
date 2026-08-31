@@ -1,0 +1,7 @@
+.cloudcord-verification-lock{position:fixed;inset:0;z-index:2147483647;display:grid;place-items:center;padding:24px;background:#000;color:#f2f3f5;font-family:var(--font-primary,sans-serif)}
+.cloudcord-verification-card{position:relative;width:min(440px,100%);padding:32px;border:1px solid #3f4147;border-radius:16px;background:#1e1f22;text-align:center;box-shadow:0 24px 80px rgb(0 0 0 / 70%)}
+.cloudcord-verification-logo{display:grid;place-items:center;width:52px;height:52px;margin:0 auto 18px;border-radius:15px;background:#5865f2;color:#fff;font-size:26px;font-weight:800}
+.cloudcord-verification-card h1{margin:0 0 8px;font-size:26px}.cloudcord-verification-card p{margin:0 0 24px;color:#b5bac1;line-height:1.5}
+.cloudcord-verification-close{position:absolute;top:12px;right:14px;border:0;background:transparent;color:#b5bac1;font-size:26px;cursor:pointer}
+.cloudcord-verification-join,.cloudcord-verification-compact{min-width:160px;border:0;border-radius:8px;padding:12px 20px;background:#5865f2;color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.cloudcord-verification-join:hover,.cloudcord-verification-compact:hover{background:#4752c4}

@@ -1,36 +1,29 @@
-/*
- * CloudCord startup membership verification
- * SPDX-License-Identifier: GPL-3.0-or-later
- */
-
+/* CloudCord startup membership verification. SPDX-License-Identifier: GPL-3.0-or-later */
+import "./styles.css";
 import { SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { closeModal, ConfirmModal, GuildStore, openModal, Text } from "@webpack/common";
+import { GuildStore } from "@webpack/common";
 
 const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
 const VERIFY_URL = "https://cloudcord.xohus.lol/join";
 let startupTimer: ReturnType<typeof setTimeout> | undefined;
-let shown = false;
-let modalKey: string | undefined;
+let overlay: HTMLDivElement | undefined;
 
-function showVerification() {
-    if (shown) return;
-    shown = true;
-    modalKey = openModal(props => (
-        <ConfirmModal
-            {...props}
-            title="Join CloudCord"
-            confirmText="Join Server"
-            onConfirm={() => {
-                VencordNative.native.openExternal(VERIFY_URL);
-                startupTimer = setTimeout(checkMembership, 3000);
-            }}
-            onCancel={() => {}}
-            onClose={() => {}}
-        >
-            <Text>Join the official CloudCord server to finish setup and unlock CloudCord.</Text>
-        </ConfirmModal>
-    ));
+function removeLockScreen() { overlay?.remove(); overlay = undefined; }
+
+function showLockScreen() {
+    if (overlay?.isConnected) return;
+    overlay = document.createElement("div");
+    overlay.className = "cloudcord-verification-lock";
+    overlay.innerHTML = `<section class="cloudcord-verification-card" role="dialog" aria-modal="true" aria-labelledby="cloudcord-verification-title"><button class="cloudcord-verification-close" aria-label="Dismiss details">×</button><div class="cloudcord-verification-logo">C</div><h1 id="cloudcord-verification-title">Join CloudCord</h1><p>Join the official CloudCord server to finish setup and unlock CloudCord.</p><button class="cloudcord-verification-join">Join Server</button></section><button class="cloudcord-verification-compact">Join Server</button>`;
+    const card = overlay.querySelector<HTMLElement>(".cloudcord-verification-card")!;
+    const compact = overlay.querySelector<HTMLButtonElement>(".cloudcord-verification-compact")!;
+    const openVerification = () => { VencordNative.native.openExternal(VERIFY_URL); startupTimer = setTimeout(checkMembership, 3000); };
+    overlay.querySelector<HTMLButtonElement>(".cloudcord-verification-close")!.onclick = () => { card.hidden = true; compact.hidden = false; };
+    overlay.querySelector<HTMLButtonElement>(".cloudcord-verification-join")!.onclick = openVerification;
+    compact.onclick = openVerification;
+    compact.hidden = true;
+    document.body.appendChild(overlay);
 }
 
 async function checkMembership() {
@@ -39,23 +32,10 @@ async function checkMembership() {
         if (!response.ok) return;
         const config = await response.json();
         if (!config?.enabled || !config.guildId) return;
-
-        // Discord's guild store is authoritative for the currently logged-in
-        // account. Existing server members never see the verification screen.
-        if (GuildStore.getGuild(String(config.guildId))) {
-            if (modalKey) closeModal(modalKey);
-            modalKey = undefined;
-            shown = false;
-            return;
-        }
-        if (shown) {
-            startupTimer = setTimeout(checkMembership, 3000);
-            return;
-        }
-        showVerification();
-    } catch {
-        // Do not block Discord startup when the website is temporarily offline.
-    }
+        if (GuildStore.getGuild(String(config.guildId))) { removeLockScreen(); return; }
+        showLockScreen();
+        startupTimer = setTimeout(checkMembership, 3000);
+    } catch { startupTimer = setTimeout(checkMembership, 10000); }
 }
 
 export default definePlugin({
@@ -63,16 +43,6 @@ export default definePlugin({
     description: "Locks CloudCord until the current account joins the official CloudCord server.",
     authors: [SincordDevs.nobody],
     enabledByDefault: true,
-
-    start() {
-        startupTimer = setTimeout(checkMembership, 6000);
-    },
-
-    stop() {
-        if (startupTimer) clearTimeout(startupTimer);
-        if (modalKey) closeModal(modalKey);
-        startupTimer = undefined;
-        modalKey = undefined;
-        shown = false;
-    }
+    start() { startupTimer = setTimeout(checkMembership, 6000); },
+    stop() { if (startupTimer) clearTimeout(startupTimer); startupTimer = undefined; removeLockScreen(); }
 });
