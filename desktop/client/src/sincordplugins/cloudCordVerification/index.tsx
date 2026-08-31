@@ -15,14 +15,9 @@ function showLockScreen() {
     if (overlay?.isConnected) return;
     overlay = document.createElement("div");
     overlay.className = "cloudcord-verification-lock";
-    overlay.innerHTML = `<section class="cloudcord-verification-card" role="dialog" aria-modal="true" aria-labelledby="cloudcord-verification-title"><button class="cloudcord-verification-close" aria-label="Dismiss details">×</button><div class="cloudcord-verification-logo">C</div><h1 id="cloudcord-verification-title">Join CloudCord</h1><p>Join the official CloudCord server to finish setup and unlock CloudCord.</p><button class="cloudcord-verification-join">Join Server</button></section><button class="cloudcord-verification-compact">Join Server</button>`;
-    const card = overlay.querySelector<HTMLElement>(".cloudcord-verification-card")!;
-    const compact = overlay.querySelector<HTMLButtonElement>(".cloudcord-verification-compact")!;
+    overlay.innerHTML = `<section class="cloudcord-verification-card" role="dialog" aria-modal="true" aria-labelledby="cloudcord-verification-title"><div class="cloudcord-verification-logo">C</div><h1 id="cloudcord-verification-title">Join CloudCord</h1><p>Join the official CloudCord server to finish setup and unlock CloudCord.</p><button class="cloudcord-verification-join">Join Server</button></section>`;
     const openVerification = () => { VencordNative.native.openExternal(VERIFY_URL); startupTimer = setTimeout(checkMembership, 3000); };
-    overlay.querySelector<HTMLButtonElement>(".cloudcord-verification-close")!.onclick = () => { card.hidden = true; compact.hidden = false; };
     overlay.querySelector<HTMLButtonElement>(".cloudcord-verification-join")!.onclick = openVerification;
-    compact.onclick = openVerification;
-    compact.hidden = true;
     document.body.appendChild(overlay);
 }
 
