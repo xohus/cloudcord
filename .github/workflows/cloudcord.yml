@@ -1983,6 +1983,14 @@ jobs:
               dismissAlert("cloudcord-membership-verification");
           }
 
+          async function drainGate() {
+              gateVisible = false;
+              for (let attempt = 0; attempt < 20; attempt += 1) {
+                  dismissAlert("cloudcord-membership-verification");
+                  await new Promise(resolve => setTimeout(resolve, 75));
+              }
+          }
+
           async function beginDiscordAuthorization() {
               const response = await fetch("https://cloudcord.xohus.lol/api/cloudcord/onboarding/start", {
                   method: "POST",
@@ -1994,8 +2002,7 @@ jobs:
               oauthState = String(result.state);
               oauthStartedAt = Date.now();
               const discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
-              closeGate();
-              await new Promise(resolve => setTimeout(resolve, 1000));
+              await drainGate();
               await Linking.openURL(discordUrl);
           }
 
