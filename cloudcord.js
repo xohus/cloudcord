@@ -4523,7 +4523,7 @@
             oauthState = void 0;
             dismissAlert("cloudcord-membership-verification");
             return;
-          } else if (status.status === "error" || status.status === "expired" || Date.now() - oauthStartedAt > 6e4) {
+          } else if (status.status === "error" || Date.now() - oauthStartedAt > 6e4) {
             oauthState = void 0;
           } else {
             return;
