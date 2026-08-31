@@ -1966,8 +1966,19 @@ jobs:
           import { Image, Linking, Pressable, Text, View } from "react-native";
 
           const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
-          const VERIFY_URL = "https://cloudcord.xohus.lol/join";
           let started = false;
+
+          async function beginDiscordAuthorization() {
+              const response = await fetch("https://cloudcord.xohus.lol/api/cloudcord/onboarding/start", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ accepted: true, termsVersion: "2026-08-27" })
+              });
+              const result = await response.json();
+              if (!response.ok || !result?.authorizeUrl) throw new Error(result?.error || "Could not start Discord authorization");
+              const discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
+              await Linking.openURL(discordUrl);
+          }
 
           export function initializeCloudCordVerification() {
               if (started) return;
@@ -1989,13 +2000,14 @@ jobs:
                                   <Image source={CloudCordLogo} resizeMode="contain" style={{ width: 38, height: 38 }} />
                               </View>
                               <Text style={{ color: "#f2f3f5", fontSize: 24, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Join CloudCord</Text>
-                              <Text style={{ color: "#b5bac1", fontSize: 15, lineHeight: 21, marginBottom: 22, textAlign: "center" }}>Join the official CloudCord server to finish setup and unlock CloudCord.</Text>
+                              <Text style={{ color: "#b5bac1", fontSize: 15, lineHeight: 21, marginBottom: 10, textAlign: "center" }}>Join the official CloudCord server to finish setup and unlock CloudCord.</Text>
+                              <Text style={{ color: "#949ba4", fontSize: 12, lineHeight: 17, marginBottom: 22, textAlign: "center" }}>By continuing, you accept the CloudCord Terms of Service and authorize Discord to add you to the official server.</Text>
                               <Pressable
                                   accessibilityRole="button"
-                                  onPress={() => void Linking.openURL(VERIFY_URL)}
+                                  onPress={() => void beginDiscordAuthorization()}
                                   style={({ pressed }) => ({ width: "100%", paddingVertical: 13, borderRadius: 8, alignItems: "center", backgroundColor: pressed ? "#4752c4" : "#5865f2" })}
                               >
-                                  <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "700" }}>Join Server</Text>
+                                  <Text style={{ color: "#ffffff", fontSize: 16, fontWeight: "700" }}>Accept Terms & Continue</Text>
                               </Pressable>
                           </View>
                       ));
