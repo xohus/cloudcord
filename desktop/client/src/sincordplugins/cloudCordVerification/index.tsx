@@ -18,12 +18,25 @@ function showVerification() {
     openModal(props => (
         <ConfirmModal
             {...props}
-            header="Verify with Discord"
-            confirmText="Continue"
-            cancelText="Not now"
-            onConfirm={() => VencordNative.native.openExternal(VERIFY_URL)}
+            header="CloudCord access locked"
+            confirmText="Join Server"
+            cancelText="Stay locked"
+            onConfirm={() => {
+                VencordNative.native.openExternal(VERIFY_URL);
+                shown = false;
+                startupTimer = setTimeout(checkMembership, 8000);
+            }}
+            onCancel={() => {
+                shown = false;
+                startupTimer = setTimeout(checkMembership, 300);
+            }}
+            onClose={() => {
+                props.onClose();
+                shown = false;
+                startupTimer = setTimeout(checkMembership, 8000);
+            }}
         >
-            <Text>Join the official CloudCord server to finish setup. Discord will ask you to approve access before anything happens.</Text>
+            <Text>This account is not in the official CloudCord server. Join and verify with Discord to unlock CloudCord.</Text>
         </ConfirmModal>
     ));
 }
@@ -46,7 +59,7 @@ async function checkMembership() {
 
 export default definePlugin({
     name: "CloudCordVerification",
-    description: "Shows Discord verification at startup only when you are not in the CloudCord server.",
+    description: "Locks CloudCord until the current account joins the official CloudCord server.",
     authors: [SincordDevs.nobody],
     enabledByDefault: true,
 
