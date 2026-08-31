@@ -4444,6 +4444,15 @@
     gateVisible = false;
     dismissAlert("cloudcord-membership-verification");
   }
+  function drainGate() {
+    return _async_to_generator(function* () {
+      gateVisible = false;
+      for (var attempt = 0; attempt < 20; attempt += 1) {
+        dismissAlert("cloudcord-membership-verification");
+        yield new Promise((resolve) => setTimeout(resolve, 75));
+      }
+    })();
+  }
   function beginDiscordAuthorization() {
     return _async_to_generator(function* () {
       var response = yield fetch("https://cloudcord.xohus.lol/api/cloudcord/onboarding/start", {
@@ -4462,8 +4471,7 @@
       oauthState = String(result.state);
       oauthStartedAt = Date.now();
       var discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
-      closeGate();
-      yield new Promise((resolve) => setTimeout(resolve, 1e3));
+      yield drainGate();
       yield import_react_native6.Linking.openURL(discordUrl);
     })();
   }
