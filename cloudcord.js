@@ -4552,18 +4552,10 @@
           hardwareAccelerated: true,
           onRequestClose: () => {
           },
-          children: BlurView ? /* @__PURE__ */ jsx(BlurView, {
-            style: {
-              flex: 1
-            },
-            blurType: "dark",
-            blurAmount: 22,
-            reducedTransparencyFallbackColor: "#111214",
-            children: /* @__PURE__ */ jsx(LockContent, {})
-          }) : /* @__PURE__ */ jsx(import_react_native6.View, {
+          children: /* @__PURE__ */ jsx(import_react_native6.View, {
             style: {
               flex: 1,
-              backgroundColor: "rgba(0,0,0,0.72)"
+              backgroundColor: "rgba(0,0,0,0.88)"
             },
             children: /* @__PURE__ */ jsx(LockContent, {})
           })
@@ -4572,7 +4564,7 @@
       }
     })(), 6e3);
   }
-  var import_react_native6, CONFIG_URL, VERIFY_URL, BlurView, shown;
+  var import_react_native6, CONFIG_URL, VERIFY_URL, shown;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4585,7 +4577,6 @@
       import_react_native6 = __toESM(require_react_native());
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
       VERIFY_URL = "https://cloudcord.xohus.lol/join";
-      BlurView = findByProps("BlurView")?.BlurView;
       shown = false;
     }
   });
