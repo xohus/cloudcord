@@ -1966,6 +1966,7 @@ jobs:
 
           const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
           const VERIFY_URL = "https://cloudcord.xohus.lol/join";
+          const BlurView = (findByProps("BlurView") as any)?.BlurView;
           let shown = false;
 
           export function initializeCloudCordVerification() {
@@ -1986,14 +1987,18 @@ jobs:
                       openAlert("cloudcord-membership-verification", (
                           <Modal
                               visible
+                              transparent
                               animationType="fade"
-                              presentationStyle="fullScreen"
+                              presentationStyle="overFullScreen"
                               statusBarTranslucent
                               navigationBarTranslucent
                               hardwareAccelerated
                               onRequestClose={() => {}}
                           >
-                              <View style={{ flex: 1, backgroundColor: "#000000", alignItems: "center", justifyContent: "center", padding: 24 }}>
+                              <View style={{ flex: 1, backgroundColor: "transparent", alignItems: "center", justifyContent: "center", padding: 24 }}>
+                                  {BlurView
+                                      ? <BlurView style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }} blurType="dark" blurAmount={22} reducedTransparencyFallbackColor="#111214" />
+                                      : <View style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: "rgba(0,0,0,0.72)" }} />}
                                   <View style={{ width: "100%", maxWidth: 440, padding: 28, borderRadius: 16, borderWidth: 1, borderColor: "#3f4147", backgroundColor: "#1e1f22", alignItems: "center" }}>
                                       <View style={{ width: 52, height: 52, borderRadius: 15, marginBottom: 18, alignItems: "center", justifyContent: "center", backgroundColor: "#5865f2" }}>
                                           <Text style={{ color: "#ffffff", fontSize: 26, fontWeight: "800" }}>C</Text>
