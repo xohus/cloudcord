@@ -4455,8 +4455,9 @@
         throw new Error(result?.error || "Could not start Discord authorization");
       var discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
       dismissAlert("cloudcord-membership-verification");
+      yield new Promise((resolve) => setTimeout(resolve, 250));
       yield import_react_native6.Linking.openURL(discordUrl);
-      setTimeout(() => void checkMembership?.(), 750);
+      setTimeout(() => void checkMembership?.(), 1500);
     })();
   }
   function initializeCloudCordVerification() {
@@ -4491,27 +4492,6 @@
             alignItems: "center"
           },
           children: [
-            /* @__PURE__ */ jsx(import_react_native6.View, {
-              style: {
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                marginBottom: 16,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "#5865f2"
-              },
-              children: /* @__PURE__ */ jsx(import_react_native6.Image, {
-                source: {
-                  uri: LOGO_URL
-                },
-                resizeMode: "contain",
-                style: {
-                  width: 38,
-                  height: 38
-                }
-              })
-            }),
             /* @__PURE__ */ jsx(import_react_native6.Text, {
               style: {
                 color: "#f2f3f5",
@@ -4576,7 +4556,7 @@
       setInterval(() => void check(), 1e3);
     }, 3e3);
   }
-  var import_react_native6, CONFIG_URL, LOGO_URL, started, requiredGuildId, checkMembership;
+  var import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4588,7 +4568,6 @@
       init_alerts();
       import_react_native6 = __toESM(require_react_native());
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
-      LOGO_URL = "https://cloudcord.xohus.lol/cloudcord-favicon.png";
       started = false;
     }
   });
