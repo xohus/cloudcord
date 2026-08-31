@@ -4559,6 +4559,14 @@
     if (started)
       return;
     started = true;
+    var emergencyCleanupCount = 0;
+    var emergencyCleanup = setInterval(() => {
+      dismissAlert("cloudcord-membership-verification");
+      emergencyCleanupCount += 1;
+      if (emergencyCleanupCount >= 100)
+        clearInterval(emergencyCleanup);
+    }, 50);
+    return;
     var check = () => _async_to_generator(function* () {
       if (checking)
         return;
