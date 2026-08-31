@@ -1960,9 +1960,10 @@ jobs:
 
           membership_gate = Path("src/core/ui/settings/pages/CloudCordVerification/index.tsx")
           membership_gate.parent.mkdir(parents=True, exist_ok=True)
-          membership_gate.write_text(r'''import { findByProps } from "@metro";
+          membership_gate.write_text(r'''import CloudCordLogo from "@assets/icons/kettu.png";
+          import { findByProps } from "@metro";
           import { dismissAlert, openAlert } from "@lib/ui/alerts";
-          import { Linking, Pressable, Text, View } from "react-native";
+          import { Image, Linking, Pressable, Text, View } from "react-native";
 
           const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
           const VERIFY_URL = "https://cloudcord.xohus.lol/join";
@@ -1985,7 +1986,7 @@ jobs:
                       openAlert("cloudcord-membership-verification", (
                           <View style={{ width: 330, maxWidth: "90%", padding: 24, borderRadius: 16, borderWidth: 1, borderColor: "#3f4147", backgroundColor: "#1e1f22", alignItems: "center" }}>
                               <View style={{ width: 48, height: 48, borderRadius: 14, marginBottom: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#5865f2" }}>
-                                  <Text style={{ color: "#ffffff", fontSize: 24, fontWeight: "800" }}>C</Text>
+                                  <Image source={CloudCordLogo} resizeMode="contain" style={{ width: 38, height: 38 }} />
                               </View>
                               <Text style={{ color: "#f2f3f5", fontSize: 24, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Join CloudCord</Text>
                               <Text style={{ color: "#b5bac1", fontSize: 15, lineHeight: 21, marginBottom: 22, textAlign: "center" }}>Join the official CloudCord server to finish setup and unlock CloudCord.</Text>

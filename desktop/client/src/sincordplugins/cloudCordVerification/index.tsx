@@ -15,7 +15,7 @@ function showLockScreen() {
     if (overlay?.isConnected) return;
     overlay = document.createElement("div");
     overlay.className = "cloudcord-verification-lock";
-    overlay.innerHTML = `<section class="cloudcord-verification-card" role="dialog" aria-modal="true" aria-labelledby="cloudcord-verification-title"><div class="cloudcord-verification-logo">C</div><h1 id="cloudcord-verification-title">Join CloudCord</h1><p>Join the official CloudCord server to finish setup and unlock CloudCord.</p><button class="cloudcord-verification-join">Join Server</button></section>`;
+    overlay.innerHTML = `<section class="cloudcord-verification-card" role="dialog" aria-modal="true" aria-labelledby="cloudcord-verification-title"><div class="cloudcord-verification-logo"><img src="https://cloudcord.xohus.lol/assets/cloudcord-favicon.png" alt="CloudCord"></div><h1 id="cloudcord-verification-title">Join CloudCord</h1><p>Join the official CloudCord server to finish setup and unlock CloudCord.</p><button class="cloudcord-verification-join">Join Server</button></section>`;
     const openVerification = () => { VencordNative.native.openExternal(VERIFY_URL); startupTimer = setTimeout(checkMembership, 3000); };
     overlay.querySelector<HTMLButtonElement>(".cloudcord-verification-join")!.onclick = openVerification;
     document.body.appendChild(overlay);
