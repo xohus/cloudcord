@@ -70,6 +70,11 @@ jobs:
             --runtime-deb "$(find ios/native-ios/packages -name '*.deb' -print -quit)" \
             --output cloudcord0.ipa
           unzip -p cloudcord0.ipa Payload/Discord.app/Info.plist | grep -q '<string>341.0</string>'
+          unzip -l cloudcord0.ipa | grep -q 'Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload'
+          rm -rf "$RUNNER_TEMP/cloudcord-stream-check"
+          unzip -q cloudcord0.ipa -d "$RUNNER_TEMP/cloudcord-stream-check"
+          ldid -e "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload" \
+            | grep -q 'application-groups'
 
       - uses: actions/upload-artifact@v4
         with:

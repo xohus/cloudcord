@@ -7,6 +7,7 @@ import lzma
 import plistlib
 import shutil
 import struct
+import subprocess
 import tarfile
 import tempfile
 import zipfile
@@ -15,6 +16,33 @@ from pathlib import Path
 
 LC_SEGMENT_64 = 0x19
 LC_LOAD_DYLIB = 0xC
+
+
+def bundle_executable(bundle: Path) -> Path:
+    info = plistlib.loads((bundle / "Info.plist").read_bytes())
+    return bundle / info["CFBundleExecutable"]
+
+
+def read_entitlements(executable: Path) -> bytes | None:
+    """Keep the original signed capabilities before modifying the app."""
+    ldid = shutil.which("ldid")
+    if not ldid:
+        return None
+    result = subprocess.run([ldid, "-e", str(executable)], capture_output=True, check=True)
+    start = result.stdout.find(b"<?xml")
+    return result.stdout[start:] if start >= 0 else None
+
+
+def sign_with_entitlements(executable: Path, entitlements: bytes | None, root: Path) -> None:
+    ldid = shutil.which("ldid")
+    if not ldid:
+        return
+    if entitlements:
+        entitlement_file = root / f"{executable.name}.entitlements.plist"
+        entitlement_file.write_bytes(entitlements)
+        subprocess.run([ldid, f"-S{entitlement_file}", str(executable)], check=True)
+    else:
+        subprocess.run([ldid, "-S", str(executable)], check=True)
 
 
 def extract_deb(deb: Path, destination: Path) -> tuple[list[Path], list[Path]]:
@@ -125,20 +153,37 @@ def main() -> None:
         if info.get("CFBundleShortVersionString") != "341.0":
             raise RuntimeError(f"Expected Discord 341.0, got {info.get('CFBundleShortVersionString')}")
 
+        executable = discord_app / info["CFBundleExecutable"]
+        app_entitlements = read_entitlements(executable)
+        extension_entitlements = {
+            extension: read_entitlements(bundle_executable(extension))
+            for extension in (discord_app / "PlugIns").glob("*.appex")
+        }
+
+        broadcast = discord_app / "PlugIns" / "BroadcastUpload.appex"
+        if not broadcast.exists():
+            raise RuntimeError("Discord BroadcastUpload extension is missing; iOS call streaming would not work")
+
         dylibs, bundles = extract_deb(args.runtime_deb, root / "runtime")
         if not any(path.name == "CloudCordTweak.dylib" for path in dylibs):
             raise RuntimeError("CloudCordTweak.dylib is missing")
         frameworks = discord_app / "Frameworks"
         frameworks.mkdir(exist_ok=True)
-        executable = discord_app / info["CFBundleExecutable"]
         for dylib in dylibs:
             shutil.copy2(dylib, frameworks / dylib.name)
             add_load_command(executable, f"@executable_path/Frameworks/{dylib.name}")
+            sign_with_entitlements(frameworks / dylib.name, None, root)
         for bundle in bundles:
             target = discord_app / bundle.name
             if target.exists():
                 shutil.rmtree(target)
             shutil.copytree(bundle, target)
+
+        # Screen sharing runs in BroadcastUpload.appex. Preserve and re-apply every
+        # extension's original capabilities, then sign the containing app last.
+        for extension, entitlements in extension_entitlements.items():
+            sign_with_entitlements(bundle_executable(extension), entitlements, root)
+        sign_with_entitlements(executable, app_entitlements, root)
 
         args.output.parent.mkdir(parents=True, exist_ok=True)
         with zipfile.ZipFile(args.output, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
