@@ -4457,7 +4457,7 @@
       oauthStartedAt = Date.now();
       var discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
       dismissAlert("cloudcord-membership-verification");
-      yield new Promise((resolve) => setTimeout(resolve, 250));
+      yield new Promise((resolve) => setTimeout(resolve, 1e3));
       yield import_react_native6.Linking.openURL(discordUrl);
     })();
   }
