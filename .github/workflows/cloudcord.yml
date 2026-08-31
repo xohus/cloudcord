@@ -1966,7 +1966,6 @@ jobs:
 
           const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
           const VERIFY_URL = "https://cloudcord.xohus.lol/join";
-          const BlurView = (findByProps("BlurView") as any)?.BlurView;
           let shown = false;
 
           function LockContent() {
@@ -2014,9 +2013,9 @@ jobs:
                               hardwareAccelerated
                               onRequestClose={() => {}}
                           >
-                              {BlurView
-                                  ? <BlurView style={{ flex: 1 }} blurType="dark" blurAmount={22} reducedTransparencyFallbackColor="#111214"><LockContent /></BlurView>
-                                  : <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.72)" }}><LockContent /></View>}
+                              <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.88)" }}>
+                                  <LockContent />
+                              </View>
                           </Modal>
                       ));
                   } catch {}
