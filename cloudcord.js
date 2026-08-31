@@ -4470,6 +4470,10 @@
         return;
       checking = true;
       try {
+        if (oauthVerified) {
+          dismissAlert("cloudcord-membership-verification");
+          return;
+        }
         if (settings.cloudcordBlacklisted) {
           openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsxs(import_react_native6.View, {
             style: {
@@ -4514,10 +4518,14 @@
           if (status.status === "blacklisted") {
             settings.cloudcordBlacklisted = true;
             oauthState = void 0;
-          } else if (status.status === "complete" || status.status === "error" || status.status === "expired" || Date.now() - oauthStartedAt > 6e4) {
+          } else if (status.status === "complete") {
+            oauthVerified = true;
+            oauthState = void 0;
+            dismissAlert("cloudcord-membership-verification");
+            return;
+          } else if (status.status === "error" || status.status === "expired" || Date.now() - oauthStartedAt > 6e4) {
             oauthState = void 0;
           } else {
-            dismissAlert("cloudcord-membership-verification");
             return;
           }
         }
@@ -4613,7 +4621,7 @@
       setInterval(() => void check(), 1e3);
     }, 3e3);
   }
-  var import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership, oauthState, oauthStartedAt, checking;
+  var import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership, oauthState, oauthStartedAt, oauthVerified, checking;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4628,6 +4636,7 @@
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
       started = false;
       oauthStartedAt = 0;
+      oauthVerified = false;
       checking = false;
     }
   });
