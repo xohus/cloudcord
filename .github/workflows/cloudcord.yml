@@ -1967,10 +1967,12 @@ jobs:
 
           const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
           const VERIFY_URL = "https://cloudcord.xohus.lol/join";
-          let shown = false;
+          let started = false;
 
-          export function initializeCloudCordVerification(delay = 6000) {
-              setTimeout(async () => {
+          export function initializeCloudCordVerification() {
+              if (started) return;
+              started = true;
+              const check = async () => {
                   try {
                       const response = await fetch(CONFIG_URL);
                       if (!response.ok) return;
@@ -1978,33 +1980,23 @@ jobs:
                       if (!config?.enabled || !config.guildId) return;
                       const guildStore = findByProps("getGuilds", "getGuild") as any;
                       if (guildStore?.getGuild?.(String(config.guildId))) {
-                          shown = false;
                           dismissAlert("cloudcord-membership-verification");
                           return;
                       }
-                      if (shown) return;
-                      shown = true;
                       openAlert("cloudcord-membership-verification", (
                           <AlertModal
-                              {...({
-                                  dismissible: false,
-                                  dismissable: false,
-                                  closeOnBackdropPress: false,
-                                  shouldDismissOnOverlayPress: false,
-                                  onDismiss: () => { shown = false; initializeCloudCordVerification(0); }
-                              } as any)}
                               title="Join CloudCord"
                               content="Join the official CloudCord server to finish setup and unlock CloudCord."
                               actions={<AlertActions>
                                   <AlertActionButton text="Join Server" variant="primary" onPress={() => {
                                       void Linking.openURL(VERIFY_URL);
-                                      initializeCloudCordVerification(3000);
                                   }} />
                               </AlertActions>}
                           />
                       ));
                   } catch {}
-              }, delay);
+              };
+              setTimeout(() => { void check(); setInterval(() => void check(), 1000); }, 6000);
           }
           ''', encoding="utf-8")
 
