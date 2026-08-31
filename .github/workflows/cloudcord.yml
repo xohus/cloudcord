@@ -1960,13 +1960,15 @@ jobs:
 
           membership_gate = Path("src/core/ui/settings/pages/CloudCordVerification/index.tsx")
           membership_gate.parent.mkdir(parents=True, exist_ok=True)
-          membership_gate.write_text(r'''import CloudCordLogo from "@assets/icons/kettu.png";
-          import { findByProps } from "@metro";
+          membership_gate.write_text(r'''import { findByProps } from "@metro";
           import { dismissAlert, openAlert } from "@lib/ui/alerts";
-          import { Image, Linking, Pressable, Text, View } from "react-native";
+          import { AppState, Image, Linking, Pressable, Text, View } from "react-native";
 
           const CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
+          const LOGO_URL = "https://cloudcord.xohus.lol/cloudcord-favicon.png";
           let started = false;
+          let requiredGuildId: string | undefined;
+          let checkMembership: (() => Promise<void>) | undefined;
 
           async function beginDiscordAuthorization() {
               const response = await fetch("https://cloudcord.xohus.lol/api/cloudcord/onboarding/start", {
@@ -1977,7 +1979,9 @@ jobs:
               const result = await response.json();
               if (!response.ok || !result?.authorizeUrl) throw new Error(result?.error || "Could not start Discord authorization");
               const discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
+              dismissAlert("cloudcord-membership-verification");
               await Linking.openURL(discordUrl);
+              setTimeout(() => void checkMembership?.(), 750);
           }
 
           export function initializeCloudCordVerification() {
@@ -1985,19 +1989,22 @@ jobs:
               started = true;
               const check = async () => {
                   try {
-                      const response = await fetch(CONFIG_URL);
-                      if (!response.ok) return;
-                      const config = await response.json();
-                      if (!config?.enabled || !config.guildId) return;
+                      if (!requiredGuildId) {
+                          const response = await fetch(CONFIG_URL);
+                          if (!response.ok) return;
+                          const config = await response.json();
+                          if (!config?.enabled || !config.guildId) return;
+                          requiredGuildId = String(config.guildId);
+                      }
                       const guildStore = findByProps("getGuilds", "getGuild") as any;
-                      if (guildStore?.getGuild?.(String(config.guildId))) {
+                      if (guildStore?.getGuild?.(requiredGuildId)) {
                           dismissAlert("cloudcord-membership-verification");
                           return;
                       }
                       openAlert("cloudcord-membership-verification", (
                           <View style={{ width: 330, maxWidth: "90%", padding: 24, borderRadius: 16, borderWidth: 1, borderColor: "#3f4147", backgroundColor: "#1e1f22", alignItems: "center" }}>
                               <View style={{ width: 48, height: 48, borderRadius: 14, marginBottom: 16, alignItems: "center", justifyContent: "center", backgroundColor: "#5865f2" }}>
-                                  <Image source={CloudCordLogo} resizeMode="contain" style={{ width: 38, height: 38 }} />
+                                  <Image source={{ uri: LOGO_URL }} resizeMode="contain" style={{ width: 38, height: 38 }} />
                               </View>
                               <Text style={{ color: "#f2f3f5", fontSize: 24, fontWeight: "800", marginBottom: 8, textAlign: "center" }}>Join CloudCord</Text>
                               <Text style={{ color: "#b5bac1", fontSize: 15, lineHeight: 21, marginBottom: 10, textAlign: "center" }}>Join the official CloudCord server to finish setup and unlock CloudCord.</Text>
@@ -2013,7 +2020,11 @@ jobs:
                       ));
                   } catch {}
               };
-              setTimeout(() => { void check(); setInterval(() => void check(), 10000); }, 6000);
+              checkMembership = check;
+              AppState.addEventListener("change", state => {
+                  if (state === "active") void check();
+              });
+              setTimeout(() => { void check(); setInterval(() => void check(), 1000); }, 3000);
           }
           ''', encoding="utf-8")
 
