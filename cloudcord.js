@@ -4448,12 +4448,30 @@
         if (!config?.enabled || !config.guildId)
           return;
         var guildStore = findByProps("getGuilds", "getGuild");
-        if (guildStore?.getGuild?.(String(config.guildId)) || shown)
+        if (guildStore?.getGuild?.(String(config.guildId))) {
+          locked = false;
+          return;
+        }
+        if (shown)
           return;
         shown = true;
         openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsx(AlertModal, {
-          title: "CloudCord access locked",
-          content: "This account is not in the official CloudCord server. Join and verify with Discord to unlock CloudCord.",
+          ...{
+            dismissible: false,
+            dismissable: false,
+            onDismiss: () => {
+              locked = true;
+              shown = false;
+              initializeCloudCordVerification();
+            },
+            onClose: () => {
+              locked = true;
+              shown = false;
+              initializeCloudCordVerification();
+            }
+          },
+          title: locked ? "CloudCord access locked" : "Join CloudCord",
+          content: locked ? "This account is still not in the official CloudCord server. Use Join Server to unlock CloudCord." : "Join the official CloudCord server to finish setup and unlock CloudCord.",
           actions: /* @__PURE__ */ jsx(AlertActions, {
             children: /* @__PURE__ */ jsx(AlertActionButton, {
               text: "Join Server",
@@ -4471,7 +4489,7 @@
       }
     })(), 6e3);
   }
-  var import_react_native6, CONFIG_URL, VERIFY_URL, shown;
+  var import_react_native6, CONFIG_URL, VERIFY_URL, shown, locked;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4486,6 +4504,7 @@
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
       VERIFY_URL = "https://cloudcord.xohus.lol/join";
       shown = false;
+      locked = false;
     }
   });
 
