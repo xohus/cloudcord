@@ -4438,8 +4438,11 @@
   });
 
   // src/core/ui/settings/pages/CloudCordVerification/index.tsx
-  function initializeCloudCordVerification(delay = 6e3) {
-    setTimeout(() => _async_to_generator(function* () {
+  function initializeCloudCordVerification() {
+    if (started)
+      return;
+    started = true;
+    var check = () => _async_to_generator(function* () {
       try {
         var response = yield fetch(CONFIG_URL);
         if (!response.ok)
@@ -4449,24 +4452,10 @@
           return;
         var guildStore = findByProps("getGuilds", "getGuild");
         if (guildStore?.getGuild?.(String(config.guildId))) {
-          shown = false;
           dismissAlert("cloudcord-membership-verification");
           return;
         }
-        if (shown)
-          return;
-        shown = true;
         openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsx(AlertModal, {
-          ...{
-            dismissible: false,
-            dismissable: false,
-            closeOnBackdropPress: false,
-            shouldDismissOnOverlayPress: false,
-            onDismiss: () => {
-              shown = false;
-              initializeCloudCordVerification(0);
-            }
-          },
           title: "Join CloudCord",
           content: "Join the official CloudCord server to finish setup and unlock CloudCord.",
           actions: /* @__PURE__ */ jsx(AlertActions, {
@@ -4475,16 +4464,19 @@
               variant: "primary",
               onPress: () => {
                 void import_react_native6.Linking.openURL(VERIFY_URL);
-                initializeCloudCordVerification(3e3);
               }
             })
           })
         }));
       } catch (e) {
       }
-    })(), delay);
+    })();
+    setTimeout(() => {
+      void check();
+      setInterval(() => void check(), 1e3);
+    }, 6e3);
   }
-  var import_react_native6, CONFIG_URL, VERIFY_URL, shown;
+  var import_react_native6, CONFIG_URL, VERIFY_URL, started;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4498,7 +4490,7 @@
       import_react_native6 = __toESM(require_react_native());
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
       VERIFY_URL = "https://cloudcord.xohus.lol/join";
-      shown = false;
+      started = false;
     }
   });
 
