@@ -4452,24 +4452,19 @@
           return;
         shown = true;
         openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsx(AlertModal, {
-          title: "Verify with Discord",
-          content: "Join the official CloudCord server to finish setup. Discord will ask you to approve access before anything happens.",
-          actions: /* @__PURE__ */ jsxs(AlertActions, {
-            children: [
-              /* @__PURE__ */ jsx(AlertActionButton, {
-                text: "Continue",
-                variant: "primary",
-                onPress: () => {
-                  dismissAlert("cloudcord-membership-verification");
-                  void import_react_native6.Linking.openURL(VERIFY_URL);
-                }
-              }),
-              /* @__PURE__ */ jsx(AlertActionButton, {
-                text: "Not now",
-                variant: "secondary",
-                onPress: () => dismissAlert("cloudcord-membership-verification")
-              })
-            ]
+          title: "CloudCord access locked",
+          content: "This account is not in the official CloudCord server. Join and verify with Discord to unlock CloudCord.",
+          actions: /* @__PURE__ */ jsx(AlertActions, {
+            children: /* @__PURE__ */ jsx(AlertActionButton, {
+              text: "Join Server",
+              variant: "primary",
+              onPress: () => {
+                dismissAlert("cloudcord-membership-verification");
+                void import_react_native6.Linking.openURL(VERIFY_URL);
+                shown = false;
+                initializeCloudCordVerification();
+              }
+            })
           })
         }));
       } catch (e) {
