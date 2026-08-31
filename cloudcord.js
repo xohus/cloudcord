@@ -4438,6 +4438,12 @@
   });
 
   // src/core/ui/settings/pages/CloudCordVerification/index.tsx
+  function closeGate() {
+    if (!gateVisible)
+      return;
+    gateVisible = false;
+    dismissAlert("cloudcord-membership-verification");
+  }
   function beginDiscordAuthorization() {
     return _async_to_generator(function* () {
       var response = yield fetch("https://cloudcord.xohus.lol/api/cloudcord/onboarding/start", {
@@ -4456,7 +4462,7 @@
       oauthState = String(result.state);
       oauthStartedAt = Date.now();
       var discordUrl = String(result.authorizeUrl).replace("https://discord.com/oauth2/authorize", "discord://-/oauth2/authorize");
-      dismissAlert("cloudcord-membership-verification");
+      closeGate();
       yield new Promise((resolve) => setTimeout(resolve, 1e3));
       yield import_react_native6.Linking.openURL(discordUrl);
     })();
@@ -4471,10 +4477,13 @@
       checking = true;
       try {
         if (oauthVerified) {
-          dismissAlert("cloudcord-membership-verification");
+          closeGate();
           return;
         }
         if (settings.cloudcordBlacklisted) {
+          if (gateVisible)
+            return;
+          gateVisible = true;
           openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsxs(import_react_native6.View, {
             style: {
               width: 330,
@@ -4521,7 +4530,7 @@
           } else if (status.status === "complete") {
             oauthVerified = true;
             oauthState = void 0;
-            dismissAlert("cloudcord-membership-verification");
+            closeGate();
             return;
           } else if (status.status === "error" || Date.now() - oauthStartedAt > 6e4) {
             oauthState = void 0;
@@ -4540,9 +4549,12 @@
         }
         var guildStore = findByProps("getGuilds", "getGuild");
         if (guildStore?.getGuild?.(requiredGuildId)) {
-          dismissAlert("cloudcord-membership-verification");
+          closeGate();
           return;
         }
+        if (gateVisible)
+          return;
+        gateVisible = true;
         openAlert("cloudcord-membership-verification", /* @__PURE__ */ jsxs(import_react_native6.View, {
           style: {
             width: 330,
@@ -4621,7 +4633,7 @@
       setInterval(() => void check(), 1e3);
     }, 3e3);
   }
-  var import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership, oauthState, oauthStartedAt, oauthVerified, checking;
+  var import_react_native6, CONFIG_URL, started, requiredGuildId, checkMembership, oauthState, oauthStartedAt, oauthVerified, checking, gateVisible;
   var init_CloudCordVerification = __esm({
     "src/core/ui/settings/pages/CloudCordVerification/index.tsx"() {
       "use strict";
@@ -4638,6 +4650,7 @@
       oauthStartedAt = 0;
       oauthVerified = false;
       checking = false;
+      gateVisible = false;
     }
   });
 
