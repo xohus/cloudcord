@@ -2000,6 +2000,13 @@ jobs:
           export function initializeCloudCordVerification() {
               if (started) return;
               started = true;
+              let cleanupAttempts = 0;
+              const cleanup = setInterval(() => {
+                  dismissAlert("cloudcord-membership-verification");
+                  cleanupAttempts += 1;
+                  if (cleanupAttempts >= 60) clearInterval(cleanup);
+              }, 100);
+              return;
               const check = async () => {
                   if (checking) return;
                   checking = true;
