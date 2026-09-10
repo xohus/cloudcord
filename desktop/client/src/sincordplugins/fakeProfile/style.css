@@ -414,13 +414,14 @@
     z-index: 1;
     display: block;
     color: #f4f4f5;
-    font-family: var(--font-display, var(--font-primary));
+    font-family: var(--font-headline, var(--font-display, var(--font-primary)));
     font-size: 36px;
     font-style: italic;
-    font-weight: 950;
-    line-height: 1;
-    letter-spacing: -1.2px;
-    text-shadow: 0 2px 8px rgb(0 0 0 / 28%);
+    font-weight: 1000;
+    line-height: .98;
+    letter-spacing: -1.55px;
+    -webkit-text-stroke: .45px currentcolor;
+    text-shadow: 0 2px 8px rgb(0 0 0 / 34%);
 }
 
 .cp-native-nitro-popout > span {
@@ -430,6 +431,7 @@
     margin-top: 10px;
     color: var(--text-muted, #c4c4ca);
     font-size: 20px;
+    font-weight: 600;
     line-height: 1.2;
 }
 
