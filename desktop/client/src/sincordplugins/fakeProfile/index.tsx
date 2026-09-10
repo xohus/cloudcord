@@ -22,18 +22,7 @@ const ModalFooter = _ModalFooter as any;
 const ModalCloseButton = _ModalCloseButton as any;
 import { SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, React, ReactDOM, Select, SnowflakeUtils, UserStore } from "@webpack/common";
-
-import nitroBronze from "file://../../../../../assets/NitroMilestones/bronze.png?base64";
-import nitroDiamond from "file://../../../../../assets/NitroMilestones/diamond.png?base64";
-import nitroEmerald from "file://../../../../../assets/NitroMilestones/emerald.png?base64";
-import nitroGold from "file://../../../../../assets/NitroMilestones/gold.png?base64";
-import nitroOpal from "file://../../../../../assets/NitroMilestones/opal.png?base64";
-import nitroPlatinum from "file://../../../../../assets/NitroMilestones/platinum.png?base64";
-import nitroRuby from "file://../../../../../assets/NitroMilestones/ruby.png?base64";
-import nitroSilver from "file://../../../../../assets/NitroMilestones/silver.png?base64";
-
-const pngDataUrl = (source: string) => source.startsWith("data:") ? source : `data:image/png;base64,${source}`;
+import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, React, Select, SnowflakeUtils, UserStore } from "@webpack/common";
 
 const DS_KEY = "customProfile_data";
 const DS_ENABLED = "customProfile_enabled";
@@ -78,15 +67,15 @@ const GIFT_LEVELS = [
 
 const OLD_NAME_BADGE_ICON = "https://cdn.discordapp.com/badge-icons/6de6d34650760ba5551a79732e98ed60.png";
 const NITRO_LEVELS = [
-    { label: "Nitro (0 months)", name: "Nitro", icon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", cardIcon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", light: "#d9b8ff", dark: "#5865f2" },
-    { label: "Bronze (1 Month)", name: "Bronze", icon: "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png", cardIcon: pngDataUrl(nitroBronze), light: "#e8a87c", dark: "#92400e" },
-    { label: "Silver (3 Months)", name: "Silver", icon: "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png", cardIcon: pngDataUrl(nitroSilver), light: "#e7edf3", dark: "#718096" },
-    { label: "Gold (6 Months)", name: "Gold", icon: "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png", cardIcon: pngDataUrl(nitroGold), light: "#ffe38a", dark: "#d97706" },
-    { label: "Platinum (1 Year)", name: "Platinum", icon: "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png", cardIcon: pngDataUrl(nitroPlatinum), light: "#edf2f7", dark: "#64748b" },
-    { label: "Diamond (2 Years)", name: "Diamond", icon: "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png", cardIcon: pngDataUrl(nitroDiamond), light: "#c9f5ff", dark: "#3b82f6" },
-    { label: "Emerald (3 Years)", name: "Emerald", icon: "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png", cardIcon: pngDataUrl(nitroEmerald), light: "#77f2ba", dark: "#087f5b" },
-    { label: "Ruby (5 Years)", name: "Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png", cardIcon: pngDataUrl(nitroRuby), light: "#ff9ca8", dark: "#b91c3c" },
-    { label: "Opal (6+ Years)", name: "Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png", cardIcon: pngDataUrl(nitroOpal), light: "#e9c7ff", dark: "#8b5cf6" },
+    { label: "Nitro (0 months)", name: "Nitro", icon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png" },
+    { label: "Bronze (1 Month)", name: "Bronze", icon: "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png" },
+    { label: "Silver (3 Months)", name: "Silver", icon: "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png" },
+    { label: "Gold (6 Months)", name: "Gold", icon: "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png" },
+    { label: "Platinum (1 Year)", name: "Platinum", icon: "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png" },
+    { label: "Diamond (2 Years)", name: "Diamond", icon: "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png" },
+    { label: "Emerald (3 Years)", name: "Emerald", icon: "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png" },
+    { label: "Ruby (5 Years)", name: "Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png" },
+    { label: "Opal (6+ Years)", name: "Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png" },
 ];
 const BOOST_LABELS = ["1 Month", "2 Months", "3 Months", "6 Months", "9 Months", "12 Months", "15 Months", "18 Months", "24 Months"];
 const BOOST_ICONS = [
@@ -101,141 +90,6 @@ const BOOST_ICONS = [
     "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png",
 ];
 
-function NitroBadge({ nitroLevel = 0 }: { nitroLevel?: number; }) {
-    const level = NITRO_LEVELS[Math.max(0, Math.min(NITRO_LEVELS.length - 1, nitroLevel))];
-    const anchorRef = React.useRef<HTMLSpanElement>(null);
-    const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-    const [position, setPosition] = React.useState<{ left: number; top: number; } | null>(null);
-
-    React.useEffect(() => () => {
-        if (closeTimer.current) clearTimeout(closeTimer.current);
-    }, []);
-
-    function showOverlay() {
-        if (closeTimer.current) clearTimeout(closeTimer.current);
-        const rect = anchorRef.current?.getBoundingClientRect();
-        if (!rect) return;
-        const width = 286;
-        const height = 213;
-        setPosition({
-            left: Math.max(8, Math.min(window.innerWidth - width - 8, rect.left + rect.width / 2 - width / 2)),
-            top: Math.max(8, rect.top - height + 1)
-        });
-    }
-
-    function queueClose() {
-        closeTimer.current = setTimeout(() => setPosition(null), 260);
-    }
-
-    function openMilestones() {
-        setPosition(null);
-        openModal(rootProps => <NitroMilestonesModal rootProps={rootProps} selectedLevel={nitroLevel} />);
-    }
-
-    return (
-        <>
-            <span
-                ref={anchorRef}
-                className="cp-nitro-badge-anchor"
-                aria-label={level.label}
-                tabIndex={0}
-                onPointerEnter={showOverlay}
-                onPointerLeave={queueClose}
-                onFocus={showOverlay}
-                onBlur={queueClose}
-                onKeyDown={event => (event.key === "Enter" || event.key === " ") && openMilestones()}
-                onClick={openMilestones}
-            >
-                <img src={level.icon} alt={level.label} />
-            </span>
-            {position && ReactDOM.createPortal(
-                <div
-                    className="cp-nitro-card"
-                    role="tooltip"
-                    onPointerEnter={() => closeTimer.current && clearTimeout(closeTimer.current)}
-                    onPointerLeave={queueClose}
-                    onClick={openMilestones}
-                    style={{
-                        left: position.left,
-                        top: position.top,
-                        "--cp-nitro-light": level.light,
-                        "--cp-nitro-dark": level.dark
-                    } as React.CSSProperties}
-                >
-                    <div className="cp-nitro-spotlight" />
-                    <div className="cp-nitro-art">
-                        <div className="cp-nitro-art-glow" />
-                        <img src={level.cardIcon} alt="" />
-                    </div>
-                    <div className="cp-nitro-name">{level.name}</div>
-                    <div className="cp-nitro-date">{level.label.replace(/[()]/g, "")}</div>
-                    <div className="cp-nitro-arrow" />
-                </div>,
-                document.body
-            )}
-        </>
-    );
-}
-
-function NitroMilestonesModal({ rootProps, selectedLevel }: { rootProps: any; selectedLevel: number; }) {
-    return (
-        <ModalRoot {...rootProps} size="medium" className="cp-nitro-modal-root">
-            <ModalHeader separator={false} className="cp-nitro-modal-header">
-                <ModalCloseButton onClick={rootProps.onClose} />
-            </ModalHeader>
-            <ModalContent className="cp-nitro-modal-content">
-                <h2>Celebrate Your Nitro<br />Milestones in Style</h2>
-                <p>Your badge will automatically evolve over time.</p>
-                <div className="cp-nitro-milestone-grid">
-                    {NITRO_LEVELS.slice(1).map((level, index) => {
-                        const actualIndex = index + 1;
-                        return (
-                            <div
-                                key={level.name}
-                                className={`cp-nitro-milestone ${actualIndex === selectedLevel ? "cp-nitro-milestone-selected" : ""}`}
-                                style={{ "--cp-nitro-light": level.light, "--cp-nitro-dark": level.dark } as React.CSSProperties}
-                            >
-                                <div className="cp-nitro-milestone-light" />
-                                <img src={level.cardIcon} alt="" />
-                                <strong>{level.name}</strong>
-                                <span>{level.label.match(/\((.*?)\)/)?.[1] || ""}</span>
-                                {actualIndex === selectedLevel && <small>Current milestone</small>}
-                            </div>
-                        );
-                    })}
-                </div>
-                <Button color={Button.Colors.BRAND} onClick={rootProps.onClose} className="cp-nitro-learn-more">Learn More</Button>
-            </ModalContent>
-        </ModalRoot>
-    );
-}
-
-function GiftingBadge({ giftLevel = 0 }: { giftLevel?: number; }) {
-    const level = GIFT_LEVELS[Math.max(0, Math.min(GIFT_LEVELS.length - 1, giftLevel))];
-    return <span className="cp-gifting-badge-anchor" aria-label="Gifting Icon" title="Gifting Icon" onClick={() => openModal(rootProps => <GiftingMilestonesModal rootProps={rootProps} selectedLevel={giftLevel} />)}>
-        <img src={level.icon} alt="Gifting Icon" />
-    </span>;
-}
-
-function GiftingMilestonesModal({ rootProps, selectedLevel }: { rootProps: any; selectedLevel: number; }) {
-    return <ModalRoot {...rootProps} size="large" className="cp-gifting-modal-root">
-        <ModalHeader separator={false} className="cp-gifting-modal-header">
-            <h2>All Gifting Badges</h2>
-            <ModalCloseButton onClick={rootProps.onClose} />
-        </ModalHeader>
-        <ModalContent className="cp-gifting-modal-content">
-            <div className="cp-gifting-grid">
-                {GIFT_LEVELS.map((level, index) => <button key={level.id} className={`cp-gifting-tier ${index === selectedLevel ? "cp-gifting-tier-selected" : ""}`} style={{ "--cp-gift-light": level.light, "--cp-gift-dark": level.dark } as React.CSSProperties} onClick={rootProps.onClose}>
-                    <span className="cp-gifting-tier-glow" />
-                    <img src={level.icon} alt="" />
-                    <strong>{level.name}</strong>
-                    <span>Gifted {level.count}x</span>
-                </button>)}
-            </div>
-            <p>This badge evolves the more you gift. Refunds and fraud flags may adjust your progress.</p>
-        </ModalContent>
-    </ModalRoot>;
-}
 const AVATAR_DECORATIONS = [
     { id: "1144307957425778779", label: "Hearts" }, { id: "1144308196723408958", label: "Hearts Animated" },
     { id: "1212569433839636530", label: "Lofi Cafe" }, { id: "1481387347642810480", label: "Winter" },
@@ -319,6 +173,54 @@ function hasFakeBadges(data: CustomProfileData | undefined): boolean {
 
 function shouldReplaceBadges(data: CustomProfileData | undefined): boolean {
     return !!data?.replaceRealBadges && hasFakeBadges(data);
+}
+
+const NITRO_LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
+const BOOST_LEVEL_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
+
+function monthsAgo(months: number, explicitDate?: string): Date {
+    if (explicitDate) return new Date(`${explicitDate}T12:00:00Z`);
+    const date = new Date();
+    date.setMonth(date.getMonth() - months);
+    return date;
+}
+
+/** Populate every field name used by Discord's desktop profile/badge pipelines. */
+function applyNativeProfileMetadata(target: any, data: CustomProfileData, includeNested = true): any {
+    if (!target) return target;
+
+    const flags = Number(data.badgeFlags ?? 0);
+    if (shouldReplaceBadges(data)) {
+        target.publicFlags = flags;
+        target.public_flags = flags;
+        target.flags = flags;
+    }
+
+    const hasNitro = data.nitro === true && Number(data.nitroLevel ?? -1) >= 0;
+    const nitroSince = hasNitro
+        ? monthsAgo(NITRO_LEVEL_MONTHS[data.nitroLevel ?? 0] ?? 0, data.nitroSince)
+        : null;
+    target.premiumType = hasNitro ? 2 : 0;
+    target.premium_type = target.premiumType;
+    target.premiumSince = nitroSince;
+    target.premium_since = nitroSince?.toISOString() ?? null;
+
+    const gift = Number(data.giftLevel ?? -1);
+    const giftCount = gift >= 0 && gift < GIFT_LEVELS.length ? GIFT_LEVELS[gift].count : 0;
+    target.giftCount = giftCount;
+    target.gift_count = giftCount;
+    target.giftingBadgeTier = gift >= 0 ? gift : null;
+    target.gifting_badge_tier = gift >= 0 ? gift : null;
+
+    const boost = Number(data.boostMonths ?? -1);
+    const boostSince = boost >= 0 ? monthsAgo(BOOST_LEVEL_MONTHS[boost] ?? 1) : null;
+    target.premiumGuildSince = boostSince;
+    target.premium_guild_since = boostSince?.toISOString() ?? null;
+
+    // Some profile builds read metadata from the nested user/profile object.
+    if (includeNested && target.user && target.user !== target) applyNativeProfileMetadata(target.user, data, false);
+    if (includeNested && target.userProfile && target.userProfile !== target) applyNativeProfileMetadata(target.userProfile, data, false);
+    return target;
 }
 
 function toSharedProfile(data: CustomProfileData) {
@@ -408,22 +310,8 @@ function decorateSharedProfile(profile: any, data: CustomProfileData) {
     if (data.signupDate) { merged.joinedAt = new Date(data.signupDate + "T12:00:00Z"); merged.memberSince = merged.joinedAt; }
     if (data.accentColor != null) merged.accentColor = data.accentColor;
     if (data.accentColor != null) merged.themeColors = [data.accentColor, data.accentColor2 ?? data.accentColor];
-    if (shouldReplaceBadges(data)) {
-        merged.publicFlags = data.badgeFlags != null ? data.badgeFlags : 0;
-        merged.flags = merged.publicFlags;
-    }
     merged.badges = [];
-    if (data.nitro) {
-        merged.premiumType = 2;
-        const nl = data.nitroLevel ?? 0;
-        const LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
-        const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[nl] ?? 0)); merged.premiumSince = since;
-    } else {
-        merged.premiumType = 0; merged.premiumSince = null;
-    }
-    const bm = data.boostMonths ?? -1;
-    if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const bs = new Date(); bs.setMonth(bs.getMonth() - (BOOST_M[bm] ?? 1)); merged.premiumGuildSince = bs; }
-    else merged.premiumGuildSince = null;
+    applyNativeProfileMetadata(merged, data);
     return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
 }
 
@@ -863,16 +751,7 @@ export default definePlugin({
         } else {
             clone.publicFlags = realUser.publicFlags ?? realUser.flags ?? 0; clone.flags = realUser.flags ?? realUser.publicFlags ?? 0;
         }
-        if (storedData.nitro) {
-            clone.premiumType = 2;
-            const LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
-            const since = storedData.nitroSince ? new Date(`${storedData.nitroSince}T12:00:00Z`) : new Date();
-            if (!storedData.nitroSince) since.setMonth(since.getMonth() - (LEVEL_MONTHS[storedData.nitroLevel!] ?? 0));
-            clone.premiumSince = since;
-        } else { clone.premiumType = 0; clone.premiumSince = null; }
-        const bm = storedData.boostMonths ?? -1;
-        if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const boostSince = new Date(); boostSince.setMonth(boostSince.getMonth() - (BOOST_M[bm] ?? 1)); clone.premiumGuildSince = boostSince; }
-        else clone.premiumGuildSince = null;
+        applyNativeProfileMetadata(clone, storedData);
         cachedOriginalUser = user; cachedFakeUser = clone; cachedDataHash = _dataVersion;
         return clone;
     },
@@ -911,18 +790,7 @@ export default definePlugin({
         } else {
             clone.publicFlags = realUser.publicFlags ?? realUser.flags ?? 0; clone.flags = realUser.flags ?? realUser.publicFlags ?? 0;
         }
-        if (shared.nitro) {
-            clone.premiumType = 2;
-            const LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
-            const since = shared.nitroSince ? new Date(`${shared.nitroSince}T12:00:00Z`) : new Date();
-            if (!shared.nitroSince) since.setMonth(since.getMonth() - (LEVEL_MONTHS[shared.nitroLevel ?? 0] ?? 0));
-            clone.premiumSince = since;
-        } else {
-            clone.premiumType = 0; clone.premiumSince = null;
-        }
-        const bm = shared.boostMonths ?? -1;
-        if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const boostSince = new Date(); boostSince.setMonth(boostSince.getMonth() - (BOOST_M[bm] ?? 1)); clone.premiumGuildSince = boostSince; }
-        else clone.premiumGuildSince = null;
+        applyNativeProfileMetadata(clone, shared);
         return clone;
     },
 
@@ -941,20 +809,8 @@ export default definePlugin({
             }
             if (storedData.signupDate) { try { merged.joinedAt = new Date(storedData.signupDate + "T12:00:00Z"); } catch { } }
             if (storedData.decorationAsset) { merged.avatarDecoration = null; merged.avatarDecorationData = { asset: storedData.decorationAsset, skuId: storedData.decorationAsset }; }
-            if (storedData.nitro) {
-                merged.premiumType = 2;
-                if (storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
-                const nl = storedData.nitroLevel ?? 0;
-                const LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
-                const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[nl] ?? 0)); merged.premiumSince = since;
-            } else { merged.premiumType = 0; merged.premiumSince = null; }
-            const bm = storedData.boostMonths ?? -1;
-            if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const bs = new Date(); bs.setMonth(bs.getMonth() - (BOOST_M[bm] ?? 1)); merged.premiumGuildSince = bs; }
-            else merged.premiumGuildSince = null;
-            if (shouldReplaceBadges(storedData)) {
-                merged.publicFlags = storedData.badgeFlags != null ? storedData.badgeFlags : 0;
-                merged.flags = merged.publicFlags;
-            }
+            if (storedData.nitro && storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
+            applyNativeProfileMetadata(merged, storedData);
             merged.badges = [];
             return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
         } catch { return profile; }
@@ -1008,26 +864,18 @@ fakeObfuscatedEmail(real: string | null) {
             } catch { }
 
             const style = { borderRadius: "50%", width: "26px", height: "26px" };
-            const nl = profileData.nitroLevel ?? -1; const bm = profileData.boostMonths ?? -1; const gl = profileData.giftLevel ?? -1;
-            const hasNitroFake = !!profileData.nitro && nl >= 0 && nl < NITRO_LEVELS.length; const hasBoostFake = bm >= 0 && bm < BOOST_ICONS.length;
+            const bm = profileData.boostMonths ?? -1;
+            const hasBoostFake = bm >= 0 && bm < BOOST_ICONS.length;
             const f = profileData.badgeFlags ?? 0; const badges: ProfileBadge[] = [];
             if (f & FLAG.STAFF) badges.push({ id: "sp_staff", description: "Discord Staff", iconSrc: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png", position: 0, props: { style } });
-            if (hasNitroFake) badges.push({
-                id: "sp_nitro",
-                key: NITRO_LEVELS[nl].label,
-                description: NITRO_LEVELS[nl].label,
-                component: (() => <NitroBadge nitroLevel={nl} />) as any,
-                position: 0
-            });
-            if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", key: "Gifting Icon", description: "Gifting Icon", component: (() => <GiftingBadge giftLevel={gl} />) as any, position: 0 });
             if (f & FLAG.PARTNER) badges.push({ id: "sp_partner", description: "Partnered Server Owner", iconSrc: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png", position: 0, props: { style } });
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
             if (f & FLAG.HYPESQUAD) badges.push({ id: "sp_hypesquad", description: "HypeSquad Events", iconSrc: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png", position: 0, props: { style } });
-            if (f & FLAG.BRAVERY) badges.push({ id: "sp_bravery", description: "HypeSquad Bravery", iconSrc: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png", position: 0, props: { style } });
-            if (f & FLAG.BRILLIANCE) badges.push({ id: "sp_brilliance", description: "HypeSquad Brilliance", iconSrc: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png", position: 0, props: { style } });
-            if (f & FLAG.BALANCE) badges.push({ id: "sp_balance", description: "HypeSquad Balance", iconSrc: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png", position: 0, props: { style } });
+            if (f & FLAG.BRAVERY) badges.push({ id: "sp_bravery", description: "House Bravery", iconSrc: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png", position: 0, props: { style } });
+            if (f & FLAG.BRILLIANCE) badges.push({ id: "sp_brilliance", description: "House Brilliance", iconSrc: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png", position: 0, props: { style } });
+            if (f & FLAG.BALANCE) badges.push({ id: "sp_balance", description: "House Balance", iconSrc: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png", position: 0, props: { style } });
             if (f & FLAG.BUG_HUNTER_1) badges.push({ id: "sp_bh1", description: "Discord Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png", position: 0, props: { style } });
-            if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Golden Discord Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
+            if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Discord Bug Hunter Level 2", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
             if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Early Verified Bot Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
             if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", position: 0, props: { style } });
