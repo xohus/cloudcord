@@ -361,9 +361,12 @@
 .cp-native-nitro-popout {
     position: relative;
     box-sizing: border-box;
-    width: 286px;
+    width: 240px;
+    min-width: 240px;
+    max-width: 240px;
     height: 192px;
     min-height: 192px;
+    max-height: 192px;
     padding: 13px 16px 14px;
     overflow: visible;
     border: 1px solid rgb(255 255 255 / 7%);
@@ -419,11 +422,11 @@
     display: block;
     color: var(--cp-profile-text);
     font-family: var(--font-headline, var(--font-display, var(--font-primary)));
-    font-size: 22px;
+    font-size: 20px;
     font-style: italic;
     font-weight: 900;
     line-height: 24px;
-    letter-spacing: -.35px;
+    letter-spacing: -.2px;
     text-transform: uppercase;
     white-space: nowrap;
     text-shadow: 0 1px 2px rgb(0 0 0 / 12%);
