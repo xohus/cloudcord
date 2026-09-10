@@ -2,7 +2,6 @@ import { isSafeMode, toggleSafeMode } from "@core/debug/safeMode";
 import { Strings } from "@core/i18n";
 import { PupuIcon } from "@core/ui/settings";
 import About from "@core/ui/settings/pages/General/About";
-import DeveloperAccess from "@core/ui/settings/pages/DeveloperAccess";
 import { useProxy } from "@core/vendetta/storage";
 import { findAssetId } from "@lib/api/assets";
 import { getDebugInfo } from "@lib/api/debug";
@@ -10,8 +9,7 @@ import { BundleUpdaterManager } from "@lib/api/native/modules";
 import { settings } from "@lib/api/settings";
 import { openAlert } from "@lib/ui/alerts";
 import { DISCORD_SERVER, GITHUB, CODEBERG } from "@lib/utils/constants";
-import { FluxUtils, NavigationNative } from "@metro/common";
-import { UserStore } from "@metro/common/stores";
+import { NavigationNative } from "@metro/common";
 import { AlertActionButton, AlertActions, AlertModal, Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import { Linking, ScrollView } from "react-native";
 import CodebergIcon from "@assets/icons/codeberg-logo_icon_white.png";
@@ -21,8 +19,6 @@ export default function General() {
 
     const debugInfo = getDebugInfo();
     const navigation = NavigationNative.useNavigation();
-    const currentUser = FluxUtils.useStateFromStoresArray([UserStore], () => UserStore.getCurrentUser());
-    const isOwner = currentUser?.username?.toLowerCase() === "kp9b";
 
     return (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
@@ -47,16 +43,6 @@ export default function General() {
                             render: () => <About />,
                         })}
                     />
-                    {isOwner && <TableRow
-                        arrow
-                        label="Admin Panel"
-                        subLabel="Owner access"
-                        icon={<TableRow.Icon source={findAssetId("ShieldIcon") || findAssetId("WrenchIcon")} />}
-                        onPress={() => navigation.push("PUPU_CUSTOM_PAGE", {
-                            title: "Admin Panel",
-                            render: () => <DeveloperAccess />,
-                        })}
-                    />}
                 </TableRowGroup>
                 <TableRowGroup title={Strings.LINKS}>
                     <TableRow
