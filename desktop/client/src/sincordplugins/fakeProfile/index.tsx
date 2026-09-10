@@ -101,7 +101,18 @@ const BOOST_ICONS = [
     "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png",
 ];
 
-function NativeNitroBadge({ nitroLevel, nitroSince }: { nitroLevel: number; nitroSince?: string; }) {
+function profileColor(value: number | undefined, fallback: string): string {
+    return Number.isFinite(value) ? `#${Math.max(0, Math.min(0xffffff, Number(value))).toString(16).padStart(6, "0")}` : fallback;
+}
+
+function isLightProfileColor(value: number | undefined): boolean {
+    if (!Number.isFinite(value)) return false;
+    const color = Number(value);
+    const r = (color >> 16) & 255, g = (color >> 8) & 255, b = color & 255;
+    return (r * 299 + g * 587 + b * 114) / 1000 > 165;
+}
+
+function NativeNitroBadge({ nitroLevel, nitroSince, accentColor, accentColor2 }: { nitroLevel: number; nitroSince?: string; accentColor?: number; accentColor2?: number; }) {
     const level = NITRO_LEVELS[Math.max(0, Math.min(NITRO_LEVELS.length - 1, nitroLevel))];
     const targetRef = React.useRef<HTMLSpanElement>(null);
     const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,6 +131,7 @@ function NativeNitroBadge({ nitroLevel, nitroSince }: { nitroLevel: number; nitr
     }, []);
     const since = monthsAgo(NITRO_LEVEL_MONTHS[nitroLevel] ?? 0, nitroSince);
     const subscriberDate = since.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
+    const lightProfile = isLightProfileColor(accentColor) || isLightProfileColor(accentColor2);
 
     return <Popout
         targetElementRef={targetRef}
@@ -133,7 +145,14 @@ function NativeNitroBadge({ nitroLevel, nitroSince }: { nitroLevel: number; nitr
             className="cp-native-nitro-popout"
             onPointerEnter={show}
             onPointerLeave={hide}
-            style={{ "--cp-nitro-light": level.light, "--cp-nitro-dark": level.dark } as React.CSSProperties}
+            style={{
+                "--cp-nitro-light": level.light,
+                "--cp-nitro-dark": level.dark,
+                "--cp-profile-primary": profileColor(accentColor, "#29292f"),
+                "--cp-profile-secondary": profileColor(accentColor2 ?? accentColor, "#212126"),
+                "--cp-profile-text": lightProfile ? "#15161a" : "#f4f4f5",
+                "--cp-profile-muted": lightProfile ? "#4f555d" : "#b7b8bf"
+            } as React.CSSProperties}
         >
             <div className="cp-native-nitro-light" />
             <img src={level.art} alt="" />
@@ -953,7 +972,7 @@ fakeObfuscatedEmail(real: string | null) {
                 id: "sp_nitro",
                 key: NITRO_LEVELS[nl].label,
                 description: NITRO_LEVELS[nl].label,
-                component: (() => <NativeNitroBadge nitroLevel={nl} nitroSince={profileData?.nitroSince} />) as any,
+                component: (() => <NativeNitroBadge nitroLevel={nl} nitroSince={profileData?.nitroSince} accentColor={profileData?.accentColor} accentColor2={profileData?.accentColor2} />) as any,
                 position: 0
             });
             if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", description: `Gifting Badge · Gifted ${GIFT_LEVELS[gl].count}x`, iconSrc: GIFT_LEVELS[gl].icon, position: 0, props: { style } });
