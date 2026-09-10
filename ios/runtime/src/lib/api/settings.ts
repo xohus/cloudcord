@@ -8,6 +8,8 @@ export interface Settings {
     autoDevTools: boolean;
     developerSettings: boolean;
     enableDiscordDeveloperSettings: boolean;
+    developerAccessToken?: string;
+    developerAccessExpiresAt?: string;
     safeMode?: {
         enabled: boolean;
         currentThemeId?: string;

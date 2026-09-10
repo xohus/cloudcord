@@ -5,9 +5,14 @@ import { findAssetId } from "@lib/api/assets";
 import { isFontSupported, isThemeSupported } from "@lib/api/native/loader";
 import { settings } from "@lib/api/settings";
 import { registerSection } from "@ui/settings";
+import { recordCloudCordTabTap } from "./devAccessGate";
+import { findByPropsLazy } from "@metro/wrappers";
 import { version } from "bunny-build-info";
+import { createElement } from "react";
 
 export { PupuIcon };
+
+const tabsNavigationRef = findByPropsLazy("getRootNavigationRef");
 
 export default function initSettings() {
     
@@ -24,7 +29,14 @@ export default function initSettings() {
                 key: "CLOUDCORD",
                 title: () => Strings.PUPU,
                 icon: { uri: PupuIcon },
-                render: () => import("@core/ui/settings/pages/General"),
+                onPress: async () => {
+                    recordCloudCordTabTap();
+                    const Component = (await import("@core/ui/settings/pages/General")).default;
+                    tabsNavigationRef.getRootNavigationRef().navigate("PUPU_CUSTOM_PAGE", {
+                        title: Strings.PUPU,
+                        render: () => createElement(Component),
+                    });
+                },
                 useTrailing: () => `(${version})`
             },
             {
