@@ -13,8 +13,6 @@ import { NavigationNative } from "@metro/common";
 import { AlertActionButton, AlertActions, AlertModal, Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import { Linking, ScrollView } from "react-native";
 import CodebergIcon from "@assets/icons/codeberg-logo_icon_white.png";
-import { recordCloudCordInfoTap } from "@core/ui/settings/devAccessGate";
-import DeveloperAccess from "@core/ui/settings/pages/DeveloperAccess";
 
 export default function General() {
     useProxy(settings);
@@ -30,13 +28,6 @@ export default function General() {
                         label={Strings.PUPU}
                         icon={<TableRow.Icon source={{ uri: PupuIcon }} />}
                         trailing={<TableRow.TrailingText text={debugInfo.bunny.version} />}
-                        onPress={() => {
-                            if (!recordCloudCordInfoTap()) return;
-                            navigation.push("PUPU_CUSTOM_PAGE", {
-                                title: "CloudCord Access",
-                                render: () => <DeveloperAccess />,
-                            });
-                        }}
                     />
                     <TableRow
                         label={"Discord"}

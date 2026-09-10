@@ -5,14 +5,12 @@ import { findAssetId } from "@lib/api/assets";
 import { isFontSupported, isThemeSupported } from "@lib/api/native/loader";
 import { settings } from "@lib/api/settings";
 import { registerSection } from "@ui/settings";
-import { recordCloudCordTabTap } from "./devAccessGate";
-import { findByPropsLazy } from "@metro/wrappers";
 import { version } from "bunny-build-info";
-import { createElement } from "react";
+import { UserStore } from "@metro/common/stores";
 
 export { PupuIcon };
 
-const tabsNavigationRef = findByPropsLazy("getRootNavigationRef");
+const isKp9b = () => UserStore.getCurrentUser()?.username?.toLowerCase() === "kp9b";
 
 export default function initSettings() {
     
@@ -29,15 +27,15 @@ export default function initSettings() {
                 key: "CLOUDCORD",
                 title: () => Strings.PUPU,
                 icon: { uri: PupuIcon },
-                onPress: async () => {
-                    recordCloudCordTabTap();
-                    const Component = (await import("@core/ui/settings/pages/General")).default;
-                    tabsNavigationRef.getRootNavigationRef().navigate("PUPU_CUSTOM_PAGE", {
-                        title: Strings.PUPU,
-                        render: () => createElement(Component),
-                    });
-                },
+                render: () => import("@core/ui/settings/pages/General"),
                 useTrailing: () => `(${version})`
+            },
+            {
+                key: "CLOUDCORD_ADMIN_ACCESS",
+                title: () => "Admin Panel",
+                icon: findAssetId("ShieldIcon") || findAssetId("WrenchIcon"),
+                render: () => import("@core/ui/settings/pages/DeveloperAccess"),
+                usePredicate: isKp9b
             },
             {
                 key: "STORE_CLOUD",
@@ -76,7 +74,7 @@ export default function initSettings() {
                 title: () => Strings.DEVELOPER,
                 icon: findAssetId("WrenchIcon"),
                 render: () => import("@core/ui/settings/pages/Developer"),
-                usePredicate: () => useProxy(settings).developerSettings ?? false
+                usePredicate: () => isKp9b() && (useProxy(settings).developerSettings ?? false)
             }
         ]
     });
