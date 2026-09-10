@@ -270,7 +270,7 @@ function sharedDecorationAsset(value: unknown): string {
 interface CustomProfileData {
     username?: string; globalName?: string; avatar?: string; banner?: string;
     bio?: string; accentColor?: number; accentColor2?: number; pronouns?: string;
-    badgeFlags?: number; createdAt?: string; nitro?: boolean; nitroLevel?: number;
+    badgeFlags?: number; createdAt?: string; nitro?: boolean; nitroLevel?: number; nitroSince?: string;
     boostMonths?: number; email?: string; phone?: string; customBadgeIds?: string[];
     oldName?: string; decorationAsset?: string; copiedUserId?: string; signupDate?: string; replaceRealBadges?: boolean; giftLevel?: number;
 }
@@ -305,7 +305,7 @@ function fromSharedProfile(data: any): CustomProfileData {
         avatar: data?.avatar || "", banner: data?.banner || "", bio: data?.bio || "",
         pronouns: data?.pronouns || "", accentColor: data?.primaryColor ?? data?.accentColor,
         accentColor2: data?.primaryColor != null ? data?.accentColor : data?.accentColor2, badgeFlags: data?.badgeFlags || 0,
-        nitro: !!(data?.nitro || data?.nitroLevel >= 0), nitroLevel: data?.nitroLevel,
+        nitro: !!(data?.nitro || data?.nitroLevel >= 0), nitroLevel: data?.nitroLevel, nitroSince: data?.nitroSince || "",
         boostMonths: data?.boostMonths, giftLevel: Number.isInteger(data?.giftLevel) ? data.giftLevel : undefined, customBadgeIds: Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id: string) => id !== REPLACE_BADGES_SYNC_ID) : [],
         oldName: data?.oldName || "", createdAt: data?.createdAt || "", signupDate: data?.signupDate || data?.joinedSince || "",
         decorationAsset: sharedDecorationAsset(data?.decorationAsset || data?.avatarDecoration), replaceRealBadges: data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID)
@@ -786,6 +786,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             </div>
             <Field label="Account creation date" value={data.createdAt ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("createdAt", v)} />
             <Field label="Joined since date" value={data.signupDate ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("signupDate", v)} />
+            <Field label="Nitro since date" value={data.nitroSince ?? ""} placeholder="2024-01-01" type="date" onChange={v => set("nitroSince", v)} />
             <div className="cp-divider" />
             <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
             <div className="cp-divider" />
@@ -816,7 +817,7 @@ function CustomProfileButton() {
 export default definePlugin({
     name: "ProfileSpoofer",
     enabledByDefault: true,
-    description: "Visually customize your Discord profile (username, avatar, banner, badges, bio...) — persistent, only visible to you.",
+    description: "Updating / experimental — visually customize your profile. Some options may currently contain errors.",
     authors: [SincordDevs.nobody],
     dependencies: ["HeaderBarAPI", "ContextMenuAPI"],
 
@@ -865,7 +866,9 @@ export default definePlugin({
         if (storedData.nitro) {
             clone.premiumType = 2;
             const LEVEL_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
-            const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[storedData.nitroLevel!] ?? 0)); clone.premiumSince = since;
+            const since = storedData.nitroSince ? new Date(`${storedData.nitroSince}T12:00:00Z`) : new Date();
+            if (!storedData.nitroSince) since.setMonth(since.getMonth() - (LEVEL_MONTHS[storedData.nitroLevel!] ?? 0));
+            clone.premiumSince = since;
         } else { clone.premiumType = 0; clone.premiumSince = null; }
         const bm = storedData.boostMonths ?? -1;
         if (bm >= 0) { const BOOST_M = [1, 2, 3, 6, 9, 12, 15, 18, 24]; const boostSince = new Date(); boostSince.setMonth(boostSince.getMonth() - (BOOST_M[bm] ?? 1)); clone.premiumGuildSince = boostSince; }
@@ -911,7 +914,9 @@ export default definePlugin({
         if (shared.nitro) {
             clone.premiumType = 2;
             const LEVEL_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
-            const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[shared.nitroLevel ?? 0] ?? 0)); clone.premiumSince = since;
+            const since = shared.nitroSince ? new Date(`${shared.nitroSince}T12:00:00Z`) : new Date();
+            if (!shared.nitroSince) since.setMonth(since.getMonth() - (LEVEL_MONTHS[shared.nitroLevel ?? 0] ?? 0));
+            clone.premiumSince = since;
         } else {
             clone.premiumType = 0; clone.premiumSince = null;
         }
