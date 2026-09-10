@@ -365,6 +365,7 @@
     position: fixed;
     z-index: 100000;
     box-sizing: border-box;
+    font-family: var(--font-primary, "gg sans", sans-serif);
     width: 286px;
     height: 213px;
     padding: 14px 18px 15px;
@@ -469,12 +470,13 @@
 }
 
 .cp-nitro-modal-root {
+    width: min(720px, calc(100vw - 40px)) !important;
+    max-width: 720px !important;
     overflow: hidden;
-    border: 1px solid color-mix(in srgb, #8b5cf6 28%, transparent);
-    background:
-        radial-gradient(circle at 10% 18%, rgb(255 255 255 / 10%), transparent 28%),
-        radial-gradient(circle at 92% 86%, rgb(88 101 242 / 20%), transparent 30%),
-        linear-gradient(145deg, #171329 0%, #20102e 48%, #101a35 100%);
+    border: 1px solid var(--border-subtle, rgb(255 255 255 / 8%));
+    background: var(--background-primary) !important;
+    box-shadow: var(--shadow-high, 0 20px 60px rgb(0 0 0 / 55%));
+    font-family: var(--font-primary, "gg sans", sans-serif);
 }
 
 .cp-nitro-modal-header {
@@ -489,51 +491,53 @@
 
 .cp-nitro-modal-content {
     position: relative;
-    padding: 28px 36px 34px;
+    padding: 24px 28px 28px;
     text-align: center;
+    background: var(--background-primary);
 }
 
 .cp-nitro-modal-content h2 {
     margin: 0;
-    color: #f8f7ff;
-    font-size: 38px;
-    font-weight: 1000;
-    line-height: .93;
-    letter-spacing: -1.5px;
+    color: var(--header-primary, var(--text-normal));
+    font-family: var(--font-display, var(--font-primary));
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -.6px;
 }
 
 .cp-nitro-modal-content > p {
-    margin: 16px 0 24px;
-    color: #ddd9eb;
-    font-size: 16px;
-    font-weight: 800;
+    margin: 10px 0 18px;
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
 }
 
 .cp-nitro-milestone-grid {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: 10px;
-    max-width: 850px;
-    margin: 0 auto 28px;
+    gap: 8px;
+    max-width: 660px;
+    margin: 0 auto 20px;
 }
 
 .cp-nitro-milestone {
     position: relative;
     display: flex;
-    flex: 0 1 112px;
+    flex: 0 1 98px;
     flex-direction: column;
     align-items: center;
-    min-height: 162px;
-    padding: 12px 8px 10px;
+    min-height: 140px;
+    padding: 10px 7px 8px;
     overflow: hidden;
     border: 1px solid transparent;
-    border-radius: 12px;
+    border-radius: 10px;
 }
 
 .cp-nitro-milestone-selected {
     border-color: color-mix(in srgb, var(--cp-nitro-light) 42%, transparent);
-    background: color-mix(in srgb, var(--cp-nitro-dark) 20%, rgb(255 255 255 / 8%));
+    background: color-mix(in srgb, var(--cp-nitro-dark) 12%, var(--background-secondary));
 }
 
 .cp-nitro-milestone-light {
@@ -547,26 +551,26 @@
 
 .cp-nitro-milestone img {
     position: relative;
-    width: 84px;
-    height: 84px;
+    width: 72px;
+    height: 72px;
     object-fit: contain;
     filter: drop-shadow(0 7px 8px rgb(0 0 0 / 36%)) drop-shadow(0 0 8px color-mix(in srgb, var(--cp-nitro-dark) 34%, transparent));
 }
 
 .cp-nitro-milestone strong {
     position: relative;
-    color: #f7f5ff;
-    font-size: 16px;
-    font-weight: 900;
-    line-height: 20px;
+    color: var(--header-primary, var(--text-normal));
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 18px;
 }
 
 .cp-nitro-milestone span,
 .cp-nitro-milestone small {
     position: relative;
-    color: #c8c5d2;
-    font-size: 12px;
-    font-weight: 750;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
 }
 
 .cp-nitro-milestone small {

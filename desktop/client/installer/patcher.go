@@ -216,6 +216,18 @@ func isCloudCordLoaderAppAsar(appAsar string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+	// Electron accepts either an ASAR file or a directory named app.asar. Older
+	// CloudCord installers used the directory form, so detect it without trying
+	// to os.ReadFile a directory (which returns ERROR_INVALID_FUNCTION on Windows).
+	if stat.IsDir() {
+		packageJSON, packageErr := os.ReadFile(path.Join(appAsar, "package.json"))
+		indexJS, indexErr := os.ReadFile(path.Join(appAsar, "index.js"))
+		if packageErr != nil || indexErr != nil {
+			return false, nil
+		}
+		return bytes.Contains(packageJSON, []byte(`"name":"discord"`)) &&
+			bytes.Contains(indexJS, []byte("require(")), nil
+	}
 	if stat.Size() > 128*1024 {
 		return false, nil
 	}
