@@ -137,18 +137,14 @@ export default defineCorePlugin({
             pendingRequests.add(userId);
 
             try {
-                const [badgesRes, rolesRes, profileRes] = await Promise.all([
-                    fetch("https://codeberg.org/raincord/badges/raw/branch/main/badges.json"),
-                    fetch("https://codeberg.org/raincord/badges/raw/branch/main/assets/roles/roles.json"),
-                    fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`),
+                const [badgesData, rolesData, profilePayload] = await Promise.all([
+                    fetch("https://codeberg.org/raincord/badges/raw/branch/main/badges.json").then(r => r.ok ? r.json() : {}).catch(() => ({})) as Promise<BadgeData>,
+                    fetch("https://codeberg.org/raincord/badges/raw/branch/main/assets/roles/roles.json").then(r => r.ok ? r.json() : {}).catch(() => ({})) as Promise<RolesData>,
+                    fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null),
                 ]);
-
-                const badgesData: BadgeData = await badgesRes.json();
-                const rolesData: RolesData = await rolesRes.json();
 
                 const userBadgeData = badgesData[userId] || { roles: [], custom: [] };
 
-                const profilePayload = profileRes.ok ? await profileRes.json() : null;
                 const profile: SharedProfile = profilePayload?.profile ?? profilePayload ?? {};
                 const allBadges: Badge[] = [];
 
@@ -193,7 +189,8 @@ export default defineCorePlugin({
         after("default", useBadgesModule, ([user], result) => {
             if (!user) return;
 
-            const userId = user.userId;
+            const userId = user.userId ?? user.id;
+            if (!userId) return;
             const cached = badgesCache.get(userId);
 
             if (!cached) {
