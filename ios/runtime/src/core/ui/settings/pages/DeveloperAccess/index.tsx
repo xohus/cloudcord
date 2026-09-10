@@ -2,7 +2,6 @@ import PupuIcon from "@assets/icons/cloudcord.png";
 import { findAssetId } from "@lib/api/assets";
 import { settings } from "@lib/api/settings";
 import { NavigationNative } from "@metro/common";
-import { UserStore } from "@metro/common/stores";
 import { Button, Stack, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
 import { showToast } from "@ui/toasts";
 import { useState } from "react";
@@ -23,7 +22,7 @@ export default function DeveloperAccess() {
             const response = await fetch(VERIFY_URL, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Accept": "application/json" },
-                body: JSON.stringify({ pin: pin.trim(), username: UserStore.getCurrentUser()?.username }),
+                body: JSON.stringify({ pin: pin.trim() }),
             });
             const payload = await response.json().catch(() => ({}));
 
