@@ -22,7 +22,18 @@ const ModalFooter = _ModalFooter as any;
 const ModalCloseButton = _ModalCloseButton as any;
 import { SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, React, Select, SnowflakeUtils, UserStore } from "@webpack/common";
+import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, Popout, React, Select, SnowflakeUtils, UserStore } from "@webpack/common";
+
+import nitroBronze from "file://../../../../../assets/NitroMilestones/bronze.png?base64";
+import nitroDiamond from "file://../../../../../assets/NitroMilestones/diamond.png?base64";
+import nitroEmerald from "file://../../../../../assets/NitroMilestones/emerald.png?base64";
+import nitroGold from "file://../../../../../assets/NitroMilestones/gold.png?base64";
+import nitroOpal from "file://../../../../../assets/NitroMilestones/opal.png?base64";
+import nitroPlatinum from "file://../../../../../assets/NitroMilestones/platinum.png?base64";
+import nitroRuby from "file://../../../../../assets/NitroMilestones/ruby.png?base64";
+import nitroSilver from "file://../../../../../assets/NitroMilestones/silver.png?base64";
+
+const pngDataUrl = (source: string) => source.startsWith("data:") ? source : `data:image/png;base64,${source}`;
 
 const DS_KEY = "customProfile_data";
 const DS_ENABLED = "customProfile_enabled";
@@ -67,15 +78,15 @@ const GIFT_LEVELS = [
 
 const OLD_NAME_BADGE_ICON = "https://cdn.discordapp.com/badge-icons/6de6d34650760ba5551a79732e98ed60.png";
 const NITRO_LEVELS = [
-    { label: "Nitro (0 months)", name: "Nitro", icon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png" },
-    { label: "Bronze (1 Month)", name: "Bronze", icon: "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png" },
-    { label: "Silver (3 Months)", name: "Silver", icon: "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png" },
-    { label: "Gold (6 Months)", name: "Gold", icon: "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png" },
-    { label: "Platinum (1 Year)", name: "Platinum", icon: "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png" },
-    { label: "Diamond (2 Years)", name: "Diamond", icon: "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png" },
-    { label: "Emerald (3 Years)", name: "Emerald", icon: "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png" },
-    { label: "Ruby (5 Years)", name: "Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png" },
-    { label: "Opal (6+ Years)", name: "Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png" },
+    { label: "Nitro (0 months)", name: "Nitro", icon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", art: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", light: "#d9b8ff", dark: "#5865f2" },
+    { label: "Bronze (1 Month)", name: "Bronze", icon: "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png", art: pngDataUrl(nitroBronze), light: "#ffc292", dark: "#a64316" },
+    { label: "Silver (3 Months)", name: "Silver", icon: "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png", art: pngDataUrl(nitroSilver), light: "#f1f6fa", dark: "#778793" },
+    { label: "Gold (6 Months)", name: "Gold", icon: "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png", art: pngDataUrl(nitroGold), light: "#ffe689", dark: "#d58200" },
+    { label: "Platinum (1 Year)", name: "Platinum", icon: "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png", art: pngDataUrl(nitroPlatinum), light: "#bff5ff", dark: "#1689b9" },
+    { label: "Diamond (2 Years)", name: "Diamond", icon: "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png", art: pngDataUrl(nitroDiamond), light: "#f0a8ff", dark: "#843cc8" },
+    { label: "Emerald (3 Years)", name: "Emerald", icon: "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png", art: pngDataUrl(nitroEmerald), light: "#a5ff81", dark: "#2a9c16" },
+    { label: "Ruby (5 Years)", name: "Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png", art: pngDataUrl(nitroRuby), light: "#ff91bd", dark: "#c01958" },
+    { label: "Opal (6+ Years)", name: "Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png", art: pngDataUrl(nitroOpal), light: "#c8f7ff", dark: "#675cff" },
 ];
 const BOOST_LABELS = ["1 Month", "2 Months", "3 Months", "6 Months", "9 Months", "12 Months", "15 Months", "18 Months", "24 Months"];
 const BOOST_ICONS = [
@@ -89,6 +100,57 @@ const BOOST_ICONS = [
     "https://cdn.discordapp.com/badge-icons/7142225d31238f6387d9f09efaa02759.png",
     "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png",
 ];
+
+function NativeNitroBadge({ nitroLevel, nitroSince }: { nitroLevel: number; nitroSince?: string; }) {
+    const level = NITRO_LEVELS[Math.max(0, Math.min(NITRO_LEVELS.length - 1, nitroLevel))];
+    const targetRef = React.useRef<HTMLSpanElement>(null);
+    const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [open, setOpen] = React.useState(false);
+
+    const show = () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+        setOpen(true);
+    };
+    const hide = () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+        closeTimer.current = setTimeout(() => setOpen(false), 80);
+    };
+    React.useEffect(() => () => closeTimer.current && clearTimeout(closeTimer.current), []);
+    const since = monthsAgo(NITRO_LEVEL_MONTHS[nitroLevel] ?? 0, nitroSince);
+    const subscriberDate = since.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
+
+    return <Popout
+        targetElementRef={targetRef}
+        shouldShow={open}
+        position="top"
+        align="center"
+        autoInvert
+        nudgeAlignIntoViewport
+        renderPopout={({ setPopoutRef }) => <div
+            ref={setPopoutRef}
+            className="cp-native-nitro-popout"
+            onPointerEnter={show}
+            onPointerLeave={hide}
+            style={{ "--cp-nitro-light": level.light, "--cp-nitro-dark": level.dark } as React.CSSProperties}
+        >
+            <div className="cp-native-nitro-light" />
+            <img src={level.art} alt="" />
+            <strong>NITRO {level.name.toUpperCase()}</strong>
+            <span>Subscriber since {subscriberDate}</span>
+        </div>}
+    >
+        {popoutProps => <span
+            {...popoutProps}
+            ref={targetRef}
+            className="cp-native-nitro-trigger"
+            aria-label={level.label}
+            onPointerEnter={show}
+            onPointerLeave={hide}
+            onFocus={show}
+            onBlur={hide}
+        ><img src={level.icon} alt="" /></span>}
+    </Popout>;
+}
 
 const AVATAR_DECORATIONS = [
     { id: "1144307957425778779", label: "Hearts" }, { id: "1144308196723408958", label: "Hearts Animated" },
@@ -885,7 +947,13 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Early Verified Bot Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
-            if (hasNitroFake) badges.push({ id: "sp_nitro", description: NITRO_LEVELS[nl].label, iconSrc: NITRO_LEVELS[nl].icon, position: 0, props: { style } });
+            if (hasNitroFake) badges.push({
+                id: "sp_nitro",
+                key: NITRO_LEVELS[nl].label,
+                description: NITRO_LEVELS[nl].label,
+                component: (() => <NativeNitroBadge nitroLevel={nl} nitroSince={profileData?.nitroSince} />) as any,
+                position: 0
+            });
             if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", description: `Gifting Badge · Gifted ${GIFT_LEVELS[gl].count}x`, iconSrc: GIFT_LEVELS[gl].icon, position: 0, props: { style } });
             if (hasBoostFake) badges.push({ id: "sp_boost", description: `Server Booster — ${BOOST_LABELS[bm]}`, iconSrc: BOOST_ICONS[bm], position: 0, props: { style } });
             if (profileData.customBadgeIds?.includes("oldname")) { const desc = profileData.oldName ? `Originally Known As: ${profileData.oldName}` : "Originally Known As"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
