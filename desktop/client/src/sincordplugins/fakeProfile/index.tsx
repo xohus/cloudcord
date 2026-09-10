@@ -57,12 +57,12 @@ const BADGES = [
     { label: "Partnered Server Owner", flag: FLAG.PARTNER, icon: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png" },
     { label: "HypeSquad Events", flag: FLAG.HYPESQUAD, icon: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png" },
     { label: "Discord Bug Hunter", flag: FLAG.BUG_HUNTER_1, icon: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png" },
-    { label: "HypeSquad Bravery", flag: FLAG.BRAVERY, icon: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png" },
-    { label: "HypeSquad Brilliance", flag: FLAG.BRILLIANCE, icon: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png" },
-    { label: "HypeSquad Balance", flag: FLAG.BALANCE, icon: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png" },
+    { label: "House Bravery", flag: FLAG.BRAVERY, icon: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png" },
+    { label: "House Brilliance", flag: FLAG.BRILLIANCE, icon: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png" },
+    { label: "House Balance", flag: FLAG.BALANCE, icon: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png" },
     { label: "Early Supporter", flag: FLAG.EARLY_SUPPORTER, icon: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png" },
+    { label: "Discord Bug Hunter Level 2", flag: FLAG.BUG_HUNTER_2, icon: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png" },
     { label: "Moderator Programs Alumni", flag: FLAG.MOD_ALUMNI, icon: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png" },
-    { label: "Golden Discord Bug Hunter", flag: FLAG.BUG_HUNTER_2, icon: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png" },
     { label: "Early Verified Bot Developer", flag: FLAG.DEV_VERIFIED, icon: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png" },
     { label: "Active Developer", flag: FLAG.ACTIVE_DEVELOPER, icon: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png" },
 ];
@@ -79,14 +79,14 @@ const GIFT_LEVELS = [
 const OLD_NAME_BADGE_ICON = "https://cdn.discordapp.com/badge-icons/6de6d34650760ba5551a79732e98ed60.png";
 const NITRO_LEVELS = [
     { label: "Nitro (0 months)", name: "Nitro", icon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", cardIcon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", light: "#d9b8ff", dark: "#5865f2" },
-    { label: "Bronze (1 month)", name: "Nitro Bronze", icon: "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png", cardIcon: pngDataUrl(nitroBronze), light: "#e8a87c", dark: "#92400e" },
-    { label: "Silver (2 months)", name: "Nitro Silver", icon: "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png", cardIcon: pngDataUrl(nitroSilver), light: "#e7edf3", dark: "#718096" },
-    { label: "Gold (3 months)", name: "Nitro Gold", icon: "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png", cardIcon: pngDataUrl(nitroGold), light: "#ffe38a", dark: "#d97706" },
-    { label: "Platinum (6 months)", name: "Nitro Platinum", icon: "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png", cardIcon: pngDataUrl(nitroPlatinum), light: "#edf2f7", dark: "#64748b" },
-    { label: "Diamond (12 months)", name: "Nitro Diamond", icon: "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png", cardIcon: pngDataUrl(nitroDiamond), light: "#c9f5ff", dark: "#3b82f6" },
-    { label: "Emerald (24 months)", name: "Nitro Emerald", icon: "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png", cardIcon: pngDataUrl(nitroEmerald), light: "#77f2ba", dark: "#087f5b" },
-    { label: "Ruby (36 months)", name: "Nitro Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png", cardIcon: pngDataUrl(nitroRuby), light: "#ff9ca8", dark: "#b91c3c" },
-    { label: "Opal (72 months)", name: "Nitro Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png", cardIcon: pngDataUrl(nitroOpal), light: "#e9c7ff", dark: "#8b5cf6" },
+    { label: "Bronze (1 Month)", name: "Bronze", icon: "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png", cardIcon: pngDataUrl(nitroBronze), light: "#e8a87c", dark: "#92400e" },
+    { label: "Silver (3 Months)", name: "Silver", icon: "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png", cardIcon: pngDataUrl(nitroSilver), light: "#e7edf3", dark: "#718096" },
+    { label: "Gold (6 Months)", name: "Gold", icon: "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png", cardIcon: pngDataUrl(nitroGold), light: "#ffe38a", dark: "#d97706" },
+    { label: "Platinum (1 Year)", name: "Platinum", icon: "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png", cardIcon: pngDataUrl(nitroPlatinum), light: "#edf2f7", dark: "#64748b" },
+    { label: "Diamond (2 Years)", name: "Diamond", icon: "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png", cardIcon: pngDataUrl(nitroDiamond), light: "#c9f5ff", dark: "#3b82f6" },
+    { label: "Emerald (3 Years)", name: "Emerald", icon: "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png", cardIcon: pngDataUrl(nitroEmerald), light: "#77f2ba", dark: "#087f5b" },
+    { label: "Ruby (5 Years)", name: "Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png", cardIcon: pngDataUrl(nitroRuby), light: "#ff9ca8", dark: "#b91c3c" },
+    { label: "Opal (6+ Years)", name: "Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png", cardIcon: pngDataUrl(nitroOpal), light: "#e9c7ff", dark: "#8b5cf6" },
 ];
 const BOOST_LABELS = ["1 Month", "2 Months", "3 Months", "6 Months", "9 Months", "12 Months", "15 Months", "18 Months", "24 Months"];
 const BOOST_ICONS = [
@@ -197,7 +197,7 @@ function NitroMilestonesModal({ rootProps, selectedLevel }: { rootProps: any; se
                             >
                                 <div className="cp-nitro-milestone-light" />
                                 <img src={level.cardIcon} alt="" />
-                                <strong>{level.name.replace("Nitro ", "")}</strong>
+                                <strong>{level.name}</strong>
                                 <span>{level.label.match(/\((.*?)\)/)?.[1] || ""}</span>
                                 {actualIndex === selectedLevel && <small>Current milestone</small>}
                             </div>
@@ -416,7 +416,7 @@ function decorateSharedProfile(profile: any, data: CustomProfileData) {
     if (data.nitro) {
         merged.premiumType = 2;
         const nl = data.nitroLevel ?? 0;
-        const LEVEL_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
+        const LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
         const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[nl] ?? 0)); merged.premiumSince = since;
     } else {
         merged.premiumType = 0; merged.premiumSince = null;
@@ -865,7 +865,7 @@ export default definePlugin({
         }
         if (storedData.nitro) {
             clone.premiumType = 2;
-            const LEVEL_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
+            const LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
             const since = storedData.nitroSince ? new Date(`${storedData.nitroSince}T12:00:00Z`) : new Date();
             if (!storedData.nitroSince) since.setMonth(since.getMonth() - (LEVEL_MONTHS[storedData.nitroLevel!] ?? 0));
             clone.premiumSince = since;
@@ -913,7 +913,7 @@ export default definePlugin({
         }
         if (shared.nitro) {
             clone.premiumType = 2;
-            const LEVEL_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
+            const LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
             const since = shared.nitroSince ? new Date(`${shared.nitroSince}T12:00:00Z`) : new Date();
             if (!shared.nitroSince) since.setMonth(since.getMonth() - (LEVEL_MONTHS[shared.nitroLevel ?? 0] ?? 0));
             clone.premiumSince = since;
@@ -945,7 +945,7 @@ export default definePlugin({
                 merged.premiumType = 2;
                 if (storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
                 const nl = storedData.nitroLevel ?? 0;
-                const LEVEL_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
+                const LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
                 const since = new Date(); since.setMonth(since.getMonth() - (LEVEL_MONTHS[nl] ?? 0)); merged.premiumSince = since;
             } else { merged.premiumType = 0; merged.premiumSince = null; }
             const bm = storedData.boostMonths ?? -1;

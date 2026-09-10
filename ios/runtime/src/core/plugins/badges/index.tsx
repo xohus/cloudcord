@@ -51,17 +51,17 @@ const badgeProps = new Map<string, Record<string, any>>();
 const pendingRequests = new Set<string>();
 
 const SHARED_PROFILE_API = "https://cloudcord-profiles.ggxohus.workers.dev";
-const NITRO_MONTHS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
+const NITRO_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
 const NITRO_BADGES = [
     ["Nitro", "2ba85e8026a8614b640c2837bcdfe21b.png"],
-    ["Nitro Bronze", "4f33c4a9c64ce221936bd256c356f91f.png"],
-    ["Nitro Silver", "4514fab914bdbfb4ad2fa23df76121a6.png"],
-    ["Nitro Gold", "2895086c18d5531d499862e41d1155a6.png"],
-    ["Nitro Platinum", "0334688279c8359120922938dcb1d6f8.png"],
-    ["Nitro Diamond", "0d61871f72bb9a33a7ae568c1fb4f20a.png"],
-    ["Nitro Emerald", "11e2d339068b55d3a506cff34d3780f3.png"],
-    ["Nitro Ruby", "cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png"],
-    ["Nitro Opal", "5b154df19c53dce2af92c9b61e6be5e2.png"],
+    ["Bronze", "4f33c4a9c64ce221936bd256c356f91f.png"],
+    ["Silver", "4514fab914bdbfb4ad2fa23df76121a6.png"],
+    ["Gold", "2895086c18d5531d499862e41d1155a6.png"],
+    ["Platinum", "0334688279c8359120922938dcb1d6f8.png"],
+    ["Diamond", "0d61871f72bb9a33a7ae568c1fb4f20a.png"],
+    ["Emerald", "11e2d339068b55d3a506cff34d3780f3.png"],
+    ["Ruby", "cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png"],
+    ["Opal", "5b154df19c53dce2af92c9b61e6be5e2.png"],
 ] as const;
 const GIFTING_BADGES = [
     ["Patron", 1, "ac305d1b9481f312ce4419e7f8296558.png"],
@@ -92,7 +92,7 @@ function cloudBadges(profile: SharedProfile): Badge[] {
 
     if (Number.isInteger(profile.giftLevel) && profile.giftLevel! >= 0 && profile.giftLevel! < GIFTING_BADGES.length) {
         const [name, count, asset] = GIFTING_BADGES[profile.giftLevel!];
-        badges.push({ id: "gifting", label: `${name} — Gifting Badge · Gifted ${count}x`, url: discordBadgeUrl(asset) });
+        badges.push({ id: "gifting", label: `${name} Badge — Gifted ${count}x`, url: discordBadgeUrl(asset) });
     }
     return badges;
 }
@@ -200,7 +200,8 @@ export default defineCorePlugin({
                 return;
             }
 
-            cached.forEach((badge, i) => {
+            [...cached].reverse().forEach((badge, reverseIndex) => {
+                const i = cached.length - reverseIndex - 1;
                 const badgeId = badge.id ? `cloudcord-${badge.id}-${userId}` : `rain-${userId}-${i}`;
 
                 result.unshift({
