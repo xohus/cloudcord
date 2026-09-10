@@ -22,7 +22,16 @@ const ModalFooter = _ModalFooter as any;
 const ModalCloseButton = _ModalCloseButton as any;
 import { SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, React, Select, SnowflakeUtils, UserStore } from "@webpack/common";
+import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, React, ReactDOM, Select, SnowflakeUtils, UserStore } from "@webpack/common";
+
+import nitroBronze from "file://../../../../../assets/NitroMilestones/bronze.png?base64";
+import nitroDiamond from "file://../../../../../assets/NitroMilestones/diamond.png?base64";
+import nitroEmerald from "file://../../../../../assets/NitroMilestones/emerald.png?base64";
+import nitroGold from "file://../../../../../assets/NitroMilestones/gold.png?base64";
+import nitroOpal from "file://../../../../../assets/NitroMilestones/opal.png?base64";
+import nitroPlatinum from "file://../../../../../assets/NitroMilestones/platinum.png?base64";
+import nitroRuby from "file://../../../../../assets/NitroMilestones/ruby.png?base64";
+import nitroSilver from "file://../../../../../assets/NitroMilestones/silver.png?base64";
 
 
 const DS_KEY = "customProfile_data";
@@ -59,15 +68,15 @@ const BADGES = [
 
 const OLD_NAME_BADGE_ICON = "https://cdn.discordapp.com/badge-icons/6de6d34650760ba5551a79732e98ed60.png";
 const NITRO_LEVELS = [
-    { label: "Nitro (0 months)", icon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png" },
-    { label: "Bronze (1 month)", icon: "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png" },
-    { label: "Silver (2 months)", icon: "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png" },
-    { label: "Gold (3 months)", icon: "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png" },
-    { label: "Platinum (6 months)", icon: "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png" },
-    { label: "Diamond (12 months)", icon: "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png" },
-    { label: "Emerald (24 months)", icon: "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png" },
-    { label: "Ruby (36 months)", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png" },
-    { label: "Opal (72 months)", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png" },
+    { label: "Nitro (0 months)", name: "Nitro", icon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", cardIcon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", light: "#d9b8ff", dark: "#5865f2" },
+    { label: "Bronze (1 month)", name: "Nitro Bronze", icon: "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png", cardIcon: nitroBronze, light: "#e8a87c", dark: "#92400e" },
+    { label: "Silver (2 months)", name: "Nitro Silver", icon: "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png", cardIcon: nitroSilver, light: "#e7edf3", dark: "#718096" },
+    { label: "Gold (3 months)", name: "Nitro Gold", icon: "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png", cardIcon: nitroGold, light: "#ffe38a", dark: "#d97706" },
+    { label: "Platinum (6 months)", name: "Nitro Platinum", icon: "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png", cardIcon: nitroPlatinum, light: "#edf2f7", dark: "#64748b" },
+    { label: "Diamond (12 months)", name: "Nitro Diamond", icon: "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png", cardIcon: nitroDiamond, light: "#c9f5ff", dark: "#3b82f6" },
+    { label: "Emerald (24 months)", name: "Nitro Emerald", icon: "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png", cardIcon: nitroEmerald, light: "#77f2ba", dark: "#087f5b" },
+    { label: "Ruby (36 months)", name: "Nitro Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png", cardIcon: nitroRuby, light: "#ff9ca8", dark: "#b91c3c" },
+    { label: "Opal (72 months)", name: "Nitro Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png", cardIcon: nitroOpal, light: "#e9c7ff", dark: "#8b5cf6" },
 ];
 const BOOST_LABELS = ["1 Month", "2 Months", "3 Months", "6 Months", "9 Months", "12 Months", "15 Months", "18 Months", "24 Months"];
 const BOOST_ICONS = [
@@ -81,6 +90,107 @@ const BOOST_ICONS = [
     "https://cdn.discordapp.com/badge-icons/7142225d31238f6387d9f09efaa02759.png",
     "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png",
 ];
+
+function NitroBadge({ nitroLevel = 0 }: { nitroLevel?: number; }) {
+    const level = NITRO_LEVELS[Math.max(0, Math.min(NITRO_LEVELS.length - 1, nitroLevel))];
+    const anchorRef = React.useRef<HTMLSpanElement>(null);
+    const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+    const [position, setPosition] = React.useState<{ left: number; top: number; } | null>(null);
+
+    function showOverlay() {
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+        const rect = anchorRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const width = 286;
+        const height = 213;
+        setPosition({
+            left: Math.max(8, Math.min(window.innerWidth - width - 8, rect.left + rect.width / 2 - width / 2)),
+            top: Math.max(8, rect.top - height - 12)
+        });
+    }
+
+    function queueClose() {
+        closeTimer.current = setTimeout(() => setPosition(null), 140);
+    }
+
+    function openMilestones() {
+        setPosition(null);
+        openModal(rootProps => <NitroMilestonesModal rootProps={rootProps} selectedLevel={nitroLevel} />);
+    }
+
+    return (
+        <>
+            <span
+                ref={anchorRef}
+                className="cp-nitro-badge-anchor"
+                aria-label={level.label}
+                onMouseEnter={showOverlay}
+                onMouseLeave={queueClose}
+                onClick={openMilestones}
+            >
+                <img src={level.icon} alt={level.label} />
+            </span>
+            {position && ReactDOM.createPortal(
+                <div
+                    className="cp-nitro-card"
+                    role="tooltip"
+                    onMouseEnter={() => closeTimer.current && clearTimeout(closeTimer.current)}
+                    onMouseLeave={queueClose}
+                    onClick={openMilestones}
+                    style={{
+                        left: position.left,
+                        top: position.top,
+                        "--cp-nitro-light": level.light,
+                        "--cp-nitro-dark": level.dark
+                    } as React.CSSProperties}
+                >
+                    <div className="cp-nitro-spotlight" />
+                    <div className="cp-nitro-art">
+                        <div className="cp-nitro-art-glow" />
+                        <img src={level.cardIcon} alt="" />
+                    </div>
+                    <div className="cp-nitro-name">{level.name}</div>
+                    <div className="cp-nitro-date">{level.label.replace(/[()]/g, "")}</div>
+                    <div className="cp-nitro-arrow" />
+                </div>,
+                document.body
+            )}
+        </>
+    );
+}
+
+function NitroMilestonesModal({ rootProps, selectedLevel }: { rootProps: any; selectedLevel: number; }) {
+    return (
+        <ModalRoot {...rootProps} size="large" className="cp-nitro-modal-root">
+            <ModalHeader separator={false} className="cp-nitro-modal-header">
+                <ModalCloseButton onClick={rootProps.onClose} />
+            </ModalHeader>
+            <ModalContent className="cp-nitro-modal-content">
+                <h2>Celebrate Your Nitro<br />Milestones in Style</h2>
+                <p>Your badge will automatically evolve over time.</p>
+                <div className="cp-nitro-milestone-grid">
+                    {NITRO_LEVELS.slice(1).map((level, index) => {
+                        const actualIndex = index + 1;
+                        return (
+                            <div
+                                key={level.name}
+                                className={`cp-nitro-milestone ${actualIndex === selectedLevel ? "cp-nitro-milestone-selected" : ""}`}
+                                style={{ "--cp-nitro-light": level.light, "--cp-nitro-dark": level.dark } as React.CSSProperties}
+                            >
+                                <div className="cp-nitro-milestone-light" />
+                                <img src={level.cardIcon} alt="" />
+                                <strong>{level.name.replace("Nitro ", "")}</strong>
+                                <span>{level.label.match(/\((.*?)\)/)?.[1] || ""}</span>
+                                {actualIndex === selectedLevel && <small>Current milestone</small>}
+                            </div>
+                        );
+                    })}
+                </div>
+                <Button color={Button.Colors.BRAND} onClick={rootProps.onClose} className="cp-nitro-learn-more">Learn More</Button>
+            </ModalContent>
+        </ModalRoot>
+    );
+}
 const AVATAR_DECORATIONS = [
     { id: "1144307957425778779", label: "Hearts" }, { id: "1144308196723408958", label: "Hearts Animated" },
     { id: "1212569433839636530", label: "Lofi Cafe" }, { id: "1481387347642810480", label: "Winter" },
@@ -845,7 +955,13 @@ fakeObfuscatedEmail(real: string | null) {
             const hasNitroFake = !!profileData.nitro && nl >= 0 && nl < NITRO_LEVELS.length; const hasBoostFake = bm >= 0 && bm < BOOST_ICONS.length;
             const f = profileData.badgeFlags ?? 0; const badges: ProfileBadge[] = [];
             if (f & FLAG.STAFF) badges.push({ id: "sp_staff", description: "Discord Staff", iconSrc: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png", position: 0, props: { style } });
-            if (hasNitroFake) badges.push({ id: "sp_nitro", description: NITRO_LEVELS[nl].label, iconSrc: NITRO_LEVELS[nl].icon, position: 0, props: { style } });
+            if (hasNitroFake) badges.push({
+                id: "sp_nitro",
+                key: NITRO_LEVELS[nl].label,
+                description: NITRO_LEVELS[nl].label,
+                component: (() => <NitroBadge nitroLevel={nl} />) as any,
+                position: 0
+            });
             if (f & FLAG.PARTNER) badges.push({ id: "sp_partner", description: "Partner", iconSrc: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png", position: 0, props: { style } });
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Former Moderator", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
             if (f & FLAG.HYPESQUAD) badges.push({ id: "sp_hypesquad", description: "HypeSquad Events", iconSrc: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png", position: 0, props: { style } });

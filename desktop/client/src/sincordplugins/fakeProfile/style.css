@@ -342,6 +342,244 @@
     font-weight: 700;
 }
 
+.cp-nitro-badge-anchor {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    cursor: pointer;
+}
+
+.cp-nitro-badge-anchor img {
+    display: block;
+    width: 26px;
+    height: 26px;
+    object-fit: contain;
+}
+
+.cp-nitro-card {
+    --cp-nitro-light: #d9b8ff;
+    --cp-nitro-dark: #5865f2;
+
+    position: fixed;
+    z-index: 100000;
+    box-sizing: border-box;
+    width: 286px;
+    height: 213px;
+    padding: 14px 18px 15px;
+    overflow: hidden;
+    color: #fff;
+    text-align: center;
+    cursor: pointer;
+    pointer-events: auto;
+    border: 1px solid rgb(255 255 255 / 8%);
+    border-radius: 14px;
+    background:
+        radial-gradient(ellipse 34% 24% at 4% 0%, rgb(255 255 255 / 16%) 0%, color-mix(in srgb, var(--cp-nitro-light) 18%, #323238) 44%, transparent 100%),
+        linear-gradient(145deg, #29292f 0%, #25252b 48%, #212126 100%);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 53%), inset 0 1px rgb(255 255 255 / 3%);
+    animation: cp-nitro-card-in 140ms cubic-bezier(.2, .8, .2, 1);
+    transform-origin: 50% 100%;
+}
+
+.cp-nitro-spotlight {
+    position: absolute;
+    z-index: 0;
+    top: -90px;
+    left: -70px;
+    width: 270px;
+    height: 220px;
+    background: radial-gradient(circle, rgb(255 255 255 / 32%) 0%, color-mix(in srgb, var(--cp-nitro-light) 34%, transparent) 28%, color-mix(in srgb, var(--cp-nitro-dark) 16%, transparent) 52%, transparent 74%);
+    filter: blur(6px);
+}
+
+.cp-nitro-art {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    place-items: center;
+    width: 124px;
+    height: 111px;
+    margin: 0 auto 4px;
+}
+
+.cp-nitro-art-glow {
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--cp-nitro-light) 26%, transparent) 0%, color-mix(in srgb, var(--cp-nitro-dark) 14%, transparent) 48%, transparent 74%);
+    filter: blur(8px);
+}
+
+.cp-nitro-art img {
+    position: relative;
+    width: 124px;
+    height: 124px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 7px color-mix(in srgb, var(--cp-nitro-dark) 38%, transparent)) drop-shadow(0 6px 7px rgb(0 0 0 / 47%));
+}
+
+.cp-nitro-name {
+    position: relative;
+    z-index: 1;
+    color: transparent;
+    font-size: 27px;
+    font-style: italic;
+    font-weight: 1000;
+    line-height: 30px;
+    letter-spacing: -.7px;
+    text-transform: uppercase;
+    background: linear-gradient(180deg, #fff 5%, color-mix(in srgb, #fff 76%, var(--cp-nitro-light)) 60%, color-mix(in srgb, #c4c6cc 78%, var(--cp-nitro-dark)) 100%);
+    background-clip: text;
+    text-shadow: 0 2px 8px rgb(0 0 0 / 19%);
+}
+
+.cp-nitro-date {
+    position: relative;
+    z-index: 1;
+    margin-top: 0;
+    color: #b7b8bf;
+    font-size: 14px;
+    line-height: 18px;
+}
+
+.cp-nitro-arrow {
+    position: absolute;
+    bottom: -10px;
+    left: 50%;
+    width: 0;
+    height: 0;
+    border-top: 10px solid #242429;
+    border-right: 10px solid transparent;
+    border-left: 10px solid transparent;
+    transform: translateX(-50%);
+}
+
+@keyframes cp-nitro-card-in {
+    from {
+        opacity: 0;
+        transform: translateY(5px) scale(.97);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.cp-nitro-modal-root {
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, #8b5cf6 28%, transparent);
+    background:
+        radial-gradient(circle at 10% 18%, rgb(255 255 255 / 10%), transparent 28%),
+        radial-gradient(circle at 92% 86%, rgb(88 101 242 / 20%), transparent 30%),
+        linear-gradient(145deg, #171329 0%, #20102e 48%, #101a35 100%);
+}
+
+.cp-nitro-modal-header {
+    position: absolute;
+    z-index: 3;
+    top: 12px;
+    right: 12px;
+    width: auto;
+    min-height: 0;
+    padding: 0;
+}
+
+.cp-nitro-modal-content {
+    position: relative;
+    padding: 28px 36px 34px;
+    text-align: center;
+}
+
+.cp-nitro-modal-content h2 {
+    margin: 0;
+    color: #f8f7ff;
+    font-size: 38px;
+    font-weight: 1000;
+    line-height: .93;
+    letter-spacing: -1.5px;
+}
+
+.cp-nitro-modal-content > p {
+    margin: 16px 0 24px;
+    color: #ddd9eb;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.cp-nitro-milestone-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    max-width: 850px;
+    margin: 0 auto 28px;
+}
+
+.cp-nitro-milestone {
+    position: relative;
+    display: flex;
+    flex: 0 1 112px;
+    flex-direction: column;
+    align-items: center;
+    min-height: 162px;
+    padding: 12px 8px 10px;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: 12px;
+}
+
+.cp-nitro-milestone-selected {
+    border-color: color-mix(in srgb, var(--cp-nitro-light) 42%, transparent);
+    background: color-mix(in srgb, var(--cp-nitro-dark) 20%, rgb(255 255 255 / 8%));
+}
+
+.cp-nitro-milestone-light {
+    position: absolute;
+    top: -42px;
+    width: 150px;
+    height: 100px;
+    background: radial-gradient(circle, rgb(255 255 255 / 24%), color-mix(in srgb, var(--cp-nitro-light) 25%, transparent) 34%, transparent 72%);
+    filter: blur(5px);
+}
+
+.cp-nitro-milestone img {
+    position: relative;
+    width: 84px;
+    height: 84px;
+    object-fit: contain;
+    filter: drop-shadow(0 7px 8px rgb(0 0 0 / 36%)) drop-shadow(0 0 8px color-mix(in srgb, var(--cp-nitro-dark) 34%, transparent));
+}
+
+.cp-nitro-milestone strong {
+    position: relative;
+    color: #f7f5ff;
+    font-size: 16px;
+    font-weight: 900;
+    line-height: 20px;
+}
+
+.cp-nitro-milestone span,
+.cp-nitro-milestone small {
+    position: relative;
+    color: #c8c5d2;
+    font-size: 12px;
+    font-weight: 750;
+}
+
+.cp-nitro-milestone small {
+    margin-top: 5px;
+    color: var(--cp-nitro-light);
+}
+
+.cp-nitro-learn-more {
+    min-width: 112px;
+    font-size: 15px;
+    font-weight: 900;
+}
+
 .cp-hint {
     font-size: 11px;
     color: rgb(255 255 255 / 30%);
