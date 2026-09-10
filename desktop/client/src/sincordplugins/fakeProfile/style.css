@@ -361,7 +361,7 @@
 .cp-native-nitro-popout {
     position: relative;
     box-sizing: border-box;
-    width: 240px;
+    width: 286px;
     height: 192px;
     min-height: 192px;
     padding: 13px 16px 14px;
@@ -375,7 +375,8 @@
     color: var(--cp-profile-text);
     text-align: center;
     font-family: var(--font-primary, "gg sans", sans-serif);
-    animation: cp-nitro-card-in 140ms cubic-bezier(.2, .8, .2, 1);
+    transform-origin: 50% 100%;
+    animation: cp-native-nitro-enter 190ms cubic-bezier(.16, 1, .3, 1) both;
 }
 
 .cp-native-nitro-popout::after {
@@ -424,7 +425,22 @@
     line-height: 24px;
     letter-spacing: -.35px;
     text-transform: uppercase;
+    white-space: nowrap;
     text-shadow: 0 1px 2px rgb(0 0 0 / 12%);
+}
+
+@keyframes cp-native-nitro-enter {
+    from {
+        opacity: 0;
+        transform: translateY(7px) scale(.94);
+        filter: blur(2px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+    }
 }
 
 .cp-native-nitro-popout > span {

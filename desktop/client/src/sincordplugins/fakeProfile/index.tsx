@@ -100,6 +100,12 @@ const BOOST_ICONS = [
     "https://cdn.discordapp.com/badge-icons/7142225d31238f6387d9f09efaa02759.png",
     "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png",
 ];
+const DISCORD_PROFILE_BADGE_ORDER = [
+    "sp_staff", "sp_partner", "sp_hypesquad", "sp_bh1",
+    "sp_bravery", "sp_brilliance", "sp_balance", "sp_early",
+    "sp_bh2", "sp_dev", "sp_mod", "sp_activedev",
+    "sp_nitro", "sp_gifting", "sp_boost", "sp_quest", "sp_orbs", "sp_oldname"
+];
 
 function profileColor(value: number | undefined, fallback: string): string {
     return Number.isFinite(value) ? `#${Math.max(0, Math.min(0xffffff, Number(value))).toString(16).padStart(6, "0")}` : fallback;
@@ -972,15 +978,26 @@ fakeObfuscatedEmail(real: string | null) {
                 id: "sp_nitro",
                 key: NITRO_LEVELS[nl].label,
                 description: NITRO_LEVELS[nl].label,
-                component: (() => <NativeNitroBadge nitroLevel={nl} nitroSince={profileData?.nitroSince} accentColor={profileData?.accentColor} accentColor2={profileData?.accentColor2} />) as any,
+                // Keep a stable component identity. An inline component here is remounted
+                // whenever Discord refreshes the badge row, which closed the popout after
+                // roughly one second even while the badge was still hovered.
+                component: NativeNitroBadge as any,
+                nitroLevel: nl,
+                nitroSince: profileData.nitroSince,
+                accentColor: profileData.accentColor,
+                accentColor2: profileData.accentColor2,
                 position: 0
-            });
+            } as any);
             if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", description: `Gifting Badge · Gifted ${GIFT_LEVELS[gl].count}x`, iconSrc: GIFT_LEVELS[gl].icon, position: 0, props: { style } });
             if (hasBoostFake) badges.push({ id: "sp_boost", description: `Server Booster — ${BOOST_LABELS[bm]}`, iconSrc: BOOST_ICONS[bm], position: 0, props: { style } });
             if (profileData.customBadgeIds?.includes("oldname")) { const desc = profileData.oldName ? `Originally Known As: ${profileData.oldName}` : "Originally Known As"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
             if (profileData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a Quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
             if (profileData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs — Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
-            return badges;
+            return badges.sort((a, b) => {
+                const ai = DISCORD_PROFILE_BADGE_ORDER.indexOf(a.id);
+                const bi = DISCORD_PROFILE_BADGE_ORDER.indexOf(b.id);
+                return (ai < 0 ? Number.MAX_SAFE_INTEGER : ai) - (bi < 0 ? Number.MAX_SAFE_INTEGER : bi);
+            });
         }
     } as ProfileBadge] as ProfileBadge[],
 
