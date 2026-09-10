@@ -115,7 +115,9 @@ function NativeNitroBadge({ nitroLevel, nitroSince }: { nitroLevel: number; nitr
         if (closeTimer.current) clearTimeout(closeTimer.current);
         closeTimer.current = setTimeout(() => setOpen(false), 80);
     };
-    React.useEffect(() => () => closeTimer.current && clearTimeout(closeTimer.current), []);
+    React.useEffect(() => () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current);
+    }, []);
     const since = monthsAgo(NITRO_LEVEL_MONTHS[nitroLevel] ?? 0, nitroSince);
     const subscriberDate = since.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
 
