@@ -9403,6 +9403,12 @@
     var date = monthsAgo(months);
     return `Subscriber since ${date.getMonth() + 1}/${date.getDate()}/${String(date.getFullYear()).slice(-2)}`;
   }
+  function sharedNitroSince(data) {
+    var explicit = profileDate(data?.nitroSince);
+    if (explicit)
+      return explicit;
+    return monthsAgo(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0);
+  }
   function pullRealCordConfiguration() {
     return _async_to_generator(function* () {
       if (globalThis.__CLOUDCORD_LOADER__?.loaderName !== "RealCord")
@@ -9538,6 +9544,7 @@
         banner: yield shareableMedia("bannerMedia"),
         nitro: preview.nitroEnabled,
         nitroLevel: preview.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(preview.nitroMonths)) : -1,
+        nitroSince: preview.nitroEnabled ? monthsAgo(preview.nitroMonths).toISOString().slice(0, 10) : null,
         boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
         avatarDecoration: preview.avatarDecoration || null,
         avatarDecorationSku: preview.avatarDecorationSku || null,
@@ -9725,8 +9732,13 @@
       setOwnValue(cloned, "premiumGuildSince", null);
       setOwnValue(cloned, "legacyUsername", null);
     }
-    if (data.nitro)
+    if (remoteNitroEnabled(data)) {
+      var since = sharedNitroSince(data);
       setOwnValue(cloned, "premiumType", 2);
+      setOwnValue(cloned, "premium_type", 2);
+      setOwnValue(cloned, "premiumSince", since);
+      setOwnValue(cloned, "premium_since", since.toISOString());
+    }
     return cloned;
   }
   function decorateSharedProfile(original, userId, data) {
@@ -9744,6 +9756,13 @@
       setOwnValue(cloned, "bio", data.bio);
     if (data.pronouns != null)
       setOwnValue(cloned, "pronouns", data.pronouns);
+    if (remoteNitroEnabled(data)) {
+      var since = sharedNitroSince(data);
+      setOwnValue(cloned, "premiumType", 2);
+      setOwnValue(cloned, "premium_type", 2);
+      setOwnValue(cloned, "premiumSince", since);
+      setOwnValue(cloned, "premium_since", since.toISOString());
+    }
     var createdAt = profileDate(data.createdAt);
     var joinedAt = profileDate(data.signupDate || data.joinedSince);
     if (createdAt)
@@ -10103,8 +10122,11 @@
         accentColor ?? primaryColor
       ]);
     if (preview.nitroEnabled) {
+      var premiumSince = monthsAgo(preview.nitroMonths);
       setOwnValue(cloned, "premiumType", 2);
-      setOwnValue(cloned, "premiumSince", monthsAgo(preview.nitroMonths));
+      setOwnValue(cloned, "premium_type", 2);
+      setOwnValue(cloned, "premiumSince", premiumSince);
+      setOwnValue(cloned, "premium_since", premiumSince.toISOString());
     }
     if (preview.boostMonths > 0)
       setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
