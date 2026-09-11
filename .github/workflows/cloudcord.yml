@@ -1212,17 +1212,44 @@ jobs:
                   return cloneObject(user, "user");
               });
               addPatch("getUser", userStore, (args, original) => {
+                  if (!isCurrentUser(args?.[0])) return original(...args);
                   const user = original(...args);
-                  // Channel and DM rows call this method continuously. Mutating remote
-                  // users here can break Discord's MessagesItemChannel renderer, so
-                  // shared profiles are applied only by the profile-specific hooks below.
-                  if (!isCurrentUser(args?.[0])) return user;
                   realCurrentUser = user || realCurrentUser;
                   return cloneObject(user, "user");
               });
 
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
               diagnostics.profileStore = !!profileStore;
+              addPatch("getUserProfile", profileStore, (args, original) => {
+                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  return decorateProfileResult(original(...args), args?.[0]);
+              });
+              addPatch("getGuildMemberProfile", profileStore, (args, original) => {
+                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  return decorateProfileResult(original(...args), args?.[0]);
+              });
+
+              try {
+                  after("default", useUserProfileModule as any, (args, result) => {
+                      const subject = args?.[0];
+                      const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+                      return decorateProfileResult(result, id);
+                  });
+                  diagnostics.patches += 1;
+              } catch (error: any) {
+                  diagnostics.last = error?.message || "Could not connect profile view";
+              }
+
+              try {
+                  after("default", useDisplayProfileModule as any, (args, result) => {
+                      const subject = args?.[0];
+                      const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+                      return isCurrentUser(id) ? cloneObject(result, "profile") : result;
+                  });
+                  diagnostics.patches += 1;
+              } catch (error: any) {
+                  diagnostics.last = error?.message || "Could not connect profile banner";
+              }
 
               const avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
               const bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
