@@ -519,6 +519,18 @@ function scanNode(node: Node) {
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
     let n: Node | null;
     while ((n = walker.nextNode())) scanTextNode(n as Text);
+    const level = Number(storedData.nitroLevel ?? -1);
+    if (storedData.nitro === true && level >= 0 && level < NITRO_LEVELS.length && node.nodeType === Node.ELEMENT_NODE) {
+        for (const img of Array.from((node as Element).querySelectorAll?.("img") ?? [])) {
+            let parent: Element | null = img.parentElement;
+            for (let depth = 0; parent && depth < 6; depth++, parent = parent.parentElement) {
+                if (/Subscriber since/i.test(parent.textContent || "") && /Nitro\s+(?:Bronze|Silver|Gold|Platinum|Diamond|Emerald|Ruby|Opal)/i.test(parent.textContent || "")) {
+                    if ((img.clientWidth || img.naturalWidth) >= 80) { if (!(img as any).__cp_orig_src) (img as any).__cp_orig_src = img.src; img.src = NITRO_LEVELS[level].icon; }
+                    break;
+                }
+            }
+        }
+    }
 }
 function processDomBatch() {
     _domQueued = false;
