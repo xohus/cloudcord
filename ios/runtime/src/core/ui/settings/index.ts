@@ -63,8 +63,7 @@ export default function initSettings() {
                 key: "BUNNY_DEVELOPER",
                 title: () => "/diagnostics",
                 icon: findAssetId("WrenchIcon"),
-                render: () => import("@core/ui/settings/pages/Developer"),
-                usePredicate: () => useProxy(settings).developerSettings ?? false
+                render: () => import("@core/ui/settings/pages/Developer")
             }
         ]
     });
