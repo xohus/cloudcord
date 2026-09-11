@@ -1003,9 +1003,8 @@ fakeObfuscatedEmail(real: string | null) {
             const hasNitroFake = profileData.nitro === true && nl >= 0 && nl < NITRO_LEVELS.length;
             const hasBoostFake = bm >= 0 && bm < BOOST_ICONS.length;
             const f = profileData.badgeFlags ?? 0; const badges: ProfileBadge[] = [];
-            // Keep the same sequence used by Discord's profile badge resolver. These use
-            // Discord CDN assets and Discord's normal image-badge/tooltip renderer; no
-            // CloudCord hover portal, timer, spotlight, or hand-drawn overlay is involved.
+            // Keep Discord's badge sequence while retaining CloudCord's full Nitro
+            // milestone hover card on Windows.
             if (f & FLAG.STAFF) badges.push({ id: "sp_staff", description: "Discord Staff", iconSrc: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png", position: 0, props: { style } });
             if (f & FLAG.PARTNER) badges.push({ id: "sp_partner", description: "Partnered Server Owner", iconSrc: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png", position: 0, props: { style } });
             if (f & FLAG.HYPESQUAD) badges.push({ id: "sp_hypesquad", description: "HypeSquad Events", iconSrc: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png", position: 0, props: { style } });
@@ -1023,8 +1022,12 @@ fakeObfuscatedEmail(real: string | null) {
                 key: NITRO_LEVELS[nl].name,
                 description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
                 iconSrc: NITRO_LEVELS[nl].icon,
-                link: "https://discord.com/settings/premium",
-                props: { style },
+                component: (() => <NativeNitroBadge
+                    nitroLevel={nl}
+                    nitroSince={profileData?.nitroSince}
+                    accentColor={profileData?.accentColor}
+                    accentColor2={profileData?.accentColor2}
+                />) as any,
                 position: 0
             });
             if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", description: "Gifting Badge", iconSrc: GIFT_LEVELS[gl].icon, position: 0, props: { style } });
