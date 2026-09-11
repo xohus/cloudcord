@@ -10646,16 +10646,6 @@
     });
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
-    addPatch("getUserProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
-      return decorateProfileResult(original(...args), args?.[0]);
-    });
-    addPatch("getGuildMemberProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
-      return decorateProfileResult(original(...args), args?.[0]);
-    });
     try {
       after("default", useUserProfileModule, (args, result) => {
         var subject = args?.[0];
