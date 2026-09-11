@@ -37,9 +37,9 @@ export default function initSettings() {
             {
                 key: "CLOUDCORD_ACCOUNT_SWITCHER",
                 title: () => "Account Switcher",
-                icon: findAssetId("UserIcon"),
+                icon: findAssetId("UserIcon") || findAssetId("FriendsIcon") || findAssetId("AppsIcon"),
                 render: () => import("@core/ui/settings/pages/AccountSwitcher"),
-                usePredicate: () => useProxy(settings).cloudcordAccountSwitcherEnabled === true
+                usePredicate: () => settings.cloudcordAccountSwitcherEnabled === true
             },
             {
                 key: "BUNNY_PLUGINS",
@@ -66,7 +66,7 @@ export default function initSettings() {
                 title: () => "Diagnostics",
                 icon: findAssetId("WrenchIcon"),
                 render: () => import("@core/ui/settings/pages/Diagnostics"),
-                usePredicate: () => useProxy(settings).cloudcordDiagnosticsEnabled ?? false
+                usePredicate: () => settings.cloudcordDiagnosticsEnabled ?? false
             }
         ];
 
