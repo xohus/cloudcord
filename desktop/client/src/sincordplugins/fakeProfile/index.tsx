@@ -183,6 +183,11 @@ function NativeNitroBadge({ nitroLevel, nitroSince, accentColor, accentColor2 }:
     </Popout>;
 }
 
+function nativeNitroBadgeId(level: number): string {
+    const months = NITRO_LEVEL_MONTHS[Math.max(0, Math.min(NITRO_LEVEL_MONTHS.length - 1, level))] ?? 0;
+    return months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
+}
+
 const AVATAR_DECORATIONS = [
     { id: "1144307957425778779", label: "Hearts" }, { id: "1144308196723408958", label: "Hearts Animated" },
     { id: "1212569433839636530", label: "Lofi Cafe" }, { id: "1481387347642810480", label: "Winter" },
@@ -1014,23 +1019,18 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
             if (hasNitroFake) badges.push({
-                // Keep this id separate from Discord's native premium badge. Reusing
-                // premium_tenure_* makes React reconcile two different renderers under
-                // the same key and is what allowed the fallback badge to take over.
-                id: "sp_nitro",
+                id: nativeNitroBadgeId(nl),
                 key: NITRO_LEVELS[nl].name,
                 description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
                 iconSrc: NITRO_LEVELS[nl].icon,
-                // A stable component reference is required here. Creating an inline
-                // component remounts the popout whenever shared data refreshes, which
-                // swaps the correct card for Discord's fallback in under a second.
-                component: NativeNitroBadge as any,
-                nitroLevel: nl,
-                nitroSince: profileData.nitroSince,
-                accentColor: profileData.accentColor,
-                accentColor2: profileData.accentColor2,
+                component: (() => <NativeNitroBadge
+                    nitroLevel={nl}
+                    nitroSince={profileData?.nitroSince}
+                    accentColor={profileData?.accentColor}
+                    accentColor2={profileData?.accentColor2}
+                />) as any,
                 position: 0
-            } as any);
+            });
             if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", description: "Gifting Badge", iconSrc: GIFT_LEVELS[gl].icon, position: 0, props: { style } });
             if (hasBoostFake) {
                 const boostSince = monthsAgo(BOOST_LEVEL_MONTHS[bm] ?? 1);
