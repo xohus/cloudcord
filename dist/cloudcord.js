@@ -9586,8 +9586,13 @@
           profile: yield ownSharedProfile()
         })
       });
-      if (!response.ok)
+      if (!response.ok) {
+        if (saved.id && (response.status === 401 || response.status === 404)) {
+          delete rootSettings.fakeProfileShare;
+          return publishSharedProfile();
+        }
         throw new Error(`CloudCord sharing failed (${response.status})`);
+      }
       var result = yield response.json();
       if (!saved.id)
         rootSettings.fakeProfileShare = {
@@ -9611,7 +9616,7 @@
       if (!currentUserId)
         return;
       var now = Date.now();
-      if (pullOwnSharedProfile.pending || now - Number(pullOwnSharedProfile.lastAttempt || 0) < 6e4)
+      if (pullOwnSharedProfile.pending || now - Number(pullOwnSharedProfile.lastAttempt || 0) < 12e3)
         return;
       pullOwnSharedProfile.pending = true;
       pullOwnSharedProfile.lastAttempt = now;
@@ -10581,6 +10586,8 @@
         }
         ensurePatches();
         yield pullOwnSharedProfile();
+        if (!sharedSyncTimer)
+          sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15e3);
         if (preview.enabled) {
           refreshPreview();
           queueSharedPublish();
@@ -12119,7 +12126,7 @@
       })
     });
   }
-  var import_react4, import_react_native17, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native17, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, sharedSyncTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12468,10 +12475,11 @@
       realCurrentUser = null;
       userCache = /* @__PURE__ */ new WeakMap();
       profileCache = /* @__PURE__ */ new WeakMap();
-      SHARED_PROFILE_API = "https://cloudcord-profiles.ggxohus.workers.dev";
+      SHARED_PROFILE_API = "https://getcloudcord.com";
       sharedProfiles = /* @__PURE__ */ new Map();
       sharedRequests = /* @__PURE__ */ new Set();
       publishTimer = null;
+      sharedSyncTimer = null;
       REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
       PROFILE_COLORS = [
         "#5865F2",
