@@ -350,6 +350,11 @@ jobs:
               return `Subscriber since ${date.getMonth() + 1}/${date.getDate()}/${String(date.getFullYear()).slice(-2)}`;
           }
 
+          function serverBoostingLabel(months: number) {
+              const date = monthsAgo(months || 1);
+              return `Server boosting since ${date.getMonth() + 1}/${date.getDate()}/${String(date.getFullYear()).slice(-2)}`;
+          }
+
           function sharedNitroSince(data: any) {
               const explicit = profileDate(data?.nitroSince);
               if (explicit) return explicit;
@@ -879,7 +884,7 @@ jobs:
               }
               if (preview.boostMonths > 0) {
                   const icon = boosterIcon(preview.boostMonths);
-                  result.push({ id: "fakeprofile-boost", description: `Server Booster — ${boosterLabel(preview.boostMonths)}`, icon: " _", iconSrc: icon, source: { uri: icon } });
+                  result.push({ id: "fakeprofile-boost", description: serverBoostingLabel(preview.boostMonths), icon: " _", iconSrc: icon, source: { uri: icon } });
               }
               for (const [id, description, , icon] of BADGES) {
                   if (!preview.selectedBadges?.[id]) continue;
@@ -1012,7 +1017,7 @@ jobs:
                               const nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
                               const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
                               if (remoteNitroEnabled(data)) addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
-                              addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster — ${boosterLabel(boostMonths)}`, boosterIcon(boostMonths));
+                              addRenderedBadge(ordered, "cloudcord-shared-boost", serverBoostingLabel(boostMonths), boosterIcon(boostMonths));
                               const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
                               for (const [id, description, flag, icon, customId] of BADGES) {
                                   const selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
@@ -1053,7 +1058,7 @@ jobs:
                       addRenderedBadge(
                           ordered,
                           "fakeprofile-boost",
-                          `Server Booster — ${boosterLabel(preview.boostMonths)}`,
+                          serverBoostingLabel(preview.boostMonths),
                           boosterIcon(preview.boostMonths)
                       );
                       for (const [badgeId, description, , icon] of BADGES) {

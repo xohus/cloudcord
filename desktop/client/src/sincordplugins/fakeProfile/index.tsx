@@ -88,7 +88,7 @@ const NITRO_LEVELS = [
     { label: "Ruby", name: "Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png", art: pngDataUrl(nitroRuby), light: "#ff91bd", dark: "#c01958" },
     { label: "Opal", name: "Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png", art: pngDataUrl(nitroOpal), light: "#c8f7ff", dark: "#675cff" },
 ];
-const BOOST_LABELS = ["1 Month", "2 Months", "3 Months", "6 Months", "9 Months", "12 Months", "15 Months", "18 Months", "24 Months"];
+const BOOST_LABELS = ["1-month milestone", "2-month milestone", "3-month milestone", "6-month milestone", "9-month milestone", "1-year milestone", "15-month milestone", "18-month milestone", "2-year milestone"];
 const BOOST_ICONS = [
     "https://cdn.discordapp.com/badge-icons/51040c70d4f20a921ad6674ff86fc95c.png",
     "https://cdn.discordapp.com/badge-icons/0e4080d1d333bc7ad29ef6528b6f2fb7.png",
@@ -694,7 +694,7 @@ function BadgePicker({ selected, onChange, nitroType, onNitroType, giftLevel, on
             {GIFT_LEVELS.map((level, index) => <BadgeBtn key={level.id} label={`${level.name} — Gifted ${level.count}x`} icon={level.icon} active={giftLevel === index} onClick={() => onGiftLevel(index)} />)}
         </div>
         {hasOldName && <div className="cp-field" style={{ marginTop: 6 }}><div className="cp-section-label">Previous username displayed in tooltip</div><input className="cp-input" value={oldName} placeholder="OldUser#0000" onChange={e => onOldName(e.target.value)} /></div>}
-        <div className="cp-section-label" style={{ marginTop: 8 }}>Boost Badge (Server Booster)</div>
+        <div className="cp-section-label" style={{ marginTop: 8 }}>Server Booster Badge</div>
         <div className="cp-badges">
             <BadgeBtn label="None" active={boostLevel === -1} onClick={() => onBoostLevel(-1)} />
             {BOOST_LABELS.map((lbl, i) => <BadgeBtn key={i} label={lbl} icon={BOOST_ICONS[i]} active={boostLevel === i} onClick={() => onBoostLevel(i)} />)}
