@@ -10326,7 +10326,7 @@
     try {
       after("default", useBadgesModule2, ([user], result) => {
         if (!Array.isArray(result))
-          return;
+          return result;
         var id = String(user?.userId || user?.id || "");
         if (!isCurrentUser(id)) {
           requestSharedProfile(id);
@@ -10365,8 +10365,10 @@
             var badgeId2 = String(item?.id || "");
             return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("cloudcord-shared-") && !(remoteNitroEnabled(data) && badgeId2 === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
           });
-          result.splice(0, result.length, ...ordered, ...existing);
-          return;
+          return [
+            ...ordered,
+            ...existing
+          ];
         }
         var officialOwner1 = id === CLOUDCORD_OFFICIAL_OWNER_ID;
         if (!preview.enabled) {
@@ -10375,8 +10377,10 @@
           var existing1 = result.filter((item) => String(item?.id || "") !== CLOUDCORD_OFFICIAL_BADGE_ID);
           var ordered1 = [];
           addRenderedBadge(ordered1, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
-          result.splice(0, result.length, ...ordered1, ...existing1);
-          return;
+          return [
+            ...ordered1,
+            ...existing1
+          ];
         }
         var existing2 = shouldReplaceLocalBadges() ? [] : result.filter((item) => {
           var badgeId2 = String(item?.id || "");
@@ -10395,7 +10399,10 @@
           var label1 = badgeId === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description1;
           addRenderedBadge(ordered2, id2, label1, icon1);
         }
-        result.splice(0, result.length, ...ordered2, ...existing2);
+        return [
+          ...ordered2,
+          ...existing2
+        ];
       });
       diagnostics.patches += 1;
     } catch (error) {
@@ -10407,10 +10414,11 @@
     ]) {
       try {
         onJsxCreate(component, (_component, rendered) => {
-          var props = badgeRenderProps.get(rendered?.props?.id);
-          if (props) {
+          if (!rendered?.props)
+            return;
+          var props = badgeRenderProps.get(rendered.props.id);
+          if (props)
             Object.assign(rendered.props, props);
-          }
         });
         diagnostics.patches += 1;
       } catch (e) {
