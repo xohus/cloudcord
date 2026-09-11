@@ -1,5 +1,15 @@
 /* ── Custom Profile Plugin ── */
 
+/* Never let profile styling suppress Discord's native server/channel ping
+   counters. Some Discord builds reuse badge class fragments inside popouts. */
+[class*="guilds"] [class*="numberBadge"],
+[class*="sidebar"] [class*="numberBadge"],
+[class*="channel"] [class*="numberBadge"] {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
 .cp-account-selector-inline {
     width: 100%;
     margin-bottom: 8px;

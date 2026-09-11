@@ -366,6 +366,13 @@ async function pullOwnSharedProfile() {
     if (!id) return;
     try {
         const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`);
+        // Existing installations may have local profile data but no row in the
+        // website-backed sync database yet. Seed it automatically instead of
+        // waiting for the user to edit a field.
+        if (response.status === 404) {
+            if (isEnabled) queueSharedPublish();
+            return;
+        }
         if (!response.ok) return;
         const payload = await response.json();
         const pulled = fromSharedProfile(payload?.profile ?? payload);
@@ -1121,6 +1128,7 @@ fakeObfuscatedEmail(real: string | null) {
         await loadData();
         updateCachedRealData();
         await pullOwnSharedProfile();
+        if (isEnabled) queueSharedPublish();
         if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15000);
         if (isEnabled) forceAccountPanelRerender();
     },
