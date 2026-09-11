@@ -94,7 +94,8 @@ function showNitroMilestones(profile: SharedProfile) {
 function nativeProfileInput(input: any, profile: SharedProfile) {
     const nitroLevel = Number.isInteger(profile.nitroLevel) ? Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel!)) : 0;
     const sinceText = profile.nitroSince || profile.createdAt || profile.signupDate || profile.joinedSince;
-    const premiumSince = sinceText ? new Date(sinceText.length === 10 ? `${sinceText}T12:00:00Z` : sinceText) : new Date();
+    let premiumSince = sinceText ? new Date(sinceText.length === 10 ? `${sinceText}T12:00:00Z` : sinceText) : new Date();
+    if (!Number.isFinite(premiumSince.getTime())) premiumSince = new Date();
     if (!sinceText) premiumSince.setMonth(premiumSince.getMonth() - NITRO_MONTHS[nitroLevel]);
     const giftLevel = Number.isInteger(profile.giftLevel) ? Math.max(0, Math.min(GIFT_COUNTS.length - 1, profile.giftLevel!)) : -1;
     const giftCount = giftLevel >= 0 ? GIFT_COUNTS[giftLevel] : undefined;
@@ -145,6 +146,7 @@ export default defineCorePlugin({
         });
 
         onJsxCreate("ProfileBadge", (component, ret) => {
+            if (!ret?.props) return;
             if (ret.props.id === "premium" || ret.props.id?.startsWith("premium_tenure_")) {
                 const userId = ret.props.userId ?? ret.props.user?.id;
                 const profile = userId && sharedProfiles.get(userId);
@@ -233,10 +235,10 @@ export default defineCorePlugin({
         };
 
         after("default", useBadgesModule, ([user], result) => {
-            if (!user) return;
+            if (!user || !Array.isArray(result)) return result;
 
             const userId = user.userId ?? user.id;
-            if (!userId) return;
+            if (!userId) return result;
             const cached = badgesCache.get(userId);
             const profile = sharedProfiles.get(userId);
 
@@ -244,14 +246,15 @@ export default defineCorePlugin({
                 if (!pendingRequests.has(userId)) {
                     fetchAndProcessBadges(userId);
                 }
-                return;
+                return result;
             }
 
+            let nextResult = [...result];
             [...cached].reverse().forEach((badge, reverseIndex) => {
                 const i = cached.length - reverseIndex - 1;
                 const badgeId = badge.id ? `cloudcord-${badge.id}-${userId}` : `rain-${userId}-${i}`;
 
-                result.unshift({
+                nextResult.unshift({
                     id: badgeId,
                     description: badge.label,
                     icon: " _",
@@ -262,15 +265,14 @@ export default defineCorePlugin({
                 const level = Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel!));
                 const months = NITRO_MONTHS[level];
                 const id = months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
-                // Replace Discord's real/no-tier badge with the CloudCord-selected
-                // milestone in every case. Leaving an existing premium badge here made
-                // the popup report the user's genuine tier instead of the fake profile.
-                for (let i = result.length - 1; i >= 0; i--) {
-                    const badgeId = String(result[i]?.id || "");
-                    if (badgeId === "premium" || badgeId.startsWith("premium_tenure_")) result.splice(i, 1);
-                }
-                result.unshift({ id, userId, description: `Subscriber since ${nativeProfileInput({}, profile).premium_since}`, icon: " _" });
+                nextResult = nextResult.filter((badge: any) => {
+                    const badgeId = String(badge?.id || "");
+                    return badgeId !== "premium" && !badgeId.startsWith("premium_tenure_");
+                });
+                nextResult.unshift({ id, userId, description: `Subscriber since ${nativeProfileInput({}, profile).premium_since}`, icon: " _" });
             }
+
+            return nextResult;
         });
     }
 });
