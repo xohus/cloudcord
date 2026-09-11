@@ -7,7 +7,35 @@ import { loaderConfig, settings } from "@lib/api/settings";
 import { clipboard } from "@metro/common";
 import { Button, Stack, TableRow, TableRowGroup, TableSwitchRow, TextInput } from "@metro/common/components";
 import { showToast } from "@ui/toasts";
+import { useEffect } from "react";
 import { ScrollView, View } from "react-native";
+
+type RequestEvent = { method: string; target: string; status: number; durationMs: number; at: string; };
+const requestEvents: RequestEvent[] = [];
+let fetchWrapped = false;
+
+function enableSanitizedRequestCapture() {
+    if (fetchWrapped) return;
+    fetchWrapped = true;
+    const originalFetch = globalThis.fetch.bind(globalThis);
+    globalThis.fetch = async (input: any, init?: any) => {
+        const started = Date.now();
+        try {
+            const response = await originalFetch(input, init);
+            if (settings.cloudcordDiagnosticsCapture === true) {
+                const raw = typeof input === "string" ? input : input?.url ?? "unknown";
+                let target = "unknown";
+                try { const url = new URL(raw); target = `${url.origin}${url.pathname}`; } catch {}
+                requestEvents.push({ method: String(init?.method ?? "GET").toUpperCase(), target, status: response.status, durationMs: Date.now() - started, at: new Date().toISOString() });
+                if (requestEvents.length > 200) requestEvents.splice(0, requestEvents.length - 200);
+            }
+            return response;
+        } catch (error) {
+            if (settings.cloudcordDiagnosticsCapture === true) requestEvents.push({ method: String(init?.method ?? "GET").toUpperCase(), target: "request-failed", status: 0, durationMs: Date.now() - started, at: new Date().toISOString() });
+            throw error;
+        }
+    };
+}
 
 const TAB_KEYS = ["BOTCORD", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_BROWSER"] as const;
 const TAB_LABELS: Record<string, string> = {
@@ -21,6 +49,7 @@ export default function Diagnostics() {
     const debug = getDebugInfo();
     const hidden = settings.cloudcordHiddenTabs ?? [];
     const order = settings.cloudcordTabOrder?.length ? settings.cloudcordTabOrder : [...TAB_KEYS];
+    useEffect(() => enableSanitizedRequestCapture(), []);
 
     const setVisible = (key: string, visible: boolean) => {
         settings.cloudcordHiddenTabs = visible ? hidden.filter(item => item !== key) : [...new Set([...hidden, key])];
@@ -43,6 +72,7 @@ export default function Diagnostics() {
             runtimeUrl: loaderConfig.customLoadUrl.enabled ? loaderConfig.customLoadUrl.url : "stable",
             tabOrder: order,
             hiddenTabs: hidden,
+            recentRequests: requestEvents.slice(-50),
         };
         clipboard.setString(JSON.stringify(snapshot, null, 2));
         showToast("Diagnostics copied", findAssetId("toast_copy_link"));
