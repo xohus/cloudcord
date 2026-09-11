@@ -533,7 +533,13 @@ function scanNode(node: Node) {
             let parent: Element | null = img.parentElement;
             for (let depth = 0; parent && depth < 6; depth++, parent = parent.parentElement) {
                 if (/Subscriber since/i.test(parent.textContent || "") && /Nitro\s+(?:Bronze|Silver|Gold|Platinum|Diamond|Emerald|Ruby|Opal)/i.test(parent.textContent || "")) {
-                    if ((img.clientWidth || img.naturalWidth) >= 80) { if (!(img as any).__cp_orig_src) (img as any).__cp_orig_src = img.src; img.src = NITRO_LEVELS[level].icon; }
+                    // Large Nitro surfaces use Discord's full advancing milestone
+                    // artwork. Using the compact profile-badge icon here also
+                    // overwrote CloudCord's own hover artwork after it mounted.
+                    if ((img.clientWidth || img.naturalWidth) >= 80) {
+                        if (!(img as any).__cp_orig_src) (img as any).__cp_orig_src = img.src;
+                        img.src = NITRO_LEVELS[level].art;
+                    }
                     break;
                 }
             }
@@ -997,7 +1003,7 @@ fakeObfuscatedEmail(real: string | null) {
                 }
             } catch { }
 
-            const style = { borderRadius: "50%", width: "30px", height: "30px" };
+            const style = { borderRadius: "50%", width: "26px", height: "26px" };
             const nl = profileData.nitroLevel ?? -1;
             const bm = profileData.boostMonths ?? -1;
             const gl = profileData.giftLevel ?? -1;
