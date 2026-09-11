@@ -5,15 +5,13 @@ import { findAssetId } from "@lib/api/assets";
 import { isFontSupported, isThemeSupported } from "@lib/api/native/loader";
 import { settings } from "@lib/api/settings";
 import { registerSection } from "@ui/settings";
+import type { RowConfig } from "@ui/settings";
 import { version } from "bunny-build-info";
 
 export { PupuIcon };
 
 export default function initSettings() {
-    
-    registerSection({
-        name: "CloudCord",
-        items: [
+    const baseItems: RowConfig[] = [
             {
                 key: "BOTCORD",
                 title: () => "BotCord",
@@ -61,12 +59,34 @@ export default function initSettings() {
             },
             {
                 key: "BUNNY_DEVELOPER",
-                title: () => "/diagnostics",
+                title: () => "Diagnostics",
                 icon: findAssetId("WrenchIcon"),
-                render: () => import("@core/ui/settings/pages/Developer")
+                render: () => import("@core/ui/settings/pages/Diagnostics"),
+                usePredicate: () => useProxy(settings).cloudcordDiagnosticsEnabled ?? false
             }
-        ]
-    });
+        ];
+
+    const configurableKeys = new Set(["BOTCORD", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_BROWSER"]);
+    const configuredOrder = settings.cloudcordTabOrder ?? [];
+    const orderIndex = new Map(configuredOrder.map((key, index) => [key, index]));
+    const items = baseItems
+        .map(row => {
+            if (!configurableKeys.has(row.key)) return row;
+            const originalPredicate = row.usePredicate;
+            return {
+                ...row,
+                usePredicate: () => {
+                    const state = useProxy(settings);
+                    return !(state.cloudcordHiddenTabs ?? []).includes(row.key) && (originalPredicate?.() ?? true);
+                },
+            };
+        })
+        .sort((a, b) => {
+            if (!configurableKeys.has(a.key) || !configurableKeys.has(b.key)) return 0;
+            return (orderIndex.get(a.key) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(b.key) ?? Number.MAX_SAFE_INTEGER);
+        });
+
+    registerSection({ name: "CloudCord", items });
 
     registerSection({
         name: "Bunny",

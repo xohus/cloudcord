@@ -8,6 +8,10 @@ export interface Settings {
     autoDevTools: boolean;
     developerSettings: boolean;
     enableDiscordDeveloperSettings: boolean;
+    cloudcordDiagnosticsEnabled?: boolean;
+    cloudcordDiagnosticsCapture?: boolean;
+    cloudcordHiddenTabs?: string[];
+    cloudcordTabOrder?: string[];
     safeMode?: {
         enabled: boolean;
         currentThemeId?: string;

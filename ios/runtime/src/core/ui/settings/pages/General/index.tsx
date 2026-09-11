@@ -65,6 +65,13 @@ export default function General() {
                     />
                 </TableRowGroup>
                 <TableRowGroup title={Strings.ACTIONS}>
+                    <TableSwitchRow
+                        label="Diagnostics"
+                        subLabel="Show CloudCord diagnostics and version controls"
+                        icon={<TableRow.Icon source={findAssetId("WrenchIcon")!} />}
+                        value={settings.cloudcordDiagnosticsEnabled === true}
+                        onValueChange={(value: boolean) => settings.cloudcordDiagnosticsEnabled = value}
+                    />
                     <TableRow
                         label={Strings.RELOAD_DISCORD}
                         icon={<TableRow.Icon source={findAssetId("RetryIcon")!} />}
