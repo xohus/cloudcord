@@ -9396,6 +9396,13 @@
     default: () => FakeProfile,
     initializeFakeProfile: () => initializeFakeProfile
   });
+  function nitroBadgeId(months) {
+    return months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
+  }
+  function nitroSubscriberLabel(months) {
+    var date = monthsAgo(months);
+    return `Subscriber since ${date.getMonth() + 1}/${date.getDate()}/${String(date.getFullYear()).slice(-2)}`;
+  }
   function pullRealCordConfiguration() {
     return _async_to_generator(function* () {
       if (globalThis.__CLOUDCORD_LOADER__?.loaderName !== "RealCord")
@@ -9990,8 +9997,8 @@
     if (preview.nitroEnabled) {
       var icon = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
       result.push({
-        id: "fakeprofile-nitro",
-        description: NITRO_LABELS.get(preview.nitroMonths) || "Nitro",
+        id: nitroBadgeId(preview.nitroMonths),
+        description: nitroSubscriberLabel(preview.nitroMonths),
         icon: " _",
         iconSrc: icon,
         source: {
@@ -10163,17 +10170,7 @@
           if (officialOwner)
             addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
           if (data) {
-            var nitroMonths = [
-              0,
-              1,
-              2,
-              3,
-              6,
-              12,
-              24,
-              36,
-              72
-            ][Number(data.nitroLevel)] || 0;
+            var nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
             var boostMonths = [
               1,
               2,
@@ -10186,7 +10183,7 @@
               24
             ][Number(data.boostMonths)] || 0;
             if (remoteNitroEnabled(data))
-              addRenderedBadge(ordered, "cloudcord-shared-nitro", NITRO_LABELS.get(nitroMonths) || "Nitro", milestoneIcon(nitroMonths, NITRO_ICONS));
+              addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
             addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster \u2014 ${boosterLabel(boostMonths)}`, boosterIcon(boostMonths));
             var customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
             for (var [id1, description, flag, icon, customId] of BADGES) {
@@ -10198,7 +10195,7 @@
           }
           var existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter((item) => {
             var badgeId2 = String(item?.id || "");
-            return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("cloudcord-shared-");
+            return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("cloudcord-shared-") && !(remoteNitroEnabled(data) && badgeId2 === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
           });
           result.splice(0, result.length, ...ordered, ...existing);
           return;
@@ -10215,13 +10212,13 @@
         }
         var existing2 = shouldReplaceLocalBadges() ? [] : result.filter((item) => {
           var badgeId2 = String(item?.id || "");
-          return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("fakeprofile-");
+          return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeId2 === nitroBadgeId(preview.nitroMonths));
         });
         var ordered2 = [];
         if (officialOwner1)
           addRenderedBadge(ordered2, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
         if (preview.nitroEnabled)
-          addRenderedBadge(ordered2, "fakeprofile-nitro", NITRO_LABELS.get(preview.nitroMonths) || "Nitro", milestoneIcon(preview.nitroMonths, NITRO_ICONS));
+          addRenderedBadge(ordered2, nitroBadgeId(preview.nitroMonths), nitroSubscriberLabel(preview.nitroMonths), milestoneIcon(preview.nitroMonths, NITRO_ICONS));
         addRenderedBadge(ordered2, "fakeprofile-boost", `Server Booster \u2014 ${boosterLabel(preview.boostMonths)}`, boosterIcon(preview.boostMonths));
         for (var [badgeId, description1, , icon1] of BADGES) {
           if (!preview.selectedBadges?.[badgeId])
@@ -12262,12 +12259,12 @@
       NITRO_DURATIONS = [
         0,
         1,
-        2,
         3,
         6,
         12,
         24,
         36,
+        60,
         72
       ];
       BOOST_DURATIONS = [
@@ -12288,27 +12285,27 @@
           "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png"
         ],
         [
-          36,
+          60,
           "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png"
         ],
         [
-          24,
+          36,
           "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png"
         ],
         [
-          12,
+          24,
           "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png"
         ],
         [
-          6,
+          12,
           "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png"
         ],
         [
-          3,
+          6,
           "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png"
         ],
         [
-          2,
+          3,
           "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png"
         ],
         [
@@ -12323,39 +12320,39 @@
       NITRO_LABELS = /* @__PURE__ */ new Map([
         [
           0,
-          "Nitro (0 months)"
+          "Nitro"
         ],
         [
           1,
-          "Bronze (1 month)"
-        ],
-        [
-          2,
-          "Silver (2 months)"
+          "Bronze"
         ],
         [
           3,
-          "Gold (3 months)"
+          "Silver"
         ],
         [
           6,
-          "Platinum (6 months)"
+          "Gold"
         ],
         [
           12,
-          "Diamond (12 months)"
+          "Platinum"
         ],
         [
           24,
-          "Emerald (24 months)"
+          "Diamond"
         ],
         [
           36,
-          "Ruby (36 months)"
+          "Emerald"
+        ],
+        [
+          60,
+          "Ruby"
         ],
         [
           72,
-          "Opal (72 months)"
+          "Opal"
         ]
       ]);
       BOOST_ICONS = [
@@ -12984,6 +12981,11 @@
   function addUiEvent(component, action, metadata) {
     if (settings.cloudcordDiagnosticsCapture !== true)
       return;
+    var signature = `${component}:${action}:${JSON.stringify(metadata)}`;
+    var now = Date.now();
+    if (action === "render" && now - (lastUiEvent.get(signature) ?? 0) < 1e3)
+      return;
+    lastUiEvent.set(signature, now);
     uiEvents.push({
       id: ++requestSequence,
       feature: "Nitro UI",
@@ -13178,6 +13180,7 @@
                 onPress: () => {
                   requestEvents.splice(0, requestEvents.length);
                   uiEvents.splice(0, uiEvents.length);
+                  lastUiEvent.clear();
                   showToast("Captured events cleared", findAssetId("Check"));
                 }
               })
@@ -13284,7 +13287,7 @@
       })
     });
   }
-  var import_react5, import_react_native19, requestEvents, uiEvents, fetchWrapped, uiCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
+  var import_react5, import_react_native19, requestEvents, uiEvents, lastUiEvent, fetchWrapped, uiCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
   var init_Diagnostics = __esm({
     "src/core/ui/settings/pages/Diagnostics/index.tsx"() {
       "use strict";
@@ -13306,6 +13309,7 @@
       import_react_native19 = __toESM(require_react_native());
       requestEvents = [];
       uiEvents = [];
+      lastUiEvent = /* @__PURE__ */ new Map();
       fetchWrapped = false;
       uiCaptureInstalled = false;
       requestSequence = 0;
