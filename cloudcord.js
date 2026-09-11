@@ -8091,9 +8091,8 @@
             if (ret.props.id === "premium" || ret.props.id?.startsWith("premium_tenure_")) {
               var userId = ret.props.userId ?? ret.props.user?.id;
               var profile = userId && sharedProfiles.get(userId);
-              if (profile?.nitro === true && typeof ret.props.onPress !== "function") {
+              if (profile?.nitro === true)
                 ret.props.onPress = () => showNitroMilestones(profile);
-              }
             }
             if (ret.props.id?.startsWith("rain-") || ret.props.id?.startsWith("cloudcord-")) {
               var cachedProps = badgeProps.get(ret.props.id);
@@ -8206,7 +8205,10 @@
               var level = Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel));
               var months = NITRO_MONTHS[level];
               var id = months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
-              if (!result.some((badge) => badge?.id === id || badge?.id?.startsWith("premium_tenure_"))) {
+              var renderedNitro = result.find((badge) => badge?.id === id || badge?.id?.startsWith("premium_tenure_") || badge?.id === "premium");
+              if (renderedNitro) {
+                renderedNitro.userId = userId;
+              } else {
                 result.unshift({
                   id,
                   userId,
