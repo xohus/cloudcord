@@ -19,8 +19,10 @@ import {
     BotCordTab,
     CloudTab,
     FakeProfileTab,
+    PatchHelperTab,
     PluginsTab,
     ThemesTab,
+    UpdaterTab,
     VencordTab,
 } from "@components/settings";
 import { gitHashShort } from "@shared/vencordUserAgent";
@@ -76,7 +78,7 @@ interface SettingsLayoutBuilder {
     buildLayout(): SettingsLayoutNode[];
 }
 
-const settings = definePluginSettings({
+export const settings = definePluginSettings({
     settingsLocation: {
         type: OptionType.SELECT,
         description: "Where to put the CloudCord settings section",
@@ -93,6 +95,11 @@ const settings = definePluginSettings({
         type: OptionType.BOOLEAN,
         description: "Also copy Vencord info (Vencord, Electron, Chromium) when clicking the version info in the bottom left area of the Settings page",
         default: true
+    },
+    diagnosticsMode: {
+        type: OptionType.BOOLEAN,
+        description: "Show CloudCord diagnostics, interception helpers, and version controls",
+        default: false
     }
 });
 
@@ -218,6 +225,20 @@ export default definePlugin({
                 title: "Backup & Restore",
                 panelTitle: "Backup & Restore",
                 Component: BackupAndRestoreTab,
+                Icon: BackupRestoreIcon
+            }),
+            settings.store.diagnosticsMode && buildEntry({
+                key: "cloudcord_diagnostics",
+                title: "/diagnostics",
+                panelTitle: "CloudCord Diagnostics",
+                Component: PatchHelperTab,
+                Icon: MainSettingsIcon
+            }),
+            settings.store.diagnosticsMode && UpdaterTab && buildEntry({
+                key: "cloudcord_versions",
+                title: "CloudCord Versions",
+                panelTitle: "CloudCord Versions",
+                Component: UpdaterTab,
                 Icon: BackupRestoreIcon
             })
         ].filter(isTruthy);

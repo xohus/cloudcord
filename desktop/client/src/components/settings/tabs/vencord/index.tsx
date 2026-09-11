@@ -9,6 +9,7 @@ import "./VencordTab.css";
 import { openNotificationLogModal } from "@api/Notifications/notificationLog";
 import { plugins } from "@api/PluginManager";
 import { useSettings } from "@api/Settings";
+import { settings as cloudCordSettings } from "@plugins/_core/settings";
 import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
 import { FormSwitch } from "@components/FormSwitch";
@@ -156,6 +157,8 @@ function Switches() {
 }
 
 function CloudCordSettings() {
+    const { diagnosticsMode } = cloudCordSettings.use(["diagnosticsMode"]);
+
     return (
         <SettingsTab>
             <Heading className={Margins.top16}>Quick Actions</Heading>
@@ -220,6 +223,14 @@ function CloudCordSettings() {
                     Settings Plugin
                 </a>.
             </Notice.Info>
+
+            <FormSwitch
+                title="/diagnostics"
+                description="Show CloudCord diagnostics, interception helpers, and version controls in the settings sidebar."
+                value={diagnosticsMode}
+                onChange={(value: boolean) => cloudCordSettings.store.diagnosticsMode = value}
+                hideBorder
+            />
 
             <Switches />
 
