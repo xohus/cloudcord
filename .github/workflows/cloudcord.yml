@@ -1015,7 +1015,7 @@ jobs:
           function connectBadgeRenderer() {
               try {
                   after("default", useBadgesModule as any, ([user], result) => {
-                      if (!Array.isArray(result)) return;
+                      if (!Array.isArray(result)) return result;
                       const id = String(user?.userId || user?.id || "");
                       if (!isCurrentUser(id)) {
                           requestSharedProfile(id);
@@ -1040,8 +1040,7 @@ jobs:
                               const badgeId = String(item?.id || "");
                               return badgeId !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId.startsWith("cloudcord-shared-") && !(remoteNitroEnabled(data) && badgeId === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
                           });
-                          result.splice(0, result.length, ...ordered, ...existing);
-                          return;
+                          return [...ordered, ...existing];
                       }
 
                       const officialOwner = id === CLOUDCORD_OFFICIAL_OWNER_ID;
@@ -1050,8 +1049,7 @@ jobs:
                           const existing = result.filter(item => String(item?.id || "") !== CLOUDCORD_OFFICIAL_BADGE_ID);
                           const ordered: any[] = [];
                           addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
-                          result.splice(0, result.length, ...ordered, ...existing);
-                          return;
+                          return [...ordered, ...existing];
                       }
 
                       const existing = shouldReplaceLocalBadges() ? [] : result.filter(item => {
@@ -1078,7 +1076,7 @@ jobs:
                           const label = badgeId === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description;
                           addRenderedBadge(ordered, id, label, icon);
                       }
-                      result.splice(0, result.length, ...ordered, ...existing);
+                      return [...ordered, ...existing];
                   });
                   diagnostics.patches += 1;
               } catch (error: any) {
@@ -1088,10 +1086,9 @@ jobs:
               for (const component of ["ProfileBadge", "RenderedBadge"]) {
                   try {
                       onJsxCreate(component, (_component, rendered) => {
-                          const props = badgeRenderProps.get(rendered?.props?.id);
-                          if (props) {
-                              Object.assign(rendered.props, props);
-                          }
+                          if (!rendered?.props) return;
+                          const props = badgeRenderProps.get(rendered.props.id);
+                          if (props) Object.assign(rendered.props, props);
                       });
                       diagnostics.patches += 1;
                   } catch {}
