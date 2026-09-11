@@ -1,6 +1,8 @@
 import { after, before } from "@lib/api/patcher";
 import { onJsxCreate } from "@lib/api/react/jsx";
 import { findByName, findByNameLazy } from "@metro";
+import { findByProps } from "@metro/wrappers";
+import { lazyDestructure } from "@lib/utils/lazy";
 import { useEffect, useState } from "react";
 import { defineCorePlugin } from "..";
 import { FluxDispatcher } from "@metro/common";
@@ -54,6 +56,21 @@ const sharedProfiles = new Map<string, SharedProfile>();
 const SHARED_PROFILE_API = "https://cloudcord-profiles.ggxohus.workers.dev";
 const NITRO_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
 const GIFT_COUNTS = [1, 2, 3, 6, 10, 20] as const;
+const GIFT_NAMES = ["Patron", "Champion", "Luminary", "Icon", "Hero", "Legend"] as const;
+const GIFT_ASSETS = GIFT_NAMES.map(name => `https://raw.githubusercontent.com/dev-hoehle/discord-badges/main/png/gifting_${name.toLowerCase()}.png`);
+const { showSimpleActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet"));
+
+function showGiftingMilestones(selected: number) {
+    showSimpleActionSheet({
+        key: "CloudCordGiftingMilestones",
+        header: { title: "Gifting Badges" },
+        options: GIFT_NAMES.map((name, index) => ({
+            label: `${name} · Gifted ${GIFT_COUNTS[index]}×${index === selected ? " · Current" : ""}`,
+            icon: { uri: GIFT_ASSETS[index] },
+            onPress: () => {},
+        })),
+    });
+}
 
 function nativeProfileInput(input: any, profile: SharedProfile) {
     const nitroLevel = Number.isInteger(profile.nitroLevel) ? Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel!)) : 0;
@@ -69,8 +86,12 @@ function nativeProfileInput(input: any, profile: SharedProfile) {
         premium_since: profile.nitro === true || Number.isInteger(profile.nitroLevel) ? premiumSince.toISOString() : input?.premium_since,
         giftCount: giftCount ?? input?.giftCount,
         giftingBadgeTier: giftLevel >= 0 ? giftLevel + 1 : input?.giftingBadgeTier,
+        giftingProfileBadgeTier: giftLevel >= 0 ? giftLevel + 1 : input?.giftingProfileBadgeTier,
+        giftBadgeTier: giftLevel >= 0 ? giftLevel + 1 : input?.giftBadgeTier,
         gift_count: giftCount ?? input?.gift_count,
         gifting_badge_tier: giftLevel >= 0 ? giftLevel + 1 : input?.gifting_badge_tier,
+        gifting_profile_badge_tier: giftLevel >= 0 ? giftLevel + 1 : input?.gifting_profile_badge_tier,
+        gift_badge_tier: giftLevel >= 0 ? giftLevel + 1 : input?.gift_badge_tier,
     };
     return {
         ...input,
@@ -159,6 +180,13 @@ export default defineCorePlugin({
                     allBadges.push(...userBadgeData.custom);
                 }
 
+                const giftLevel = Number.isInteger(profile.giftLevel) ? Math.max(0, Math.min(GIFT_COUNTS.length - 1, profile.giftLevel!)) : -1;
+                if (giftLevel >= 0) allBadges.push({
+                    id: `gifting-${giftLevel + 1}`,
+                    label: `Gifting ${GIFT_NAMES[giftLevel]} · Gifted ${GIFT_COUNTS[giftLevel]}×`,
+                    url: GIFT_ASSETS[giftLevel],
+                });
+
                 badgesCache.set(userId, allBadges);
 
                 allBadges.forEach((badge, i) => {
@@ -168,6 +196,7 @@ export default defineCorePlugin({
                         source: { uri: badge.url },
                         label: badge.label,
                         userId,
+                        ...(badge.id?.startsWith("gifting-") ? { onPress: () => showGiftingMilestones(Number(badge.id!.split("-")[1]) - 1) } : {}),
                     });
                 });
 
@@ -183,6 +212,7 @@ export default defineCorePlugin({
             const userId = user.userId ?? user.id;
             if (!userId) return;
             const cached = badgesCache.get(userId);
+            const profile = sharedProfiles.get(userId);
 
             if (!cached) {
                 if (!pendingRequests.has(userId)) {
@@ -201,6 +231,15 @@ export default defineCorePlugin({
                     icon: " _",
                 });
             });
+
+            if (profile?.nitro === true && Number.isInteger(profile.nitroLevel)) {
+                const level = Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel!));
+                const months = NITRO_MONTHS[level];
+                const id = months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
+                if (!result.some((badge: any) => badge?.id === id || badge?.id?.startsWith("premium_tenure_"))) {
+                    result.unshift({ id, description: `Subscriber since ${nativeProfileInput({}, profile).premium_since}`, icon: " _" });
+                }
+            }
         });
     }
 });
