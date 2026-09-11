@@ -1175,8 +1175,6 @@ jobs:
                               props.bannerURL = data.banner;
                               props.resizeMode = "cover";
                               props.contentFit = "cover";
-                              if (props.displayProfile) props.displayProfile = decorateSharedProfile(props.displayProfile, id, data);
-                              if (props.profile) props.profile = decorateSharedProfile(props.profile, id, data);
                               return;
                           }
                           const uri = mediaUri("bannerMedia");
@@ -1187,34 +1185,11 @@ jobs:
                           props.bannerURL = uri;
                           props.resizeMode = "cover";
                           props.contentFit = "cover";
-                          if (props.displayProfile) props.displayProfile = decorateProfileResult(props.displayProfile, id);
-                          if (props.profile) props.profile = decorateProfileResult(props.profile, id);
                       });
                       diagnostics.patches += 1;
                   } catch {}
               }
 
-              try {
-                  onJsxCreate("UserProfileHeader", (_component, rendered) => {
-                      const props = rendered?.props;
-                      const id = String(renderedUserId(props) || "");
-                      if (!id) return;
-                      if (!isCurrentUser(id)) {
-                          requestSharedProfile(id);
-                          const data = sharedProfiles.get(id);
-                          if (!data) return;
-                          if (props.user) props.user = cloneSharedUser(props.user, data);
-                          if (props.displayProfile) props.displayProfile = decorateSharedProfile(props.displayProfile, id, data);
-                          if (props.profile) props.profile = decorateSharedProfile(props.profile, id, data);
-                          return;
-                      }
-                      if (!preview.enabled) return;
-                      if (props.user) props.user = cloneObject(props.user, "user");
-                      if (props.displayProfile) props.displayProfile = decorateProfileResult(props.displayProfile, id);
-                      if (props.profile) props.profile = decorateProfileResult(props.profile, id);
-                  });
-                  diagnostics.patches += 1;
-              } catch {}
           }
 
 
@@ -1248,28 +1223,6 @@ jobs:
 
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
               diagnostics.profileStore = !!profileStore;
-
-              try {
-                  after("default", useUserProfileModule as any, (args, result) => {
-                      const subject = args?.[0];
-                      const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-                      return isCurrentUser(id) ? decorateProfileResult(result, id) : result;
-                  });
-                  diagnostics.patches += 1;
-              } catch (error: any) {
-                  diagnostics.last = error?.message || "Could not connect profile view";
-              }
-
-              try {
-                  after("default", useDisplayProfileModule as any, (args, result) => {
-                      const subject = args?.[0];
-                      const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-                      return isCurrentUser(id) ? cloneObject(result, "profile") : result;
-                  });
-                  diagnostics.patches += 1;
-              } catch (error: any) {
-                  diagnostics.last = error?.message || "Could not connect profile banner";
-              }
 
               const avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
               const bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
