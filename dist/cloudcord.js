@@ -10457,28 +10457,42 @@
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
       var user = original(...args);
+      if (!isCurrentUser(args?.[0])) {
+        var id = String(args?.[0] || user?.id || "");
+        requestSharedProfile(id);
+        return cloneSharedUser(user, sharedProfiles.get(id));
+      }
       realCurrentUser = user || realCurrentUser;
       return cloneObject(user, "user");
     });
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
     addPatch("getUserProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
+      if (!isCurrentUser(args?.[0])) {
+        var id = String(args?.[0] || "");
+        requestSharedProfile(id);
+        return decorateSharedProfile(original(...args), id, sharedProfiles.get(id));
+      }
       return decorateProfileResult(original(...args), args?.[0]);
     });
     addPatch("getGuildMemberProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
+      if (!isCurrentUser(args?.[0])) {
+        var id = String(args?.[0] || "");
+        requestSharedProfile(id);
+        return decorateSharedProfile(original(...args), id, sharedProfiles.get(id));
+      }
       return decorateProfileResult(original(...args), args?.[0]);
     });
     try {
       after("default", useUserProfileModule, (args, result) => {
         var subject = args?.[0];
         var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+        if (!isCurrentUser(id)) {
+          var remoteId = String(id || "");
+          requestSharedProfile(remoteId);
+          return decorateSharedProfile(result, remoteId, sharedProfiles.get(remoteId));
+        }
         return decorateProfileResult(result, id);
       });
       diagnostics.patches += 1;
@@ -10489,7 +10503,12 @@
       after("default", useDisplayProfileModule, (args, result) => {
         var subject = args?.[0];
         var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-        return isCurrentUser(id) ? cloneObject(result, "profile") : result;
+        if (!isCurrentUser(id)) {
+          var remoteId = String(id || "");
+          requestSharedProfile(remoteId);
+          return decorateSharedProfile(result, remoteId, sharedProfiles.get(remoteId));
+        }
+        return cloneObject(result, "profile");
       });
       diagnostics.patches += 1;
     } catch (error) {
