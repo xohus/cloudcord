@@ -498,6 +498,19 @@ function scanTextNode(node: Text) {
     }
     if (_realUsername && storedData.username && result.includes(_realUsername)) { result = result.split(_realUsername).join(storedData.username); replaced = true; }
     if (_realGlobalName && storedData.globalName && result.includes(_realGlobalName)) { result = result.split(_realGlobalName).join(storedData.globalName); replaced = true; }
+    const nitroLevel = Number(storedData.nitroLevel ?? -1);
+    if (storedData.nitro === true && nitroLevel >= 0 && nitroLevel < NITRO_LEVELS.length) {
+        const tier = NITRO_LEVELS[nitroLevel].name;
+        const since = shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nitroLevel] ?? 0, storedData.nitroSince));
+        if (/Nitro\s+(?:Bronze|Silver|Gold|Platinum|Diamond|Emerald|Ruby|Opal)/i.test(result)) {
+            result = result.replace(/Nitro\s+(?:Bronze|Silver|Gold|Platinum|Diamond|Emerald|Ruby|Opal)/gi, `Nitro ${tier}`);
+            replaced = true;
+        }
+        if (/Subscriber since\s+\S+/i.test(result)) {
+            result = result.replace(/Subscriber since\s+\S+/gi, `Subscriber since ${since}`);
+            replaced = true;
+        }
+    }
     if (replaced && result !== node.nodeValue) { if ((node as any).__cp_orig === undefined) (node as any).__cp_orig = val; node.nodeValue = result; }
 }
 function scanNode(node: Node) {
