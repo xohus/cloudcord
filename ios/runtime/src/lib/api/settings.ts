@@ -10,7 +10,6 @@ export interface Settings {
     enableDiscordDeveloperSettings: boolean;
     cloudcordDiagnosticsEnabled?: boolean;
     cloudcordDiagnosticsCapture?: boolean;
-    cloudcordAccountSwitcherEnabled?: boolean;
     cloudcordHiddenTabs?: string[];
     cloudcordTabOrder?: string[];
     safeMode?: {

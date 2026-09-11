@@ -157,7 +157,7 @@ function Switches() {
 }
 
 function CloudCordSettings() {
-    const { diagnosticsMode, accountSwitcherEnabled } = cloudCordSettings.use(["diagnosticsMode", "accountSwitcherEnabled"]);
+    const { diagnosticsMode } = cloudCordSettings.use(["diagnosticsMode"]);
 
     return (
         <SettingsTab>
@@ -231,14 +231,6 @@ function CloudCordSettings() {
                 onChange={(value: boolean) => cloudCordSettings.store.diagnosticsMode = value}
                 hideBorder
             />
-            <FormSwitch
-                title="Enable Account Switcher"
-                description="Show a dedicated tab that uses Discord's saved-account switcher. CloudCord does not store tokens."
-                value={accountSwitcherEnabled}
-                onChange={(value: boolean) => cloudCordSettings.store.accountSwitcherEnabled = value}
-                hideBorder
-            />
-
             <Switches />
 
             <MacOSVibrancySettings />

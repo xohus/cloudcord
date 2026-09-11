@@ -16,7 +16,6 @@ import {
 } from "@components/Icons";
 import {
     BackupAndRestoreTab,
-    AccountSwitcherTab,
     BotCordTab,
     CloudTab,
     CloudCordDiagnosticsTab,
@@ -101,11 +100,6 @@ export const settings = definePluginSettings({
         description: "Show CloudCord diagnostics and interception helpers",
         default: false
     },
-    accountSwitcherEnabled: {
-        type: OptionType.BOOLEAN,
-        description: "Show CloudCord's safe account switcher tab",
-        default: false
-    }
 });
 
 export default definePlugin({
@@ -202,13 +196,6 @@ export default definePlugin({
                 title: "Fake Profile",
                 panelTitle: "Fake Profile",
                 Component: FakeProfileTab,
-                Icon: UserIcon
-            }),
-            settings.store.accountSwitcherEnabled && buildEntry({
-                key: "cloudcord_account_switcher",
-                title: "Account Switcher",
-                panelTitle: "Account Switcher",
-                Component: AccountSwitcherTab,
                 Icon: UserIcon
             }),
             buildEntry({

@@ -35,13 +35,6 @@ export default function initSettings() {
                 render: () => import("@core/ui/settings/pages/BotCord")
             },
             {
-                key: "CLOUDCORD_ACCOUNT_SWITCHER",
-                title: () => "Account Switcher",
-                icon: findAssetId("UserIcon") || findAssetId("FriendsIcon") || findAssetId("AppsIcon"),
-                render: () => import("@core/ui/settings/pages/AccountSwitcher"),
-                usePredicate: () => settings.cloudcordAccountSwitcherEnabled === true
-            },
-            {
                 key: "BUNNY_PLUGINS",
                 title: () => Strings.PLUGINS,
                 icon: findAssetId("AppsIcon"),
@@ -70,7 +63,7 @@ export default function initSettings() {
             }
         ];
 
-    const configurableKeys = new Set(["BOTCORD", "STORE_CLOUD", "CLOUDCORD_ACCOUNT_SWITCHER", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS"]);
+    const configurableKeys = new Set(["BOTCORD", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS"]);
     const configuredOrder = settings.cloudcordTabOrder ?? [];
     const orderIndex = new Map(configuredOrder.map((key, index) => [key, index]));
     const items = baseItems
