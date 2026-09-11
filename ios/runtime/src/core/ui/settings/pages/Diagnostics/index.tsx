@@ -28,6 +28,7 @@ type RequestEvent = {
 const requestEvents: RequestEvent[] = [];
 type UiEvent = { id: number; feature: "Nitro UI"; component: string; action: string; metadata: Record<string, string | number | boolean>; at: string; };
 const uiEvents: UiEvent[] = [];
+const lastUiEvent = new Map<string, number>();
 let fetchWrapped = false;
 let uiCaptureInstalled = false;
 let requestSequence = 0;
@@ -66,6 +67,10 @@ function safeUiMetadata(props: any) {
 
 function addUiEvent(component: string, action: string, metadata: Record<string, string | number | boolean>) {
     if (settings.cloudcordDiagnosticsCapture !== true) return;
+    const signature = `${component}:${action}:${JSON.stringify(metadata)}`;
+    const now = Date.now();
+    if (action === "render" && now - (lastUiEvent.get(signature) ?? 0) < 1000) return;
+    lastUiEvent.set(signature, now);
     uiEvents.push({ id: ++requestSequence, feature: "Nitro UI", component, action, metadata, at: new Date().toISOString() });
     if (uiEvents.length > 200) uiEvents.splice(0, uiEvents.length - 200);
 }
@@ -190,6 +195,7 @@ export default function Diagnostics() {
                 <TableRow arrow label="Clear captured events" subLabel={`${requestEvents.length + uiEvents.length} sanitized network and Nitro UI events`} icon={<TableRow.Icon source={findAssetId("TrashIcon") || findAssetId("LogsIcon")} />} onPress={() => {
                     requestEvents.splice(0, requestEvents.length);
                     uiEvents.splice(0, uiEvents.length);
+                    lastUiEvent.clear();
                     showToast("Captured events cleared", findAssetId("Check"));
                 }} />
             </TableRowGroup>

@@ -323,23 +323,32 @@ jobs:
               "premiumType", "premiumSince", "premiumGuildSince", "avatarDecorationData", "primaryColor", "accentColor", "themeColors", "bio", "pronouns", "createdAt", "joinedAt", "memberSince", "user", "userProfile", "guildMemberProfile", "displayProfile", "profile"
           ]);
 
-          const NITRO_DURATIONS = [0, 1, 2, 3, 6, 12, 24, 36, 72];
+          const NITRO_DURATIONS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
           const BOOST_DURATIONS = [0, 1, 2, 3, 6, 9, 12, 15, 18, 24];
           const NITRO_ICONS: Array<[number, string]> = [
               [72, "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png"],
-              [36, "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png"],
-              [24, "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png"],
-              [12, "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png"],
-              [6, "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png"],
-              [3, "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png"],
-              [2, "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png"],
+              [60, "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png"],
+              [36, "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png"],
+              [24, "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png"],
+              [12, "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png"],
+              [6, "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png"],
+              [3, "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png"],
               [1, "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png"],
               [0, "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png"]
           ];
           const NITRO_LABELS = new Map<number, string>([
-              [0, "Nitro (0 months)"], [1, "Bronze (1 month)"], [2, "Silver (2 months)"], [3, "Gold (3 months)"],
-              [6, "Platinum (6 months)"], [12, "Diamond (12 months)"], [24, "Emerald (24 months)"], [36, "Ruby (36 months)"], [72, "Opal (72 months)"]
+              [0, "Nitro"], [1, "Bronze"], [3, "Silver"], [6, "Gold"],
+              [12, "Platinum"], [24, "Diamond"], [36, "Emerald"], [60, "Ruby"], [72, "Opal"]
           ]);
+
+          function nitroBadgeId(months: number) {
+              return months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
+          }
+
+          function nitroSubscriberLabel(months: number) {
+              const date = monthsAgo(months);
+              return `Subscriber since ${date.getMonth() + 1}/${date.getDate()}/${String(date.getFullYear()).slice(-2)}`;
+          }
           const BOOST_ICONS: Array<[number, string]> = [
               [24, "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png"],
               [18, "https://cdn.discordapp.com/badge-icons/7142225d31238f6387d9f09efaa02759.png"],
@@ -839,7 +848,7 @@ jobs:
               const result: any[] = [];
               if (preview.nitroEnabled) {
                   const icon = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
-                  result.push({ id: "fakeprofile-nitro", description: NITRO_LABELS.get(preview.nitroMonths) || "Nitro", icon: " _", iconSrc: icon, source: { uri: icon } });
+                  result.push({ id: nitroBadgeId(preview.nitroMonths), description: nitroSubscriberLabel(preview.nitroMonths), icon: " _", iconSrc: icon, source: { uri: icon } });
               }
               if (preview.boostMonths > 0) {
                   const icon = boosterIcon(preview.boostMonths);
@@ -970,9 +979,9 @@ jobs:
                           const ordered: any[] = [];
                           if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
                           if (data) {
-                              const nitroMonths = [0, 1, 2, 3, 6, 12, 24, 36, 72][Number(data.nitroLevel)] || 0;
+                              const nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
                               const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
-                              if (remoteNitroEnabled(data)) addRenderedBadge(ordered, "cloudcord-shared-nitro", NITRO_LABELS.get(nitroMonths) || "Nitro", milestoneIcon(nitroMonths, NITRO_ICONS));
+                              if (remoteNitroEnabled(data)) addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
                               addRenderedBadge(ordered, "cloudcord-shared-boost", `Server Booster — ${boosterLabel(boostMonths)}`, boosterIcon(boostMonths));
                               const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
                               for (const [id, description, flag, icon, customId] of BADGES) {
@@ -983,7 +992,7 @@ jobs:
                           }
                           const existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter(item => {
                               const badgeId = String(item?.id || "");
-                              return badgeId !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId.startsWith("cloudcord-shared-");
+                              return badgeId !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId.startsWith("cloudcord-shared-") && !(remoteNitroEnabled(data) && badgeId === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
                           });
                           result.splice(0, result.length, ...ordered, ...existing);
                           return;
@@ -1001,14 +1010,14 @@ jobs:
 
                       const existing = shouldReplaceLocalBadges() ? [] : result.filter(item => {
                           const badgeId = String(item?.id || "");
-                          return badgeId !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId.startsWith("fakeprofile-");
+                          return badgeId !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeId === nitroBadgeId(preview.nitroMonths));
                       });
                       const ordered: any[] = [];
                       if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
                       if (preview.nitroEnabled) addRenderedBadge(
                           ordered,
-                          "fakeprofile-nitro",
-                          NITRO_LABELS.get(preview.nitroMonths) || "Nitro",
+                          nitroBadgeId(preview.nitroMonths),
+                          nitroSubscriberLabel(preview.nitroMonths),
                           milestoneIcon(preview.nitroMonths, NITRO_ICONS)
                       );
                       addRenderedBadge(
