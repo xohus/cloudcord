@@ -13689,7 +13689,11 @@
                   source: findAssetId("UserIcon")
                 }),
                 value: settings.cloudcordAccountSwitcherEnabled === true,
-                onValueChange: (value) => settings.cloudcordAccountSwitcherEnabled = value
+                onValueChange: (value) => {
+                  settings.cloudcordAccountSwitcherEnabled = value;
+                  if (value)
+                    settings.enableDiscordDeveloperSettings = true;
+                }
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 label: Strings.RELOAD_DISCORD,
@@ -15466,41 +15470,56 @@
     var accounts = api?.getAccounts?.() ?? api?.getAccountIds?.()?.map((id) => ({
       id
     })) ?? [];
-    return /* @__PURE__ */ jsx(import_react_native23.ScrollView, {
+    return /* @__PURE__ */ jsxs(import_react_native23.ScrollView, {
       contentContainerStyle: {
         padding: 12,
         paddingBottom: 38
       },
-      children: /* @__PURE__ */ jsxs(TableRowGroup, {
-        title: "Discord saved accounts",
-        children: [
-          accounts.map((account) => /* @__PURE__ */ jsx(TableRow, {
-            arrow: true,
-            label: account.username ?? account.globalName ?? account.id ?? account.userId,
-            subLabel: "Switch account",
-            icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-              source: findAssetId("UserIcon")
+      children: [
+        /* @__PURE__ */ jsxs(TableRowGroup, {
+          title: "Discord saved accounts",
+          children: [
+            accounts.map((account) => /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: account.username ?? account.globalName ?? account.id ?? account.userId,
+              subLabel: "Switch account",
+              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: findAssetId("UserIcon")
+              }),
+              onPress: () => api.switchAccount(account.id ?? account.userId)
+            }, account.id ?? account.userId)),
+            !accounts.length && /* @__PURE__ */ jsx(TableRow, {
+              label: "No additional saved accounts",
+              subLabel: "Add another account through Discord first",
+              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: findAssetId("UserIcon")
+              })
             }),
-            onPress: () => api.switchAccount(account.id ?? account.userId)
-          }, account.id ?? account.userId)),
-          !accounts.length && /* @__PURE__ */ jsx(TableRow, {
-            label: "No additional saved accounts",
-            subLabel: "Add another account through Discord first",
-            icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-              source: findAssetId("UserIcon")
+            api?.openAccountSwitcher && /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: "Add or manage accounts",
+              subLabel: "Open Discord's account manager",
+              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: findAssetId("UserIcon")
+              }),
+              onPress: () => api.openAccountSwitcher()
             })
-          }),
-          api?.openAccountSwitcher && /* @__PURE__ */ jsx(TableRow, {
-            arrow: true,
-            label: "Add or manage accounts",
-            subLabel: "Open Discord's account manager",
+          ]
+        }),
+        !api && /* @__PURE__ */ jsx(TableRowGroup, {
+          title: "Enable Discord's mobile switcher",
+          children: /* @__PURE__ */ jsx(TableRow, {
+            label: "Experiments enabled",
+            subLabel: "In Discord's Experiment Overrides, set Mobile Account Switcher to Treatment 1, then reload Discord",
             icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-              source: findAssetId("UserIcon")
+              source: findAssetId("WrenchIcon")
             }),
-            onPress: () => api.openAccountSwitcher()
+            onPress: () => {
+              settings.enableDiscordDeveloperSettings = true;
+            }
           })
-        ]
-      })
+        })
+      ]
     });
   }
   var import_react_native23;
@@ -15514,6 +15533,7 @@
       init_wrappers();
       init_components();
       import_react_native23 = __toESM(require_react_native());
+      init_settings();
     }
   });
 
