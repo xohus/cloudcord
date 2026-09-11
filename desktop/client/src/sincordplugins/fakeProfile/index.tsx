@@ -453,6 +453,7 @@ function onAccountSwitch() {
     cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
     _realUsername = ""; _realGlobalName = ""; _cachedRealDateVariants = null;
     if (isEnabled) startDomObserver(); else stopDomObserver();
+    if (isEnabled) queueSharedPublish(); else void pullOwnSharedProfile();
     forceAccountPanelRerender();
 }
 loadDataSync();
@@ -996,7 +997,7 @@ fakeObfuscatedEmail(real: string | null) {
                 }
             } catch { }
 
-            const style = { borderRadius: "50%", width: "26px", height: "26px" };
+            const style = { borderRadius: "50%", width: "30px", height: "30px" };
             const nl = profileData.nitroLevel ?? -1;
             const bm = profileData.boostMonths ?? -1;
             const gl = profileData.giftLevel ?? -1;
@@ -1130,8 +1131,14 @@ fakeObfuscatedEmail(real: string | null) {
 
         await loadData();
         updateCachedRealData();
-        await pullOwnSharedProfile();
-        if (isEnabled) queueSharedPublish();
+        // Preserve the user's current desktop selection on startup. Pulling first
+        // caused the correct local Nitro card to flash and then be replaced by a
+        // stale synced tier less than a second later.
+        if (isEnabled) {
+            queueSharedPublish();
+        } else {
+            await pullOwnSharedProfile();
+        }
         if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15000);
         if (isEnabled) forceAccountPanelRerender();
     },

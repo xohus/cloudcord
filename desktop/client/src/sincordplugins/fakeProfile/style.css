@@ -354,8 +354,8 @@
 
 .cp-native-nitro-trigger {
     display: inline-flex;
-    width: 26px;
-    height: 26px;
+    width: 30px;
+    height: 30px;
     align-items: center;
     justify-content: center;
     cursor: default;
@@ -363,8 +363,8 @@
 
 .cp-native-nitro-trigger img {
     display: block;
-    width: 26px;
-    height: 26px;
+    width: 30px;
+    height: 30px;
     object-fit: contain;
 }
 
