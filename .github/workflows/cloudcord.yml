@@ -508,7 +508,8 @@ jobs:
           let userCache = new WeakMap<object, any>();
           let profileCache = new WeakMap<object, any>();
           const SHARED_PROFILE_API = "https://getcloudcord.com";
-          const sharedProfiles = new Map<string, any>();
+          const sharedProfiles = ((globalThis as any).__CLOUDCORD_SHARED_PROFILES__ ||= new Map<string, any>()) as Map<string, any>;
+          const sharedProfileFetchedAt = ((globalThis as any).__CLOUDCORD_SHARED_PROFILE_FETCHED_AT__ ||= new Map<string, number>()) as Map<string, number>;
           const sharedRequests = new Set<string>();
           let publishTimer: ReturnType<typeof setTimeout> | null = null;
           let sharedSyncTimer: ReturnType<typeof setInterval> | null = null;
@@ -670,15 +671,17 @@ jobs:
 
           function requestSharedProfile(userId?: string) {
               const id = String(userId || "");
-              if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedProfiles.has(id) || sharedRequests.has(id)) return;
+              const fetchedAt = sharedProfileFetchedAt.get(id) || 0;
+              if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || (sharedProfiles.has(id) && Date.now() - fetchedAt < 5000)) return;
               sharedRequests.add(id);
-              void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`)
+              void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, { cache: "no-store" })
                   .then(response => response.ok ? response.json() : null)
                   .then(payload => {
                       const profile = payload?.profile ?? payload;
                       // Cache a missing profile too. Profile surfaces can render several
                       // times in quick succession and must not turn one 404 into a loop.
                       sharedProfiles.set(id, profile && typeof profile === "object" ? profile : {});
+                      sharedProfileFetchedAt.set(id, Date.now());
                       if (!profile || typeof profile !== "object") return;
                       try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
                   })

@@ -51,7 +51,8 @@ const useBadgesModule = findByNameLazy("useBadges", false);
 const badgesCache = new Map<string, Badge[]>();
 const badgeProps = new Map<string, Record<string, any>>();
 const pendingRequests = new Set<string>();
-const sharedProfiles = new Map<string, SharedProfile>();
+const sharedProfiles = ((globalThis as any).__CLOUDCORD_SHARED_PROFILES__ ||= new Map<string, SharedProfile>()) as Map<string, SharedProfile>;
+const sharedProfileFetchedAt = ((globalThis as any).__CLOUDCORD_SHARED_PROFILE_FETCHED_AT__ ||= new Map<string, number>()) as Map<string, number>;
 
 const SHARED_PROFILE_API = "https://getcloudcord.com";
 const NITRO_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
@@ -174,7 +175,7 @@ export default defineCorePlugin({
         });
 
         const fetchAndProcessBadges = async (userId: string) => {
-            if (pendingRequests.has(userId)) return;
+            if (pendingRequests.has(userId) || (sharedProfiles.has(userId) && Date.now() - (sharedProfileFetchedAt.get(userId) || 0) < 5000 && badgesCache.has(userId))) return;
             pendingRequests.add(userId);
 
             try {
@@ -188,6 +189,7 @@ export default defineCorePlugin({
 
                 const profile: SharedProfile = profilePayload?.profile ?? profilePayload ?? {};
                 sharedProfiles.set(userId, profile);
+                sharedProfileFetchedAt.set(userId, Date.now());
                 const allBadges: Badge[] = [];
 
                 // process role badges
