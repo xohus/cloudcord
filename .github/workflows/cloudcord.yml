@@ -52,12 +52,14 @@ jobs:
           mkdir -p src/core/ui/settings/pages/FakeProfile
           mkdir -p src/core/ui/settings/pages/BotCord
           mkdir -p src/core/ui/settings/pages/Diagnostics
+          mkdir -p src/core/plugins/badges
           mkdir -p src/core/ui/botcord
           mkdir -p src/core/ui/settings/components
           mkdir -p src/lib/api
           cp "../ios/assets/fakeprofile-icon.png" "src/assets/icons/fakeprofile.png"
           cp "../ios/runtime/src/core/ui/settings/pages/BotCord/index.tsx" "src/core/ui/settings/pages/BotCord/index.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/Diagnostics/index.tsx" "src/core/ui/settings/pages/Diagnostics/index.tsx"
+          cp "../ios/runtime/src/core/plugins/badges/index.tsx" "src/core/plugins/badges/index.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/General/index.tsx" "src/core/ui/settings/pages/General/index.tsx"
           cp "../ios/runtime/src/core/ui/settings/index.ts" "src/core/ui/settings/index.ts"
           cp "../ios/runtime/src/lib/api/settings.ts" "src/lib/api/settings.ts"

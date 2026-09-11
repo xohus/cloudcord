@@ -148,7 +148,12 @@ export default defineCorePlugin({
             if (ret.props.id === "premium" || ret.props.id?.startsWith("premium_tenure_")) {
                 const userId = ret.props.userId ?? ret.props.user?.id;
                 const profile = userId && sharedProfiles.get(userId);
-                if (profile?.nitro === true) ret.props.onPress = () => showNitroMilestones(profile);
+                // Preserve Discord's native handler when this is a genuine Nitro badge.
+                // The CloudCord tier sheet is only a fallback for a simulated badge that
+                // has no real subscription overlay behind it.
+                if (profile?.nitro === true && typeof ret.props.onPress !== "function") {
+                    ret.props.onPress = () => showNitroMilestones(profile);
+                }
             }
             if (ret.props.id?.startsWith("rain-") || ret.props.id?.startsWith("cloudcord-")) {
                 const cachedProps = badgeProps.get(ret.props.id);
