@@ -1023,14 +1023,15 @@ fakeObfuscatedEmail(real: string | null) {
                 key: NITRO_LEVELS[nl].name,
                 description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
                 iconSrc: NITRO_LEVELS[nl].icon,
-                component: (() => <NativeNitroBadge
-                    nitroLevel={nl}
-                    nitroSince={profileData?.nitroSince}
-                    accentColor={profileData?.accentColor}
-                    accentColor2={profileData?.accentColor2}
-                />) as any,
+                // Keep Discord's native premium id, but never create this component
+                // inline: Badge API refreshes would otherwise remount the hover card.
+                component: NativeNitroBadge as any,
+                nitroLevel: nl,
+                nitroSince: profileData.nitroSince,
+                accentColor: profileData.accentColor,
+                accentColor2: profileData.accentColor2,
                 position: 0
-            });
+            } as any);
             if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", description: "Gifting Badge", iconSrc: GIFT_LEVELS[gl].icon, position: 0, props: { style } });
             if (hasBoostFake) {
                 const boostSince = monthsAgo(BOOST_LEVEL_MONTHS[bm] ?? 1);
