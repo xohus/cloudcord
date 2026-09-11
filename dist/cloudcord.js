@@ -7959,6 +7959,8 @@
     var nitroLevel = Number.isInteger(profile.nitroLevel) ? Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel)) : 0;
     var sinceText = profile.nitroSince || profile.createdAt || profile.signupDate || profile.joinedSince;
     var premiumSince = sinceText ? new Date(sinceText.length === 10 ? `${sinceText}T12:00:00Z` : sinceText) : /* @__PURE__ */ new Date();
+    if (!Number.isFinite(premiumSince.getTime()))
+      premiumSince = /* @__PURE__ */ new Date();
     if (!sinceText)
       premiumSince.setMonth(premiumSince.getMonth() - NITRO_MONTHS[nitroLevel]);
     var giftLevel = Number.isInteger(profile.giftLevel) ? Math.max(0, Math.min(GIFT_COUNTS.length - 1, profile.giftLevel)) : -1;
@@ -8088,6 +8090,8 @@
             return args;
           });
           onJsxCreate("ProfileBadge", (component, ret) => {
+            if (!ret?.props)
+              return;
             if (ret.props.id === "premium" || ret.props.id?.startsWith("premium_tenure_")) {
               var userId = ret.props.userId ?? ret.props.user?.id;
               var profile = userId && sharedProfiles.get(userId);
@@ -8177,26 +8181,29 @@
             }
           })();
           after("default", useBadgesModule, ([user], result) => {
-            if (!user)
-              return;
+            if (!user || !Array.isArray(result))
+              return result;
             var userId = user.userId ?? user.id;
             if (!userId)
-              return;
+              return result;
             var cached = badgesCache.get(userId);
             var profile = sharedProfiles.get(userId);
             if (!cached) {
               if (!pendingRequests.has(userId)) {
                 fetchAndProcessBadges(userId);
               }
-              return;
+              return result;
             }
+            var nextResult = [
+              ...result
+            ];
             [
               ...cached
             ].reverse().forEach((badge, reverseIndex) => {
-              var i2 = cached.length - reverseIndex - 1;
-              var badgeId2 = badge.id ? `cloudcord-${badge.id}-${userId}` : `rain-${userId}-${i2}`;
-              result.unshift({
-                id: badgeId2,
+              var i = cached.length - reverseIndex - 1;
+              var badgeId = badge.id ? `cloudcord-${badge.id}-${userId}` : `rain-${userId}-${i}`;
+              nextResult.unshift({
+                id: badgeId,
                 description: badge.label,
                 icon: " _"
               });
@@ -8205,18 +8212,18 @@
               var level = Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel));
               var months = NITRO_MONTHS[level];
               var id = months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
-              for (var i = result.length - 1; i >= 0; i--) {
-                var badgeId = String(result[i]?.id || "");
-                if (badgeId === "premium" || badgeId.startsWith("premium_tenure_"))
-                  result.splice(i, 1);
-              }
-              result.unshift({
+              nextResult = nextResult.filter((badge) => {
+                var badgeId = String(badge?.id || "");
+                return badgeId !== "premium" && !badgeId.startsWith("premium_tenure_");
+              });
+              nextResult.unshift({
                 id,
                 userId,
                 description: `Subscriber since ${nativeProfileInput({}, profile).premium_since}`,
                 icon: " _"
               });
             }
+            return nextResult;
           });
         }
       });
