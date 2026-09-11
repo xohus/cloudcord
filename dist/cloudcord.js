@@ -13022,30 +13022,35 @@
   function enableNitroUiCapture() {
     var _loop2 = function(name2) {
       onJsxCreate(name2, (_component, element) => {
-        var _loop3 = function(handler2) {
-          var original = ret?.props?.[handler2];
-          if (typeof original !== "function" || original.__cloudCordTraced)
-            return "continue";
-          var traced = (...args) => {
-            addUiEvent(name2, handler2, metadata);
-            return original(...args);
+        try {
+          var _loop3 = function(handler2) {
+            var original = ret.props[handler2];
+            if (typeof original !== "function" || original.__cloudCordTraced)
+              return "continue";
+            var traced = (...args) => {
+              addUiEvent(name2, handler2, metadata);
+              return original(...args);
+            };
+            traced.__cloudCordTraced = true;
+            ret.props[handler2] = traced;
           };
-          traced.__cloudCordTraced = true;
-          ret.props[handler2] = traced;
-        };
-        var ret = element;
-        var metadata = safeUiMetadata(ret?.props);
-        var searchable = `${name2} ${Object.values(metadata).join(" ")}`.toLowerCase();
-        if (!/(nitro|premium)/.test(searchable))
-          return element;
-        addUiEvent(name2, "render", metadata);
-        for (var handler of [
-          "onPress",
-          "onHoverIn",
-          "onHoverOut"
-        ])
-          _loop3(handler);
-        return ret;
+          var ret = element;
+          var metadata = safeUiMetadata(ret?.props);
+          var searchable = `${name2} ${Object.values(metadata).join(" ")}`.toLowerCase();
+          if (!/(nitro|premium)/.test(searchable))
+            return element;
+          addUiEvent(name2, "render", metadata);
+          if (!ret?.props || !Object.isExtensible(ret.props))
+            return element;
+          for (var handler of [
+            "onPress",
+            "onHoverIn",
+            "onHoverOut"
+          ])
+            _loop3(handler);
+        } catch (e) {
+        }
+        return element;
       });
     };
     if (uiCaptureInstalled)
