@@ -11,6 +11,9 @@ import { version } from "bunny-build-info";
 export { PupuIcon };
 
 export default function initSettings() {
+    // Install the opt-in capture hooks at startup so actions performed before
+    // opening the Diagnostics page can be included in the copied snapshot.
+    void import("@core/ui/settings/pages/Diagnostics").then(module => module.initializeDiagnosticsCapture()).catch(() => {});
     const baseItems: RowConfig[] = [
             {
                 key: "CLOUDCORD",

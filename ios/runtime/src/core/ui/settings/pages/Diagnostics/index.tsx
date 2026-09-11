@@ -3,6 +3,7 @@ import { useProxy } from "@core/vendetta/storage";
 import { findAssetId } from "@lib/api/assets";
 import { getDebugInfo } from "@lib/api/debug";
 import { BundleUpdaterManager } from "@lib/api/native/modules";
+import { onJsxCreate } from "@lib/api/react/jsx";
 import { loaderConfig, settings } from "@lib/api/settings";
 import { clipboard } from "@metro/common";
 import { Button, Stack, TableRow, TableRowGroup, TableSwitchRow, Text, TextInput } from "@metro/common/components";
@@ -25,7 +26,10 @@ type RequestEvent = {
     error?: string;
 };
 const requestEvents: RequestEvent[] = [];
+type UiEvent = { id: number; feature: "Nitro UI"; component: string; action: string; metadata: Record<string, string | number | boolean>; at: string; };
+const uiEvents: UiEvent[] = [];
 let fetchWrapped = false;
+let uiCaptureInstalled = false;
 let requestSequence = 0;
 
 function describeTarget(raw: string) {
@@ -41,6 +45,57 @@ function describeTarget(raw: string) {
     } catch {
         return { target: "unknown", queryKeys: [], feature: "Runtime" };
     }
+}
+
+const NITRO_COMPONENTS = [
+    "ProfileBadge", "RenderedBadge", "NitroBadge", "PremiumBadge", "PremiumBadgeTooltip",
+    "NitroBadgeTooltip", "NitroProfileBadge", "EvolvingNitroBadge", "UserProfileModal",
+    "UserProfileSheet", "ProfileModal", "ProfileSheet",
+];
+const SAFE_UI_KEYS = /^(id|type|tier|level|label|text|title|asset|source|color|colors|primaryColor|accentColor|premiumType|premiumSince|subscriptionSince|badge|badgeId|tooltipText)$/i;
+
+function safeUiMetadata(props: any) {
+    const metadata: Record<string, string | number | boolean> = {};
+    if (!props || typeof props !== "object") return metadata;
+    for (const [key, value] of Object.entries(props)) {
+        if (!SAFE_UI_KEYS.test(key) || !["string", "number", "boolean"].includes(typeof value)) continue;
+        metadata[key] = typeof value === "string" ? value.slice(0, 120) : value as number | boolean;
+    }
+    return metadata;
+}
+
+function addUiEvent(component: string, action: string, metadata: Record<string, string | number | boolean>) {
+    if (settings.cloudcordDiagnosticsCapture !== true) return;
+    uiEvents.push({ id: ++requestSequence, feature: "Nitro UI", component, action, metadata, at: new Date().toISOString() });
+    if (uiEvents.length > 200) uiEvents.splice(0, uiEvents.length - 200);
+}
+
+function enableNitroUiCapture() {
+    if (uiCaptureInstalled) return;
+    uiCaptureInstalled = true;
+    for (const name of NITRO_COMPONENTS) onJsxCreate(name, (_component, element) => {
+        const ret = element as any;
+        const metadata = safeUiMetadata(ret?.props);
+        const searchable = `${name} ${Object.values(metadata).join(" ")}`.toLowerCase();
+        if (!/(nitro|premium)/.test(searchable)) return element;
+        addUiEvent(name, "render", metadata);
+        for (const handler of ["onPress", "onHoverIn", "onHoverOut"] as const) {
+            const original = ret?.props?.[handler];
+            if (typeof original !== "function" || (original as any).__cloudCordTraced) continue;
+            const traced = (...args: any[]) => {
+                addUiEvent(name, handler, metadata);
+                return original(...args);
+            };
+            (traced as any).__cloudCordTraced = true;
+            ret.props[handler] = traced;
+        }
+        return ret;
+    });
+}
+
+export function initializeDiagnosticsCapture() {
+    enableSanitizedRequestCapture();
+    enableNitroUiCapture();
 }
 
 function enableSanitizedRequestCapture() {
@@ -82,7 +137,7 @@ export default function Diagnostics() {
     const order = [...savedOrder.filter(key => TAB_KEYS.includes(key as any)), ...TAB_KEYS.filter(key => !savedOrder.includes(key))];
     const [movingKey, setMovingKey] = useState<string | null>(null);
     const [versions, setVersions] = useState<Array<{ sha: string; date: string; title: string; }>>([]);
-    useEffect(() => enableSanitizedRequestCapture(), []);
+    useEffect(() => initializeDiagnosticsCapture(), []);
     useEffect(() => {
         fetch("https://api.github.com/repos/xohus/cloudcord/commits?path=dist/cc.js&per_page=10")
             .then(response => response.ok ? response.json() : [])
@@ -115,6 +170,7 @@ export default function Diagnostics() {
             tabOrder: order,
             hiddenTabs: hidden,
             recentRequests: requestEvents.slice(-50),
+            recentUiEvents: uiEvents.slice(-50),
         };
         clipboard.setString(JSON.stringify(snapshot, null, 2));
         showToast("Diagnostics copied", findAssetId("toast_copy_link"));
@@ -131,8 +187,9 @@ export default function Diagnostics() {
                     onValueChange={(value: boolean) => settings.cloudcordDiagnosticsCapture = value}
                 />
                 <TableRow arrow label="Copy diagnostics" subLabel="Copies build, loader, platform, and tab state" icon={<TableRow.Icon source={findAssetId("CopyIcon")} />} onPress={copySnapshot} />
-                <TableRow arrow label="Clear captured events" subLabel={`${requestEvents.length} sanitized events stored in memory`} icon={<TableRow.Icon source={findAssetId("TrashIcon") || findAssetId("LogsIcon")} />} onPress={() => {
+                <TableRow arrow label="Clear captured events" subLabel={`${requestEvents.length + uiEvents.length} sanitized network and Nitro UI events`} icon={<TableRow.Icon source={findAssetId("TrashIcon") || findAssetId("LogsIcon")} />} onPress={() => {
                     requestEvents.splice(0, requestEvents.length);
+                    uiEvents.splice(0, uiEvents.length);
                     showToast("Captured events cleared", findAssetId("Check"));
                 }} />
             </TableRowGroup>
