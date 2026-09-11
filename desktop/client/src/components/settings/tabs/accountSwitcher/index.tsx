@@ -17,7 +17,7 @@ function AccountSwitcher() {
             <span>{account.username ?? account.globalName ?? account.id ?? account.userId}</span>
             <Button size="small" onClick={() => { api.switchAccount(account.id ?? account.userId); setTimeout(() => refresh(x => x + 1), 250); }}>Switch</Button>
         </div>)}
-        {!accounts.length && <Paragraph>Discord has no additional saved accounts available.</Paragraph>}
+        {!accounts.length && <Paragraph>Discord has no additional saved accounts available. Add one through Discord's account manager first.</Paragraph>}
         {api?.openAccountSwitcher && <Button className={Margins.top20} onClick={() => api.openAccountSwitcher()}>Add or manage accounts</Button>}
     </SettingsTab>;
 }
