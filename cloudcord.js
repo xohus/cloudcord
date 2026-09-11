@@ -10647,31 +10647,20 @@
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
     addPatch("getUserProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0])) {
-        var id = String(args?.[0] || "");
-        requestSharedProfile(id);
-        return decorateSharedProfile(original(...args), id, sharedProfiles2.get(id));
-      }
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
       return decorateProfileResult(original(...args), args?.[0]);
     });
     addPatch("getGuildMemberProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0])) {
-        var id = String(args?.[0] || "");
-        requestSharedProfile(id);
-        return decorateSharedProfile(original(...args), id, sharedProfiles2.get(id));
-      }
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
       return decorateProfileResult(original(...args), args?.[0]);
     });
     try {
       after("default", useUserProfileModule, (args, result) => {
         var subject = args?.[0];
         var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-        if (!isCurrentUser(id)) {
-          var remoteId = String(id || "");
-          requestSharedProfile(remoteId);
-          return decorateSharedProfile(result, remoteId, sharedProfiles2.get(remoteId));
-        }
-        return decorateProfileResult(result, id);
+        return isCurrentUser(id) ? decorateProfileResult(result, id) : result;
       });
       diagnostics.patches += 1;
     } catch (error) {
@@ -10681,12 +10670,7 @@
       after("default", useDisplayProfileModule, (args, result) => {
         var subject = args?.[0];
         var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-        if (!isCurrentUser(id)) {
-          var remoteId = String(id || "");
-          requestSharedProfile(remoteId);
-          return decorateSharedProfile(result, remoteId, sharedProfiles2.get(remoteId));
-        }
-        return cloneObject(result, "profile");
+        return isCurrentUser(id) ? cloneObject(result, "profile") : result;
       });
       diagnostics.patches += 1;
     } catch (error) {
