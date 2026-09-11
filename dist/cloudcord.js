@@ -19754,6 +19754,47 @@ Type: ${asset.type}`,
   __export(Diagnostics_exports, {
     default: () => Diagnostics
   });
+  function enableSanitizedRequestCapture() {
+    if (fetchWrapped)
+      return;
+    fetchWrapped = true;
+    var originalFetch = globalThis.fetch.bind(globalThis);
+    globalThis.fetch = (input, init) => _async_to_generator(function* () {
+      var started = Date.now();
+      try {
+        var response = yield originalFetch(input, init);
+        if (settings.cloudcordDiagnosticsCapture === true) {
+          var raw = typeof input === "string" ? input : input?.url ?? "unknown";
+          var target = "unknown";
+          try {
+            var url2 = new URL(raw);
+            target = `${url2.origin}${url2.pathname}`;
+          } catch (e) {
+          }
+          requestEvents.push({
+            method: String(init?.method ?? "GET").toUpperCase(),
+            target,
+            status: response.status,
+            durationMs: Date.now() - started,
+            at: (/* @__PURE__ */ new Date()).toISOString()
+          });
+          if (requestEvents.length > 200)
+            requestEvents.splice(0, requestEvents.length - 200);
+        }
+        return response;
+      } catch (error) {
+        if (settings.cloudcordDiagnosticsCapture === true)
+          requestEvents.push({
+            method: String(init?.method ?? "GET").toUpperCase(),
+            target: "request-failed",
+            status: 0,
+            durationMs: Date.now() - started,
+            at: (/* @__PURE__ */ new Date()).toISOString()
+          });
+        throw error;
+      }
+    })();
+  }
   function Diagnostics() {
     useProxy(settings);
     useProxy(loaderConfig);
@@ -19762,6 +19803,7 @@ Type: ${asset.type}`,
     var order = settings.cloudcordTabOrder?.length ? settings.cloudcordTabOrder : [
       ...TAB_KEYS
     ];
+    (0, import_react16.useEffect)(() => enableSanitizedRequestCapture(), []);
     var setVisible = (key, visible) => {
       settings.cloudcordHiddenTabs = visible ? hidden.filter((item) => item !== key) : [
         .../* @__PURE__ */ new Set([
@@ -19790,7 +19832,8 @@ Type: ${asset.type}`,
         diagnosticsCapture: settings.cloudcordDiagnosticsCapture === true,
         runtimeUrl: loaderConfig.customLoadUrl.enabled ? loaderConfig.customLoadUrl.url : "stable",
         tabOrder: order,
-        hiddenTabs: hidden
+        hiddenTabs: hidden,
+        recentRequests: requestEvents.slice(-50)
       };
       clipboard.setString(JSON.stringify(snapshot2, null, 2));
       showToast("Diagnostics copied", findAssetId("toast_copy_link"));
@@ -19915,12 +19958,13 @@ Type: ${asset.type}`,
       })
     });
   }
-  var import_react_native39, TAB_KEYS, TAB_LABELS;
+  var import_react16, import_react_native39, requestEvents, fetchWrapped, TAB_KEYS, TAB_LABELS;
   var init_Diagnostics = __esm({
     "src/core/ui/settings/pages/Diagnostics/index.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      init_async_to_generator();
       init_jsxRuntime();
       init_settings3();
       init_storage();
@@ -19931,7 +19975,10 @@ Type: ${asset.type}`,
       init_common();
       init_components();
       init_toasts();
+      import_react16 = __toESM(require_react());
       import_react_native39 = __toESM(require_react_native());
+      requestEvents = [];
+      fetchWrapped = false;
       TAB_KEYS = [
         "BOTCORD",
         "STORE_CLOUD",
@@ -20106,7 +20153,7 @@ Type: ${asset.type}`,
   });
 
   // src/core/vendetta/api.tsx
-  var import_react16, import_react_native40, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react17, import_react_native40, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -20135,14 +20182,14 @@ Type: ${asset.type}`,
       init_styles();
       init_toasts();
       init_dist();
-      import_react16 = __toESM(require_react());
+      import_react17 = __toESM(require_react());
       import_react_native40 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
       CompatRow = TableRow ?? Forms.FormRow ?? ReactNative.View;
       CompatSwitchRow = TableSwitchRow ?? Forms.FormSwitchRow ?? CompatRow;
       CompatSection = TableRowGroup ?? Forms.FormSection ?? ReactNative.View;
-      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatRow, {
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -20153,7 +20200,7 @@ Type: ${asset.type}`,
       });
       PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow?.Icon ?? (() => null);
       PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow?.Arrow ?? (() => null);
-      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatSwitchRow, {
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatSwitchRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -20161,7 +20208,7 @@ Type: ${asset.type}`,
         onValueChange: props.onValueChange,
         disabled: props.disabled
       });
-      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatSection, {
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatSection, {
         title: props.title,
         ...props
       }, props.children);
@@ -20200,8 +20247,8 @@ Type: ${asset.type}`,
                     ...module,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
-                      (0, import_react16.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react16.createElement)(import_react_native40.View, null, children);
+                      (0, import_react17.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
+                      return /* @__PURE__ */ (0, import_react17.createElement)(import_react_native40.View, null, children);
                     }
                   };
                 }
