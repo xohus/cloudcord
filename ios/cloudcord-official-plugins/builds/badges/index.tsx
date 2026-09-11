@@ -51,7 +51,7 @@ const badgeProps = new Map<string, Record<string, any>>();
 const pendingRequests = new Set<string>();
 const sharedProfiles = new Map<string, SharedProfile>();
 
-const SHARED_PROFILE_API = "https://cloudcord-profiles.ggxohus.workers.dev";
+const SHARED_PROFILE_API = "https://getcloudcord.com";
 const NITRO_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
 const GIFT_COUNTS = [1, 2, 3, 6, 10, 20] as const;
 function nativeProfileInput(input: any, profile: SharedProfile) {

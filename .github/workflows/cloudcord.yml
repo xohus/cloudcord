@@ -491,10 +491,11 @@ jobs:
           let realCurrentUser: any = null;
           let userCache = new WeakMap<object, any>();
           let profileCache = new WeakMap<object, any>();
-          const SHARED_PROFILE_API = "https://cloudcord-profiles.ggxohus.workers.dev";
+          const SHARED_PROFILE_API = "https://getcloudcord.com";
           const sharedProfiles = new Map<string, any>();
           const sharedRequests = new Set<string>();
           let publishTimer: ReturnType<typeof setTimeout> | null = null;
+          let sharedSyncTimer: ReturnType<typeof setInterval> | null = null;
           const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
 
           function localHasFakeBadges() {
@@ -580,7 +581,13 @@ jobs:
                   },
                   body: JSON.stringify({ ownerId: currentUserId, profile: await ownSharedProfile() })
               });
-              if (!response.ok) throw new Error(`CloudCord sharing failed (${response.status})`);
+              if (!response.ok) {
+                  if (saved.id && (response.status === 401 || response.status === 404)) {
+                      delete rootSettings.fakeProfileShare;
+                      return publishSharedProfile();
+                  }
+                  throw new Error(`CloudCord sharing failed (${response.status})`);
+              }
               const result = await response.json() as any;
               if (!saved.id) rootSettings.fakeProfileShare = { id: result.id, editToken: result.editToken };
               diagnostics.last = "Fake Profile shared automatically";
@@ -597,7 +604,7 @@ jobs:
           async function pullOwnSharedProfile() {
               if (!currentUserId) return;
               const now = Date.now();
-              if ((pullOwnSharedProfile as any).pending || now - Number((pullOwnSharedProfile as any).lastAttempt || 0) < 60000) return;
+              if ((pullOwnSharedProfile as any).pending || now - Number((pullOwnSharedProfile as any).lastAttempt || 0) < 12000) return;
               (pullOwnSharedProfile as any).pending = true;
               (pullOwnSharedProfile as any).lastAttempt = now;
               try {
@@ -1324,6 +1331,7 @@ jobs:
                       }
                       ensurePatches();
                       await pullOwnSharedProfile();
+                      if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15000);
                       if (preview.enabled) { refreshPreview(); queueSharedPublish(); }
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Could not restore Fake Profile";

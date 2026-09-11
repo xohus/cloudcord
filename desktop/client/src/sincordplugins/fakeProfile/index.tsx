@@ -43,7 +43,7 @@ const LS_ALL_DATA = "SincordCP_allData";
 const LS_ALL_ENABLED = "SincordCP_allEnabled";
 const LS_KEY_DATA = "SincordCP_data";
 const LS_KEY_ENABLED = "SincordCP_enabled";
-const SHARED_PROFILE_API = "https://cloudcord-profiles.ggxohus.workers.dev";
+const SHARED_PROFILE_API = "https://getcloudcord.com";
 const LS_SHARE = "CloudCord_fakeProfileShare";
 
 const FLAG = {
@@ -250,6 +250,7 @@ const sharedProfiles = new Map<string, CustomProfileData>();
 const sharedProfileFetchedAt = new Map<string, number>();
 const sharedRequests = new Set<string>();
 let publishTimer: ReturnType<typeof setTimeout> | null = null;
+let sharedSyncTimer: ReturnType<typeof setInterval> | null = null;
 
 function fromSharedProfile(data: any): CustomProfileData {
     return {
@@ -1108,12 +1109,14 @@ fakeObfuscatedEmail(real: string | null) {
         await loadData();
         updateCachedRealData();
         await pullOwnSharedProfile();
+        if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15000);
         if (isEnabled) forceAccountPanelRerender();
     },
 
     stop() {
         removeHeaderBarButton("profile-spoofer-btn"); removeContextMenuPatch("user-context", userContextMenuPatch);
         FluxDispatcher.unsubscribe("CONNECTION_OPEN", onAccountSwitch); stopDomObserver();
+        if (sharedSyncTimer) { clearInterval(sharedSyncTimer); sharedSyncTimer = null; }
         if (this._origExtractTimestamp && SnowflakeUtils) { (SnowflakeUtils as any).extractTimestamp = this._origExtractTimestamp; this._origExtractTimestamp = null; }
         if (this._origGetUserAvatarURL && IconUtils) { (IconUtils as any).getUserAvatarURL = this._origGetUserAvatarURL; this._origGetUserAvatarURL = null; _avatarPatchApplied = false; }
     },
