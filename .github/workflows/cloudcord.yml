@@ -580,6 +580,10 @@ jobs:
 
           async function pullOwnSharedProfile() {
               if (!currentUserId) return;
+              const now = Date.now();
+              if ((pullOwnSharedProfile as any).pending || now - Number((pullOwnSharedProfile as any).lastAttempt || 0) < 60000) return;
+              (pullOwnSharedProfile as any).pending = true;
+              (pullOwnSharedProfile as any).lastAttempt = now;
               try {
                   const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
                   if (!response.ok) return;
@@ -615,7 +619,9 @@ jobs:
                   } satisfies PreviewSettings;
                   clearCache();
                   diagnostics.last = "Fake Profile synced across devices";
-              } catch {}
+              } catch {} finally {
+                  (pullOwnSharedProfile as any).pending = false;
+              }
           }
 
           function requestSharedProfile(userId?: string) {
@@ -625,8 +631,10 @@ jobs:
               void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`)
                   .then(response => response.ok ? response.json() : null)
                   .then(profile => {
+                      // Cache a missing profile too. Profile surfaces can render several
+                      // times in quick succession and must not turn one 404 into a loop.
+                      sharedProfiles.set(id, profile && typeof profile === "object" ? profile : {});
                       if (!profile || typeof profile !== "object") return;
-                      sharedProfiles.set(id, profile);
                       try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
                   })
                   .catch(() => {})
