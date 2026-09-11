@@ -19803,7 +19803,16 @@ Type: ${asset.type}`,
     var order = settings.cloudcordTabOrder?.length ? settings.cloudcordTabOrder : [
       ...TAB_KEYS
     ];
+    var [movingKey, setMovingKey] = (0, import_react16.useState)(null);
+    var [versions, setVersions] = (0, import_react16.useState)([]);
     (0, import_react16.useEffect)(() => enableSanitizedRequestCapture(), []);
+    (0, import_react16.useEffect)(() => {
+      fetch("https://api.github.com/repos/xohus/cloudcord/commits?path=dist/cc.js&per_page=10").then((response) => response.ok ? response.json() : []).then((items) => setVersions(items.slice(0, 10).map((item) => ({
+        sha: String(item.sha),
+        date: String(item.commit?.committer?.date ?? ""),
+        title: String(item.commit?.message ?? "CloudCord runtime").split("\n")[0]
+      })))).catch(() => setVersions([]));
+    }, []);
     var setVisible = (key, visible) => {
       settings.cloudcordHiddenTabs = visible ? hidden.filter((item) => item !== key) : [
         .../* @__PURE__ */ new Set([
@@ -19812,16 +19821,13 @@ Type: ${asset.type}`,
         ])
       ];
     };
-    var move = (key, delta) => {
-      var next = [
-        ...order
-      ];
-      var from = next.indexOf(key);
-      var to = Math.max(0, Math.min(next.length - 1, from + delta));
-      if (from < 0 || from === to)
-        return;
-      next.splice(to, 0, next.splice(from, 1)[0]);
+    var placeBefore = (targetKey) => {
+      if (!movingKey || movingKey === targetKey)
+        return setMovingKey(null);
+      var next = order.filter((key) => key !== movingKey);
+      next.splice(next.indexOf(targetKey), 0, movingKey);
       settings.cloudcordTabOrder = next;
+      setMovingKey(null);
     };
     var copySnapshot = () => {
       var snapshot2 = {
@@ -19908,39 +19914,57 @@ Type: ${asset.type}`,
                     })
                   ]
                 })
-              })
+              }),
+              versions.map((version, index) => /* @__PURE__ */ jsx(TableRow, {
+                label: index === 0 ? "Current stable" : `Previous version ${index}`,
+                subLabel: `${version.sha.slice(0, 7)} \xB7 ${version.date.slice(0, 10)} \xB7 ${version.title}`,
+                trailing: /* @__PURE__ */ jsx(Button, {
+                  size: "sm",
+                  variant: "secondary",
+                  text: "Use",
+                  onPress: () => {
+                    loaderConfig.customLoadUrl.enabled = true;
+                    loaderConfig.customLoadUrl.url = `https://raw.githubusercontent.com/xohus/cloudcord/${version.sha}/dist/cc.js`;
+                    showToast("Version selected. Apply and reload when ready.", findAssetId("Check"));
+                  }
+                })
+              }, version.sha))
             ]
           }),
           /* @__PURE__ */ jsxs(TableRowGroup, {
             title: "CloudCord tabs",
             children: [
-              order.map((key) => /* @__PURE__ */ jsx(TableRow, {
-                label: TAB_LABELS[key] ?? key,
-                subLabel: "Use arrows to reorder; switch to hide/show",
-                trailing: /* @__PURE__ */ jsxs(import_react_native39.View, {
-                  style: {
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8
-                  },
+              movingKey && /* @__PURE__ */ jsx(TableRow, {
+                label: /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-sm/semibold",
+                  color: "text-brand",
                   children: [
-                    /* @__PURE__ */ jsx(Button, {
-                      size: "sm",
-                      variant: "secondary",
-                      text: "\u2191",
-                      onPress: () => move(key, -1)
-                    }),
-                    /* @__PURE__ */ jsx(Button, {
-                      size: "sm",
-                      variant: "secondary",
-                      text: "\u2193",
-                      onPress: () => move(key, 1)
-                    }),
-                    /* @__PURE__ */ jsx(TableSwitchRow, {
-                      value: !hidden.includes(key),
-                      onValueChange: (value) => setVisible(key, value)
-                    })
+                    "Moving ",
+                    TAB_LABELS[movingKey],
+                    ". Tap another tab to place it there."
                   ]
+                })
+              }),
+              order.map((key) => /* @__PURE__ */ jsx(import_react_native39.Pressable, {
+                delayLongPress: 350,
+                onLongPress: () => setMovingKey(key),
+                onPress: () => movingKey && placeBefore(key),
+                children: /* @__PURE__ */ jsx(import_react_native39.View, {
+                  style: movingKey === key ? {
+                    borderWidth: 1,
+                    borderColor: "#5865f2",
+                    borderRadius: 8
+                  } : void 0,
+                  children: /* @__PURE__ */ jsx(TableRow, {
+                    label: TAB_LABELS[key] ?? key,
+                    subLabel: movingKey === key ? "Selected\u2014tap a destination" : "Hold to move",
+                    trailing: /* @__PURE__ */ jsx(Button, {
+                      size: "sm",
+                      variant: "secondary",
+                      text: hidden.includes(key) ? "Show" : "Hide",
+                      onPress: () => setVisible(key, hidden.includes(key))
+                    })
+                  })
                 })
               }, key)),
               /* @__PURE__ */ jsx(TableRow, {
@@ -19980,12 +20004,12 @@ Type: ${asset.type}`,
       requestEvents = [];
       fetchWrapped = false;
       TAB_KEYS = [
-        "BOTCORD",
-        "STORE_CLOUD",
         "BUNNY_PLUGINS",
         "BUNNY_THEMES",
         "BUNNY_FONTS",
-        "CLOUDCORD_BROWSER"
+        "CLOUDCORD_BROWSER",
+        "STORE_CLOUD",
+        "BOTCORD"
       ];
       TAB_LABELS = {
         BOTCORD: "BotCord",
@@ -20034,7 +20058,7 @@ Type: ${asset.type}`,
       },
       {
         key: "CLOUDCORD_DIAGNOSTICS",
-        title: () => "/diagnostics",
+        title: () => "Diagnostics",
         icon: findAssetId("WrenchIcon"),
         render: () => Promise.resolve().then(() => (init_Developer(), Developer_exports))
       },
