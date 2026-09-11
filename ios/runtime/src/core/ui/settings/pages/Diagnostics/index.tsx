@@ -5,10 +5,10 @@ import { getDebugInfo } from "@lib/api/debug";
 import { BundleUpdaterManager } from "@lib/api/native/modules";
 import { loaderConfig, settings } from "@lib/api/settings";
 import { clipboard } from "@metro/common";
-import { Button, Stack, TableRow, TableRowGroup, TableSwitchRow, TextInput } from "@metro/common/components";
+import { Button, Stack, TableRow, TableRowGroup, TableSwitchRow, Text, TextInput } from "@metro/common/components";
 import { showToast } from "@ui/toasts";
-import { useEffect } from "react";
-import { ScrollView, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Pressable, ScrollView, View } from "react-native";
 
 type RequestEvent = { method: string; target: string; status: number; durationMs: number; at: string; };
 const requestEvents: RequestEvent[] = [];
@@ -37,7 +37,7 @@ function enableSanitizedRequestCapture() {
     };
 }
 
-const TAB_KEYS = ["BOTCORD", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_BROWSER"] as const;
+const TAB_KEYS = ["BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_BROWSER", "STORE_CLOUD", "BOTCORD"] as const;
 const TAB_LABELS: Record<string, string> = {
     BOTCORD: "BotCord", STORE_CLOUD: "CloudSync", BUNNY_PLUGINS: "Plugins",
     BUNNY_THEMES: "Themes", BUNNY_FONTS: "Fonts", CLOUDCORD_BROWSER: "Browser",
@@ -49,18 +49,29 @@ export default function Diagnostics() {
     const debug = getDebugInfo();
     const hidden = settings.cloudcordHiddenTabs ?? [];
     const order = settings.cloudcordTabOrder?.length ? settings.cloudcordTabOrder : [...TAB_KEYS];
+    const [movingKey, setMovingKey] = useState<string | null>(null);
+    const [versions, setVersions] = useState<Array<{ sha: string; date: string; title: string; }>>([]);
     useEffect(() => enableSanitizedRequestCapture(), []);
+    useEffect(() => {
+        fetch("https://api.github.com/repos/xohus/cloudcord/commits?path=dist/cc.js&per_page=10")
+            .then(response => response.ok ? response.json() : [])
+            .then((items: any[]) => setVersions(items.slice(0, 10).map(item => ({
+                sha: String(item.sha),
+                date: String(item.commit?.committer?.date ?? ""),
+                title: String(item.commit?.message ?? "CloudCord runtime").split("\n")[0],
+            }))))
+            .catch(() => setVersions([]));
+    }, []);
 
     const setVisible = (key: string, visible: boolean) => {
         settings.cloudcordHiddenTabs = visible ? hidden.filter(item => item !== key) : [...new Set([...hidden, key])];
     };
-    const move = (key: string, delta: number) => {
-        const next = [...order];
-        const from = next.indexOf(key);
-        const to = Math.max(0, Math.min(next.length - 1, from + delta));
-        if (from < 0 || from === to) return;
-        next.splice(to, 0, next.splice(from, 1)[0]);
+    const placeBefore = (targetKey: string) => {
+        if (!movingKey || movingKey === targetKey) return setMovingKey(null);
+        const next = order.filter(key => key !== movingKey);
+        next.splice(next.indexOf(targetKey), 0, movingKey);
         settings.cloudcordTabOrder = next;
+        setMovingKey(null);
     };
     const copySnapshot = () => {
         const snapshot = {
@@ -103,14 +114,29 @@ export default function Diagnostics() {
                     <TextInput size="lg" value={loaderConfig.customLoadUrl.url} placeholder="https://…/cc.js" onChange={(value: any) => loaderConfig.customLoadUrl.url = typeof value === "string" ? value : value?.nativeEvent?.text ?? ""} />
                     <Button text="Apply and reload" onPress={() => BundleUpdaterManager.reload()} />
                 </View>} />}
+                {versions.map((version, index) => <TableRow
+                    key={version.sha}
+                    label={index === 0 ? "Current stable" : `Previous version ${index}`}
+                    subLabel={`${version.sha.slice(0, 7)} · ${version.date.slice(0, 10)} · ${version.title}`}
+                    trailing={<Button size="sm" variant="secondary" text="Use" onPress={() => {
+                        loaderConfig.customLoadUrl.enabled = true;
+                        loaderConfig.customLoadUrl.url = `https://raw.githubusercontent.com/xohus/cloudcord/${version.sha}/dist/cc.js`;
+                        showToast("Version selected. Apply and reload when ready.", findAssetId("Check"));
+                    }} />}
+                />)}
             </TableRowGroup>
 
             <TableRowGroup title="CloudCord tabs">
-                {order.map(key => <TableRow key={key} label={TAB_LABELS[key] ?? key} subLabel="Use arrows to reorder; switch to hide/show" trailing={<View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <Button size="sm" variant="secondary" text="↑" onPress={() => move(key, -1)} />
-                    <Button size="sm" variant="secondary" text="↓" onPress={() => move(key, 1)} />
-                    <TableSwitchRow value={!hidden.includes(key)} onValueChange={(value: boolean) => setVisible(key, value)} />
-                </View>} />)}
+                {movingKey && <TableRow label={<Text variant="text-sm/semibold" color="text-brand">Moving {TAB_LABELS[movingKey]}. Tap another tab to place it there.</Text>} />}
+                {order.map(key => <Pressable key={key} delayLongPress={350} onLongPress={() => setMovingKey(key)} onPress={() => movingKey && placeBefore(key)}>
+                    <View style={movingKey === key ? { borderWidth: 1, borderColor: "#5865f2", borderRadius: 8 } : undefined}>
+                        <TableRow
+                            label={TAB_LABELS[key] ?? key}
+                            subLabel={movingKey === key ? "Selected—tap a destination" : "Hold to move"}
+                            trailing={<Button size="sm" variant="secondary" text={hidden.includes(key) ? "Show" : "Hide"} onPress={() => setVisible(key, hidden.includes(key))} />}
+                        />
+                    </View>
+                </Pressable>)}
                 <TableRow arrow label="Apply tab layout" subLabel="Reload CloudCord to apply ordering and visibility" icon={<TableRow.Icon source={findAssetId("RetryIcon")} />} onPress={() => BundleUpdaterManager.reload()} />
             </TableRowGroup>
         </Stack>

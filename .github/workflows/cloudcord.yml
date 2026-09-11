@@ -1933,7 +1933,7 @@ jobs:
 
               diagnostics_item = f'''            {{
                   key: "CLOUDCORD_DIAGNOSTICS",
-                  title: () => "/diagnostics",
+                  title: () => "Diagnostics",
                   icon: findAssetId("WrenchIcon"),
                   render: () => import("@core/ui/settings/pages/Developer")
               }},'''

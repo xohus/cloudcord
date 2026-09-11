@@ -229,7 +229,7 @@ export default definePlugin({
             }),
             settings.store.diagnosticsMode && buildEntry({
                 key: "cloudcord_diagnostics",
-                title: "/diagnostics",
+                title: "Diagnostics",
                 panelTitle: "CloudCord Diagnostics",
                 Component: PatchHelperTab!,
                 Icon: MainSettingsIcon
