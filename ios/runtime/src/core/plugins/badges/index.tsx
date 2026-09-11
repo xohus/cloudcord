@@ -262,14 +262,14 @@ export default defineCorePlugin({
                 const level = Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel!));
                 const months = NITRO_MONTHS[level];
                 const id = months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
-                const renderedNitro = result.find((badge: any) => badge?.id === id || badge?.id?.startsWith("premium_tenure_") || badge?.id === "premium");
-                if (renderedNitro) {
-                    // ProfileBadge needs the owner id to resolve the correct shared
-                    // profile when Discord generated the visual badge for us.
-                    renderedNitro.userId = userId;
-                } else {
-                    result.unshift({ id, userId, description: `Subscriber since ${nativeProfileInput({}, profile).premium_since}`, icon: " _" });
+                // Replace Discord's real/no-tier badge with the CloudCord-selected
+                // milestone in every case. Leaving an existing premium badge here made
+                // the popup report the user's genuine tier instead of the fake profile.
+                for (let i = result.length - 1; i >= 0; i--) {
+                    const badgeId = String(result[i]?.id || "");
+                    if (badgeId === "premium" || badgeId.startsWith("premium_tenure_")) result.splice(i, 1);
                 }
+                result.unshift({ id, userId, description: `Subscriber since ${nativeProfileInput({}, profile).premium_since}`, icon: " _" });
             }
         });
     }
