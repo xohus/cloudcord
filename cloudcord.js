@@ -7917,7 +7917,88 @@
   __export(badges_exports, {
     default: () => badges_default
   });
-  var useBadgesModule, badgesCache, badgeProps, pendingRequests, badges_default;
+  function showGiftingMilestones(selected) {
+    showSimpleActionSheet2({
+      key: "CloudCordGiftingMilestones",
+      header: {
+        title: "Gifting Badges"
+      },
+      options: GIFT_NAMES.map((name, index) => ({
+        label: `${name} \xB7 Gifted ${GIFT_COUNTS[index]}\xD7${index === selected ? " \xB7 Current" : ""}`,
+        icon: {
+          uri: GIFT_ASSETS[index]
+        },
+        onPress: () => {
+        }
+      }))
+    });
+  }
+  function showNitroMilestones(profile) {
+    var selected = Math.max(1, Math.min(NITRO_MONTHS.length - 1, Number(profile.nitroLevel) || 1));
+    var since = nativeProfileInput({}, profile).premium_since;
+    showSimpleActionSheet2({
+      key: "CloudCordNitroMilestones",
+      header: {
+        title: "Nitro Badge Milestones"
+      },
+      options: NITRO_NAMES.slice(1).map((name, offset) => {
+        var index = offset + 1;
+        var duration = index === NITRO_MONTHS.length - 1 ? "6+ Years" : NITRO_MONTHS[index] >= 12 ? `${NITRO_MONTHS[index] / 12} ${NITRO_MONTHS[index] === 12 ? "Year" : "Years"}` : `${NITRO_MONTHS[index]} ${NITRO_MONTHS[index] === 1 ? "Month" : "Months"}`;
+        return {
+          label: `${name} \xB7 ${duration}${index === selected ? ` \xB7 Subscriber since ${new Date(since).toLocaleDateString()}` : ""}`,
+          icon: {
+            uri: `https://raw.githubusercontent.com/dev-hoehle/discord-badges/main/png/nitro_${name.toLowerCase()}.png`
+          },
+          onPress: () => {
+          }
+        };
+      })
+    });
+  }
+  function nativeProfileInput(input, profile) {
+    var nitroLevel = Number.isInteger(profile.nitroLevel) ? Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel)) : 0;
+    var sinceText = profile.nitroSince || profile.createdAt || profile.signupDate || profile.joinedSince;
+    var premiumSince = sinceText ? new Date(sinceText.length === 10 ? `${sinceText}T12:00:00Z` : sinceText) : /* @__PURE__ */ new Date();
+    if (!sinceText)
+      premiumSince.setMonth(premiumSince.getMonth() - NITRO_MONTHS[nitroLevel]);
+    var giftLevel = Number.isInteger(profile.giftLevel) ? Math.max(0, Math.min(GIFT_COUNTS.length - 1, profile.giftLevel)) : -1;
+    var giftCount = giftLevel >= 0 ? GIFT_COUNTS[giftLevel] : void 0;
+    var nativeFields = {
+      premiumType: profile.nitro === true || Number.isInteger(profile.nitroLevel) ? 2 : input?.premiumType,
+      premiumSince: profile.nitro === true || Number.isInteger(profile.nitroLevel) ? premiumSince : input?.premiumSince,
+      premium_type: profile.nitro === true || Number.isInteger(profile.nitroLevel) ? 2 : input?.premium_type,
+      premium_since: profile.nitro === true || Number.isInteger(profile.nitroLevel) ? premiumSince.toISOString() : input?.premium_since,
+      giftCount: giftCount ?? input?.giftCount,
+      giftingBadgeTier: giftLevel >= 0 ? giftLevel + 1 : input?.giftingBadgeTier,
+      giftingProfileBadgeTier: giftLevel >= 0 ? giftLevel + 1 : input?.giftingProfileBadgeTier,
+      giftBadgeTier: giftLevel >= 0 ? giftLevel + 1 : input?.giftBadgeTier,
+      gift_count: giftCount ?? input?.gift_count,
+      gifting_badge_tier: giftLevel >= 0 ? giftLevel + 1 : input?.gifting_badge_tier,
+      gifting_profile_badge_tier: giftLevel >= 0 ? giftLevel + 1 : input?.gifting_profile_badge_tier,
+      gift_badge_tier: giftLevel >= 0 ? giftLevel + 1 : input?.gift_badge_tier
+    };
+    return {
+      ...input,
+      ...nativeFields,
+      user: input?.user ? {
+        ...input.user,
+        ...nativeFields
+      } : input?.user,
+      profile: input?.profile ? {
+        ...input.profile,
+        ...nativeFields
+      } : {
+        ...nativeFields
+      },
+      userProfile: input?.userProfile ? {
+        ...input.userProfile,
+        ...nativeFields
+      } : {
+        ...nativeFields
+      }
+    };
+  }
+  var useBadgesModule, badgesCache, badgeProps, pendingRequests, sharedProfiles, SHARED_PROFILE_API, NITRO_MONTHS, NITRO_NAMES, GIFT_COUNTS, GIFT_NAMES, GIFT_ASSETS, showSimpleActionSheet2, badges_default;
   var init_badges = __esm({
     "src/core/plugins/badges/index.tsx"() {
       "use strict";
@@ -7927,12 +8008,56 @@
       init_patcher();
       init_jsx();
       init_metro();
+      init_wrappers();
+      init_lazy();
       init_plugins2();
       init_common();
       useBadgesModule = findByNameLazy("useBadges", false);
       badgesCache = /* @__PURE__ */ new Map();
       badgeProps = /* @__PURE__ */ new Map();
       pendingRequests = /* @__PURE__ */ new Set();
+      sharedProfiles = /* @__PURE__ */ new Map();
+      SHARED_PROFILE_API = "https://getcloudcord.com";
+      NITRO_MONTHS = [
+        0,
+        1,
+        3,
+        6,
+        12,
+        24,
+        36,
+        60,
+        72
+      ];
+      NITRO_NAMES = [
+        "Nitro",
+        "Bronze",
+        "Silver",
+        "Gold",
+        "Platinum",
+        "Diamond",
+        "Emerald",
+        "Ruby",
+        "Opal"
+      ];
+      GIFT_COUNTS = [
+        1,
+        2,
+        3,
+        6,
+        10,
+        20
+      ];
+      GIFT_NAMES = [
+        "Patron",
+        "Champion",
+        "Luminary",
+        "Icon",
+        "Hero",
+        "Legend"
+      ];
+      GIFT_ASSETS = GIFT_NAMES.map((name) => `https://raw.githubusercontent.com/dev-hoehle/discord-badges/main/png/gifting_${name.toLowerCase()}.png`);
+      ({ showSimpleActionSheet: showSimpleActionSheet2 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       badges_default = defineCorePlugin({
         manifest: {
           id: "bunny.badges",
@@ -7954,8 +8079,23 @@
           }
         },
         start() {
+          before("default", useBadgesModule, (args) => {
+            var input = args[0];
+            var userId = input?.userId ?? input?.id ?? input?.user?.id;
+            var profile = userId && sharedProfiles.get(userId);
+            if (profile)
+              args[0] = nativeProfileInput(input, profile);
+            return args;
+          });
           onJsxCreate("ProfileBadge", (component, ret) => {
-            if (ret.props.id?.startsWith("rain-")) {
+            if (ret.props.id === "premium" || ret.props.id?.startsWith("premium_tenure_")) {
+              var userId = ret.props.userId ?? ret.props.user?.id;
+              var profile = userId && sharedProfiles.get(userId);
+              if (profile?.nitro === true && typeof ret.props.onPress !== "function") {
+                ret.props.onPress = () => showNitroMilestones(profile);
+              }
+            }
+            if (ret.props.id?.startsWith("rain-") || ret.props.id?.startsWith("cloudcord-")) {
               var cachedProps = badgeProps.get(ret.props.id);
               if (cachedProps) {
                 ret.props.source = cachedProps.source;
@@ -7965,7 +8105,7 @@
             }
           });
           onJsxCreate("RenderedBadge", (component, ret) => {
-            if (ret.props.id?.startsWith("rain-")) {
+            if (ret.props.id?.startsWith("rain-") || ret.props.id?.startsWith("cloudcord-")) {
               var cachedProps = badgeProps.get(ret.props.id);
               if (cachedProps) {
                 Object.assign(ret.props, cachedProps);
@@ -7977,16 +8117,19 @@
               return;
             pendingRequests.add(userId);
             try {
-              var [badgesRes, rolesRes] = yield Promise.all([
-                fetch("https://codeberg.org/raincord/badges/raw/branch/main/badges.json"),
-                fetch("https://codeberg.org/raincord/badges/raw/branch/main/assets/roles/roles.json")
+              var [badgesData, rolesData, profilePayload] = yield Promise.all([
+                fetch("https://codeberg.org/raincord/badges/raw/branch/main/badges.json").then((r) => r.ok ? r.json() : {}).catch(() => ({})),
+                fetch("https://codeberg.org/raincord/badges/raw/branch/main/assets/roles/roles.json").then((r) => r.ok ? r.json() : {}).catch(() => ({})),
+                fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`, {
+                  cache: "no-store"
+                }).then((r) => r.ok ? r.json() : null).catch(() => null)
               ]);
-              var badgesData = yield badgesRes.json();
-              var rolesData = yield rolesRes.json();
               var userBadgeData = badgesData[userId] || {
                 roles: [],
                 custom: []
               };
+              var profile = profilePayload?.profile ?? profilePayload ?? {};
+              sharedProfiles.set(userId, profile);
               var allBadges = [];
               if (userBadgeData.roles) {
                 userBadgeData.roles.forEach((roleName) => {
@@ -8002,16 +8145,26 @@
               if (userBadgeData.custom) {
                 allBadges.push(...userBadgeData.custom);
               }
+              var giftLevel = Number.isInteger(profile.giftLevel) ? Math.max(0, Math.min(GIFT_COUNTS.length - 1, profile.giftLevel)) : -1;
+              if (giftLevel >= 0)
+                allBadges.push({
+                  id: `gifting-${giftLevel + 1}`,
+                  label: `Gifting ${GIFT_NAMES[giftLevel]} \xB7 Gifted ${GIFT_COUNTS[giftLevel]}\xD7`,
+                  url: GIFT_ASSETS[giftLevel]
+                });
               badgesCache.set(userId, allBadges);
               allBadges.forEach((badge, i) => {
-                var badgeId = `rain-${userId}-${i}`;
+                var badgeId = badge.id ? `cloudcord-${badge.id}-${userId}` : `rain-${userId}-${i}`;
                 badgeProps.set(badgeId, {
                   id: badgeId,
                   source: {
                     uri: badge.url
                   },
                   label: badge.label,
-                  userId
+                  userId,
+                  ...badge.id?.startsWith("gifting-") ? {
+                    onPress: () => showGiftingMilestones(Number(badge.id.split("-")[1]) - 1)
+                  } : {}
                 });
               });
               FluxDispatcher.dispatch({
@@ -8027,22 +8180,41 @@
           after("default", useBadgesModule, ([user], result) => {
             if (!user)
               return;
-            var userId = user.userId;
+            var userId = user.userId ?? user.id;
+            if (!userId)
+              return;
             var cached = badgesCache.get(userId);
+            var profile = sharedProfiles.get(userId);
             if (!cached) {
               if (!pendingRequests.has(userId)) {
                 fetchAndProcessBadges(userId);
               }
               return;
             }
-            cached.forEach((badge, i) => {
-              var badgeId = `rain-${userId}-${i}`;
+            [
+              ...cached
+            ].reverse().forEach((badge, reverseIndex) => {
+              var i = cached.length - reverseIndex - 1;
+              var badgeId = badge.id ? `cloudcord-${badge.id}-${userId}` : `rain-${userId}-${i}`;
               result.unshift({
                 id: badgeId,
                 description: badge.label,
                 icon: " _"
               });
             });
+            if (profile?.nitro === true && Number.isInteger(profile.nitroLevel)) {
+              var level = Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel));
+              var months = NITRO_MONTHS[level];
+              var id = months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
+              if (!result.some((badge) => badge?.id === id || badge?.id?.startsWith("premium_tenure_"))) {
+                result.unshift({
+                  id,
+                  userId,
+                  description: `Subscriber since ${nativeProfileInput({}, profile).premium_since}`,
+                  icon: " _"
+                });
+              }
+            }
           });
         }
       });
@@ -9577,7 +9749,7 @@
         return;
       var saved = rootSettings.fakeProfileShare || {};
       var path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
-      var response = yield fetch(`${SHARED_PROFILE_API}${path}`, {
+      var response = yield fetch(`${SHARED_PROFILE_API2}${path}`, {
         method: saved.id ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
@@ -9625,7 +9797,7 @@
       pullOwnSharedProfile.pending = true;
       pullOwnSharedProfile.lastAttempt = now;
       try {
-        var response = yield fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
+        var response = yield fetch(`${SHARED_PROFILE_API2}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
         if (response.status === 404) {
           if (preview.enabled)
             queueSharedPublish();
@@ -9681,12 +9853,12 @@
   }
   function requestSharedProfile(userId) {
     var id = String(userId || "");
-    if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedProfiles.has(id) || sharedRequests.has(id))
+    if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedProfiles2.has(id) || sharedRequests.has(id))
       return;
     sharedRequests.add(id);
-    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`).then((response) => response.ok ? response.json() : null).then((payload) => {
+    void fetch(`${SHARED_PROFILE_API2}/v1/profiles/user/${encodeURIComponent(id)}`).then((response) => response.ok ? response.json() : null).then((payload) => {
       var profile = payload?.profile ?? payload;
-      sharedProfiles.set(id, profile && typeof profile === "object" ? profile : {});
+      sharedProfiles2.set(id, profile && typeof profile === "object" ? profile : {});
       if (!profile || typeof profile !== "object")
         return;
       try {
@@ -10193,7 +10365,7 @@
         var id = String(user?.userId || user?.id || "");
         if (!isCurrentUser(id)) {
           requestSharedProfile(id);
-          var data = sharedProfiles.get(id);
+          var data = sharedProfiles2.get(id);
           var officialOwner = id === CLOUDCORD_OFFICIAL_OWNER_ID;
           if (!data && !officialOwner)
             return;
@@ -10318,7 +10490,7 @@
             return;
           if (!isCurrentUser(id)) {
             requestSharedProfile(id);
-            var data = sharedProfiles.get(id);
+            var data = sharedProfiles2.get(id);
             if (!data?.avatar)
               return;
             props.source = {
@@ -10364,7 +10536,7 @@
             return;
           if (!isCurrentUser(id)) {
             requestSharedProfile(id);
-            var data = sharedProfiles.get(id);
+            var data = sharedProfiles2.get(id);
             if (!data?.banner)
               return;
             props.source = {
@@ -10413,7 +10585,7 @@
           return;
         if (!isCurrentUser(id)) {
           requestSharedProfile(id);
-          var data = sharedProfiles.get(id);
+          var data = sharedProfiles2.get(id);
           if (!data)
             return;
           if (props.user)
@@ -10469,7 +10641,7 @@
       if (!isCurrentUser(args?.[0])) {
         var id = String(args?.[0] || "");
         requestSharedProfile(id);
-        return decorateSharedProfile(original(...args), id, sharedProfiles.get(id));
+        return decorateSharedProfile(original(...args), id, sharedProfiles2.get(id));
       }
       return decorateProfileResult(original(...args), args?.[0]);
     });
@@ -10477,7 +10649,7 @@
       if (!isCurrentUser(args?.[0])) {
         var id = String(args?.[0] || "");
         requestSharedProfile(id);
-        return decorateSharedProfile(original(...args), id, sharedProfiles.get(id));
+        return decorateSharedProfile(original(...args), id, sharedProfiles2.get(id));
       }
       return decorateProfileResult(original(...args), args?.[0]);
     });
@@ -10488,7 +10660,7 @@
         if (!isCurrentUser(id)) {
           var remoteId = String(id || "");
           requestSharedProfile(remoteId);
-          return decorateSharedProfile(result, remoteId, sharedProfiles.get(remoteId));
+          return decorateSharedProfile(result, remoteId, sharedProfiles2.get(remoteId));
         }
         return decorateProfileResult(result, id);
       });
@@ -10503,7 +10675,7 @@
         if (!isCurrentUser(id)) {
           var remoteId = String(id || "");
           requestSharedProfile(remoteId);
-          return decorateSharedProfile(result, remoteId, sharedProfiles.get(remoteId));
+          return decorateSharedProfile(result, remoteId, sharedProfiles2.get(remoteId));
         }
         return cloneObject(result, "profile");
       });
@@ -12146,7 +12318,7 @@
       })
     });
   }
-  var import_react4, import_react_native17, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedRequests, publishTimer, sharedSyncTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native17, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API2, sharedProfiles2, sharedRequests, publishTimer, sharedSyncTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12495,8 +12667,8 @@
       realCurrentUser = null;
       userCache = /* @__PURE__ */ new WeakMap();
       profileCache = /* @__PURE__ */ new WeakMap();
-      SHARED_PROFILE_API = "https://getcloudcord.com";
-      sharedProfiles = /* @__PURE__ */ new Map();
+      SHARED_PROFILE_API2 = "https://getcloudcord.com";
+      sharedProfiles2 = /* @__PURE__ */ new Map();
       sharedRequests = /* @__PURE__ */ new Set();
       publishTimer = null;
       sharedSyncTimer = null;
@@ -16706,7 +16878,7 @@
               icon: findAssetId("ArrowsUpDownIcon"),
               variant: "tertiary",
               disabled: !!search,
-              onPress: () => showSimpleActionSheet2({
+              onPress: () => showSimpleActionSheet3({
                 key: "AddonListSortOptions",
                 header: {
                   title: "Sort Options",
@@ -16771,7 +16943,7 @@
       ]
     });
   }
-  var import_fuzzysort, import_react9, import_react_native25, showSimpleActionSheet2, hideActionSheet;
+  var import_fuzzysort, import_react9, import_react_native25, showSimpleActionSheet3, hideActionSheet;
   var init_AddonPage = __esm({
     "src/core/ui/components/AddonPage.tsx"() {
       "use strict";
@@ -16792,7 +16964,7 @@
       import_fuzzysort = __toESM(require_fuzzysort());
       import_react9 = __toESM(require_react());
       import_react_native25 = __toESM(require_react_native());
-      ({ showSimpleActionSheet: showSimpleActionSheet2, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
+      ({ showSimpleActionSheet: showSimpleActionSheet3, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
     }
   });
 
@@ -17692,7 +17864,7 @@
                     style: styles.actions,
                     children: [
                       props.overflowActions && /* @__PURE__ */ jsx(IconButton, {
-                        onPress: () => showSimpleActionSheet3({
+                        onPress: () => showSimpleActionSheet4({
                           key: "CardOverflow",
                           header: {
                             title: props.overflowTitle,
@@ -17745,7 +17917,7 @@
       })
     });
   }
-  var import_react_native30, hideActionSheet2, showSimpleActionSheet3, useStyles4;
+  var import_react_native30, hideActionSheet2, showSimpleActionSheet4, useStyles4;
   var init_AddonCard = __esm({
     "src/core/ui/components/AddonCard.tsx"() {
       "use strict";
@@ -17760,7 +17932,7 @@
       init_styles();
       import_react_native30 = __toESM(require_react_native());
       ({ hideActionSheet: hideActionSheet2 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
-      ({ showSimpleActionSheet: showSimpleActionSheet3 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
+      ({ showSimpleActionSheet: showSimpleActionSheet4 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       useStyles4 = createStyles({
         card: {
           backgroundColor: semanticColors?.CARD_SECONDARY_BG,
