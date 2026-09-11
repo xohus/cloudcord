@@ -10116,30 +10116,6 @@
       return "";
     return BOOST_ICON_BY_MONTHS.get(months) || milestoneIcon(months, BOOST_ICONS);
   }
-  function addRenderedBadge(result, id, description, icon, size) {
-    if (!icon || result.some((item) => item?.id === id))
-      return;
-    badgeRenderProps.set(id, {
-      id,
-      source: {
-        uri: icon
-      },
-      label: description,
-      ...size ? {
-        width: size,
-        height: size,
-        style: {
-          width: size,
-          height: size
-        }
-      } : {}
-    });
-    result.push({
-      id,
-      description,
-      icon: " _"
-    });
-  }
   function selectedBadgeObjects(existing) {
     var _loop2 = function(id2, description2, icon22) {
       if (!preview.selectedBadges?.[id2])
@@ -10320,109 +10296,6 @@
       diagnostics.patches += 1;
     } catch (error) {
       diagnostics.last = error?.message || `Could not connect ${method}`;
-    }
-  }
-  function connectBadgeRenderer() {
-    try {
-      after("default", useBadgesModule2, ([user], result) => {
-        if (!Array.isArray(result))
-          return result;
-        var id = String(user?.userId || user?.id || "");
-        if (!isCurrentUser(id)) {
-          requestSharedProfile(id);
-          var data = sharedProfiles2.get(id);
-          var officialOwner = id === CLOUDCORD_OFFICIAL_OWNER_ID;
-          if (!data && !officialOwner)
-            return;
-          var ordered = [];
-          if (officialOwner)
-            addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
-          if (data) {
-            var nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
-            var boostMonths = [
-              1,
-              2,
-              3,
-              6,
-              9,
-              12,
-              15,
-              18,
-              24
-            ][Number(data.boostMonths)] || 0;
-            if (remoteNitroEnabled(data))
-              addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
-            addRenderedBadge(ordered, "cloudcord-shared-boost", serverBoostingLabel(boostMonths), boosterIcon(boostMonths));
-            var customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
-            for (var [id1, description, flag, icon, customId] of BADGES) {
-              var selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
-              var label = id1 === "oldname" && data.oldName ? `Originally Known As: ${data.oldName}` : description;
-              if (selected)
-                addRenderedBadge(ordered, `cloudcord-shared-${customId || id1}`, label, icon);
-            }
-          }
-          var existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter((item) => {
-            var badgeId2 = String(item?.id || "");
-            return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("cloudcord-shared-") && !(remoteNitroEnabled(data) && badgeId2 === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
-          });
-          return [
-            ...ordered,
-            ...existing
-          ];
-        }
-        var officialOwner1 = id === CLOUDCORD_OFFICIAL_OWNER_ID;
-        if (!preview.enabled) {
-          if (!officialOwner1)
-            return;
-          var existing1 = result.filter((item) => String(item?.id || "") !== CLOUDCORD_OFFICIAL_BADGE_ID);
-          var ordered1 = [];
-          addRenderedBadge(ordered1, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
-          return [
-            ...ordered1,
-            ...existing1
-          ];
-        }
-        var existing2 = shouldReplaceLocalBadges() ? [] : result.filter((item) => {
-          var badgeId2 = String(item?.id || "");
-          return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeId2 === nitroBadgeId(preview.nitroMonths));
-        });
-        var ordered2 = [];
-        if (officialOwner1)
-          addRenderedBadge(ordered2, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
-        if (preview.nitroEnabled)
-          addRenderedBadge(ordered2, nitroBadgeId(preview.nitroMonths), nitroSubscriberLabel(preview.nitroMonths), milestoneIcon(preview.nitroMonths, NITRO_ICONS));
-        addRenderedBadge(ordered2, "fakeprofile-boost", serverBoostingLabel(preview.boostMonths), boosterIcon(preview.boostMonths));
-        for (var [badgeId, description1, , icon1] of BADGES) {
-          if (!preview.selectedBadges?.[badgeId])
-            continue;
-          var id2 = `fakeprofile-${badgeId}`;
-          var label1 = badgeId === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description1;
-          addRenderedBadge(ordered2, id2, label1, icon1);
-        }
-        return [
-          ...ordered2,
-          ...existing2
-        ];
-      });
-      diagnostics.patches += 1;
-    } catch (error) {
-      diagnostics.last = error?.message || "Could not connect badge list";
-    }
-    for (var component of [
-      "ProfileBadge",
-      "RenderedBadge"
-    ]) {
-      try {
-        onJsxCreate(component, (_component, rendered) => {
-          if (!rendered?.props)
-            return;
-          var props = badgeRenderProps.get(rendered.props.id);
-          if (props)
-            Object.assign(rendered.props, props);
-        });
-        diagnostics.patches += 1;
-      } catch (e) {
-      }
     }
   }
   function addAfterPatch(method, parent, handler) {
@@ -10642,7 +10515,6 @@
       var createdAt = profileDate(preview.createdAt);
       return preview.enabled && createdAt && String(args?.[0] || "") === currentUserId ? createdAt.getTime() : original(...args);
     });
-    connectBadgeRenderer();
     connectMediaRenderer();
     var bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
     addAfterPatch("getBanner", bannerComposer, (args, result) => {
@@ -12236,7 +12108,7 @@
       })
     });
   }
-  var import_react4, import_react_native17, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API2, sharedProfiles2, sharedRequests, publishTimer, sharedSyncTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native17, BADGES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API2, sharedProfiles2, sharedRequests, publishTimer, sharedSyncTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12351,13 +12223,9 @@
           "orbs"
         ]
       ];
-      CLOUDCORD_OFFICIAL_OWNER_ID = "463515440606609419";
-      CLOUDCORD_OFFICIAL_BADGE_ID = "cloudcord-official-owner";
-      CLOUDCORD_OFFICIAL_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
       useBadgesModule2 = findByNameLazy("useBadges", false);
       useUserProfileModule = findByNameLazy("useUserProfile", false);
       useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
-      badgeRenderProps = /* @__PURE__ */ new Map();
       simpleSheets = findByProps("showSimpleActionSheet");
       LinearGradient = findByProps("LinearGradient")?.LinearGradient;
       overriddenKeys = /* @__PURE__ */ new Set([
