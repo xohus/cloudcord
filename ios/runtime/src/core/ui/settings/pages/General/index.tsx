@@ -77,7 +77,13 @@ export default function General() {
                         subLabel="Show a tab for Discord's saved accounts"
                         icon={<TableRow.Icon source={findAssetId("UserIcon")!} />}
                         value={settings.cloudcordAccountSwitcherEnabled === true}
-                        onValueChange={(value: boolean) => settings.cloudcordAccountSwitcherEnabled = value}
+                        onValueChange={(value: boolean) => {
+                            settings.cloudcordAccountSwitcherEnabled = value;
+                            // Bunny exposes Discord's DeveloperExperimentStore for this
+                            // feature. Mobile does not export the desktop account API until
+                            // Discord's own account-switcher experiment is enabled.
+                            if (value) settings.enableDiscordDeveloperSettings = true;
+                        }}
                     />
                     <TableRow
                         label={Strings.RELOAD_DISCORD}
