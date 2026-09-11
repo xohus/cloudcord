@@ -1,0 +1,132 @@
+# CLOUDCORD PROPRIETARY LICENSE
+
+Copyright © 2026 xohus. All rights reserved.
+
+This software, including but not limited to its source code, compiled code, scripts, user interface, designs, graphics, assets, documentation, APIs, implementations, architecture, features, systems, workflows, names, branding, and associated materials (collectively, the “Software”), is proprietary property of xohus.
+
+## 1. LIMITED PERMISSION TO VIEW
+
+You are permitted to view publicly available CloudCord source code solely for personal inspection, security review, educational understanding, and evaluation.
+
+Viewing the Software does not grant you ownership, usage rights, redistribution rights, modification rights, or any other license except the limited right to inspect it.
+
+## 2. NO COPYING
+
+You may not copy, reproduce, extract, duplicate, mirror, scrape for reuse, or otherwise reproduce any portion of the Software.
+
+This restriction applies to complete files as well as individual functions, components, algorithms, implementations, systems, interfaces, workflows, structures, or substantial portions of the Software.
+
+## 3. NO USE
+
+You may not use any portion of the Software in your own software, service, project, application, website, plugin, client modification, bot, library, framework, product, or commercial or non-commercial project.
+
+You may not use the Software as a base, dependency, template, reference implementation, starting point, or foundation for another project.
+
+## 4. NO MODIFICATION OR DERIVATIVE WORKS
+
+You may not modify, adapt, translate, transform, port, extend, reverse engineer, decompile, disassemble, reconstruct, or create derivative works based on the Software.
+
+You may not create modified versions of CloudCord or products substantially based upon CloudCord’s implementation.
+
+## 5. NO FORKING
+
+You may not fork, clone, mirror, republish, or maintain a separate version of the Software.
+
+You may not distribute a modified or unmodified copy under another repository, organization, account, website, service, or project.
+
+## 6. NO REBRANDING
+
+You may not rename, rebrand, white-label, reskin, or otherwise present the Software or any derivative of it as your own product.
+
+Removing CloudCord branding, copyright notices, license notices, attribution, identifiers, or ownership information does not grant permission to use the Software.
+
+## 7. NO REDISTRIBUTION
+
+You may not publish, upload, host, transmit, distribute, sublicense, sell, rent, lease, share, provide access to, or otherwise make copies of the Software available to another person or entity.
+
+## 8. NO COMMERCIAL USE
+
+You may not use the Software or any portion of it for commercial purposes.
+
+You may not sell access to it, sell modified versions, include it in paid software, monetize it, offer it as a service, or otherwise financially benefit from unauthorized use.
+
+## 9. NO INCORPORATION INTO OTHER SOFTWARE
+
+No portion of the Software may be incorporated into another project.
+
+This includes source code, compiled code, algorithms, UI components, feature implementations, synchronization systems, account systems, profile systems, plugin systems, bridge systems, diagnostics systems, CloudCord-specific APIs, documentation, assets, and designs.
+
+## 10. AI AND AUTOMATED PROCESSING
+
+You may not intentionally provide CloudCord source code to an artificial intelligence system, code-generation service, automated transformation system, or similar tool for the purpose of reproducing, rewriting, porting, disguising, reimplementing, or creating a competing or derivative version of CloudCord.
+
+You may not use automated tools to remove copyright notices, license notices, attribution, identifiers, or ownership information from the Software.
+
+## 11. COMPETING PRODUCTS
+
+You may not use CloudCord source code or protected CloudCord-specific implementation details to directly copy CloudCord implementations into a competing Discord client modification, plugin platform, compatibility layer, or substantially similar product.
+
+This clause does not prohibit independently developing similar general functionality without copying CloudCord code or other protected material.
+
+## 12. COPYRIGHT AND ATTRIBUTION
+
+All copyright notices, license notices, ownership notices, and attribution included in the Software must remain intact.
+
+Removing or altering such notices is prohibited.
+
+## 13. WRITTEN PERMISSION
+
+Any use not expressly permitted by this license requires prior written authorization from xohus.
+
+Permission granted for one specific purpose does not grant permission for any other purpose.
+
+## 14. THIRD-PARTY COMPONENTS
+
+CloudCord may contain third-party software, libraries, assets, or code governed by separate licenses.
+
+Those third-party materials remain subject to their respective licenses.
+
+Nothing in this license attempts to restrict rights granted directly by third-party licensors.
+
+## 15. CONTRIBUTIONS
+
+Unless otherwise agreed in writing, submitting code, patches, fixes, assets, documentation, or other contributions to CloudCord grants xohus permission to use, modify, distribute, sublicense, and incorporate those contributions into CloudCord.
+
+## 16. NO TRADEMARK OR BRAND LICENSE
+
+This license does not grant permission to use the names:
+
+CloudCord  
+xohus
+
+or associated logos, branding, graphics, domain names, or marks in a way that suggests ownership, endorsement, or official affiliation.
+
+## 17. TERMINATION
+
+Any permission granted under this license automatically terminates if you violate its terms.
+
+Upon termination, you must immediately stop using the Software and delete all unauthorized copies in your possession or control.
+
+## 18. ENFORCEMENT
+
+Unauthorized copying, modification, redistribution, publication, rebranding, commercialization, or use of the Software may constitute copyright infringement or violation of other applicable laws.
+
+xohus reserves the right to pursue available legal remedies against unauthorized use.
+
+## 19. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED “AS IS” WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, NON-INFRINGEMENT, RELIABILITY, OR AVAILABILITY.
+
+## 20. LIMITATION OF LIABILITY
+
+TO THE MAXIMUM EXTENT PERMITTED BY LAW, XOHUS AND CLOUDCORD CONTRIBUTORS SHALL NOT BE LIABLE FOR ANY CLAIM, DAMAGES, LOSS, OR OTHER LIABILITY ARISING FROM OR RELATED TO THE SOFTWARE OR ITS USE.
+
+## 21. RESERVATION OF RIGHTS
+
+No rights are granted except those explicitly stated in this license.
+
+All rights not expressly granted are reserved by xohus.
+
+---
+
+By accessing, viewing, downloading, or otherwise interacting with the CloudCord source code, you acknowledge that the Software is proprietary and that your access does not grant permission to copy, use, modify, distribute, fork, rebrand, sell, or incorporate it into another project without prior written authorization from xohus.
