@@ -8082,14 +8082,6 @@
           }
         },
         start() {
-          before("default", useBadgesModule, (args) => {
-            var input = args[0];
-            var userId = input?.userId ?? input?.id ?? input?.user?.id;
-            var profile = userId && sharedProfiles.get(userId);
-            if (profile)
-              args[0] = nativeProfileInput(input, profile);
-            return args;
-          });
           onJsxCreate("ProfileBadge", (component, ret) => {
             if (!ret?.props)
               return;
