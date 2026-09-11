@@ -1278,7 +1278,6 @@ jobs:
                   return preview.enabled && createdAt && String(args?.[0] || "") === currentUserId ? createdAt.getTime() : original(...args);
               });
 
-              connectBadgeRenderer();
               connectMediaRenderer();
 
               const bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
