@@ -8000,7 +8000,7 @@
       }
     };
   }
-  var useBadgesModule, badgesCache, badgeProps, pendingRequests, sharedProfiles, SHARED_PROFILE_API, NITRO_MONTHS, NITRO_NAMES, GIFT_COUNTS, GIFT_NAMES, GIFT_ASSETS, showSimpleActionSheet2, badges_default;
+  var useBadgesModule, badgesCache, badgeProps, pendingRequests, sharedProfiles, sharedProfileFetchedAt, SHARED_PROFILE_API, NITRO_MONTHS, NITRO_NAMES, GIFT_COUNTS, GIFT_NAMES, GIFT_ASSETS, showSimpleActionSheet2, badges_default;
   var init_badges = __esm({
     "src/core/plugins/badges/index.tsx"() {
       "use strict";
@@ -8018,7 +8018,8 @@
       badgesCache = /* @__PURE__ */ new Map();
       badgeProps = /* @__PURE__ */ new Map();
       pendingRequests = /* @__PURE__ */ new Set();
-      sharedProfiles = /* @__PURE__ */ new Map();
+      sharedProfiles = globalThis.__CLOUDCORD_SHARED_PROFILES__ ||= /* @__PURE__ */ new Map();
+      sharedProfileFetchedAt = globalThis.__CLOUDCORD_SHARED_PROFILE_FETCHED_AT__ ||= /* @__PURE__ */ new Map();
       SHARED_PROFILE_API = "https://getcloudcord.com";
       NITRO_MONTHS = [
         0,
@@ -8116,7 +8117,7 @@
             }
           });
           var fetchAndProcessBadges = (userId) => _async_to_generator(function* () {
-            if (pendingRequests.has(userId))
+            if (pendingRequests.has(userId) || sharedProfiles.has(userId) && Date.now() - (sharedProfileFetchedAt.get(userId) || 0) < 5e3 && badgesCache.has(userId))
               return;
             pendingRequests.add(userId);
             try {
@@ -8133,6 +8134,7 @@
               };
               var profile = profilePayload?.profile ?? profilePayload ?? {};
               sharedProfiles.set(userId, profile);
+              sharedProfileFetchedAt.set(userId, Date.now());
               var allBadges = [];
               if (userBadgeData.roles) {
                 userBadgeData.roles.forEach((roleName) => {
@@ -9862,12 +9864,16 @@
   }
   function requestSharedProfile(userId) {
     var id = String(userId || "");
-    if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedProfiles2.has(id) || sharedRequests.has(id))
+    var fetchedAt = sharedProfileFetchedAt2.get(id) || 0;
+    if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || sharedProfiles2.has(id) && Date.now() - fetchedAt < 5e3)
       return;
     sharedRequests.add(id);
-    void fetch(`${SHARED_PROFILE_API2}/v1/profiles/user/${encodeURIComponent(id)}`).then((response) => response.ok ? response.json() : null).then((payload) => {
+    void fetch(`${SHARED_PROFILE_API2}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, {
+      cache: "no-store"
+    }).then((response) => response.ok ? response.json() : null).then((payload) => {
       var profile = payload?.profile ?? payload;
       sharedProfiles2.set(id, profile && typeof profile === "object" ? profile : {});
+      sharedProfileFetchedAt2.set(id, Date.now());
       if (!profile || typeof profile !== "object")
         return;
       try {
@@ -12108,7 +12114,7 @@
       })
     });
   }
-  var import_react4, import_react_native17, BADGES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API2, sharedProfiles2, sharedRequests, publishTimer, sharedSyncTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native17, BADGES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API2, sharedProfiles2, sharedProfileFetchedAt2, sharedRequests, publishTimer, sharedSyncTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12454,7 +12460,8 @@
       userCache = /* @__PURE__ */ new WeakMap();
       profileCache = /* @__PURE__ */ new WeakMap();
       SHARED_PROFILE_API2 = "https://getcloudcord.com";
-      sharedProfiles2 = /* @__PURE__ */ new Map();
+      sharedProfiles2 = globalThis.__CLOUDCORD_SHARED_PROFILES__ ||= /* @__PURE__ */ new Map();
+      sharedProfileFetchedAt2 = globalThis.__CLOUDCORD_SHARED_PROFILE_FETCHED_AT__ ||= /* @__PURE__ */ new Map();
       sharedRequests = /* @__PURE__ */ new Set();
       publishTimer = null;
       sharedSyncTimer = null;
