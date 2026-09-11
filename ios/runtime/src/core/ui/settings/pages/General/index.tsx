@@ -95,7 +95,8 @@ export default function General() {
                         }}
                     />
                     <TableSwitchRow
-                        label={Strings.DEVELOPER_SETTINGS}
+                        label={"/diagnostics"}
+                        subLabel={"Show CloudCord runtime diagnostics and version controls"}
                         icon={<TableRow.Icon source={findAssetId("WrenchIcon")!} />}
                         value={settings.developerSettings}
                         onValueChange={(v: boolean) => {
