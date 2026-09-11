@@ -78,15 +78,15 @@ const GIFT_LEVELS = [
 
 const OLD_NAME_BADGE_ICON = "https://cdn.discordapp.com/badge-icons/6de6d34650760ba5551a79732e98ed60.png";
 const NITRO_LEVELS = [
-    { label: "Nitro (0 months)", name: "Nitro", icon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", art: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", light: "#d9b8ff", dark: "#5865f2" },
-    { label: "Bronze (1 Month)", name: "Bronze", icon: "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png", art: pngDataUrl(nitroBronze), light: "#ffc292", dark: "#a64316" },
-    { label: "Silver (3 Months)", name: "Silver", icon: "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png", art: pngDataUrl(nitroSilver), light: "#f1f6fa", dark: "#778793" },
-    { label: "Gold (6 Months)", name: "Gold", icon: "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png", art: pngDataUrl(nitroGold), light: "#ffe689", dark: "#d58200" },
-    { label: "Platinum (1 Year)", name: "Platinum", icon: "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png", art: pngDataUrl(nitroPlatinum), light: "#bff5ff", dark: "#1689b9" },
-    { label: "Diamond (2 Years)", name: "Diamond", icon: "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png", art: pngDataUrl(nitroDiamond), light: "#f0a8ff", dark: "#843cc8" },
-    { label: "Emerald (3 Years)", name: "Emerald", icon: "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png", art: pngDataUrl(nitroEmerald), light: "#a5ff81", dark: "#2a9c16" },
-    { label: "Ruby (5 Years)", name: "Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png", art: pngDataUrl(nitroRuby), light: "#ff91bd", dark: "#c01958" },
-    { label: "Opal (6+ Years)", name: "Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png", art: pngDataUrl(nitroOpal), light: "#c8f7ff", dark: "#675cff" },
+    { label: "Nitro", name: "Nitro", icon: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", art: "https://cdn.discordapp.com/badge-icons/2ba85e8026a8614b640c2837bcdfe21b.png", light: "#d9b8ff", dark: "#5865f2" },
+    { label: "Bronze", name: "Bronze", icon: "https://cdn.discordapp.com/badge-icons/4f33c4a9c64ce221936bd256c356f91f.png", art: pngDataUrl(nitroBronze), light: "#ffc292", dark: "#a64316" },
+    { label: "Silver", name: "Silver", icon: "https://cdn.discordapp.com/badge-icons/4514fab914bdbfb4ad2fa23df76121a6.png", art: pngDataUrl(nitroSilver), light: "#f1f6fa", dark: "#778793" },
+    { label: "Gold", name: "Gold", icon: "https://cdn.discordapp.com/badge-icons/2895086c18d5531d499862e41d1155a6.png", art: pngDataUrl(nitroGold), light: "#ffe689", dark: "#d58200" },
+    { label: "Platinum", name: "Platinum", icon: "https://cdn.discordapp.com/badge-icons/0334688279c8359120922938dcb1d6f8.png", art: pngDataUrl(nitroPlatinum), light: "#bff5ff", dark: "#1689b9" },
+    { label: "Diamond", name: "Diamond", icon: "https://cdn.discordapp.com/badge-icons/0d61871f72bb9a33a7ae568c1fb4f20a.png", art: pngDataUrl(nitroDiamond), light: "#f0a8ff", dark: "#843cc8" },
+    { label: "Emerald", name: "Emerald", icon: "https://cdn.discordapp.com/badge-icons/11e2d339068b55d3a506cff34d3780f3.png", art: pngDataUrl(nitroEmerald), light: "#a5ff81", dark: "#2a9c16" },
+    { label: "Ruby", name: "Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png", art: pngDataUrl(nitroRuby), light: "#ff91bd", dark: "#c01958" },
+    { label: "Opal", name: "Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png", art: pngDataUrl(nitroOpal), light: "#c8f7ff", dark: "#675cff" },
 ];
 const BOOST_LABELS = ["1 Month", "2 Months", "3 Months", "6 Months", "9 Months", "12 Months", "15 Months", "18 Months", "24 Months"];
 const BOOST_ICONS = [

@@ -18,8 +18,8 @@ import {
     BackupAndRestoreTab,
     BotCordTab,
     CloudTab,
+    CloudCordDiagnosticsTab,
     FakeProfileTab,
-    PatchHelperTab,
     PluginsTab,
     ThemesTab,
     VencordTab,
@@ -230,7 +230,7 @@ export default definePlugin({
                 key: "cloudcord_diagnostics",
                 title: "Diagnostics",
                 panelTitle: "CloudCord Diagnostics",
-                Component: PatchHelperTab!,
+                Component: CloudCordDiagnosticsTab,
                 Icon: MainSettingsIcon
             })
         ].filter(isTruthy);
