@@ -148,12 +148,9 @@ export default defineCorePlugin({
             if (ret.props.id === "premium" || ret.props.id?.startsWith("premium_tenure_")) {
                 const userId = ret.props.userId ?? ret.props.user?.id;
                 const profile = userId && sharedProfiles.get(userId);
-                // Preserve Discord's native handler when this is a genuine Nitro badge.
-                // The CloudCord tier sheet is only a fallback for a simulated badge that
-                // has no real subscription overlay behind it.
-                if (profile?.nitro === true && typeof ret.props.onPress !== "function") {
-                    ret.props.onPress = () => showNitroMilestones(profile);
-                }
+                // A simulated Nitro badge has no Discord subscription action behind it.
+                // Always attach CloudCord's milestone sheet for shared fake profiles.
+                if (profile?.nitro === true) ret.props.onPress = () => showNitroMilestones(profile);
             }
             if (ret.props.id?.startsWith("rain-") || ret.props.id?.startsWith("cloudcord-")) {
                 const cachedProps = badgeProps.get(ret.props.id);
@@ -265,7 +262,12 @@ export default defineCorePlugin({
                 const level = Math.max(0, Math.min(NITRO_MONTHS.length - 1, profile.nitroLevel!));
                 const months = NITRO_MONTHS[level];
                 const id = months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
-                if (!result.some((badge: any) => badge?.id === id || badge?.id?.startsWith("premium_tenure_"))) {
+                const renderedNitro = result.find((badge: any) => badge?.id === id || badge?.id?.startsWith("premium_tenure_") || badge?.id === "premium");
+                if (renderedNitro) {
+                    // ProfileBadge needs the owner id to resolve the correct shared
+                    // profile when Discord generated the visual badge for us.
+                    renderedNitro.userId = userId;
+                } else {
                     result.unshift({ id, userId, description: `Subscriber since ${nativeProfileInput({}, profile).premium_since}`, icon: " _" });
                 }
             }
