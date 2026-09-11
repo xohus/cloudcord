@@ -29,8 +29,17 @@ jobs:
       - name: Clone clean Kettu source
         run: |
           set -e
-          rm -rf _cloudcord_source
-          git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _cloudcord_source
+          for attempt in 1 2 3 4 5; do
+            rm -rf _cloudcord_source
+            if git clone --depth=1 https://codeberg.org/cocobo1/Kettu.git _cloudcord_source; then
+              break
+            fi
+            if [ "$attempt" = "5" ]; then
+              echo "Kettu clone failed after 5 attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
 
       - name: Apply CloudCord patches
         run: |
