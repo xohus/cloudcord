@@ -1923,6 +1923,13 @@ jobs:
                   render: () => import("@core/ui/settings/pages/FakeProfile")
               }},'''
 
+              diagnostics_item = f'''            {{
+                  key: "CLOUDCORD_DIAGNOSTICS",
+                  title: () => "/diagnostics",
+                  icon: findAssetId("WrenchIcon"),
+                  render: () => import("@core/ui/settings/pages/Developer")
+              }},'''
+
               plugin_row_pattern = r'(\n\s*\{\s*key:\s*"BUNNY_PLUGINS",)'
 
               items = []
@@ -1932,6 +1939,8 @@ jobs:
                   items.append(fake_profile_item)
               if 'key: "STORE_CLOUD"' not in text:
                   items.append(store_cloud_item)
+              if 'key: "CLOUDCORD_DIAGNOSTICS"' not in text:
+                  items.append(diagnostics_item)
 
               if items:
                   text = re.sub(
