@@ -183,6 +183,11 @@ function NativeNitroBadge({ nitroLevel, nitroSince, accentColor, accentColor2 }:
     </Popout>;
 }
 
+function nativeNitroBadgeId(level: number): string {
+    const months = NITRO_LEVEL_MONTHS[Math.max(0, Math.min(NITRO_LEVEL_MONTHS.length - 1, level))] ?? 0;
+    return months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
+}
+
 const AVATAR_DECORATIONS = [
     { id: "1144307957425778779", label: "Hearts" }, { id: "1144308196723408958", label: "Hearts Animated" },
     { id: "1212569433839636530", label: "Lofi Cafe" }, { id: "1481387347642810480", label: "Winter" },
@@ -361,7 +366,8 @@ async function pullOwnSharedProfile() {
     try {
         const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`);
         if (!response.ok) return;
-        const pulled = fromSharedProfile(await response.json());
+        const payload = await response.json();
+        const pulled = fromSharedProfile(payload?.profile ?? payload);
         if (!Object.keys(pulled).length) return;
         storedData = pulled; isEnabled = true; allAccountsData[id] = pulled; allAccountsEnabled[id] = true;
         saveDataSync(pulled, true); saveAllDataSync();
@@ -376,7 +382,8 @@ function requestSharedProfile(userId: string, force = false) {
     if (!force && sharedProfiles.has(userId) && Date.now() - fetchedAt < SHARED_PROFILE_TTL_MS) return;
     sharedRequests.add(userId);
     void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}?v=${Date.now()}`)
-        .then(r => r.ok ? r.json() : null).then(data => {
+        .then(r => r.ok ? r.json() : null).then(payload => {
+            const data = payload?.profile ?? payload;
             if (!data) return;
             sharedProfiles.set(userId, fromSharedProfile(data));
             sharedProfileFetchedAt.set(userId, Date.now());
@@ -979,7 +986,7 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
             if (hasNitroFake) badges.push({
-                id: "sp_nitro",
+                id: nativeNitroBadgeId(nl),
                 key: NITRO_LEVELS[nl].label,
                 description: NITRO_LEVELS[nl].label,
                 // Keep a stable component identity. An inline component here is remounted
@@ -1001,8 +1008,10 @@ fakeObfuscatedEmail(real: string | null) {
             if (profileData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a Quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
             if (profileData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs — Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
             return badges.sort((a, b) => {
-                const ai = DISCORD_PROFILE_BADGE_ORDER.indexOf(a.id);
-                const bi = DISCORD_PROFILE_BADGE_ORDER.indexOf(b.id);
+                const normalizedA = a.id.startsWith("premium_tenure_") || a.id === "premium" ? "sp_nitro" : a.id;
+                const normalizedB = b.id.startsWith("premium_tenure_") || b.id === "premium" ? "sp_nitro" : b.id;
+                const ai = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedA);
+                const bi = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedB);
                 return (ai < 0 ? Number.MAX_SAFE_INTEGER : ai) - (bi < 0 ? Number.MAX_SAFE_INTEGER : bi);
             });
         }

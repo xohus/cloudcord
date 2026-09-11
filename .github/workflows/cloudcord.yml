@@ -349,6 +349,12 @@ jobs:
               const date = monthsAgo(months);
               return `Subscriber since ${date.getMonth() + 1}/${date.getDate()}/${String(date.getFullYear()).slice(-2)}`;
           }
+
+          function sharedNitroSince(data: any) {
+              const explicit = profileDate(data?.nitroSince);
+              if (explicit) return explicit;
+              return monthsAgo(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0);
+          }
           const BOOST_ICONS: Array<[number, string]> = [
               [24, "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png"],
               [18, "https://cdn.discordapp.com/badge-icons/7142225d31238f6387d9f09efaa02759.png"],
@@ -541,6 +547,7 @@ jobs:
                   banner: await shareableMedia("bannerMedia"),
                   nitro: preview.nitroEnabled,
                   nitroLevel: preview.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(preview.nitroMonths)) : -1,
+                  nitroSince: preview.nitroEnabled ? monthsAgo(preview.nitroMonths).toISOString().slice(0, 10) : null,
                   boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
                   avatarDecoration: preview.avatarDecoration || null,
                   avatarDecorationSku: preview.avatarDecorationSku || null,
@@ -678,7 +685,13 @@ jobs:
                   setOwnValue(cloned, "premiumGuildSince", null);
                   setOwnValue(cloned, "legacyUsername", null);
               }
-              if (data.nitro) setOwnValue(cloned, "premiumType", 2);
+              if (remoteNitroEnabled(data)) {
+                  const since = sharedNitroSince(data);
+                  setOwnValue(cloned, "premiumType", 2);
+                  setOwnValue(cloned, "premium_type", 2);
+                  setOwnValue(cloned, "premiumSince", since);
+                  setOwnValue(cloned, "premium_since", since.toISOString());
+              }
               return cloned;
           }
 
@@ -689,6 +702,13 @@ jobs:
               if (data.banner) { setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "bannerUrl", data.banner); setOwnValue(cloned, "bannerSrc", data.banner); }
               if (data.bio != null) setOwnValue(cloned, "bio", data.bio);
               if (data.pronouns != null) setOwnValue(cloned, "pronouns", data.pronouns);
+              if (remoteNitroEnabled(data)) {
+                  const since = sharedNitroSince(data);
+                  setOwnValue(cloned, "premiumType", 2);
+                  setOwnValue(cloned, "premium_type", 2);
+                  setOwnValue(cloned, "premiumSince", since);
+                  setOwnValue(cloned, "premium_since", since.toISOString());
+              }
               const createdAt = profileDate(data.createdAt);
               const joinedAt = profileDate(data.signupDate || data.joinedSince);
               if (createdAt) setOwnValue(cloned, "createdAt", createdAt);
@@ -921,8 +941,11 @@ jobs:
               if (accentColor != null) setOwnValue(cloned, "accentColor", accentColor);
               if (primaryColor != null || accentColor != null) setOwnValue(cloned, "themeColors", [primaryColor ?? accentColor, accentColor ?? primaryColor]);
               if (preview.nitroEnabled) {
+                  const premiumSince = monthsAgo(preview.nitroMonths);
                   setOwnValue(cloned, "premiumType", 2);
-                  setOwnValue(cloned, "premiumSince", monthsAgo(preview.nitroMonths));
+                  setOwnValue(cloned, "premium_type", 2);
+                  setOwnValue(cloned, "premiumSince", premiumSince);
+                  setOwnValue(cloned, "premium_since", premiumSince.toISOString());
               }
               if (preview.boostMonths > 0) setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
               if (avatar) {
