@@ -9607,6 +9607,11 @@
     return _async_to_generator(function* () {
       if (!currentUserId)
         return;
+      var now = Date.now();
+      if (pullOwnSharedProfile.pending || now - Number(pullOwnSharedProfile.lastAttempt || 0) < 6e4)
+        return;
+      pullOwnSharedProfile.pending = true;
+      pullOwnSharedProfile.lastAttempt = now;
       try {
         var response = yield fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
         if (!response.ok)
@@ -9651,6 +9656,8 @@
         clearCache();
         diagnostics.last = "Fake Profile synced across devices";
       } catch (e) {
+      } finally {
+        pullOwnSharedProfile.pending = false;
       }
     })();
   }
@@ -9660,9 +9667,9 @@
       return;
     sharedRequests.add(id);
     void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`).then((response) => response.ok ? response.json() : null).then((profile) => {
+      sharedProfiles.set(id, profile && typeof profile === "object" ? profile : {});
       if (!profile || typeof profile !== "object")
         return;
-      sharedProfiles.set(id, profile);
       try {
         safeStore("UserProfileStore")?.emitChange?.();
       } catch (e) {
