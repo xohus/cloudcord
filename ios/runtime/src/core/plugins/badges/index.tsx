@@ -1,4 +1,4 @@
-import { after, before } from "@lib/api/patcher";
+import { after } from "@lib/api/patcher";
 import { onJsxCreate } from "@lib/api/react/jsx";
 import { findByName, findByNameLazy } from "@metro";
 import { findByProps } from "@metro/wrappers";
@@ -138,14 +138,6 @@ export default defineCorePlugin({
     },
     
     start() {
-        before("default", useBadgesModule, args => {
-            const input = args[0];
-            const userId = input?.userId ?? input?.id ?? input?.user?.id;
-            const profile = userId && sharedProfiles.get(userId);
-            if (profile) args[0] = nativeProfileInput(input, profile);
-            return args;
-        });
-
         onJsxCreate("ProfileBadge", (component, ret) => {
             if (!ret?.props) return;
             if (ret.props.id === "premium" || ret.props.id?.startsWith("premium_tenure_")) {
