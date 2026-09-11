@@ -9931,50 +9931,6 @@
     }
     return cloned;
   }
-  function decorateSharedProfile(original, userId, data) {
-    if (!original || typeof original !== "object" || !data)
-      return original;
-    var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
-    if (cloned.user)
-      setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
-    if (data.banner) {
-      setOwnValue(cloned, "bannerURL", data.banner);
-      setOwnValue(cloned, "bannerUrl", data.banner);
-      setOwnValue(cloned, "bannerSrc", data.banner);
-    }
-    if (data.bio != null)
-      setOwnValue(cloned, "bio", data.bio);
-    if (data.pronouns != null)
-      setOwnValue(cloned, "pronouns", data.pronouns);
-    if (remoteNitroEnabled(data)) {
-      var since = sharedNitroSince(data);
-      setOwnValue(cloned, "premiumType", 2);
-      setOwnValue(cloned, "premium_type", 2);
-      setOwnValue(cloned, "premiumSince", since);
-      setOwnValue(cloned, "premium_since", since.toISOString());
-    }
-    var createdAt = profileDate(data.createdAt);
-    var joinedAt = profileDate(data.signupDate || data.joinedSince);
-    if (createdAt)
-      setOwnValue(cloned, "createdAt", createdAt);
-    if (joinedAt) {
-      setOwnValue(cloned, "joinedAt", joinedAt);
-      setOwnValue(cloned, "memberSince", joinedAt);
-    }
-    if (data.profileColorsEnabled === true) {
-      if (data.accentColor != null)
-        setOwnValue(cloned, "accentColor", data.accentColor);
-      if (data.primaryColor != null)
-        setOwnValue(cloned, "primaryColor", data.primaryColor);
-      if (data.primaryColor != null || data.accentColor != null)
-        setOwnValue(cloned, "themeColors", [
-          Number(data.primaryColor || data.accentColor),
-          Number(data.accentColor || data.primaryColor)
-        ]);
-    }
-    setOwnValue(cloned, "userId", userId);
-    return cloned;
-  }
   function clearCache() {
     userCache = /* @__PURE__ */ new WeakMap();
     profileCache = /* @__PURE__ */ new WeakMap();
@@ -10337,22 +10293,6 @@
     }
     return cloned;
   }
-  function decorateProfileResult(original, userId) {
-    if (!original || !preview.enabled || !isCurrentUser(userId))
-      return original;
-    var decorated = cloneObject(original, "profile");
-    if (original.user)
-      setOwnValue(decorated, "user", cloneObject(original.user, "user"));
-    if (original.userProfile)
-      setOwnValue(decorated, "userProfile", cloneObject(original.userProfile, "profile"));
-    if (original.guildMemberProfile)
-      setOwnValue(decorated, "guildMemberProfile", cloneObject(original.guildMemberProfile, "profile"));
-    if (original.displayProfile)
-      setOwnValue(decorated, "displayProfile", cloneObject(original.displayProfile, "profile"));
-    if (original.profile)
-      setOwnValue(decorated, "profile", cloneObject(original.profile, "profile"));
-    return decorated;
-  }
   function isCurrentUser(id) {
     return !id || !currentUserId || id === currentUserId;
   }
@@ -10558,10 +10498,6 @@
             props.bannerURL = data.banner;
             props.resizeMode = "cover";
             props.contentFit = "cover";
-            if (props.displayProfile)
-              props.displayProfile = decorateSharedProfile(props.displayProfile, id, data);
-            if (props.profile)
-              props.profile = decorateSharedProfile(props.profile, id, data);
             return;
           }
           var uri = mediaUri("bannerMedia");
@@ -10577,45 +10513,10 @@
           props.bannerURL = uri;
           props.resizeMode = "cover";
           props.contentFit = "cover";
-          if (props.displayProfile)
-            props.displayProfile = decorateProfileResult(props.displayProfile, id);
-          if (props.profile)
-            props.profile = decorateProfileResult(props.profile, id);
         });
         diagnostics.patches += 1;
       } catch (e) {
       }
-    }
-    try {
-      onJsxCreate("UserProfileHeader", (_component, rendered) => {
-        var props = rendered?.props;
-        var id = String(renderedUserId(props) || "");
-        if (!id)
-          return;
-        if (!isCurrentUser(id)) {
-          requestSharedProfile(id);
-          var data = sharedProfiles2.get(id);
-          if (!data)
-            return;
-          if (props.user)
-            props.user = cloneSharedUser(props.user, data);
-          if (props.displayProfile)
-            props.displayProfile = decorateSharedProfile(props.displayProfile, id, data);
-          if (props.profile)
-            props.profile = decorateSharedProfile(props.profile, id, data);
-          return;
-        }
-        if (!preview.enabled)
-          return;
-        if (props.user)
-          props.user = cloneObject(props.user, "user");
-        if (props.displayProfile)
-          props.displayProfile = decorateProfileResult(props.displayProfile, id);
-        if (props.profile)
-          props.profile = decorateProfileResult(props.profile, id);
-      });
-      diagnostics.patches += 1;
-    } catch (e) {
     }
   }
   function ensurePatches() {
@@ -10646,26 +10547,6 @@
     });
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
-    try {
-      after("default", useUserProfileModule, (args, result) => {
-        var subject = args?.[0];
-        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-        return isCurrentUser(id) ? decorateProfileResult(result, id) : result;
-      });
-      diagnostics.patches += 1;
-    } catch (error) {
-      diagnostics.last = error?.message || "Could not connect profile view";
-    }
-    try {
-      after("default", useDisplayProfileModule, (args, result) => {
-        var subject = args?.[0];
-        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-        return isCurrentUser(id) ? cloneObject(result, "profile") : result;
-      });
-      diagnostics.patches += 1;
-    } catch (error) {
-      diagnostics.last = error?.message || "Could not connect profile banner";
-    }
     var avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
     var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
     diagnostics.avatarResolver = !!avatarResolver;
