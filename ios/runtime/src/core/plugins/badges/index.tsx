@@ -55,6 +55,7 @@ const sharedProfiles = new Map<string, SharedProfile>();
 
 const SHARED_PROFILE_API = "https://cloudcord-profiles.ggxohus.workers.dev";
 const NITRO_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
+const NITRO_NAMES = ["Nitro", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Emerald", "Ruby", "Opal"] as const;
 const GIFT_COUNTS = [1, 2, 3, 6, 10, 20] as const;
 const GIFT_NAMES = ["Patron", "Champion", "Luminary", "Icon", "Hero", "Legend"] as const;
 const GIFT_ASSETS = GIFT_NAMES.map(name => `https://raw.githubusercontent.com/dev-hoehle/discord-badges/main/png/gifting_${name.toLowerCase()}.png`);
@@ -69,6 +70,24 @@ function showGiftingMilestones(selected: number) {
             icon: { uri: GIFT_ASSETS[index] },
             onPress: () => {},
         })),
+    });
+}
+
+function showNitroMilestones(profile: SharedProfile) {
+    const selected = Math.max(1, Math.min(NITRO_MONTHS.length - 1, Number(profile.nitroLevel) || 1));
+    const since = nativeProfileInput({}, profile).premium_since;
+    showSimpleActionSheet({
+        key: "CloudCordNitroMilestones",
+        header: { title: "Nitro Badge Milestones" },
+        options: NITRO_NAMES.slice(1).map((name, offset) => {
+            const index = offset + 1;
+            const duration = index === NITRO_MONTHS.length - 1 ? "6+ Years" : NITRO_MONTHS[index] >= 12 ? `${NITRO_MONTHS[index] / 12} ${NITRO_MONTHS[index] === 12 ? "Year" : "Years"}` : `${NITRO_MONTHS[index]} ${NITRO_MONTHS[index] === 1 ? "Month" : "Months"}`;
+            return {
+                label: `${name} · ${duration}${index === selected ? ` · Subscriber since ${new Date(since).toLocaleDateString()}` : ""}`,
+                icon: { uri: `https://raw.githubusercontent.com/dev-hoehle/discord-badges/main/png/nitro_${name.toLowerCase()}.png` },
+                onPress: () => {},
+            };
+        }),
     });
 }
 
@@ -126,6 +145,11 @@ export default defineCorePlugin({
         });
 
         onJsxCreate("ProfileBadge", (component, ret) => {
+            if (ret.props.id === "premium" || ret.props.id?.startsWith("premium_tenure_")) {
+                const userId = ret.props.userId ?? ret.props.user?.id;
+                const profile = userId && sharedProfiles.get(userId);
+                if (profile?.nitro === true) ret.props.onPress = () => showNitroMilestones(profile);
+            }
             if (ret.props.id?.startsWith("rain-") || ret.props.id?.startsWith("cloudcord-")) {
                 const cachedProps = badgeProps.get(ret.props.id);
                 if (cachedProps) {
@@ -237,7 +261,7 @@ export default defineCorePlugin({
                 const months = NITRO_MONTHS[level];
                 const id = months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
                 if (!result.some((badge: any) => badge?.id === id || badge?.id?.startsWith("premium_tenure_"))) {
-                    result.unshift({ id, description: `Subscriber since ${nativeProfileInput({}, profile).premium_since}`, icon: " _" });
+                    result.unshift({ id, userId, description: `Subscriber since ${nativeProfileInput({}, profile).premium_since}`, icon: " _" });
                 }
             }
         });
