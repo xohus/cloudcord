@@ -1249,19 +1249,11 @@ jobs:
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
               diagnostics.profileStore = !!profileStore;
               addPatch("getUserProfile", profileStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) {
-                      const id = String(args?.[0] || "");
-                      requestSharedProfile(id);
-                      return decorateSharedProfile(original(...args), id, sharedProfiles.get(id));
-                  }
+                  if (!isCurrentUser(args?.[0])) return original(...args);
                   return decorateProfileResult(original(...args), args?.[0]);
               });
               addPatch("getGuildMemberProfile", profileStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) {
-                      const id = String(args?.[0] || "");
-                      requestSharedProfile(id);
-                      return decorateSharedProfile(original(...args), id, sharedProfiles.get(id));
-                  }
+                  if (!isCurrentUser(args?.[0])) return original(...args);
                   return decorateProfileResult(original(...args), args?.[0]);
               });
 
@@ -1269,12 +1261,7 @@ jobs:
                   after("default", useUserProfileModule as any, (args, result) => {
                       const subject = args?.[0];
                       const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-                      if (!isCurrentUser(id)) {
-                          const remoteId = String(id || "");
-                          requestSharedProfile(remoteId);
-                          return decorateSharedProfile(result, remoteId, sharedProfiles.get(remoteId));
-                      }
-                      return decorateProfileResult(result, id);
+                      return isCurrentUser(id) ? decorateProfileResult(result, id) : result;
                   });
                   diagnostics.patches += 1;
               } catch (error: any) {
@@ -1285,12 +1272,7 @@ jobs:
                   after("default", useDisplayProfileModule as any, (args, result) => {
                       const subject = args?.[0];
                       const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-                      if (!isCurrentUser(id)) {
-                          const remoteId = String(id || "");
-                          requestSharedProfile(remoteId);
-                          return decorateSharedProfile(result, remoteId, sharedProfiles.get(remoteId));
-                      }
-                      return cloneObject(result, "profile");
+                      return isCurrentUser(id) ? cloneObject(result, "profile") : result;
                   });
                   diagnostics.patches += 1;
               } catch (error: any) {
