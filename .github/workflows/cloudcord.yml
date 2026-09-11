@@ -586,8 +586,13 @@ jobs:
               (pullOwnSharedProfile as any).lastAttempt = now;
               try {
                   const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
+                  if (response.status === 404) {
+                      if (preview.enabled) queueSharedPublish();
+                      return;
+                  }
                   if (!response.ok) return;
-                  const data = await response.json() as any;
+                  const payload = await response.json() as any;
+                  const data = payload?.profile ?? payload;
                   if (!data || typeof data !== "object") return;
                   const selectedBadges = { ...(preview.selectedBadges || {}) };
                   const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
@@ -630,7 +635,8 @@ jobs:
               sharedRequests.add(id);
               void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`)
                   .then(response => response.ok ? response.json() : null)
-                  .then(profile => {
+                  .then(payload => {
+                      const profile = payload?.profile ?? payload;
                       // Cache a missing profile too. Profile surfaces can render several
                       // times in quick succession and must not turn one 404 into a loop.
                       sharedProfiles.set(id, profile && typeof profile === "object" ? profile : {});
@@ -1955,7 +1961,7 @@ jobs:
                   items.append(fake_profile_item)
               if 'key: "STORE_CLOUD"' not in text:
                   items.append(store_cloud_item)
-              if 'key: "CLOUDCORD_DIAGNOSTICS"' not in text:
+              if 'key: "CLOUDCORD_DIAGNOSTICS"' not in text and 'key: "BUNNY_DEVELOPER"' not in text:
                   items.append(diagnostics_item)
 
               if items:

@@ -13,12 +13,6 @@ export { PupuIcon };
 export default function initSettings() {
     const baseItems: RowConfig[] = [
             {
-                key: "BOTCORD",
-                title: () => "BotCord",
-                icon: findAssetId("RobotIcon") || findAssetId("AppsIcon"),
-                render: () => import("@core/ui/settings/pages/BotCord")
-            },
-            {
                 key: "CLOUDCORD",
                 title: () => Strings.PUPU,
                 icon: { uri: PupuIcon },
@@ -30,6 +24,12 @@ export default function initSettings() {
                 title: () => "CloudSync",
                 icon: { uri: PupuIcon },
                 render: () => import("@core/ui/settings/pages/StoreCloud")
+            },
+            {
+                key: "BOTCORD",
+                title: () => "BotCord",
+                icon: findAssetId("RobotIcon") || findAssetId("AppsIcon"),
+                render: () => import("@core/ui/settings/pages/BotCord")
             },
             {
                 key: "BUNNY_PLUGINS",
@@ -52,12 +52,6 @@ export default function initSettings() {
                 usePredicate: () => isFontSupported()
             },
             {
-                key: "CLOUDCORD_BROWSER",
-                title: () => Strings.BROWSER,
-                icon: findAssetId("ChannelListMagnifyingGlassIcon"),
-                render: () => import("@core/ui/settings/pages/PluginBrowser"),
-            },
-            {
                 key: "BUNNY_DEVELOPER",
                 title: () => "Diagnostics",
                 icon: findAssetId("WrenchIcon"),
@@ -66,7 +60,7 @@ export default function initSettings() {
             }
         ];
 
-    const configurableKeys = new Set(["BOTCORD", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_BROWSER"]);
+    const configurableKeys = new Set(["BOTCORD", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS"]);
     const configuredOrder = settings.cloudcordTabOrder ?? [];
     const orderIndex = new Map(configuredOrder.map((key, index) => [key, index]));
     const items = baseItems
@@ -82,8 +76,8 @@ export default function initSettings() {
             };
         })
         .sort((a, b) => {
-            if (!configurableKeys.has(a.key) || !configurableKeys.has(b.key)) return 0;
-            return (orderIndex.get(a.key) ?? Number.MAX_SAFE_INTEGER) - (orderIndex.get(b.key) ?? Number.MAX_SAFE_INTEGER);
+            const rank = (key: string) => key === "CLOUDCORD" ? -1 : key === "BUNNY_DEVELOPER" ? Number.MAX_SAFE_INTEGER : (orderIndex.get(key) ?? baseItems.findIndex(item => item.key === key));
+            return rank(a.key) - rank(b.key);
         });
 
     registerSection({ name: "CloudCord", items });

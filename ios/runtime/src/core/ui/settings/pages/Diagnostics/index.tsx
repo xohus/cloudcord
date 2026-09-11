@@ -10,9 +10,38 @@ import { showToast } from "@ui/toasts";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 
-type RequestEvent = { method: string; target: string; status: number; durationMs: number; at: string; };
+type RequestEvent = {
+    id: number;
+    feature: string;
+    method: string;
+    target: string;
+    queryKeys: string[];
+    status: number;
+    ok: boolean;
+    redirected: boolean;
+    contentType: string;
+    durationMs: number;
+    at: string;
+    error?: string;
+};
 const requestEvents: RequestEvent[] = [];
 let fetchWrapped = false;
+let requestSequence = 0;
+
+function describeTarget(raw: string) {
+    try {
+        const url = new URL(raw);
+        const path = url.pathname;
+        const feature = url.hostname.includes("cloudcord-profiles") ? (path.includes("/profiles/") ? "Shared Profile" : "CloudCord API")
+            : url.hostname.includes("codeberg.org") ? "Badge Catalog"
+                : url.hostname.includes("github") ? "CloudCord Versions"
+                    : url.hostname.includes("google.com") ? "Connectivity"
+                        : "External";
+        return { target: `${url.origin}${path}`, queryKeys: [...url.searchParams.keys()], feature };
+    } catch {
+        return { target: "unknown", queryKeys: [], feature: "Runtime" };
+    }
+}
 
 function enableSanitizedRequestCapture() {
     if (fetchWrapped) return;
@@ -20,27 +49,28 @@ function enableSanitizedRequestCapture() {
     const originalFetch = globalThis.fetch.bind(globalThis);
     globalThis.fetch = async (input: any, init?: any) => {
         const started = Date.now();
+        const raw = typeof input === "string" ? input : input?.url ?? "unknown";
+        const details = describeTarget(raw);
+        const method = String(init?.method ?? input?.method ?? "GET").toUpperCase();
+        const id = ++requestSequence;
         try {
             const response = await originalFetch(input, init);
             if (settings.cloudcordDiagnosticsCapture === true) {
-                const raw = typeof input === "string" ? input : input?.url ?? "unknown";
-                let target = "unknown";
-                try { const url = new URL(raw); target = `${url.origin}${url.pathname}`; } catch {}
-                requestEvents.push({ method: String(init?.method ?? "GET").toUpperCase(), target, status: response.status, durationMs: Date.now() - started, at: new Date().toISOString() });
+                requestEvents.push({ id, ...details, method, status: response.status, ok: response.ok, redirected: response.redirected, contentType: response.headers?.get?.("content-type") ?? "", durationMs: Date.now() - started, at: new Date().toISOString() });
                 if (requestEvents.length > 200) requestEvents.splice(0, requestEvents.length - 200);
             }
             return response;
         } catch (error) {
-            if (settings.cloudcordDiagnosticsCapture === true) requestEvents.push({ method: String(init?.method ?? "GET").toUpperCase(), target: "request-failed", status: 0, durationMs: Date.now() - started, at: new Date().toISOString() });
+            if (settings.cloudcordDiagnosticsCapture === true) requestEvents.push({ id, ...details, method, status: 0, ok: false, redirected: false, contentType: "", durationMs: Date.now() - started, at: new Date().toISOString(), error: error instanceof Error ? `${error.name}: ${error.message}`.slice(0, 180) : "Request failed" });
             throw error;
         }
     };
 }
 
-const TAB_KEYS = ["BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_BROWSER", "STORE_CLOUD", "BOTCORD"] as const;
+const TAB_KEYS = ["STORE_CLOUD", "BOTCORD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS"] as const;
 const TAB_LABELS: Record<string, string> = {
     BOTCORD: "BotCord", STORE_CLOUD: "CloudSync", BUNNY_PLUGINS: "Plugins",
-    BUNNY_THEMES: "Themes", BUNNY_FONTS: "Fonts", CLOUDCORD_BROWSER: "Browser",
+    BUNNY_THEMES: "Themes", BUNNY_FONTS: "Fonts",
 };
 
 export default function Diagnostics() {
@@ -48,7 +78,8 @@ export default function Diagnostics() {
     useProxy(loaderConfig);
     const debug = getDebugInfo();
     const hidden = settings.cloudcordHiddenTabs ?? [];
-    const order = settings.cloudcordTabOrder?.length ? settings.cloudcordTabOrder : [...TAB_KEYS];
+    const savedOrder = settings.cloudcordTabOrder ?? [];
+    const order = [...savedOrder.filter(key => TAB_KEYS.includes(key as any)), ...TAB_KEYS.filter(key => !savedOrder.includes(key))];
     const [movingKey, setMovingKey] = useState<string | null>(null);
     const [versions, setVersions] = useState<Array<{ sha: string; date: string; title: string; }>>([]);
     useEffect(() => enableSanitizedRequestCapture(), []);
@@ -100,6 +131,10 @@ export default function Diagnostics() {
                     onValueChange={(value: boolean) => settings.cloudcordDiagnosticsCapture = value}
                 />
                 <TableRow arrow label="Copy diagnostics" subLabel="Copies build, loader, platform, and tab state" icon={<TableRow.Icon source={findAssetId("CopyIcon")} />} onPress={copySnapshot} />
+                <TableRow arrow label="Clear captured events" subLabel={`${requestEvents.length} sanitized events stored in memory`} icon={<TableRow.Icon source={findAssetId("TrashIcon") || findAssetId("LogsIcon")} />} onPress={() => {
+                    requestEvents.splice(0, requestEvents.length);
+                    showToast("Captured events cleared", findAssetId("Check"));
+                }} />
             </TableRowGroup>
 
             <TableRowGroup title="CloudCord version">
