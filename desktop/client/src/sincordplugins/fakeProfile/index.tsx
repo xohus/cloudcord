@@ -987,18 +987,13 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
             if (hasNitroFake) badges.push({
                 id: nativeNitroBadgeId(nl),
-                key: NITRO_LEVELS[nl].label,
-                description: NITRO_LEVELS[nl].label,
-                // Keep a stable component identity. An inline component here is remounted
-                // whenever Discord refreshes the badge row, which closed the popout after
-                // roughly one second even while the badge was still hovered.
-                component: NativeNitroBadge as any,
-                nitroLevel: nl,
-                nitroSince: profileData.nitroSince,
-                accentColor: profileData.accentColor,
-                accentColor2: profileData.accentColor2,
+                key: NITRO_LEVELS[nl].name,
+                description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
+                iconSrc: NITRO_LEVELS[nl].icon,
+                link: "https://discord.com/settings/premium",
+                props: { style },
                 position: 0
-            } as any);
+            });
             if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", description: "Gifting Badge", iconSrc: GIFT_LEVELS[gl].icon, position: 0, props: { style } });
             if (hasBoostFake) {
                 const boostSince = monthsAgo(BOOST_LEVEL_MONTHS[bm] ?? 1);
