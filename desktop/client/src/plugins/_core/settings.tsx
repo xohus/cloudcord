@@ -231,14 +231,14 @@ export default definePlugin({
                 key: "cloudcord_diagnostics",
                 title: "/diagnostics",
                 panelTitle: "CloudCord Diagnostics",
-                Component: PatchHelperTab,
+                Component: PatchHelperTab!,
                 Icon: MainSettingsIcon
             }),
             settings.store.diagnosticsMode && UpdaterTab && buildEntry({
                 key: "cloudcord_versions",
                 title: "CloudCord Versions",
                 panelTitle: "CloudCord Versions",
-                Component: UpdaterTab,
+                Component: UpdaterTab!,
                 Icon: BackupRestoreIcon
             })
         ].filter(isTruthy);
