@@ -79,22 +79,27 @@ function enableNitroUiCapture() {
     if (uiCaptureInstalled) return;
     uiCaptureInstalled = true;
     for (const name of NITRO_COMPONENTS) onJsxCreate(name, (_component, element) => {
-        const ret = element as any;
-        const metadata = safeUiMetadata(ret?.props);
-        const searchable = `${name} ${Object.values(metadata).join(" ")}`.toLowerCase();
-        if (!/(nitro|premium)/.test(searchable)) return element;
-        addUiEvent(name, "render", metadata);
-        for (const handler of ["onPress", "onHoverIn", "onHoverOut"] as const) {
-            const original = ret?.props?.[handler];
-            if (typeof original !== "function" || (original as any).__cloudCordTraced) continue;
-            const traced = (...args: any[]) => {
-                addUiEvent(name, handler, metadata);
-                return original(...args);
-            };
-            (traced as any).__cloudCordTraced = true;
-            ret.props[handler] = traced;
+        try {
+            const ret = element as any;
+            const metadata = safeUiMetadata(ret?.props);
+            const searchable = `${name} ${Object.values(metadata).join(" ")}`.toLowerCase();
+            if (!/(nitro|premium)/.test(searchable)) return element;
+            addUiEvent(name, "render", metadata);
+            if (!ret?.props || !Object.isExtensible(ret.props)) return element;
+            for (const handler of ["onPress", "onHoverIn", "onHoverOut"] as const) {
+                const original = ret.props[handler];
+                if (typeof original !== "function" || (original as any).__cloudCordTraced) continue;
+                const traced = (...args: any[]) => {
+                    addUiEvent(name, handler, metadata);
+                    return original(...args);
+                };
+                (traced as any).__cloudCordTraced = true;
+                ret.props[handler] = traced;
+            }
+        } catch {
+            // Diagnostics must always remain observational and never break rendering.
         }
-        return ret;
+        return element;
     });
 }
 

@@ -226,7 +226,7 @@ function CloudCordSettings() {
 
             <FormSwitch
                 title="Diagnostics"
-                description="Show CloudCord diagnostics, interception helpers, and version controls in the settings sidebar."
+                description="Show CloudCord diagnostics and interception helpers in the settings sidebar."
                 value={diagnosticsMode}
                 onChange={(value: boolean) => cloudCordSettings.store.diagnosticsMode = value}
                 hideBorder

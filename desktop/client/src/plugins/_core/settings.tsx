@@ -22,7 +22,6 @@ import {
     PatchHelperTab,
     PluginsTab,
     ThemesTab,
-    UpdaterTab,
     VencordTab,
 } from "@components/settings";
 import { gitHashShort } from "@shared/vencordUserAgent";
@@ -98,7 +97,7 @@ export const settings = definePluginSettings({
     },
     diagnosticsMode: {
         type: OptionType.BOOLEAN,
-        description: "Show CloudCord diagnostics, interception helpers, and version controls",
+        description: "Show CloudCord diagnostics and interception helpers",
         default: false
     }
 });
@@ -233,13 +232,6 @@ export default definePlugin({
                 panelTitle: "CloudCord Diagnostics",
                 Component: PatchHelperTab!,
                 Icon: MainSettingsIcon
-            }),
-            settings.store.diagnosticsMode && UpdaterTab && buildEntry({
-                key: "cloudcord_versions",
-                title: "CloudCord Versions",
-                panelTitle: "CloudCord Versions",
-                Component: UpdaterTab!,
-                Icon: BackupRestoreIcon
             })
         ].filter(isTruthy);
 
