@@ -10293,6 +10293,22 @@
     }
     return cloned;
   }
+  function decorateProfileResult(original, userId) {
+    if (!original || !preview.enabled || !isCurrentUser(userId))
+      return original;
+    var decorated = cloneObject(original, "profile");
+    if (original.user)
+      setOwnValue(decorated, "user", cloneObject(original.user, "user"));
+    if (original.userProfile)
+      setOwnValue(decorated, "userProfile", cloneObject(original.userProfile, "profile"));
+    if (original.guildMemberProfile)
+      setOwnValue(decorated, "guildMemberProfile", cloneObject(original.guildMemberProfile, "profile"));
+    if (original.displayProfile)
+      setOwnValue(decorated, "displayProfile", cloneObject(original.displayProfile, "profile"));
+    if (original.profile)
+      setOwnValue(decorated, "profile", cloneObject(original.profile, "profile"));
+    return decorated;
+  }
   function isCurrentUser(id) {
     return !id || !currentUserId || id === currentUserId;
   }
@@ -10539,14 +10555,44 @@
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
-      var user = original(...args);
       if (!isCurrentUser(args?.[0]))
-        return user;
+        return original(...args);
+      var user = original(...args);
       realCurrentUser = user || realCurrentUser;
       return cloneObject(user, "user");
     });
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
+    addPatch("getUserProfile", profileStore, (args, original) => {
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
+      return decorateProfileResult(original(...args), args?.[0]);
+    });
+    addPatch("getGuildMemberProfile", profileStore, (args, original) => {
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
+      return decorateProfileResult(original(...args), args?.[0]);
+    });
+    try {
+      after("default", useUserProfileModule, (args, result) => {
+        var subject = args?.[0];
+        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+        return decorateProfileResult(result, id);
+      });
+      diagnostics.patches += 1;
+    } catch (error) {
+      diagnostics.last = error?.message || "Could not connect profile view";
+    }
+    try {
+      after("default", useDisplayProfileModule, (args, result) => {
+        var subject = args?.[0];
+        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+        return isCurrentUser(id) ? cloneObject(result, "profile") : result;
+      });
+      diagnostics.patches += 1;
+    } catch (error) {
+      diagnostics.last = error?.message || "Could not connect profile banner";
+    }
     var avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
     var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
     diagnostics.avatarResolver = !!avatarResolver;
