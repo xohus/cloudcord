@@ -1015,7 +1015,10 @@ jobs:
           }
 
           function isCurrentUser(id?: string) {
-              return !id || !currentUserId || id === currentUserId;
+              // Tablet navigation renders before every profile surface has an id.
+              // Treating an unknown id as the current user leaks Fake Profile into
+              // Browse Channels and can make its permission-backed list go blank.
+              return !!id && !!currentUserId && id === currentUserId;
           }
 
           function addPatch(method: string, parent: any, handler: (args: any[], original: Function) => any) {
@@ -1122,7 +1125,7 @@ jobs:
           }
 
           function requestIsCurrent(args: any[]) {
-              if (!currentUserId) return true;
+              if (!currentUserId) return false;
               return args.some(value => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
           }
 
@@ -1217,19 +1220,10 @@ jobs:
                   currentUserId = realCurrentUser?.id || null;
               } catch {}
 
-              addPatch("getCurrentUser", userStore, (args, original) => {
-                  const user = original(...args);
-                  realCurrentUser = user || realCurrentUser;
-                  currentUserId = user?.id || currentUserId;
-                  if (preview.enabled) queueSharedPublish();
-                  return cloneObject(user, "user");
-              });
-              addPatch("getUser", userStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) return original(...args);
-                  const user = original(...args);
-                  realCurrentUser = user || realCurrentUser;
-                  return cloneObject(user, "user");
-              });
+              // Preserve Discord's native identity objects. Browse Channels,
+              // permissions, guild rows and DMs all depend on their exact shape
+              // and identity. Visual spoofing remains in the targeted profile,
+              // badge, avatar and banner presentation hooks below.
 
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
               diagnostics.profileStore = !!profileStore;
