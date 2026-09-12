@@ -12949,52 +12949,55 @@
         }
       });
     };
-    var origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
-    var rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
-    Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
-      enumerable: true,
-      configurable: true,
-      get: () => ({
-        ...rendererConfigValue,
-        VendettaCustomPage: {
-          type: "route",
-          title: () => "CloudCord",
-          useTitle: () => "CloudCord",
-          screen: {
-            route: "VendettaCustomPage",
-            getComponent: () => CustomPageRenderer
-          }
-        },
-        PUPU_CUSTOM_PAGE: {
-          type: "route",
-          title: () => "CloudCord",
-          useTitle: () => "CloudCord",
-          screen: {
-            route: "PUPU_CUSTOM_PAGE",
-            getComponent: () => CustomPageRenderer
-          }
-        },
-        BUNNY_CUSTOM_PAGE: {
-          type: "route",
-          title: () => "CloudCord",
-          useTitle: () => "CloudCord",
-          screen: {
-            route: "BUNNY_CUSTOM_PAGE",
-            getComponent: () => CustomPageRenderer
-          }
-        },
-        ...getRows()
-      }),
-      set: (v2) => rendererConfigValue = v2
-    });
-    unpatches.push(() => {
+    try {
+      var origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
+      var rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
       Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
-        value: origRendererConfig,
-        writable: true,
-        get: void 0,
-        set: void 0
+        enumerable: true,
+        configurable: true,
+        get: () => ({
+          ...rendererConfigValue,
+          VendettaCustomPage: {
+            type: "route",
+            title: () => "CloudCord",
+            useTitle: () => "CloudCord",
+            screen: {
+              route: "VendettaCustomPage",
+              getComponent: () => CustomPageRenderer
+            }
+          },
+          PUPU_CUSTOM_PAGE: {
+            type: "route",
+            title: () => "CloudCord",
+            useTitle: () => "CloudCord",
+            screen: {
+              route: "PUPU_CUSTOM_PAGE",
+              getComponent: () => CustomPageRenderer
+            }
+          },
+          BUNNY_CUSTOM_PAGE: {
+            type: "route",
+            title: () => "CloudCord",
+            useTitle: () => "CloudCord",
+            screen: {
+              route: "BUNNY_CUSTOM_PAGE",
+              getComponent: () => CustomPageRenderer
+            }
+          },
+          ...getRows()
+        }),
+        set: (v2) => rendererConfigValue = v2
       });
-    });
+      unpatches.push(() => {
+        Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+          value: origRendererConfig,
+          writable: true,
+          configurable: true
+        });
+      });
+    } catch (error) {
+      console.error("CloudCord renderer config patch failed", error);
+    }
     try {
       unpatches.push(after("createList", createListModule, function(args, ret) {
         var [config] = args;
