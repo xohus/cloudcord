@@ -9744,8 +9744,10 @@
       setOwnValue(cloned, "getBannerURL", () => data.banner);
     }
     if (shouldReplaceSharedBadges(data)) {
-      setOwnValue(cloned, "publicFlags", 0);
-      setOwnValue(cloned, "flags", 0);
+      var sharedFlags = Number(data.badgeFlags || 0);
+      setOwnValue(cloned, "publicFlags", sharedFlags);
+      setOwnValue(cloned, "public_flags", sharedFlags);
+      setOwnValue(cloned, "flags", sharedFlags);
       setOwnValue(cloned, "badges", []);
       setOwnValue(cloned, "profileBadges", []);
       setOwnValue(cloned, "premiumSince", null);
@@ -9767,10 +9769,32 @@
     var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
     if (cloned.user)
       setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
+    if (data.username)
+      setOwnValue(cloned, "username", data.username);
+    if (data.globalName || data.displayName) {
+      var displayName2 = data.globalName || data.displayName;
+      setOwnValue(cloned, "globalName", displayName2);
+      setOwnValue(cloned, "displayName", displayName2);
+    }
+    if (data.avatar) {
+      setOwnValue(cloned, "avatarURL", data.avatar);
+      setOwnValue(cloned, "avatarUrl", data.avatar);
+      setOwnValue(cloned, "avatarSrc", data.avatar);
+      setOwnValue(cloned, "getAvatarURL", () => data.avatar);
+    }
     if (data.banner) {
+      setOwnValue(cloned, "banner", data.banner);
       setOwnValue(cloned, "bannerURL", data.banner);
       setOwnValue(cloned, "bannerUrl", data.banner);
       setOwnValue(cloned, "bannerSrc", data.banner);
+      setOwnValue(cloned, "getBannerURL", () => data.banner);
+      setOwnValue(cloned, "getPreviewBanner", () => data.banner);
+    }
+    if (shouldReplaceSharedBadges(data)) {
+      var sharedFlags = Number(data.badgeFlags || 0);
+      setOwnValue(cloned, "publicFlags", sharedFlags);
+      setOwnValue(cloned, "public_flags", sharedFlags);
+      setOwnValue(cloned, "flags", sharedFlags);
     }
     if (data.bio != null)
       setOwnValue(cloned, "bio", data.bio);
