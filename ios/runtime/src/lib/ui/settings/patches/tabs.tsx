@@ -1,6 +1,6 @@
-import { after } from "@lib/api/patcher";
+import { after, before } from "@lib/api/patcher";
 import { TableRow } from "@metro/common/components";
-import { findByNameLazy, findByPropsLazy } from "@metro/wrappers";
+import { findByNameAll, findByNameLazy, findByPropsAll, findByPropsLazy } from "@metro/wrappers";
 import { registeredSections } from "@ui/settings";
 
 import { CustomPageRenderer, wrapOnPress } from "./shared";
@@ -11,6 +11,44 @@ const createListModule = findByPropsLazy("createList");
 const SettingsOverviewScreen = findByNameLazy("SettingsOverviewScreen", false);
 
 export function patchTabsUI(unpatches: (() => void | boolean)[]) {
+    const fallbackNames = [
+        "renderer-live-table",
+        "renderer-export-accessor",
+        "create-list-lazy-before",
+        "create-list-lazy-after-input",
+        "create-list-lazy-after-output",
+        "create-list-all-before",
+        "create-list-all-after-input",
+        "create-list-all-after-output",
+        "settings-overview-before",
+        "settings-overview-after-direct",
+        "settings-overview-after-tree",
+        "legacy-settings-panel",
+        "legacy-screen-route"
+    ] as const;
+    (globalThis as any).__CLOUDCORD_SETTINGS_FALLBACKS__ = fallbackNames;
+
+    const getCustomRoutes = () => ({
+        VendettaCustomPage: {
+            type: "route",
+            title: () => "CloudCord",
+            useTitle: () => "CloudCord",
+            screen: { route: "VendettaCustomPage", getComponent: () => CustomPageRenderer }
+        },
+        PUPU_CUSTOM_PAGE: {
+            type: "route",
+            title: () => "CloudCord",
+            useTitle: () => "CloudCord",
+            screen: { route: "PUPU_CUSTOM_PAGE", getComponent: () => CustomPageRenderer }
+        },
+        BUNNY_CUSTOM_PAGE: {
+            type: "route",
+            title: () => "CloudCord",
+            useTitle: () => "CloudCord",
+            screen: { route: "BUNNY_CUSTOM_PAGE", getComponent: () => CustomPageRenderer }
+        }
+    });
+
     const getRows = () => Object.values(registeredSections)
         .flatMap(sect => sect.map(row => ({
             [row.key]: {
@@ -70,11 +108,13 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
                 return;
             }
 
-            // React elements and the 344 settings-list result keep their useful
-            // descendants here. Avoid walking arbitrary module/store objects.
-            visit(value.sections, depth + 1);
-            visit(value.props, depth + 1);
-            visit(value.children, depth + 1);
+            // Discord has moved the settings collection through each of these
+            // containers across its tabs, search, tablet and legacy layouts.
+            // Keeping these explicit avoids walking arbitrary module/store data.
+            for (const key of [
+                "sections", "sectionGroups", "groups", "data", "props",
+                "children", "items", "content", "list", "config", "result"
+            ]) visit(value[key], depth + 1);
         };
         visit(root, 0);
     };
@@ -85,38 +125,18 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         const origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
         let rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
 
+        // Fallback 1: mutate the live renderer table in-place. This survives
+        // Metro namespace objects whose export property cannot be redefined.
+        if (rendererConfigValue && typeof rendererConfigValue === "object") {
+            Object.assign(rendererConfigValue, getCustomRoutes(), getRows());
+        }
+
         Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
         enumerable: true,
         configurable: true,
         get: () => ({
             ...rendererConfigValue,
-            VendettaCustomPage: {
-                type: "route",
-                title: () => "CloudCord",
-                useTitle: () => "CloudCord",
-                screen: {
-                    route: "VendettaCustomPage",
-                    getComponent: () => CustomPageRenderer
-                }
-            },
-            PUPU_CUSTOM_PAGE: {
-                type: "route",
-                title: () => "CloudCord",
-                useTitle: () => "CloudCord",
-                screen: {
-                    route: "PUPU_CUSTOM_PAGE",
-                    getComponent: () => CustomPageRenderer
-                }
-            },
-            BUNNY_CUSTOM_PAGE: {
-                type: "route",
-                title: () => "CloudCord",
-                useTitle: () => "CloudCord",
-                screen: {
-                    route: "BUNNY_CUSTOM_PAGE",
-                    getComponent: () => CustomPageRenderer
-                }
-            },
+            ...getCustomRoutes(),
             ...getRows()
         }),
         set: v => rendererConfigValue = v,
@@ -133,22 +153,52 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         console.error("CloudCord renderer config patch failed", error);
     }
 
-    try{
-        unpatches.push(after("createList", createListModule, function(args, ret) {
+    const patchCreateListModule = (module: any) => {
+        // Discord 344 materializes a new list from this config. Insert our rows
+        // before that copy is created; the after-hook below remains a fallback
+        // for builds that expose their sections only in the returned tree.
+        unpatches.push(before("createList", module, function(args) {
+            const [config] = args;
+            insertCloudCordSectionsInTree(config);
+            return args;
+        }));
+
+        unpatches.push(after("createList", module, function(args, ret) {
             const [config] = args;
 
-            insertCloudCordSectionsInTree(config?.sections);
+            insertCloudCordSectionsInTree(config);
             insertCloudCordSectionsInTree(ret);
             return ret;
         },));
+    };
+
+    try {
+        // Fallbacks 3-6: patch the lazy match plus every initialized 344 module
+        // exporting createList (the IPA currently contains two such symbols).
+        const modules = [createListModule, ...findByPropsAll("createList")].filter(Boolean);
+        [...new Set(modules)].forEach(module => {
+            try { patchCreateListModule(module); } catch {}
+        });
     } catch {}
 
     try {
-        unpatches.push(after("default", SettingsOverviewScreen, (_, ret) => {
-            const tree = findInReactTree(ret, item => Array.isArray(item?.props?.sections));
-            insertCloudCordSections(tree?.props?.sections);
-            insertCloudCordSectionsInTree(ret);
-            return ret;
-        }));
+        const modules = [
+            SettingsOverviewScreen,
+            ...findByNameAll("SettingsOverviewScreen", false)
+        ].filter(Boolean);
+        [...new Set(modules)].forEach(module => {
+            try {
+                unpatches.push(before("default", module, args => {
+                    args.forEach(insertCloudCordSectionsInTree);
+                    return args;
+                }));
+                unpatches.push(after("default", module, (_, ret) => {
+                    const tree = findInReactTree(ret, item => Array.isArray(item?.props?.sections));
+                    insertCloudCordSections(tree?.props?.sections);
+                    insertCloudCordSectionsInTree(ret);
+                    return ret;
+                }));
+            } catch {}
+        });
     } catch {}
 };
