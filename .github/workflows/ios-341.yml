@@ -71,10 +71,7 @@ jobs:
             --runtime-deb "$(find ios/native-ios/packages -name '*.deb' -print -quit)" \
             --output cloudcord0.ipa
           unzip -p cloudcord0.ipa Payload/Discord.app/Info.plist | grep -q '<string>344.1</string>'
-          if unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/payload-base.js | grep -q '__PYON_LOADER__'; then
-            echo 'Discord 344 must not enter the legacy Pyon startup path' >&2
-            exit 1
-          fi
+          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/payload-base.js | grep -q '__PYON_LOADER__'
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/payload-base.js | grep -q 'loaderName:"CloudCord"'
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'UserProfileStore'
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'useBadges'
@@ -91,6 +88,11 @@ jobs:
           if otool -L "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
             | grep -qi 'CydiaSubstrate'; then
             echo 'CloudCordTweak unexpectedly depends on CydiaSubstrate' >&2
+            exit 1
+          fi
+          if strings "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
+            | grep -Eq 'UIKeyboardDockView|TUIPredictionView|TUIEmojiSearchInputView|DCDThemeColor|fontWithName:size:'; then
+            echo 'Discord 344 build still contains incompatible native UI hooks' >&2
             exit 1
           fi
 
