@@ -139,6 +139,7 @@ def add_load_command(executable: Path, dylib_path: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--discord-ipa", type=Path, required=True)
+    parser.add_argument("--discord-version", required=True)
     parser.add_argument("--runtime-deb", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -150,8 +151,10 @@ def main() -> None:
             archive.extractall(app_root)
         discord_app = next((app_root / "Payload").glob("*.app"))
         info = plistlib.loads((discord_app / "Info.plist").read_bytes())
-        if info.get("CFBundleShortVersionString") != "341.0":
-            raise RuntimeError(f"Expected Discord 341.0, got {info.get('CFBundleShortVersionString')}")
+        if info.get("CFBundleShortVersionString") != args.discord_version:
+            raise RuntimeError(
+                f"Expected Discord {args.discord_version}, got {info.get('CFBundleShortVersionString')}"
+            )
 
         executable = discord_app / info["CFBundleExecutable"]
         app_entitlements = read_entitlements(executable)
