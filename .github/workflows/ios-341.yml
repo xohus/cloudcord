@@ -61,7 +61,7 @@ jobs:
               method_setImplementation(method, replacement);
           }
           OBJC
-          make package FINALPACKAGE=1
+          make package FINALPACKAGE=1 CLOUDCORD_SAFE_UI=1
 
       - name: Package Discord 344.1 IPA
         run: |

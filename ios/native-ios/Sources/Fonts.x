@@ -193,6 +193,7 @@ void patchFonts(NSDictionary<NSString *, NSString *> *mainFonts, NSString *fontD
     }
 }
 
+#if !CLOUDCORD_SAFE_UI
 %ctor
 {
     @autoreleasepool
@@ -202,3 +203,4 @@ void patchFonts(NSDictionary<NSString *, NSString *> *mainFonts, NSString *fontD
         %init;
     }
 }
+#endif

@@ -108,9 +108,10 @@ static BOOL           isShaking      = NO;
 
 static BOOL requiresPostMainInjection(void)
 {
-    NSString *version = [[NSBundle mainBundle]
-        objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"0";
-    return [version compare:@"344.0" options:NSNumericSearch] != NSOrderedAscending;
+    // Kettu's bridge must register before Discord's main bundle so Metro module
+    // factories can be observed. UI safety is handled by disabling incompatible
+    // native font/theme constructors in the 344 build, not by changing JS order.
+    return NO;
 }
 
 static NSString *sha256Hex(NSData *data)
