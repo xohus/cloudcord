@@ -10172,7 +10172,7 @@
     return decorated;
   }
   function isCurrentUser(id) {
-    return !!id && !!currentUserId && id === currentUserId;
+    return !id || !currentUserId || id === currentUserId;
   }
   function addPatch(method, parent, handler) {
     if (!parent?.[method])
@@ -10196,7 +10196,7 @@
   }
   function requestIsCurrent(args) {
     if (!currentUserId)
-      return false;
+      return true;
     return args.some((value) => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
   }
   function renderedUserId(props) {
@@ -10313,6 +10313,21 @@
       currentUserId = realCurrentUser?.id || null;
     } catch (e) {
     }
+    addPatch("getCurrentUser", userStore, (args, original) => {
+      var user = original(...args);
+      realCurrentUser = user || realCurrentUser;
+      currentUserId = user?.id || currentUserId;
+      if (preview.enabled)
+        queueSharedPublish();
+      return cloneObject(user, "user");
+    });
+    addPatch("getUser", userStore, (args, original) => {
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
+      var user = original(...args);
+      realCurrentUser = user || realCurrentUser;
+      return cloneObject(user, "user");
+    });
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
     addPatch("getUserProfile", profileStore, (args, original) => {
