@@ -399,14 +399,25 @@ function requestSharedProfile(userId: string, force = false) {
         .then(r => r.ok ? r.json() : null).then(payload => {
             const data = payload?.profile ?? payload;
             if (!data) return;
-            sharedProfiles.set(userId, fromSharedProfile(data));
+            const next = fromSharedProfile(data);
+            const previous = sharedProfiles.get(userId);
+            const changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
+            sharedProfiles.set(userId, next);
             sharedProfileFetchedAt.set(userId, Date.now());
+            if (!changed) return;
             try {
                 const UPS = (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore");
                 UPS?.emitChange?.();
                 (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
             } catch { }
         }).catch(() => { }).finally(() => sharedRequests.delete(userId));
+}
+
+function refreshVisibleSharedProfiles() {
+    // Any remote user encountered by a profile, member list, DM or badge surface
+    // is retained in this small cache. Refresh those users automatically so two
+    // desktop clients can test sync without reopening Discord or the profile.
+    for (const userId of sharedProfiles.keys()) requestSharedProfile(userId, true);
 }
 
 function decorateSharedProfile(profile: any, data: CustomProfileData) {
@@ -1152,7 +1163,10 @@ fakeObfuscatedEmail(real: string | null) {
         // Pull the canonical snapshot before publishing. Publishing first made a
         // stale desktop installation overwrite changes made on mobile.
         await pullOwnSharedProfile();
-        if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15000);
+        if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => {
+            void pullOwnSharedProfile();
+            refreshVisibleSharedProfiles();
+        }, 5000);
         if (isEnabled) forceAccountPanelRerender();
     },
 
