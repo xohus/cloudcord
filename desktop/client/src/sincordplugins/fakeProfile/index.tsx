@@ -183,6 +183,17 @@ function NativeNitroBadge({ nitroLevel, nitroSince, accentColor, accentColor2 }:
     </Popout>;
 }
 
+const nitroBadgeComponents = new Map<string, React.ComponentType>();
+function stableNitroBadgeComponent(userId: string, nitroLevel: number, nitroSince?: string, accentColor?: number, accentColor2?: number) {
+    const key = `${userId}:${nitroLevel}:${nitroSince || ""}:${accentColor ?? ""}:${accentColor2 ?? ""}`;
+    let Component = nitroBadgeComponents.get(key);
+    if (!Component) {
+        Component = () => <NativeNitroBadge nitroLevel={nitroLevel} nitroSince={nitroSince} accentColor={accentColor} accentColor2={accentColor2} />;
+        nitroBadgeComponents.set(key, Component);
+    }
+    return Component;
+}
+
 function nativeNitroBadgeId(level: number): string {
     const months = NITRO_LEVEL_MONTHS[Math.max(0, Math.min(NITRO_LEVEL_MONTHS.length - 1, level))] ?? 0;
     return months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
@@ -1009,7 +1020,7 @@ fakeObfuscatedEmail(real: string | null) {
                 }
             } catch { }
 
-            const style = { borderRadius: "50%", width: "26px", height: "26px" };
+            const style = { borderRadius: "50%", width: "30px", height: "30px" };
             const nl = profileData.nitroLevel ?? -1;
             const bm = profileData.boostMonths ?? -1;
             const gl = profileData.giftLevel ?? -1;
@@ -1031,16 +1042,13 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
             if (hasNitroFake) badges.push({
-                id: nativeNitroBadgeId(nl),
+                // A native premium ID makes Discord replace this component with
+                // its compact tooltip on the next badge-row refresh.
+                id: "sp_nitro",
                 key: NITRO_LEVELS[nl].name,
                 description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
                 iconSrc: NITRO_LEVELS[nl].icon,
-                component: (() => <NativeNitroBadge
-                    nitroLevel={nl}
-                    nitroSince={profileData?.nitroSince}
-                    accentColor={profileData?.accentColor}
-                    accentColor2={profileData?.accentColor2}
-                />) as any,
+                component: stableNitroBadgeComponent(userId, nl, profileData.nitroSince, profileData.accentColor, profileData.accentColor2) as any,
                 position: 0
             });
             if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", description: "Gifting Badge", iconSrc: GIFT_LEVELS[gl].icon, position: 0, props: { style } });

@@ -2,6 +2,10 @@
 
 /* Never let profile styling suppress Discord's native server/channel ping
    counters. Some Discord builds reuse badge class fragments inside popouts. */
+[class*="numberBadge_"],
+[class*="mentionsBadge_"],
+[class*="lowerBadge_"],
+[class*="upperBadge_"],
 [class*="guilds"] [class*="numberBadge"],
 [class*="sidebar"] [class*="numberBadge"],
 [class*="channel"] [class*="numberBadge"] {
@@ -354,8 +358,8 @@
 
 .cp-native-nitro-trigger {
     display: inline-flex;
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     align-items: center;
     justify-content: center;
     cursor: default;
@@ -363,8 +367,8 @@
 
 .cp-native-nitro-trigger img {
     display: block;
-    width: 30px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
     object-fit: contain;
 }
 
