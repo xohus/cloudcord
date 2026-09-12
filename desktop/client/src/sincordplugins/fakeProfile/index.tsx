@@ -1064,27 +1064,10 @@ fakeObfuscatedEmail(real: string | null) {
         addContextMenuPatch("user-context", userContextMenuPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
 
-        try {
-            const US = (Vencord as any).Webpack?.findByProps?.("getCurrentUser", "getUser");
-            if (US && !US._cp_hook) {
-                let _lastReal: any = null, _lastFake: any = null, _lastVer = -1;
-                const origCurrent = US.getCurrentUser.bind(US);
-                US.getCurrentUser = () => {
-                    const real = origCurrent();
-                    if (real) {
-                        if (real !== _lastReal) { if (real.username) _realUsername = real.username; if (real.globalName) _realGlobalName = real.globalName; }
-                        if (real === _lastReal && _lastVer === _dataVersion && _lastFake) return _lastFake;
-                        _lastReal = real; _lastVer = _dataVersion; _lastFake = this.fakeCurrentUser(real);
-                        return _lastFake;
-                    }
-                    return this.fakeCurrentUser(real);
-                };
-                const origGet = US.getUser.bind(US);
-                US.getUser = (id: string) => isMe(id) ? this.fakeCurrentUser(origGet(id)) : this.fakeOtherUser(origGet(id));
-                US._cp_hook = true;
-            }
-        } catch { }
-
+        // Do not replace Discord's global UserStore methods. Mentions, unread
+        // counters, permissions and channel navigation depend on native user
+        // identity. The targeted profile/component patches above provide the
+        // visual fake profile without mutating Discord's core account store.
         try {
             const UPS = (Vencord as any).Webpack?.findByProps?.("getUserProfile", "getGuildMemberProfile");
             if (UPS && !UPS._cp_hook) {
