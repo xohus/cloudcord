@@ -542,9 +542,11 @@ function scanNode(node: Node) {
                     // Large Nitro surfaces use Discord's full advancing milestone
                     // artwork. Using the compact profile-badge icon here also
                     // overwrote CloudCord's own hover artwork after it mounted.
-                    if ((img.clientWidth || img.naturalWidth) >= 80) {
+                    if ((img.clientWidth || img.naturalWidth) >= 48) {
                         if (!(img as any).__cp_orig_src) (img as any).__cp_orig_src = img.src;
                         img.src = NITRO_LEVELS[level].art;
+                        img.classList.add("cp-discord-nitro-milestone-art");
+                        img.parentElement?.classList.add("cp-discord-nitro-milestone-slot");
                     }
                     break;
                 }

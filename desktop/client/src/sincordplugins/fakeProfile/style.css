@@ -14,6 +14,24 @@
     opacity: 1 !important;
 }
 
+/* Keep Discord's native Nitro controller and animation, but use the expanded
+   milestone artwork scale instead of the compact badge scale. */
+.cp-discord-nitro-milestone-slot {
+    min-width: 132px !important;
+    min-height: 132px !important;
+    display: grid !important;
+    place-items: center !important;
+    overflow: visible !important;
+}
+
+.cp-discord-nitro-milestone-art {
+    width: 132px !important;
+    height: 132px !important;
+    max-width: none !important;
+    max-height: none !important;
+    object-fit: contain !important;
+}
+
 .cp-account-selector-inline {
     width: 100%;
     margin-bottom: 8px;
