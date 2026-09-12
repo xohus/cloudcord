@@ -79,6 +79,15 @@ jobs:
           unzip -l cloudcord0.ipa | grep -q 'Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload'
           rm -rf "$RUNNER_TEMP/cloudcord-stream-check"
           unzip -q cloudcord0.ipa -d "$RUNNER_TEMP/cloudcord-stream-check"
+          embedded_runtime="$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/BunnyResources.bundle/runtime.js"
+          for fallback in \
+            renderer-live-table renderer-export-accessor \
+            create-list-lazy-before create-list-lazy-after-input create-list-lazy-after-output \
+            create-list-all-before create-list-all-after-input create-list-all-after-output \
+            settings-overview-before settings-overview-after-direct settings-overview-after-tree \
+            legacy-settings-panel legacy-screen-route; do
+            grep -q "$fallback" "$embedded_runtime"
+          done
           ldid -e "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload" \
             | grep -q 'application-groups'
           otool -L "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Discord" \
@@ -95,6 +104,8 @@ jobs:
             echo 'Discord 344 build still contains incompatible native UI hooks' >&2
             exit 1
           fi
+          strings "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
+            | grep -q '3:%@'
 
       - uses: actions/upload-artifact@v4
         with:
