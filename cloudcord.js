@@ -10168,7 +10168,7 @@
     return decorated;
   }
   function isCurrentUser(id) {
-    return !id || !currentUserId || id === currentUserId;
+    return !!id && !!currentUserId && id === currentUserId;
   }
   function addPatch(method, parent, handler) {
     if (!parent?.[method])
@@ -10192,7 +10192,7 @@
   }
   function requestIsCurrent(args) {
     if (!currentUserId)
-      return true;
+      return false;
     return args.some((value) => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
   }
   function renderedUserId(props) {
