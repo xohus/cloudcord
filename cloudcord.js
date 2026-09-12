@@ -10254,8 +10254,6 @@
       var user = original(...args);
       realCurrentUser = user || realCurrentUser;
       currentUserId = user?.id || currentUserId;
-      if (preview.enabled)
-        queueSharedPublish();
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
@@ -10393,10 +10391,8 @@
         yield pullOwnSharedProfile();
         if (!sharedSyncTimer)
           sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15e3);
-        if (preview.enabled) {
+        if (preview.enabled)
           refreshPreview();
-          queueSharedPublish();
-        }
       } catch (error) {
         diagnostics.last = error?.message || "Could not restore Fake Profile";
         initPromise = null;
