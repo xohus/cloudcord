@@ -54,6 +54,31 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         });
     };
 
+    const insertCloudCordSectionsInTree = (root: any) => {
+        const seen = new WeakSet<object>();
+        const visit = (value: any, depth: number) => {
+            if (depth > 10 || value == null || typeof value !== "object") return;
+            if (seen.has(value)) return;
+            seen.add(value);
+
+            if (Array.isArray(value)) {
+                if (value.some(item => Array.isArray(item?.settings))) {
+                    insertCloudCordSections(value);
+                    return;
+                }
+                value.forEach(item => visit(item, depth + 1));
+                return;
+            }
+
+            // React elements and the 344 settings-list result keep their useful
+            // descendants here. Avoid walking arbitrary module/store objects.
+            visit(value.sections, depth + 1);
+            visit(value.props, depth + 1);
+            visit(value.children, depth + 1);
+        };
+        visit(root, 0);
+    };
+
     // Discord 344 can expose this export through a frozen/lazy Metro namespace.
     // A rejected property override must not prevent the independent section hooks below.
     try {
@@ -111,8 +136,9 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     try{
         unpatches.push(after("createList", createListModule, function(args, ret) {
             const [config] = args;
-        
-            insertCloudCordSections(config?.sections);
+
+            insertCloudCordSectionsInTree(config?.sections);
+            insertCloudCordSectionsInTree(ret);
             return ret;
         },));
     } catch {}
@@ -121,6 +147,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         unpatches.push(after("default", SettingsOverviewScreen, (_, ret) => {
             const tree = findInReactTree(ret, item => Array.isArray(item?.props?.sections));
             insertCloudCordSections(tree?.props?.sections);
+            insertCloudCordSectionsInTree(ret);
             return ret;
         }));
     } catch {}
