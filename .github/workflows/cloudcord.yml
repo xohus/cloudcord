@@ -1000,7 +1000,10 @@ jobs:
           }
 
           function isCurrentUser(id?: string) {
-              return !id || !currentUserId || id === currentUserId;
+              // Unknown identity must never mean "every user". During early
+              // startup that caused profile/media patches to affect all channel
+              // rows and could leave a guild with no renderable channels.
+              return !!id && !!currentUserId && id === currentUserId;
           }
 
           function addPatch(method: string, parent: any, handler: (args: any[], original: Function) => any) {
@@ -1107,7 +1110,7 @@ jobs:
           }
 
           function requestIsCurrent(args: any[]) {
-              if (!currentUserId) return true;
+              if (!currentUserId) return false;
               return args.some(value => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
           }
 
@@ -1202,18 +1205,11 @@ jobs:
                   currentUserId = realCurrentUser?.id || null;
               } catch {}
 
-              addPatch("getCurrentUser", userStore, (args, original) => {
-                  const user = original(...args);
-                  realCurrentUser = user || realCurrentUser;
-                  currentUserId = user?.id || currentUserId;
-                  return cloneObject(user, "user");
-              });
-              addPatch("getUser", userStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) return original(...args);
-                  const user = original(...args);
-                  realCurrentUser = user || realCurrentUser;
-                  return cloneObject(user, "user");
-              });
+              // Never patch UserStore globally. Discord's guild channel rows,
+              // permission checks, mentions and navigation all consume these
+              // exact native user objects; replacing them with profile clones can
+              // make an entire server render with no channels. Fake Profile is
+              // intentionally limited to Discord's profile presentation hooks.
 
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
               diagnostics.profileStore = !!profileStore;
