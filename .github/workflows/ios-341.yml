@@ -71,7 +71,10 @@ jobs:
             --runtime-deb "$(find ios/native-ios/packages -name '*.deb' -print -quit)" \
             --output cloudcord0.ipa
           unzip -p cloudcord0.ipa Payload/Discord.app/Info.plist | grep -q '<string>344.1</string>'
-          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/payload-base.js | grep -q '__PYON_LOADER__'
+          if unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/payload-base.js | grep -q '__PYON_LOADER__'; then
+            echo 'Discord 344 must not enter the legacy Pyon startup path' >&2
+            exit 1
+          fi
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/payload-base.js | grep -q 'loaderName:"CloudCord"'
           unzip -l cloudcord0.ipa | grep -q 'Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload'
           rm -rf "$RUNNER_TEMP/cloudcord-stream-check"
