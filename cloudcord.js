@@ -10111,16 +10111,6 @@
   function isCurrentUser(id) {
     return !!id && !!currentUserId && id === currentUserId;
   }
-  function addPatch(method, parent, handler) {
-    if (!parent?.[method])
-      return;
-    try {
-      instead(method, parent, handler);
-      diagnostics.patches += 1;
-    } catch (error) {
-      diagnostics.last = error?.message || `Could not connect ${method}`;
-    }
-  }
   function addAfterPatch(method, parent, handler) {
     if (!parent?.[method])
       return;
@@ -10130,11 +10120,6 @@
     } catch (error) {
       diagnostics.last = error?.message || `Could not connect ${method}`;
     }
-  }
-  function requestIsCurrent(args) {
-    if (!currentUserId)
-      return false;
-    return args.some((value) => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
   }
   function renderedUserId(props) {
     return props?.userId || props?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
@@ -10252,16 +10237,6 @@
     }
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
-    addPatch("getUserProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
-      return decorateProfileResult(original(...args), args?.[0]);
-    });
-    addPatch("getGuildMemberProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
-      return decorateProfileResult(original(...args), args?.[0]);
-    });
     try {
       after("default", useUserProfileModule, (args, result) => {
         var subject = args?.[0];
@@ -10282,47 +10257,8 @@
     } catch (error) {
       diagnostics.last = error?.message || "Could not connect profile banner";
     }
-    var avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
-    var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
-    diagnostics.avatarResolver = !!avatarResolver;
-    diagnostics.bannerResolver = !!bannerResolver;
-    for (var method of [
-      "getUserAvatarURL",
-      "getAvatarURL",
-      "getGuildMemberAvatarURL",
-      "getGuildMemberAvatarURLSimple"
-    ]) {
-      addPatch(method, avatarResolver, (args, original) => {
-        var uri = mediaUri("avatarMedia");
-        return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
-      });
-    }
-    for (var method1 of [
-      "getUserAvatarSource",
-      "getGuildMemberAvatarSource"
-    ]) {
-      addPatch(method1, avatarResolver, (args, original) => {
-        var uri = mediaUri("avatarMedia");
-        return preview.enabled && uri && requestIsCurrent(args) ? {
-          uri
-        } : original(...args);
-      });
-    }
-    for (var method2 of [
-      "getUserBannerURL",
-      "getBannerURL",
-      "getGuildMemberBannerURL"
-    ]) {
-      addPatch(method2, bannerResolver, (args, original) => {
-        var uri = mediaUri("bannerMedia");
-        return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
-      });
-    }
-    var snowflakeUtils = findByProps("extractTimestamp");
-    addPatch("extractTimestamp", snowflakeUtils, (args, original) => {
-      var createdAt = profileDate(preview.createdAt);
-      return preview.enabled && createdAt && String(args?.[0] || "") === currentUserId ? createdAt.getTime() : original(...args);
-    });
+    diagnostics.avatarResolver = false;
+    diagnostics.bannerResolver = false;
     connectMediaRenderer();
     var bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
     addAfterPatch("getBanner", bannerComposer, (args, result) => {
