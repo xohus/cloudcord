@@ -42,6 +42,7 @@ static void swizzleRawColorMethods(void) {
     for (NSString *key in gRawColors) {
         SEL selector          = NSSelectorFromString(key);
         Method existingMethod = class_getClassMethod(targetClass, selector);
+        IMP original          = existingMethod ? method_getImplementation(existingMethod) : NULL;
 
         IMP implementation = imp_implementationWithBlock(^UIColor *(id self) {
             NSString *hexColor = gRawColors[key];
@@ -50,7 +51,11 @@ static void swizzleRawColorMethods(void) {
                 [loggedColors addObject:key];
                 BunnyLog(@"Applied raw color: %@ -> %@", key, hexColor);
             }
-            return color ?: [UIColor clearColor];
+            if (color)
+                return color;
+            if (original)
+                return ((UIColor * (*)(id, SEL)) original)(self, selector);
+            return nil;
         });
 
         if (existingMethod) {
@@ -270,9 +275,10 @@ BOOL isThemeLight(UIColor *color) {
 
 		id color = getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic");
 
-        [%c(UIKBRenderConfig) refreshKeyboard];
+		if (color != nil)
+			[%c(UIKBRenderConfig) refreshKeyboard];
 
-		if (originalKeyboardColor != nil && originalKeyboardColor != color) {
+		if (originalKeyboardColor == nil) {
 			originalKeyboardColor = [self backgroundColor];
 		}
 		if (color != nil) {
@@ -290,7 +296,7 @@ BOOL isThemeLight(UIColor *color) {
 		%orig;
 
 		id color = getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic");
-		if (originalKeyboardColor != nil && originalKeyboardColor != color) {
+		if (originalKeyboardColor == nil) {
 			originalKeyboardColor = [self backgroundColor];
 		}
 		if (color != nil) {
@@ -305,7 +311,8 @@ BOOL isThemeLight(UIColor *color) {
 	%hook UIKBRenderConfig
 
 	- (void)setLightKeyboard:(BOOL)arg1 {
-	    %orig(isThemeLight(getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic")));
+	    UIColor *color = getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic");
+	    %orig(color ? isThemeLight(color) : arg1);
     }
 
     %new
@@ -325,7 +332,7 @@ BOOL isThemeLight(UIColor *color) {
 
 
 		id color = getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic");
-		if (originalKeyboardColor != nil && originalKeyboardColor != color) {
+		if (originalKeyboardColor == nil) {
 			originalKeyboardColor = [self backgroundColor];
 		}
 		if (color != nil) {
@@ -350,7 +357,7 @@ BOOL isThemeLight(UIColor *color) {
 		%orig;
 
 		id color = getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic");
-		if (originalKeyboardColor != nil && originalKeyboardColor != color) {
+		if (originalKeyboardColor == nil) {
 			originalKeyboardColor = [self backgroundColor];
 		}
 		if (color != nil) {
