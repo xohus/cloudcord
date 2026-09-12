@@ -10124,6 +10124,44 @@
   function renderedUserId(props) {
     return props?.userId || props?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
   }
+  function connectProfileRenderer() {
+    var _loop2 = function(component2) {
+      try {
+        onJsxCreate(component2, (_component, rendered) => {
+          var props = rendered?.props;
+          if (!props || !preview.enabled)
+            return;
+          var explicitId = String(renderedUserId(props) || "");
+          var ownScreen = component2 === "YouScreenUserProfileContent";
+          if (!ownScreen && !isCurrentUser(explicitId))
+            return;
+          try {
+            if (props.user)
+              props.user = cloneObject(props.user, "user");
+            if (props.displayProfile)
+              props.displayProfile = cloneObject(props.displayProfile, "profile");
+            if (props.userProfile)
+              props.userProfile = cloneObject(props.userProfile, "profile");
+            if (props.profile)
+              props.profile = cloneObject(props.profile, "profile");
+          } catch (e) {
+          }
+        });
+        diagnostics.patches += 1;
+      } catch (e) {
+      }
+    };
+    var profileComponents = [
+      "YouScreenUserProfileContent",
+      "UserProfileContent",
+      "UserProfileHeader",
+      "UserProfilePanel",
+      "UserProfileOverview",
+      "ProfileHeader"
+    ];
+    for (var component of profileComponents)
+      _loop2(component);
+  }
   function connectMediaRenderer() {
     var avatarComponents = [
       "UserHeaderAvatar",
@@ -10259,6 +10297,7 @@
     }
     diagnostics.avatarResolver = false;
     diagnostics.bannerResolver = false;
+    connectProfileRenderer();
     connectMediaRenderer();
     var bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
     addAfterPatch("getBanner", bannerComposer, (args, result) => {
