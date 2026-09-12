@@ -667,10 +667,10 @@ jobs:
               }
           }
 
-          function requestSharedProfile(userId?: string) {
+          function requestSharedProfile(userId?: string, force = false) {
               const id = String(userId || "");
               const fetchedAt = sharedProfileFetchedAt.get(id) || 0;
-              if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || (sharedProfiles.has(id) && Date.now() - fetchedAt < 5000)) return;
+              if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || (!force && sharedProfiles.has(id) && Date.now() - fetchedAt < 5000)) return;
               sharedRequests.add(id);
               void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, { cache: "no-store" })
                   .then(response => response.ok ? response.json() : null)
@@ -678,13 +678,21 @@ jobs:
                       const profile = payload?.profile ?? payload;
                       // Cache a missing profile too. Profile surfaces can render several
                       // times in quick succession and must not turn one 404 into a loop.
-                      sharedProfiles.set(id, profile && typeof profile === "object" ? profile : {});
+                      const next = profile && typeof profile === "object" ? profile : {};
+                      const previous = sharedProfiles.get(id);
+                      const changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
+                      sharedProfiles.set(id, next);
                       sharedProfileFetchedAt.set(id, Date.now());
-                      if (!profile || typeof profile !== "object") return;
+                      if (!changed || !profile || typeof profile !== "object") return;
                       try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
+                      try { safeStore("UserStore")?.emitChange?.(); } catch {}
                   })
                   .catch(() => {})
                   .finally(() => sharedRequests.delete(id));
+          }
+
+          function refreshSharedProfiles() {
+              for (const id of sharedProfiles.keys()) requestSharedProfile(id, true);
           }
 
           function cloneSharedUser(original: any, data: any) {
@@ -989,7 +997,14 @@ jobs:
           }
 
           function decorateProfileResult(original: any, userId?: string) {
-              if (!original || !preview.enabled || !isCurrentUser(userId)) return original;
+              if (!original) return original;
+              if (!isCurrentUser(userId)) {
+                  const id = String(userId || "");
+                  requestSharedProfile(id);
+                  const shared = sharedProfiles.get(id);
+                  return shared && Object.keys(shared).length ? decorateSharedProfile(original, id, shared) : original;
+              }
+              if (!preview.enabled) return original;
               const decorated = cloneObject(original, "profile");
               if (original.user) setOwnValue(decorated, "user", cloneObject(original.user, "user"));
               if (original.userProfile) setOwnValue(decorated, "userProfile", cloneObject(original.userProfile, "profile"));
@@ -1319,7 +1334,10 @@ jobs:
                       }
                       ensurePatches();
                       await pullOwnSharedProfile();
-                      if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15000);
+                      if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => {
+                          void pullOwnSharedProfile();
+                          refreshSharedProfiles();
+                      }, 5000);
                       if (preview.enabled) { refreshPreview(); queueSharedPublish(); }
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Could not restore Fake Profile";
