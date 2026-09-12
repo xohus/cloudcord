@@ -1108,6 +1108,39 @@ jobs:
                   || props?.profile?.user?.id;
           }
 
+          function connectProfileRenderer() {
+              // iPad embeds profiles beside the guild/channel navigator, so only
+              // touch elements created by known profile components. Never patch
+              // UserStore or shared channel-row components.
+              const profileComponents = [
+                  "YouScreenUserProfileContent",
+                  "UserProfileContent",
+                  "UserProfileHeader",
+                  "UserProfilePanel",
+                  "UserProfileOverview",
+                  "ProfileHeader"
+              ];
+
+              for (const component of profileComponents) {
+                  try {
+                      onJsxCreate(component, (_component, rendered) => {
+                          const props = rendered?.props;
+                          if (!props || !preview.enabled) return;
+                          const explicitId = String(renderedUserId(props) || "");
+                          const ownScreen = component === "YouScreenUserProfileContent";
+                          if (!ownScreen && !isCurrentUser(explicitId)) return;
+                          try {
+                              if (props.user) props.user = cloneObject(props.user, "user");
+                              if (props.displayProfile) props.displayProfile = cloneObject(props.displayProfile, "profile");
+                              if (props.userProfile) props.userProfile = cloneObject(props.userProfile, "profile");
+                              if (props.profile) props.profile = cloneObject(props.profile, "profile");
+                          } catch {}
+                      });
+                      diagnostics.patches += 1;
+                  } catch {}
+              }
+          }
+
           function connectMediaRenderer() {
               const avatarComponents = ["UserHeaderAvatar", "ProfileAvatar", "UserProfileAvatar"];
               const bannerComponents = ["UserBanner", "ProfileBanner", "UserProfileBanner"];
@@ -1228,6 +1261,7 @@ jobs:
               diagnostics.avatarResolver = false;
               diagnostics.bannerResolver = false;
 
+              connectProfileRenderer();
               connectMediaRenderer();
 
               const bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
