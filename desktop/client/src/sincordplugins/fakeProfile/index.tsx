@@ -440,6 +440,18 @@ function decorateSharedProfile(profile: any, data: CustomProfileData) {
     return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
 }
 
+function resolveProfileUserId(subject: any, profile: any): string {
+    return String(
+        (typeof subject === "string" ? subject : subject?.userId || subject?.id || subject?.user?.id)
+        || profile?.userId || profile?.id || profile?.user?.id
+        || profile?.userProfile?.userId || profile?.userProfile?.user?.id
+        || profile?.guildMemberProfile?.userId || profile?.guildMemberProfile?.user?.id
+        || profile?.displayProfile?.userId || profile?.displayProfile?.user?.id
+        || profile?.profile?.userId || profile?.profile?.user?.id
+        || ""
+    );
+}
+
 function saveDataSync(data: CustomProfileData, enabled: boolean) {
     try { localStorage.setItem(LS_KEY_DATA, JSON.stringify(data)); localStorage.setItem(LS_KEY_ENABLED, enabled ? "1" : "0"); } catch { }
 }
@@ -1108,24 +1120,26 @@ fakeObfuscatedEmail(real: string | null) {
             const UPS = (Vencord as any).Webpack?.findByProps?.("getUserProfile", "getGuildMemberProfile");
             if (UPS && !UPS._cp_hook) {
                 const origGet = UPS.getUserProfile.bind(UPS);
-                UPS.getUserProfile = (uid: string) => {
+                UPS.getUserProfile = (...args: any[]) => {
                     try {
-                        const p = origGet(uid);
+                        const p = origGet(...args);
+                        const uid = resolveProfileUserId(args[0], p);
                         if (isMe(uid)) return (isEnabled && p) ? this.hookUserProfile(p) : p;
                         requestSharedProfile(uid);
                         const shared = sharedProfiles.get(uid);
                         return shared && p ? decorateSharedProfile(p, shared) : p;
-                    } catch { return origGet(uid); }
+                    } catch { return origGet(...args); }
                 };
                 const origGuild = UPS.getGuildMemberProfile.bind(UPS);
-                UPS.getGuildMemberProfile = (uid: string, gid: string) => {
+                UPS.getGuildMemberProfile = (...args: any[]) => {
                     try {
-                        const p = origGuild(uid, gid);
+                        const p = origGuild(...args);
+                        const uid = resolveProfileUserId(args[0], p);
                         if (isMe(uid)) return (isEnabled && p) ? this.hookUserProfile(p) : p;
                         requestSharedProfile(uid);
                         const shared = sharedProfiles.get(uid);
                         return shared && p ? decorateSharedProfile(p, shared) : p;
-                    } catch { return origGuild(uid, gid); }
+                    } catch { return origGuild(...args); }
                 };
                 UPS._cp_hook = true;
             }
