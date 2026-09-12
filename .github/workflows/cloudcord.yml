@@ -2317,26 +2317,26 @@ jobs:
                   text = text.replace(
                       "    // Load everything in parallel\n    await Promise.all([",
                       '''    // CloudCord core settings are registered before optional subsystems.
-    // Discord updates frequently change unrelated modules; one optional failure
-    // must never prevent the CloudCord section from being installed.
-    const cloudCordCoreUnloads: any[] = [];
-    try {
-        if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName !== "RealCord") {
-            const cleanup = initSettings();
-            if (cleanup) cloudCordCoreUnloads.push(cleanup);
-        }
-    } catch (error) {
-        console.error("CloudCord section registration failed", error);
-    }
-    try {
-        const cleanup = patchSettings();
-        if (cleanup) cloudCordCoreUnloads.push(cleanup);
-    } catch (error) {
-        console.error("CloudCord settings patch failed", error);
-    }
+          // Discord updates frequently change unrelated modules; one optional failure
+          // must never prevent the CloudCord section from being installed.
+          const cloudCordCoreUnloads: any[] = [];
+          try {
+              if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName !== "RealCord") {
+                  const cleanup = initSettings();
+                  if (cleanup) cloudCordCoreUnloads.push(cleanup);
+              }
+          } catch (error) {
+              console.error("CloudCord section registration failed", error);
+          }
+          try {
+              const cleanup = patchSettings();
+              if (cleanup) cloudCordCoreUnloads.push(cleanup);
+          } catch (error) {
+              console.error("CloudCord settings patch failed", error);
+          }
 
-    // Load everything else in parallel
-    await Promise.all(['''
+          // Load everything else in parallel
+          await Promise.all(['''
                   )
                   text = text.replace("        patchSettings(),\n", "")
                   text = text.replace("        initSettings(),\n", "")
