@@ -9700,10 +9700,6 @@
         safeStore("UserProfileStore")?.emitChange?.();
       } catch (e) {
       }
-      try {
-        safeStore("UserStore")?.emitChange?.();
-      } catch (e) {
-      }
     }).catch(() => {
     }).finally(() => sharedRequests.delete(id));
   }
