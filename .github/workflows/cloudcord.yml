@@ -1308,6 +1308,11 @@ jobs:
                   diagnostics.last = error?.message || "Could not connect profile banner";
               }
 
+              // Badge synchronization has its own Discord hook. It was defined
+              // above but never initialized, so shared colors rendered while
+              // Nitro, gifting and custom badges silently remained native.
+              connectBadgeRenderer();
+
               const avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
               const bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
               diagnostics.avatarResolver = !!avatarResolver;
