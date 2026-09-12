@@ -1064,10 +1064,35 @@ fakeObfuscatedEmail(real: string | null) {
         addContextMenuPatch("user-context", userContextMenuPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
 
-        // Do not replace Discord's global UserStore methods. Mentions, unread
-        // counters, permissions and channel navigation depend on native user
-        // identity. The targeted profile/component patches above provide the
-        // visual fake profile without mutating Discord's core account store.
+        // Keep Discord's stored user immutable, but return the configured profile
+        // to desktop surfaces which read the current user directly.
+        try {
+            const US = (Vencord as any).Webpack?.findByProps?.("getCurrentUser", "getUser");
+            if (US && !US._cp_hook) {
+                let lastReal: any = null, lastFake: any = null, lastVersion = -1;
+                const originalCurrent = US.getCurrentUser.bind(US);
+                US.getCurrentUser = () => {
+                    const real = originalCurrent();
+                    if (!real) return real;
+                    if (real !== lastReal) {
+                        if (real.username) _realUsername = real.username;
+                        if (real.globalName) _realGlobalName = real.globalName;
+                    }
+                    if (!isEnabled) return real;
+                    if (real === lastReal && lastVersion === _dataVersion && lastFake) return lastFake;
+                    lastReal = real;
+                    lastVersion = _dataVersion;
+                    lastFake = this.fakeCurrentUser(real);
+                    return lastFake;
+                };
+                const originalGet = US.getUser.bind(US);
+                US.getUser = (id: string) => {
+                    const real = originalGet(id);
+                    return isEnabled && isMe(id) ? this.fakeCurrentUser(real) : this.fakeOtherUser(real);
+                };
+                US._cp_hook = true;
+            }
+        } catch { }
         try {
             const UPS = (Vencord as any).Webpack?.findByProps?.("getUserProfile", "getGuildMemberProfile");
             if (UPS && !UPS._cp_hook) {
