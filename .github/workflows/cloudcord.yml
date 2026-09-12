@@ -1000,10 +1000,17 @@ jobs:
           }
 
           function isCurrentUser(id?: string) {
-              // Unknown identity must never mean "every user". During early
-              // startup that caused profile/media patches to affect all channel
-              // rows and could leave a guild with no renderable channels.
-              return !!id && !!currentUserId && id === currentUserId;
+              return !id || !currentUserId || id === currentUserId;
+          }
+
+          function addPatch(method: string, parent: any, handler: (args: any[], original: Function) => any) {
+              if (!parent?.[method]) return;
+              try {
+                  instead(method, parent, handler as any);
+                  diagnostics.patches += 1;
+              } catch (error: any) {
+                  diagnostics.last = error?.message || `Could not connect ${method}`;
+              }
           }
 
           function connectBadgeRenderer() {
@@ -1099,6 +1106,11 @@ jobs:
               }
           }
 
+          function requestIsCurrent(args: any[]) {
+              if (!currentUserId) return true;
+              return args.some(value => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
+          }
+
           function renderedUserId(props: any) {
               return props?.userId
                   || props?.user?.id
@@ -1106,39 +1118,6 @@ jobs:
                   || props?.displayProfile?.user?.id
                   || props?.profile?.userId
                   || props?.profile?.user?.id;
-          }
-
-          function connectProfileRenderer() {
-              // iPad embeds profiles beside the guild/channel navigator, so only
-              // touch elements created by known profile components. Never patch
-              // UserStore or shared channel-row components.
-              const profileComponents = [
-                  "YouScreenUserProfileContent",
-                  "UserProfileContent",
-                  "UserProfileHeader",
-                  "UserProfilePanel",
-                  "UserProfileOverview",
-                  "ProfileHeader"
-              ];
-
-              for (const component of profileComponents) {
-                  try {
-                      onJsxCreate(component, (_component, rendered) => {
-                          const props = rendered?.props;
-                          if (!props || !preview.enabled) return;
-                          const explicitId = String(renderedUserId(props) || "");
-                          const ownScreen = component === "YouScreenUserProfileContent";
-                          if (!ownScreen && !isCurrentUser(explicitId)) return;
-                          try {
-                              if (props.user) props.user = cloneObject(props.user, "user");
-                              if (props.displayProfile) props.displayProfile = cloneObject(props.displayProfile, "profile");
-                              if (props.userProfile) props.userProfile = cloneObject(props.userProfile, "profile");
-                              if (props.profile) props.profile = cloneObject(props.profile, "profile");
-                          } catch {}
-                      });
-                      diagnostics.patches += 1;
-                  } catch {}
-              }
           }
 
           function connectMediaRenderer() {
@@ -1223,14 +1202,30 @@ jobs:
                   currentUserId = realCurrentUser?.id || null;
               } catch {}
 
-              // Never patch UserStore globally. Discord's guild channel rows,
-              // permission checks, mentions and navigation all consume these
-              // exact native user objects; replacing them with profile clones can
-              // make an entire server render with no channels. Fake Profile is
-              // intentionally limited to Discord's profile presentation hooks.
+              addPatch("getCurrentUser", userStore, (args, original) => {
+                  const user = original(...args);
+                  realCurrentUser = user || realCurrentUser;
+                  currentUserId = user?.id || currentUserId;
+                  if (preview.enabled) queueSharedPublish();
+                  return cloneObject(user, "user");
+              });
+              addPatch("getUser", userStore, (args, original) => {
+                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  const user = original(...args);
+                  realCurrentUser = user || realCurrentUser;
+                  return cloneObject(user, "user");
+              });
 
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
               diagnostics.profileStore = !!profileStore;
+              addPatch("getUserProfile", profileStore, (args, original) => {
+                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  return decorateProfileResult(original(...args), args?.[0]);
+              });
+              addPatch("getGuildMemberProfile", profileStore, (args, original) => {
+                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  return decorateProfileResult(original(...args), args?.[0]);
+              });
 
               try {
                   after("default", useUserProfileModule as any, (args, result) => {
@@ -1254,14 +1249,36 @@ jobs:
                   diagnostics.last = error?.message || "Could not connect profile banner";
               }
 
-              // Avoid global avatar, banner, profile-store and timestamp resolver
-              // replacements. Those modules are shared by guild lists, channels,
-              // DMs and permissions. The native profile hooks and JSX profile
-              // components below are sufficient and stay scoped to profile UI.
-              diagnostics.avatarResolver = false;
-              diagnostics.bannerResolver = false;
+              const avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
+              const bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
+              diagnostics.avatarResolver = !!avatarResolver;
+              diagnostics.bannerResolver = !!bannerResolver;
 
-              connectProfileRenderer();
+              for (const method of ["getUserAvatarURL", "getAvatarURL", "getGuildMemberAvatarURL", "getGuildMemberAvatarURLSimple"]) {
+                  addPatch(method, avatarResolver, (args, original) => {
+                      const uri = mediaUri("avatarMedia");
+                      return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
+                  });
+              }
+              for (const method of ["getUserAvatarSource", "getGuildMemberAvatarSource"]) {
+                  addPatch(method, avatarResolver, (args, original) => {
+                      const uri = mediaUri("avatarMedia");
+                      return preview.enabled && uri && requestIsCurrent(args) ? { uri } : original(...args);
+                  });
+              }
+              for (const method of ["getUserBannerURL", "getBannerURL", "getGuildMemberBannerURL"]) {
+                  addPatch(method, bannerResolver, (args, original) => {
+                      const uri = mediaUri("bannerMedia");
+                      return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
+                  });
+              }
+
+              const snowflakeUtils = findByProps("extractTimestamp") as any;
+              addPatch("extractTimestamp", snowflakeUtils, (args, original) => {
+                  const createdAt = profileDate(preview.createdAt);
+                  return preview.enabled && createdAt && String(args?.[0] || "") === currentUserId ? createdAt.getTime() : original(...args);
+              });
+
               connectMediaRenderer();
 
               const bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
@@ -1303,7 +1320,7 @@ jobs:
                       ensurePatches();
                       await pullOwnSharedProfile();
                       if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15000);
-                      if (preview.enabled) refreshPreview();
+                      if (preview.enabled) { refreshPreview(); queueSharedPublish(); }
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Could not restore Fake Profile";
                       initPromise = null;
