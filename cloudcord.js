@@ -10167,6 +10167,9 @@
       setOwnValue(decorated, "profile", cloneObject(original.profile, "profile"));
     return decorated;
   }
+  function profileResultUserId(subject, result) {
+    return String((typeof subject === "string" ? subject : subject?.userId || subject?.id || subject?.user?.id) || result?.userId || result?.id || result?.user?.id || result?.userProfile?.userId || result?.userProfile?.user?.id || result?.guildMemberProfile?.userId || result?.guildMemberProfile?.user?.id || result?.displayProfile?.userId || result?.displayProfile?.user?.id || result?.profile?.userId || result?.profile?.user?.id || "");
+  }
   function isCurrentUser(id) {
     return !!id && !!currentUserId && id === currentUserId;
   }
@@ -10339,7 +10342,7 @@
     try {
       after("default", useUserProfileModule, (args, result) => {
         var subject = args?.[0];
-        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+        var id = profileResultUserId(subject, result);
         return decorateProfileResult(result, id);
       });
       diagnostics.patches += 1;
@@ -10349,8 +10352,12 @@
     try {
       after("default", useDisplayProfileModule, (args, result) => {
         var subject = args?.[0];
-        var id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-        return isCurrentUser(id) ? cloneObject(result, "profile") : result;
+        var id = profileResultUserId(subject, result);
+        if (isCurrentUser(id))
+          return preview.enabled ? cloneObject(result, "profile") : result;
+        requestSharedProfile(id);
+        var shared = sharedProfiles.get(id);
+        return shared && Object.keys(shared).length ? decorateSharedProfile(result, id, shared) : result;
       });
       diagnostics.patches += 1;
     } catch (error) {
