@@ -385,7 +385,6 @@ void initializeThemeColors(NSDictionary *semanticColors, NSDictionary *rawColors
     swizzleRawColorMethods();
 }
 
-#if !CLOUDCORD_SAFE_UI
 %ctor {
 
     NSBundle* bundle = [NSBundle bundleWithPath:@"/System/Library/PrivateFrameworks/TextInputUI.framework"];
@@ -394,4 +393,3 @@ void initializeThemeColors(NSDictionary *semanticColors, NSDictionary *rawColors
 	%init(KEYBOARD);
 
 }
-#endif

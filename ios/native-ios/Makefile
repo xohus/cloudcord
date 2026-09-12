@@ -15,6 +15,7 @@ CloudCordTweak_FILES = $(wildcard Sources/*.x Sources/*.m Sources/**/*.x Sources
 CloudCordTweak_CFLAGS = -fobjc-arc -DPACKAGE_VERSION='@"$(THEOS_PACKAGE_BASE_VERSION)"' -I$(THEOS_PROJECT_DIR)/Headers
 ifeq ($(CLOUDCORD_SAFE_UI),1)
 CloudCordTweak_CFLAGS += -DCLOUDCORD_SAFE_UI=1
+CloudCordTweak_FILES := $(filter-out Sources/Fonts.x Sources/Themes.x,$(CloudCordTweak_FILES))
 endif
 CloudCordTweak_FRAMEWORKS = Foundation UIKit CoreGraphics CoreText CoreFoundation UniformTypeIdentifiers
 
