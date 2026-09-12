@@ -627,15 +627,16 @@ static void registerBridgeMethods(void)
         NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
         NSString *discordVersion = [[NSBundle mainBundle]
             objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
+        NSString *appearanceRevision = [NSString stringWithFormat:@"2:%@", discordVersion];
         NSString *appearanceVersion = [defaults stringForKey:@"CloudCordNativeAppearanceVersion"];
-        if (![appearanceVersion isEqualToString:discordVersion])
+        if (![appearanceVersion isEqualToString:appearanceRevision])
         {
             NSFileManager *fm = [NSFileManager defaultManager];
             for (NSString *file in @[@"current-theme.json", @"fonts.json", @"fontMap.json",
                                       @"bundle.js", @"bundle.js.backup", @"etag.txt"])
                 [fm removeItemAtURL:[cloudcordDirectory URLByAppendingPathComponent:file]
                               error:nil];
-            [defaults setObject:discordVersion forKey:@"CloudCordNativeAppearanceVersion"];
+            [defaults setObject:appearanceRevision forKey:@"CloudCordNativeAppearanceVersion"];
             BunnyLog(@"Cleared cached native appearance for Discord %@", discordVersion);
         }
 
