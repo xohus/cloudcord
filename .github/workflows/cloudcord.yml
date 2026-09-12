@@ -2512,6 +2512,7 @@ jobs:
           grep -q 'CloudSync' ../dist/cc.js
           grep -q 'BotCord' ../dist/cc.js
           grep -q 'CloudCord section registration failed' ../dist/cc.js
+          grep -q 'CloudCord renderer config patch failed' ../dist/cc.js
           python3 - <<'PY'
           from pathlib import Path
           import hashlib, json, os

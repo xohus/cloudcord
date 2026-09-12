@@ -54,10 +54,13 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         });
     };
 
-    const origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
-    let rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
+    // Discord 344 can expose this export through a frozen/lazy Metro namespace.
+    // A rejected property override must not prevent the independent section hooks below.
+    try {
+        const origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
+        let rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
 
-    Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+        Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
         enumerable: true,
         configurable: true,
         get: () => ({
@@ -92,16 +95,18 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
             ...getRows()
         }),
         set: v => rendererConfigValue = v,
-    });
-
-    unpatches.push(() => {
-        Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
-            value: origRendererConfig,
-            writable: true,
-            get: undefined,
-            set: undefined
         });
-    });
+
+        unpatches.push(() => {
+            Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+                value: origRendererConfig,
+                writable: true,
+                configurable: true
+            });
+        });
+    } catch (error) {
+        console.error("CloudCord renderer config patch failed", error);
+    }
 
     try{
         unpatches.push(after("createList", createListModule, function(args, ret) {
