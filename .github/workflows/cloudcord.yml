@@ -2314,8 +2314,11 @@ jobs:
 
               core_marker = "// CloudCord core settings are registered before optional subsystems."
               if core_marker not in text:
+                  promise_marker = "    await Promise.all(["
+                  if promise_marker not in text:
+                      raise RuntimeError("Kettu startup entrypoint changed; refusing to remove CloudCord settings initialization")
                   text = text.replace(
-                      "    // Load everything in parallel\n    await Promise.all([",
+                      promise_marker,
                       '''    // CloudCord core settings are registered before optional subsystems.
           // Discord updates frequently change unrelated modules; one optional failure
           // must never prevent the CloudCord section from being installed.
@@ -2336,8 +2339,11 @@ jobs:
           }
 
           // Load everything else in parallel
-          await Promise.all(['''
+          await Promise.all([''',
+                      1
                   )
+                  if core_marker not in text:
+                      raise RuntimeError("CloudCord core settings block was not inserted")
                   text = text.replace("        patchSettings(),\n", "")
                   text = text.replace("        initSettings(),\n", "")
                   text = text.replace(
@@ -2502,6 +2508,9 @@ jobs:
           cp dist/kettu.min.js ../dist/cloudcord.min.js
 
           node --check ../dist/cc.js
+          grep -q 'CloudSync' ../dist/cc.js
+          grep -q 'BotCord' ../dist/cc.js
+          grep -q 'CloudCord section registration failed' ../dist/cc.js
           python3 - <<'PY'
           from pathlib import Path
           import hashlib, json, os
