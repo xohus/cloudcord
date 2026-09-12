@@ -28,9 +28,12 @@ type RequestEvent = {
 const requestEvents: RequestEvent[] = [];
 type UiEvent = { id: number; feature: "Nitro UI"; component: string; action: string; metadata: Record<string, string | number | boolean>; at: string; };
 const uiEvents: UiEvent[] = [];
+type RuntimeErrorEvent = { id: number; name: string; message: string; stack: string; fatal: boolean; at: string; };
+const runtimeErrors: RuntimeErrorEvent[] = [];
 const lastUiEvent = new Map<string, number>();
 let fetchWrapped = false;
 let uiCaptureInstalled = false;
+let errorCaptureInstalled = false;
 let requestSequence = 0;
 
 function describeTarget(raw: string) {
@@ -106,6 +109,33 @@ function enableNitroUiCapture() {
 export function initializeDiagnosticsCapture() {
     enableSanitizedRequestCapture();
     enableNitroUiCapture();
+    enableRuntimeErrorCapture();
+}
+
+function enableRuntimeErrorCapture() {
+    if (errorCaptureInstalled) return;
+    errorCaptureInstalled = true;
+    try {
+        const errorUtils = (globalThis as any).ErrorUtils;
+        if (!errorUtils?.getGlobalHandler || !errorUtils?.setGlobalHandler) return;
+        const original = errorUtils.getGlobalHandler();
+        errorUtils.setGlobalHandler((error: any, fatal?: boolean) => {
+            if (settings.cloudcordDiagnosticsCapture === true) {
+                runtimeErrors.push({
+                    id: ++requestSequence,
+                    name: String(error?.name || "Error").slice(0, 80),
+                    message: String(error?.message || error || "Unknown runtime error").slice(0, 500),
+                    stack: String(error?.stack || "").slice(0, 6000),
+                    fatal: fatal === true,
+                    at: new Date().toISOString(),
+                });
+                if (runtimeErrors.length > 50) runtimeErrors.splice(0, runtimeErrors.length - 50);
+            }
+            return original?.(error, fatal);
+        });
+    } catch {
+        // Diagnostics must never interfere with Discord's own error handler.
+    }
 }
 
 function enableSanitizedRequestCapture() {
@@ -181,6 +211,7 @@ export default function Diagnostics() {
             hiddenTabs: hidden,
             recentRequests: requestEvents.slice(-50),
             recentUiEvents: uiEvents.slice(-50),
+            recentRuntimeErrors: runtimeErrors.slice(-20),
         };
         clipboard.setString(JSON.stringify(snapshot, null, 2));
         showToast("Diagnostics copied", findAssetId("toast_copy_link"));
@@ -197,9 +228,10 @@ export default function Diagnostics() {
                     onValueChange={(value: boolean) => settings.cloudcordDiagnosticsCapture = value}
                 />
                 <TableRow arrow label="Copy diagnostics" subLabel="Copies build, loader, platform, and tab state" icon={<TableRow.Icon source={findAssetId("CopyIcon")} />} onPress={copySnapshot} />
-                <TableRow arrow label="Clear captured events" subLabel={`${requestEvents.length + uiEvents.length} sanitized network and Nitro UI events`} icon={<TableRow.Icon source={findAssetId("TrashIcon") || findAssetId("LogsIcon")} />} onPress={() => {
+                <TableRow arrow label="Clear captured events" subLabel={`${requestEvents.length + uiEvents.length + runtimeErrors.length} network, UI, and runtime events`} icon={<TableRow.Icon source={findAssetId("TrashIcon") || findAssetId("LogsIcon")} />} onPress={() => {
                     requestEvents.splice(0, requestEvents.length);
                     uiEvents.splice(0, uiEvents.length);
+                    runtimeErrors.splice(0, runtimeErrors.length);
                     lastUiEvent.clear();
                     showToast("Captured events cleared", findAssetId("Check"));
                 }} />
