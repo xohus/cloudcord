@@ -390,13 +390,14 @@ static void registerBridgeMethods(void)
     NSString *updaterMarker = @"globalThis.__CLOUDCORD_LOADER__&&Object.assign(globalThis.__CLOUDCORD_LOADER__,{loaderName:\"CloudCord\",loaderVersion:\"2\",cloudcordAutoUpdateVersion:3});";
     %orig([updaterMarker dataUsingEncoding:NSUTF8StringEncoding], source, YES);
 
-    __block NSData *bundle =
+    NSData *bundle =
         [NSData dataWithContentsOfURL:[cloudcordDirectory URLByAppendingPathComponent:@"bundle.js"]];
-
-    BunnyLog(@"[Updater] Checking for runtime updates before execution");
-    downloadBundle(NO);
-    bundle = [NSData
-        dataWithContentsOfURL:[cloudcordDirectory URLByAppendingPathComponent:@"bundle.js"]];
+    if (!bundle)
+    {
+        NSURL *packagedRuntime = [bunnyPatchesBundle URLForResource:@"runtime" withExtension:@"js"];
+        bundle = [NSData dataWithContentsOfURL:packagedRuntime];
+        BunnyLog(@"[Updater] Using packaged runtime for non-blocking first launch");
+    }
 
     NSData *themeData =
         [NSData dataWithContentsOfURL:[cloudcordDirectory
@@ -495,6 +496,12 @@ static void registerBridgeMethods(void)
     }
 
     %orig(script, url, async);
+
+    // Never block Discord's JS startup on the network. A verified update is
+    // downloaded in the background and becomes active on the next reload.
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        downloadBundle(NO);
+    });
 }
 
 %end
@@ -614,18 +621,22 @@ static void registerBridgeMethods(void)
 
         cloudcordDirectory = getPyoncordDirectory();
 
-        // Discord 341 can retain an incompatible native theme in the app container
-        // across reinstalls. Remove it once so its transparent colors cannot be
-        // applied before the verified CloudCord runtime has initialized.
+        // Native Discord color/font implementations can change between releases.
+        // Sideload updates commonly preserve the app container, so never carry a
+        // native theme or font map into a Discord version it was not created for.
         NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
-        if (![defaults boolForKey:@"CloudCordThemeResetForDiscord341"])
+        NSString *discordVersion = [[NSBundle mainBundle]
+            objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
+        NSString *appearanceVersion = [defaults stringForKey:@"CloudCordNativeAppearanceVersion"];
+        if (![appearanceVersion isEqualToString:discordVersion])
         {
-            [[NSFileManager defaultManager]
-                removeItemAtURL:[cloudcordDirectory
-                                    URLByAppendingPathComponent:@"current-theme.json"]
-                         error:nil];
-            [defaults setBool:YES forKey:@"CloudCordThemeResetForDiscord341"];
-            BunnyLog(@"Cleared the pre-341 cached theme");
+            NSFileManager *fm = [NSFileManager defaultManager];
+            for (NSString *file in @[@"current-theme.json", @"fonts.json", @"fontMap.json",
+                                      @"bundle.js", @"bundle.js.backup", @"etag.txt"])
+                [fm removeItemAtURL:[cloudcordDirectory URLByAppendingPathComponent:file]
+                              error:nil];
+            [defaults setObject:discordVersion forKey:@"CloudCordNativeAppearanceVersion"];
+            BunnyLog(@"Cleared cached native appearance for Discord %@", discordVersion);
         }
 
         loaderConfig      = [[LoaderConfig alloc] init];
