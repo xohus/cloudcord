@@ -1013,6 +1013,18 @@ jobs:
               return decorated;
           }
 
+          function profileResultUserId(subject: any, result: any) {
+              return String(
+                  (typeof subject === "string" ? subject : subject?.userId || subject?.id || subject?.user?.id)
+                  || result?.userId || result?.id || result?.user?.id
+                  || result?.userProfile?.userId || result?.userProfile?.user?.id
+                  || result?.guildMemberProfile?.userId || result?.guildMemberProfile?.user?.id
+                  || result?.displayProfile?.userId || result?.displayProfile?.user?.id
+                  || result?.profile?.userId || result?.profile?.user?.id
+                  || ""
+              );
+          }
+
           function isCurrentUser(id?: string) {
               // Discord's iPad Browse Channels route renders several profile-like
               // components without a user id. Unknown must not be interpreted as
@@ -1247,7 +1259,7 @@ jobs:
               try {
                   after("default", useUserProfileModule as any, (args, result) => {
                       const subject = args?.[0];
-                      const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
+                      const id = profileResultUserId(subject, result);
                       return decorateProfileResult(result, id);
                   });
                   diagnostics.patches += 1;
@@ -1258,8 +1270,11 @@ jobs:
               try {
                   after("default", useDisplayProfileModule as any, (args, result) => {
                       const subject = args?.[0];
-                      const id = typeof subject === "string" ? subject : subject?.userId || subject?.id;
-                      return isCurrentUser(id) ? cloneObject(result, "profile") : result;
+                      const id = profileResultUserId(subject, result);
+                      if (isCurrentUser(id)) return preview.enabled ? cloneObject(result, "profile") : result;
+                      requestSharedProfile(id);
+                      const shared = sharedProfiles.get(id);
+                      return shared && Object.keys(shared).length ? decorateSharedProfile(result, id, shared) : result;
                   });
                   diagnostics.patches += 1;
               } catch (error: any) {
