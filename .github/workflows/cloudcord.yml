@@ -1014,7 +1014,10 @@ jobs:
           }
 
           function isCurrentUser(id?: string) {
-              return !id || !currentUserId || id === currentUserId;
+              // Discord's iPad Browse Channels route renders several profile-like
+              // components without a user id. Unknown must not be interpreted as
+              // the signed-in account or Fake Profile leaks into channel rows.
+              return !!id && !!currentUserId && id === currentUserId;
           }
 
           function addPatch(method: string, parent: any, handler: (args: any[], original: Function) => any) {
@@ -1121,7 +1124,7 @@ jobs:
           }
 
           function requestIsCurrent(args: any[]) {
-              if (!currentUserId) return true;
+              if (!currentUserId) return false;
               return args.some(value => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
           }
 
