@@ -643,7 +643,9 @@ static void registerBridgeMethods(void)
         NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
         NSString *discordVersion = [[NSBundle mainBundle]
             objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"unknown";
-        NSString *appearanceRevision = [NSString stringWithFormat:@"2:%@", discordVersion];
+        // Revision 3 invalidates same-Discord-version runtime caches. This is
+        // required when a fixed 344.1 IPA is installed over an older 344.1 build.
+        NSString *appearanceRevision = [NSString stringWithFormat:@"3:%@", discordVersion];
         NSString *appearanceVersion = [defaults stringForKey:@"CloudCordNativeAppearanceVersion"];
         if (![appearanceVersion isEqualToString:appearanceRevision])
         {
