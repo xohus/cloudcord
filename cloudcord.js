@@ -12912,16 +12912,11 @@
   });
 
   // src/lib/ui/settings/patches/tabs.tsx
-  function useIsFirstRender() {
-    var firstRender = false;
-    React.useEffect(() => void (firstRender = true), []);
-    return firstRender;
-  }
   function patchTabsUI(unpatches) {
     var getRows = () => Object.values(registeredSections).flatMap((sect) => sect.map((row) => ({
       [row.key]: {
         type: "pressable",
-        // title was renamed to useTitle, both are here for compatibility (thanks kmiioo) https://codeberg.org/raincord/rain/pulls/52
+        // title was renamed to useTitle, both are here for compatibility (thanks kmiioo) https://codeberg.org/cloudcord/CloudCord/pulls/52
         title: row.title,
         useTitle: row.title,
         icon: row.icon,
@@ -12934,6 +12929,26 @@
         withArrow: true
       }
     }))).reduce((a, c2) => Object.assign(a, c2));
+    var insertCloudCordSections = (sections) => {
+      if (!Array.isArray(sections))
+        return;
+      var accountSectionIndex = sections.findIndex((item) => Array.isArray(item?.settings) && item.settings.some((key) => String(key).toUpperCase().includes("ACCOUNT")));
+      var index = accountSectionIndex >= 0 ? accountSectionIndex + 1 : Math.min(1, sections.length);
+      Object.keys(registeredSections).forEach((sectionName) => {
+        var rows = registeredSections[sectionName];
+        if (!rows.length)
+          return;
+        var rowKeys = new Set(rows.map((row) => row.key));
+        var alreadyExists = sections.some((section) => section?.label === sectionName || section?.title === sectionName || section?.settings?.some?.((key) => rowKeys.has(key)));
+        if (!alreadyExists) {
+          sections.splice(index++, 0, {
+            label: sectionName,
+            title: sectionName,
+            settings: rows.map((row) => row.key)
+          });
+        }
+      });
+    };
     var origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
     var rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
     Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
@@ -12983,39 +12998,18 @@
     try {
       unpatches.push(after("createList", createListModule, function(args, ret) {
         var [config] = args;
-        if (config?.sections && Array.isArray(config.sections)) {
-          var sections = config.sections;
-          var accountSectionIndex = sections.findIndex((i) => i.settings?.includes("ACCOUNT"));
-          if (accountSectionIndex !== -1) {
-            var index = accountSectionIndex + 1;
-            Object.keys(registeredSections).forEach((sect) => {
-              var alreadyExists = sections.some((s) => s.label === sect);
-              if (!alreadyExists) {
-                sections.splice(index++, 0, {
-                  label: sect,
-                  title: sect,
-                  settings: registeredSections[sect].map((a) => a.key)
-                });
-              }
-            });
-          }
-        }
+        insertCloudCordSections(config?.sections);
         return ret;
       }));
     } catch (e) {
+    }
+    try {
       unpatches.push(after("default", SettingsOverviewScreen, (_2, ret) => {
-        if (useIsFirstRender())
-          return;
-        var { sections } = findInReactTree(ret, (i) => i.props?.sections).props;
-        var index = -~sections.findIndex((i) => i.settings.includes("ACCOUNT")) || 1;
-        Object.keys(registeredSections).forEach((sect) => {
-          sections.splice(index++, 0, {
-            label: sect,
-            title: sect,
-            settings: registeredSections[sect].map((a) => a.key)
-          });
-        });
+        var tree = findInReactTree(ret, (item) => Array.isArray(item?.props?.sections));
+        insertCloudCordSections(tree?.props?.sections);
+        return ret;
       }));
+    } catch (e) {
     }
   }
   var settingConstants, createListModule, SettingsOverviewScreen;
