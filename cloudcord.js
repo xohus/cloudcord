@@ -9498,7 +9498,7 @@
     configReady = true;
   }
   function localHasFakeBadges() {
-    return preview.nitroEnabled || preview.boostMonths > 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
+    return preview.nitroEnabled || preview.boostMonths > 0 || preview.giftLevel >= 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
   }
   function shouldReplaceLocalBadges() {
     return preview.replaceBadges && localHasFakeBadges();
@@ -9511,7 +9511,7 @@
   }
   function remoteHasFakeBadges(data) {
     var custom = Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id) => id !== REPLACE_BADGES_SYNC_ID) : [];
-    return Number(data?.badgeFlags || 0) !== 0 || remoteNitroEnabled(data) || Number(data?.boostMonths ?? -1) >= 0 || custom.length > 0;
+    return Number(data?.badgeFlags || 0) !== 0 || remoteNitroEnabled(data) || Number(data?.boostMonths ?? -1) >= 0 || Number(data?.giftLevel ?? -1) >= 0 || custom.length > 0;
   }
   function shouldReplaceSharedBadges(data) {
     return remoteReplaceBadges(data) && remoteHasFakeBadges(data);
@@ -9550,6 +9550,7 @@
         nitroLevel: preview.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(preview.nitroMonths)) : -1,
         nitroSince: preview.nitroEnabled ? monthsAgo(preview.nitroMonths).toISOString().slice(0, 10) : null,
         boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
+        giftLevel: preview.giftLevel,
         avatarDecoration: preview.avatarDecoration || null,
         avatarDecorationSku: preview.avatarDecorationSku || null,
         profileColorsEnabled: preview.profileColorsEnabled,
@@ -9658,6 +9659,7 @@
           nitroEnabled: remoteNitroEnabled(data),
           nitroMonths: remoteNitroEnabled(data) ? NITRO_DURATIONS[Number(data.nitroLevel)] || 0 : 0,
           boostMonths: data.boostMonths >= 0 ? BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0 : 0,
+          giftLevel: Number.isInteger(data.giftLevel) ? data.giftLevel : -1,
           avatarDecoration: String(data.avatarDecoration || ""),
           avatarDecorationSku: String(data.avatarDecorationSku || ""),
           profileColorsEnabled: data.profileColorsEnabled === true || data.primaryColor != null || data.accentColor != null,
@@ -10262,6 +10264,9 @@
             if (remoteNitroEnabled(data))
               addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
             addRenderedBadge(ordered, "cloudcord-shared-boost", serverBoostingLabel(boostMonths), boosterIcon(boostMonths));
+            var gift = GIFT_LEVELS[Number(data.giftLevel)];
+            if (gift)
+              addRenderedBadge(ordered, "cloudcord-shared-gifting", `${gift.name} \xB7 Gifted ${gift.count}x`, gift.icon);
             var customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
             for (var [id1, description, flag, icon, customId] of BADGES) {
               var selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
@@ -10300,6 +10305,9 @@
           addRenderedBadge(ordered2, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
         if (preview.nitroEnabled)
           addRenderedBadge(ordered2, nitroBadgeId(preview.nitroMonths), nitroSubscriberLabel(preview.nitroMonths), milestoneIcon(preview.nitroMonths, NITRO_ICONS));
+        var gift1 = GIFT_LEVELS[preview.giftLevel];
+        if (gift1)
+          addRenderedBadge(ordered2, "fakeprofile-gifting", `${gift1.name} \xB7 Gifted ${gift1.count}x`, gift1.icon);
         addRenderedBadge(ordered2, "fakeprofile-boost", serverBoostingLabel(preview.boostMonths), boosterIcon(preview.boostMonths));
         for (var [badgeId, description1, , icon1] of BADGES) {
           if (!preview.selectedBadges?.[badgeId])
@@ -10481,11 +10489,6 @@
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
     addPatch("getUserProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
-      return decorateProfileResult(original(...args), args?.[0]);
-    });
-    addPatch("getGuildMemberProfile", profileStore, (args, original) => {
       if (!isCurrentUser(args?.[0]))
         return original(...args);
       return decorateProfileResult(original(...args), args?.[0]);
@@ -10936,7 +10939,7 @@
                 color: "#78e7ff"
               },
               numberOfLines: 1,
-              children: label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value)
+              children: label === "Gifting badge" ? GIFT_LEVELS[value]?.name || "None" : label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value)
             }),
             /* @__PURE__ */ jsx(Text, {
               variant: "text-sm/bold",
@@ -11449,6 +11452,37 @@
         redraw();
       }
     };
+    var chooseGiftBadge = () => {
+      var key = "FakeProfileGiftBadge";
+      try {
+        simpleSheets.showSimpleActionSheet({
+          key,
+          header: {
+            title: "Choose gifting badge",
+            onClose: () => simpleSheets.hideActionSheet?.(key)
+          },
+          options: [
+            {
+              label: "None",
+              onPress: () => {
+                update("giftLevel", -1, true);
+                simpleSheets.hideActionSheet?.(key);
+              }
+            },
+            ...GIFT_LEVELS.map((gift, index) => ({
+              label: `${gift.name} \u2014 Gifted ${gift.count}x`,
+              onPress: () => {
+                update("giftLevel", index, true);
+                simpleSheets.hideActionSheet?.(key);
+              }
+            }))
+          ]
+        });
+      } catch (error) {
+        diagnostics.last = error?.message || "Could not open gifting badges";
+        redraw();
+      }
+    };
     var MediaEditor = ({ label, field, banner: banner2 = false }) => {
       var value = preview[field];
       return /* @__PURE__ */ jsxs(import_react_native17.View, {
@@ -11912,6 +11946,11 @@
                   onPress: () => chooseDuration("nitroMonths", "Choose Nitro badge", NITRO_DURATIONS)
                 }) : null,
                 /* @__PURE__ */ jsx(DurationSelect, {
+                  label: "Gifting badge",
+                  value: preview.giftLevel,
+                  onPress: chooseGiftBadge
+                }),
+                /* @__PURE__ */ jsx(DurationSelect, {
                   label: "Server booster duration",
                   value: preview.boostMonths,
                   onPress: () => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)
@@ -12152,7 +12191,7 @@
       })
     });
   }
-  var import_react4, import_react_native17, BADGES, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native17, BADGES, GIFT_LEVELS, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12266,6 +12305,38 @@
           "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png",
           "orbs"
         ]
+      ];
+      GIFT_LEVELS = [
+        {
+          name: "Patron",
+          count: 1,
+          icon: "https://cdn.discordapp.com/badge-icons/ac305d1b9481f312ce4419e7f8296558.png"
+        },
+        {
+          name: "Champion",
+          count: 2,
+          icon: "https://cdn.discordapp.com/badge-icons/8b7792c4f65953d3ff564f23429cb79e.png"
+        },
+        {
+          name: "Luminary",
+          count: 3,
+          icon: "https://cdn.discordapp.com/badge-icons/3119f5504b2cd09576a323908c7c3517.png"
+        },
+        {
+          name: "Icon",
+          count: 6,
+          icon: "https://cdn.discordapp.com/badge-icons/64f2413c9b9803661322aaad25826b62.png"
+        },
+        {
+          name: "Hero",
+          count: 10,
+          icon: "https://cdn.discordapp.com/badge-icons/77d65b1f210014a11eb1582ee06ab684.png"
+        },
+        {
+          name: "Legend",
+          count: 20,
+          icon: "https://cdn.discordapp.com/badge-icons/7fe346cfc5da1340087d8759a9e7a395.png"
+        }
       ];
       CLOUDCORD_OFFICIAL_OWNER_ID = "463515440606609419";
       CLOUDCORD_OFFICIAL_BADGE_ID = "cloudcord-official-owner";
@@ -12459,6 +12530,7 @@
         nitroEnabled: false,
         nitroMonths: 0,
         boostMonths: 0,
+        giftLevel: -1,
         avatarDecoration: "",
         avatarDecorationSku: "",
         profileColorsEnabled: false,
