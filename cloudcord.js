@@ -12913,6 +12913,51 @@
 
   // src/lib/ui/settings/patches/tabs.tsx
   function patchTabsUI(unpatches) {
+    var fallbackNames = [
+      "renderer-live-table",
+      "renderer-export-accessor",
+      "create-list-lazy-before",
+      "create-list-lazy-after-input",
+      "create-list-lazy-after-output",
+      "create-list-all-before",
+      "create-list-all-after-input",
+      "create-list-all-after-output",
+      "settings-overview-before",
+      "settings-overview-after-direct",
+      "settings-overview-after-tree",
+      "legacy-settings-panel",
+      "legacy-screen-route"
+    ];
+    globalThis.__CLOUDCORD_SETTINGS_FALLBACKS__ = fallbackNames;
+    var getCustomRoutes = () => ({
+      VendettaCustomPage: {
+        type: "route",
+        title: () => "CloudCord",
+        useTitle: () => "CloudCord",
+        screen: {
+          route: "VendettaCustomPage",
+          getComponent: () => CustomPageRenderer
+        }
+      },
+      PUPU_CUSTOM_PAGE: {
+        type: "route",
+        title: () => "CloudCord",
+        useTitle: () => "CloudCord",
+        screen: {
+          route: "PUPU_CUSTOM_PAGE",
+          getComponent: () => CustomPageRenderer
+        }
+      },
+      BUNNY_CUSTOM_PAGE: {
+        type: "route",
+        title: () => "CloudCord",
+        useTitle: () => "CloudCord",
+        screen: {
+          route: "BUNNY_CUSTOM_PAGE",
+          getComponent: () => CustomPageRenderer
+        }
+      }
+    });
     var getRows = () => Object.values(registeredSections).flatMap((sect) => sect.map((row) => ({
       [row.key]: {
         type: "pressable",
@@ -12965,47 +13010,35 @@
           value.forEach((item) => visit(item, depth + 1));
           return;
         }
-        visit(value.sections, depth + 1);
-        visit(value.props, depth + 1);
-        visit(value.children, depth + 1);
+        for (var key of [
+          "sections",
+          "sectionGroups",
+          "groups",
+          "data",
+          "props",
+          "children",
+          "items",
+          "content",
+          "list",
+          "config",
+          "result"
+        ])
+          visit(value[key], depth + 1);
       };
       visit(root, 0);
     };
     try {
       var origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
       var rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
+      if (rendererConfigValue && typeof rendererConfigValue === "object") {
+        Object.assign(rendererConfigValue, getCustomRoutes(), getRows());
+      }
       Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
         enumerable: true,
         configurable: true,
         get: () => ({
           ...rendererConfigValue,
-          VendettaCustomPage: {
-            type: "route",
-            title: () => "CloudCord",
-            useTitle: () => "CloudCord",
-            screen: {
-              route: "VendettaCustomPage",
-              getComponent: () => CustomPageRenderer
-            }
-          },
-          PUPU_CUSTOM_PAGE: {
-            type: "route",
-            title: () => "CloudCord",
-            useTitle: () => "CloudCord",
-            screen: {
-              route: "PUPU_CUSTOM_PAGE",
-              getComponent: () => CustomPageRenderer
-            }
-          },
-          BUNNY_CUSTOM_PAGE: {
-            type: "route",
-            title: () => "CloudCord",
-            useTitle: () => "CloudCord",
-            screen: {
-              route: "BUNNY_CUSTOM_PAGE",
-              getComponent: () => CustomPageRenderer
-            }
-          },
+          ...getCustomRoutes(),
           ...getRows()
         }),
         set: (v2) => rendererConfigValue = v2
@@ -13020,22 +13053,56 @@
     } catch (error) {
       console.error("CloudCord renderer config patch failed", error);
     }
-    try {
-      unpatches.push(after("createList", createListModule, function(args, ret) {
+    var patchCreateListModule = (module) => {
+      unpatches.push(before("createList", module, function(args) {
         var [config] = args;
-        insertCloudCordSectionsInTree(config?.sections);
+        insertCloudCordSectionsInTree(config);
+        return args;
+      }));
+      unpatches.push(after("createList", module, function(args, ret) {
+        var [config] = args;
+        insertCloudCordSectionsInTree(config);
         insertCloudCordSectionsInTree(ret);
         return ret;
       }));
+    };
+    try {
+      var modules = [
+        createListModule,
+        ...findByPropsAll("createList")
+      ].filter(Boolean);
+      [
+        ...new Set(modules)
+      ].forEach((module) => {
+        try {
+          patchCreateListModule(module);
+        } catch (e) {
+        }
+      });
     } catch (e) {
     }
     try {
-      unpatches.push(after("default", SettingsOverviewScreen, (_2, ret) => {
-        var tree = findInReactTree(ret, (item) => Array.isArray(item?.props?.sections));
-        insertCloudCordSections(tree?.props?.sections);
-        insertCloudCordSectionsInTree(ret);
-        return ret;
-      }));
+      var modules1 = [
+        SettingsOverviewScreen,
+        ...findByNameAll("SettingsOverviewScreen", false)
+      ].filter(Boolean);
+      [
+        ...new Set(modules1)
+      ].forEach((module) => {
+        try {
+          unpatches.push(before("default", module, (args) => {
+            args.forEach(insertCloudCordSectionsInTree);
+            return args;
+          }));
+          unpatches.push(after("default", module, (_2, ret) => {
+            var tree = findInReactTree(ret, (item) => Array.isArray(item?.props?.sections));
+            insertCloudCordSections(tree?.props?.sections);
+            insertCloudCordSectionsInTree(ret);
+            return ret;
+          }));
+        } catch (e) {
+        }
+      });
     } catch (e) {
     }
   }
