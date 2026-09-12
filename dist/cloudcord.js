@@ -12949,6 +12949,28 @@
         }
       });
     };
+    var insertCloudCordSectionsInTree = (root) => {
+      var seen = /* @__PURE__ */ new WeakSet();
+      var visit = (value, depth) => {
+        if (depth > 10 || value == null || typeof value !== "object")
+          return;
+        if (seen.has(value))
+          return;
+        seen.add(value);
+        if (Array.isArray(value)) {
+          if (value.some((item) => Array.isArray(item?.settings))) {
+            insertCloudCordSections(value);
+            return;
+          }
+          value.forEach((item) => visit(item, depth + 1));
+          return;
+        }
+        visit(value.sections, depth + 1);
+        visit(value.props, depth + 1);
+        visit(value.children, depth + 1);
+      };
+      visit(root, 0);
+    };
     try {
       var origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
       var rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
@@ -13001,7 +13023,8 @@
     try {
       unpatches.push(after("createList", createListModule, function(args, ret) {
         var [config] = args;
-        insertCloudCordSections(config?.sections);
+        insertCloudCordSectionsInTree(config?.sections);
+        insertCloudCordSectionsInTree(ret);
         return ret;
       }));
     } catch (e) {
@@ -13010,6 +13033,7 @@
       unpatches.push(after("default", SettingsOverviewScreen, (_2, ret) => {
         var tree = findInReactTree(ret, (item) => Array.isArray(item?.props?.sections));
         insertCloudCordSections(tree?.props?.sections);
+        insertCloudCordSectionsInTree(ret);
         return ret;
       }));
     } catch (e) {
