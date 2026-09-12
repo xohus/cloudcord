@@ -685,7 +685,6 @@ jobs:
                       sharedProfileFetchedAt.set(id, Date.now());
                       if (!changed || !profile || typeof profile !== "object") return;
                       try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
-                      try { safeStore("UserStore")?.emitChange?.(); } catch {}
                   })
                   .catch(() => {})
                   .finally(() => sharedRequests.delete(id));
