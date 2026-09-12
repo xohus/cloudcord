@@ -1031,17 +1031,14 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
             if (hasNitroFake) badges.push({
-                id: "sp_nitro",
+                id: nativeNitroBadgeId(nl),
                 key: NITRO_LEVELS[nl].name,
                 description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
                 iconSrc: NITRO_LEVELS[nl].icon,
-                component: NativeNitroBadge as any,
-                nitroLevel: nl,
-                nitroSince: profileData.nitroSince,
-                accentColor: profileData.accentColor,
-                accentColor2: profileData.accentColor2,
+                link: "https://discord.com/settings/premium",
+                props: { style },
                 position: 0
-            } as any);
+            });
             if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", description: "Gifting Badge", iconSrc: GIFT_LEVELS[gl].icon, position: 0, props: { style } });
             if (hasBoostFake) {
                 const boostSince = monthsAgo(BOOST_LEVEL_MONTHS[bm] ?? 1);
