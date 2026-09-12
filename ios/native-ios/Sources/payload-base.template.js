@@ -1,1 +1,1 @@
-globalThis.__CLOUDCORD_LOADER__={loaderName:"@TWEAK_NAME@",loaderVersion:"@PACKAGE_VERSION@",hasThemeSupport:true,storedTheme:null,fontPatch:2}
+const __cloudcordLoader={loaderName:"CloudCord",loaderVersion:"@PACKAGE_VERSION@",hasThemeSupport:true,storedTheme:null,fontPatch:2};globalThis.__PYON_LOADER__=__cloudcordLoader;globalThis.__CLOUDCORD_LOADER__=__cloudcordLoader;globalThis.__CLOUDCORD__={name:"CloudCord",runtime:"Kettu",base:"CloudCordTweak",pluginsSource:"cloudcord-official-plugins"};

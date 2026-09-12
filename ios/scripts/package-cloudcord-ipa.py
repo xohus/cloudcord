@@ -156,6 +156,26 @@ def main() -> None:
                 f"Expected Discord {args.discord_version}, got {info.get('CFBundleShortVersionString')}"
             )
 
+        main_bundle = discord_app / "main.jsbundle"
+        if not main_bundle.exists():
+            raise RuntimeError("Discord main.jsbundle is missing")
+        bundle_data = main_bundle.read_bytes()
+        required_runtime_markers = (
+            b"getCurrentUser",
+            b"UserProfileStore",
+            b"useBadges",
+            b"showSimpleActionSheet",
+            b"ChannelStore",
+        )
+        missing_markers = [
+            marker.decode("ascii") for marker in required_runtime_markers if marker not in bundle_data
+        ]
+        if missing_markers:
+            raise RuntimeError(
+                "Discord runtime is incompatible; missing hook markers: "
+                + ", ".join(missing_markers)
+            )
+
         executable = discord_app / info["CFBundleExecutable"]
         app_entitlements = read_entitlements(executable)
         extension_entitlements = {
