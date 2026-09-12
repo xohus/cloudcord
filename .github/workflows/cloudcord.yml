@@ -284,6 +284,7 @@ jobs:
               nitroEnabled: boolean;
               nitroMonths: number;
               boostMonths: number;
+              giftLevel: number;
               avatarDecoration: string;
               avatarDecorationSku: string;
               profileColorsEnabled: boolean;
@@ -314,6 +315,14 @@ jobs:
               ["oldname", "Originally Known As", 0, "https://cdn.discordapp.com/badge-icons/6de6d34650760ba5551a79732e98ed60.png", "oldname"],
               ["quest", "Completed a Quest", 0, "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", "quest"],
               ["orbs", "Orbs — Apprentice", 0, "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", "orbs"]
+          ];
+          const GIFT_LEVELS = [
+              { name: "Patron", count: 1, icon: "https://cdn.discordapp.com/badge-icons/ac305d1b9481f312ce4419e7f8296558.png" },
+              { name: "Champion", count: 2, icon: "https://cdn.discordapp.com/badge-icons/8b7792c4f65953d3ff564f23429cb79e.png" },
+              { name: "Luminary", count: 3, icon: "https://cdn.discordapp.com/badge-icons/3119f5504b2cd09576a323908c7c3517.png" },
+              { name: "Icon", count: 6, icon: "https://cdn.discordapp.com/badge-icons/64f2413c9b9803661322aaad25826b62.png" },
+              { name: "Hero", count: 10, icon: "https://cdn.discordapp.com/badge-icons/77d65b1f210014a11eb1582ee06ab684.png" },
+              { name: "Legend", count: 20, icon: "https://cdn.discordapp.com/badge-icons/7fe346cfc5da1340087d8759a9e7a395.png" }
           ];
 
           const CLOUDCORD_OFFICIAL_OWNER_ID = "463515440606609419";
@@ -392,6 +401,7 @@ jobs:
               nitroEnabled: false,
               nitroMonths: 0,
               boostMonths: 0,
+              giftLevel: -1,
               avatarDecoration: "",
               avatarDecorationSku: "",
               profileColorsEnabled: false,
@@ -514,7 +524,7 @@ jobs:
           const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
 
           function localHasFakeBadges() {
-              return preview.nitroEnabled || preview.boostMonths > 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
+              return preview.nitroEnabled || preview.boostMonths > 0 || preview.giftLevel >= 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
           }
 
           function shouldReplaceLocalBadges() {
@@ -531,7 +541,7 @@ jobs:
 
           function remoteHasFakeBadges(data: any) {
               const custom = Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id: string) => id !== REPLACE_BADGES_SYNC_ID) : [];
-              return Number(data?.badgeFlags || 0) !== 0 || remoteNitroEnabled(data) || Number(data?.boostMonths ?? -1) >= 0 || custom.length > 0;
+              return Number(data?.badgeFlags || 0) !== 0 || remoteNitroEnabled(data) || Number(data?.boostMonths ?? -1) >= 0 || Number(data?.giftLevel ?? -1) >= 0 || custom.length > 0;
           }
 
           function shouldReplaceSharedBadges(data: any) {
@@ -565,6 +575,7 @@ jobs:
                   nitroLevel: preview.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(preview.nitroMonths)) : -1,
                   nitroSince: preview.nitroEnabled ? monthsAgo(preview.nitroMonths).toISOString().slice(0, 10) : null,
                   boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
+                  giftLevel: preview.giftLevel,
                   avatarDecoration: preview.avatarDecoration || null,
                   avatarDecorationSku: preview.avatarDecorationSku || null,
                   profileColorsEnabled: preview.profileColorsEnabled,
@@ -647,6 +658,7 @@ jobs:
                       nitroEnabled: remoteNitroEnabled(data),
                       nitroMonths: remoteNitroEnabled(data) ? (NITRO_DURATIONS[Number(data.nitroLevel)] || 0) : 0,
                       boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
+                      giftLevel: Number.isInteger(data.giftLevel) ? data.giftLevel : -1,
                       avatarDecoration: String(data.avatarDecoration || ""),
                       avatarDecorationSku: String(data.avatarDecorationSku || ""),
                       profileColorsEnabled: data.profileColorsEnabled === true || data.primaryColor != null || data.accentColor != null,
@@ -1086,6 +1098,8 @@ jobs:
                               const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
                               if (remoteNitroEnabled(data)) addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
                               addRenderedBadge(ordered, "cloudcord-shared-boost", serverBoostingLabel(boostMonths), boosterIcon(boostMonths));
+                              const gift = GIFT_LEVELS[Number(data.giftLevel)];
+                              if (gift) addRenderedBadge(ordered, "cloudcord-shared-gifting", `${gift.name} · Gifted ${gift.count}x`, gift.icon);
                               const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
                               for (const [id, description, flag, icon, customId] of BADGES) {
                                   const selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
@@ -1121,6 +1135,8 @@ jobs:
                           nitroSubscriberLabel(preview.nitroMonths),
                           milestoneIcon(preview.nitroMonths, NITRO_ICONS)
                       );
+                      const gift = GIFT_LEVELS[preview.giftLevel];
+                      if (gift) addRenderedBadge(ordered, "fakeprofile-gifting", `${gift.name} · Gifted ${gift.count}x`, gift.icon);
                       addRenderedBadge(
                           ordered,
                           "fakeprofile-boost",
@@ -1278,10 +1294,10 @@ jobs:
                   if (!isCurrentUser(args?.[0])) return original(...args);
                   return decorateProfileResult(original(...args), args?.[0]);
               });
-              addPatch("getGuildMemberProfile", profileStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) return original(...args);
-                  return decorateProfileResult(original(...args), args?.[0]);
-              });
+              // Do not wrap getGuildMemberProfile. Discord 331's iPad channel
+              // index uses it while assembling categories and forum channels;
+              // substituting a presentation clone can leave those channel types
+              // absent until the native index eventually rebuilds.
 
               try {
                   after("default", useUserProfileModule as any, (args, result) => {
@@ -1524,7 +1540,7 @@ jobs:
                           <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>Profile appearance</Text>
                       </View>
                       <View style={{ maxWidth: "48%", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: "#243c46" }}>
-                          <Text variant="text-xs/bold" style={{ color: "#78e7ff" }} numberOfLines={1}>{label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value)}</Text>
+                          <Text variant="text-xs/bold" style={{ color: "#78e7ff" }} numberOfLines={1}>{label === "Gifting badge" ? (GIFT_LEVELS[value]?.name || "None") : label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value)}</Text>
                           <Text variant="text-sm/bold" style={{ color: "#78e7ff" }}>v</Text>
                       </View>
                   </Pressable>
@@ -1723,6 +1739,26 @@ jobs:
                   }
               };
 
+              const chooseGiftBadge = () => {
+                  const key = "FakeProfileGiftBadge";
+                  try {
+                      simpleSheets.showSimpleActionSheet({
+                          key,
+                          header: { title: "Choose gifting badge", onClose: () => simpleSheets.hideActionSheet?.(key) },
+                          options: [
+                              { label: "None", onPress: () => { update("giftLevel", -1, true); simpleSheets.hideActionSheet?.(key); } },
+                              ...GIFT_LEVELS.map((gift, index) => ({
+                                  label: `${gift.name} — Gifted ${gift.count}x`,
+                                  onPress: () => { update("giftLevel", index, true); simpleSheets.hideActionSheet?.(key); }
+                              }))
+                          ]
+                      });
+                  } catch (error: any) {
+                      diagnostics.last = error?.message || "Could not open gifting badges";
+                      redraw();
+                  }
+              };
+
               const MediaEditor = ({ label, field, banner = false }: { label: string; field: "avatarMedia" | "bannerMedia"; banner?: boolean }) => {
                   const value = preview[field];
                   return (
@@ -1814,6 +1850,7 @@ jobs:
                                   </View>
                                   <ToggleRow label="Simulate Nitro" subLabel="Enables the Nitro badge, banner, and profile colors" value={preview.nitroEnabled} onPress={() => update("nitroEnabled", !preview.nitroEnabled, true)} />
                                   {preview.nitroEnabled ? <DurationSelect label="Nitro badge" value={preview.nitroMonths} onPress={() => chooseDuration("nitroMonths", "Choose Nitro badge", NITRO_DURATIONS)} /> : null}
+                                  <DurationSelect label="Gifting badge" value={preview.giftLevel} onPress={chooseGiftBadge} />
                                   <DurationSelect label="Server booster duration" value={preview.boostMonths} onPress={() => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)} />
                                   <ActionButton label="Browse Discord decorations" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Avatar Decorations", render: () => <DecorationGallery onSelect={item => { update("avatarDecoration", item.uri, true); update("avatarDecorationSku", item.skuId, true); navigation.goBack(); }} /> })} />
                                   <View style={{ gap: 8 }}>
