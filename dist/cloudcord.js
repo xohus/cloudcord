@@ -12934,6 +12934,34 @@
   function initializeDiagnosticsCapture() {
     enableSanitizedRequestCapture();
     enableNitroUiCapture();
+    enableRuntimeErrorCapture();
+  }
+  function enableRuntimeErrorCapture() {
+    if (errorCaptureInstalled)
+      return;
+    errorCaptureInstalled = true;
+    try {
+      var errorUtils = globalThis.ErrorUtils;
+      if (!errorUtils?.getGlobalHandler || !errorUtils?.setGlobalHandler)
+        return;
+      var original = errorUtils.getGlobalHandler();
+      errorUtils.setGlobalHandler((error, fatal) => {
+        if (settings.cloudcordDiagnosticsCapture === true) {
+          runtimeErrors.push({
+            id: ++requestSequence,
+            name: String(error?.name || "Error").slice(0, 80),
+            message: String(error?.message || error || "Unknown runtime error").slice(0, 500),
+            stack: String(error?.stack || "").slice(0, 6e3),
+            fatal: fatal === true,
+            at: (/* @__PURE__ */ new Date()).toISOString()
+          });
+          if (runtimeErrors.length > 50)
+            runtimeErrors.splice(0, runtimeErrors.length - 50);
+        }
+        return original?.(error, fatal);
+      });
+    } catch (e) {
+    }
   }
   function enableSanitizedRequestCapture() {
     if (fetchWrapped)
@@ -13029,7 +13057,8 @@
         tabOrder: order,
         hiddenTabs: hidden,
         recentRequests: requestEvents.slice(-50),
-        recentUiEvents: uiEvents.slice(-50)
+        recentUiEvents: uiEvents.slice(-50),
+        recentRuntimeErrors: runtimeErrors.slice(-20)
       };
       clipboard.setString(JSON.stringify(snapshot2, null, 2));
       showToast("Diagnostics copied", findAssetId("toast_copy_link"));
@@ -13072,13 +13101,14 @@
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
                 label: "Clear captured events",
-                subLabel: `${requestEvents.length + uiEvents.length} sanitized network and Nitro UI events`,
+                subLabel: `${requestEvents.length + uiEvents.length + runtimeErrors.length} network, UI, and runtime events`,
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("TrashIcon") || findAssetId("LogsIcon")
                 }),
                 onPress: () => {
                   requestEvents.splice(0, requestEvents.length);
                   uiEvents.splice(0, uiEvents.length);
+                  runtimeErrors.splice(0, runtimeErrors.length);
                   lastUiEvent.clear();
                   showToast("Captured events cleared", findAssetId("Check"));
                 }
@@ -13186,7 +13216,7 @@
       })
     });
   }
-  var import_react5, import_react_native19, requestEvents, uiEvents, lastUiEvent, fetchWrapped, uiCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
+  var import_react5, import_react_native19, requestEvents, uiEvents, runtimeErrors, lastUiEvent, fetchWrapped, uiCaptureInstalled, errorCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
   var init_Diagnostics = __esm({
     "src/core/ui/settings/pages/Diagnostics/index.tsx"() {
       "use strict";
@@ -13208,9 +13238,11 @@
       import_react_native19 = __toESM(require_react_native());
       requestEvents = [];
       uiEvents = [];
+      runtimeErrors = [];
       lastUiEvent = /* @__PURE__ */ new Map();
       fetchWrapped = false;
       uiCaptureInstalled = false;
+      errorCaptureInstalled = false;
       requestSequence = 0;
       NITRO_COMPONENTS = [
         "ProfileBadge",
