@@ -1206,7 +1206,6 @@ jobs:
                   const user = original(...args);
                   realCurrentUser = user || realCurrentUser;
                   currentUserId = user?.id || currentUserId;
-                  if (preview.enabled) queueSharedPublish();
                   return cloneObject(user, "user");
               });
               addPatch("getUser", userStore, (args, original) => {
@@ -1320,7 +1319,7 @@ jobs:
                       ensurePatches();
                       await pullOwnSharedProfile();
                       if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15000);
-                      if (preview.enabled) { refreshPreview(); queueSharedPublish(); }
+                      if (preview.enabled) refreshPreview();
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Could not restore Fake Profile";
                       initPromise = null;

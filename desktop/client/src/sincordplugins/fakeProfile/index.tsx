@@ -252,6 +252,12 @@ const sharedRequests = new Set<string>();
 let publishTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedSyncTimer: ReturnType<typeof setInterval> | null = null;
 
+function activeUserId(): string | null {
+    try {
+        return String(AuthenticationStore?.getId?.() || UserStore?.getCurrentUser?.()?.id || _cachedMyId || "") || null;
+    } catch { return _cachedMyId; }
+}
+
 function fromSharedProfile(data: any): CustomProfileData {
     return {
         username: data?.username || "", globalName: data?.globalName || data?.displayName || "",
@@ -339,7 +345,7 @@ function toSharedProfile(data: CustomProfileData) {
 }
 
 async function publishSharedProfile(): Promise<void> {
-    const ownerId = AuthenticationStore?.getId?.();
+    const ownerId = activeUserId();
     if (!ownerId || !isEnabled) return;
     let saved: any = {};
     try { saved = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { }
@@ -362,7 +368,7 @@ function queueSharedPublish() {
 }
 
 async function pullOwnSharedProfile() {
-    const id = AuthenticationStore?.getId?.();
+    const id = activeUserId();
     if (!id) return;
     try {
         const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`);
@@ -430,7 +436,7 @@ function saveAllDataSync() {
     try { localStorage.setItem(LS_ALL_DATA, JSON.stringify(allAccountsData)); localStorage.setItem(LS_ALL_ENABLED, JSON.stringify(allAccountsEnabled)); } catch { }
 }
 function syncCurrentUserData() {
-    const myId = _cachedMyId || AuthenticationStore?.getId?.();
+    const myId = activeUserId();
     if (myId) { _cachedMyId = myId; storedData = allAccountsData[myId] || {}; isEnabled = allAccountsEnabled[myId] || false; }
 }
 function loadDataSync() {
@@ -453,7 +459,7 @@ function onAccountSwitch() {
     cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
     _realUsername = ""; _realGlobalName = ""; _cachedRealDateVariants = null;
     if (isEnabled) startDomObserver(); else stopDomObserver();
-    if (isEnabled) queueSharedPublish(); else void pullOwnSharedProfile();
+    void pullOwnSharedProfile();
     forceAccountPanelRerender();
 }
 loadDataSync();
@@ -461,11 +467,11 @@ loadDataSync();
 function isMe(userId: string | null | undefined): boolean {
     if (!userId) return false;
     if (_cachedMyId) return _cachedMyId === userId;
-    try { const myId = AuthenticationStore?.getId?.(); if (myId) { _cachedMyId = myId; return myId === userId; } } catch { }
+    try { const myId = activeUserId(); if (myId) { _cachedMyId = myId; return myId === userId; } } catch { }
     return false;
 }
 function updateCachedRealData() {
-    try { const myId = AuthenticationStore?.getId?.(); if (myId) _cachedMyId = myId; } catch { }
+    try { const myId = activeUserId(); if (myId) _cachedMyId = myId; } catch { }
 }
 function getRealDateVariants(): string[] {
     if (_cachedRealDateVariants) return _cachedRealDateVariants;
@@ -1137,14 +1143,9 @@ fakeObfuscatedEmail(real: string | null) {
 
         await loadData();
         updateCachedRealData();
-        // Preserve the user's current desktop selection on startup. Pulling first
-        // caused the correct local Nitro card to flash and then be replaced by a
-        // stale synced tier less than a second later.
-        if (isEnabled) {
-            queueSharedPublish();
-        } else {
-            await pullOwnSharedProfile();
-        }
+        // Pull the canonical snapshot before publishing. Publishing first made a
+        // stale desktop installation overwrite changes made on mobile.
+        await pullOwnSharedProfile();
         if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15000);
         if (isEnabled) forceAccountPanelRerender();
     },
