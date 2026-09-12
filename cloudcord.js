@@ -9679,26 +9679,37 @@
       }
     })();
   }
-  function requestSharedProfile(userId) {
+  function requestSharedProfile(userId, force = false) {
     var id = String(userId || "");
     var fetchedAt = sharedProfileFetchedAt.get(id) || 0;
-    if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || sharedProfiles.has(id) && Date.now() - fetchedAt < 5e3)
+    if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || !force && sharedProfiles.has(id) && Date.now() - fetchedAt < 5e3)
       return;
     sharedRequests.add(id);
     void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, {
       cache: "no-store"
     }).then((response) => response.ok ? response.json() : null).then((payload) => {
       var profile = payload?.profile ?? payload;
-      sharedProfiles.set(id, profile && typeof profile === "object" ? profile : {});
+      var next = profile && typeof profile === "object" ? profile : {};
+      var previous = sharedProfiles.get(id);
+      var changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
+      sharedProfiles.set(id, next);
       sharedProfileFetchedAt.set(id, Date.now());
-      if (!profile || typeof profile !== "object")
+      if (!changed || !profile || typeof profile !== "object")
         return;
       try {
         safeStore("UserProfileStore")?.emitChange?.();
       } catch (e) {
       }
+      try {
+        safeStore("UserStore")?.emitChange?.();
+      } catch (e) {
+      }
     }).catch(() => {
     }).finally(() => sharedRequests.delete(id));
+  }
+  function refreshSharedProfiles() {
+    for (var id of sharedProfiles.keys())
+      requestSharedProfile(id, true);
   }
   function cloneSharedUser(original, data) {
     if (!original || typeof original !== "object" || !data)
@@ -9752,6 +9763,50 @@
       setOwnValue(cloned, "premiumSince", since);
       setOwnValue(cloned, "premium_since", since.toISOString());
     }
+    return cloned;
+  }
+  function decorateSharedProfile(original, userId, data) {
+    if (!original || typeof original !== "object" || !data)
+      return original;
+    var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+    if (cloned.user)
+      setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
+    if (data.banner) {
+      setOwnValue(cloned, "bannerURL", data.banner);
+      setOwnValue(cloned, "bannerUrl", data.banner);
+      setOwnValue(cloned, "bannerSrc", data.banner);
+    }
+    if (data.bio != null)
+      setOwnValue(cloned, "bio", data.bio);
+    if (data.pronouns != null)
+      setOwnValue(cloned, "pronouns", data.pronouns);
+    if (remoteNitroEnabled(data)) {
+      var since = sharedNitroSince(data);
+      setOwnValue(cloned, "premiumType", 2);
+      setOwnValue(cloned, "premium_type", 2);
+      setOwnValue(cloned, "premiumSince", since);
+      setOwnValue(cloned, "premium_since", since.toISOString());
+    }
+    var createdAt = profileDate(data.createdAt);
+    var joinedAt = profileDate(data.signupDate || data.joinedSince);
+    if (createdAt)
+      setOwnValue(cloned, "createdAt", createdAt);
+    if (joinedAt) {
+      setOwnValue(cloned, "joinedAt", joinedAt);
+      setOwnValue(cloned, "memberSince", joinedAt);
+    }
+    if (data.profileColorsEnabled === true) {
+      if (data.accentColor != null)
+        setOwnValue(cloned, "accentColor", data.accentColor);
+      if (data.primaryColor != null)
+        setOwnValue(cloned, "primaryColor", data.primaryColor);
+      if (data.primaryColor != null || data.accentColor != null)
+        setOwnValue(cloned, "themeColors", [
+          Number(data.primaryColor || data.accentColor),
+          Number(data.accentColor || data.primaryColor)
+        ]);
+    }
+    setOwnValue(cloned, "userId", userId);
     return cloned;
   }
   function clearCache() {
@@ -10093,7 +10148,15 @@
     return cloned;
   }
   function decorateProfileResult(original, userId) {
-    if (!original || !preview.enabled || !isCurrentUser(userId))
+    if (!original)
+      return original;
+    if (!isCurrentUser(userId)) {
+      var id = String(userId || "");
+      requestSharedProfile(id);
+      var shared = sharedProfiles.get(id);
+      return shared && Object.keys(shared).length ? decorateSharedProfile(original, id, shared) : original;
+    }
+    if (!preview.enabled)
       return original;
     var decorated = cloneObject(original, "profile");
     if (original.user)
@@ -10392,7 +10455,10 @@
         ensurePatches();
         yield pullOwnSharedProfile();
         if (!sharedSyncTimer)
-          sharedSyncTimer = setInterval(() => void pullOwnSharedProfile(), 15e3);
+          sharedSyncTimer = setInterval(() => {
+            void pullOwnSharedProfile();
+            refreshSharedProfiles();
+          }, 5e3);
         if (preview.enabled) {
           refreshPreview();
           queueSharedPublish();
