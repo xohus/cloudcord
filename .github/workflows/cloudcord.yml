@@ -1006,16 +1006,6 @@ jobs:
               return !!id && !!currentUserId && id === currentUserId;
           }
 
-          function addPatch(method: string, parent: any, handler: (args: any[], original: Function) => any) {
-              if (!parent?.[method]) return;
-              try {
-                  instead(method, parent, handler as any);
-                  diagnostics.patches += 1;
-              } catch (error: any) {
-                  diagnostics.last = error?.message || `Could not connect ${method}`;
-              }
-          }
-
           function connectBadgeRenderer() {
               try {
                   after("default", useBadgesModule as any, ([user], result) => {
@@ -1107,11 +1097,6 @@ jobs:
               } catch (error: any) {
                   diagnostics.last = error?.message || `Could not connect ${method}`;
               }
-          }
-
-          function requestIsCurrent(args: any[]) {
-              if (!currentUserId) return false;
-              return args.some(value => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
           }
 
           function renderedUserId(props: any) {
@@ -1213,14 +1198,6 @@ jobs:
 
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
               diagnostics.profileStore = !!profileStore;
-              addPatch("getUserProfile", profileStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) return original(...args);
-                  return decorateProfileResult(original(...args), args?.[0]);
-              });
-              addPatch("getGuildMemberProfile", profileStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) return original(...args);
-                  return decorateProfileResult(original(...args), args?.[0]);
-              });
 
               try {
                   after("default", useUserProfileModule as any, (args, result) => {
@@ -1244,35 +1221,12 @@ jobs:
                   diagnostics.last = error?.message || "Could not connect profile banner";
               }
 
-              const avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
-              const bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
-              diagnostics.avatarResolver = !!avatarResolver;
-              diagnostics.bannerResolver = !!bannerResolver;
-
-              for (const method of ["getUserAvatarURL", "getAvatarURL", "getGuildMemberAvatarURL", "getGuildMemberAvatarURLSimple"]) {
-                  addPatch(method, avatarResolver, (args, original) => {
-                      const uri = mediaUri("avatarMedia");
-                      return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
-                  });
-              }
-              for (const method of ["getUserAvatarSource", "getGuildMemberAvatarSource"]) {
-                  addPatch(method, avatarResolver, (args, original) => {
-                      const uri = mediaUri("avatarMedia");
-                      return preview.enabled && uri && requestIsCurrent(args) ? { uri } : original(...args);
-                  });
-              }
-              for (const method of ["getUserBannerURL", "getBannerURL", "getGuildMemberBannerURL"]) {
-                  addPatch(method, bannerResolver, (args, original) => {
-                      const uri = mediaUri("bannerMedia");
-                      return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
-                  });
-              }
-
-              const snowflakeUtils = findByProps("extractTimestamp") as any;
-              addPatch("extractTimestamp", snowflakeUtils, (args, original) => {
-                  const createdAt = profileDate(preview.createdAt);
-                  return preview.enabled && createdAt && String(args?.[0] || "") === currentUserId ? createdAt.getTime() : original(...args);
-              });
+              // Avoid global avatar, banner, profile-store and timestamp resolver
+              // replacements. Those modules are shared by guild lists, channels,
+              // DMs and permissions. The native profile hooks and JSX profile
+              // components below are sufficient and stay scoped to profile UI.
+              diagnostics.avatarResolver = false;
+              diagnostics.bannerResolver = false;
 
               connectMediaRenderer();
 
