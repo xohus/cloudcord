@@ -10,12 +10,6 @@ const settingConstants = findByPropsLazy("SETTING_RENDERER_CONFIG");
 const createListModule = findByPropsLazy("createList");
 const SettingsOverviewScreen = findByNameLazy("SettingsOverviewScreen", false);
 
-function useIsFirstRender() {
-    let firstRender = false;
-    React.useEffect(() => void (firstRender = true), []);
-    return firstRender;
-}
-
 export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     const getRows = () => Object.values(registeredSections)
         .flatMap(sect => sect.map(row => ({
@@ -33,6 +27,32 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
             }
         })))
         .reduce((a, c) => Object.assign(a, c));
+
+    const insertCloudCordSections = (sections: any[]) => {
+        if (!Array.isArray(sections)) return;
+        const accountSectionIndex = sections.findIndex((item: any) =>
+            Array.isArray(item?.settings) && item.settings.some((key: unknown) =>
+                String(key).toUpperCase().includes("ACCOUNT")
+            )
+        );
+        let index = accountSectionIndex >= 0 ? accountSectionIndex + 1 : Math.min(1, sections.length);
+        Object.keys(registeredSections).forEach(sectionName => {
+            const rows = registeredSections[sectionName];
+            if (!rows.length) return;
+            const rowKeys = new Set(rows.map(row => row.key));
+            const alreadyExists = sections.some((section: any) =>
+                section?.label === sectionName || section?.title === sectionName ||
+                section?.settings?.some?.((key: string) => rowKeys.has(key))
+            );
+            if (!alreadyExists) {
+                sections.splice(index++, 0, {
+                    label: sectionName,
+                    title: sectionName,
+                    settings: rows.map(row => row.key)
+                });
+            }
+        });
+    };
 
     const origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
     let rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
@@ -87,46 +107,16 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         unpatches.push(after("createList", createListModule, function(args, ret) {
             const [config] = args;
         
-            if (config?.sections && Array.isArray(config.sections)) {
-                const sections = config.sections;
-            
-                const accountSectionIndex = sections.findIndex((i: any) => i.settings?.includes("ACCOUNT"));
-            
-                if (accountSectionIndex !== -1) {
-                    // Credit to @palmdevs - https://discord.com/channels/1196075698301968455/1243605828783571024/1307940348378742816
-
-                    let index = accountSectionIndex + 1;
-                
-                    Object.keys(registeredSections).forEach(sect => {
-                        const alreadyExists = sections.some((s: any) => s.label === sect);
-                        if (!alreadyExists) {
-                            sections.splice(index++, 0, {
-                                label: sect,
-                                title: sect,
-                                settings: registeredSections[sect].map(a => a.key)
-                            });
-                        }
-                    });
-                }
-            }
+            insertCloudCordSections(config?.sections);
             return ret;
         },));
+    } catch {}
 
-    }catch{
-    unpatches.push(after("default", SettingsOverviewScreen, (_, ret) => {
-        if (useIsFirstRender()) return; // :shrug:
-
-        const { sections } = findInReactTree(ret, i => i.props?.sections).props;
-        // Credit to @palmdevs - https://discord.com/channels/1196075698301968455/1243605828783571024/1307940348378742816
-        let index = -~sections.findIndex((i: any) => i.settings.includes("ACCOUNT")) || 1;
-
-        Object.keys(registeredSections).forEach(sect => {
-            sections.splice(index++, 0, {
-                label: sect,
-                title: sect,
-                settings: registeredSections[sect].map(a => a.key)
-            });
-        });
-    }));
-    }
+    try {
+        unpatches.push(after("default", SettingsOverviewScreen, (_, ret) => {
+            const tree = findInReactTree(ret, item => Array.isArray(item?.props?.sections));
+            insertCloudCordSections(tree?.props?.sections);
+            return ret;
+        }));
+    } catch {}
 };
