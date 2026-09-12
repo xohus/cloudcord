@@ -106,6 +106,13 @@ static LoaderConfig  *loaderConfig;
 static NSTimeInterval shakeStartTime = 0;
 static BOOL           isShaking      = NO;
 
+static BOOL requiresPostMainInjection(void)
+{
+    NSString *version = [[NSBundle mainBundle]
+        objectForInfoDictionaryKey:@"CFBundleShortVersionString"] ?: @"0";
+    return [version compare:@"344.0" options:NSNumericSearch] != NSOrderedAscending;
+}
+
 static NSString *sha256Hex(NSData *data)
 {
     if (!data)
@@ -358,6 +365,13 @@ static void registerBridgeMethods(void)
         return %orig;
     }
 
+    BOOL postMainInjection = requiresPostMainInjection();
+    if (postMainInjection)
+    {
+        BunnyLog(@"Discord 344+: executing Discord before optional CloudCord runtime");
+        %orig(script, url, async);
+    }
+
     [[BridgeRegistry shared] clearMethods];
     registerBridgeMethods();
     BunnyLog(@"[Bridge] Native bridge ready for new JS context");
@@ -399,7 +413,7 @@ static void registerBridgeMethods(void)
         BunnyLog(@"[Updater] Using packaged runtime for non-blocking first launch");
     }
 
-    NSData *themeData =
+    NSData *themeData = postMainInjection ? nil :
         [NSData dataWithContentsOfURL:[cloudcordDirectory
                                           URLByAppendingPathComponent:@"current-theme.json"]];
     if (themeData)
@@ -438,7 +452,7 @@ static void registerBridgeMethods(void)
                  [cloudcordDirectory URLByAppendingPathComponent:@"current-theme.json"]);
     }
 
-    NSData *fontData = [NSData
+    NSData *fontData = postMainInjection ? nil : [NSData
         dataWithContentsOfURL:[cloudcordDirectory URLByAppendingPathComponent:@"fonts.json"]];
     if (fontData)
     {
@@ -468,7 +482,7 @@ static void registerBridgeMethods(void)
     }
 
     NSURL *preloadsDirectory = [cloudcordDirectory URLByAppendingPathComponent:@"preloads"];
-    if ([[NSFileManager defaultManager] fileExistsAtPath:preloadsDirectory.path])
+    if (!postMainInjection && [[NSFileManager defaultManager] fileExistsAtPath:preloadsDirectory.path])
     {
         NSError *error = nil;
         NSArray *contents =
@@ -495,7 +509,8 @@ static void registerBridgeMethods(void)
         }
     }
 
-    %orig(script, url, async);
+    if (!postMainInjection)
+        %orig(script, url, async);
 
     // Never block Discord's JS startup on the network. A verified update is
     // downloaded in the background and becomes active on the next reload.
