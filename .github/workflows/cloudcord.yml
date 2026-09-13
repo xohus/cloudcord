@@ -75,6 +75,13 @@ jobs:
           cp "../ios/runtime/src/lib/api/native/legacyRuntimeRefresh.ts" "src/lib/api/native/legacyRuntimeRefresh.ts"
           cp "../ios/runtime/src/lib/ui/settings/patches/tabs.tsx" "src/lib/ui/settings/patches/tabs.tsx"
           cp "../ios/runtime/src/lib/api/native/loader.ts" "src/lib/api/native/loader.ts"
+          # Discord 344 safety lives in the runtime entry and Metro internals.
+          # Always overlay these files onto the clean Kettu checkout; otherwise
+          # the build silently ships Kettu's legacy force-loading behavior.
+          cp "../ios/runtime/src/entry.ts" "src/entry.ts"
+          cp "../ios/runtime/src/index.ts" "src/index.ts"
+          cp "../ios/runtime/src/metro/internals/caches.ts" "src/metro/internals/caches.ts"
+          cp "../ios/runtime/src/metro/internals/modules.ts" "src/metro/internals/modules.ts"
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
           import type { ComponentType } from "react";
