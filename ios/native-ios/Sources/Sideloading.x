@@ -86,6 +86,12 @@ static BOOL isSelfCall(void)
     return [path hasPrefix:NSBundle.mainBundle.bundlePath];
 }
 
+static BOOL isDiscord344OrNewer(void)
+{
+    NSString *version = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleShortVersionString"];
+    return version.integerValue >= 344;
+}
+
 %group Sideloading
 
 %hook NSBundle
@@ -122,6 +128,12 @@ static BOOL isSelfCall(void)
 %hook NSFileManager
 - (NSURL *)containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier
 {
+    // Discord 344 stores authenticated account, guild and navigation state in
+    // its real App Group containers. The legacy Documents/AppGroup redirect
+    // makes the signed-in user appear empty on the bridgeless client.
+    if (isDiscord344OrNewer())
+        return %orig;
+
     BunnyLog(@"containerURLForSecurityApplicationGroupIdentifier called! %@",
              groupIdentifier ?: @"nil");
 
@@ -134,6 +146,8 @@ static BOOL isSelfCall(void)
 %hook UIPasteboard
 - (NSString *)_accessGroup
 {
+    if (isDiscord344OrNewer())
+        return %orig;
     return getAccessGroupID();
 }
 %end
