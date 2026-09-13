@@ -7,8 +7,13 @@ globalThis.window = globalThis;
 
 async function initializeCloudCord() {
     try {
-        // Make 'freeze' and 'seal' do nothing
-        Object.freeze = Object.seal = Object;
+        // Legacy React Native needs mutable module exports before Discord
+        // starts. On Discord 344+ this bundle is attached after startup;
+        // replacing these globals then corrupts active account/navigation
+        // stores and can leave the client on an infinite loading screen.
+        if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+            Object.freeze = Object.seal = Object;
+        }
 
         await require("@metro/internals/caches").initMetroCache();
         require(".").default();
