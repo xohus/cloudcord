@@ -84,7 +84,7 @@ export default async () => {
     try {
         const { showConfirmationAlert } = require("@lib/ui/alerts");
         setTimeout(() => {
-            showConfirmationAlert({title: "Critical Update Required", content: "CloudCord is migrating to private servers! You MUST download the new App from our website to continue receiving updates.", confirmText: "I understand"});
+            showConfirmationAlert({title: "Temporary CloudCord Issues", content: "CloudCord is currently experiencing issues. You may see errors such as channels not loading, pages failing to load, or other parts of the app not working correctly. The CloudCord section is currently broken and will be fixed tomorrow. Thanks for your patience.", confirmText: "I understand"});
         }, 5000);
     } catch(e) {}
 };
