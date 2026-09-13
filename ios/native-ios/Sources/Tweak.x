@@ -108,10 +108,9 @@ static BOOL           isShaking      = NO;
 
 static BOOL requiresPostMainInjection(void)
 {
-    // Kettu's bridge must register before Discord's main bundle so Metro module
-    // factories can be observed. UI safety is handled by disabling incompatible
-    // native font/theme constructors in the 344 build, not by changing JS order.
-    return NO;
+    NSString *version = NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"];
+    NSInteger major = version.integerValue;
+    return major >= 344;
 }
 
 static NSString *sha256Hex(NSData *data)
@@ -369,8 +368,12 @@ static void registerBridgeMethods(void)
     BOOL postMainInjection = requiresPostMainInjection();
     if (postMainInjection)
     {
-        BunnyLog(@"Discord 344+: executing Discord before optional CloudCord runtime");
+        // RCTHost/Bridgeless.xm owns CloudCord injection on 344+. Running the
+        // legacy bridge loader as well executes CloudCord twice and leaves
+        // Discord stuck on account loading.
+        BunnyLog(@"Discord 344+: bypassing legacy RCTCxxBridge injector");
         %orig(script, url, async);
+        return;
     }
 
     [[BridgeRegistry shared] clearMethods];
