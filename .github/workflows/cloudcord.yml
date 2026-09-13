@@ -2510,7 +2510,20 @@ jobs:
         run: |
           set -e
           cd _cloudcord_source
-          bun run build -- --build-minify
+          set +e
+          build_output=$(bun run build -- --build-minify 2>&1)
+          build_status=$?
+          set -e
+          printf '%s\n' "$build_output"
+          if [ "$build_status" -ne 0 ]; then
+            printf '%s\n' "$build_output" | tail -80 | while IFS= read -r line; do
+              safe_line=${line//'%'/'%25'}
+              safe_line=${safe_line//$'\r'/'%0D'}
+              safe_line=${safe_line//$'\n'/'%0A'}
+              echo "::error title=Runtime build failed::$safe_line"
+            done
+            exit "$build_status"
+          fi
 
           mkdir -p ../dist
 
