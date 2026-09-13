@@ -60,7 +60,10 @@ static BOOL evaluateCloudCordData(NSData *data, const char *tag, jsi::Runtime &r
 
 static BOOL cloudCordMetroIsReady(jsi::Runtime &runtime)
 {
-    static NSString *probe = @"(()=>{try{const m=globalThis.modules??globalThis.__c?.();if(!globalThis.modules&&m)globalThis.modules=m;return !!m&&typeof globalThis.__r==='function'&&Object.keys(m).length>0}catch{return false}})()";
+    // Match the readiness contract used by maintained bridgeless loaders. A
+    // Metro table existing is not enough: evaluating Kettu before React Native
+    // and React are exported can monopolize the JS thread during app startup.
+    static NSString *probe = @"(()=>{try{const m=globalThis.modules\x3f\x3f globalThis.__c?.();if(!globalThis.modules&&m)globalThis.modules=m;if(!m||typeof m.values!=='function')return false;let rn=false,react=false;for(const entry of m.values()){const e=entry?.publicModule?.exports\x3f\x3f entry?.exports\x3f\x3f entry;for(const value of [e,e?.default,e?.default?.default]){if(!value)continue;if(!rn&&value.AppState&&value.NativeModules)rn=true;if(!react&&typeof value.createElement==='function')react=true;if(rn&&react)return true}}return false}catch{return false}})()";
     NSData *data = [probe dataUsingEncoding:NSUTF8StringEncoding];
     try
     {
@@ -99,9 +102,9 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
     [instance callFunctionOnBufferedRuntimeExecutor:[attempt](jsi::Runtime &runtime) {
         if (!cloudCordMetroIsReady(runtime))
         {
-            if (attempt < 300)
+            if (attempt < 120)
             {
-                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC),
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.25 * NSEC_PER_SEC),
                                dispatch_get_main_queue(), ^{
                     executeCloudCordBridgeless(cloudCordRuntimeInstance, attempt + 1);
                 });
@@ -139,7 +142,13 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
     %orig;
 
     if (!cloudCordBridgelessScheduled.exchange(true))
-        executeCloudCordBridgeless(instance, 0);
+    {
+        // Let Discord enqueue main.jsbundle before the first readiness probe.
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1.0 * NSEC_PER_SEC),
+                       dispatch_get_main_queue(), ^{
+            executeCloudCordBridgeless(cloudCordRuntimeInstance, 0);
+        });
+    }
 }
 
 %end
