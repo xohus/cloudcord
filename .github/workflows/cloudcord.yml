@@ -932,7 +932,10 @@ jobs:
           function addRenderedBadge(result: any[], id: string, description: string, icon: string, size?: number) {
               if (!icon || result.some(item => item?.id === id)) return;
               badgeRenderProps.set(id, { id, source: { uri: icon }, label: description, ...(size ? { width: size, height: size, style: { width: size, height: size } } : {}) });
-              result.push({ id, description, icon: " _" });
+              // Discord 331 does not consistently pass custom badge rows through
+              // ProfileBadge/RenderedBadge JSX. Keep native-compatible image
+              // fields on the row itself so it renders even without that hook.
+              result.push({ id, description, label: description, icon, iconSrc: icon, source: { uri: icon } });
           }
 
           function selectedBadgeObjects(existing: any) {
@@ -1292,8 +1295,12 @@ jobs:
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
               diagnostics.profileStore = !!profileStore;
               addPatch("getUserProfile", profileStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) return original(...args);
-                  return decorateProfileResult(original(...args), args?.[0]);
+                  const result = original(...args);
+                  const id = String(args?.[0]?.id || args?.[0]?.userId || args?.[0] || "");
+                  if (isCurrentUser(id)) return decorateProfileResult(result, id);
+                  requestSharedProfile(id);
+                  const shared = sharedProfiles.get(id);
+                  return shared && Object.keys(shared).length ? decorateSharedProfile(result, id, shared) : result;
               });
               // Do not wrap getGuildMemberProfile. Discord 331's iPad channel
               // index uses it while assembling categories and forum channels;

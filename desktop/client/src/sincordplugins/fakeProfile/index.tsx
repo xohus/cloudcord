@@ -391,7 +391,7 @@ async function pullOwnSharedProfile() {
 }
 
 function requestSharedProfile(userId: string, force = false) {
-    if (!/^\\d{15,22}$/.test(userId) || isMe(userId) || sharedRequests.has(userId)) return;
+    if (!/^\d{15,22}$/.test(userId) || isMe(userId) || sharedRequests.has(userId)) return;
     const fetchedAt = sharedProfileFetchedAt.get(userId) ?? 0;
     if (!force && sharedProfiles.has(userId) && Date.now() - fetchedAt < SHARED_PROFILE_TTL_MS) return;
     sharedRequests.add(userId);

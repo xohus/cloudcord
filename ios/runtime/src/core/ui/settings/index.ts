@@ -10,18 +10,36 @@ import { version } from "bunny-build-info";
 
 export { PupuIcon };
 
+function safeAsset(...names: string[]) {
+    for (const name of names) {
+        try {
+            const asset = findAssetId(name);
+            if (asset) return asset;
+        } catch {}
+    }
+    return PupuIcon;
+}
+
 export default function initSettings() {
     // Install the opt-in capture hooks at startup so actions performed before
     // opening the Diagnostics page can be included in the copied snapshot.
     void import("@core/ui/settings/pages/Diagnostics").then(module => module.initializeDiagnosticsCapture()).catch(() => {});
-    const baseItems: RowConfig[] = [
-            {
+    const coreItem: RowConfig = {
                 key: "CLOUDCORD",
                 title: () => Strings.PUPU,
                 icon: { uri: PupuIcon },
                 render: () => import("@core/ui/settings/pages/General"),
                 useTrailing: () => `(${version})`
-            },
+            };
+
+    // Register the essential row first. Discord frequently renames optional
+    // assets and settings modules between releases; none of those changes
+    // should be able to prevent CloudCord itself from appearing.
+    registerSection({ name: "CloudCord", items: [coreItem] });
+    (globalThis as any).__CLOUDCORD_SETTINGS_CORE_REGISTERED__ = true;
+
+    const baseItems: RowConfig[] = [
+            coreItem,
             {
                 key: "STORE_CLOUD",
                 title: () => "CloudSync",
@@ -31,33 +49,33 @@ export default function initSettings() {
             {
                 key: "BOTCORD",
                 title: () => "BotCord",
-                icon: findAssetId("RobotIcon") || findAssetId("AppsIcon"),
+                icon: safeAsset("RobotIcon", "AppsIcon"),
                 render: () => import("@core/ui/settings/pages/BotCord")
             },
             {
                 key: "BUNNY_PLUGINS",
                 title: () => Strings.PLUGINS,
-                icon: findAssetId("AppsIcon"),
+                icon: safeAsset("AppsIcon"),
                 render: () => import("@core/ui/settings/pages/Plugins")
             },
             {
                 key: "BUNNY_THEMES",
                 title: () => Strings.THEMES,
-                icon: findAssetId("PaintPaletteIcon"),
+                icon: safeAsset("PaintPaletteIcon", "ThemeIcon"),
                 render: () => import("@core/ui/settings/pages/Themes"),
                 usePredicate: () => isThemeSupported()
             },
             {
                 key: "BUNNY_FONTS",
                 title: () => Strings.FONTS,
-                icon: findAssetId("LettersIcon"),
+                icon: safeAsset("LettersIcon", "TextIcon"),
                 render: () => import("@core/ui/settings/pages/Fonts"),
                 usePredicate: () => isFontSupported()
             },
             {
                 key: "BUNNY_DEVELOPER",
                 title: () => "Diagnostics",
-                icon: findAssetId("WrenchIcon"),
+                icon: safeAsset("WrenchIcon", "SettingsIcon"),
                 render: () => import("@core/ui/settings/pages/Diagnostics"),
                 usePredicate: () => settings.cloudcordDiagnosticsEnabled ?? false
             }
