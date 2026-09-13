@@ -19,6 +19,65 @@ let patchedImportTracker = false;
 let patchedNativeComponentRegistry = false;
 let _importingModuleId: number = -1;
 
+/**
+ * Builds a diagnostics-only view of Metro without requiring dormant modules.
+ * Never include export values: they may contain account data, tokens, or messages.
+ */
+export function getSafeModuleCompatibilityReport() {
+    const report: Array<{
+        id: number;
+        initialized: boolean;
+        hasError: boolean;
+        filePath?: string;
+        exportKeys?: string[];
+        defaultExportKeys?: string[];
+        defaultDisplayName?: string;
+    }> = [];
+
+    for (const rawId of Object.keys(metroModules)) {
+        const id = Number(rawId);
+        const module = metroModules[id] as any;
+        const item: (typeof report)[number] = {
+            id,
+            initialized: module?.isInitialized === true,
+            hasError: module?.hasError === true,
+        };
+
+        if (typeof module?.__filePath === "string") item.filePath = module.__filePath.slice(0, 300);
+
+        // Reading exports is safe only after Discord itself initialized the module.
+        // Reflective access is individually guarded because some exports are proxies.
+        if (item.initialized && !item.hasError) {
+            try {
+                const exports = module?.publicModule?.exports;
+                if (exports != null && (typeof exports === "object" || typeof exports === "function")) {
+                    item.exportKeys = Reflect.ownKeys(exports)
+                        .filter((key): key is string => typeof key === "string")
+                        .slice(0, 150);
+                    const defaultExport = exports.default;
+                    if (defaultExport != null && (typeof defaultExport === "object" || typeof defaultExport === "function")) {
+                        item.defaultExportKeys = Reflect.ownKeys(defaultExport)
+                            .filter((key): key is string => typeof key === "string")
+                            .slice(0, 100);
+                        const displayName = defaultExport.displayName ?? defaultExport.constructor?.displayName;
+                        if (typeof displayName === "string") item.defaultDisplayName = displayName.slice(0, 120);
+                    }
+                }
+            } catch {
+                // A hostile/proxied export must not make Diagnostics crash Discord.
+            }
+        }
+        report.push(item);
+    }
+
+    return {
+        moduleCount: report.length,
+        initializedCount: report.filter(module => module.initialized).length,
+        errorCount: report.filter(module => module.hasError).length,
+        modules: report,
+    };
+}
+
 for (const key in metroModules) {
     const id = Number(key);
     const metroModule = metroModules[id];

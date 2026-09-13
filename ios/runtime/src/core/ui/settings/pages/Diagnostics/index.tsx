@@ -7,6 +7,7 @@ import { onJsxCreate } from "@lib/api/react/jsx";
 import { loaderConfig, settings } from "@lib/api/settings";
 import { clipboard } from "@metro/common";
 import { Button, Stack, TableRow, TableRowGroup, TableSwitchRow, Text, TextInput } from "@metro/common/components";
+import { getSafeModuleCompatibilityReport } from "@metro/internals/modules";
 import { showToast } from "@ui/toasts";
 import { useEffect, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
@@ -216,6 +217,24 @@ export default function Diagnostics() {
         clipboard.setString(JSON.stringify(snapshot, null, 2));
         showToast("Diagnostics copied", findAssetId("toast_copy_link"));
     };
+    const copyModuleReport = () => {
+        try {
+            const snapshot = {
+                cloudCord: debug.bunny.version,
+                discord: `${debug.discord.version} (${debug.discord.build})`,
+                platform: debug.os,
+                bridgeless: (globalThis as any).__CLOUDCORD_BRIDGELESS__ === true,
+                generatedAt: new Date().toISOString(),
+                privacy: "Metadata only: no export values, tokens, messages, cookies, or request bodies.",
+                metro: getSafeModuleCompatibilityReport(),
+                recentRuntimeErrors: runtimeErrors.slice(-20),
+            };
+            clipboard.setString(JSON.stringify(snapshot, null, 2));
+            showToast("Module report copied", findAssetId("toast_copy_link"));
+        } catch (error) {
+            showToast(`Could not copy module report: ${String((error as any)?.message || error).slice(0, 100)}`, findAssetId("Small"));
+        }
+    };
 
     return <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 48 }}>
         <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
@@ -228,6 +247,7 @@ export default function Diagnostics() {
                     onValueChange={(value: boolean) => settings.cloudcordDiagnosticsCapture = value}
                 />
                 <TableRow arrow label="Copy diagnostics" subLabel="Copies build, loader, platform, and tab state" icon={<TableRow.Icon source={findAssetId("CopyIcon")} />} onPress={copySnapshot} />
+                <TableRow arrow label="Copy module compatibility report" subLabel="Copies safe module IDs, states, export-key names, hook clues, and runtime errors" icon={<TableRow.Icon source={findAssetId("CopyIcon")} />} onPress={copyModuleReport} />
                 <TableRow arrow label="Clear captured events" subLabel={`${requestEvents.length + uiEvents.length + runtimeErrors.length} network, UI, and runtime events`} icon={<TableRow.Icon source={findAssetId("TrashIcon") || findAssetId("LogsIcon")} />} onPress={() => {
                     requestEvents.splice(0, requestEvents.length);
                     uiEvents.splice(0, uiEvents.length);
