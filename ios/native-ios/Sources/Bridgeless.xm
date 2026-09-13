@@ -17,7 +17,6 @@ using namespace facebook;
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime;
 @end
 
-#if 0 // Recovery build: no Hermes inspection or CloudCord JavaScript on 344.
 namespace {
 
 class CloudCordNSDataBuffer final : public jsi::Buffer
@@ -149,14 +148,25 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
 }
 
 } // namespace
-#endif
 
 %hook RCTHost
 
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime
 {
+    cloudCordRuntimeInstance = instance;
+    NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized");
+    // This must run before Discord evaluates main.jsbundle.
+    installCloudCordModuleCapture(runtime);
     %orig;
-    NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized (Hermes untouched)");
+
+    if (!cloudCordBridgelessScheduled.exchange(true))
+    {
+        // Let Discord enqueue main.jsbundle before the first readiness probe.
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1.0 * NSEC_PER_SEC),
+                       dispatch_get_main_queue(), ^{
+            executeCloudCordBridgeless(cloudCordRuntimeInstance, 0);
+        });
+    }
 }
 
 %end

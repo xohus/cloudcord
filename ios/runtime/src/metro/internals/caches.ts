@@ -27,11 +27,13 @@ function buildInitCache() {
 
     // Force load all modules so useful modules are pre-cached. Add a minor
     // delay so the cache is initialized before the modules are loaded.
-    setTimeout(() => {
-        for (const id in window.modules) {
-            require("./modules").requireModule(id);
-        }
-    }, 100);
+    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+        setTimeout(() => {
+            for (const id in window.modules) {
+                require("./modules").requireModule(id);
+            }
+        }, 100);
+    }
 
     _metroCache = cache;
     return cache;

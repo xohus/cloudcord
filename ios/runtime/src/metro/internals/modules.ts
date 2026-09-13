@@ -173,8 +173,14 @@ export function subscribeModule(id: number, cb: () => void): () => void {
 }
 
 export function requireModule(id: Metro.ModuleID) {
-    if (!metroModules[0]?.isInitialized) metroRequire(0);
+    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__ && !metroModules[0]?.isInitialized) metroRequire(0);
     if (blacklistedIds.has(id)) return undefined;
+
+    // Discord 344's bridgeless runtime owns module initialization order.
+    // Requiring dormant modules during discovery can initialize account and
+    // navigation stores before their native dependencies are ready.
+    if ((globalThis as any).__CLOUDCORD_BRIDGELESS__ && !metroModules[id]?.isInitialized)
+        return undefined;
 
     if (Number(id) === -1) return require("@metro/polyfills/redesign");
 
