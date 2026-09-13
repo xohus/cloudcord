@@ -13036,13 +13036,13 @@
       };
       visit(root, 0);
     };
-    try {
-      var origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
-      var rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
+    var patchRendererConfig = (rendererModule) => {
+      var origRendererConfig = rendererModule.SETTING_RENDERER_CONFIG;
+      var rendererConfigValue = rendererModule.SETTING_RENDERER_CONFIG;
       if (rendererConfigValue && typeof rendererConfigValue === "object") {
         Object.assign(rendererConfigValue, getCustomRoutes(), getRows());
       }
-      Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+      Object.defineProperty(rendererModule, "SETTING_RENDERER_CONFIG", {
         enumerable: true,
         configurable: true,
         get: () => ({
@@ -13053,11 +13053,24 @@
         set: (v2) => rendererConfigValue = v2
       });
       unpatches.push(() => {
-        Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+        Object.defineProperty(rendererModule, "SETTING_RENDERER_CONFIG", {
           value: origRendererConfig,
           writable: true,
           configurable: true
         });
+      });
+    };
+    try {
+      [
+        .../* @__PURE__ */ new Set([
+          settingConstants344,
+          settingConstants
+        ])
+      ].forEach((module) => {
+        try {
+          patchRendererConfig(module);
+        } catch (e) {
+        }
       });
     } catch (error) {
       console.error("CloudCord renderer config patch failed", error);
@@ -13092,6 +13105,7 @@
     }
     try {
       var modules1 = [
+        SettingsOverviewScreen344,
         SettingsOverviewScreen,
         ...findByNameAll("SettingsOverviewScreen", false)
       ].filter(Boolean);
@@ -13115,7 +13129,7 @@
     } catch (e) {
     }
   }
-  var settingConstants, createListModule, SettingsOverviewScreen;
+  var settingConstants, settingConstants344, createListModule, SettingsOverviewScreen, SettingsOverviewScreen344;
   var init_tabs = __esm({
     "src/lib/ui/settings/patches/tabs.tsx"() {
       "use strict";
@@ -13129,8 +13143,10 @@
       init_shared();
       init_utils();
       settingConstants = findByPropsLazy("SETTING_RENDERER_CONFIG");
+      settingConstants344 = findByFilePathLazy("modules/user_settings/core/native/SettingsRendererConfig.tsx");
       createListModule = findByPropsLazy("createList");
       SettingsOverviewScreen = findByNameLazy("SettingsOverviewScreen", false);
+      SettingsOverviewScreen344 = findByFilePathLazy("modules/user_settings/overview/native/SettingsOverviewScreen.tsx");
     }
   });
 
