@@ -21,14 +21,30 @@ import * as lib from "./lib";
 
 export default async () => {
     if ((globalThis as any).__CLOUDCORD_BRIDGELESS__) {
-        // Discord 344: expose only the CloudCord settings shell. The legacy
-        // plugin/profile startup patches account, guild and navigation stores
-        // and is not safe under React Native's bridgeless architecture.
-        const settingsUnpatch = await patchSettings();
-        initSettings();
-        if (settingsUnpatch) lib.unload.push(settingsUnpatch);
+        // Discord 344 uses the full CloudCord feature layer, but Metro discovery
+        // is restricted to modules Discord has already initialized. Native
+        // themes/fonts and the legacy runtime refresher remain disabled because
+        // their 331 APIs no longer exist under the bridgeless architecture.
+        await Promise.all([
+            injectFluxInterceptor(),
+            patchSettings(),
+            patchLogHook(),
+            patchCommands(),
+            patchJsx(),
+            initVendettaObject(),
+            initFetchI18nStrings(),
+            initSettings(),
+            initBotCordSwitcher(),
+            initFixes(),
+            patchErrorBoundary(),
+            updatePlugins(),
+            initPlugins(),
+            VdPluginManager.initPlugins(),
+        ]).then(u => u.forEach(f => f && lib.unload.push(f)));
+
+        initDebugger();
         window.bunny = lib;
-        logger.log("CloudCord 344 settings shell is ready!");
+        logger.log("CloudCord 344 feature layer is ready!");
         return;
     }
 
