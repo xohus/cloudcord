@@ -15,6 +15,7 @@ on:
 
 jobs:
   build:
+    # Repackage whenever the verified 344-compatible runtime changes.
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
