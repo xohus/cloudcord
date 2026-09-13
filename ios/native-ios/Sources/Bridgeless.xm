@@ -134,16 +134,14 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
             return;
         }
 
-        NSData *preload = cloudCordResource(@"payload-base");
         NSData *runtimeBundle = cloudCordResource(@"runtime");
         NSString *compat = @"(()=>{const raw=globalThis.__c?.();if(raw&&typeof raw.entries==='function'){const view={};for(const [id,module] of raw.entries())view[id]=module;globalThis.modules=view}else if(raw)globalThis.modules=raw})()";
         if (!evaluateCloudCordData([compat dataUsingEncoding:NSUTF8StringEncoding],
                                    "cloudcord:metro-compat", runtime)) return;
-        if (!evaluateCloudCordData(preload, "cloudcord:preload", runtime)) return;
-
-        NSString *marker = @"globalThis.__CLOUDCORD_LOADER__&&Object.assign(globalThis.__CLOUDCORD_LOADER__,{loaderName:'CloudCord',loaderVersion:'2',cloudcordAutoUpdateVersion:4});";
-        evaluateCloudCordData([marker dataUsingEncoding:NSUTF8StringEncoding],
-                              "cloudcord:loader-marker", runtime);
+        // payload-base is a pre-main legacy bootstrap. Executing it after
+        // Discord 344 has started re-hooks Metro/AppRegistry and clears the
+        // authenticated account graph. The bridgeless path executes only the
+        // post-load settings runtime.
         if (evaluateCloudCordData(runtimeBundle, "cloudcord:runtime", runtime))
             NSLog(@"[CloudCord] Bridgeless runtime executed successfully");
     }];
