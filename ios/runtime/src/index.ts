@@ -20,6 +20,18 @@ import { initDebugger } from "@lib/api/debug";
 import * as lib from "./lib";
 
 export default async () => {
+    if ((globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+        // Discord 344: expose only the CloudCord settings shell. The legacy
+        // plugin/profile startup patches account, guild and navigation stores
+        // and is not safe under React Native's bridgeless architecture.
+        const settingsUnpatch = await patchSettings();
+        initSettings();
+        if (settingsUnpatch) lib.unload.push(settingsUnpatch);
+        window.bunny = lib;
+        logger.log("CloudCord 344 settings shell is ready!");
+        return;
+    }
+
     await initLegacyRuntimeRefresh();
 
     // Load everything in parallel
