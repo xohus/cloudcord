@@ -66,6 +66,7 @@ jobs:
           mkdir -p src/lib/api
           cp "../ios/assets/fakeprofile-icon.png" "src/assets/icons/fakeprofile.png"
           cp "../ios/runtime/src/core/ui/settings/pages/BotCord/index.tsx" "src/core/ui/settings/pages/BotCord/index.tsx"
+          cp "../ios/runtime/src/core/ui/botcord/FloatingSwitcher.tsx" "src/core/ui/botcord/FloatingSwitcher.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/Diagnostics/index.tsx" "src/core/ui/settings/pages/Diagnostics/index.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/General/index.tsx" "src/core/ui/settings/pages/General/index.tsx"
           cp "../ios/runtime/src/core/ui/settings/index.ts" "src/core/ui/settings/index.ts"
