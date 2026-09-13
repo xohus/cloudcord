@@ -1,14 +1,16 @@
 import { after, before } from "@lib/api/patcher";
 import { TableRow } from "@metro/common/components";
-import { findByNameAll, findByNameLazy, findByPropsAll, findByPropsLazy } from "@metro/wrappers";
+import { findByFilePathLazy, findByNameAll, findByNameLazy, findByPropsAll, findByPropsLazy } from "@metro/wrappers";
 import { registeredSections } from "@ui/settings";
 
 import { CustomPageRenderer, wrapOnPress } from "./shared";
 import { findInReactTree } from "@lib/utils";
 
 const settingConstants = findByPropsLazy("SETTING_RENDERER_CONFIG");
+const settingConstants344 = findByFilePathLazy("modules/user_settings/core/native/SettingsRendererConfig.tsx");
 const createListModule = findByPropsLazy("createList");
 const SettingsOverviewScreen = findByNameLazy("SettingsOverviewScreen", false);
+const SettingsOverviewScreen344 = findByFilePathLazy("modules/user_settings/overview/native/SettingsOverviewScreen.tsx");
 
 export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     const fallbackNames = [
@@ -121,9 +123,9 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
 
     // Discord 344 can expose this export through a frozen/lazy Metro namespace.
     // A rejected property override must not prevent the independent section hooks below.
-    try {
-        const origRendererConfig = settingConstants.SETTING_RENDERER_CONFIG;
-        let rendererConfigValue = settingConstants.SETTING_RENDERER_CONFIG;
+    const patchRendererConfig = (rendererModule: any) => {
+        const origRendererConfig = rendererModule.SETTING_RENDERER_CONFIG;
+        let rendererConfigValue = rendererModule.SETTING_RENDERER_CONFIG;
 
         // Fallback 1: mutate the live renderer table in-place. This survives
         // Metro namespace objects whose export property cannot be redefined.
@@ -131,7 +133,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
             Object.assign(rendererConfigValue, getCustomRoutes(), getRows());
         }
 
-        Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+        Object.defineProperty(rendererModule, "SETTING_RENDERER_CONFIG", {
         enumerable: true,
         configurable: true,
         get: () => ({
@@ -143,11 +145,20 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         });
 
         unpatches.push(() => {
-            Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+            Object.defineProperty(rendererModule, "SETTING_RENDERER_CONFIG", {
                 value: origRendererConfig,
                 writable: true,
                 configurable: true
             });
+        });
+    };
+
+    try {
+        // 344.1 exposes the renderer through a stable Metro file path even when
+        // its export shape/name changes. Patch that exact module as well as the
+        // generic property match used by 331 and older builds.
+        [...new Set([settingConstants344, settingConstants])].forEach(module => {
+            try { patchRendererConfig(module); } catch {}
         });
     } catch (error) {
         console.error("CloudCord renderer config patch failed", error);
@@ -183,6 +194,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
 
     try {
         const modules = [
+            SettingsOverviewScreen344,
             SettingsOverviewScreen,
             ...findByNameAll("SettingsOverviewScreen", false)
         ].filter(Boolean);
