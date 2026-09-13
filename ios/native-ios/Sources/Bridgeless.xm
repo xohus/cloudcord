@@ -81,6 +81,16 @@ static NSData *cloudCordResource(NSString *name)
     return url ? [NSData dataWithContentsOfURL:url] : nil;
 }
 
+static void installCloudCordModuleCapture(jsi::Runtime &runtime)
+{
+    // React Native 344 registers Metro modules after RCTHost creates Hermes.
+    // Capture the module table while Discord's main bundle is defining it. A
+    // post-load `__c()` snapshot is too late for Kettu and can stall startup.
+    NSString *source = @"Object.defineProperties(globalThis,{__d:{configurable:true,get(){globalThis.modules??=globalThis.__c?.();return this.value},set(v){this.value=v}}});globalThis.__CLOUDCORD_BRIDGELESS__=true;";
+    evaluateCloudCordData([source dataUsingEncoding:NSUTF8StringEncoding],
+                          "cloudcord:modules", runtime);
+}
+
 static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
 {
     if (!instance || ![instance respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
@@ -124,6 +134,8 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
 {
     cloudCordRuntimeInstance = instance;
     NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized");
+    // This must run before Discord evaluates main.jsbundle.
+    installCloudCordModuleCapture(runtime);
     %orig;
 
     if (!cloudCordBridgelessScheduled.exchange(true))
