@@ -77,15 +77,6 @@ static BOOL cloudCordMetroIsReady(jsi::Runtime &runtime)
     catch (...) { return NO; }
 }
 
-static NSData *cloudCordResource(NSString *name)
-{
-    NSString *path = [NSBundle.mainBundle.bundlePath
-        stringByAppendingPathComponent:@"BunnyResources.bundle"];
-    NSBundle *resources = [NSBundle bundleWithPath:path];
-    NSURL *url = [resources URLForResource:name withExtension:@"js"];
-    return url ? [NSData dataWithContentsOfURL:url] : nil;
-}
-
 static void installCloudCordModuleCapture(jsi::Runtime &runtime)
 {
     // Do not replace Discord's Metro globals before main.jsbundle. Discord 344
@@ -134,18 +125,14 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
             return;
         }
 
-        NSData *preload = cloudCordResource(@"payload-base");
-        NSData *runtimeBundle = cloudCordResource(@"runtime");
-        NSString *compat = @"(()=>{const raw=globalThis.__c?.();if(raw&&typeof raw.entries==='function'){const view={};for(const [id,module] of raw.entries())view[id]=module;globalThis.modules=view}else if(raw)globalThis.modules=raw})()";
-        if (!evaluateCloudCordData([compat dataUsingEncoding:NSUTF8StringEncoding],
-                                   "cloudcord:metro-compat", runtime)) return;
-        if (!evaluateCloudCordData(preload, "cloudcord:preload", runtime)) return;
-
-        NSString *marker = @"globalThis.__CLOUDCORD_LOADER__&&Object.assign(globalThis.__CLOUDCORD_LOADER__,{loaderName:'CloudCord',loaderVersion:'2',cloudcordAutoUpdateVersion:4});";
-        evaluateCloudCordData([marker dataUsingEncoding:NSUTF8StringEncoding],
-                              "cloudcord:loader-marker", runtime);
-        if (evaluateCloudCordData(runtimeBundle, "cloudcord:runtime", runtime))
-            NSLog(@"[CloudCord] Bridgeless runtime executed successfully");
+        // The legacy Kettu runtime mutates Discord's account and navigation
+        // stores and is not safe under 344's bridgeless architecture. Keep the
+        // native loader present, but fail closed until the runtime has a true
+        // 344-specific entrypoint. Loading Discord normally is more important
+        // than exposing settings while leaving the user/store graph corrupted.
+        evaluateCloudCordData([@"globalThis.__CLOUDCORD_344_NATIVE_READY__=true"
+            dataUsingEncoding:NSUTF8StringEncoding], "cloudcord:native-ready", runtime);
+        NSLog(@"[CloudCord] Discord 344 native loader ready; legacy runtime skipped");
     }];
 }
 
