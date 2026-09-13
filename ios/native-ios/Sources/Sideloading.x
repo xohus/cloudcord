@@ -239,6 +239,36 @@ static BOOL isDiscord344OrNewer(void)
 
 %end
 
+%group Sideloading344
+
+%hook NSFileManager
+- (NSURL *)containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier
+{
+    NSURL *nativeContainer = %orig;
+    if (nativeContainer || groupIdentifier.length == 0)
+        return nativeContainer;
+
+    // A sideload signature cannot claim Discord's original Team-ID App Group.
+    // Keep every requested group isolated instead of merging all state into the
+    // single legacy Documents/AppGroup directory used by the 331 loader.
+    NSCharacterSet *unsafe = [[NSCharacterSet alphanumericCharacterSet] invertedSet];
+    NSString *safeGroup = [[groupIdentifier componentsSeparatedByCharactersInSet:unsafe]
+        componentsJoinedByString:@"_"];
+    NSURL *documents = [[self URLsForDirectory:NSDocumentDirectory
+                                      inDomains:NSUserDomainMask] lastObject];
+    NSURL *container = [[documents URLByAppendingPathComponent:@"CloudCordAppGroups"
+                                                   isDirectory:YES]
+        URLByAppendingPathComponent:safeGroup isDirectory:YES];
+    [self createDirectoryAtURL:container
+   withIntermediateDirectories:YES
+                    attributes:nil
+                         error:nil];
+    return container;
+}
+%end
+
+%end
+
 %ctor
 {
     BOOL isAppStoreApp = [[NSFileManager defaultManager]
@@ -250,5 +280,9 @@ static BOOL isDiscord344OrNewer(void)
     if (!isAppStoreApp && !isDiscord344OrNewer())
     {
         %init(Sideloading);
+    }
+    else if (!isAppStoreApp)
+    {
+        %init(Sideloading344);
     }
 }
