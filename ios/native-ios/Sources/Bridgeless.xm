@@ -65,7 +65,7 @@ static BOOL cloudCordMetroIsReady(jsi::Runtime &runtime)
     // Match the readiness contract used by maintained bridgeless loaders. A
     // Metro table existing is not enough: evaluating Kettu before React Native
     // and React are exported can monopolize the JS thread during app startup.
-    static NSString *probe = @"(()=>{try{const m=globalThis.modules\x3f\x3f globalThis.__c?.();if(!globalThis.modules&&m)globalThis.modules=m;if(!m||typeof m.values!=='function')return false;let rn=false,react=false,active=false,user=false;for(const entry of m.values()){const e=entry?.publicModule?.exports\x3f\x3f entry?.exports\x3f\x3f entry;for(const value of [e,e?.default,e?.default?.default]){if(!value)continue;if(!rn&&value.AppState&&value.NativeModules){rn=true;active=value.AppState.currentState==='active'}if(!react&&typeof value.createElement==='function')react=true;if(!user&&typeof value.getCurrentUser==='function'){try{user=!!value.getCurrentUser()}catch{}}if(rn&&react&&active&&user)return true}}return false}catch{return false}})()";
+    static NSString *probe = @"(()=>{try{const m=globalThis.modules\x3f\x3f globalThis.__c?.();if(!globalThis.modules&&m)globalThis.modules=m;if(!m||typeof m.values!=='function')return false;let rn=false,react=false,active=false;for(const entry of m.values()){const e=entry?.publicModule?.exports\x3f\x3f entry?.exports\x3f\x3f entry;for(const value of [e,e?.default,e?.default?.default]){if(!value)continue;if(!rn&&value.AppState&&value.NativeModules){rn=true;active=value.AppState.currentState==='active'}if(!react&&typeof value.createElement==='function')react=true;if(rn&&react&&active)return true}}return false}catch{return false}})()";
     NSData *data = [probe dataUsingEncoding:NSUTF8StringEncoding];
     try
     {

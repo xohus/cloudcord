@@ -531,6 +531,11 @@ static void registerBridgeMethods(void)
               resolve:(RCTPromiseResolveBlock)resolve
                reject:(RCTPromiseRejectBlock)reject
 {
+    if (requiresPostMainInjection())
+    {
+        %orig;
+        return;
+    }
     NSDictionary *result = [[BridgeRegistry shared] dispatchPayload:blob];
     if (result)
     {
@@ -547,6 +552,11 @@ static void registerBridgeMethods(void)
 
 - (void)motionBegan:(UIEventSubtype)motion withEvent:(UIEvent *)event
 {
+    if (requiresPostMainInjection())
+    {
+        %orig;
+        return;
+    }
     if (motion == UIEventSubtypeMotionShake)
     {
         isShaking      = YES;
@@ -557,6 +567,11 @@ static void registerBridgeMethods(void)
 
 - (void)motionEnded:(UIEventSubtype)motion withEvent:(UIEvent *)event
 {
+    if (requiresPostMainInjection())
+    {
+        %orig;
+        return;
+    }
     if (motion == UIEventSubtypeMotionShake && isShaking)
     {
         NSTimeInterval shakeDuration = [[NSDate date] timeIntervalSince1970] - shakeStartTime;

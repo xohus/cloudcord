@@ -243,7 +243,11 @@ static BOOL isDiscord344OrNewer(void)
 {
     BOOL isAppStoreApp = [[NSFileManager defaultManager]
         fileExistsAtPath:[[NSBundle mainBundle] appStoreReceiptURL].path];
-    if (!isAppStoreApp)
+    // These hooks were designed around Discord 331's legacy storage and UI.
+    // Discord 344 uses different App Group, authentication, document-picker,
+    // bundle identity and passkey paths. Do not hook any of those system APIs
+    // on 344; the sideload signer owns its actual bundle/container identity.
+    if (!isAppStoreApp && !isDiscord344OrNewer())
     {
         %init(Sideloading);
     }
