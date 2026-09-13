@@ -536,19 +536,9 @@ function scanTextNode(node: Text) {
     }
     if (_realUsername && storedData.username && result.includes(_realUsername)) { result = result.split(_realUsername).join(storedData.username); replaced = true; }
     if (_realGlobalName && storedData.globalName && result.includes(_realGlobalName)) { result = result.split(_realGlobalName).join(storedData.globalName); replaced = true; }
-    const nitroLevel = Number(storedData.nitroLevel ?? -1);
-    if (storedData.nitro === true && nitroLevel >= 0 && nitroLevel < NITRO_LEVELS.length) {
-        const tier = NITRO_LEVELS[nitroLevel].name;
-        const since = shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nitroLevel] ?? 0, storedData.nitroSince));
-        if (/Nitro\s+(?:Bronze|Silver|Gold|Platinum|Diamond|Emerald|Ruby|Opal)/i.test(result)) {
-            result = result.replace(/Nitro\s+(?:Bronze|Silver|Gold|Platinum|Diamond|Emerald|Ruby|Opal)/gi, `Nitro ${tier}`);
-            replaced = true;
-        }
-        if (/Subscriber since\s+\S+/i.test(result)) {
-            result = result.replace(/Subscriber since\s+\S+/gi, `Subscriber since ${since}`);
-            replaced = true;
-        }
-    }
+    // Nitro overlays are resolved per profile by userProfileBadges. Never
+    // rewrite milestone text from the global DOM observer: storedData belongs
+    // to the signed-in user and would replace another user's overlay with ours.
     if (replaced && result !== node.nodeValue) { if ((node as any).__cp_orig === undefined) (node as any).__cp_orig = val; node.nodeValue = result; }
 }
 function scanNode(node: Node) {
@@ -556,26 +546,7 @@ function scanNode(node: Node) {
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
     let n: Node | null;
     while ((n = walker.nextNode())) scanTextNode(n as Text);
-    const level = Number(storedData.nitroLevel ?? -1);
-    if (storedData.nitro === true && level >= 0 && level < NITRO_LEVELS.length && node.nodeType === Node.ELEMENT_NODE) {
-        for (const img of Array.from((node as Element).querySelectorAll?.("img") ?? [])) {
-            let parent: Element | null = img.parentElement;
-            for (let depth = 0; parent && depth < 6; depth++, parent = parent.parentElement) {
-                if (/Subscriber since/i.test(parent.textContent || "") && /Nitro\s+(?:Bronze|Silver|Gold|Platinum|Diamond|Emerald|Ruby|Opal)/i.test(parent.textContent || "")) {
-                    // Large Nitro surfaces use Discord's full advancing milestone
-                    // artwork. Using the compact profile-badge icon here also
-                    // overwrote CloudCord's own hover artwork after it mounted.
-                    if ((img.clientWidth || img.naturalWidth) >= 48) {
-                        if (!(img as any).__cp_orig_src) (img as any).__cp_orig_src = img.src;
-                        img.src = NITRO_LEVELS[level].art;
-                        img.classList.add("cp-discord-nitro-milestone-art");
-                        img.parentElement?.classList.add("cp-discord-nitro-milestone-slot");
-                    }
-                    break;
-                }
-            }
-        }
-    }
+    // Milestone artwork is likewise owned by the clicked badge component.
 }
 function processDomBatch() {
     _domQueued = false;
