@@ -35,6 +35,7 @@ private:
 
 static __weak id cloudCordRuntimeInstance = nil;
 static std::atomic_bool cloudCordBridgelessScheduled{false};
+static std::atomic_bool cloudCordRuntimeStabilizing{false};
 
 static BOOL evaluateCloudCordData(NSData *data, const char *tag, jsi::Runtime &runtime)
 {
@@ -115,6 +116,20 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
                 NSLog(@"[CloudCord] Bridgeless Metro readiness timed out");
                 cloudCordBridgelessScheduled.store(false);
             }
+            return;
+        }
+
+        // React and RN exports become visible before Discord has finished
+        // restoring the authenticated account and navigation stores. Patching
+        // during that window can leave 344 on an endless account loader. Give
+        // Discord one bounded stabilization period, then re-enter through the
+        // buffered runtime executor.
+        if (attempt < 1000 && !cloudCordRuntimeStabilizing.exchange(true))
+        {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 6 * NSEC_PER_SEC),
+                           dispatch_get_main_queue(), ^{
+                executeCloudCordBridgeless(cloudCordRuntimeInstance, 1000);
+            });
             return;
         }
 
