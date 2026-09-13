@@ -89,7 +89,11 @@ static void installCloudCordModuleCapture(jsi::Runtime &runtime)
     // React Native 344 registers Metro modules after RCTHost creates Hermes.
     // Capture the module table while Discord's main bundle is defining it. A
     // post-load `__c()` snapshot is too late for Kettu and can stall startup.
-    NSString *source = @"Object.defineProperties(globalThis,{__d:{configurable:true,get(){globalThis.modules\x3f\x3f=globalThis.__c?.();return this.value},set(v){this.value=v}}});globalThis.__CLOUDCORD_BRIDGELESS__=true;";
+    // Discord 344's __c() returns a Map, while Kettu/CloudCord still expects
+    // the enumerable numeric-key object used by 331. Keep a live compatibility
+    // object populated as Metro defines each module. The non-enumerable values
+    // helper also lets the bridgeless readiness probe inspect the native cache.
+    NSString *source = @"(()=>{const view={};Object.defineProperty(view,'values',{enumerable:false,value(){const raw=globalThis.__c?.();return raw&&typeof raw.values==='function'?raw.values():Object.values(view)}});globalThis.modules=view;let metroDefine;Object.defineProperty(globalThis,'__d',{configurable:true,get(){return metroDefine},set(v){metroDefine=function(...args){const result=v.apply(this,args);try{const id=args[0],raw=globalThis.__c?.(),entry=raw&&typeof raw.get==='function'?raw.get(id):raw?.[id];if(entry)view[id]=entry}catch{}return result}}});globalThis.__CLOUDCORD_BRIDGELESS__=true})()";
     evaluateCloudCordData([source dataUsingEncoding:NSUTF8StringEncoding],
                           "cloudcord:modules", runtime);
 }
