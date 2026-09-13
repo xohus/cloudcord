@@ -141,7 +141,7 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
         // payload-base is a pre-main legacy bootstrap. Executing it after
         // Discord 344 has started re-hooks Metro/AppRegistry and clears the
         // authenticated account graph. The bridgeless path executes only the
-        // post-load settings runtime.
+        // post-load settings runtime, whose module discovery is read-only.
         if (evaluateCloudCordData(runtimeBundle, "cloudcord:runtime", runtime))
             NSLog(@"[CloudCord] Bridgeless runtime executed successfully");
     }];
