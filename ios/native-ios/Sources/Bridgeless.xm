@@ -86,7 +86,7 @@ static void installCloudCordModuleCapture(jsi::Runtime &runtime)
     // React Native 344 registers Metro modules after RCTHost creates Hermes.
     // Capture the module table while Discord's main bundle is defining it. A
     // post-load `__c()` snapshot is too late for Kettu and can stall startup.
-    NSString *source = @"Object.defineProperties(globalThis,{__d:{configurable:true,get(){globalThis.modules??=globalThis.__c?.();return this.value},set(v){this.value=v}}});globalThis.__CLOUDCORD_BRIDGELESS__=true;";
+    NSString *source = @"Object.defineProperties(globalThis,{__d:{configurable:true,get(){globalThis.modules\x3f\x3f=globalThis.__c?.();return this.value},set(v){this.value=v}}});globalThis.__CLOUDCORD_BRIDGELESS__=true;";
     evaluateCloudCordData([source dataUsingEncoding:NSUTF8StringEncoding],
                           "cloudcord:modules", runtime);
 }
