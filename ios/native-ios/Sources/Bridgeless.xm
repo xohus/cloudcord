@@ -17,6 +17,7 @@ using namespace facebook;
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime;
 @end
 
+#if 0 // Disabled until the Discord 344 runtime adapter is store-safe.
 namespace {
 
 class CloudCordNSDataBuffer final : public jsi::Buffer
@@ -137,25 +138,16 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
 }
 
 } // namespace
+#endif
 
 %hook RCTHost
 
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime
 {
-    cloudCordRuntimeInstance = instance;
-    NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized");
-    // This must run before Discord evaluates main.jsbundle.
-    installCloudCordModuleCapture(runtime);
+    // Discord 344 control path: do not inspect or mutate Hermes during account
+    // bootstrap. Even read-style export probing can invoke live store methods.
     %orig;
-
-    if (!cloudCordBridgelessScheduled.exchange(true))
-    {
-        // Let Discord enqueue main.jsbundle before the first readiness probe.
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 1.0 * NSEC_PER_SEC),
-                       dispatch_get_main_queue(), ^{
-            executeCloudCordBridgeless(cloudCordRuntimeInstance, 0);
-        });
-    }
+    NSLog(@"[CloudCord] Discord 344 vanilla runtime path active");
 }
 
 %end
