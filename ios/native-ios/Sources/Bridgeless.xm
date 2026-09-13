@@ -86,7 +86,7 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
     if (!instance || ![instance respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
         return;
 
-    [instance callFunctionOnBufferedRuntimeExecutor:[instance, attempt](jsi::Runtime &runtime) {
+    [instance callFunctionOnBufferedRuntimeExecutor:[attempt](jsi::Runtime &runtime) {
         if (!cloudCordMetroIsReady(runtime))
         {
             if (attempt < 300)
