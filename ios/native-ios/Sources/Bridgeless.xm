@@ -147,7 +147,7 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
     // Discord 344 control path: do not inspect or mutate Hermes during account
     // bootstrap. Even read-style export probing can invoke live store methods.
     %orig;
-    NSLog(@"[CloudCord] Discord 344 vanilla runtime path active");
+    NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized (safe control path)");
 }
 
 %end
