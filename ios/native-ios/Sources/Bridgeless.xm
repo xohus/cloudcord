@@ -36,6 +36,7 @@ private:
 static __weak id cloudCordRuntimeInstance = nil;
 static std::atomic_bool cloudCordBridgelessScheduled{false};
 static std::atomic_bool cloudCordRuntimeStabilizing{false};
+// Discord 344 compatibility is intentionally isolated from the legacy bridge.
 
 static BOOL evaluateCloudCordData(NSData *data, const char *tag, jsi::Runtime &runtime)
 {
