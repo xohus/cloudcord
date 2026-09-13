@@ -38,6 +38,11 @@ jobs:
         env:
           THEOS: ${{ runner.temp }}/theos
         run: |
+          git clone --depth 1 https://github.com/unbound-app/loader-ios.git "$RUNNER_TEMP/unbound-loader-ios"
+          git -C "$RUNNER_TEMP/unbound-loader-ios" fetch --depth 1 origin d968df6470f7007bb1ac451d6089044f4a2e2e01
+          git -C "$RUNNER_TEMP/unbound-loader-ios" checkout d968df6470f7007bb1ac451d6089044f4a2e2e01
+          mkdir -p Headers/jsi
+          cp -R "$RUNNER_TEMP/unbound-loader-ios/headers/jsi/." Headers/jsi/
           sed -i '' 's/^BUNDLE_NAME = CloudCordResources$/BUNDLE_NAME = BunnyResources/' Makefile
           sed -i '' 's/^TWEAK_NAME = CloudCordTweak$/LIBRARY_NAME = CloudCordTweak/' Makefile
           sed -i '' 's#$(THEOS_MAKE_PATH)/tweak.mk#$(THEOS_MAKE_PATH)/library.mk#' Makefile
@@ -94,6 +99,8 @@ jobs:
             | grep -q '@executable_path/Frameworks/CloudCordTweak.dylib'
           otool -L "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Discord" \
             | grep -q '@rpath/hermesvm.framework/hermesvm'
+          strings "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
+            | grep -q 'RCTHost bridgeless runtime initialized'
           if otool -L "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
             | grep -qi 'CydiaSubstrate'; then
             echo 'CloudCordTweak unexpectedly depends on CydiaSubstrate' >&2
