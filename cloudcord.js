@@ -10037,7 +10037,12 @@
     result.push({
       id,
       description,
-      icon: " _"
+      label: description,
+      icon,
+      iconSrc: icon,
+      source: {
+        uri: icon
+      }
     });
   }
   function selectedBadgeObjects(existing) {
@@ -10489,9 +10494,13 @@
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
     addPatch("getUserProfile", profileStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
-      return decorateProfileResult(original(...args), args?.[0]);
+      var result = original(...args);
+      var id = String(args?.[0]?.id || args?.[0]?.userId || args?.[0] || "");
+      if (isCurrentUser(id))
+        return decorateProfileResult(result, id);
+      requestSharedProfile(id);
+      var shared = sharedProfiles.get(id);
+      return shared && Object.keys(shared).length ? decorateSharedProfile(result, id, shared) : result;
     });
     try {
       after("default", useUserProfileModule, (args, result) => {
@@ -19190,23 +19199,42 @@
   });
 
   // src/core/ui/settings/index.ts
+  function safeAsset(...names) {
+    for (var name of names) {
+      try {
+        var asset = findAssetId(name);
+        if (asset)
+          return asset;
+      } catch (e) {
+      }
+    }
+    return cloudcord_default;
+  }
   function initSettings() {
     void Promise.resolve().then(() => (init_Diagnostics(), Diagnostics_exports)).then((module) => module.initializeDiagnosticsCapture()).catch(() => {
     });
-    var baseItems = [
-      {
-        key: "CLOUDCORD",
-        title: () => Strings.PUPU,
-        icon: {
-          uri: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
-        },
-        render: () => Promise.resolve().then(() => (init_General(), General_exports)),
-        useTrailing: () => `(${"v1.4.3"})`
+    var coreItem = {
+      key: "CLOUDCORD",
+      title: () => Strings.PUPU,
+      icon: {
+        uri: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
       },
+      render: () => Promise.resolve().then(() => (init_General(), General_exports)),
+      useTrailing: () => `(${"v1.4.3"})`
+    };
+    registerSection({
+      name: "CloudCord",
+      items: [
+        coreItem
+      ]
+    });
+    globalThis.__CLOUDCORD_SETTINGS_CORE_REGISTERED__ = true;
+    var baseItems = [
+      coreItem,
       {
         key: "BOTCORD",
         title: () => "BotCord",
-        icon: findAssetId("RobotIcon") || findAssetId("AppsIcon"),
+        icon: safeAsset("RobotIcon", "AppsIcon"),
         render: () => Promise.resolve().then(() => (init_BotCord(), BotCord_exports))
       },
       {
@@ -19228,27 +19256,27 @@
       {
         key: "BUNNY_PLUGINS",
         title: () => Strings.PLUGINS,
-        icon: findAssetId("AppsIcon"),
+        icon: safeAsset("AppsIcon"),
         render: () => Promise.resolve().then(() => (init_Plugins(), Plugins_exports))
       },
       {
         key: "BUNNY_THEMES",
         title: () => Strings.THEMES,
-        icon: findAssetId("PaintPaletteIcon"),
+        icon: safeAsset("PaintPaletteIcon", "ThemeIcon"),
         render: () => Promise.resolve().then(() => (init_Themes(), Themes_exports)),
         usePredicate: () => isThemeSupported()
       },
       {
         key: "BUNNY_FONTS",
         title: () => Strings.FONTS,
-        icon: findAssetId("LettersIcon"),
+        icon: safeAsset("LettersIcon", "TextIcon"),
         render: () => Promise.resolve().then(() => (init_Fonts(), Fonts_exports)),
         usePredicate: () => isFontSupported()
       },
       {
         key: "BUNNY_DEVELOPER",
         title: () => "Diagnostics",
-        icon: findAssetId("WrenchIcon"),
+        icon: safeAsset("WrenchIcon", "SettingsIcon"),
         render: () => Promise.resolve().then(() => (init_Diagnostics(), Diagnostics_exports)),
         usePredicate: () => settings.cloudcordDiagnosticsEnabled ?? false
       }
