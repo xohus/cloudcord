@@ -19878,45 +19878,32 @@
       init_lib();
       src_default = () => _async_to_generator(function* () {
         if (globalThis.__CLOUDCORD_BRIDGELESS__) {
-          var cloudCordCoreUnloads1 = [];
-          try {
-            if (globalThis.__CLOUDCORD_LOADER__?.loaderName !== "RealCord") {
-              var cleanup = initSettings();
-              if (cleanup)
-                cloudCordCoreUnloads1.push(cleanup);
-            }
-          } catch (error) {
-            console.error("CloudCord section registration failed", error);
-          }
-          try {
-            var cleanup1 = patchSettings();
-            if (cleanup1)
-              cloudCordCoreUnloads1.push(cleanup1);
-          } catch (error) {
-            console.error("CloudCord settings patch failed", error);
-          }
-          yield Promise.all([
-            injectFluxInterceptor(),
-            patchLogHook(),
-            patchCommands(),
-            patchJsx(),
-            initVendettaObject(),
-            initFetchI18nStrings(),
-            initializeFakeProfile(),
-            initializeCloudCordVerification(),
-            initBotCordSwitcher(),
-            fixes_default(),
-            patchErrorBoundary(),
-            updatePlugins(),
-            initPlugins(),
-            VdPluginManager.initPlugins()
-          ]).then((u) => u.forEach((f) => f && unload.push(f)));
-          initDebugger();
+          var settingsUnpatch = yield patchSettings();
+          initSettings();
+          if (settingsUnpatch)
+            unload.push(settingsUnpatch);
           globalThis.bunny = lib_exports;
-          logger.log("CloudCord 344 feature layer is ready!");
+          logger.log("CloudCord 344 safe settings shell is ready!");
           return;
         }
         yield initLegacyRuntimeRefresh();
+        var cloudCordCoreUnloads = [];
+        try {
+          if (globalThis.__CLOUDCORD_LOADER__?.loaderName !== "RealCord") {
+            var cleanup = initSettings();
+            if (cleanup)
+              cloudCordCoreUnloads.push(cleanup);
+          }
+        } catch (error) {
+          console.error("CloudCord section registration failed", error);
+        }
+        try {
+          var cleanup1 = patchSettings();
+          if (cleanup1)
+            cloudCordCoreUnloads.push(cleanup1);
+        } catch (error) {
+          console.error("CloudCord settings patch failed", error);
+        }
         yield Promise.all([
           initThemes(),
           injectFluxInterceptor(),
