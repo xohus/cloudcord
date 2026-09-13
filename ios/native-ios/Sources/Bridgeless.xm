@@ -86,14 +86,11 @@ static NSData *cloudCordResource(NSString *name)
 
 static void installCloudCordModuleCapture(jsi::Runtime &runtime)
 {
-    // React Native 344 registers Metro modules after RCTHost creates Hermes.
-    // Capture the module table while Discord's main bundle is defining it. A
-    // post-load `__c()` snapshot is too late for Kettu and can stall startup.
-    // Discord 344's __c() returns a Map, while Kettu/CloudCord still expects
-    // the enumerable numeric-key object used by 331. Keep a live compatibility
-    // object populated as Metro defines each module. The non-enumerable values
-    // helper also lets the bridgeless readiness probe inspect the native cache.
-    NSString *source = @"(()=>{const view={};Object.defineProperty(view,'values',{enumerable:false,value(){const raw=globalThis.__c?.();return raw&&typeof raw.values==='function'?raw.values():Object.values(view)}});globalThis.modules=view;let metroDefine;Object.defineProperty(globalThis,'__d',{configurable:true,get(){return metroDefine},set(v){metroDefine=function(...args){const result=v.apply(this,args);try{const id=args[0],raw=globalThis.__c?.(),entry=raw&&typeof raw.get==='function'?raw.get(id):raw?.[id];if(entry)view[id]=entry}catch{}return result}}});globalThis.__CLOUDCORD_BRIDGELESS__=true})()";
+    // Do not replace Discord's Metro globals before main.jsbundle. Discord 344
+    // owns their descriptors and wrapping __d can terminate startup. We only
+    // mark the architecture here; a compatibility view is created after React
+    // Native is fully ready, immediately before CloudCord executes.
+    NSString *source = @"globalThis.__CLOUDCORD_BRIDGELESS__=true";
     evaluateCloudCordData([source dataUsingEncoding:NSUTF8StringEncoding],
                           "cloudcord:modules", runtime);
 }
@@ -123,6 +120,9 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
 
         NSData *preload = cloudCordResource(@"payload-base");
         NSData *runtimeBundle = cloudCordResource(@"runtime");
+        NSString *compat = @"(()=>{const raw=globalThis.__c?.();if(raw&&typeof raw.entries==='function'){const view={};for(const [id,module] of raw.entries())view[id]=module;globalThis.modules=view}else if(raw)globalThis.modules=raw})()";
+        if (!evaluateCloudCordData([compat dataUsingEncoding:NSUTF8StringEncoding],
+                                   "cloudcord:metro-compat", runtime)) return;
         if (!evaluateCloudCordData(preload, "cloudcord:preload", runtime)) return;
 
         NSString *marker = @"globalThis.__CLOUDCORD_LOADER__&&Object.assign(globalThis.__CLOUDCORD_LOADER__,{loaderName:'CloudCord',loaderVersion:'2',cloudcordAutoUpdateVersion:4});";
