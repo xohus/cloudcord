@@ -74,7 +74,9 @@ CloudCord v0.1 Beta
 
 ## Notes
 
-CloudCord is still being worked on. If something breaks, try a clean reinstall before reporting an issue.
+CloudCord is still being worked on and some features are still in beta. If you experience errors such as channels not loading, messages not appearing, account switching issues, Bridge issues, or sync problems, try reloading CloudCord first. If the problem continues, try a clean reinstall before reporting it.
+
+The Bridge and account switcher are still being tested, so temporary bugs or inconsistent behavior can happen while they are being improved.
 
 If the app shows an old runtime or old branding, delete the app fully and reinstall it.
 
