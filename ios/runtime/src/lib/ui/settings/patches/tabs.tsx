@@ -72,6 +72,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     // fallbacks must never run here: they can discover the Account tab's
     // internal sections first and incorrectly nest CloudCord inside Account.
     if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+        (globalThis as any).__CLOUDCORD_331_ROOT_SETTINGS__ = true;
         const customRoutes = {
             VendettaCustomPage: {
                 type: "route",
