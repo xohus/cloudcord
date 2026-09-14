@@ -12987,8 +12987,6 @@
     var insertCloudCordSections = (sections) => {
       if (!Array.isArray(sections))
         return;
-      var accountSectionIndex = sections.findIndex((item) => Array.isArray(item?.settings) && item.settings.some((key) => String(key).toUpperCase().includes("ACCOUNT")));
-      var index = accountSectionIndex >= 0 ? accountSectionIndex + 1 : Math.min(1, sections.length);
       Object.keys(registeredSections).forEach((sectionName) => {
         var rows = registeredSections[sectionName];
         if (!rows.length)
@@ -12996,7 +12994,7 @@
         var rowKeys = new Set(rows.map((row) => row.key));
         var alreadyExists = sections.some((section) => section?.label === sectionName || section?.title === sectionName || section?.settings?.some?.((key) => rowKeys.has(key)));
         if (!alreadyExists) {
-          sections.splice(index++, 0, {
+          sections.push({
             label: sectionName,
             title: sectionName,
             settings: rows.map((row) => row.key)
@@ -19267,13 +19265,6 @@
       render: () => Promise.resolve().then(() => (init_General(), General_exports)),
       useTrailing: () => `(${"v1.4.3"})`
     };
-    registerSection({
-      name: "CloudCord",
-      items: [
-        coreItem
-      ]
-    });
-    globalThis.__CLOUDCORD_SETTINGS_CORE_REGISTERED__ = true;
     var baseItems = [
       coreItem,
       {
@@ -19357,6 +19348,7 @@
       name: "CloudCord",
       items
     });
+    globalThis.__CLOUDCORD_SETTINGS_CORE_REGISTERED__ = true;
     registerSection({
       name: "Bunny",
       items: []
@@ -19878,8 +19870,8 @@
       init_lib();
       src_default = () => _async_to_generator(function* () {
         if (globalThis.__CLOUDCORD_BRIDGELESS__) {
-          var settingsUnpatch = yield patchSettings();
           initSettings();
+          var settingsUnpatch = yield patchSettings();
           if (settingsUnpatch)
             unload.push(settingsUnpatch);
           globalThis.bunny = lib_exports;
