@@ -32,7 +32,10 @@ export function patchSettings() {
     const unpatches = new Array<() => boolean>;
 
     patchTabsUI(unpatches);
-    patchPanelUI(unpatches);
+    // panel.tsx targets Discord 331's class-based settings tree. Applying it
+    // to 344's SettingsOverviewScreen can invalidate the whole navigation
+    // render, which presents as a blank account. tabs.tsx owns 344 settings.
+    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) patchPanelUI(unpatches);
 
     return () => unpatches.forEach(u => u());
 }

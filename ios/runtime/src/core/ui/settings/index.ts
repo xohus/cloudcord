@@ -23,7 +23,11 @@ function safeAsset(...names: string[]) {
 export default function initSettings() {
     // Install the opt-in capture hooks at startup so actions performed before
     // opening the Diagnostics page can be included in the copied snapshot.
-    void import("@core/ui/settings/pages/Diagnostics").then(module => module.initializeDiagnosticsCapture()).catch(() => {});
+    // Discord 344 may still be restoring its account and navigation requests
+    // when CloudCord registers settings. Diagnostics can be enabled explicitly
+    // after startup; never wrap global fetch/JSX during bridgeless restoration.
+    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__)
+        void import("@core/ui/settings/pages/Diagnostics").then(module => module.initializeDiagnosticsCapture()).catch(() => {});
     const coreItem: RowConfig = {
                 key: "CLOUDCORD",
                 title: () => Strings.PUPU,
