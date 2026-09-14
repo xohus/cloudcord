@@ -127,7 +127,7 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
         // buffered runtime executor.
         if (attempt < 1000 && !cloudCordRuntimeStabilizing.exchange(true))
         {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 6 * NSEC_PER_SEC),
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 12 * NSEC_PER_SEC),
                            dispatch_get_main_queue(), ^{
                 executeCloudCordBridgeless(cloudCordRuntimeInstance, 1000);
             });
