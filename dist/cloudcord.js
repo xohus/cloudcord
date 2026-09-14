@@ -13019,6 +13019,7 @@
       }
     }))).reduce((a, c2) => Object.assign(a, c2));
     if (!globalThis.__CLOUDCORD_BRIDGELESS__) {
+      globalThis.__CLOUDCORD_331_ROOT_SETTINGS__ = true;
       var customRoutes = {
         VendettaCustomPage: {
           type: "route",
