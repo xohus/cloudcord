@@ -82,6 +82,7 @@ jobs:
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'UserProfileStore'
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'useBadges'
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'getCurrentUser'
+          # The 344 build must contain the isolated renderer-only settings startup.
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'CloudCord 344 safe settings shell is ready'
           unzip -l cloudcord0.ipa | grep -q 'Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload'
           rm -rf "$RUNNER_TEMP/cloudcord-stream-check"
