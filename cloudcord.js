@@ -4183,6 +4183,8 @@
       _loop = function(key) {
         var id = Number(key);
         var metroModule = metroModules[id];
+        if (globalThis.__CLOUDCORD_BRIDGELESS__ && !metroModule?.isInitialized)
+          return "continue";
         var cache = getMetroCache().flagsIndex[id];
         if (cache & ModuleFlags.BLACKLISTED) {
           blacklistModule(id);
