@@ -13018,6 +13018,82 @@
         withArrow: true
       }
     }))).reduce((a, c2) => Object.assign(a, c2));
+    if (!globalThis.__CLOUDCORD_BRIDGELESS__) {
+      var customRoutes = {
+        VendettaCustomPage: {
+          type: "route",
+          title: () => "CloudCord",
+          useTitle: () => "CloudCord",
+          screen: {
+            route: "VendettaCustomPage",
+            getComponent: () => CustomPageRenderer
+          }
+        },
+        PUPU_CUSTOM_PAGE: {
+          type: "route",
+          title: () => "CloudCord",
+          useTitle: () => "CloudCord",
+          screen: {
+            route: "PUPU_CUSTOM_PAGE",
+            getComponent: () => CustomPageRenderer
+          }
+        },
+        BUNNY_CUSTOM_PAGE: {
+          type: "route",
+          title: () => "CloudCord",
+          useTitle: () => "CloudCord",
+          screen: {
+            route: "BUNNY_CUSTOM_PAGE",
+            getComponent: () => CustomPageRenderer
+          }
+        }
+      };
+      var originalConfig = settingConstants.SETTING_RENDERER_CONFIG;
+      var liveConfig = originalConfig;
+      Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+        enumerable: true,
+        configurable: true,
+        get: () => ({
+          ...liveConfig,
+          ...customRoutes,
+          ...getRows()
+        }),
+        set: (value) => liveConfig = value
+      });
+      unpatches.push(() => {
+        Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+          configurable: true,
+          writable: true,
+          value: originalConfig
+        });
+      });
+      var insertRootSections = (config) => {
+        var _loop2 = function(sectionName2) {
+          var rows = registeredSections[sectionName2];
+          if (!rows.length || sections.some((section) => section?.label === sectionName2))
+            return "continue";
+          sections.splice(index++, 0, {
+            label: sectionName2,
+            title: sectionName2,
+            settings: rows.map((row) => row.key)
+          });
+        };
+        var sections = config?.sections;
+        if (!Array.isArray(sections))
+          return;
+        var accountIndex = sections.findIndex((section) => section?.settings?.includes?.("ACCOUNT"));
+        if (accountIndex < 0)
+          return;
+        var index = accountIndex + 1;
+        for (var sectionName of Object.keys(registeredSections))
+          _loop2(sectionName);
+      };
+      unpatches.push(after("createList", createListModule, (args, result) => {
+        insertRootSections(args?.[0]);
+        return result;
+      }));
+      return;
+    }
     var insertCloudCordSections = (sections) => {
       if (!Array.isArray(sections))
         return;
