@@ -9488,6 +9488,22 @@
     preview = rootSettings.fakeProfile;
     configReady = true;
   }
+  function mediaClearPending(key) {
+    return Number(rootSettings.fakeProfileMediaCleared?.[key] || 0) > 0;
+  }
+  function markMediaCleared(key) {
+    rootSettings.fakeProfileMediaCleared = {
+      ...rootSettings.fakeProfileMediaCleared || {},
+      [key]: Date.now()
+    };
+  }
+  function unmarkMediaCleared(key) {
+    var pending = {
+      ...rootSettings.fakeProfileMediaCleared || {}
+    };
+    delete pending[key];
+    rootSettings.fakeProfileMediaCleared = pending;
+  }
   function localHasFakeBadges() {
     return preview.nitroEnabled || preview.boostMonths > 0 || preview.giftLevel >= 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
   }
@@ -9569,6 +9585,10 @@
         return;
       var saved = rootSettings.fakeProfileShare || {};
       var path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
+      var profileSnapshot = yield ownSharedProfile();
+      var clearSnapshot = {
+        ...rootSettings.fakeProfileMediaCleared || {}
+      };
       var response = yield fetch(`${SHARED_PROFILE_API}${path}`, {
         method: saved.id ? "PUT" : "POST",
         headers: {
@@ -9579,7 +9599,7 @@
         },
         body: JSON.stringify({
           ownerId: currentUserId,
-          profile: yield ownSharedProfile()
+          profile: profileSnapshot
         })
       });
       if (!response.ok) {
@@ -9595,6 +9615,15 @@
           id: result.id,
           editToken: result.editToken
         };
+      for (var key of [
+        "avatarMedia",
+        "bannerMedia"
+      ]) {
+        var serverField = key === "avatarMedia" ? "avatar" : "banner";
+        if (profileSnapshot[serverField] == null && clearSnapshot[key] && rootSettings.fakeProfileMediaCleared?.[key] === clearSnapshot[key]) {
+          unmarkMediaCleared(key);
+        }
+      }
       diagnostics.last = "Fake Profile shared automatically";
     })();
   }
@@ -9641,10 +9670,10 @@
           enabled: true,
           username: data.username || preview.username,
           displayName: data.globalName || data.displayName || preview.displayName,
-          avatarMedia: data.avatar ? {
+          avatarMedia: mediaClearPending("avatarMedia") ? null : data.avatar ? {
             uri: data.avatar
           } : null,
-          bannerMedia: data.banner ? {
+          bannerMedia: mediaClearPending("bannerMedia") ? null : data.banner ? {
             uri: data.banner
           } : null,
           nitroEnabled: remoteNitroEnabled(data),
@@ -10745,6 +10774,7 @@
   function saveMedia(key, asset) {
     return _async_to_generator(function* () {
       preview[key] = yield normalizeMedia(key, asset);
+      unmarkMediaCleared(key);
       refreshPreview();
       queueSharedPublish();
     })();
@@ -11409,6 +11439,7 @@
     })();
     var clearMedia = (field) => {
       try {
+        markMediaCleared(field);
         rootSettings.fakeProfile = {
           ...preview,
           [field]: null,
