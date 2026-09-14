@@ -68,6 +68,71 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         })))
         .reduce((a, c) => Object.assign(a, c));
 
+    // Discord 331 uses one root createList settings model. The recursive 344
+    // fallbacks must never run here: they can discover the Account tab's
+    // internal sections first and incorrectly nest CloudCord inside Account.
+    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+        const customRoutes = {
+            VendettaCustomPage: {
+                type: "route",
+                title: () => "CloudCord",
+                useTitle: () => "CloudCord",
+                screen: { route: "VendettaCustomPage", getComponent: () => CustomPageRenderer }
+            },
+            PUPU_CUSTOM_PAGE: {
+                type: "route",
+                title: () => "CloudCord",
+                useTitle: () => "CloudCord",
+                screen: { route: "PUPU_CUSTOM_PAGE", getComponent: () => CustomPageRenderer }
+            },
+            BUNNY_CUSTOM_PAGE: {
+                type: "route",
+                title: () => "CloudCord",
+                useTitle: () => "CloudCord",
+                screen: { route: "BUNNY_CUSTOM_PAGE", getComponent: () => CustomPageRenderer }
+            }
+        };
+
+        const originalConfig = settingConstants.SETTING_RENDERER_CONFIG;
+        let liveConfig = originalConfig;
+        Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+            enumerable: true,
+            configurable: true,
+            get: () => ({ ...liveConfig, ...customRoutes, ...getRows() }),
+            set: value => liveConfig = value
+        });
+        unpatches.push(() => {
+            Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
+                configurable: true,
+                writable: true,
+                value: originalConfig
+            });
+        });
+
+        const insertRootSections = (config: any) => {
+            const sections = config?.sections;
+            if (!Array.isArray(sections)) return;
+            const accountIndex = sections.findIndex((section: any) => section?.settings?.includes?.("ACCOUNT"));
+            if (accountIndex < 0) return;
+            let index = accountIndex + 1;
+            for (const sectionName of Object.keys(registeredSections)) {
+                const rows = registeredSections[sectionName];
+                if (!rows.length || sections.some((section: any) => section?.label === sectionName)) continue;
+                sections.splice(index++, 0, {
+                    label: sectionName,
+                    title: sectionName,
+                    settings: rows.map(row => row.key)
+                });
+            }
+        };
+
+        unpatches.push(after("createList", createListModule, (args, result) => {
+            insertRootSections(args?.[0]);
+            return result;
+        }));
+        return;
+    }
+
     const insertCloudCordSections = (sections: any[]) => {
         if (!Array.isArray(sections)) return;
 
