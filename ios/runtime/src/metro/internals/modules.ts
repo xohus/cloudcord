@@ -82,6 +82,12 @@ for (const key in metroModules) {
     const id = Number(key);
     const metroModule = metroModules[id];
 
+    // On Discord 344, wrapping factories that Discord has not executed yet
+    // changes the initialization path of account, guild and navigation stores.
+    // Observe only modules Discord already initialized before CloudCord starts.
+    if ((globalThis as any).__CLOUDCORD_BRIDGELESS__ && !metroModule?.isInitialized)
+        continue;
+
     const cache = getMetroCache().flagsIndex[id];
     if (cache & ModuleFlags.BLACKLISTED) {
         blacklistModule(id);
