@@ -77,6 +77,15 @@ static BOOL cloudCordMetroIsReady(jsi::Runtime &runtime)
     catch (...) { return NO; }
 }
 
+static NSData *cloudCordResource(NSString *name)
+{
+    NSString *path = [NSBundle.mainBundle.bundlePath
+        stringByAppendingPathComponent:@"BunnyResources.bundle"];
+    NSBundle *resources = [NSBundle bundleWithPath:path];
+    NSURL *url = [resources URLForResource:name withExtension:@"js"];
+    return url ? [NSData dataWithContentsOfURL:url] : nil;
+}
+
 static void installCloudCordModuleCapture(jsi::Runtime &runtime)
 {
     // Do not replace Discord's Metro globals before main.jsbundle. Discord 344
@@ -94,7 +103,6 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
         return;
 
     [instance callFunctionOnBufferedRuntimeExecutor:[attempt](jsi::Runtime &runtime) {
-        (void)runtime;
         if (!cloudCordMetroIsReady(runtime))
         {
             if (attempt < 120)
@@ -126,12 +134,17 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
             return;
         }
 
-        // Recovery mode for Discord 344.1: even the reduced post-load runtime
-        // changes private account/navigation state in this bridgeless build.
-        // Keep the signed runtime embedded for later compatibility work, but do
-        // not evaluate it during app startup. This matches the control build
-        // that restores the authenticated user, guilds and DMs reliably.
-        NSLog(@"[CloudCord] Discord 344 recovery mode; runtime startup skipped");
+        // Preserve Discord 344's Map. Older CloudCord finders need an
+        // object-shaped registry, so expose a private compatibility view rather
+        // than replacing globalThis.modules and corrupting account/navigation.
+        NSString *compat = @"(()=>{const raw=globalThis.modules??globalThis.__c?.();if(!raw)return false;const view={};if(typeof raw.entries==='function'){for(const [id,module] of raw.entries())view[id]=module}else{for(const id of Object.keys(raw))view[id]=raw[id]}globalThis.__CLOUDCORD_MODULE_VIEW__=view;return true})()";
+        if (!evaluateCloudCordData([compat dataUsingEncoding:NSUTF8StringEncoding],
+                                   "cloudcord:metro-compat", runtime)) return;
+
+        NSData *runtimeBundle = cloudCordResource(@"runtime");
+        if (runtimeBundle.length &&
+            evaluateCloudCordData(runtimeBundle, "cloudcord:runtime", runtime))
+            NSLog(@"[CloudCord] Bridgeless runtime executed successfully");
     }];
 }
 
