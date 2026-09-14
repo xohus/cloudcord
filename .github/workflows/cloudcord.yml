@@ -83,6 +83,7 @@ jobs:
           cp "../ios/runtime/src/index.ts" "src/index.ts"
           cp "../ios/runtime/src/metro/internals/caches.ts" "src/metro/internals/caches.ts"
           cp "../ios/runtime/src/metro/internals/modules.ts" "src/metro/internals/modules.ts"
+          cp "../ios/runtime/src/core/vendetta/api.tsx" "src/core/vendetta/api.tsx"
 
           cat > src/core/ui/settings/components/ScaledPluginSettings.tsx <<'TSX'
           import type { ComponentType } from "react";

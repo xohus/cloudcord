@@ -12,6 +12,7 @@ import * as utils from "@lib/utils";
 import { cyrb64Hash } from "@lib/utils/cyrb64";
 import { LoggerClass } from "@lib/utils/logger";
 import * as metro from "@metro";
+import { metroModules } from "@metro/internals/modules";
 import * as common from "@metro/common";
 import { Forms } from "@metro/common/components";
 import * as commonComponents from "@metro/common/components";
@@ -54,7 +55,7 @@ export const initVendettaObject = (): any => {
             instead: patcher.instead
         },
         metro: {
-            modules: window.modules,
+            modules: metroModules,
             find: createStackBasedFilter(metro.findExports),
             findAll: createStackBasedFilter(metro.findAllExports),
             findByProps: (...props: any[]) => {

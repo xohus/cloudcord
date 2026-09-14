@@ -5,7 +5,9 @@ import { ModuleFlags, ModulesMapInternal } from "./enums";
 
 const { before, instead } = require("spitroast");
 
-export const metroModules: Metro.ModuleList = window.modules;
+// Discord 344 keeps its own Metro Map alive. CloudCord receives a private
+// object-shaped view so legacy finders work without replacing Discord's global.
+export const metroModules: Metro.ModuleList = (globalThis as any).__CLOUDCORD_MODULE_VIEW__ ?? window.modules;
 const metroRequire = (id: string | number) => window.__r(+id);
 
 // eslint-disable-next-line func-call-spacing
