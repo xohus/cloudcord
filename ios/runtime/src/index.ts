@@ -24,8 +24,10 @@ export default async () => {
         // Discord 344: keep startup non-invasive. Legacy runtime patches can
         // interfere with Discord's channel/navigation stores under bridgeless
         // React Native, so expose the CloudCord settings shell only for now.
-        const settingsUnpatch = await patchSettings();
+        // Register a complete, stable CloudCord section before touching Discord's
+        // live settings renderer so SettingHookHarness never sees a mid-render layout swap.
         initSettings();
+        const settingsUnpatch = await patchSettings();
         if (settingsUnpatch) lib.unload.push(settingsUnpatch);
 
         window.bunny = lib;

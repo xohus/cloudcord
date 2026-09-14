@@ -32,12 +32,6 @@ export default function initSettings() {
                 useTrailing: () => `(${version})`
             };
 
-    // Register the essential row first. Discord frequently renames optional
-    // assets and settings modules between releases; none of those changes
-    // should be able to prevent CloudCord itself from appearing.
-    registerSection({ name: "CloudCord", items: [coreItem] });
-    (globalThis as any).__CLOUDCORD_SETTINGS_CORE_REGISTERED__ = true;
-
     const baseItems: RowConfig[] = [
             coreItem,
             {
@@ -102,6 +96,7 @@ export default function initSettings() {
         });
 
     registerSection({ name: "CloudCord", items });
+    (globalThis as any).__CLOUDCORD_SETTINGS_CORE_REGISTERED__ = true;
 
     registerSection({
         name: "Bunny",

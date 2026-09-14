@@ -70,12 +70,11 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
 
     const insertCloudCordSections = (sections: any[]) => {
         if (!Array.isArray(sections)) return;
-        const accountSectionIndex = sections.findIndex((item: any) =>
-            Array.isArray(item?.settings) && item.settings.some((key: unknown) =>
-                String(key).toUpperCase().includes("ACCOUNT")
-            )
-        );
-        let index = accountSectionIndex >= 0 ? accountSectionIndex + 1 : Math.min(1, sections.length);
+
+        // Never insert CloudCord into the middle of Discord's native settings list.
+        // SettingHookHarness can retain hook state by position; shifting native rows can
+        // make an existing harness run a different usePredicate/useConfig hook chain.
+        // Appending keeps every existing Discord setting at its current position.
         Object.keys(registeredSections).forEach(sectionName => {
             const rows = registeredSections[sectionName];
             if (!rows.length) return;
@@ -85,7 +84,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
                 section?.settings?.some?.((key: string) => rowKeys.has(key))
             );
             if (!alreadyExists) {
-                sections.splice(index++, 0, {
+                sections.push({
                     label: sectionName,
                     title: sectionName,
                     settings: rows.map(row => row.key)
