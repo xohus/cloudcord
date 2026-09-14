@@ -79,23 +79,17 @@ jobs:
           unzip -p cloudcord0.ipa Payload/Discord.app/Info.plist | grep -q '<string>344.1</string>'
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/payload-base.js | grep -q '__PYON_LOADER__'
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/payload-base.js | grep -q 'loaderName:"CloudCord"'
-          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'UserProfileStore'
-          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'useBadges'
-          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'getCurrentUser'
-          # The 344 build must contain the isolated renderer-only settings startup.
-          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'CloudCord 344 safe settings shell is ready'
+          # Discord 344 must use the standalone compatibility runtime. The
+          # legacy runtime remains bundled for older Discord versions but is
+          # never evaluated by the bridgeless 344 loader.
+          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/compat344.js | grep -q 'CloudCord 344 compatibility runtime ready'
+          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/compat344.js | grep -q 'CLOUDCORD_344_SETTINGS'
           unzip -l cloudcord0.ipa | grep -q 'Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload'
           rm -rf "$RUNNER_TEMP/cloudcord-stream-check"
           unzip -q cloudcord0.ipa -d "$RUNNER_TEMP/cloudcord-stream-check"
-          embedded_runtime="$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/BunnyResources.bundle/runtime.js"
-          for fallback in \
-            renderer-live-table renderer-export-accessor \
-            create-list-lazy-before create-list-lazy-after-input create-list-lazy-after-output \
-            create-list-all-before create-list-all-after-input create-list-all-after-output \
-            settings-overview-before settings-overview-after-direct settings-overview-after-tree \
-            legacy-settings-panel legacy-screen-route; do
-            grep -q "$fallback" "$embedded_runtime"
-          done
+          embedded_compat="$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/BunnyResources.bundle/compat344.js"
+          grep -q 'does not import Kettu' "$embedded_compat"
+          grep -q 'SETTING_RENDERER_CONFIG' "$embedded_compat"
           ldid -e "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload" \
             | grep -q 'application-groups'
           otool -L "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Discord" \

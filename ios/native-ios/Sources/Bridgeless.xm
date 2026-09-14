@@ -141,7 +141,11 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
         if (!evaluateCloudCordData([compat dataUsingEncoding:NSUTF8StringEncoding],
                                    "cloudcord:metro-compat", runtime)) return;
 
-        NSData *runtimeBundle = cloudCordResource(@"runtime");
+        // Discord 344 is bridgeless. Never execute the legacy Kettu runtime
+        // here: its startup hooks target Discord 331 and can clear the restored
+        // account/navigation state. The compatibility runtime only registers a
+        // native settings route after Discord is stable.
+        NSData *runtimeBundle = cloudCordResource(@"compat344");
         if (runtimeBundle.length &&
             evaluateCloudCordData(runtimeBundle, "cloudcord:runtime", runtime))
             NSLog(@"[CloudCord] Bridgeless runtime executed successfully");
