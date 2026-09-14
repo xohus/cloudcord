@@ -134,16 +134,12 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
             return;
         }
 
-        NSData *runtimeBundle = cloudCordResource(@"runtime");
-        NSString *compat = @"(()=>{const raw=globalThis.__c?.();if(raw&&typeof raw.entries==='function'){const view={};for(const [id,module] of raw.entries())view[id]=module;globalThis.modules=view}else if(raw)globalThis.modules=raw})()";
-        if (!evaluateCloudCordData([compat dataUsingEncoding:NSUTF8StringEncoding],
-                                   "cloudcord:metro-compat", runtime)) return;
-        // payload-base is a pre-main legacy bootstrap. Executing it after
-        // Discord 344 has started re-hooks Metro/AppRegistry and clears the
-        // authenticated account graph. The bridgeless path executes only the
-        // post-load settings runtime, whose module discovery is read-only.
-        if (evaluateCloudCordData(runtimeBundle, "cloudcord:runtime", runtime))
-            NSLog(@"[CloudCord] Bridgeless runtime executed successfully");
+        // Recovery mode for Discord 344.1: even the reduced post-load runtime
+        // changes private account/navigation state in this bridgeless build.
+        // Keep the signed runtime embedded for later compatibility work, but do
+        // not evaluate it during app startup. This matches the control build
+        // that restores the authenticated user, guilds and DMs reliably.
+        NSLog(@"[CloudCord] Discord 344 recovery mode; runtime startup skipped");
     }];
 }
 
