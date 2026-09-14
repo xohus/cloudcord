@@ -60,12 +60,12 @@ static BOOL evaluateCloudCordData(NSData *data, const char *tag, jsi::Runtime &r
     }
 }
 
-static BOOL cloudCordMetroIsReady(jsi::Runtime &runtime)
+static BOOL cloudCordAccountIsReady(jsi::Runtime &runtime)
 {
-    // Match the readiness contract used by maintained bridgeless loaders. A
-    // Metro table existing is not enough: evaluating Kettu before React Native
-    // and React are exported can monopolize the JS thread during app startup.
-    static NSString *probe = @"(()=>{try{const m=globalThis.modules\x3f\x3f globalThis.__c?.();if(!globalThis.modules&&m)globalThis.modules=m;if(!m||typeof m.values!=='function')return false;let rn=false,react=false,active=false;for(const entry of m.values()){const e=entry?.publicModule?.exports\x3f\x3f entry?.exports\x3f\x3f entry;for(const value of [e,e?.default,e?.default?.default]){if(!value)continue;if(!rn&&value.AppState&&value.NativeModules){rn=true;active=value.AppState.currentState==='active'}if(!react&&typeof value.createElement==='function')react=true;if(rn&&react&&active)return true}}return false}catch{return false}})()";
+    // Do not run any CloudCord JavaScript until Discord has restored a real
+    // authenticated user. This makes a blank account a hard stop rather than a
+    // state the injector can accidentally patch over.
+    static NSString *probe = @"(()=>{try{const m=globalThis.modules\x3f\x3f globalThis.__c?.();if(!m||typeof m.values!=='function')return false;let active=false,user=false;for(const entry of m.values()){const e=entry?.publicModule?.exports\x3f\x3f entry?.exports\x3f\x3f entry;for(const value of [e,e?.default]){if(!value)continue;if(value.AppState)active=value.AppState.currentState==='active';if(typeof value.getCurrentUser==='function'){try{user=!!value.getCurrentUser()}catch{}}if(active&&user)return true}}return false}catch{return false}})()";
     NSData *data = [probe dataUsingEncoding:NSUTF8StringEncoding];
     try
     {
@@ -103,7 +103,7 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
         return;
 
     [instance callFunctionOnBufferedRuntimeExecutor:[attempt](jsi::Runtime &runtime) {
-        if (!cloudCordMetroIsReady(runtime))
+        if (!cloudCordAccountIsReady(runtime))
         {
             if (attempt < 120)
             {
@@ -120,26 +120,16 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
             return;
         }
 
-        // React and RN exports become visible before Discord has finished
-        // restoring the authenticated account and navigation stores. Patching
-        // during that window can leave 344 on an endless account loader. Give
-        // Discord one bounded stabilization period, then re-enter through the
-        // buffered runtime executor.
+        // The account exists now. Give navigation one bounded stabilization
+        // period before registering the settings-only compatibility route.
         if (attempt < 1000 && !cloudCordRuntimeStabilizing.exchange(true))
         {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 12 * NSEC_PER_SEC),
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC),
                            dispatch_get_main_queue(), ^{
                 executeCloudCordBridgeless(cloudCordRuntimeInstance, 1000);
             });
             return;
         }
-
-        // Preserve Discord 344's Map. Older CloudCord finders need an
-        // object-shaped registry, so expose a private compatibility view rather
-        // than replacing globalThis.modules and corrupting account/navigation.
-        NSString *compat = @"(()=>{const raw=globalThis.modules??globalThis.__c?.();if(!raw)return false;const view={};if(typeof raw.entries==='function'){for(const [id,module] of raw.entries())view[id]=module}else{for(const id of Object.keys(raw))view[id]=raw[id]}globalThis.__CLOUDCORD_MODULE_VIEW__=view;return true})()";
-        if (!evaluateCloudCordData([compat dataUsingEncoding:NSUTF8StringEncoding],
-                                   "cloudcord:metro-compat", runtime)) return;
 
         // Discord 344 is bridgeless. Never execute the legacy Kettu runtime
         // here: its startup hooks target Discord 331 and can clear the restored

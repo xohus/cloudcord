@@ -139,5 +139,5 @@
     if (install()) return;
     const timer = setInterval(() => {
         if (install() || state.attempts >= 120) clearInterval(timer);
-    }, 500);
+    }, 2000);
 })();
