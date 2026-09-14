@@ -55,6 +55,9 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         .flatMap(sect => sect.map(row => ({
             [row.key]: {
                 type: "pressable",
+                key: row.key,
+                section: sect,
+                parent: null,
                 // title was renamed to useTitle, both are here for compatibility (thanks kmiioo) https://codeberg.org/cloudcord/CloudCord/pulls/52
                 title: row.title,
                 useTitle: row.title,

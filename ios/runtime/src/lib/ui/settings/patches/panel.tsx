@@ -1,6 +1,6 @@
 import { after } from "@lib/api/patcher";
 import { findInReactTree } from "@lib/utils";
-import { NavigationNative } from "@metro/common";
+import { i18n, NavigationNative } from "@metro/common";
 import { LegacyFormDivider,LegacyFormIcon, LegacyFormRow, LegacyFormSection } from "@metro/common/components";
 import { findByNameLazy } from "@metro/wrappers";
 import { registeredSections } from "@ui/settings";
@@ -73,14 +73,15 @@ export function patchPanelUI(unpatches: (() => void | boolean)[]) {
             }));
 
             unpatches.push(after("render", UserSettingsOverview.type.prototype, (_args, res) => {
+                const titles = [i18n.Messages.BILLING_SETTINGS, i18n.Messages.PREMIUM_SETTINGS];
                 const sections = findInReactTree(
                     res.props.children,
                     n => n?.children?.[1]?.type === LegacyFormSection
                 )?.children || res.props.children;
 
                 if (sections) {
-                    // Append instead of shifting native settings rows and their hook harnesses.
-                    sections.push(<SettingsSection key="CLOUDCORD_SETTINGS_SECTION" />);
+                    const index = sections.findIndex((section: any) => titles.includes(section?.props?.label));
+                    sections.splice(-~index || 4, 0, <SettingsSection key="CLOUDCORD_SETTINGS_SECTION" />);
                 }
             }));
         }, true);
