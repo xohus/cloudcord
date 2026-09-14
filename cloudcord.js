@@ -4226,7 +4226,7 @@
         }
       };
       ({ before: before2, instead: instead2 } = require_cjs());
-      metroModules = globalThis.modules;
+      metroModules = globalThis.__CLOUDCORD_MODULE_VIEW__ ?? globalThis.modules;
       metroRequire = (id) => globalThis.__r(+id);
       moduleSubscriptions = /* @__PURE__ */ new Map();
       blacklistedIds = /* @__PURE__ */ new Set();
@@ -4256,14 +4256,14 @@
     var cache = {
       _v: CACHE_VERSION,
       _buildNumber: NativeClientInfoModule.getConstants().Build,
-      _modulesCount: Object.keys(globalThis.modules).length,
+      _modulesCount: Object.keys(getModuleView()).length,
       flagsIndex: {},
       findIndex: {},
       polyfillIndex: {}
     };
     if (!globalThis.__CLOUDCORD_BRIDGELESS__) {
       setTimeout(() => {
-        for (var id in globalThis.modules) {
+        for (var id in getModuleView()) {
           (init_modules2(), __toCommonJS(modules_exports2)).requireModule(id);
         }
       }, 100);
@@ -4286,7 +4286,7 @@
           _metroCache = null;
           throw "cache invalidated; version mismatch";
         }
-        if (_metroCache._modulesCount !== Object.keys(globalThis.modules).length) {
+        if (_metroCache._modulesCount !== Object.keys(getModuleView()).length) {
           _metroCache = null;
           throw "cache invalidated; modules count mismatch";
         }
@@ -4346,7 +4346,7 @@
       }
     };
   }
-  var CACHE_VERSION, BUNNY_METRO_CACHE_PATH, _metroCache, getMetroCache, saveCache;
+  var CACHE_VERSION, BUNNY_METRO_CACHE_PATH, _metroCache, getModuleView, getMetroCache, saveCache;
   var init_caches = __esm({
     "src/metro/internals/caches.ts"() {
       "use strict";
@@ -4360,6 +4360,7 @@
       CACHE_VERSION = 102;
       BUNNY_METRO_CACHE_PATH = "caches/metro_modules.json";
       _metroCache = null;
+      getModuleView = () => globalThis.__CLOUDCORD_MODULE_VIEW__ ?? globalThis.modules;
       getMetroCache = () => _metroCache;
       saveCache = debounce(() => {
         writeFile(BUNNY_METRO_CACHE_PATH, JSON.stringify(_metroCache));
@@ -19420,6 +19421,7 @@
       init_cyrb64();
       init_logger();
       init_metro();
+      init_modules2();
       init_common();
       init_components();
       init_components();
@@ -19478,7 +19480,7 @@
             instead: patcher_default.instead
           },
           metro: {
-            modules: globalThis.modules,
+            modules: metroModules,
             find: createStackBasedFilter(findExports),
             findAll: createStackBasedFilter(findAllExports),
             findByProps: (...props) => {
