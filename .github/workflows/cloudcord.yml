@@ -534,6 +534,23 @@ jobs:
           let sharedSyncTimer: ReturnType<typeof setInterval> | null = null;
           const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
 
+          function mediaClearPending(key: "avatarMedia" | "bannerMedia") {
+              return Number(rootSettings.fakeProfileMediaCleared?.[key] || 0) > 0;
+          }
+
+          function markMediaCleared(key: "avatarMedia" | "bannerMedia") {
+              rootSettings.fakeProfileMediaCleared = {
+                  ...(rootSettings.fakeProfileMediaCleared || {}),
+                  [key]: Date.now()
+              };
+          }
+
+          function unmarkMediaCleared(key: "avatarMedia" | "bannerMedia") {
+              const pending = { ...(rootSettings.fakeProfileMediaCleared || {}) };
+              delete pending[key];
+              rootSettings.fakeProfileMediaCleared = pending;
+          }
+
           function localHasFakeBadges() {
               return preview.nitroEnabled || preview.boostMonths > 0 || preview.giftLevel >= 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
           }
@@ -610,13 +627,15 @@ jobs:
               if (!preview.enabled || !currentUserId) return;
               const saved = rootSettings.fakeProfileShare || {};
               const path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
+              const profileSnapshot = await ownSharedProfile();
+              const clearSnapshot = { ...(rootSettings.fakeProfileMediaCleared || {}) };
               const response = await fetch(`${SHARED_PROFILE_API}${path}`, {
                   method: saved.id ? "PUT" : "POST",
                   headers: {
                       "Content-Type": "application/json",
                       ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {})
                   },
-                  body: JSON.stringify({ ownerId: currentUserId, profile: await ownSharedProfile() })
+                  body: JSON.stringify({ ownerId: currentUserId, profile: profileSnapshot })
               });
               if (!response.ok) {
                   if (saved.id && (response.status === 401 || response.status === 404)) {
@@ -627,6 +646,18 @@ jobs:
               }
               const result = await response.json() as any;
               if (!saved.id) rootSettings.fakeProfileShare = { id: result.id, editToken: result.editToken };
+              // A successful complete-snapshot update makes a local media
+              // tombstone authoritative. Only clear it after the server has
+              // accepted the null value; an earlier pull must not resurrect a
+              // GIF that the user just removed.
+              for (const key of ["avatarMedia", "bannerMedia"] as const) {
+                  const serverField = key === "avatarMedia" ? "avatar" : "banner";
+                  if ((profileSnapshot as any)[serverField] == null
+                      && clearSnapshot[key]
+                      && rootSettings.fakeProfileMediaCleared?.[key] === clearSnapshot[key]) {
+                      unmarkMediaCleared(key);
+                  }
+              }
               diagnostics.last = "Fake Profile shared automatically";
           }
 
@@ -664,8 +695,8 @@ jobs:
                       enabled: true,
                       username: data.username || preview.username,
                       displayName: data.globalName || data.displayName || preview.displayName,
-                      avatarMedia: data.avatar ? { uri: data.avatar } : null,
-                      bannerMedia: data.banner ? { uri: data.banner } : null,
+                      avatarMedia: mediaClearPending("avatarMedia") ? null : data.avatar ? { uri: data.avatar } : null,
+                      bannerMedia: mediaClearPending("bannerMedia") ? null : data.banner ? { uri: data.banner } : null,
                       nitroEnabled: remoteNitroEnabled(data),
                       nitroMonths: remoteNitroEnabled(data) ? (NITRO_DURATIONS[Number(data.nitroLevel)] || 0) : 0,
                       boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
@@ -1486,6 +1517,7 @@ jobs:
 
           async function saveMedia(key: "avatarMedia" | "bannerMedia", asset: any) {
               preview[key] = await normalizeMedia(key, asset);
+              unmarkMediaCleared(key);
               refreshPreview();
               queueSharedPublish();
           }
@@ -1715,6 +1747,7 @@ jobs:
 
               const clearMedia = (field: "avatarMedia" | "bannerMedia") => {
                   try {
+                      markMediaCleared(field);
                       rootSettings.fakeProfile = {
                           ...preview,
                           [field]: null,
