@@ -12876,26 +12876,37 @@
   });
 
   // src/lib/ui/settings/patches/panel.tsx
+  function SettingsRow({ row, navigation: navigation2, showDivider }) {
+    var visible = row.usePredicate?.() ?? true;
+    var trailing = row.useTrailing?.() || void 0;
+    if (!visible)
+      return null;
+    return /* @__PURE__ */ jsxs(Fragment, {
+      children: [
+        /* @__PURE__ */ jsx(LegacyFormRow, {
+          label: row.title(),
+          leading: /* @__PURE__ */ jsx(LegacyFormIcon, {
+            source: row.icon
+          }),
+          trailing: /* @__PURE__ */ jsx(LegacyFormRow.Arrow, {
+            label: trailing
+          }),
+          onPress: wrapOnPress(row.onPress, navigation2, row.render, row.title())
+        }),
+        showDivider && /* @__PURE__ */ jsx(LegacyFormDivider, {})
+      ]
+    });
+  }
   function SettingsSection() {
     var navigation2 = NavigationNative.useNavigation();
     return /* @__PURE__ */ jsx(Fragment, {
       children: Object.keys(registeredSections).map((sect) => registeredSections[sect].length > 0 && /* @__PURE__ */ jsx(LegacyFormSection, {
         title: sect,
-        children: registeredSections[sect].filter((r) => r.usePredicate?.() ?? true).map((row, i, arr) => /* @__PURE__ */ jsxs(Fragment, {
-          children: [
-            /* @__PURE__ */ jsx(LegacyFormRow, {
-              label: row.title(),
-              leading: /* @__PURE__ */ jsx(LegacyFormIcon, {
-                source: row.icon
-              }),
-              trailing: /* @__PURE__ */ jsx(LegacyFormRow.Arrow, {
-                label: row.useTrailing?.() || void 0
-              }),
-              onPress: wrapOnPress(row.onPress, navigation2, row.render, row.title())
-            }),
-            i !== arr.length - 1 && /* @__PURE__ */ jsx(LegacyFormDivider, {})
-          ]
-        }))
+        children: registeredSections[sect].map((row, i, arr) => /* @__PURE__ */ jsx(SettingsRow, {
+          row,
+          navigation: navigation2,
+          showDivider: i !== arr.length - 1
+        }, row.key))
       }, sect))
     });
   }
@@ -12930,8 +12941,8 @@
           ];
           var sections = findInReactTree(res.props.children, (n) => n?.children?.[1]?.type === LegacyFormSection)?.children || res.props.children;
           if (sections) {
-            var index = sections.findIndex((c2) => titles.includes(c2?.props.label));
-            sections.splice(-~index || 4, 0, /* @__PURE__ */ jsx(SettingsSection, {}));
+            var index = sections.findIndex((section) => titles.includes(section?.props?.label));
+            sections.splice(-~index || 4, 0, /* @__PURE__ */ jsx(SettingsSection, {}, "CLOUDCORD_SETTINGS_SECTION"));
           }
         }));
       }, true);
@@ -13005,6 +13016,9 @@
     var getRows = () => Object.values(registeredSections).flatMap((sect) => sect.map((row) => ({
       [row.key]: {
         type: "pressable",
+        key: row.key,
+        section: sect,
+        parent: null,
         // title was renamed to useTitle, both are here for compatibility (thanks kmiioo) https://codeberg.org/cloudcord/CloudCord/pulls/52
         title: row.title,
         useTitle: row.title,
