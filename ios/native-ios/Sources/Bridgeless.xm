@@ -77,15 +77,6 @@ static BOOL cloudCordMetroIsReady(jsi::Runtime &runtime)
     catch (...) { return NO; }
 }
 
-static NSData *cloudCordResource(NSString *name)
-{
-    NSString *path = [NSBundle.mainBundle.bundlePath
-        stringByAppendingPathComponent:@"BunnyResources.bundle"];
-    NSBundle *resources = [NSBundle bundleWithPath:path];
-    NSURL *url = [resources URLForResource:name withExtension:@"js"];
-    return url ? [NSData dataWithContentsOfURL:url] : nil;
-}
-
 static void installCloudCordModuleCapture(jsi::Runtime &runtime)
 {
     // Do not replace Discord's Metro globals before main.jsbundle. Discord 344
@@ -103,6 +94,7 @@ static void executeCloudCordBridgeless(id instance, NSUInteger attempt)
         return;
 
     [instance callFunctionOnBufferedRuntimeExecutor:[attempt](jsi::Runtime &runtime) {
+        (void)runtime;
         if (!cloudCordMetroIsReady(runtime))
         {
             if (attempt < 120)
