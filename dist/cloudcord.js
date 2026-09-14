@@ -13166,7 +13166,8 @@
   function patchSettings() {
     var unpatches = new Array();
     patchTabsUI(unpatches);
-    patchPanelUI(unpatches);
+    if (!globalThis.__CLOUDCORD_BRIDGELESS__)
+      patchPanelUI(unpatches);
     return () => unpatches.forEach((u) => u());
   }
   var registeredSections;
@@ -19257,8 +19258,9 @@
     return cloudcord_default;
   }
   function initSettings() {
-    void Promise.resolve().then(() => (init_Diagnostics(), Diagnostics_exports)).then((module) => module.initializeDiagnosticsCapture()).catch(() => {
-    });
+    if (!globalThis.__CLOUDCORD_BRIDGELESS__)
+      void Promise.resolve().then(() => (init_Diagnostics(), Diagnostics_exports)).then((module) => module.initializeDiagnosticsCapture()).catch(() => {
+      });
     var coreItem = {
       key: "CLOUDCORD",
       title: () => Strings.PUPU,
