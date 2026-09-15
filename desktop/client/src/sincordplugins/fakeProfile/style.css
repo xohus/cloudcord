@@ -376,8 +376,8 @@
 
 .cp-native-nitro-trigger {
     display: inline-flex;
-    width: 26px;
-    height: 26px;
+    width: 20px;
+    height: 20px;
     align-items: center;
     justify-content: center;
     cursor: default;
@@ -385,8 +385,8 @@
 
 .cp-native-nitro-trigger img {
     display: block;
-    width: 26px;
-    height: 26px;
+    width: 20px;
+    height: 20px;
     object-fit: contain;
 }
 
@@ -494,15 +494,15 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 26px;
-    height: 26px;
+    width: 20px;
+    height: 20px;
     cursor: pointer;
 }
 
 .cp-nitro-badge-anchor img {
     display: block;
-    width: 26px;
-    height: 26px;
+    width: 20px;
+    height: 20px;
     object-fit: contain;
 }
 
@@ -734,16 +734,16 @@
 
 .cp-gifting-badge-anchor {
     display: inline-flex;
-    width: 26px;
-    height: 26px;
+    width: 20px;
+    height: 20px;
     align-items: center;
     justify-content: center;
     cursor: pointer;
 }
 
 .cp-gifting-badge-anchor img {
-    width: 26px;
-    height: 26px;
+    width: 20px;
+    height: 20px;
     object-fit: contain;
     transition: filter 140ms ease, transform 140ms ease;
 }

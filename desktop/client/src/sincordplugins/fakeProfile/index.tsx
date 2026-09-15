@@ -1005,7 +1005,9 @@ fakeObfuscatedEmail(real: string | null) {
                 }
             } catch { }
 
-            const style = { borderRadius: "50%", width: "26px", height: "26px" };
+            // Let Discord's profile badge renderer determine the icon size.
+            // Forcing 26px made CloudCord badges visibly larger than native ones.
+            const style = { objectFit: "contain" as const };
             const nl = profileData.nitroLevel ?? -1;
             const bm = profileData.boostMonths ?? -1;
             const gl = profileData.giftLevel ?? -1;
