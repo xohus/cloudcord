@@ -62,9 +62,10 @@ export interface ProfileBadge {
 
 const Badges = new Set<ProfileBadge>();
 
-const CLOUDCORD_OFFICIAL_OWNER_ID = "463515440606609419";
-const CLOUDCORD_OFFICIAL_CO_OWNER_ID = "1497588725788442637";
-const CLOUDCORD_OFFICIAL_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+const CLOUDCORD_OWNER_ID = "463515440606609419";
+const CLOUDCORD_CO_OWNER_ID = "1497588725788442637";
+const CLOUDCORD_MODERATOR_ID = "1540350369232850995";
+const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 
 /**
  * Register a new badge with the Badges API
@@ -109,20 +110,28 @@ export function _getBadges(args: BadgeUserArgs) {
         }
     }
 
-    if (args.userId === CLOUDCORD_OFFICIAL_OWNER_ID) {
+    if (args.userId === CLOUDCORD_OWNER_ID) {
         badges.unshift({
             ...args,
             id: "cloudcord-official-owner",
-            description: "CloudCord Official Owner",
-            iconSrc: CLOUDCORD_OFFICIAL_BADGE_ICON,
+            description: "CloudCord Owner",
+            iconSrc: CLOUDCORD_BADGE_ICON,
             position: BadgePosition.START
         });
-    } else if (args.userId === CLOUDCORD_OFFICIAL_CO_OWNER_ID) {
+    } else if (args.userId === CLOUDCORD_CO_OWNER_ID) {
         badges.unshift({
             ...args,
             id: "cloudcord-official-co-owner",
-            description: "Co Owner of CloudCord",
-            iconSrc: CLOUDCORD_OFFICIAL_BADGE_ICON,
+            description: "CloudCord Co-Owner",
+            iconSrc: CLOUDCORD_BADGE_ICON,
+            position: BadgePosition.START
+        });
+    } else if (args.userId === CLOUDCORD_MODERATOR_ID) {
+        badges.unshift({
+            ...args,
+            id: "cloudcord-moderator",
+            description: "CloudCord Moderator",
+            iconSrc: CLOUDCORD_BADGE_ICON,
             position: BadgePosition.START
         });
     }
