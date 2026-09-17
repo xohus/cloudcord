@@ -57,6 +57,12 @@ export default function initSettings() {
                 render: () => import("@core/ui/settings/pages/Plugins")
             },
             {
+                key: "CLOUDCORD_PLUGIN_BROWSER",
+                title: () => "Plugin Browser",
+                icon: safeAsset("ChannelListMagnifyingGlassIcon", "SearchIcon", "AppsIcon"),
+                render: () => import("@core/ui/settings/pages/PluginBrowser")
+            },
+            {
                 key: "BUNNY_THEMES",
                 title: () => Strings.THEMES,
                 icon: safeAsset("PaintPaletteIcon", "ThemeIcon"),
@@ -79,7 +85,7 @@ export default function initSettings() {
             }
         ];
 
-    const configurableKeys = new Set(["BOTCORD", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS"]);
+    const configurableKeys = new Set(["BOTCORD", "STORE_CLOUD", "BUNNY_PLUGINS", "CLOUDCORD_PLUGIN_BROWSER", "BUNNY_THEMES", "BUNNY_FONTS"]);
     const configuredOrder = settings.cloudcordTabOrder ?? [];
     const orderIndex = new Map(configuredOrder.map((key, index) => [key, index]));
     const items = baseItems

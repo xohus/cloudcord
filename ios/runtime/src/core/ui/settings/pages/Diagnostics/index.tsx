@@ -163,10 +163,10 @@ function enableSanitizedRequestCapture() {
     };
 }
 
-const TAB_KEYS = ["STORE_CLOUD", "BOTCORD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS"] as const;
+const TAB_KEYS = ["STORE_CLOUD", "BOTCORD", "BUNNY_PLUGINS", "CLOUDCORD_PLUGIN_BROWSER", "BUNNY_THEMES", "BUNNY_FONTS"] as const;
 const TAB_LABELS: Record<string, string> = {
     BOTCORD: "BotCord", STORE_CLOUD: "CloudSync", BUNNY_PLUGINS: "Plugins",
-    BUNNY_THEMES: "Themes", BUNNY_FONTS: "Fonts",
+    CLOUDCORD_PLUGIN_BROWSER: "Plugin Browser", BUNNY_THEMES: "Themes", BUNNY_FONTS: "Fonts",
 };
 
 export default function Diagnostics() {

@@ -2,6 +2,7 @@ import { CardWrapper } from "@core/ui/components/AddonCard";
 import { UnifiedPluginModel } from "@core/ui/settings/pages/Plugins/models";
 import { usePluginCardStyles } from "@core/ui/settings/pages/Plugins/usePluginCardStyles";
 import { findAssetId } from "@lib/api/assets";
+import { showToast } from "@lib/ui/toasts";
 import { NavigationNative, tokens } from "@metro/common";
 import {
   Card,
@@ -12,7 +13,7 @@ import {
 } from "@metro/common/components";
 import { showSheet } from "@ui/sheets";
 import chroma from "chroma-js";
-import { createContext, useContext, useMemo, useReducer } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { Image, View } from "react-native";
 import { isCorePlugin } from "@lib/addons/plugins";
 
@@ -148,7 +149,7 @@ export default function PluginCard({
   plugin.usePluginState();
 
   
-const [, forceUpdate] = useReducer(() => ({}), 0);
+const [toggling, setToggling] = useState(false);
 const cardContextValue = useMemo(() => ({ plugin, result }), [plugin, result]);
     const core = isCorePlugin(plugin.id);
 
@@ -167,11 +168,17 @@ const cardContextValue = useMemo(() => ({ plugin, result }), [plugin, result]);
                                 <View style={core ? { opacity: 0.5 } : undefined}>
                                     <TableSwitch
                                         value={core ? true : plugin.isEnabled()}
-                                        disabled={core}
-                                        onValueChange={(v: boolean) => {
+                                        disabled={core || toggling}
+                                        onValueChange={async (v: boolean) => {
                                             if (!core) {
-                                                plugin.toggle(v);
-                                                forceUpdate();
+                                                setToggling(true);
+                                                try {
+                                                    await plugin.toggle(v);
+                                                } catch (error) {
+                                                    showToast(error instanceof Error ? error.message : String(error), findAssetId("CircleXIcon-primary"));
+                                                } finally {
+                                                    setToggling(false);
+                                                }
                                             }
                                         }}
                                     />

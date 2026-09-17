@@ -251,6 +251,8 @@ const sharedProfileFetchedAt = new Map<string, number>();
 const sharedRequests = new Set<string>();
 let publishTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedSyncTimer: ReturnType<typeof setInterval> | null = null;
+let profileEditorOpen = false;
+let suppressOwnPullUntil = 0;
 
 function activeUserId(): string | null {
     try {
@@ -368,6 +370,9 @@ function queueSharedPublish() {
 }
 
 async function pullOwnSharedProfile() {
+    // Never replace local form state with the last server snapshot while the
+    // profile editor is open or immediately after saving a newer revision.
+    if (profileEditorOpen || Date.now() < suppressOwnPullUntil) return;
     const id = activeUserId();
     if (!id) return;
     try {
@@ -730,6 +735,11 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     const customIds = data.customBadgeIds ?? [];
     const oldName = data.oldName ?? "";
 
+    React.useEffect(() => {
+        profileEditorOpen = true;
+        return () => { profileEditorOpen = false; };
+    }, []);
+
     const accounts = React.useMemo(() => {
         try {
             const MAS = (window as any).Vencord?.Webpack?.findByProps?.("getUsers", "getValidUsers");
@@ -754,7 +764,14 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             saveAllDataSync();
             DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
             updateCachedRealData(); forceAccountPanelRerender();
-            if (selectedAccountId === myId) queueSharedPublish();
+            if (selectedAccountId === myId) {
+                // Keep the just-saved local revision authoritative while the
+                // website receives it; the polling loop must not restore the
+                // previous revision during this window.
+                suppressOwnPullUntil = Date.now() + 15_000;
+                if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
+                await publishSharedProfile();
+            }
         } catch (err) { console.error("[ProfileSpoofer] save error:", err); }
         setSaving(false); rootProps.onClose();
     }

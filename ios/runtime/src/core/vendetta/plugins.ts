@@ -110,9 +110,6 @@ export const VdPluginManager = {
     async startPlugin(id: string) {
         if (!id.endsWith("/")) id += "/";
         const plugin = plugins[id];
-        if (plugin.id.includes("xxjust") == true || plugin.id.includes("DevNjay") == true) {
-            return
-        }
         if (!plugin) throw new Error("Attempted to start non-existent plugin");
 
         try {
@@ -133,6 +130,7 @@ export const VdPluginManager = {
 
             delete pluginInstance[id];
             plugin.enabled = false;
+            throw e;
         }
     },
 

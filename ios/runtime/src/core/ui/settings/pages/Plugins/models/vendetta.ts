@@ -22,10 +22,9 @@ export default function unifyVdPlugin(
     usePluginState() {
       useProxy(VdPluginManager.plugins[vdPlugin.id]);
     },
-    toggle(start: boolean) {
-      start
-        ? VdPluginManager.startPlugin(vdPlugin.id)
-        : VdPluginManager.stopPlugin(vdPlugin.id);
+    async toggle(start: boolean) {
+      if (start) await VdPluginManager.startPlugin(vdPlugin.id);
+      else VdPluginManager.stopPlugin(vdPlugin.id);
     },
     resolveSheetComponent() {
       // Return a Promise resolving to the unified PluginInfoActionSheet for consistency
