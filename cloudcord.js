@@ -2212,7 +2212,7 @@
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
-      DISCORD_SERVER = "https://discord.gg/5naTPJYemX";
+      DISCORD_SERVER = "https://discord.gg/6cN7wKa8gp";
       CODEBERG = "";
       GITHUB = "https://github.com/xohus/cloudcord";
       HTTP_REGEX = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&/=]*)$/;
@@ -9638,6 +9638,8 @@
   }
   function pullOwnSharedProfile() {
     return _async_to_generator(function* () {
+      if (fakeProfileEditorOpen || Date.now() < suppressOwnPullUntil)
+        return;
       if (!currentUserId)
         return;
       var now = Date.now();
@@ -10775,6 +10777,7 @@
     return _async_to_generator(function* () {
       preview[key] = yield normalizeMedia(key, asset);
       unmarkMediaCleared(key);
+      suppressOwnPullUntil = Date.now() + 15e3;
       refreshPreview();
       queueSharedPublish();
     })();
@@ -11416,14 +11419,19 @@
     var [, redraw] = (0, import_react4.useReducer)((value) => value + 1, 0);
     var navigation2 = NavigationNative.useNavigation();
     (0, import_react4.useEffect)(() => {
+      fakeProfileEditorOpen = true;
       initializeFakeProfile();
       redraw();
+      return () => {
+        fakeProfileEditorOpen = false;
+      };
     }, []);
     var update = (key, value, refresh = false) => {
       preview[key] = value;
       clearCache();
       if (refresh)
         refreshPreview();
+      suppressOwnPullUntil = Date.now() + 15e3;
       queueSharedPublish();
       redraw();
     };
@@ -11449,6 +11457,7 @@
         };
         preview = rootSettings.fakeProfile;
         clearCache();
+        suppressOwnPullUntil = Date.now() + 15e3;
         diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
         refreshPreview();
         queueSharedPublish();
@@ -12222,7 +12231,7 @@
       })
     });
   }
-  var import_react4, import_react_native16, BADGES, GIFT_LEVELS, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native16, BADGES, GIFT_LEVELS, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12610,6 +12619,8 @@
       sharedRequests = /* @__PURE__ */ new Set();
       publishTimer = null;
       sharedSyncTimer = null;
+      fakeProfileEditorOpen = false;
+      suppressOwnPullUntil = 0;
       REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
       PROFILE_COLORS = [
         "#5865F2",
@@ -14044,26 +14055,16 @@
               })
             ]
           }),
-          /* @__PURE__ */ jsxs(TableRowGroup, {
+          /* @__PURE__ */ jsx(TableRowGroup, {
             title: Strings.LINKS,
-            children: [
-              /* @__PURE__ */ jsx(TableRow, {
-                arrow: true,
-                label: Strings.DISCORD_SERVER,
-                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                  source: findAssetId("Discord")
-                }),
-                onPress: () => import_react_native20.Linking.openURL(DISCORD_SERVER)
+            children: /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: Strings.GITHUB,
+              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: findAssetId("img_account_sync_github_white")
               }),
-              /* @__PURE__ */ jsx(TableRow, {
-                arrow: true,
-                label: Strings.GITHUB,
-                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                  source: findAssetId("img_account_sync_github_white")
-                }),
-                onPress: () => import_react_native20.Linking.openURL(GITHUB)
-              })
-            ]
+              onPress: () => import_react_native20.Linking.openURL(GITHUB)
+            })
           }),
           /* @__PURE__ */ jsxs(TableRowGroup, {
             title: Strings.ACTIONS,
