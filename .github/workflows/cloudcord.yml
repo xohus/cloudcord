@@ -533,6 +533,8 @@ jobs:
           const sharedRequests = new Set<string>();
           let publishTimer: ReturnType<typeof setTimeout> | null = null;
           let sharedSyncTimer: ReturnType<typeof setInterval> | null = null;
+          let fakeProfileEditorOpen = false;
+          let suppressOwnPullUntil = 0;
           const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
 
           function mediaClearPending(key: "avatarMedia" | "bannerMedia") {
@@ -671,6 +673,10 @@ jobs:
           }
 
           async function pullOwnSharedProfile() {
+              // The server contains the last completed save. Do not let the
+              // background poll replace fields while the user is editing, or
+              // immediately after a newer local revision was queued.
+              if (fakeProfileEditorOpen || Date.now() < suppressOwnPullUntil) return;
               if (!currentUserId) return;
               const now = Date.now();
               if ((pullOwnSharedProfile as any).pending || now - Number((pullOwnSharedProfile as any).lastAttempt || 0) < 12000) return;
@@ -1519,6 +1525,7 @@ jobs:
           async function saveMedia(key: "avatarMedia" | "bannerMedia", asset: any) {
               preview[key] = await normalizeMedia(key, asset);
               unmarkMediaCleared(key);
+              suppressOwnPullUntil = Date.now() + 15_000;
               refreshPreview();
               queueSharedPublish();
           }
@@ -1724,14 +1731,17 @@ jobs:
               const navigation = NavigationNative.useNavigation();
 
               useEffect(() => {
+                  fakeProfileEditorOpen = true;
                   initializeFakeProfile();
                   redraw();
+                  return () => { fakeProfileEditorOpen = false; };
               }, []);
 
               const update = (key: keyof PreviewSettings, value: any, refresh = false) => {
                   (preview as any)[key] = value;
                   clearCache();
                   if (refresh) refreshPreview();
+                  suppressOwnPullUntil = Date.now() + 15_000;
                   queueSharedPublish();
                   redraw();
               };
@@ -1756,6 +1766,7 @@ jobs:
                       } satisfies PreviewSettings;
                       preview = rootSettings.fakeProfile as PreviewSettings;
                       clearCache();
+                      suppressOwnPullUntil = Date.now() + 15_000;
                       diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
                       refreshPreview();
                       queueSharedPublish();
@@ -1972,7 +1983,6 @@ jobs:
           from pathlib import Path
           import re
 
-          DISCORD_URL = "https://discord.gg/5naTPJYemX"
           GITHUB_URL = "https://github.com/xohus/cloudcord"
           CLOUDCORD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
 
@@ -2011,12 +2021,6 @@ jobs:
               text = re.sub(
                   r'(?m)^export const OFFICIAL_PLUGINS_REPO_URL = ".*?";',
                   'export const OFFICIAL_PLUGINS_REPO_URL = "https://bn-plugins.github.io/dist/repo.json";',
-                  text
-              )
-
-              text = re.sub(
-                  r'export const DISCORD_SERVER = ".*?";',
-                  f'export const DISCORD_SERVER = "{DISCORD_URL}";',
                   text
               )
 
@@ -2076,17 +2080,11 @@ jobs:
                   text
               )
 
-              if "Linking.openURL(DISCORD_SERVER)" not in text:
-                  text = text.replace(
-                      '<TableRowGroup title={Strings.LINKS}>',
-                      '''<TableRowGroup title={Strings.LINKS}>
-                    <TableRow
-                        arrow={true}
-                        label={Strings.DISCORD_SERVER}
-                        icon={<TableRow.Icon source={findAssetId("Discord")!} />}
-                        onPress={() => Linking.openURL(DISCORD_SERVER)}
-                    />'''
-                  )
+              text = re.sub(
+                  r'\n\s*<TableRow\s+arrow=\{true\}\s+label=\{Strings\.DISCORD_SERVER\}[\s\S]*?onPress=\{\(\) => Linking\.openURL\(DISCORD_SERVER\)\}\s*/>',
+                  '',
+                  text
+              )
 
               general.write_text(text, encoding="utf-8")
 

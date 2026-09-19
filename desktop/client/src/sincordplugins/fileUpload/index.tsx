@@ -42,7 +42,12 @@ function shouldInterceptUploadFiles(files: readonly File[], payload: UploadAddFi
 
     const directLimit = [payload.maxFileSize, payload.fileSizeLimit, payload.limits?.fileSize].find(limit => Number.isFinite(limit)) as number | undefined;
     const fallbackLimit = getUserMaxFileSize(UserStore.getCurrentUser());
-    const discordLimit = Math.max(0, directLimit ?? fallbackLimit);
+    const resolvedLimit = directLimit ?? fallbackLimit;
+    // Discord has changed this store shape across desktop releases. If the
+    // limit cannot be resolved, leave the upload in Discord's native composer
+    // instead of treating the limit as zero and removing every picture.
+    if (!Number.isFinite(resolvedLimit) || resolvedLimit <= 0) return false;
+    const discordLimit = resolvedLimit;
 
     return files.some(file => file.size > discordLimit);
 }

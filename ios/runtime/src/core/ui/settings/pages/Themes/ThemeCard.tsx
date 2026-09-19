@@ -2,6 +2,7 @@ import AddonCard, { CardWrapper } from "@core/ui/components/AddonCard";
 import { VdThemeInfo, themes, selectTheme } from "@lib/addons/themes";
 import { findAssetId } from "@lib/api/assets";
 import { settings } from "@lib/api/settings";
+import { showToast } from "@lib/ui/toasts";
 import { showSheet } from "@lib/ui/sheets";
 import { NavigationNative, React } from "@metro/common";
 
@@ -23,11 +24,13 @@ export default function ThemeCard({ item: theme }: CardWrapper<VdThemeInfo>) {
       descriptionLabel={theme.data.description ?? "No description."}
       toggleType={!settings.safeMode?.enabled ? "radio" : undefined}
       toggleValue={() => themes[theme.id].selected}
-      onToggleChange={(v: boolean) => {
+      onToggleChange={async (v: boolean) => {
         try {
-          selectTheme(v ? theme : null);
+          await selectTheme(v ? theme : null);
+          showToast(v ? `Applied ${theme.data.name}` : "Theme disabled", findAssetId("Check"));
         } catch (e: any) {
           console.error("Error while selecting theme:", e);
+          showToast(e?.message ?? "Could not apply theme", findAssetId("CircleXIcon-primary"));
         }
       }}
       overflowTitle={theme.data.name}
