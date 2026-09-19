@@ -6565,9 +6565,6 @@
             if (!id.endsWith("/"))
               id += "/";
             var plugin = plugins[id];
-            if (plugin.id.includes("xxjust") == true || plugin.id.includes("DevNjay") == true) {
-              return;
-            }
             if (!plugin)
               throw new Error("Attempted to start non-existent plugin");
             try {
@@ -6586,6 +6583,7 @@
               }
               delete pluginInstance[id];
               plugin.enabled = false;
+              throw e;
             }
           }).call(this);
         },
@@ -17295,7 +17293,7 @@
   }
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
-    var [, forceUpdate] = (0, import_react10.useReducer)(() => ({}), 0);
+    var [toggling, setToggling] = (0, import_react10.useState)(false);
     var cardContextValue = (0, import_react10.useMemo)(() => ({
       plugin,
       result
@@ -17337,13 +17335,19 @@
                         } : void 0,
                         children: /* @__PURE__ */ jsx(TableSwitch, {
                           value: core ? true : plugin.isEnabled(),
-                          disabled: core,
-                          onValueChange: (v2) => {
+                          disabled: core || toggling,
+                          onValueChange: (v2) => _async_to_generator(function* () {
                             if (!core) {
-                              plugin.toggle(v2);
-                              forceUpdate();
+                              setToggling(true);
+                              try {
+                                yield plugin.toggle(v2);
+                              } catch (error) {
+                                showToast(error instanceof Error ? error.message : String(error), findAssetId("CircleXIcon-primary"));
+                              } finally {
+                                setToggling(false);
+                              }
                             }
-                          }
+                          })()
                         })
                       })
                     ]
@@ -17363,9 +17367,11 @@
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      init_async_to_generator();
       init_jsxRuntime();
       init_usePluginCardStyles();
       init_assets();
+      init_toasts();
       init_common();
       init_components();
       init_sheets();
@@ -17806,7 +17812,12 @@
         useProxy(VdPluginManager.plugins[vdPlugin.id]);
       },
       toggle(start) {
-        start ? VdPluginManager.startPlugin(vdPlugin.id) : VdPluginManager.stopPlugin(vdPlugin.id);
+        return _async_to_generator(function* () {
+          if (start)
+            yield VdPluginManager.startPlugin(vdPlugin.id);
+          else
+            VdPluginManager.stopPlugin(vdPlugin.id);
+        })();
       },
       resolveSheetComponent() {
         return Promise.resolve({
@@ -17823,6 +17834,7 @@
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      init_async_to_generator();
       init_plugins();
       init_storage();
     }
@@ -19046,13 +19058,15 @@
       descriptionLabel: theme.data.description ?? "No description.",
       toggleType: !settings.safeMode?.enabled ? "radio" : void 0,
       toggleValue: () => themes[theme.id].selected,
-      onToggleChange: (v2) => {
+      onToggleChange: (v2) => _async_to_generator(function* () {
         try {
-          selectTheme(v2 ? theme : null);
+          yield selectTheme(v2 ? theme : null);
+          showToast(v2 ? `Applied ${theme.data.name}` : "Theme disabled", findAssetId("Check"));
         } catch (e) {
           console.error("Error while selecting theme:", e);
+          showToast(e?.message ?? "Could not apply theme", findAssetId("CircleXIcon-primary"));
         }
-      },
+      })(),
       overflowTitle: theme.data.name,
       actions: [
         {
@@ -19073,10 +19087,13 @@
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      init_async_to_generator();
       init_jsxRuntime();
       init_AddonCard();
       init_themes();
+      init_assets();
       init_settings();
+      init_toasts();
       init_sheets();
       init_common();
     }
