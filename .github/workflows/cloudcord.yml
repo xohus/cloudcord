@@ -61,6 +61,9 @@ jobs:
           mkdir -p src/core/ui/settings/pages/FakeProfile
           mkdir -p src/core/ui/settings/pages/BotCord
           mkdir -p src/core/ui/settings/pages/Diagnostics
+          mkdir -p src/core/ui/settings/pages/Plugins/components
+          mkdir -p src/core/ui/settings/pages/Plugins/models
+          mkdir -p src/core/ui/settings/pages/Themes
           mkdir -p src/core/ui/botcord
           mkdir -p src/core/ui/settings/components
           mkdir -p src/lib/api
@@ -69,7 +72,12 @@ jobs:
           cp "../ios/runtime/src/core/ui/botcord/FloatingSwitcher.tsx" "src/core/ui/botcord/FloatingSwitcher.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/Diagnostics/index.tsx" "src/core/ui/settings/pages/Diagnostics/index.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/General/index.tsx" "src/core/ui/settings/pages/General/index.tsx"
+          cp "../ios/runtime/src/core/ui/settings/pages/Plugins/components/PluginCard.tsx" "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"
+          cp "../ios/runtime/src/core/ui/settings/pages/Plugins/models/index.ts" "src/core/ui/settings/pages/Plugins/models/index.ts"
+          cp "../ios/runtime/src/core/ui/settings/pages/Plugins/models/vendetta.ts" "src/core/ui/settings/pages/Plugins/models/vendetta.ts"
+          cp "../ios/runtime/src/core/ui/settings/pages/Themes/ThemeCard.tsx" "src/core/ui/settings/pages/Themes/ThemeCard.tsx"
           cp "../ios/runtime/src/core/ui/settings/index.ts" "src/core/ui/settings/index.ts"
+          cp "../ios/runtime/src/core/vendetta/plugins.ts" "src/core/vendetta/plugins.ts"
           cp "../ios/runtime/src/lib/api/settings.ts" "src/lib/api/settings.ts"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
           mkdir -p src/lib/api/native
