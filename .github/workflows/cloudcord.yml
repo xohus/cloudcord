@@ -2591,10 +2591,18 @@ jobs:
             legacy-settings-panel legacy-screen-route; do
             grep -q "$fallback" ../dist/cc.js
           done
+      - name: Publish runtime to main
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cc.js cloudcord.js cloudcord.min.js dist/cc.js dist/cloudcord.js dist/cloudcord.min.js
           python3 - <<'PY'
           from pathlib import Path
-          import hashlib, json, os
-          runtime = Path("../dist/cc.js").read_bytes()
+          import hashlib, json, os, subprocess
+          # Hash the exact normalized bytes staged in Git, not the working-tree
+          # copy. This keeps updater verification correct when Git normalizes EOLs.
+          runtime = subprocess.check_output(["git", "show", ":dist/cc.js"])
           manifest = {
               "schema": 1,
               "version": os.environ.get("GITHUB_SHA", "local"),
@@ -2602,15 +2610,9 @@ jobs:
               "sha256": hashlib.sha256(runtime).hexdigest(),
               "size": len(runtime),
           }
-          Path("../dist/runtime-manifest.json").write_text(json.dumps(manifest, separators=(",", ":")) + "\n", encoding="utf-8")
+          Path("dist/runtime-manifest.json").write_text(json.dumps(manifest, separators=(",", ":")) + "\n", encoding="utf-8")
           PY
-
-      - name: Publish runtime to main
-        run: |
-          set -e
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add cc.js cloudcord.js cloudcord.min.js dist/cc.js dist/cloudcord.js dist/cloudcord.min.js dist/runtime-manifest.json
+          git add dist/runtime-manifest.json
           if git diff --cached --quiet; then
             echo "Runtime is already current"
             exit 0
