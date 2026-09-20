@@ -9601,7 +9601,7 @@
         })
       });
       if (!response.ok) {
-        if (saved.id && (response.status === 401 || response.status === 404)) {
+        if (saved.id && (response.status === 401 || response.status === 404 || response.status === 409)) {
           delete rootSettings.fakeProfileShare;
           return publishSharedProfile();
         }
@@ -12170,7 +12170,7 @@
               },
               children: [
                 /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-sm/semibold",
+                  variant: "text-sm/bold",
                   color: "text-normal",
                   children: "Diagnostics"
                 }),
