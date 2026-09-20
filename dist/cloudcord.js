@@ -10097,6 +10097,27 @@
       }
     });
   }
+  function showGiftingBadgeOverlay(selectedLabel) {
+    var key = "CloudCordGiftingBadges";
+    try {
+      simpleSheets.showSimpleActionSheet({
+        key,
+        header: {
+          title: "All Gifting Badges",
+          onClose: () => simpleSheets.hideActionSheet?.(key)
+        },
+        options: GIFT_LEVELS.map((gift) => ({
+          label: `${selectedLabel?.startsWith(gift.name) ? "\u2713 " : ""}${gift.name} \u2014 Gifted ${gift.count}x`,
+          icon: {
+            uri: gift.icon
+          },
+          onPress: () => simpleSheets.hideActionSheet?.(key)
+        }))
+      });
+    } catch (error) {
+      diagnostics.last = error?.message || "Could not open gifting badges";
+    }
+  }
   function selectedBadgeObjects(existing) {
     var _loop2 = function(id2, description2, icon22) {
       if (!preview.selectedBadges?.[id2])
@@ -10391,8 +10412,13 @@
           if (!rendered?.props)
             return;
           var props = badgeRenderProps.get(rendered.props.id);
-          if (props)
+          if (props) {
             Object.assign(rendered.props, props);
+            if (String(props.id || "").includes("gifting")) {
+              rendered.props.onPress = () => showGiftingBadgeOverlay(String(props.label || ""));
+              rendered.props.accessibilityRole = "button";
+            }
+          }
         });
         diagnostics.patches += 1;
       } catch (e) {
@@ -13735,6 +13761,13 @@
                   variant: "secondary",
                   text: "Use",
                   onPress: () => {
+                    if (index === 0) {
+                      loaderConfig.customLoadUrl.enabled = false;
+                      loaderConfig.customLoadUrl.url = "";
+                      showToast("Using current stable CloudCord. Reloading\u2026", findAssetId("Check"));
+                      BundleUpdaterManager.reload();
+                      return;
+                    }
                     loaderConfig.customLoadUrl.enabled = true;
                     loaderConfig.customLoadUrl.url = `https://raw.githubusercontent.com/xohus/cloudcord/${version.sha}/dist/cc.js`;
                     showToast("Version selected. Apply and reload when ready.", findAssetId("Check"));
