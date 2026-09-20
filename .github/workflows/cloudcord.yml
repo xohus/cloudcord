@@ -1378,7 +1378,31 @@ jobs:
               // Keep shared identity overrides at the profile UI boundary.
               // Discord's internal addUser cache requires the original object
               // returned by UserStore.getUser and crashes on presentation clones.
-              for (const component of ["ProfileHeader", "UserTagAndPronouns", "UserTag"]) {
+              const identityComponents = [
+                  "ProfileHeader", "UserProfileHeader", "ProfileHeaderUsername",
+                  "ProfileHeaderName", "ProfileDisplayName", "UserProfileName",
+                  "ProfileUsername", "UserTagAndPronouns", "UserTag"
+              ];
+              const applyIdentity = (props: any, id: string, data: any) => {
+                  if (!props || !data) return;
+                  const username = String(data.username || "");
+                  const displayName = String(data.globalName || data.displayName || "");
+                  if (props.user) props.user = cloneSharedUser(props.user, data);
+                  for (const key of ["profile", "userProfile", "displayProfile", "guildMemberProfile"]) {
+                      if (props[key]) props[key] = decorateSharedProfile(props[key], id, data);
+                  }
+                  if (username) {
+                      props.username = username;
+                      props.userName = username;
+                      props.tag = `@${username}`;
+                  }
+                  if (displayName) {
+                      props.displayName = displayName;
+                      props.globalName = displayName;
+                      props.name = displayName;
+                  }
+              };
+              for (const component of identityComponents) {
                   try {
                       onJsxCreate(component, (_component, rendered) => {
                           const props = rendered?.props;
@@ -1395,10 +1419,7 @@ jobs:
                           requestSharedProfile(id);
                           const data = sharedProfiles.get(id);
                           if (!data || !Object.keys(data).length) return;
-                          if (props.user) props.user = cloneSharedUser(props.user, data);
-                          props.username = data.username || props.username;
-                          props.displayName = data.globalName || data.displayName || props.displayName;
-                          props.globalName = data.globalName || data.displayName || props.globalName;
+                          applyIdentity(props, id, data);
                       });
                       diagnostics.patches += 1;
                   } catch {}
