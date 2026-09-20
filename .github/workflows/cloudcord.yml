@@ -362,6 +362,9 @@ jobs:
           const useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
           const badgeRenderProps = new Map<string, Record<string, any>>();
           const simpleSheets = findByProps("showSimpleActionSheet") as any;
+          // Discord's own premium gifting action sheet.  Keeping this lazy is
+          // important because the premium module is split-loaded on mobile.
+          const openGiftingBadgeInfoActionSheet = findByNameLazy("openGiftingBadgeInfoActionSheet", false) as any;
           const LinearGradient = (findByProps("LinearGradient") as any)?.LinearGradient as any;
           const overriddenKeys = new Set([
               "username", "globalName", "displayName", "publicFlags", "flags", "badges", "profileBadges",
@@ -1013,22 +1016,27 @@ jobs:
           }
 
           function showGiftingBadgeOverlay(selectedLabel?: string) {
-              const key = "CloudCordGiftingBadges";
               try {
-                  simpleSheets.showSimpleActionSheet({
-                      key,
-                      header: {
-                          title: "All Gifting Badges",
-                          onClose: () => simpleSheets.hideActionSheet?.(key)
-                      },
-                      options: GIFT_LEVELS.map(gift => ({
-                          label: `${selectedLabel?.startsWith(gift.name) ? "✓ " : ""}${gift.name} — Gifted ${gift.count}x`,
-                          icon: { uri: gift.icon },
-                          onPress: () => simpleSheets.hideActionSheet?.(key)
-                      }))
+                  const index = Math.max(0, GIFT_LEVELS.findIndex(gift => selectedLabel?.startsWith(gift.name)));
+                  const gift = GIFT_LEVELS[index];
+                  const opener = typeof openGiftingBadgeInfoActionSheet === "function"
+                      ? openGiftingBadgeInfoActionSheet
+                      : openGiftingBadgeInfoActionSheet?.default ?? openGiftingBadgeInfoActionSheet?.openGiftingBadgeInfoActionSheet;
+                  if (typeof opener !== "function") throw new Error("Discord gifting badge overlay is unavailable");
+
+                  // These are Discord's native field names across the supported
+                  // mobile builds. Unknown keys are intentionally harmless.
+                  opener({
+                      giftCount: gift.count,
+                      giftingBadgeTier: index + 1,
+                      gifting_badge_tier: index + 1,
+                      tier: index + 1,
+                      selectedTier: index + 1,
+                      source: "PROFILE_BADGE"
                   });
               } catch (error: any) {
                   diagnostics.last = error?.message || "Could not open gifting badges";
+                  Alert.alert("Gifting Badge", "Discord's native gifting badge overlay is unavailable in this Discord version.");
               }
           }
 
