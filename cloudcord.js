@@ -9385,6 +9385,24 @@
     default: () => FakeProfile,
     initializeFakeProfile: () => initializeFakeProfile
   });
+  function cloudCordStaffBadge(userId) {
+    if (userId === CLOUDCORD_OWNER_ID)
+      return {
+        id: "cloudcord-owner",
+        label: "CloudCord Owner"
+      };
+    if (userId === CLOUDCORD_CO_OWNER_ID)
+      return {
+        id: "cloudcord-co-owner",
+        label: "CloudCord Co-Owner"
+      };
+    if (userId === CLOUDCORD_MODERATOR_ID)
+      return {
+        id: "cloudcord-moderator",
+        label: "CloudCord Moderator"
+      };
+    return null;
+  }
   function nitroBadgeId(months) {
     return months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
   }
@@ -9718,6 +9736,10 @@
       sharedProfileFetchedAt.set(id, Date.now());
       if (!changed || !profile || typeof profile !== "object")
         return;
+      try {
+        safeStore("UserStore")?.emitChange?.();
+      } catch (e) {
+      }
       try {
         safeStore("UserProfileStore")?.emitChange?.();
       } catch (e) {
@@ -10263,16 +10285,16 @@
       after("default", useBadgesModule2, ([user], result) => {
         if (!Array.isArray(result))
           return result;
-        var id = String(user?.userId || user?.id || "");
+        var id = String(user?.userId || user?.id || user?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || "");
         if (!isCurrentUser(id)) {
           requestSharedProfile(id);
           var data = sharedProfiles.get(id);
-          var officialOwner = id === CLOUDCORD_OFFICIAL_OWNER_ID;
-          if (!data && !officialOwner)
+          var staffBadge = cloudCordStaffBadge(id);
+          if (!data && !staffBadge)
             return;
           var ordered = [];
-          if (officialOwner)
-            addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
+          if (staffBadge)
+            addRenderedBadge(ordered, staffBadge.id, staffBadge.label, CLOUDCORD_BADGE_ICON);
           if (data) {
             var nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
             var boostMonths = [
@@ -10302,20 +10324,20 @@
           }
           var existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter((item) => {
             var badgeId2 = String(item?.id || "");
-            return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("cloudcord-shared-") && !(remoteNitroEnabled(data) && badgeId2 === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
+            return !badgeId2.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeId2 === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
           });
           return [
             ...ordered,
             ...existing
           ];
         }
-        var officialOwner1 = id === CLOUDCORD_OFFICIAL_OWNER_ID;
+        var staffBadge1 = cloudCordStaffBadge(id);
         if (!preview.enabled) {
-          if (!officialOwner1)
+          if (!staffBadge1)
             return;
-          var existing1 = result.filter((item) => String(item?.id || "") !== CLOUDCORD_OFFICIAL_BADGE_ID);
+          var existing1 = result.filter((item) => !String(item?.id || "").startsWith("cloudcord-"));
           var ordered1 = [];
-          addRenderedBadge(ordered1, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
+          addRenderedBadge(ordered1, staffBadge1.id, staffBadge1.label, CLOUDCORD_BADGE_ICON);
           return [
             ...ordered1,
             ...existing1
@@ -10323,11 +10345,11 @@
         }
         var existing2 = shouldReplaceLocalBadges() ? [] : result.filter((item) => {
           var badgeId2 = String(item?.id || "");
-          return badgeId2 !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId2.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeId2 === nitroBadgeId(preview.nitroMonths));
+          return !badgeId2.startsWith("cloudcord-") && !badgeId2.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeId2 === nitroBadgeId(preview.nitroMonths));
         });
         var ordered2 = [];
-        if (officialOwner1)
-          addRenderedBadge(ordered2, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
+        if (staffBadge1)
+          addRenderedBadge(ordered2, staffBadge1.id, staffBadge1.label, CLOUDCORD_BADGE_ICON);
         if (preview.nitroEnabled)
           addRenderedBadge(ordered2, nitroBadgeId(preview.nitroMonths), nitroSubscriberLabel(preview.nitroMonths), milestoneIcon(preview.nitroMonths, NITRO_ICONS));
         var gift1 = GIFT_LEVELS[preview.giftLevel];
@@ -10505,11 +10527,15 @@
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
-      if (!isCurrentUser(args?.[0]))
-        return original(...args);
+      var id = String(args?.[0]?.id || args?.[0]?.userId || args?.[0] || "");
       var user = original(...args);
-      realCurrentUser = user || realCurrentUser;
-      return cloneObject(user, "user");
+      if (isCurrentUser(id)) {
+        realCurrentUser = user || realCurrentUser;
+        return cloneObject(user, "user");
+      }
+      requestSharedProfile(id);
+      var shared = sharedProfiles.get(id);
+      return shared && Object.keys(shared).length ? cloneSharedUser(user, shared) : user;
     });
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
@@ -12229,7 +12255,7 @@
       })
     });
   }
-  var import_react4, import_react_native16, BADGES, GIFT_LEVELS, CLOUDCORD_OFFICIAL_OWNER_ID, CLOUDCORD_OFFICIAL_BADGE_ID, CLOUDCORD_OFFICIAL_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native16, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MODERATOR_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12312,7 +12338,7 @@
         ],
         [
           "mod",
-          "Former Moderator",
+          "Moderator Programs Alumni",
           262144,
           "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"
         ],
@@ -12376,9 +12402,10 @@
           icon: "https://cdn.discordapp.com/badge-icons/7fe346cfc5da1340087d8759a9e7a395.png"
         }
       ];
-      CLOUDCORD_OFFICIAL_OWNER_ID = "463515440606609419";
-      CLOUDCORD_OFFICIAL_BADGE_ID = "cloudcord-official-owner";
-      CLOUDCORD_OFFICIAL_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+      CLOUDCORD_OWNER_ID = "463515440606609419";
+      CLOUDCORD_CO_OWNER_ID = "1497588725788442637";
+      CLOUDCORD_MODERATOR_ID = "1540350369232850995";
+      CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
       useBadgesModule2 = findByNameLazy("useBadges", false);
       useUserProfileModule = findByNameLazy("useUserProfile", false);
       useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
