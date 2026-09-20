@@ -10543,11 +10543,45 @@
     }
   }
   function connectIdentityRenderer() {
-    for (var component of [
+    var identityComponents = [
       "ProfileHeader",
+      "UserProfileHeader",
+      "ProfileHeaderUsername",
+      "ProfileHeaderName",
+      "ProfileDisplayName",
+      "UserProfileName",
+      "ProfileUsername",
       "UserTagAndPronouns",
       "UserTag"
-    ]) {
+    ];
+    var applyIdentity = (props, id, data) => {
+      if (!props || !data)
+        return;
+      var username = String(data.username || "");
+      var displayName2 = String(data.globalName || data.displayName || "");
+      if (props.user)
+        props.user = cloneSharedUser(props.user, data);
+      for (var key of [
+        "profile",
+        "userProfile",
+        "displayProfile",
+        "guildMemberProfile"
+      ]) {
+        if (props[key])
+          props[key] = decorateSharedProfile(props[key], id, data);
+      }
+      if (username) {
+        props.username = username;
+        props.userName = username;
+        props.tag = `@${username}`;
+      }
+      if (displayName2) {
+        props.displayName = displayName2;
+        props.globalName = displayName2;
+        props.name = displayName2;
+      }
+    };
+    for (var component of identityComponents) {
       try {
         onJsxCreate(component, (_component, rendered) => {
           var props = rendered?.props;
@@ -10568,11 +10602,7 @@
           var data = sharedProfiles.get(id);
           if (!data || !Object.keys(data).length)
             return;
-          if (props.user)
-            props.user = cloneSharedUser(props.user, data);
-          props.username = data.username || props.username;
-          props.displayName = data.globalName || data.displayName || props.displayName;
-          props.globalName = data.globalName || data.displayName || props.globalName;
+          applyIdentity(props, id, data);
         });
         diagnostics.patches += 1;
       } catch (e) {
