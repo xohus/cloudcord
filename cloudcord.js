@@ -10517,6 +10517,43 @@
       }
     }
   }
+  function connectIdentityRenderer() {
+    for (var component of [
+      "ProfileHeader",
+      "UserTagAndPronouns",
+      "UserTag"
+    ]) {
+      try {
+        onJsxCreate(component, (_component, rendered) => {
+          var props = rendered?.props;
+          var id = String(renderedUserId(props) || props?.user?.id || "");
+          if (!id)
+            return;
+          if (isCurrentUser(id)) {
+            if (!preview.enabled)
+              return;
+            if (props.user)
+              props.user = cloneObject(props.user, "user");
+            props.username = preview.username || props.username;
+            props.displayName = preview.displayName || props.displayName;
+            props.globalName = preview.displayName || props.globalName;
+            return;
+          }
+          requestSharedProfile(id);
+          var data = sharedProfiles.get(id);
+          if (!data || !Object.keys(data).length)
+            return;
+          if (props.user)
+            props.user = cloneSharedUser(props.user, data);
+          props.username = data.username || props.username;
+          props.displayName = data.globalName || data.displayName || props.displayName;
+          props.globalName = data.globalName || data.displayName || props.globalName;
+        });
+        diagnostics.patches += 1;
+      } catch (e) {
+      }
+    }
+  }
   function ensurePatches() {
     if (initialized2)
       return;
@@ -10535,15 +10572,11 @@
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
-      var id = String(args?.[0]?.id || args?.[0]?.userId || args?.[0] || "");
+      if (!isCurrentUser(args?.[0]))
+        return original(...args);
       var user = original(...args);
-      if (isCurrentUser(id)) {
-        realCurrentUser = user || realCurrentUser;
-        return cloneObject(user, "user");
-      }
-      requestSharedProfile(id);
-      var shared = sharedProfiles.get(id);
-      return shared && Object.keys(shared).length ? cloneSharedUser(user, shared) : user;
+      realCurrentUser = user || realCurrentUser;
+      return cloneObject(user, "user");
     });
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
     diagnostics.profileStore = !!profileStore;
@@ -10623,6 +10656,7 @@
       return preview.enabled && createdAt && String(args?.[0] || "") === currentUserId ? createdAt.getTime() : original(...args);
     });
     connectMediaRenderer();
+    connectIdentityRenderer();
     var bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
     addAfterPatch("getBanner", bannerComposer, (args, result) => {
       var uri = mediaUri("bannerMedia");
