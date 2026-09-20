@@ -10098,24 +10098,23 @@
     });
   }
   function showGiftingBadgeOverlay(selectedLabel) {
-    var key = "CloudCordGiftingBadges";
     try {
-      simpleSheets.showSimpleActionSheet({
-        key,
-        header: {
-          title: "All Gifting Badges",
-          onClose: () => simpleSheets.hideActionSheet?.(key)
-        },
-        options: GIFT_LEVELS.map((gift) => ({
-          label: `${selectedLabel?.startsWith(gift.name) ? "\u2713 " : ""}${gift.name} \u2014 Gifted ${gift.count}x`,
-          icon: {
-            uri: gift.icon
-          },
-          onPress: () => simpleSheets.hideActionSheet?.(key)
-        }))
+      var index = Math.max(0, GIFT_LEVELS.findIndex((gift2) => selectedLabel?.startsWith(gift2.name)));
+      var gift = GIFT_LEVELS[index];
+      var opener = typeof openGiftingBadgeInfoActionSheet === "function" ? openGiftingBadgeInfoActionSheet : openGiftingBadgeInfoActionSheet?.default ?? openGiftingBadgeInfoActionSheet?.openGiftingBadgeInfoActionSheet;
+      if (typeof opener !== "function")
+        throw new Error("Discord gifting badge overlay is unavailable");
+      opener({
+        giftCount: gift.count,
+        giftingBadgeTier: index + 1,
+        gifting_badge_tier: index + 1,
+        tier: index + 1,
+        selectedTier: index + 1,
+        source: "PROFILE_BADGE"
       });
     } catch (error) {
       diagnostics.last = error?.message || "Could not open gifting badges";
+      import_react_native16.Alert.alert("Gifting Badge", "Discord's native gifting badge overlay is unavailable in this Discord version.");
     }
   }
   function selectedBadgeObjects(existing) {
@@ -12323,7 +12322,7 @@
       })
     });
   }
-  var import_react4, import_react_native16, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MODERATOR_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native16, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MODERATOR_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12479,6 +12478,7 @@
       useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
       badgeRenderProps = /* @__PURE__ */ new Map();
       simpleSheets = findByProps("showSimpleActionSheet");
+      openGiftingBadgeInfoActionSheet = findByNameLazy("openGiftingBadgeInfoActionSheet", false);
       LinearGradient = findByProps("LinearGradient")?.LinearGradient;
       overriddenKeys = /* @__PURE__ */ new Set([
         "username",
