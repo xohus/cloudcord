@@ -9619,6 +9619,16 @@
         })
       });
       if (!response.ok) {
+        if (response.status === 429) {
+          var retrySeconds = Math.max(2, Number(response.headers.get("retry-after") || 10));
+          if (publishTimer)
+            clearTimeout(publishTimer);
+          publishTimer = setTimeout(() => void publishSharedProfile().catch((error) => {
+            diagnostics.last = error?.message || "Sharing will retry later";
+          }), retrySeconds * 1e3);
+          diagnostics.last = `CloudCord sharing paused; retrying in ${retrySeconds}s`;
+          return;
+        }
         if (saved.id && (response.status === 401 || response.status === 404 || response.status === 409)) {
           delete rootSettings.fakeProfileShare;
           return publishSharedProfile();
@@ -10522,8 +10532,6 @@
       var user = original(...args);
       realCurrentUser = user || realCurrentUser;
       currentUserId = user?.id || currentUserId;
-      if (preview.enabled)
-        queueSharedPublish();
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
