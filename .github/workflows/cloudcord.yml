@@ -649,7 +649,7 @@ jobs:
                   body: JSON.stringify({ ownerId: currentUserId, profile: profileSnapshot })
               });
               if (!response.ok) {
-                  if (saved.id && (response.status === 401 || response.status === 404)) {
+                  if (saved.id && (response.status === 401 || response.status === 404 || response.status === 409)) {
                       delete rootSettings.fakeProfileShare;
                       return publishSharedProfile();
                   }
@@ -1966,7 +1966,7 @@ jobs:
 
                           <Card border="strong">
                               <View style={{ padding: 14, gap: 5 }}>
-                                  <Text variant="heading-sm/semibold" color="text-normal">Diagnostics</Text>
+                                  <Text variant="text-sm/bold" color="text-normal">Diagnostics</Text>
                                   <Text variant="text-xs/medium" color="text-muted">Preview hooks: {diagnostics.patches}</Text>
                                   <Text variant="text-xs/medium" color="text-muted">User source: {diagnostics.userStore ? "Connected" : "Unavailable"}</Text>
                                   <Text variant="text-xs/medium" color="text-muted">Profile source: {diagnostics.profileStore ? "Connected" : "Unavailable"}</Text>

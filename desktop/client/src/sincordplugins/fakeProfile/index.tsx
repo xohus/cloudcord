@@ -357,7 +357,7 @@ async function publishSharedProfile(): Promise<void> {
         body: JSON.stringify({ ownerId, profile: toSharedProfile(storedData) })
     });
     if (!response.ok) {
-        if (saved.id && (response.status === 401 || response.status === 404)) { localStorage.removeItem(LS_SHARE); return publishSharedProfile(); }
+        if (saved.id && (response.status === 401 || response.status === 404 || response.status === 409)) { localStorage.removeItem(LS_SHARE); return publishSharedProfile(); }
         throw new Error(`CloudCord profile sync failed (${response.status})`);
     }
     const result = await response.json();
