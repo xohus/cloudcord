@@ -1054,7 +1054,10 @@ fakeObfuscatedEmail(real: string | null) {
                 props: { style },
                 position: 0
             });
-            if (gl >= 0 && gl < GIFT_LEVELS.length) badges.push({ id: "sp_gifting", description: "Gifting Badge", iconSrc: GIFT_LEVELS[gl].icon, position: 0, props: { style } });
+            if (gl >= 0 && gl < GIFT_LEVELS.length) {
+                const gift = GIFT_LEVELS[gl];
+                badges.push({ id: "sp_gifting", description: `${gift.name} · Gifted ${gift.count}x`, iconSrc: gift.icon, position: 0, props: { style } });
+            }
             if (hasBoostFake) {
                 const boostSince = monthsAgo(BOOST_LEVEL_MONTHS[bm] ?? 1);
                 badges.push({ id: "sp_boost", description: `Server boosting since ${shortProfileDate(boostSince)}`, iconSrc: BOOST_ICONS[bm], position: 0, props: { style } });

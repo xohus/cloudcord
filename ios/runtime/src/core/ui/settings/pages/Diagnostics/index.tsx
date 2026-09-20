@@ -274,6 +274,13 @@ export default function Diagnostics() {
                     label={index === 0 ? "Current stable" : `Previous version ${index}`}
                     subLabel={`${version.sha.slice(0, 7)} · ${version.date.slice(0, 10)} · ${version.title}`}
                     trailing={<Button size="sm" variant="secondary" text="Use" onPress={() => {
+                        if (index === 0) {
+                            loaderConfig.customLoadUrl.enabled = false;
+                            loaderConfig.customLoadUrl.url = "";
+                            showToast("Using current stable CloudCord. Reloading…", findAssetId("Check"));
+                            BundleUpdaterManager.reload();
+                            return;
+                        }
                         loaderConfig.customLoadUrl.enabled = true;
                         loaderConfig.customLoadUrl.url = `https://raw.githubusercontent.com/xohus/cloudcord/${version.sha}/dist/cc.js`;
                         showToast("Version selected. Apply and reload when ready.", findAssetId("Check"));

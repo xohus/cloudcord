@@ -1012,6 +1012,26 @@ jobs:
               result.push({ id, description, label: description, icon, iconSrc: icon, source: { uri: icon } });
           }
 
+          function showGiftingBadgeOverlay(selectedLabel?: string) {
+              const key = "CloudCordGiftingBadges";
+              try {
+                  simpleSheets.showSimpleActionSheet({
+                      key,
+                      header: {
+                          title: "All Gifting Badges",
+                          onClose: () => simpleSheets.hideActionSheet?.(key)
+                      },
+                      options: GIFT_LEVELS.map(gift => ({
+                          label: `${selectedLabel?.startsWith(gift.name) ? "✓ " : ""}${gift.name} — Gifted ${gift.count}x`,
+                          icon: { uri: gift.icon },
+                          onPress: () => simpleSheets.hideActionSheet?.(key)
+                      }))
+                  });
+              } catch (error: any) {
+                  diagnostics.last = error?.message || "Could not open gifting badges";
+              }
+          }
+
           function selectedBadgeObjects(existing: any) {
               const result: any[] = [];
               if (preview.nitroEnabled) {
@@ -1239,7 +1259,13 @@ jobs:
                       onJsxCreate(component, (_component, rendered) => {
                           if (!rendered?.props) return;
                           const props = badgeRenderProps.get(rendered.props.id);
-                          if (props) Object.assign(rendered.props, props);
+                          if (props) {
+                              Object.assign(rendered.props, props);
+                              if (String(props.id || "").includes("gifting")) {
+                                  rendered.props.onPress = () => showGiftingBadgeOverlay(String(props.label || ""));
+                                  rendered.props.accessibilityRole = "button";
+                              }
+                          }
                       });
                       diagnostics.patches += 1;
                   } catch {}
