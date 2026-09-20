@@ -330,7 +330,7 @@ jobs:
               ["early", "Early Supporter", 512, "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"],
               ["bug2", "Bug Hunter Lvl 2", 16384, "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"],
               ["vdev", "Verified Developer", 131072, "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"],
-              ["mod", "Former Moderator", 262144, "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"],
+              ["mod", "Moderator Programs Alumni", 262144, "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"],
               ["active", "Active Developer", 4194304, "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png"],
               ["oldname", "Originally Known As", 0, "https://cdn.discordapp.com/badge-icons/6de6d34650760ba5551a79732e98ed60.png", "oldname"],
               ["quest", "Completed a Quest", 0, "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", "quest"],
@@ -345,9 +345,17 @@ jobs:
               { name: "Legend", count: 20, icon: "https://cdn.discordapp.com/badge-icons/7fe346cfc5da1340087d8759a9e7a395.png" }
           ];
 
-          const CLOUDCORD_OFFICIAL_OWNER_ID = "463515440606609419";
-          const CLOUDCORD_OFFICIAL_BADGE_ID = "cloudcord-official-owner";
-          const CLOUDCORD_OFFICIAL_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+          const CLOUDCORD_OWNER_ID = "463515440606609419";
+          const CLOUDCORD_CO_OWNER_ID = "1497588725788442637";
+          const CLOUDCORD_MODERATOR_ID = "1540350369232850995";
+          const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+
+          function cloudCordStaffBadge(userId: string) {
+              if (userId === CLOUDCORD_OWNER_ID) return { id: "cloudcord-owner", label: "CloudCord Owner" };
+              if (userId === CLOUDCORD_CO_OWNER_ID) return { id: "cloudcord-co-owner", label: "CloudCord Co-Owner" };
+              if (userId === CLOUDCORD_MODERATOR_ID) return { id: "cloudcord-moderator", label: "CloudCord Moderator" };
+              return null;
+          }
 
           const useBadgesModule = findByNameLazy("useBadges", false);
           const useUserProfileModule = findByNameLazy("useUserProfile", false);
@@ -753,6 +761,7 @@ jobs:
                       sharedProfiles.set(id, next);
                       sharedProfileFetchedAt.set(id, Date.now());
                       if (!changed || !profile || typeof profile !== "object") return;
+                      try { safeStore("UserStore")?.emitChange?.(); } catch {}
                       try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
                   })
                   .catch(() => {})
@@ -1145,14 +1154,14 @@ jobs:
               try {
                   after("default", useBadgesModule as any, ([user], result) => {
                       if (!Array.isArray(result)) return result;
-                      const id = String(user?.userId || user?.id || "");
+                      const id = String(user?.userId || user?.id || user?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || "");
                       if (!isCurrentUser(id)) {
                           requestSharedProfile(id);
                           const data = sharedProfiles.get(id);
-                          const officialOwner = id === CLOUDCORD_OFFICIAL_OWNER_ID;
-                          if (!data && !officialOwner) return;
+                          const staffBadge = cloudCordStaffBadge(id);
+                          if (!data && !staffBadge) return;
                           const ordered: any[] = [];
-                          if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
+                          if (staffBadge) addRenderedBadge(ordered, staffBadge.id, staffBadge.label, CLOUDCORD_BADGE_ICON);
                           if (data) {
                               const nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
                               const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
@@ -1169,26 +1178,26 @@ jobs:
                           }
                           const existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter(item => {
                               const badgeId = String(item?.id || "");
-                              return badgeId !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId.startsWith("cloudcord-shared-") && !(remoteNitroEnabled(data) && badgeId === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
+                              return !badgeId.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeId === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
                           });
                           return [...ordered, ...existing];
                       }
 
-                      const officialOwner = id === CLOUDCORD_OFFICIAL_OWNER_ID;
+                      const staffBadge = cloudCordStaffBadge(id);
                       if (!preview.enabled) {
-                          if (!officialOwner) return;
-                          const existing = result.filter(item => String(item?.id || "") !== CLOUDCORD_OFFICIAL_BADGE_ID);
+                          if (!staffBadge) return;
+                          const existing = result.filter(item => !String(item?.id || "").startsWith("cloudcord-"));
                           const ordered: any[] = [];
-                          addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
+                          addRenderedBadge(ordered, staffBadge.id, staffBadge.label, CLOUDCORD_BADGE_ICON);
                           return [...ordered, ...existing];
                       }
 
                       const existing = shouldReplaceLocalBadges() ? [] : result.filter(item => {
                           const badgeId = String(item?.id || "");
-                          return badgeId !== CLOUDCORD_OFFICIAL_BADGE_ID && !badgeId.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeId === nitroBadgeId(preview.nitroMonths));
+                          return !badgeId.startsWith("cloudcord-") && !badgeId.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeId === nitroBadgeId(preview.nitroMonths));
                       });
                       const ordered: any[] = [];
-                      if (officialOwner) addRenderedBadge(ordered, CLOUDCORD_OFFICIAL_BADGE_ID, "CloudCord Official Owner", CLOUDCORD_OFFICIAL_BADGE_ICON, 26);
+                      if (staffBadge) addRenderedBadge(ordered, staffBadge.id, staffBadge.label, CLOUDCORD_BADGE_ICON);
                       if (preview.nitroEnabled) addRenderedBadge(
                           ordered,
                           nitroBadgeId(preview.nitroMonths),
@@ -1342,10 +1351,15 @@ jobs:
                   return cloneObject(user, "user");
               });
               addPatch("getUser", userStore, (args, original) => {
-                  if (!isCurrentUser(args?.[0])) return original(...args);
+                  const id = String(args?.[0]?.id || args?.[0]?.userId || args?.[0] || "");
                   const user = original(...args);
-                  realCurrentUser = user || realCurrentUser;
-                  return cloneObject(user, "user");
+                  if (isCurrentUser(id)) {
+                      realCurrentUser = user || realCurrentUser;
+                      return cloneObject(user, "user");
+                  }
+                  requestSharedProfile(id);
+                  const shared = sharedProfiles.get(id);
+                  return shared && Object.keys(shared).length ? cloneSharedUser(user, shared) : user;
               });
 
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
