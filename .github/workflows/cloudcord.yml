@@ -1340,6 +1340,36 @@ jobs:
 
           }
 
+          function connectIdentityRenderer() {
+              // Keep shared identity overrides at the profile UI boundary.
+              // Discord's internal addUser cache requires the original object
+              // returned by UserStore.getUser and crashes on presentation clones.
+              for (const component of ["ProfileHeader", "UserTagAndPronouns", "UserTag"]) {
+                  try {
+                      onJsxCreate(component, (_component, rendered) => {
+                          const props = rendered?.props;
+                          const id = String(renderedUserId(props) || props?.user?.id || "");
+                          if (!id) return;
+                          if (isCurrentUser(id)) {
+                              if (!preview.enabled) return;
+                              if (props.user) props.user = cloneObject(props.user, "user");
+                              props.username = preview.username || props.username;
+                              props.displayName = preview.displayName || props.displayName;
+                              props.globalName = preview.displayName || props.globalName;
+                              return;
+                          }
+                          requestSharedProfile(id);
+                          const data = sharedProfiles.get(id);
+                          if (!data || !Object.keys(data).length) return;
+                          if (props.user) props.user = cloneSharedUser(props.user, data);
+                          props.username = data.username || props.username;
+                          props.displayName = data.globalName || data.displayName || props.displayName;
+                          props.globalName = data.globalName || data.displayName || props.globalName;
+                      });
+                      diagnostics.patches += 1;
+                  } catch {}
+              }
+          }
 
           function ensurePatches() {
               if (initialized) return;
@@ -1359,15 +1389,10 @@ jobs:
                   return cloneObject(user, "user");
               });
               addPatch("getUser", userStore, (args, original) => {
-                  const id = String(args?.[0]?.id || args?.[0]?.userId || args?.[0] || "");
+                  if (!isCurrentUser(args?.[0])) return original(...args);
                   const user = original(...args);
-                  if (isCurrentUser(id)) {
-                      realCurrentUser = user || realCurrentUser;
-                      return cloneObject(user, "user");
-                  }
-                  requestSharedProfile(id);
-                  const shared = sharedProfiles.get(id);
-                  return shared && Object.keys(shared).length ? cloneSharedUser(user, shared) : user;
+                  realCurrentUser = user || realCurrentUser;
+                  return cloneObject(user, "user");
               });
 
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
@@ -1446,6 +1471,7 @@ jobs:
               });
 
               connectMediaRenderer();
+              connectIdentityRenderer();
 
               const bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
               addAfterPatch("getBanner", bannerComposer, (args, result) => {
