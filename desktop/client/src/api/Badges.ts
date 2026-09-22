@@ -64,7 +64,7 @@ const Badges = new Set<ProfileBadge>();
 
 const CLOUDCORD_OWNER_ID = "463515440606609419";
 const CLOUDCORD_CO_OWNER_ID = "1497588725788442637";
-const CLOUDCORD_MODERATOR_ID = "1540350369232850995";
+const CLOUDCORD_MANAGER_ID = "1540350369232850995";
 const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 
 /**
@@ -126,11 +126,11 @@ export function _getBadges(args: BadgeUserArgs) {
             iconSrc: CLOUDCORD_BADGE_ICON,
             position: BadgePosition.START
         });
-    } else if (args.userId === CLOUDCORD_MODERATOR_ID) {
+    } else if (args.userId === CLOUDCORD_MANAGER_ID) {
         badges.unshift({
             ...args,
-            id: "cloudcord-moderator",
-            description: "CloudCord Moderator",
+            id: "cloudcord-manager",
+            description: "CloudCord Manager",
             iconSrc: CLOUDCORD_BADGE_ICON,
             position: BadgePosition.START
         });

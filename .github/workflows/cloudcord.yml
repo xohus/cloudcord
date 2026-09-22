@@ -347,13 +347,13 @@ jobs:
 
           const CLOUDCORD_OWNER_ID = "463515440606609419";
           const CLOUDCORD_CO_OWNER_ID = "1497588725788442637";
-          const CLOUDCORD_MODERATOR_ID = "1540350369232850995";
+          const CLOUDCORD_MANAGER_ID = "1540350369232850995";
           const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 
           function cloudCordStaffBadge(userId: string) {
               if (userId === CLOUDCORD_OWNER_ID) return { id: "cloudcord-owner", label: "CloudCord Owner" };
               if (userId === CLOUDCORD_CO_OWNER_ID) return { id: "cloudcord-co-owner", label: "CloudCord Co-Owner" };
-              if (userId === CLOUDCORD_MODERATOR_ID) return { id: "cloudcord-moderator", label: "CloudCord Moderator" };
+              if (userId === CLOUDCORD_MANAGER_ID) return { id: "cloudcord-manager", label: "CloudCord Manager" };
               return null;
           }
 
