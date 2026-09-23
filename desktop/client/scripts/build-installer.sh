@@ -37,21 +37,6 @@ esac
 
 mkdir -p ../dist
 
-if [ -f "CloudCordSetup.exe" ]; then
-    echo "Found 30.6 MB prebuilt CloudCordSetup.exe, copying directly to dist..."
-    cp "CloudCordSetup.exe" "../dist/CloudCordSetup.exe"
-    cp "CloudCordSetup.exe" "../dist/cloudcord.exe"
-    if [ -f "CloudCordSetup-Test.exe" ]; then
-        cp "CloudCordSetup-Test.exe" "../dist/CloudCordSetup-Test.exe"
-        cp "CloudCordSetup-Test.exe" "../dist/cloudcord-test.exe"
-    else
-        cp "CloudCordSetup.exe" "../dist/CloudCordSetup-Test.exe"
-        cp "CloudCordSetup.exe" "../dist/cloudcord-test.exe"
-    fi
-    echo "Done! 30.6 MB prebuilt installer packaged."
-    exit 0
-fi
-
 echo "Building $OUT..."
 go build -ldflags="-s -w" -o "$OUT" .
 chmod +x "$OUT" 2>/dev/null || true
@@ -66,6 +51,5 @@ if [ "$OUT" = "CloudCordSetup.exe" ]; then
     cp "CloudCordSetup-Test.exe" "../dist/cloudcord-test.exe"
 fi
 echo "Done! Installer built at installer/$OUT and dist/$OUT"
-
 
 
