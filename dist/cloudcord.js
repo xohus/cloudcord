@@ -9771,11 +9771,19 @@
     if (!original || typeof original !== "object" || !data)
       return original;
     var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
-    if (data.username)
-      setOwnValue(cloned, "username", data.username);
-    if (data.globalName) {
-      setOwnValue(cloned, "globalName", data.globalName);
-      setOwnValue(cloned, "displayName", data.globalName);
+    if (data.username) {
+      var username = String(data.username);
+      setOwnValue(cloned, "username", username);
+      setOwnValue(cloned, "userName", username);
+      setOwnValue(cloned, "tag", `@${username}`);
+      setOwnValue(cloned, "getTag", () => `${username}#0000`);
+    }
+    if (data.globalName || data.displayName) {
+      var displayName2 = String(data.globalName || data.displayName);
+      setOwnValue(cloned, "globalName", displayName2);
+      setOwnValue(cloned, "displayName", displayName2);
+      setOwnValue(cloned, "name", displayName2);
+      setOwnValue(cloned, "getGlobalName", () => displayName2);
     }
     if (data.avatar) {
       setOwnValue(cloned, "avatarURL", data.avatar);
@@ -9835,6 +9843,13 @@
       var displayName2 = data.globalName || data.displayName;
       setOwnValue(cloned, "globalName", displayName2);
       setOwnValue(cloned, "displayName", displayName2);
+      setOwnValue(cloned, "name", displayName2);
+    }
+    if (data.username) {
+      var username = String(data.username);
+      setOwnValue(cloned, "userName", username);
+      setOwnValue(cloned, "tag", `@${username}`);
+      setOwnValue(cloned, "getTag", () => `${username}#0000`);
     }
     if (data.avatar) {
       setOwnValue(cloned, "avatarURL", data.avatar);
@@ -10446,7 +10461,7 @@
     return args.some((value) => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
   }
   function renderedUserId(props) {
-    return props?.userId || props?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
+    return props?.userId || props?.user?.id || props?.userProfile?.userId || props?.userProfile?.user?.id || props?.guildMemberProfile?.userId || props?.guildMemberProfile?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
   }
   function connectMediaRenderer() {
     var avatarComponents = [
