@@ -429,9 +429,46 @@ function refreshVisibleSharedProfiles() {
     for (const userId of sharedProfiles.keys()) requestSharedProfile(userId, true);
 }
 
+function decorateSharedIdentity(source: any, data: CustomProfileData) {
+    if (!source || !data) return source;
+    const username = data.username || source.username;
+    const globalName = data.globalName || source.globalName || source.displayName;
+    const clone = Object.assign(Object.create(Object.getPrototypeOf(source) || Object.prototype), source);
+    if (username) {
+        clone.username = username;
+        clone.userName = username;
+        clone.tag = `@${username}`;
+        clone.getTag = () => `${username}#0000`;
+    }
+    if (globalName) {
+        clone.globalName = globalName;
+        clone.displayName = globalName;
+        clone.name = globalName;
+        clone.getGlobalName = () => globalName;
+    }
+    return clone;
+}
+
 function decorateSharedProfile(profile: any, data: CustomProfileData) {
     if (!profile || !data) return profile;
     const merged: any = {};
+    const username = data.username || profile.username || profile.user?.username;
+    const globalName = data.globalName || profile.globalName || profile.displayName || profile.user?.globalName;
+    if (username) {
+        merged.username = username;
+        merged.userName = username;
+        merged.tag = `@${username}`;
+        merged.getTag = () => `${username}#0000`;
+    }
+    if (globalName) {
+        merged.globalName = globalName;
+        merged.displayName = globalName;
+        merged.name = globalName;
+        merged.getGlobalName = () => globalName;
+    }
+    if (profile.user) merged.user = decorateSharedIdentity(profile.user, data);
+    if (profile.userProfile && profile.userProfile !== profile) merged.userProfile = decorateSharedIdentity(profile.userProfile, data);
+    if (profile.displayProfile && profile.displayProfile !== profile) merged.displayProfile = decorateSharedIdentity(profile.displayProfile, data);
     if (data.bio) merged.bio = data.bio;
     if (data.pronouns) merged.pronouns = data.pronouns;
     if (data.banner) {
@@ -944,6 +981,8 @@ export default definePlugin({
         Object.defineProperty(clone, "username", { get: () => fakeUsername, set: () => { }, configurable: true, enumerable: true });
         Object.defineProperty(clone, "globalName", { get: () => fakeGlobal, set: () => { }, configurable: true, enumerable: true });
         Object.defineProperty(clone, "displayName", { get: () => fakeDisplay, set: () => { }, configurable: true, enumerable: true });
+        Object.defineProperty(clone, "userName", { get: () => fakeUsername, set: () => { }, configurable: true, enumerable: true });
+        Object.defineProperty(clone, "tag", { get: () => `@${fakeUsername}`, set: () => { }, configurable: true, enumerable: true });
         clone.getTag = () => fakeUsername + "#0000";
         clone.getGlobalName = () => fakeGlobal;
         
@@ -1088,7 +1127,7 @@ fakeObfuscatedEmail(real: string | null) {
         // Keep Discord's stored user immutable, but return the configured profile
         // to desktop surfaces which read the current user directly.
         try {
-            const US = (Vencord as any).Webpack?.findByProps?.("getCurrentUser", "getUser");
+            const US: any = UserStore || (Vencord as any).Webpack?.findByStoreName?.("UserStore") || (Vencord as any).Webpack?.findByProps?.("getCurrentUser", "getUser");
             if (US && !US._cp_hook) {
                 let lastReal: any = null, lastFake: any = null, lastVersion = -1;
                 const originalCurrent = US.getCurrentUser.bind(US);

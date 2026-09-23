@@ -795,8 +795,20 @@ jobs:
           function cloneSharedUser(original: any, data: any) {
               if (!original || typeof original !== "object" || !data) return original;
               const cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
-              if (data.username) setOwnValue(cloned, "username", data.username);
-              if (data.globalName) { setOwnValue(cloned, "globalName", data.globalName); setOwnValue(cloned, "displayName", data.globalName); }
+              if (data.username) {
+                  const username = String(data.username);
+                  setOwnValue(cloned, "username", username);
+                  setOwnValue(cloned, "userName", username);
+                  setOwnValue(cloned, "tag", `@${username}`);
+                  setOwnValue(cloned, "getTag", () => `${username}#0000`);
+              }
+              if (data.globalName || data.displayName) {
+                  const displayName = String(data.globalName || data.displayName);
+                  setOwnValue(cloned, "globalName", displayName);
+                  setOwnValue(cloned, "displayName", displayName);
+                  setOwnValue(cloned, "name", displayName);
+                  setOwnValue(cloned, "getGlobalName", () => displayName);
+              }
               if (data.avatar) { setOwnValue(cloned, "avatarURL", data.avatar); setOwnValue(cloned, "avatarUrl", data.avatar); setOwnValue(cloned, "getAvatarURL", () => data.avatar); }
               if (data.avatarDecoration) setOwnValue(cloned, "avatarDecorationData", { asset: decorationAsset(data.avatarDecoration), skuId: data.avatarDecorationSku || "cloudcord-decoration" });
               if (data.profileColorsEnabled === true) {
@@ -835,6 +847,13 @@ jobs:
                   const displayName = data.globalName || data.displayName;
                   setOwnValue(cloned, "globalName", displayName);
                   setOwnValue(cloned, "displayName", displayName);
+                  setOwnValue(cloned, "name", displayName);
+              }
+              if (data.username) {
+                  const username = String(data.username);
+                  setOwnValue(cloned, "userName", username);
+                  setOwnValue(cloned, "tag", `@${username}`);
+                  setOwnValue(cloned, "getTag", () => `${username}#0000`);
               }
               if (data.avatar) {
                   setOwnValue(cloned, "avatarURL", data.avatar);
@@ -1306,6 +1325,10 @@ jobs:
           function renderedUserId(props: any) {
               return props?.userId
                   || props?.user?.id
+                  || props?.userProfile?.userId
+                  || props?.userProfile?.user?.id
+                  || props?.guildMemberProfile?.userId
+                  || props?.guildMemberProfile?.user?.id
                   || props?.displayProfile?.userId
                   || props?.displayProfile?.user?.id
                   || props?.profile?.userId

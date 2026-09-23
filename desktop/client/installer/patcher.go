@@ -220,20 +220,21 @@ func isCloudCordLoaderAppAsar(appAsar string) (bool, error) {
 	// CloudCord installers used the directory form, so detect it without trying
 	// to os.ReadFile a directory (which returns ERROR_INVALID_FUNCTION on Windows).
 	if stat.IsDir() {
-		packageJSON, packageErr := os.ReadFile(path.Join(appAsar, "package.json"))
-		indexJS, indexErr := os.ReadFile(path.Join(appAsar, "index.js"))
-		if packageErr != nil || indexErr != nil {
-			return false, nil
-		}
-		return bytes.Contains(packageJSON, []byte(`"name":"discord"`)) &&
-			bytes.Contains(indexJS, []byte("require(")), nil
+		// A vanilla Discord installation never ships resources/app.asar as a
+		// directory. Treat every directory here as a legacy loader shim. This is
+		// deliberately independent of its contents: partially written shims and
+		// OneDrive/AV-filtered files must still be repairable.
+		return true, nil
 	}
 	if stat.Size() > 128*1024 {
 		return false, nil
 	}
 	b, err := os.ReadFile(appAsar)
 	if err != nil {
-		return false, err
+		// Small app.asar files are installer loaders. Some Windows filesystem
+		// filters return ERROR_INVALID_FUNCTION when reading one, but renaming it
+		// still works. Continue through the transactional unpatch path.
+		return true, nil
 	}
 	return bytes.Contains(b, []byte(PackageJson)) && bytes.Contains(b, []byte("require(")), nil
 }
