@@ -9591,7 +9591,8 @@
           ...preview.replaceBadges ? [
             REPLACE_BADGES_SYNC_ID
           ] : []
-        ]
+        ],
+        syncRevision: Number(preview.syncRevision || 0)
       };
     })();
   }
@@ -9629,7 +9630,11 @@
           diagnostics.last = `CloudCord sharing paused; retrying in ${retrySeconds}s`;
           return;
         }
-        if (saved.id && (response.status === 401 || response.status === 404 || response.status === 409)) {
+        if (response.status === 409) {
+          yield pullOwnSharedProfile();
+          return;
+        }
+        if (saved.id && (response.status === 401 || response.status === 404)) {
           delete rootSettings.fakeProfileShare;
           return publishSharedProfile();
         }
@@ -9719,7 +9724,8 @@
           signupDate: String(data.signupDate || data.joinedSince || ""),
           oldName: String(data.oldName || ""),
           replaceBadges: remoteReplaceBadges(data),
-          selectedBadges
+          selectedBadges,
+          syncRevision: Number(data.syncRevision || 0)
         };
         clearCache();
         diagnostics.last = "Fake Profile synced across devices";
@@ -11553,7 +11559,6 @@
       if (refresh)
         refreshPreview();
       suppressOwnPullUntil = Date.now() + 15e3;
-      queueSharedPublish();
       redraw();
     };
     var choose = (key, source) => _async_to_generator(function* () {
@@ -11581,7 +11586,6 @@
         suppressOwnPullUntil = Date.now() + 15e3;
         diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
         refreshPreview();
-        queueSharedPublish();
         redraw();
       } catch (error) {
         diagnostics.last = error?.message || "Could not clear the image";
@@ -12221,6 +12225,29 @@
                     refreshPreview();
                     redraw();
                   }
+                }),
+                /* @__PURE__ */ jsx(ActionButton, {
+                  label: "Use this profile on all devices",
+                  onPress: () => void (() => _async_to_generator(function* () {
+                    preview.syncRevision = Date.now();
+                    rootSettings.fakeProfile = {
+                      ...preview,
+                      selectedBadges: {
+                        ...preview.selectedBadges || {}
+                      }
+                    };
+                    suppressOwnPullUntil = Date.now() + 6e4;
+                    refreshPreview();
+                    try {
+                      yield publishSharedProfile();
+                      diagnostics.last = "This profile is now active on all devices";
+                      import_react_native16.Alert.alert("FakeProfile", "This profile is now active on all of your CloudCord devices.");
+                    } catch (error) {
+                      diagnostics.last = error?.message || "Could not sync this profile";
+                      import_react_native16.Alert.alert("FakeProfile", diagnostics.last);
+                    }
+                    redraw();
+                  })())()
                 })
               ]
             })
@@ -12705,7 +12732,8 @@
         signupDate: "",
         oldName: "",
         replaceBadges: false,
-        selectedBadges: {}
+        selectedBadges: {},
+        syncRevision: 0
       });
       preview = defaultPreview();
       configReady = false;
