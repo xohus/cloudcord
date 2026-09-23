@@ -38,18 +38,29 @@ esac
 mkdir -p ../dist
 
 echo "Building $OUT..."
-go build -ldflags="-s -w" -o "$OUT" .
+if [ "$OUT" = "CloudCordSetup.exe" ]; then
+    # Match the original CloudCord installer packaging exactly: static SDL GUI,
+    # Windows subsystem, and embedded icon/version resources.
+    go-winres make --product-version "git-tag"
+    INSTALLER_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo Unknown)"
+    CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -tags "static gui" \
+        -ldflags="-s -w -H=windowsgui -extldflags=-static -X 'sinlotl/buildinfo.InstallerGitHash=$INSTALLER_HASH' -X 'sinlotl/buildinfo.InstallerTag=cloudcord'" \
+        -o "$OUT" .
+else
+    go build -ldflags="-s -w" -o "$OUT" .
+fi
 chmod +x "$OUT" 2>/dev/null || true
 cp "$OUT" "../dist/$OUT"
 if [ "$OUT" = "CloudCordSetup.exe" ]; then
     cp "$OUT" "../dist/cloudcord.exe"
     
     echo "Building CloudCordSetup-Test.exe (Isolated Test Build)..."
-    go build -ldflags="-s -w -X 'main.IsTestBuildStr=1'" -o "CloudCordSetup-Test.exe" .
+    CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -tags "static gui" \
+        -ldflags="-s -w -H=windowsgui -extldflags=-static -X 'main.IsTestBuildStr=1' -X 'sinlotl/buildinfo.InstallerGitHash=$INSTALLER_HASH' -X 'sinlotl/buildinfo.InstallerTag=cloudcord-test'" \
+        -o "CloudCordSetup-Test.exe" .
     chmod +x "CloudCordSetup-Test.exe" 2>/dev/null || true
     cp "CloudCordSetup-Test.exe" "../dist/CloudCordSetup-Test.exe"
     cp "CloudCordSetup-Test.exe" "../dist/cloudcord-test.exe"
 fi
 echo "Done! Installer built at installer/$OUT and dist/$OUT"
-
 
