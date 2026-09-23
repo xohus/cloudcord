@@ -225,6 +225,7 @@ interface CustomProfileData {
     badgeFlags?: number; createdAt?: string; nitro?: boolean; nitroLevel?: number; nitroSince?: string;
     boostMonths?: number; email?: string; phone?: string; customBadgeIds?: string[];
     oldName?: string; decorationAsset?: string; copiedUserId?: string; signupDate?: string; replaceRealBadges?: boolean; giftLevel?: number;
+    syncRevision?: number;
 }
 
 let storedData: CustomProfileData = {};
@@ -269,7 +270,8 @@ function fromSharedProfile(data: any): CustomProfileData {
         nitro: !!(data?.nitro || data?.nitroLevel >= 0), nitroLevel: data?.nitroLevel, nitroSince: data?.nitroSince || "",
         boostMonths: data?.boostMonths, giftLevel: Number.isInteger(data?.giftLevel) ? data.giftLevel : undefined, customBadgeIds: Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id: string) => id !== REPLACE_BADGES_SYNC_ID) : [],
         oldName: data?.oldName || "", createdAt: data?.createdAt || "", signupDate: data?.signupDate || data?.joinedSince || "",
-        decorationAsset: sharedDecorationAsset(data?.decorationAsset || data?.avatarDecoration), replaceRealBadges: data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID)
+        decorationAsset: sharedDecorationAsset(data?.decorationAsset || data?.avatarDecoration), replaceRealBadges: data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID),
+        syncRevision: Number(data?.syncRevision || 0)
     };
 }
 
@@ -342,7 +344,8 @@ function toSharedProfile(data: CustomProfileData) {
         avatarDecoration: data.decorationAsset ? getDecorationUrl(data.decorationAsset) : null,
         profileColorsEnabled: data.accentColor != null,
         primaryColor: data.accentColor,
-        accentColor: data.accentColor2 ?? data.accentColor
+        accentColor: data.accentColor2 ?? data.accentColor,
+        syncRevision: Number(data.syncRevision || 0)
     };
 }
 
@@ -357,7 +360,8 @@ async function publishSharedProfile(): Promise<void> {
         body: JSON.stringify({ ownerId, profile: toSharedProfile(storedData) })
     });
     if (!response.ok) {
-        if (saved.id && (response.status === 401 || response.status === 404 || response.status === 409)) { localStorage.removeItem(LS_SHARE); return publishSharedProfile(); }
+        if (response.status === 409) { await pullOwnSharedProfile(); return; }
+        if (saved.id && (response.status === 401 || response.status === 404)) { localStorage.removeItem(LS_SHARE); return publishSharedProfile(); }
         throw new Error(`CloudCord profile sync failed (${response.status})`);
     }
     const result = await response.json();
@@ -752,10 +756,10 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
 
     function set<K extends keyof CustomProfileData>(key: K, val: CustomProfileData[K]) { setData(d => ({ ...d, [key]: val })); }
 
-    async function save() {
+    async function save(useEverywhere = false) {
         setSaving(true);
         try {
-            const savedData = { ...data };
+            const savedData = { ...data, ...(useEverywhere ? { syncRevision: Date.now() } : {}) };
             allAccountsData[selectedAccountId] = savedData; allAccountsEnabled[selectedAccountId] = true;
             if (selectedAccountId === myId) {
                 storedData = savedData; isEnabled = true; saveDataSync(storedData, true);
@@ -764,11 +768,11 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             saveAllDataSync();
             DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
             updateCachedRealData(); forceAccountPanelRerender();
-            if (selectedAccountId === myId) {
+            if (selectedAccountId === myId && useEverywhere) {
                 // Keep the just-saved local revision authoritative while the
                 // website receives it; the polling loop must not restore the
                 // previous revision during this window.
-                suppressOwnPullUntil = Date.now() + 15_000;
+                suppressOwnPullUntil = Date.now() + 60_000;
                 if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
                 await publishSharedProfile();
             }
@@ -852,7 +856,8 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         <ModalFooter className="cp-footer">
             <button className="cp-btn cp-btn-ghost" onClick={rootProps.onClose}>Cancel</button>
             <button className="cp-btn cp-btn-danger" onClick={reset}><TrashIcon /><span>Reset</span></button>
-            <button className="cp-btn cp-btn-primary" onClick={save} disabled={saving}><SaveIcon /><span>{saving ? "Saving..." : "Save"}</span></button>
+            <button className="cp-btn cp-btn-ghost" onClick={() => void save(false)} disabled={saving}><SaveIcon /><span>Save on this device</span></button>
+            <button className="cp-btn cp-btn-primary" onClick={() => void save(true)} disabled={saving}><SaveIcon /><span>{saving ? "Syncing..." : "Use on all devices"}</span></button>
         </ModalFooter>
     </ModalRoot>);
 }

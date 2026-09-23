@@ -317,6 +317,7 @@ jobs:
               oldName: string;
               replaceBadges: boolean;
               selectedBadges: Record<string, boolean>;
+              syncRevision: number;
           };
 
           const BADGES: Array<[string, string, number, string, string?]> = [
@@ -444,7 +445,8 @@ jobs:
               signupDate: "",
               oldName: "",
               replaceBadges: false,
-              selectedBadges: {}
+              selectedBadges: {},
+              syncRevision: 0
           });
 
           let preview = defaultPreview();
@@ -641,7 +643,8 @@ jobs:
                   customBadgeIds: [
                       ...BADGES.filter(([id, , , , customId]) => customId && preview.selectedBadges?.[id]).map(([, , , , customId]) => customId as string),
                       ...(preview.replaceBadges ? [REPLACE_BADGES_SYNC_ID] : [])
-                  ]
+                  ],
+                  syncRevision: Number(preview.syncRevision || 0)
               };
           }
 
@@ -669,7 +672,11 @@ jobs:
                       diagnostics.last = `CloudCord sharing paused; retrying in ${retrySeconds}s`;
                       return;
                   }
-                  if (saved.id && (response.status === 401 || response.status === 404 || response.status === 409)) {
+                  if (response.status === 409) {
+                      await pullOwnSharedProfile();
+                      return;
+                  }
+                  if (saved.id && (response.status === 401 || response.status === 404)) {
                       delete rootSettings.fakeProfileShare;
                       return publishSharedProfile();
                   }
@@ -747,7 +754,8 @@ jobs:
                       signupDate: String(data.signupDate || data.joinedSince || ""),
                       oldName: String(data.oldName || ""),
                       replaceBadges: remoteReplaceBadges(data),
-                      selectedBadges
+                      selectedBadges,
+                      syncRevision: Number(data.syncRevision || 0)
                   } satisfies PreviewSettings;
                   clearCache();
                   diagnostics.last = "Fake Profile synced across devices";
@@ -1853,7 +1861,6 @@ jobs:
                   clearCache();
                   if (refresh) refreshPreview();
                   suppressOwnPullUntil = Date.now() + 15_000;
-                  queueSharedPublish();
                   redraw();
               };
 
@@ -1880,7 +1887,6 @@ jobs:
                       suppressOwnPullUntil = Date.now() + 15_000;
                       diagnostics.last = field === "bannerMedia" ? "Banner cleared" : "Profile picture cleared";
                       refreshPreview();
-                      queueSharedPublish();
                       redraw();
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Could not clear the image";
@@ -2040,6 +2046,21 @@ jobs:
                                   <MediaEditor label="Profile picture" field="avatarMedia" />
                                   <MediaEditor label="Banner" field="bannerMedia" banner />
                                   <ActionButton label="Apply preview" onPress={() => { diagnostics.last = "Preview refreshed"; refreshPreview(); redraw(); }} />
+                                  <ActionButton label="Use this profile on all devices" onPress={() => void (async () => {
+                                      preview.syncRevision = Date.now();
+                                      rootSettings.fakeProfile = { ...preview, selectedBadges: { ...(preview.selectedBadges || {}) } };
+                                      suppressOwnPullUntil = Date.now() + 60_000;
+                                      refreshPreview();
+                                      try {
+                                          await publishSharedProfile();
+                                          diagnostics.last = "This profile is now active on all devices";
+                                          Alert.alert("FakeProfile", "This profile is now active on all of your CloudCord devices.");
+                                      } catch (error: any) {
+                                          diagnostics.last = error?.message || "Could not sync this profile";
+                                          Alert.alert("FakeProfile", diagnostics.last);
+                                      }
+                                      redraw();
+                                  })()} />
                               </View>
                           </Card>
 
