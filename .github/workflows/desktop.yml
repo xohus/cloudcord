@@ -111,14 +111,22 @@ jobs:
         working-directory: desktop/client/installer
         shell: msys2 {0}
         run: |
-          set -e
-          "$(go env GOPATH)/bin/go-winres" make --product-version "git-tag"
-          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -v -tags "static gui" \
-            -ldflags "-s -w -H=windowsgui -extldflags=-static -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord'" \
-            -o CloudCordSetup.exe .
-          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -v -tags "static gui" \
-            -ldflags "-s -w -H=windowsgui -extldflags=-static -X 'main.IsTestBuildStr=1' -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord-test'" \
-            -o CloudCordSetup-Test.exe .
+          set +e
+          {
+            "$(go env GOPATH)/bin/go-winres" make --product-version "git-tag" &&
+            CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -v -tags "static gui" \
+              -ldflags "-s -w -H=windowsgui -extldflags=-static -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord'" \
+              -o CloudCordSetup.exe . &&
+            CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -v -tags "static gui" \
+              -ldflags "-s -w -H=windowsgui -extldflags=-static -X 'main.IsTestBuildStr=1' -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord-test'" \
+              -o CloudCordSetup-Test.exe .
+          } 2>&1 | tee installer-build.log
+          status=${PIPESTATUS[0]}
+          if [ "$status" -ne 0 ]; then
+            detail=$(tail -n 20 installer-build.log | tr '\n' ' ' | sed 's/%/%25/g;s/\r/%0D/g')
+            echo "::error title=Original installer build failed::$detail"
+            exit "$status"
+          fi
 
       - name: Stage artifacts
         shell: bash
