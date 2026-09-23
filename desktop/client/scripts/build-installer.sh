@@ -41,7 +41,10 @@ echo "Building $OUT..."
 if [ "$OUT" = "CloudCordSetup.exe" ]; then
     # Match the original CloudCord installer packaging exactly: static SDL GUI,
     # Windows subsystem, and embedded icon/version resources.
-    go-winres make --product-version "git-tag"
+    go-winres simply --icon winres/icon.png --manifest gui \
+        --product-version "git-tag" --file-version "git-tag" \
+        --product-name "CloudCord" --file-description "CloudCord Setup" \
+        --original-filename "CloudCordSetup.exe"
     INSTALLER_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo Unknown)"
     CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -tags "static gui" \
         -ldflags="-s -w -H=windowsgui -extldflags=-static -X 'sinlotl/buildinfo.InstallerGitHash=$INSTALLER_HASH' -X 'sinlotl/buildinfo.InstallerTag=cloudcord'" \
@@ -63,4 +66,3 @@ if [ "$OUT" = "CloudCordSetup.exe" ]; then
     cp "CloudCordSetup-Test.exe" "../dist/cloudcord-test.exe"
 fi
 echo "Done! Installer built at installer/$OUT and dist/$OUT"
-
