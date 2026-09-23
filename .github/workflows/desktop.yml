@@ -31,6 +31,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: "1.26.2"
+          cache-dependency-path: desktop/client/installer/go.sum
 
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
@@ -107,11 +108,17 @@ jobs:
           fi
 
       - name: Build Windows installer
-        working-directory: desktop/client
+        working-directory: desktop/client/installer
         shell: msys2 {0}
         run: |
           set -e
-          pnpm build:installer
+          "$(go env GOPATH)/bin/go-winres" make --product-version "git-tag"
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -v -tags "static gui" \
+            -ldflags "-s -w -H=windowsgui -extldflags=-static -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord'" \
+            -o CloudCordSetup.exe .
+          CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -v -tags "static gui" \
+            -ldflags "-s -w -H=windowsgui -extldflags=-static -X 'main.IsTestBuildStr=1' -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord-test'" \
+            -o CloudCordSetup-Test.exe .
 
       - name: Stage artifacts
         shell: bash
