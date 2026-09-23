@@ -86,6 +86,12 @@ function Updater() {
     return (
         <SettingsTab>
             <SinbopSection />
+            <Card variant="warning" className={Margins.bottom20}>
+                <HeadingSecondary>Windows installer &amp; updater temporarily down</HeadingSecondary>
+                <Paragraph>
+                    CloudCord's Windows installer and updater are currently unavailable. Existing installations can still be used, but automatic and manual updates may fail until service is restored.
+                </Paragraph>
+            </Card>
             <Heading className={Margins.top16}>Update Preferences</Heading>
             <Paragraph className={Margins.bottom20}>
                 Control how Sincord keeps itself up to date. You can choose to update automatically in the background or be notified when new updates are available.
