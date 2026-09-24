@@ -38,8 +38,17 @@ jobs:
       - name: Clone KettuXposed module
         run: |
           set -euo pipefail
-          rm -rf _kettu_xposed
-          git clone https://github.com/C0C0B01/KettuXposed.git _kettu_xposed
+          for attempt in 1 2 3 4 5; do
+            rm -rf _kettu_xposed
+            if git clone https://github.com/C0C0B01/KettuXposed.git _kettu_xposed; then
+              break
+            fi
+            if [ "$attempt" = "5" ]; then
+              echo "KettuXposed clone failed after 5 attempts" >&2
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
           git -C _kettu_xposed checkout 8e3c4a9b655af5ec2a56ab6e7cd9cefa9b4fb78d
           grep -R -q 'ReactInstance\$loadJSBundle\$1' _kettu_xposed/app/src/main
           grep -R -q 'loadScriptFromAssets' _kettu_xposed/app/src/main
