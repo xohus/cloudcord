@@ -62,6 +62,7 @@ jobs:
             sleep $((attempt * 5))
           done
           git -C _kettu_xposed checkout 8e3c4a9b655af5ec2a56ab6e7cd9cefa9b4fb78d
+          sed -i '/^org\.gradle\.java\.home=/d' _kettu_xposed/gradle.properties
 
       - name: Validate Discord 344.13 loader hooks
         run: |
