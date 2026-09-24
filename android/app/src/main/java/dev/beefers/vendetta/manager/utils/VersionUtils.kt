@@ -25,6 +25,8 @@ data class DiscordVersion(
 
     companion object {
 
+        val CLOUDCORD_SUPPORTED = DiscordVersion(344, 13, Type.STABLE)
+
         fun fromVersionCode(string: String): DiscordVersion? = with(string) {
             if (length < 4) return@with null
             if (toIntOrNull() == null) return@with null

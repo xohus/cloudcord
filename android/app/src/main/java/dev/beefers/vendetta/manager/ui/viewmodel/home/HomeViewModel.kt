@@ -25,7 +25,6 @@ import dev.beefers.vendetta.manager.installer.shizuku.ShizukuInstaller
 import dev.beefers.vendetta.manager.network.dto.Release
 import dev.beefers.vendetta.manager.network.utils.CommitsPagingSource
 import dev.beefers.vendetta.manager.network.utils.dataOrNull
-import dev.beefers.vendetta.manager.network.utils.ifSuccessful
 import dev.beefers.vendetta.manager.utils.DiscordVersion
 import dev.beefers.vendetta.manager.utils.isMiui
 import kotlinx.coroutines.launch
@@ -70,7 +69,13 @@ class HomeViewModel(
 
     fun getDiscordVersions() {
         screenModelScope.launch {
-            discordVersions = repo.getLatestDiscordVersions().dataOrNull
+            // CloudCord's embedded loader is validated against Discord 344.13.
+            // Do not silently install a newer Discord build with different RN hooks.
+            discordVersions = mapOf(
+                DiscordVersion.Type.STABLE to DiscordVersion.CLOUDCORD_SUPPORTED,
+                DiscordVersion.Type.BETA to null,
+                DiscordVersion.Type.ALPHA to null,
+            )
             if (prefs.autoClearCache) autoClearCache()
         }
     }
@@ -124,13 +129,6 @@ class HomeViewModel(
 //            }
             release?.let {
                 showUpdateDialog = it.tagName.toInt() > BuildConfig.VERSION_CODE
-            }
-            repo.getLatestRelease("C0C0B01/CloudCordXposed").ifSuccessful {
-                if (prefs.moduleVersion != it.tagName) {
-                    prefs.moduleVersion = it.tagName
-                    val module = File(cacheDir, "xposed.apk")
-                    if (module.exists()) module.delete()
-                }
             }
         }
     }

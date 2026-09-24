@@ -7,6 +7,7 @@ name: Build CloudCord Android Manager
       - main
     paths:
       - "android/**"
+      - "ios/runtime/**"
       - "dist/cc.js"
       - ".github/workflows/android-manager.yml"
 
@@ -38,11 +39,25 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Build current CloudCord runtime
+        working-directory: ios/runtime
+        run: |
+          corepack enable
+          pnpm install --no-frozen-lockfile
+          pnpm build
+          cp dist/cloudcord.js ../../dist/cc.js
+          node --check ../../dist/cc.js
+
       - name: Clone KettuXposed module
         run: |
           set -euo pipefail
           rm -rf _kettu_xposed
           git clone --depth=1 https://github.com/C0C0B01/KettuXposed.git _kettu_xposed
+          git -C _kettu_xposed fetch --depth 1 origin 8e3c4a9b655af5ec2a56ab6e7cd9cefa9b4fb78d
+          git -C _kettu_xposed checkout 8e3c4a9b655af5ec2a56ab6e7cd9cefa9b4fb78d
+          grep -R -q 'ReactInstance\$loadJSBundle\$1' _kettu_xposed/app/src/main
+          grep -R -q 'loadScriptFromAssets' _kettu_xposed/app/src/main
+          grep -R -q 'loadScriptFromFile' _kettu_xposed/app/src/main
 
       - name: Install safe CloudCord runtime updater
         run: |

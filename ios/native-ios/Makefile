@@ -1,5 +1,5 @@
 TARGET := iphone:clang:latest:14.0
-ARCHS = arm64
+ARCHS = arm64 arm64e
 INSTALL_TARGET_PROCESSES = Discord
 THEOS_PACKAGE_SCHEME = rootless
 FINALPACKAGE = 1
@@ -32,7 +32,6 @@ include $(THEOS_MAKE_PATH)/bundle.mk
 before-all::
 	$(ECHO_NOTHING)mkdir -p Resources$(ECHO_END)
 	$(ECHO_NOTHING)cp ../../dist/cc.js Resources/runtime.js$(ECHO_END)
-	$(ECHO_NOTHING)cp compat344.js Resources/compat344.js$(ECHO_END)
 	$(ECHO_NOTHING)sed -e 's/@PACKAGE_VERSION@/$(THEOS_PACKAGE_BASE_VERSION)/g' \
 		-e 's/@TWEAK_NAME@/$(TWEAK_NAME)/g' \
 		Sources/payload-base.template.js > Resources/payload-base.js$(ECHO_END)

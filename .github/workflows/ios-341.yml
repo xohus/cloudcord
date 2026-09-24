@@ -11,6 +11,8 @@ on:
     paths:
       - ".github/workflows/ios-341.yml"
       - "ios/native-ios/**"
+      - "ios/runtime/**"
+      - "dist/cc.js"
       - "ios/scripts/package-cloudcord-ipa.py"
 
 jobs:
@@ -34,14 +36,21 @@ jobs:
             --pattern Discord-344.1-base.ipa \
             --output Discord-344.1-base.ipa
 
+      - name: Build current CloudCord runtime
+        working-directory: ios/runtime
+        run: |
+          corepack enable
+          pnpm install --no-frozen-lockfile
+          pnpm build
+          cp dist/cloudcord.js ../../dist/cc.js
+          node --check ../../dist/cc.js
+
       - name: Build sideload runtime
         working-directory: ios/native-ios
         env:
           THEOS: ${{ runner.temp }}/theos
         run: |
           git clone --depth 1 https://github.com/unbound-app/loader-ios.git "$RUNNER_TEMP/unbound-loader-ios"
-          git -C "$RUNNER_TEMP/unbound-loader-ios" fetch --depth 1 origin d968df6470f7007bb1ac451d6089044f4a2e2e01
-          git -C "$RUNNER_TEMP/unbound-loader-ios" checkout d968df6470f7007bb1ac451d6089044f4a2e2e01
           mkdir -p Headers/jsi
           cp -R "$RUNNER_TEMP/unbound-loader-ios/headers/jsi/." Headers/jsi/
           sed -i '' 's/^BUNDLE_NAME = CloudCordResources$/BUNDLE_NAME = BunnyResources/' Makefile
@@ -79,17 +88,10 @@ jobs:
           unzip -p cloudcord0.ipa Payload/Discord.app/Info.plist | grep -q '<string>344.1</string>'
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/payload-base.js | grep -q '__PYON_LOADER__'
           unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/payload-base.js | grep -q 'loaderName:"CloudCord"'
-          # Discord 344 must use the standalone compatibility runtime. The
-          # legacy runtime remains bundled for older Discord versions but is
-          # never evaluated by the bridgeless 344 loader.
-          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/compat344.js | grep -q 'CloudCord 344 compatibility runtime ready'
-          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/compat344.js | grep -q 'CLOUDCORD_344_SETTINGS'
+          unzip -p cloudcord0.ipa Payload/Discord.app/BunnyResources.bundle/runtime.js | grep -q 'CloudCord'
           unzip -l cloudcord0.ipa | grep -q 'Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload'
           rm -rf "$RUNNER_TEMP/cloudcord-stream-check"
           unzip -q cloudcord0.ipa -d "$RUNNER_TEMP/cloudcord-stream-check"
-          embedded_compat="$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/BunnyResources.bundle/compat344.js"
-          grep -q 'does not import Kettu' "$embedded_compat"
-          grep -q 'SETTING_RENDERER_CONFIG' "$embedded_compat"
           ldid -e "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload" \
             | grep -q 'application-groups'
           otool -L "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Discord" \
@@ -98,6 +100,10 @@ jobs:
             | grep -q '@rpath/hermesvm.framework/hermesvm'
           strings "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
             | grep -q 'RCTHost bridgeless runtime initialized'
+          strings "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
+            | grep -q '_loadJSBundle:'
+          strings "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
+            | grep -q '_loadScriptFromSource:'
           if otool -L "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
             | grep -qi 'CydiaSubstrate'; then
             echo 'CloudCordTweak unexpectedly depends on CydiaSubstrate' >&2

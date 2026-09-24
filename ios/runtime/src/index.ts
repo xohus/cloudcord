@@ -20,25 +20,11 @@ import { initDebugger } from "@lib/api/debug";
 import * as lib from "./lib";
 
 export default async () => {
-    if ((globalThis as any).__CLOUDCORD_BRIDGELESS__) {
-        // Discord 344: keep startup non-invasive. Legacy runtime patches can
-        // interfere with Discord's channel/navigation stores under bridgeless
-        // React Native, so expose the CloudCord settings shell only for now.
-        // Register a complete, stable CloudCord section before touching Discord's
-        // live settings renderer so SettingHookHarness never sees a mid-render layout swap.
-        initSettings();
-        const settingsUnpatch = await patchSettings();
-        if (settingsUnpatch) lib.unload.push(settingsUnpatch);
+    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) await initLegacyRuntimeRefresh();
 
-        window.bunny = lib;
-        logger.log("CloudCord 344 safe settings shell is ready!");
-        return;
-    }
-
-    await initLegacyRuntimeRefresh();
-
-    // Load everything in parallel
-    await Promise.all([
+    // Discord 344 changes modules frequently. Start features independently so
+    // one missing optional module cannot take down CloudCord or Discord.
+    const results = await Promise.allSettled([
         initThemes(),
         injectFluxInterceptor(),
         patchSettings(),
@@ -55,10 +41,14 @@ export default async () => {
         updateFonts(),
         initPlugins(),
         VdPluginManager.initPlugins(),
-    ]).then(
-        // Push them all to unloader
-        u => u.forEach(f => f && lib.unload.push(f))
-    );
+    ]);
+    for (const result of results) {
+        if (result.status === "fulfilled") {
+            if (result.value) lib.unload.push(result.value);
+        } else {
+            logger.error("A CloudCord feature failed to initialize", result.reason);
+        }
+    }
 
     initDebugger()
 
@@ -68,10 +58,4 @@ export default async () => {
     // We good :)
     logger.log("CloudCord is ready!");
 
-    try {
-        const { showConfirmationAlert } = require("@lib/ui/alerts");
-        setTimeout(() => {
-            showConfirmationAlert({title: "Temporary CloudCord Issues", content: "CloudCord is currently experiencing issues. You may see errors such as channels not loading, pages failing to load, or other parts of the app not working correctly. The CloudCord section is currently broken and will be fixed tomorrow. Thanks for your patience.", confirmText: "I understand"});
-        }, 5000);
-    } catch(e) {}
 };
