@@ -20820,16 +20820,8 @@
       init_debug();
       init_lib();
       src_default = () => _async_to_generator(function* () {
-        if (globalThis.__CLOUDCORD_BRIDGELESS__) {
-          initSettings();
-          var settingsUnpatch = yield patchSettings();
-          if (settingsUnpatch)
-            unload.push(settingsUnpatch);
-          globalThis.bunny = lib_exports;
-          logger.log("CloudCord 344 safe settings shell is ready!");
-          return;
-        }
-        yield initLegacyRuntimeRefresh();
+        if (!globalThis.__CLOUDCORD_BRIDGELESS__)
+          yield initLegacyRuntimeRefresh();
         var cloudCordCoreUnloads = [];
         try {
           if (globalThis.__CLOUDCORD_LOADER__?.loaderName !== "RealCord") {
@@ -20864,27 +20856,13 @@
           updateFonts(),
           initPlugins(),
           VdPluginManager.initPlugins()
-        ]).then(
-          // Push them all to unloader
-          (u) => [
-            ...cloudCordCoreUnloads,
-            ...u
-          ].forEach((f) => f && unload.push(f))
-        );
+        ]).then((u) => [
+          ...cloudCordCoreUnloads,
+          ...u
+        ].forEach((f) => f && unload.push(f)));
         initDebugger();
         globalThis.bunny = lib_exports;
         logger.log("CloudCord is ready!");
-        try {
-          var { showConfirmationAlert: showConfirmationAlert2 } = (init_alerts2(), __toCommonJS(alerts_exports));
-          setTimeout(() => {
-            showConfirmationAlert2({
-              title: "Temporary CloudCord Issues",
-              content: "CloudCord is currently experiencing issues. You may see errors such as channels not loading, pages failing to load, or other parts of the app not working correctly. The CloudCord section is currently broken and will be fixed tomorrow. Thanks for your patience.",
-              confirmText: "I understand"
-            });
-          }, 5e3);
-        } catch (e) {
-        }
       })();
     }
   });
