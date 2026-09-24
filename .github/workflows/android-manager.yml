@@ -54,7 +54,7 @@ jobs:
       - name: Validate Discord 344.13 loader hooks
         run: |
           set -euo pipefail
-          grep -R -F -q 'com.facebook.react.runtime.ReactInstance$loadJSBundle$1' _kettu_xposed/app/src/main
+          grep -R -F -q 'ReactInstance\$loadJSBundle$1' _kettu_xposed/app/src/main
           grep -R -F -q 'loadScriptFromAssets' _kettu_xposed/app/src/main
           grep -R -F -q 'loadScriptFromFile' _kettu_xposed/app/src/main
 
