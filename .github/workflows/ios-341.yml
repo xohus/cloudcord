@@ -5,6 +5,9 @@ permissions:
 
 on:
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Build CloudCord Runtime"]
+    types: [completed]
   push:
     branches:
       - main
@@ -17,6 +20,7 @@ on:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     # Repackage whenever the verified 344-compatible runtime changes.
     runs-on: macos-15
     steps:
@@ -35,15 +39,6 @@ jobs:
             --repo xohus/cloudcord \
             --pattern Discord-344.1-base.ipa \
             --output Discord-344.1-base.ipa
-
-      - name: Build current CloudCord runtime
-        working-directory: ios/runtime
-        run: |
-          corepack enable
-          pnpm install --no-frozen-lockfile
-          pnpm build
-          cp dist/cloudcord.js ../../dist/cc.js
-          node --check ../../dist/cc.js
 
       - name: Build sideload runtime
         working-directory: ios/native-ios

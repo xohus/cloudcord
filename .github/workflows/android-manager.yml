@@ -2,6 +2,9 @@ name: Build CloudCord Android Manager
 
 "on":
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Build CloudCord Runtime"]
+    types: [completed]
   push:
     branches:
       - main
@@ -16,6 +19,7 @@ permissions:
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
     steps:
@@ -38,15 +42,6 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
-
-      - name: Build current CloudCord runtime
-        working-directory: ios/runtime
-        run: |
-          corepack enable
-          pnpm install --no-frozen-lockfile
-          pnpm build
-          cp dist/cloudcord.js ../../dist/cc.js
-          node --check ../../dist/cc.js
 
       - name: Clone KettuXposed module
         run: |

@@ -22,9 +22,9 @@ import * as lib from "./lib";
 export default async () => {
     if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) await initLegacyRuntimeRefresh();
 
-    // Discord 344 changes modules frequently. Start features independently so
-    // one missing optional module cannot take down CloudCord or Discord.
-    const results = await Promise.allSettled([
+    // Load everything in parallel. The shared build workflow wraps core
+    // settings separately and applies the version-specific fallbacks.
+    await Promise.all([
         initThemes(),
         injectFluxInterceptor(),
         patchSettings(),
@@ -41,14 +41,9 @@ export default async () => {
         updateFonts(),
         initPlugins(),
         VdPluginManager.initPlugins(),
-    ]);
-    for (const result of results) {
-        if (result.status === "fulfilled") {
-            if (result.value) lib.unload.push(result.value);
-        } else {
-            logger.error("A CloudCord feature failed to initialize", result.reason);
-        }
-    }
+    ]).then(
+        u => u.forEach(f => f && lib.unload.push(f))
+    );
 
     initDebugger()
 
