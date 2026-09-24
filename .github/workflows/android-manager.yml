@@ -39,8 +39,8 @@ jobs:
         run: |
           set -euo pipefail
           rm -rf _kettu_xposed
-          git clone --depth=1 https://github.com/C0C0B01/KettuXposed.git _kettu_xposed
-          test "$(git -C _kettu_xposed rev-parse HEAD)" = "8e3c4a9b655af5ec2a56ab6e7cd9cefa9b4fb78d"
+          git clone https://github.com/C0C0B01/KettuXposed.git _kettu_xposed
+          git -C _kettu_xposed checkout 8e3c4a9b655af5ec2a56ab6e7cd9cefa9b4fb78d
           grep -R -q 'ReactInstance\$loadJSBundle\$1' _kettu_xposed/app/src/main
           grep -R -q 'loadScriptFromAssets' _kettu_xposed/app/src/main
           grep -R -q 'loadScriptFromFile' _kettu_xposed/app/src/main
