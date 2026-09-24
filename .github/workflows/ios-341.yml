@@ -117,11 +117,11 @@ jobs:
           name: CloudCord-iOS-344.1
           path: cloudcord0.ipa
 
-      - name: Publish CloudCord iOS download
+      - name: Publish CloudCord iOS 344.1 test download
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: new_beta
-          name: CloudCord iOS Beta
+          tag_name: test
+          name: CloudCord 344.1 Testing
           prerelease: true
           make_latest: false
           files: cloudcord0.ipa
