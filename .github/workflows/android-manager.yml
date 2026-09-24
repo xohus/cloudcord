@@ -50,9 +50,13 @@ jobs:
             sleep $((attempt * 5))
           done
           git -C _kettu_xposed checkout 8e3c4a9b655af5ec2a56ab6e7cd9cefa9b4fb78d
-          grep -R -q 'ReactInstance\$loadJSBundle\$1' _kettu_xposed/app/src/main
-          grep -R -q 'loadScriptFromAssets' _kettu_xposed/app/src/main
-          grep -R -q 'loadScriptFromFile' _kettu_xposed/app/src/main
+
+      - name: Validate Discord 344.13 loader hooks
+        run: |
+          set -euo pipefail
+          grep -R -F -q 'com.facebook.react.runtime.ReactInstance$loadJSBundle$1' _kettu_xposed/app/src/main
+          grep -R -F -q 'loadScriptFromAssets' _kettu_xposed/app/src/main
+          grep -R -F -q 'loadScriptFromFile' _kettu_xposed/app/src/main
 
       - name: Install safe CloudCord runtime updater
         run: |
