@@ -1,4 +1,5 @@
 #import <Foundation/Foundation.h>
+#import <UIKit/UIKit.h>
 #import <jsi/jsi.h>
 #import <objc/runtime.h>
 
@@ -38,6 +39,7 @@ private:
 
 static std::atomic<jsi::Runtime *> cloudCordInjectedRuntime{nullptr};
 static std::atomic_bool cloudCordRCTInstanceHooksInstalled{false};
+static __weak id cloudCordLastRuntimeInstance = nil;
 
 static BOOL evaluateCloudCordData(NSData *data, const char *tag, jsi::Runtime &runtime)
 {
@@ -63,16 +65,23 @@ static BOOL evaluateCloudCordData(NSData *data, const char *tag, jsi::Runtime &r
 
 static NSData *cloudCordResource(NSString *name)
 {
-    NSString *path = [NSBundle.mainBundle.bundlePath
-        stringByAppendingPathComponent:@"BunnyResources.bundle"];
-    NSBundle *resources = [NSBundle bundleWithPath:path];
-    NSURL *url = [resources URLForResource:name withExtension:@"js"];
-    return url ? [NSData dataWithContentsOfURL:url] : nil;
+    for (NSString *bundleName in @[@"BunnyResources.bundle", @"CloudCordResources.bundle"])
+    {
+        NSString *path = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:bundleName];
+        NSURL *url = [[NSBundle bundleWithPath:path] URLForResource:name withExtension:@"js"];
+        if (url)
+        {
+            NSData *data = [NSData dataWithContentsOfURL:url];
+            if (data.length) return data;
+        }
+    }
+    NSURL *fallback = [NSBundle.mainBundle URLForResource:name withExtension:@"js"];
+    return fallback ? [NSData dataWithContentsOfURL:fallback] : nil;
 }
 
 static BOOL discordRuntimeIsReady(jsi::Runtime &runtime)
 {
-    NSData *probe = [@"typeof globalThis.__r==='function'" dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *probe = [@"typeof globalThis.__r==='function'||typeof globalThis.metroRequire==='function'" dataUsingEncoding:NSUTF8StringEncoding];
     try
     {
         std::string source(static_cast<const char *>(probe.bytes), probe.length);
@@ -92,7 +101,7 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
         if (expected == current) return;
         cloudCordInjectedRuntime.store(current);
     }
-    NSData *marker = [@"globalThis.__CLOUDCORD_BRIDGELESS__=true" dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *marker = [@"globalThis.__CLOUDCORD_BRIDGELESS__=true;if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire" dataUsingEncoding:NSUTF8StringEncoding];
     if (!evaluateCloudCordData(marker, "cloudcord:architecture", runtime))
     {
         cloudCordInjectedRuntime.store(nullptr);
@@ -113,15 +122,19 @@ static void scheduleCloudCordRuntime(id instance, NSUInteger attempt)
 {
     if (!instance || ![instance respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
         return;
+    cloudCordLastRuntimeInstance = instance;
     [instance callFunctionOnBufferedRuntimeExecutor:[instance, attempt](jsi::Runtime &runtime) {
         if (discordRuntimeIsReady(runtime))
         {
             injectCloudCordRuntime(runtime);
             return;
         }
-        if (attempt < 150)
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC),
+        if (attempt < 300)
+        {
+            NSTimeInterval delay = attempt < 50 ? 0.1 : (attempt < 150 ? 0.25 : 0.5);
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay * NSEC_PER_SEC),
                 dispatch_get_main_queue(), ^{ scheduleCloudCordRuntime(instance, attempt + 1); });
+        }
         else
             NSLog(@"[CloudCord] Discord runtime readiness timed out; skipping injection");
     }];
@@ -179,5 +192,14 @@ static void installRCTInstanceHooks(NSUInteger attempt)
 
 %ctor
 {
-    @autoreleasepool { installRCTInstanceHooks(0); }
+    @autoreleasepool
+    {
+        installRCTInstanceHooks(0);
+        [NSNotificationCenter.defaultCenter
+            addObserverForName:UIApplicationDidBecomeActiveNotification
+            object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *note) {
+                if (!cloudCordInjectedRuntime.load() && cloudCordLastRuntimeInstance)
+                    scheduleCloudCordRuntime(cloudCordLastRuntimeInstance, 0);
+            }];
+    }
 }
