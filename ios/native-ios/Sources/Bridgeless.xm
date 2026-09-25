@@ -70,6 +70,19 @@ static NSData *cloudCordResource(NSString *name)
     return url ? [NSData dataWithContentsOfURL:url] : nil;
 }
 
+static BOOL discordRuntimeIsReady(jsi::Runtime &runtime)
+{
+    NSData *probe = [@"typeof globalThis.__r==='function'" dataUsingEncoding:NSUTF8StringEncoding];
+    try
+    {
+        std::string source(static_cast<const char *>(probe.bytes), probe.length);
+        auto buffer = std::make_shared<jsi::StringBuffer>(std::move(source));
+        jsi::Value result = runtime.evaluateJavaScript(buffer, "cloudcord:discord-ready");
+        return result.isBool() && result.getBool();
+    }
+    catch (...) { return NO; }
+}
+
 static void injectCloudCordRuntime(jsi::Runtime &runtime)
 {
     jsi::Runtime *expected = nullptr;
@@ -93,7 +106,25 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
         NSLog(@"[CloudCord] Full 344 runtime injection failed");
         return;
     }
-    NSLog(@"[CloudCord] Full 344 runtime injected before Discord bundle");
+    NSLog(@"[CloudCord] Full 344 runtime injected after Discord bundle");
+}
+
+static void scheduleCloudCordRuntime(id instance, NSUInteger attempt)
+{
+    if (!instance || ![instance respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
+        return;
+    [instance callFunctionOnBufferedRuntimeExecutor:[instance, attempt](jsi::Runtime &runtime) {
+        if (discordRuntimeIsReady(runtime))
+        {
+            injectCloudCordRuntime(runtime);
+            return;
+        }
+        if (attempt < 150)
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC),
+                dispatch_get_main_queue(), ^{ scheduleCloudCordRuntime(instance, attempt + 1); });
+        else
+            NSLog(@"[CloudCord] Discord runtime readiness timed out; skipping injection");
+    }];
 }
 
 typedef void (*CloudCordLoadBundleIMP)(id, SEL, NSURL *);
@@ -103,20 +134,14 @@ static CloudCordLoadSourceIMP originalLoadSource = nullptr;
 
 static void cloudCordLoadBundle(id self, SEL selector, NSURL *url)
 {
-    if ([self respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
-        [self callFunctionOnBufferedRuntimeExecutor:[](jsi::Runtime &runtime) {
-            injectCloudCordRuntime(runtime);
-        }];
     if (originalLoadBundle) originalLoadBundle(self, selector, url);
+    scheduleCloudCordRuntime(self, 0);
 }
 
 static void cloudCordLoadSource(id self, SEL selector, id source)
 {
-    if ([self respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
-        [self callFunctionOnBufferedRuntimeExecutor:[](jsi::Runtime &runtime) {
-            injectCloudCordRuntime(runtime);
-        }];
     if (originalLoadSource) originalLoadSource(self, selector, source);
+    scheduleCloudCordRuntime(self, 0);
 }
 
 static void installRCTInstanceHooks(NSUInteger attempt)
@@ -146,8 +171,8 @@ static void installRCTInstanceHooks(NSUInteger attempt)
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime
 {
     NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized");
-    injectCloudCordRuntime(runtime);
     %orig;
+    scheduleCloudCordRuntime(instance, 0);
 }
 
 %end
