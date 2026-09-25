@@ -92,6 +92,13 @@ static BOOL discordRuntimeIsReady(jsi::Runtime &runtime)
     catch (...) { return NO; }
 }
 
+static void injectCloudCordModulesPatch(jsi::Runtime &runtime)
+{
+    NSData *modulesPatch = cloudCordResource(@"modules");
+    if (modulesPatch.length)
+        evaluateCloudCordData(modulesPatch, "cloudcord:modules", runtime);
+}
+
 static void injectCloudCordRuntime(jsi::Runtime &runtime)
 {
     jsi::Runtime *expected = nullptr;
@@ -147,12 +154,20 @@ static CloudCordLoadSourceIMP originalLoadSource = nullptr;
 
 static void cloudCordLoadBundle(id self, SEL selector, NSURL *url)
 {
+    if ([self respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
+        [self callFunctionOnBufferedRuntimeExecutor:[](jsi::Runtime &runtime) {
+            injectCloudCordModulesPatch(runtime);
+        }];
     if (originalLoadBundle) originalLoadBundle(self, selector, url);
     scheduleCloudCordRuntime(self, 0);
 }
 
 static void cloudCordLoadSource(id self, SEL selector, id source)
 {
+    if ([self respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
+        [self callFunctionOnBufferedRuntimeExecutor:[](jsi::Runtime &runtime) {
+            injectCloudCordModulesPatch(runtime);
+        }];
     if (originalLoadSource) originalLoadSource(self, selector, source);
     scheduleCloudCordRuntime(self, 0);
 }
@@ -184,6 +199,7 @@ static void installRCTInstanceHooks(NSUInteger attempt)
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime
 {
     NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized");
+    injectCloudCordModulesPatch(runtime);
     %orig;
     scheduleCloudCordRuntime(instance, 0);
 }
