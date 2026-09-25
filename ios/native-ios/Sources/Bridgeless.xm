@@ -129,7 +129,13 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
         if (expected == current) return;
         cloudCordInjectedRuntime.store(current);
     }
-    NSData *marker = [@"globalThis.__CLOUDCORD_BRIDGELESS__=true;if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire" dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *marker = [@"globalThis.__CLOUDCORD_BRIDGELESS__=true;"
+                       "if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire;"
+                       "(()=>{const m=globalThis.modules??globalThis.__c?.();"
+                       "if(!m)return;"
+                       "globalThis.modules=m;"
+                       "globalThis.__CLOUDCORD_MODULE_VIEW__=typeof m.entries==='function'?Object.fromEntries(m.entries()):m;"
+                       "})()" dataUsingEncoding:NSUTF8StringEncoding];
     if (!evaluateCloudCordData(marker, "cloudcord:architecture", runtime))
     {
         cloudCordInjectedRuntime.store(nullptr);
