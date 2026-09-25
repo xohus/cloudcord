@@ -81,7 +81,28 @@ static NSData *cloudCordResource(NSString *name)
 
 static BOOL discordRuntimeIsReady(jsi::Runtime &runtime)
 {
-    NSData *probe = [@"typeof globalThis.__r==='function'||typeof globalThis.metroRequire==='function'" dataUsingEncoding:NSUTF8StringEncoding];
+    // Discord 344 creates Metro before its React/React Native modules are ready.
+    // Running CloudCord at that earlier point succeeds syntactically but misses
+    // the settings stores, so no CloudCord sections are registered.
+    NSString *script =
+        @"(()=>{"
+         "if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire;"
+         "const map=globalThis.modules??globalThis.__c?.();"
+         "if(!globalThis.modules&&map)globalThis.modules=map;"
+         "if(!map||typeof map.values!=='function')return false;"
+         "let rn=false,react=false;"
+         "for(const m of map.values()){"
+           "const e=m?.publicModule?.exports??m?.exports??m;"
+           "for(const value of[e,e?.default,e?.default?.default]){"
+             "if(!value)continue;"
+             "if(!rn&&value.AppState&&value.NativeModules)rn=true;"
+             "if(!react&&typeof value.createElement==='function')react=true;"
+             "if(rn&&react)return true;"
+           "}"
+         "}"
+         "return false;"
+        "})()";
+    NSData *probe = [script dataUsingEncoding:NSUTF8StringEncoding];
     try
     {
         std::string source(static_cast<const char *>(probe.bytes), probe.length);
@@ -131,8 +152,11 @@ static void scheduleCloudCordRuntime(id instance, NSUInteger attempt)
         return;
     cloudCordLastRuntimeInstance = instance;
     [instance callFunctionOnBufferedRuntimeExecutor:[instance, attempt](jsi::Runtime &runtime) {
+        // Repeat the small registry capture as Discord replaces __d during boot.
+        injectCloudCordModulesPatch(runtime);
         if (discordRuntimeIsReady(runtime))
         {
+            NSLog(@"[CloudCord] Discord React Native modules are ready");
             injectCloudCordRuntime(runtime);
             return;
         }
