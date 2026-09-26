@@ -7,7 +7,6 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"os"
 	"os/exec"
@@ -217,26 +216,17 @@ func isCloudCordLoaderAppAsar(appAsar string) (bool, error) {
 		return false, err
 	}
 	// Electron accepts either an ASAR file or a directory named app.asar. Older
-	// CloudCord installers used the directory form, so detect it without trying
-	// to os.ReadFile a directory (which returns ERROR_INVALID_FUNCTION on Windows).
+	// CloudCord installers used the directory form. Never read it: some Windows
+	// filesystem filters return ERROR_INVALID_FUNCTION for app.asar paths even
+	// though stat, rename, and removal still work.
 	if stat.IsDir() {
-		// A vanilla Discord installation never ships resources/app.asar as a
-		// directory. Treat every directory here as a legacy loader shim. This is
-		// deliberately independent of its contents: partially written shims and
-		// OneDrive/AV-filtered files must still be repairable.
 		return true, nil
 	}
-	if stat.Size() > 128*1024 {
-		return false, nil
-	}
-	b, err := os.ReadFile(appAsar)
-	if err != nil {
-		// Small app.asar files are installer loaders. Some Windows filesystem
-		// filters return ERROR_INVALID_FUNCTION when reading one, but renaming it
-		// still works. Continue through the transactional unpatch path.
-		return true, nil
-	}
-	return bytes.Contains(b, []byte(PackageJson)) && bytes.Contains(b, []byte("require(")), nil
+
+	// WriteAppAsar produces a tiny loader containing only package.json and
+	// index.js. Discord's real app.asar is many megabytes, so size is a safe
+	// discriminator and avoids the failing read operation entirely.
+	return stat.Size() <= 128*1024, nil
 }
 
 func cleanupDesyncedPatchedInstall(dir string, isSystemElectron bool) (bool, error) {
