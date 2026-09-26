@@ -100,6 +100,41 @@ export const settings = definePluginSettings({
         description: "Show CloudCord diagnostics and interception helpers",
         default: false
     },
+    showSectionHeading: {
+        type: OptionType.BOOLEAN,
+        description: "Show the CloudCord Settings heading in Discord's settings sidebar",
+        default: true
+    },
+    showBotCordTab: {
+        type: OptionType.BOOLEAN,
+        description: "Show BotCord in the CloudCord settings section",
+        default: true
+    },
+    showFakeProfileTab: {
+        type: OptionType.BOOLEAN,
+        description: "Show Fake Profile in the CloudCord settings section",
+        default: true
+    },
+    showCloudSyncTab: {
+        type: OptionType.BOOLEAN,
+        description: "Show CloudSync in the CloudCord settings section",
+        default: true
+    },
+    showPluginsTab: {
+        type: OptionType.BOOLEAN,
+        description: "Show Plugins in the CloudCord settings section",
+        default: true
+    },
+    showThemesTab: {
+        type: OptionType.BOOLEAN,
+        description: "Show Themes in the CloudCord settings section",
+        default: true
+    },
+    showBackupTab: {
+        type: OptionType.BOOLEAN,
+        description: "Show Backup & Restore in the CloudCord settings section",
+        default: true
+    },
 });
 
 export default definePlugin({
@@ -177,42 +212,42 @@ export default definePlugin({
         const { buildEntry } = this;
 
         const cloudcordEntries: SettingsLayoutNode[] = [
-            buildEntry({
+            settings.store.showBotCordTab && buildEntry({
                 key: "cloudcord_main",
                 title: "CloudCord",
                 panelTitle: "CloudCord Settings",
                 Component: VencordTab,
                 Icon: MainSettingsIcon
             }),
-            buildEntry({
+            settings.store.showFakeProfileTab && buildEntry({
                 key: "cloudcord_botcord",
                 title: "BotCord (Down)",
                 panelTitle: "BotCord — Temporarily Unavailable",
                 Component: BotCordTab,
                 Icon: RobotIcon
             }),
-            buildEntry({
+            settings.store.showCloudSyncTab && buildEntry({
                 key: "cloudcord_fake_profile",
                 title: "Fake Profile",
                 panelTitle: "Fake Profile",
                 Component: FakeProfileTab,
                 Icon: UserIcon
             }),
-            buildEntry({
+            settings.store.showPluginsTab && buildEntry({
                 key: "cloudcord_cloud_sync",
                 title: "CloudSync",
                 panelTitle: "CloudSync",
                 Component: CloudTab,
                 Icon: CloudIcon
             }),
-            buildEntry({
+            settings.store.showThemesTab && buildEntry({
                 key: "cloudcord_plugins",
                 title: "Plugins",
                 panelTitle: "CloudCord Plugins",
                 Component: PluginsTab,
                 Icon: PluginsIcon
             }),
-            buildEntry({
+            settings.store.showBackupTab && buildEntry({
                 key: "cloudcord_themes",
                 title: "Themes",
                 panelTitle: "CloudCord Themes",
@@ -238,7 +273,7 @@ export default definePlugin({
         const cloudcordSection: SettingsLayoutNode = {
             key: "cloudcord_section",
             type: LayoutTypes.SECTION,
-            useTitle: () => "CloudCord Settings",
+            useTitle: () => settings.store.showSectionHeading ? "CloudCord Settings" : "",
             buildLayout: () => cloudcordEntries
         };
 

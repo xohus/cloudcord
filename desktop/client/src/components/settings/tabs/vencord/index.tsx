@@ -157,7 +157,16 @@ function Switches() {
 }
 
 function CloudCordSettings() {
-    const { diagnosticsMode } = cloudCordSettings.use(["diagnosticsMode"]);
+    const customization = cloudCordSettings.use([
+        "diagnosticsMode",
+        "showSectionHeading",
+        "showBotCordTab",
+        "showFakeProfileTab",
+        "showCloudSyncTab",
+        "showPluginsTab",
+        "showThemesTab",
+        "showBackupTab"
+    ]);
 
     return (
         <SettingsTab>
@@ -209,6 +218,27 @@ function CloudCordSettings() {
 
             <Divider className={Margins.top20} />
 
+            <Heading className={Margins.top20}>Customization</Heading>
+            <Paragraph className={Margins.bottom16}>
+                Choose what appears in the CloudCord area of Discord's settings. The main CloudCord page always stays available so you can change these options again.
+            </Paragraph>
+
+            <FormSwitch
+                title="Show CloudCord section heading"
+                description="Hide the CloudCord Settings heading for a cleaner sidebar while keeping the pages available."
+                value={customization.showSectionHeading}
+                onChange={(value: boolean) => cloudCordSettings.store.showSectionHeading = value}
+                hideBorder
+            />
+            <FormSwitch title="Show BotCord" value={customization.showBotCordTab} onChange={(value: boolean) => cloudCordSettings.store.showBotCordTab = value} hideBorder />
+            <FormSwitch title="Show Fake Profile" value={customization.showFakeProfileTab} onChange={(value: boolean) => cloudCordSettings.store.showFakeProfileTab = value} hideBorder />
+            <FormSwitch title="Show CloudSync" value={customization.showCloudSyncTab} onChange={(value: boolean) => cloudCordSettings.store.showCloudSyncTab = value} hideBorder />
+            <FormSwitch title="Show Plugins" value={customization.showPluginsTab} onChange={(value: boolean) => cloudCordSettings.store.showPluginsTab = value} hideBorder />
+            <FormSwitch title="Show Themes" value={customization.showThemesTab} onChange={(value: boolean) => cloudCordSettings.store.showThemesTab = value} hideBorder />
+            <FormSwitch title="Show Backup & Restore" value={customization.showBackupTab} onChange={(value: boolean) => cloudCordSettings.store.showBackupTab = value} hideBorder />
+
+            <Divider className={Margins.top20} />
+
             <Heading className={Margins.top20}>Client Settings</Heading>
             <Paragraph className={Margins.bottom16}>
                 Configure how CloudCord behaves and integrates with Discord. These settings affect the Discord client's appearance and behavior.
@@ -227,7 +257,7 @@ function CloudCordSettings() {
             <FormSwitch
                 title="Diagnostics"
                 description="Show CloudCord diagnostics and interception helpers in the settings sidebar."
-                value={diagnosticsMode}
+                value={customization.diagnosticsMode}
                 onChange={(value: boolean) => cloudCordSettings.store.diagnosticsMode = value}
                 hideBorder
             />
