@@ -118,10 +118,10 @@ jobs:
               --product-name "CloudCord" --file-description "CloudCord Setup" \
               --original-filename "CloudCordSetup.exe" &&
             CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -v -tags "static gui" \
-              -ldflags "-s -w -H=windowsgui -extldflags=-static -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord'" \
+              -ldflags "-H=windowsgui -extldflags=-static -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord'" \
               -o CloudCordSetup.exe . &&
             CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -v -tags "static gui" \
-              -ldflags "-s -w -H=windowsgui -extldflags=-static -X 'main.IsTestBuildStr=1' -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord-test'" \
+              -ldflags "-H=windowsgui -extldflags=-static -X 'main.IsTestBuildStr=1' -X 'sinlotl/buildinfo.InstallerGitHash=${{ github.sha }}' -X 'sinlotl/buildinfo.InstallerTag=cloudcord-test'" \
               -o CloudCordSetup-Test.exe .
           } 2>&1 | tee installer-build.log
           status=${PIPESTATUS[0]}

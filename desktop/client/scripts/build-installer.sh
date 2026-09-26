@@ -47,7 +47,7 @@ if [ "$OUT" = "CloudCordSetup.exe" ]; then
         --original-filename "CloudCordSetup.exe"
     INSTALLER_HASH="$(git rev-parse --short HEAD 2>/dev/null || echo Unknown)"
     CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -tags "static gui" \
-        -ldflags="-s -w -H=windowsgui -extldflags=-static -X 'sinlotl/buildinfo.InstallerGitHash=$INSTALLER_HASH' -X 'sinlotl/buildinfo.InstallerTag=cloudcord'" \
+        -ldflags="-H=windowsgui -extldflags=-static -X 'sinlotl/buildinfo.InstallerGitHash=$INSTALLER_HASH' -X 'sinlotl/buildinfo.InstallerTag=cloudcord'" \
         -o "$OUT" .
 else
     go build -ldflags="-s -w" -o "$OUT" .
@@ -59,7 +59,7 @@ if [ "$OUT" = "CloudCordSetup.exe" ]; then
     
     echo "Building CloudCordSetup-Test.exe (Isolated Test Build)..."
     CGO_ENABLED=1 GOOS=windows GOARCH=amd64 go build -tags "static gui" \
-        -ldflags="-s -w -H=windowsgui -extldflags=-static -X 'main.IsTestBuildStr=1' -X 'sinlotl/buildinfo.InstallerGitHash=$INSTALLER_HASH' -X 'sinlotl/buildinfo.InstallerTag=cloudcord-test'" \
+        -ldflags="-H=windowsgui -extldflags=-static -X 'main.IsTestBuildStr=1' -X 'sinlotl/buildinfo.InstallerGitHash=$INSTALLER_HASH' -X 'sinlotl/buildinfo.InstallerTag=cloudcord-test'" \
         -o "CloudCordSetup-Test.exe" .
     chmod +x "CloudCordSetup-Test.exe" 2>/dev/null || true
     cp "CloudCordSetup-Test.exe" "../dist/CloudCordSetup-Test.exe"
