@@ -159,6 +159,7 @@ function Switches() {
 function CloudCordSettings() {
     const customization = cloudCordSettings.use([
         "diagnosticsMode",
+        "showCloudCordSection",
         "showSectionHeading",
         "showBotCordTab",
         "showFakeProfileTab",
@@ -223,6 +224,13 @@ function CloudCordSettings() {
                 Choose what appears in the CloudCord area of Discord's settings. The main CloudCord page always stays available so you can change these options again.
             </Paragraph>
 
+            <FormSwitch
+                title="Show the CloudCord section"
+                description="Turn this off to move CloudCord into a compact Client Customization tab beside Discord's account settings."
+                value={customization.showCloudCordSection}
+                onChange={(value: boolean) => cloudCordSettings.store.showCloudCordSection = value}
+                hideBorder
+            />
             <FormSwitch
                 title="Show CloudCord section heading"
                 description="Hide the CloudCord Settings heading for a cleaner sidebar while keeping the pages available."

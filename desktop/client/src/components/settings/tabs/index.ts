@@ -11,6 +11,7 @@ export * from "./BaseTab";
 export { default as ChangelogTab } from "./changelog";
 export { default as PatchHelperTab } from "./patchHelper";
 export { default as CloudCordDiagnosticsTab } from "./diagnostics";
+export { default as CloudCordCustomizationTab } from "./customization";
 export { default as PluginsTab } from "./plugins";
 export { openContributorModal } from "./plugins/ContributorModal";
 export { openPluginModal } from "./plugins/PluginModal";

@@ -18,6 +18,7 @@ import {
     BackupAndRestoreTab,
     BotCordTab,
     CloudTab,
+    CloudCordCustomizationTab,
     CloudCordDiagnosticsTab,
     FakeProfileTab,
     PluginsTab,
@@ -99,6 +100,11 @@ export const settings = definePluginSettings({
         type: OptionType.BOOLEAN,
         description: "Show CloudCord diagnostics and interception helpers",
         default: false
+    },
+    showCloudCordSection: {
+        type: OptionType.BOOLEAN,
+        description: "Show the full CloudCord section in Discord's settings sidebar",
+        default: true
     },
     showSectionHeading: {
         type: OptionType.BOOLEAN,
@@ -207,9 +213,31 @@ export default definePlugin({
         const layout = originalLayoutBuilder.buildLayout();
         if (originalLayoutBuilder.key !== "$Root") return layout;
         if (!Array.isArray(layout)) return layout;
-        if (layout.some(s => s?.key === "cloudcord_section")) return layout;
+        if (layout.some(s => s?.key === "cloudcord_section" || s?.key === "cloudcord_compact_section")) return layout;
 
         const { buildEntry } = this;
+
+        if (!settings.store.showCloudCordSection) {
+            // Compact mode moves CloudCord beside Discord's account settings as
+            // one ordinary-looking page. The dot is the intentionally subtle
+            // indicator that this page belongs to CloudCord.
+            const compactSection: SettingsLayoutNode = {
+                key: "cloudcord_compact_section",
+                type: LayoutTypes.SECTION,
+                useTitle: () => "",
+                buildLayout: () => [buildEntry({
+                    key: "cloudcord_compact",
+                    title: "Client Customization ·",
+                    panelTitle: "Client Customization · CloudCord",
+                    Component: CloudCordCustomizationTab,
+                    Icon: PaintbrushIcon
+                })]
+            };
+
+            const userSectionIndex = layout.findIndex(s => s?.key === "user_section");
+            layout.splice(userSectionIndex === -1 ? 1 : userSectionIndex + 1, 0, compactSection);
+            return layout;
+        }
 
         const cloudcordEntries: SettingsLayoutNode[] = [
             settings.store.showBotCordTab && buildEntry({
