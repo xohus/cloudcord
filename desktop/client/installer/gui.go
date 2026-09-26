@@ -396,6 +396,7 @@ func loop() {
 			InfoModal("#unpatched", "CloudCord Desktop removed", "CloudCord has been uninstalled. Restart Discord to return to stock."),
 			InfoModal("#modal"+strconv.Itoa(modalId), modalTitle, modalMessage),
 		)
+	g.PopStyle()
 }
 
 func HandleScuffedInstall() {
