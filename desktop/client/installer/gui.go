@@ -373,15 +373,7 @@ func loop() {
 							g.Button("Update / Fix").
 								OnClick(func() {
 									patchSuccessTitle = "CloudCord Desktop updated"
-									if IsDevInstall {
-										handlePatch()
-										err := InstallLatestBuilds()
-										if err != nil {
-											ShowModal("Update Failed", "Failed to download latest CloudCord update:\n"+err.Error())
-											return
-										}
-										handlePatch()
-									}
+									handlePatch()
 								}).
 								Size(btnWidth, 42),
 						),
