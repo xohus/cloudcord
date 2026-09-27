@@ -79,11 +79,25 @@ jobs:
           test -x "$APP/PlugIns/BroadcastUpload.appex/BroadcastUpload"
           ldid -e "$APP/Discord" > "$RUNNER_TEMP/app-entitlements.plist"
           ldid -e "$APP/PlugIns/BroadcastUpload.appex/BroadcastUpload" > "$RUNNER_TEMP/broadcast-entitlements.plist"
-          grep -q 'application-groups' "$RUNNER_TEMP/app-entitlements.plist"
-          grep -q 'application-groups' "$RUNNER_TEMP/broadcast-entitlements.plist"
-          APP_GROUP="$(plutil -extract com.apple.security.application-groups.0 raw "$RUNNER_TEMP/app-entitlements.plist")"
-          BROADCAST_GROUP="$(plutil -extract com.apple.security.application-groups.0 raw "$RUNNER_TEMP/broadcast-entitlements.plist")"
-          test "$APP_GROUP" = "$BROADCAST_GROUP"
+          python3 - <<'PY'
+          import os
+          import plistlib
+          from pathlib import Path
+
+          temporary = Path(os.environ["RUNNER_TEMP"])
+          with (temporary / "app-entitlements.plist").open("rb") as stream:
+              app = plistlib.load(stream)
+          with (temporary / "broadcast-entitlements.plist").open("rb") as stream:
+              broadcast = plistlib.load(stream)
+
+          key = "com.apple.security.application-groups"
+          app_groups = app.get(key, [])
+          broadcast_groups = broadcast.get(key, [])
+          assert app_groups, "Discord app is missing its application group"
+          assert broadcast_groups, "BroadcastUpload is missing its application group"
+          assert set(app_groups) & set(broadcast_groups), "Discord and BroadcastUpload do not share an application group"
+          print("Discord 331 broadcast entitlements verified")
+          PY
 
       - uses: actions/upload-artifact@v4
         with:
