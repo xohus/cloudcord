@@ -57,15 +57,25 @@ def read_entitlements(executable: Path) -> bytes | None:
 
 
 def sign_with_entitlements(executable: Path, entitlements: bytes | None, root: Path) -> None:
+    codesign = shutil.which("codesign")
     ldid = shutil.which("ldid")
-    if not ldid:
+    if not codesign and not ldid:
         return
     if entitlements:
         entitlement_file = root / f"{executable.name}.entitlements.plist"
         entitlement_file.write_bytes(entitlements)
-        subprocess.run([ldid, f"-S{entitlement_file}", str(executable)], check=True)
+        if codesign:
+            subprocess.run(
+                [codesign, "--force", "--sign", "-", "--entitlements", str(entitlement_file), str(executable)],
+                check=True,
+            )
+        else:
+            subprocess.run([ldid, f"-S{entitlement_file}", str(executable)], check=True)
     else:
-        subprocess.run([ldid, "-S", str(executable)], check=True)
+        if codesign:
+            subprocess.run([codesign, "--force", "--sign", "-", str(executable)], check=True)
+        else:
+            subprocess.run([ldid, "-S", str(executable)], check=True)
 
 
 def add_discord_app_group(entitlements: bytes | None) -> bytes:
