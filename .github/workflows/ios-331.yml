@@ -80,8 +80,20 @@ jobs:
           unzip -q cloudcord0-331.ipa -d "$RUNNER_TEMP/cloudcord-331-check"
           APP="$RUNNER_TEMP/cloudcord-331-check/Payload/Discord.app"
           test -x "$APP/PlugIns/BroadcastUpload.appex/BroadcastUpload"
-          ldid -e "$APP/PlugIns/BroadcastUpload.appex/BroadcastUpload" 2>&1 \
-            | grep -q 'application-groups'
+          python3 - <<'PY'
+          import os
+          import plistlib
+          import runpy
+          from pathlib import Path
+
+          package = runpy.run_path("ios/scripts/package-cloudcord-ipa.py")
+          executable = Path(os.environ["RUNNER_TEMP"]) / "cloudcord-331-check/Payload/Discord.app/PlugIns/BroadcastUpload.appex/BroadcastUpload"
+          entitlements = package["read_entitlements"](executable)
+          assert entitlements, "BroadcastUpload entitlements could not be read"
+          groups = plistlib.loads(entitlements).get("com.apple.security.application-groups", [])
+          assert "group.com.hammerandchisel.discord" in groups, "Discord app group is missing from BroadcastUpload"
+          print("Discord 331 broadcast app group verified")
+          PY
 
       - uses: actions/upload-artifact@v4
         with:
