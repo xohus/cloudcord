@@ -61,6 +61,7 @@ jobs:
           mkdir -p src/core/ui/settings/pages/FakeProfile
           mkdir -p src/core/ui/settings/pages/BotCord
           mkdir -p src/core/ui/settings/pages/Diagnostics
+          mkdir -p src/core/ui/settings/pages/Customization
           mkdir -p src/core/ui/settings/pages/Plugins/components
           mkdir -p src/core/ui/settings/pages/Plugins/models
           mkdir -p src/core/ui/settings/pages/Themes
@@ -71,6 +72,7 @@ jobs:
           cp "../ios/runtime/src/core/ui/settings/pages/BotCord/index.tsx" "src/core/ui/settings/pages/BotCord/index.tsx"
           cp "../ios/runtime/src/core/ui/botcord/FloatingSwitcher.tsx" "src/core/ui/botcord/FloatingSwitcher.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/Diagnostics/index.tsx" "src/core/ui/settings/pages/Diagnostics/index.tsx"
+          cp "../ios/runtime/src/core/ui/settings/pages/Customization/index.tsx" "src/core/ui/settings/pages/Customization/index.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/General/index.tsx" "src/core/ui/settings/pages/General/index.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/Plugins/components/PluginCard.tsx" "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/Plugins/models/index.ts" "src/core/ui/settings/pages/Plugins/models/index.ts"
