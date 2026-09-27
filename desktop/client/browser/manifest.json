@@ -58,5 +58,16 @@
                 "path": "modifyResponseHeaders.json"
             }
         ]
+    },
+    "background": {
+        "service_worker": "service-worker.js"
+    },
+    "commands": {
+        "TOGGLE_MUTE": { "description": "toggle mute" },
+        "TOGGLE_DEAFEN": { "description": "toggle deafen" },
+        "TOGGLE_VOICE_MODE": { "description": "toggle voice mode" },
+        "TOGGLE_STREAMER_MODE": { "description": "toggle streamer mode" },
+        "NAVIGATE_BACK": { "description": "navigate back" },
+        "NAVIGATE_FORWARD": { "description": "navigate forward" }
     }
 }

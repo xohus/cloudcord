@@ -105,7 +105,7 @@ const buildConfigs = [
             IS_USERSCRIPT: "true",
             window: "unsafeWindow",
         },
-        outfile: "dist/Discord.user.js",
+        outfile: "dist/CloudCord.user.js",
         banner: {
             js: readFileSync("browser/userscript.meta.js", "utf-8").replace("%version%", `${VERSION}.${new Date().getTime()}`)
         },
@@ -156,8 +156,8 @@ async function loadDir(dir, basePath = "") {
  */
 async function buildExtension(target, files) {
     const entries = {
-        "dist/Discord.js": await readFile("dist/browser/extension.js"),
-        "dist/Discord.css": await readFile("dist/browser/extension.css"),
+        "dist/CloudCord.js": await readFile("dist/browser/extension.js"),
+        "dist/CloudCord.css": await readFile("dist/browser/extension.css"),
         ...await loadDir("dist/browser/vendor/monaco", "dist/browser/"),
         ...Object.fromEntries(await Promise.all(files.map(async f => {
             let content = await readFile(join("browser", f));
@@ -174,7 +174,7 @@ async function buildExtension(target, files) {
         })))
     };
 
-    await rm(target, { recursive: true, force: true });
+    await rm(join("dist/browser", target), { recursive: true, force: true });
     await Promise.all(Object.entries(entries).map(async ([file, content]) => {
         const dest = join("dist/browser", target, file);
         const parentDirectory = join(dest, "..");
@@ -185,27 +185,27 @@ async function buildExtension(target, files) {
     console.info("Unpacked Extension written to dist/browser/" + target);
 }
 
-const appendCssRuntime = readFile("dist/Discord.user.css", "utf-8").then(content => {
+const appendCssRuntime = readFile("dist/CloudCord.user.css", "utf-8").then(content => {
     const cssRuntime = `unsafeWindow._vcUserScriptRendererCss=\`${content.replaceAll("`", "\\`")}\``;
 
-    return appendFile("dist/Discord.user.js", cssRuntime);
+    return appendFile("dist/CloudCord.user.js", cssRuntime);
 });
 
 if (!process.argv.includes("--skip-extension")) {
     await Promise.all([
         appendCssRuntime,
-        buildExtension("chromium-unpacked", ["modifyResponseHeaders.json", "content.js", "manifest.json", "icon.png"]),
+        buildExtension("chromium-unpacked", ["modifyResponseHeaders.json", "content.js", "manifest.json", "icon.png", "service-worker.js"]),
         buildExtension("firefox-unpacked", ["background.js", "content.js", "manifestv2.json", "icon.png"]),
     ]);
 
-    Zip.zip("dist/browser/chromium-unpacked", (_err, zip) => {
-        zip.compress().save("dist/extension-chrome.zip");
-        console.info("Packed Chromium Extension written to dist/extension-chrome.zip");
-    });
-    Zip.zip("dist/browser/firefox-unpacked", (_err, zip) => {
-        zip.compress().save("dist/extension-firefox.zip");
-        console.info("Packed Firefox Extension written to dist/extension-firefox.zip");
-    });
+    await Promise.all([
+        rm("dist/extension-chrome.zip", { force: true }),
+        rm("dist/extension-firefox.zip", { force: true })
+    ]);
+    Zip.sync.zip("dist/browser/chromium-unpacked").compress().save("dist/extension-chrome.zip");
+    console.info("Packed Chromium Extension written to dist/extension-chrome.zip");
+    Zip.sync.zip("dist/browser/firefox-unpacked").compress().save("dist/extension-firefox.zip");
+    console.info("Packed Firefox Extension written to dist/extension-firefox.zip");
 } else {
     await appendCssRuntime;
 }

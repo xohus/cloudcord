@@ -19,7 +19,7 @@ import { Alerts, closeModal, openModal, Parser, React, TextInput, Toasts, useEff
 
 const DS_BOT_TOKENS = "CloudCord_BotTokens";
 const DS_ACTIVE_BOT = "CloudCord_ActiveBot";
-const BOTCORD_AVAILABLE = false;
+const BOTCORD_AVAILABLE = IS_WEB;
 const normalizeBotToken = (value: string) => value.replace(/^Bot\s+/i, "").trim();
 
 function controlDiscordWindow(action: "minimize" | "maximize" | "close") {
@@ -201,6 +201,26 @@ function BotCordOverlay({ bot, token, onClose }: { bot: BotIdentity; token: stri
 
     const chooseImage = async () => {
         try {
+            if (IS_WEB) {
+                const input = document.createElement("input");
+                input.type = "file";
+                input.accept = "image/png,image/jpeg,image/gif,image/webp";
+                const file = await new Promise<File | null>(resolve => {
+                    input.onchange = () => resolve(input.files?.[0] ?? null);
+                    input.oncancel = () => resolve(null);
+                    input.click();
+                });
+                if (!file) return;
+                if (file.size > 10 * 1024 * 1024) throw new Error("Images must be 10 MB or smaller");
+                const data = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(String(reader.result).split(",")[1] ?? "");
+                    reader.onerror = () => reject(reader.error);
+                    reader.readAsDataURL(file);
+                });
+                setPendingImage({ name: file.name, type: file.type || "image/png", data });
+                return;
+            }
             const [file] = await DiscordNative.fileManager.openFiles({
                 filters: [{ name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp"] }],
                 properties: ["openFile"]

@@ -77,9 +77,31 @@ window.VencordNative = {
     },
 
     botCord: {
-        async request(token: string, path: string) {
+        async request(token: string, path: string, options?: {
+            method?: "GET" | "POST";
+            body?: Record<string, unknown>;
+            files?: Array<{ name: string; type: string; data: string; }>;
+        }) {
             try {
-                const response = await fetch(`https://discord.com/api/v10${path}`, { headers: { Authorization: `Bot ${token}` } });
+                const headers: Record<string, string> = { Authorization: `Bot ${token}` };
+                let body: BodyInit | undefined;
+                if (options?.files?.length) {
+                    const form = new FormData();
+                    form.append("payload_json", JSON.stringify(options.body ?? {}));
+                    for (const [index, file] of options.files.entries()) {
+                        const bytes = Uint8Array.from(atob(file.data), char => char.charCodeAt(0));
+                        form.append(`files[${index}]`, new Blob([bytes], { type: file.type }), file.name);
+                    }
+                    body = form;
+                } else if (options?.body) {
+                    headers["Content-Type"] = "application/json";
+                    body = JSON.stringify(options.body);
+                }
+                const response = await fetch(`https://discord.com/api/v10${path}`, {
+                    method: options?.method ?? "GET",
+                    headers,
+                    body
+                });
                 const data = await response.json();
                 return response.ok ? { ok: true, status: response.status, data } : { ok: false, status: response.status, error: data?.message };
             } catch (error: any) {

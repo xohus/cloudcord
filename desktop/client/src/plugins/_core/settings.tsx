@@ -224,49 +224,49 @@ export default definePlugin({
         }
 
         const cloudcordEntries: SettingsLayoutNode[] = [
-            settings.store.showBotCordTab && buildEntry({
+            buildEntry({
                 key: "cloudcord_main",
                 title: "CloudCord",
                 panelTitle: "CloudCord Settings",
                 Component: VencordTab,
                 Icon: MainSettingsIcon
             }),
-            settings.store.showFakeProfileTab && buildEntry({
+            settings.store.showBotCordTab && buildEntry({
                 key: "cloudcord_botcord",
-                title: "BotCord (Down)",
-                panelTitle: "BotCord — Temporarily Unavailable",
+                title: IS_WEB ? "BotCord" : "BotCord (Down)",
+                panelTitle: IS_WEB ? "BotCord" : "BotCord — Temporarily Unavailable",
                 Component: BotCordTab,
                 Icon: RobotIcon
             }),
-            settings.store.showCloudSyncTab && buildEntry({
+            settings.store.showFakeProfileTab && buildEntry({
                 key: "cloudcord_fake_profile",
                 title: "Fake Profile",
                 panelTitle: "Fake Profile",
                 Component: FakeProfileTab,
                 Icon: UserIcon
             }),
-            settings.store.showPluginsTab && buildEntry({
+            settings.store.showCloudSyncTab && buildEntry({
                 key: "cloudcord_cloud_sync",
                 title: "CloudSync",
                 panelTitle: "CloudSync",
                 Component: CloudTab,
                 Icon: CloudIcon
             }),
-            settings.store.showThemesTab && buildEntry({
+            settings.store.showPluginsTab && buildEntry({
                 key: "cloudcord_plugins",
                 title: "Plugins",
                 panelTitle: "CloudCord Plugins",
                 Component: PluginsTab,
                 Icon: PluginsIcon
             }),
-            settings.store.showBackupTab && buildEntry({
+            settings.store.showThemesTab && buildEntry({
                 key: "cloudcord_themes",
                 title: "Themes",
                 panelTitle: "CloudCord Themes",
                 Component: ThemesTab,
                 Icon: PaintbrushIcon
             }),
-            buildEntry({
+            settings.store.showBackupTab && buildEntry({
                 key: "cloudcord_backup_restore",
                 title: "Backup & Restore",
                 panelTitle: "Backup & Restore",

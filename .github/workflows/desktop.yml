@@ -75,6 +75,33 @@ jobs:
         run: |
           pnpm typecheck
 
+      - name: Build browser clients
+        working-directory: desktop/client
+        shell: bash
+        run: |
+          set -e
+          pnpm buildWeb
+          unzip -l dist/extension-chrome.zip | grep -q 'dist/CloudCord.js'
+          unzip -l dist/extension-firefox.zip | grep -q 'dist/CloudCord.js'
+          if unzip -l dist/extension-chrome.zip | grep -q 'dist/Discord.js'; then
+            echo "stale Discord.js found in Chrome package"
+            exit 1
+          fi
+          if unzip -l dist/extension-firefox.zip | grep -q 'dist/Discord.js'; then
+            echo "stale Discord.js found in Firefox package"
+            exit 1
+          fi
+          test -f dist/CloudCord.user.js
+
+      - name: Upload browser clients
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCord-Web
+          path: |
+            desktop/client/dist/extension-chrome.zip
+            desktop/client/dist/extension-firefox.zip
+            desktop/client/dist/CloudCord.user.js
+
       - name: Build desktop runtime
         working-directory: desktop/client
         shell: bash
@@ -200,6 +227,9 @@ jobs:
             desktop/client/dist/cloudcord-test.exe
             desktop/client/dist/desktop-test.asar
             desktop/client/dist/cloudcord-test.asar
+            desktop/client/dist/extension-chrome.zip
+            desktop/client/dist/extension-firefox.zip
+            desktop/client/dist/CloudCord.user.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
