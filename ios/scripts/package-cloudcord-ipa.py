@@ -25,12 +25,34 @@ def bundle_executable(bundle: Path) -> Path:
 
 def read_entitlements(executable: Path) -> bytes | None:
     """Keep the original signed capabilities before modifying the app."""
+    commands: list[list[str]] = []
+    codesign = shutil.which("codesign")
+    if codesign:
+        commands.append([codesign, "-d", "--entitlements", ":-", str(executable)])
     ldid = shutil.which("ldid")
-    if not ldid:
-        return None
-    result = subprocess.run([ldid, "-e", str(executable)], capture_output=True, check=True)
-    start = result.stdout.find(b"<?xml")
-    return result.stdout[start:] if start >= 0 else None
+    if ldid:
+        commands.append([ldid, "-e", str(executable)])
+
+    for command in commands:
+        result = subprocess.run(command, capture_output=True)
+        raw = result.stdout + result.stderr
+        xml_start = raw.find(b"<?xml")
+        if xml_start < 0:
+            xml_start = raw.find(b"<plist")
+        xml_end = raw.find(b"</plist>", xml_start)
+        if xml_start >= 0 and xml_end >= 0:
+            payload = raw[xml_start : xml_end + len(b"</plist>")]
+            try:
+                return plistlib.dumps(plistlib.loads(payload))
+            except plistlib.InvalidFileException:
+                pass
+        binary_start = raw.find(b"bplist00")
+        if binary_start >= 0:
+            try:
+                return plistlib.dumps(plistlib.loads(raw[binary_start:]))
+            except plistlib.InvalidFileException:
+                pass
+    return None
 
 
 def sign_with_entitlements(executable: Path, entitlements: bytes | None, root: Path) -> None:
@@ -178,14 +200,15 @@ def main() -> None:
 
         executable = discord_app / info["CFBundleExecutable"]
         app_entitlements = read_entitlements(executable)
+        broadcast = discord_app / "PlugIns" / "BroadcastUpload.appex"
+        if not broadcast.exists():
+            raise RuntimeError("Discord BroadcastUpload extension is missing; iOS call streaming would not work")
         extension_entitlements = {
             extension: read_entitlements(bundle_executable(extension))
             for extension in (discord_app / "PlugIns").glob("*.appex")
         }
-
-        broadcast = discord_app / "PlugIns" / "BroadcastUpload.appex"
-        if not broadcast.exists():
-            raise RuntimeError("Discord BroadcastUpload extension is missing; iOS call streaming would not work")
+        if not extension_entitlements.get(broadcast):
+            raise RuntimeError("Could not preserve BroadcastUpload entitlements; refusing to break iOS call streaming")
 
         dylibs, bundles = extract_deb(args.runtime_deb, root / "runtime")
         if not any(path.name == "CloudCordTweak.dylib" for path in dylibs):
