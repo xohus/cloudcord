@@ -1,0 +1,99 @@
+name: Rebuild CloudCord iOS 331
+
+permissions:
+  contents: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/ios-331.yml"
+      - "ios/native-ios/**"
+      - "ios/runtime/**"
+      - "ios/scripts/package-cloudcord-ipa.py"
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          brew install ldid
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$RUNNER_TEMP/theos"
+
+      - name: Download Discord 331 CloudCord base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download ios-legacy-331 \
+            --repo xohus/cloudcord \
+            --pattern cloudcord0-331.ipa \
+            --output Discord-331.0-base.ipa
+
+      - name: Build sideload runtime
+        working-directory: ios/native-ios
+        env:
+          THEOS: ${{ runner.temp }}/theos
+        run: |
+          git clone --depth 1 https://github.com/unbound-app/loader-ios.git "$RUNNER_TEMP/unbound-loader-ios"
+          mkdir -p Headers/jsi
+          cp -R "$RUNNER_TEMP/unbound-loader-ios/headers/jsi/." Headers/jsi/
+          sed -i '' 's/^BUNDLE_NAME = CloudCordResources$/BUNDLE_NAME = BunnyResources/' Makefile
+          sed -i '' 's/^TWEAK_NAME = CloudCordTweak$/LIBRARY_NAME = CloudCordTweak/' Makefile
+          sed -i '' 's#$(THEOS_MAKE_PATH)/tweak.mk#$(THEOS_MAKE_PATH)/library.mk#' Makefile
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("Sources/Sideloading.x")
+          text = source.read_text().replace(
+              "NSMutableDictionary *info    = [%orig mutableCopy];",
+              "NSDictionary *originalInfo = %orig;\n    NSMutableDictionary *info = [originalInfo mutableCopy];",
+          )
+          source.write_text(text)
+          PY
+          cat > Sources/SubstrateCompat.m <<'OBJC'
+          #import <objc/runtime.h>
+          void MSHookMessageEx(Class targetClass, SEL selector, IMP replacement, IMP *original) {
+              Method method = class_getInstanceMethod(targetClass, selector);
+              if (!method) return;
+              IMP previous = method_getImplementation(method);
+              if (original) *original = previous;
+              method_setImplementation(method, replacement);
+          }
+          OBJC
+          make package FINALPACKAGE=1 CLOUDCORD_SAFE_UI=1
+
+      - name: Repackage Discord 331 with broadcast entitlements
+        run: |
+          python3 ios/scripts/package-cloudcord-ipa.py \
+            --discord-ipa Discord-331.0-base.ipa \
+            --discord-version 331.0 \
+            --runtime-deb "$(find ios/native-ios/packages -name '*.deb' -print -quit)" \
+            --output cloudcord0-331.ipa
+          rm -rf "$RUNNER_TEMP/cloudcord-331-check"
+          unzip -q cloudcord0-331.ipa -d "$RUNNER_TEMP/cloudcord-331-check"
+          APP="$RUNNER_TEMP/cloudcord-331-check/Payload/Discord.app"
+          test -x "$APP/PlugIns/BroadcastUpload.appex/BroadcastUpload"
+          ldid -e "$APP/Discord" > "$RUNNER_TEMP/app-entitlements.plist"
+          ldid -e "$APP/PlugIns/BroadcastUpload.appex/BroadcastUpload" > "$RUNNER_TEMP/broadcast-entitlements.plist"
+          grep -q 'application-groups' "$RUNNER_TEMP/app-entitlements.plist"
+          grep -q 'application-groups' "$RUNNER_TEMP/broadcast-entitlements.plist"
+          APP_GROUP="$(plutil -extract com.apple.security.application-groups.0 raw "$RUNNER_TEMP/app-entitlements.plist")"
+          BROADCAST_GROUP="$(plutil -extract com.apple.security.application-groups.0 raw "$RUNNER_TEMP/broadcast-entitlements.plist")"
+          test "$APP_GROUP" = "$BROADCAST_GROUP"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CloudCord-iOS-331.0
+          path: cloudcord0-331.ipa
+
+      - name: Replace the public Discord 331 download
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-legacy-331
+          name: CloudCord iOS Legacy 331.0
+          make_latest: false
+          files: cloudcord0-331.ipa
