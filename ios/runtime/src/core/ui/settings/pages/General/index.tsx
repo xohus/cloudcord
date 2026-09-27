@@ -104,6 +104,13 @@ export default function General() {
                 </TableRowGroup>
                 <TableRowGroup title={Strings.MISCELLANEOUS}>
                     <TableSwitchRow
+                        label="Hide CloudCord in settings"
+                        subLabel="moves the controls into discord's developer options after a reload"
+                        icon={<TableRow.Icon source={findAssetId("SettingsIcon") || findAssetId("WrenchIcon")} />}
+                        value={settings.cloudcordSectionHidden ?? false}
+                        onValueChange={(value: boolean) => settings.cloudcordSectionHidden = value}
+                    />
+                    <TableSwitchRow
                         label={Strings.SETTINGS_ACTIVATE_DISCORD_EXPERIMENTS}
                         subLabel={Strings.SETTINGS_ACTIVATE_DISCORD_EXPERIMENTS_DESC}
                         icon={<TableRow.Icon source={findAssetId("WrenchIcon")!} />}

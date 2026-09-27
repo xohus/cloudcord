@@ -36,6 +36,16 @@ export default function initSettings() {
                 useTrailing: () => `(${version})`
             };
 
+    const hiddenControlsItem: RowConfig = {
+        key: "CLOUDCORD_HIDDEN_CONTROLS",
+        title: () => "Developer options",
+        icon: safeAsset("WrenchIcon", "SettingsIcon"),
+        render: () => import("@core/ui/settings/pages/Customization"),
+        usePredicate: () => useProxy(settings).cloudcordSectionHidden ?? false,
+        useTrailing: () => "·",
+        nativeSection: "developer"
+    };
+
     const baseItems: RowConfig[] = [
             coreItem,
             {
@@ -88,15 +98,17 @@ export default function initSettings() {
     const configurableKeys = new Set(["BOTCORD", "STORE_CLOUD", "BUNNY_PLUGINS", "CLOUDCORD_PLUGIN_BROWSER", "BUNNY_THEMES", "BUNNY_FONTS"]);
     const configuredOrder = settings.cloudcordTabOrder ?? [];
     const orderIndex = new Map(configuredOrder.map((key, index) => [key, index]));
-    const items = baseItems
+    const items = [...baseItems, hiddenControlsItem]
         .map(row => {
-            if (!configurableKeys.has(row.key)) return row;
+            if (row.nativeSection) return row;
             const originalPredicate = row.usePredicate;
             return {
                 ...row,
                 usePredicate: () => {
                     const state = useProxy(settings);
-                    return !(state.cloudcordHiddenTabs ?? []).includes(row.key) && (originalPredicate?.() ?? true);
+                    if (state.cloudcordSectionHidden ?? false) return false;
+                    if (configurableKeys.has(row.key) && (state.cloudcordHiddenTabs ?? []).includes(row.key)) return false;
+                    return originalPredicate?.() ?? true;
                 },
             };
         })

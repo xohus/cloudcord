@@ -2,6 +2,7 @@ import { after, before } from "@lib/api/patcher";
 import { TableRow } from "@metro/common/components";
 import { findByFilePathLazy, findByNameAll, findByNameLazy, findByPropsAll, findByPropsLazy } from "@metro/wrappers";
 import { registeredSections } from "@ui/settings";
+import { settings } from "@lib/api/settings";
 
 import { CustomPageRenderer, wrapOnPress } from "./shared";
 import { findInReactTree } from "@lib/utils";
@@ -71,6 +72,19 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         })))
         .reduce((a, c) => Object.assign(a, c));
 
+    const isDeveloperSection = (section: any) => {
+        const label = `${section?.label ?? ""} ${section?.title ?? ""}`.toLowerCase();
+        return label.includes("developer") || section?.settings?.some?.((key: string) => /developer/i.test(key));
+    };
+
+    const insertNativeRows = (sections: any[]) => {
+        const rows = Object.values(registeredSections).flat().filter(row => row.nativeSection === "developer");
+        if (!rows.length) return;
+        const target = sections.find(isDeveloperSection);
+        if (!target || !Array.isArray(target.settings)) return;
+        for (const row of rows) if (!target.settings.includes(row.key)) target.settings.push(row.key);
+    };
+
     // Discord 331 uses one root createList settings model. The recursive 344
     // fallbacks must never run here: they can discover the Account tab's
     // internal sections first and incorrectly nest CloudCord inside Account.
@@ -116,11 +130,13 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         const insertRootSections = (config: any) => {
             const sections = config?.sections;
             if (!Array.isArray(sections)) return;
+            insertNativeRows(sections);
             const accountIndex = sections.findIndex((section: any) => section?.settings?.includes?.("ACCOUNT"));
             if (accountIndex < 0) return;
             let index = accountIndex + 1;
             for (const sectionName of Object.keys(registeredSections)) {
-                const rows = registeredSections[sectionName];
+                if (sectionName === "CloudCord" && settings.cloudcordSectionHidden) continue;
+                const rows = registeredSections[sectionName].filter(row => !row.nativeSection);
                 if (!rows.length || sections.some((section: any) => section?.label === sectionName)) continue;
                 sections.splice(index++, 0, {
                     label: sectionName,
@@ -140,12 +156,15 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     const insertCloudCordSections = (sections: any[]) => {
         if (!Array.isArray(sections)) return;
 
+        insertNativeRows(sections);
+
         // Never insert CloudCord into the middle of Discord's native settings list.
         // SettingHookHarness can retain hook state by position; shifting native rows can
         // make an existing harness run a different usePredicate/useConfig hook chain.
         // Appending keeps every existing Discord setting at its current position.
         Object.keys(registeredSections).forEach(sectionName => {
-            const rows = registeredSections[sectionName];
+            if (sectionName === "CloudCord" && settings.cloudcordSectionHidden) return;
+            const rows = registeredSections[sectionName].filter(row => !row.nativeSection);
             if (!rows.length) return;
             const rowKeys = new Set(rows.map(row => row.key));
             const alreadyExists = sections.some((section: any) =>

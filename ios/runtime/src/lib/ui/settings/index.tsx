@@ -10,10 +10,11 @@ export interface RowConfig {
     title: () => string;
     onPress?: () => any;
     render?: Parameters<typeof lazy>[0];
-    icon?: ImageURISource | number;
+    icon?: ImageURISource | number | string;
     IconComponent?: React.ReactNode,
     usePredicate?: () => boolean,
     useTrailing?: () => string | JSX.Element
+    nativeSection?: "developer"
 }
 
 export const registeredSections = {} as {

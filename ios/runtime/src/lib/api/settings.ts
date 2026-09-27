@@ -12,6 +12,7 @@ export interface Settings {
     cloudcordDiagnosticsCapture?: boolean;
     cloudcordHiddenTabs?: string[];
     cloudcordTabOrder?: string[];
+    cloudcordSectionHidden?: boolean;
     safeMode?: {
         enabled: boolean;
         currentThemeId?: string;
