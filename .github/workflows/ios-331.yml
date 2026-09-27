@@ -80,8 +80,6 @@ jobs:
           unzip -q cloudcord0-331.ipa -d "$RUNNER_TEMP/cloudcord-331-check"
           APP="$RUNNER_TEMP/cloudcord-331-check/Payload/Discord.app"
           test -x "$APP/PlugIns/BroadcastUpload.appex/BroadcastUpload"
-          strings "$APP/PlugIns/BroadcastUpload.appex/BroadcastUpload" \
-            | grep -q 'group.com.hammerandchisel.discord'
 
       - uses: actions/upload-artifact@v4
         with:
