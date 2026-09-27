@@ -11,7 +11,7 @@ import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
 import { settings } from "@plugins/_core/settings";
 import { Margins } from "@utils/margins";
 
-function CloudCordCustomization() {
+export function CloudCordDeveloperControls() {
     const values = settings.use([
         "showCloudCordSection",
         "showSectionHeading",
@@ -29,15 +29,15 @@ function CloudCordCustomization() {
     };
 
     return (
-        <SettingsTab>
+        <>
             <Heading className={Margins.top16}>Sidebar Visibility</Heading>
             <Paragraph className={Margins.bottom16}>
-                CloudCord is in compact mode beside Discord's account settings. The small dot on this tab is its subtle CloudCord indicator. Turn the full section back on here whenever you want it. Close and reopen Settings after changing the mode.
+                choose what shows in settings. close and reopen settings after changing this.
             </Paragraph>
 
             <FormSwitch
                 title="Show the CloudCord section"
-                description="Turn this on for the full CloudCord sidebar section, or leave it off to keep this compact Client Customization tab."
+                description="turn this on to bring the cloudcord section back. leave it off to keep everything hidden here."
                 value={values.showCloudCordSection}
                 onChange={value => toggle("showCloudCordSection", value)}
                 hideBorder
@@ -50,8 +50,12 @@ function CloudCordCustomization() {
             <FormSwitch title="Show Themes" value={values.showThemesTab} onChange={value => toggle("showThemesTab", value)} hideBorder />
             <FormSwitch title="Show Backup & Restore" value={values.showBackupTab} onChange={value => toggle("showBackupTab", value)} hideBorder />
             <FormSwitch title="Show Diagnostics" value={values.diagnosticsMode} onChange={value => toggle("diagnosticsMode", value)} hideBorder />
-        </SettingsTab>
+        </>
     );
+}
+
+function CloudCordCustomization() {
+    return <SettingsTab><CloudCordDeveloperControls /></SettingsTab>;
 }
 
 export default wrapTab(CloudCordCustomization, "Client Customization · CloudCord");

@@ -18,13 +18,13 @@ import {
     BackupAndRestoreTab,
     BotCordTab,
     CloudTab,
-    CloudCordCustomizationTab,
     CloudCordDiagnosticsTab,
     FakeProfileTab,
     PluginsTab,
     ThemesTab,
     VencordTab,
 } from "@components/settings";
+import { CloudCordDeveloperControls } from "@components/settings/tabs/customization";
 import { gitHashShort } from "@shared/vencordUserAgent";
 import { Devs } from "@utils/constants";
 import { isTruthy } from "@utils/guards";
@@ -213,29 +213,13 @@ export default definePlugin({
         const layout = originalLayoutBuilder.buildLayout();
         if (originalLayoutBuilder.key !== "$Root") return layout;
         if (!Array.isArray(layout)) return layout;
-        if (layout.some(s => s?.key === "cloudcord_section" || s?.key === "cloudcord_compact_section")) return layout;
+        if (layout.some(s => s?.key === "cloudcord_section")) return layout;
+
+        this.addControlsToDeveloperPage(layout);
 
         const { buildEntry } = this;
 
         if (!settings.store.showCloudCordSection) {
-            // Compact mode moves CloudCord beside Discord's account settings as
-            // one ordinary-looking page. The dot is the intentionally subtle
-            // indicator that this page belongs to CloudCord.
-            const compactSection: SettingsLayoutNode = {
-                key: "cloudcord_compact_section",
-                type: LayoutTypes.SECTION,
-                useTitle: () => "",
-                buildLayout: () => [buildEntry({
-                    key: "cloudcord_compact",
-                    title: "Client Customization ·",
-                    panelTitle: "Client Customization · CloudCord",
-                    Component: CloudCordCustomizationTab,
-                    Icon: PaintbrushIcon
-                })]
-            };
-
-            const userSectionIndex = layout.findIndex(s => s?.key === "user_section");
-            layout.splice(userSectionIndex === -1 ? 1 : userSectionIndex + 1, 0, compactSection);
             return layout;
         }
 
@@ -328,6 +312,49 @@ export default definePlugin({
         layout.splice(idx, 0, cloudcordSection);
 
         return layout;
+    },
+
+    addControlsToDeveloperPage(layout: SettingsLayoutNode[]) {
+        const otherSection = layout.find(node => node?.key === "utility_section");
+        if (!otherSection?.buildLayout) return;
+
+        const originalSectionBuild = otherSection.buildLayout.bind(otherSection);
+        otherSection.buildLayout = () => {
+            const entries = originalSectionBuild();
+            const developerEntry = entries.find(entry => {
+                try {
+                    return String(entry?.key || "").toLowerCase().includes("developer") || entry?.useTitle?.() === "Developer";
+                } catch {
+                    return false;
+                }
+            });
+            if (!developerEntry?.buildLayout) return entries;
+
+            const originalEntryBuild = developerEntry.buildLayout.bind(developerEntry);
+            developerEntry.buildLayout = () => {
+                const panels = originalEntryBuild();
+                const panel = panels.find(node => node?.type === LayoutTypes.PANEL && node.buildLayout);
+                if (!panel?.buildLayout) return panels;
+
+                const originalPanelBuild = panel.buildLayout.bind(panel);
+                panel.buildLayout = () => {
+                    const categories = originalPanelBuild();
+                    if (categories.some(node => node?.key === "cloudcord_developer_controls")) return categories;
+                    return [...categories, {
+                        type: LayoutTypes.CATEGORY,
+                        key: "cloudcord_developer_controls",
+                        buildLayout: () => [{
+                            type: LayoutTypes.CUSTOM,
+                            key: "cloudcord_developer_controls_custom",
+                            Component: CloudCordDeveloperControls,
+                            useSearchTerms: () => []
+                        }]
+                    }];
+                };
+                return panels;
+            };
+            return entries;
+        };
     },
 
     customEntries: [] as EntryOptions[],
