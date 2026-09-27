@@ -66,13 +66,16 @@ jobs:
           OBJC
           make package FINALPACKAGE=1 CLOUDCORD_SAFE_UI=1
 
-      - name: Repackage Discord 331 with broadcast entitlements
+      - name: Repackage Discord 331
         run: |
           python3 ios/scripts/package-cloudcord-ipa.py \
             --discord-ipa Discord-331.0-base.ipa \
             --discord-version 331.0 \
             --runtime-deb "$(find ios/native-ios/packages -name '*.deb' -print -quit)" \
             --output cloudcord0-331.ipa
+
+      - name: Verify Discord 331 broadcast entitlements
+        run: |
           rm -rf "$RUNNER_TEMP/cloudcord-331-check"
           unzip -q cloudcord0-331.ipa -d "$RUNNER_TEMP/cloudcord-331-check"
           APP="$RUNNER_TEMP/cloudcord-331-check/Payload/Discord.app"
