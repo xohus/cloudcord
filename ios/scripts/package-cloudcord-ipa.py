@@ -16,6 +16,7 @@ from pathlib import Path
 
 LC_SEGMENT_64 = 0x19
 LC_LOAD_DYLIB = 0xC
+DISCORD_APP_GROUP = "group.com.hammerandchisel.discord"
 
 
 def bundle_executable(bundle: Path) -> Path:
@@ -65,6 +66,17 @@ def sign_with_entitlements(executable: Path, entitlements: bytes | None, root: P
         subprocess.run([ldid, f"-S{entitlement_file}", str(executable)], check=True)
     else:
         subprocess.run([ldid, "-S", str(executable)], check=True)
+
+
+def add_discord_app_group(entitlements: bytes | None) -> bytes:
+    """Restore the shared container used by Discord and BroadcastUpload."""
+    values = plistlib.loads(entitlements) if entitlements else {}
+    key = "com.apple.security.application-groups"
+    groups = list(values.get(key, []))
+    if DISCORD_APP_GROUP not in groups:
+        groups.append(DISCORD_APP_GROUP)
+    values[key] = groups
+    return plistlib.dumps(values)
 
 
 def extract_deb(deb: Path, destination: Path) -> tuple[list[Path], list[Path]]:
@@ -209,6 +221,8 @@ def main() -> None:
         }
         if not extension_entitlements.get(broadcast):
             raise RuntimeError("Could not preserve BroadcastUpload entitlements; refusing to break iOS call streaming")
+        app_entitlements = add_discord_app_group(app_entitlements)
+        extension_entitlements[broadcast] = add_discord_app_group(extension_entitlements[broadcast])
 
         dylibs, bundles = extract_deb(args.runtime_deb, root / "runtime")
         if not any(path.name == "CloudCordTweak.dylib" for path in dylibs):
