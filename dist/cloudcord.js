@@ -21188,12 +21188,31 @@
         deferMethodExecution(globalThis.RN$AppRegistry, "runApplication");
       }
       var startDiscord = () => _async_to_generator(function* () {
-        yield initializeCloudCord();
-        for (var unpatch of unpatches)
-          unpatch();
-        unpatches.length = 0;
-        originalRequire(0);
-        resumeDeferred();
+        var startupTimer;
+        try {
+          yield Promise.race([
+            initializeCloudCord(),
+            new Promise((resolve) => {
+              startupTimer = setTimeout(() => {
+                console.log("CloudCord startup still pending; starting Discord");
+                resolve();
+              }, 5e3);
+            })
+          ]);
+        } catch (error) {
+          console.log("CloudCord startup failed; starting Discord", error);
+        } finally {
+          if (startupTimer !== void 0)
+            clearTimeout(startupTimer);
+          for (var unpatch of unpatches)
+            unpatch();
+          unpatches.length = 0;
+          try {
+            originalRequire(0);
+          } finally {
+            resumeDeferred();
+          }
+        }
       })();
       startDiscord();
     };
