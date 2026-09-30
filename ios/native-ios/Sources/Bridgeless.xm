@@ -89,9 +89,9 @@ static BOOL discordRuntimeIsReady(jsi::Runtime &runtime)
          "if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire;"
          "const map=globalThis.modules??globalThis.__c?.();"
          "if(!globalThis.modules&&map)globalThis.modules=map;"
-         "if(!map||typeof map.values!=='function')return false;"
+         "if(!map)return false;"
          "let rn=false,react=false;"
-         "for(const m of map.values()){"
+         "for(const m of(typeof map.values==='function'?map.values():Object.values(map))){"
            "const e=m?.publicModule?.exports??m?.exports??m;"
            "for(const value of[e,e?.default,e?.default?.default]){"
              "if(!value)continue;"
@@ -139,6 +139,16 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
     if (!evaluateCloudCordData(marker, "cloudcord:architecture", runtime))
     {
         cloudCordInjectedRuntime.store(nullptr);
+        return;
+    }
+    // The legacy bridge path is skipped on 344; initialize the loader identity
+    // here before runtime modules snapshot __PYON_LOADER__ at import time.
+    NSData *bootstrap = cloudCordResource(@"payload-base");
+    if (!bootstrap.length ||
+        !evaluateCloudCordData(bootstrap, "cloudcord:loader-bootstrap", runtime))
+    {
+        cloudCordInjectedRuntime.store(nullptr);
+        NSLog(@"[CloudCord] Loader bootstrap missing or invalid; skipping runtime");
         return;
     }
     NSData *runtimeBundle = cloudCordResource(@"runtime");

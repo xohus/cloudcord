@@ -16,6 +16,7 @@ from pathlib import Path
 
 LC_SEGMENT_64 = 0x19
 LC_LOAD_DYLIB = 0xC
+LC_LOAD_WEAK_DYLIB = 0x80000018
 DISCORD_APP_GROUP = "group.com.hammerandchisel.discord"
 
 
@@ -180,12 +181,61 @@ def add_load_command(executable: Path, dylib_path: str) -> None:
     executable.write_bytes(data)
 
 
+def remove_rain_load_commands(executable: Path) -> int:
+    """Replace the known Rain loader without stacking two runtime injectors.
+
+    Compact only the load-command area; section offsets and all other dylib
+    dependencies (including Hermes and Substrate) remain unchanged.
+    """
+    data = bytearray(executable.read_bytes())
+    if len(data) < 32 or struct.unpack_from("<I", data)[0] != 0xFEEDFACF:
+        raise RuntimeError("Rain replacement requires a thin 64-bit Mach-O")
+    ncmds, size = struct.unpack_from("<II", data, 16)
+    end = 32 + size
+    if end > len(data):
+        raise RuntimeError("Truncated Mach-O load commands")
+    commands = []
+    cursor = 32
+    removed = 0
+    for _ in range(ncmds):
+        if cursor + 8 > end:
+            raise RuntimeError("Truncated Mach-O command header")
+        kind, length = struct.unpack_from("<II", data, cursor)
+        if length < 8 or length % 8 or cursor + length > end:
+            raise RuntimeError("Invalid Mach-O command size")
+        command = bytes(data[cursor:cursor + length])
+        is_rain = False
+        if kind in (LC_LOAD_DYLIB, LC_LOAD_WEAK_DYLIB):
+            if length < 24:
+                raise RuntimeError("Invalid Mach-O dylib command")
+            offset = struct.unpack_from("<I", command, 8)[0]
+            if offset < 24 or offset >= length or b"\0" not in command[offset:]:
+                raise RuntimeError("Invalid Mach-O dylib name")
+            name = command[offset:].split(b"\0", 1)[0].decode("utf-8")
+            is_rain = name.rsplit("/", 1)[-1] == "RainTweak.dylib"
+        if is_rain:
+            removed += 1
+        else:
+            commands.append(command)
+        cursor += length
+    if cursor != end:
+        raise RuntimeError("Mach-O load command count does not match size")
+    if removed:
+        packed = b"".join(commands)
+        data[32:end] = packed + bytes(size - len(packed))
+        struct.pack_into("<II", data, 16, len(commands), len(packed))
+        executable.write_bytes(data)
+    return removed
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--discord-ipa", type=Path, required=True)
     parser.add_argument("--discord-version", required=True)
     parser.add_argument("--runtime-deb", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--replace-rain-loader", action="store_true",
+                        help="Replace RainTweak in a RainTweak-based IPA, preserving Discord resources")
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory(prefix="cloudcord-ios-") as temporary:
@@ -222,6 +272,9 @@ def main() -> None:
 
         executable = discord_app / info["CFBundleExecutable"]
         app_entitlements = read_entitlements(executable)
+        rain_loader = discord_app / "Frameworks" / "RainTweak.dylib"
+        if rain_loader.exists() and not args.replace_rain_loader:
+            raise RuntimeError("RainTweak is already injected; use --replace-rain-loader to avoid two loaders")
         broadcast = discord_app / "PlugIns" / "BroadcastUpload.appex"
         if not broadcast.exists():
             raise RuntimeError("Discord BroadcastUpload extension is missing; iOS call streaming would not work")
@@ -237,6 +290,12 @@ def main() -> None:
         dylibs, bundles = extract_deb(args.runtime_deb, root / "runtime")
         if not any(path.name == "CloudCordTweak.dylib" for path in dylibs):
             raise RuntimeError("CloudCordTweak.dylib is missing")
+        if args.replace_rain_loader:
+            removed = remove_rain_load_commands(executable)
+            if rain_loader.exists() and not removed:
+                raise RuntimeError("RainTweak exists but no matching load command was found")
+            if rain_loader.exists():
+                rain_loader.unlink()
         frameworks = discord_app / "Frameworks"
         frameworks.mkdir(exist_ok=True)
         for dylib in dylibs:
