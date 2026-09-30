@@ -11,12 +11,18 @@ async function initializeCloudCord() {
         // starts. On Discord 344+ this bundle is attached after startup;
         // replacing these globals then corrupts active account/navigation
         // stores and can leave the client on an infinite loading screen.
-        if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+        if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__ || (globalThis as any).__CLOUDCORD_EARLY_INJECTION__) {
             Object.freeze = Object.seal = Object;
         }
 
+        // Early injection captures Metro before module 0. Keep an object view
+        // for CloudCord's finders without replacing Discord's own registry.
+        if (window.modules instanceof Map) {
+            (globalThis as any).__CLOUDCORD_MODULE_VIEW__ = Object.fromEntries(window.modules);
+        }
+
         await require("@metro/internals/caches").initMetroCache();
-        require(".").default();
+        await require(".").default();
     } catch (e) {
         const { ClientInfoManager } = require("@lib/api/native/modules");
         const stack = e instanceof Error ? e.stack : undefined;
@@ -127,7 +133,6 @@ if (typeof window.__r === "undefined") {
                 _requireFunc = function patchedRequire(a: number) {
                     // Initializing index.ts(x)
                     if (a === 0) {
-                        if (window.modules instanceof Map) window.modules = Object.fromEntries(window.modules);
                         onceIndexRequired(v);
                         _requireFunc = v;
                     } else return v(a);

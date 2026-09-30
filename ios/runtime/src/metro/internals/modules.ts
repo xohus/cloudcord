@@ -87,7 +87,7 @@ for (const key in metroModules) {
     // On Discord 344, wrapping factories that Discord has not executed yet
     // changes the initialization path of account, guild and navigation stores.
     // Observe only modules Discord already initialized before CloudCord starts.
-    if ((globalThis as any).__CLOUDCORD_BRIDGELESS__ && !metroModule?.isInitialized)
+    if ((globalThis as any).__CLOUDCORD_BRIDGELESS__ && !(globalThis as any).__CLOUDCORD_EARLY_INJECTION__ && !metroModule?.isInitialized)
         continue;
 
     const cache = getMetroCache().flagsIndex[id];
@@ -246,7 +246,7 @@ export function requireModule(id: Metro.ModuleID) {
     // Discord 344's bridgeless runtime owns module initialization order.
     // Requiring dormant modules during discovery can initialize account and
     // navigation stores before their native dependencies are ready.
-    if ((globalThis as any).__CLOUDCORD_BRIDGELESS__ && !metroModules[id]?.isInitialized)
+    if ((globalThis as any).__CLOUDCORD_BRIDGELESS__ && !(globalThis as any).__CLOUDCORD_EARLY_INJECTION__ && !metroModules[id]?.isInitialized)
         return undefined;
 
     if (Number(id) === -1) return require("@metro/polyfills/redesign");

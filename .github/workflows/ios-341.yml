@@ -10,8 +10,12 @@ on:
         description: Publish the verified 344.1 test artifact without rebuilding
         type: boolean
         default: false
+      runtime_run_id:
+        description: Runtime artifact run to bundle into this test IPA
+        type: string
+        default: ''
   workflow_run:
-    workflows: ["Build CloudCord Runtime"]
+    workflows: ["Build CloudCord Runtime (source)"]
     types: [completed]
   push:
     branches:
@@ -25,11 +29,19 @@ on:
 
 jobs:
   build:
-    if: inputs.publish_existing != true && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
+    if: inputs.publish_existing != true && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
     # Repackage whenever the verified 344-compatible runtime changes.
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download rebuilt runtime for this test
+        if: inputs.runtime_run_id != '' && github.event_name == 'workflow_dispatch'
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudcord-mobile-shared-runtime
+          run-id: ${{ inputs.runtime_run_id }}
+          github-token: ${{ github.token }}
 
       - name: Install build tools
         run: |

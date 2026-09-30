@@ -1,4 +1,4 @@
-name: Build CloudCord Runtime
+name: Build CloudCord Runtime (source)
 
 "on":
   workflow_dispatch:
@@ -88,6 +88,7 @@ jobs:
           cp "../ios/runtime/src/lib/ui/settings/patches/tabs.tsx" "src/lib/ui/settings/patches/tabs.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/panel.tsx" "src/lib/ui/settings/patches/panel.tsx"
           cp "../ios/runtime/src/lib/api/native/loader.ts" "src/lib/api/native/loader.ts"
+          cp "../ios/runtime/src/lib/api/native/modules/index.ts" "src/lib/api/native/modules/index.ts"
           # Discord 344 safety lives in the runtime entry and Metro internals.
           # Always overlay these files onto the clean Kettu checkout; otherwise
           # the build silently ships Kettu's legacy force-loading behavior.
@@ -2702,6 +2703,8 @@ jobs:
         run: |
           set -e
           cd _cloudcord_source
+          cp ../ios/runtime/scripts/test-early-injection.mjs scripts/test-early-injection.mjs
+          node scripts/test-early-injection.mjs
           set +e
           build_output=$(bun run build -- --build-minify 2>&1)
           build_status=$?
@@ -2741,6 +2744,7 @@ jobs:
             grep -q "$fallback" ../dist/cc.js
           done
       - name: Publish runtime to main
+        if: github.ref == 'refs/heads/main'
         run: |
           set -e
           git config user.name "github-actions[bot]"
