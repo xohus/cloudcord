@@ -5,6 +5,11 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_existing:
+        description: Publish the verified 344.1 test artifact without rebuilding
+        type: boolean
+        default: false
   workflow_run:
     workflows: ["Build CloudCord Runtime"]
     types: [completed]
@@ -20,7 +25,7 @@ on:
 
 jobs:
   build:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: inputs.publish_existing != true && (github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success')
     # Repackage whenever the verified 344-compatible runtime changes.
     runs-on: macos-15
     steps:
@@ -125,6 +130,25 @@ jobs:
         with:
           tag_name: test
           name: CloudCord 344.1 Testing
+          prerelease: true
+          make_latest: false
+          files: cloudcord0.ipa
+
+  publish_existing:
+    if: inputs.publish_existing == true && github.ref == 'refs/heads/xohus/ios-344-loader'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CloudCord-iOS-344.1
+          run-id: 36742853816
+          github-token: ${{ github.token }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-344.1-loader-test-20260930
+          target_commitish: 95bb08696e773b6d8c52d31f713e36a49edc549c
+          name: cloudcord 344.1 loader test
+          body: test build — native build checks passed, device testing still pending. sign and sideload the ipa.
           prerelease: true
           make_latest: false
           files: cloudcord0.ipa
