@@ -4,6 +4,8 @@ import FontEditor from "@core/ui/settings/pages/Fonts/FontEditor";
 import { useProxy } from "@core/vendetta/storage";
 import { FontDefinition, fonts } from "@lib/addons/fonts";
 import { settings } from "@lib/api/settings";
+import { isFontSupported } from "@lib/api/native/loader";
+import { Text } from "@metro/common/components";
 import { NavigationNative } from "@metro/common";
 
 import FontCard from "./FontCard";
@@ -25,6 +27,11 @@ export default function Fonts() {
             items={Object.values(fonts)}
             safeModeHint={{ message: Strings.SAFE_MODE_NOTICE_FONTS }}
             CardComponent={FontCard}
+            ListHeaderComponent={!isFontSupported() ? () => (
+                <Text style={{ padding: 16 }}>
+                    you can manage fonts here. applying fonts isn't supported by this loader yet.
+                </Text>
+            ) : undefined}
             installAction={{
                 label: "Install a font",
                 onPress: () => {

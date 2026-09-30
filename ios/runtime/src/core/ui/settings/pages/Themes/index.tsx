@@ -13,6 +13,7 @@ import { updateBunnyColor } from "@lib/addons/themes/colors/updater";
 import { Author } from "@lib/addons/types";
 import { findAssetId } from "@lib/api/assets";
 import { settings } from "@lib/api/settings";
+import { isThemeSupported } from "@lib/api/native/loader";
 import { useObservable } from "@lib/api/storage";
 import {
   ActionSheet,
@@ -22,6 +23,7 @@ import {
   TableCheckboxRow,
   TableRowIcon,
   TableSwitchRow,
+  Text,
 } from "@metro/common/components";
 import { View } from "react-native";
 
@@ -65,7 +67,12 @@ export default function Themes() {
         ),
       }}
       CardComponent={ThemeCard}
-      OptionsActionSheetComponent={() => {
+      ListHeaderComponent={!isThemeSupported() ? () => (
+        <Text style={{ padding: 16 }}>
+          you can manage themes here. applying themes isn't supported by this loader yet.
+        </Text>
+      ) : undefined}
+      OptionsActionSheetComponent={!isThemeSupported() ? undefined : () => {
         useObservable([colorsPref]);
 
         return (

@@ -78,6 +78,9 @@ jobs:
           cp "../ios/runtime/src/core/ui/settings/pages/Plugins/models/index.ts" "src/core/ui/settings/pages/Plugins/models/index.ts"
           cp "../ios/runtime/src/core/ui/settings/pages/Plugins/models/vendetta.ts" "src/core/ui/settings/pages/Plugins/models/vendetta.ts"
           cp "../ios/runtime/src/core/ui/settings/pages/Themes/ThemeCard.tsx" "src/core/ui/settings/pages/Themes/ThemeCard.tsx"
+          cp "../ios/runtime/src/core/ui/settings/pages/Themes/index.tsx" "src/core/ui/settings/pages/Themes/index.tsx"
+          cp "../ios/runtime/src/core/ui/settings/pages/Fonts/index.tsx" "src/core/ui/settings/pages/Fonts/index.tsx"
+          cp "../ios/runtime/src/core/ui/settings/pages/Fonts/FontCard.tsx" "src/core/ui/settings/pages/Fonts/FontCard.tsx"
           cp "../ios/runtime/src/core/ui/settings/index.ts" "src/core/ui/settings/index.ts"
           cp "../ios/runtime/src/core/vendetta/plugins.ts" "src/core/vendetta/plugins.ts"
           cp "../ios/runtime/src/lib/api/settings.ts" "src/lib/api/settings.ts"
@@ -370,11 +373,6 @@ jobs:
           // important because the premium module is split-loaded on mobile.
           const openGiftingBadgeInfoActionSheet = findByNameLazy("openGiftingBadgeInfoActionSheet", false) as any;
           const LinearGradient = (findByProps("LinearGradient") as any)?.LinearGradient as any;
-          const overriddenKeys = new Set([
-              "username", "globalName", "displayName", "publicFlags", "flags", "badges", "profileBadges",
-              "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "getPreviewBanner", "hasFlag",
-              "premiumType", "premiumSince", "premiumGuildSince", "avatarDecorationData", "primaryColor", "accentColor", "themeColors", "bio", "pronouns", "createdAt", "joinedAt", "memberSince", "user", "userProfile", "guildMemberProfile", "displayProfile", "profile"
-          ]);
 
           const NITRO_DURATIONS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
           const BOOST_DURATIONS = [0, 1, 2, 3, 6, 9, 12, 15, 18, 24];
@@ -1109,9 +1107,11 @@ jobs:
               try {
                   cloned = Object.create(Object.getPrototypeOf(original));
                   for (const key of Reflect.ownKeys(original)) {
-                      if (overriddenKeys.has(String(key))) continue;
                       const descriptor = Object.getOwnPropertyDescriptor(original, key);
-                      if (descriptor) Object.defineProperty(cloned, key, descriptor);
+                      // Preserve real media, premium eligibility, getters and
+                      // nested profile data unless an explicit override is set.
+                      // Make only the clone's descriptors replaceable.
+                      if (descriptor) Object.defineProperty(cloned, key, { ...descriptor, configurable: true });
                   }
               } catch {
                   try { cloned = { ...original }; }
@@ -2705,6 +2705,8 @@ jobs:
           cd _cloudcord_source
           cp ../ios/runtime/scripts/test-early-injection.mjs scripts/test-early-injection.mjs
           node scripts/test-early-injection.mjs
+          cp ../ios/runtime/scripts/test-profile-preview.mjs scripts/test-profile-preview.mjs
+          CLOUDCORD_REPO_ROOT="$GITHUB_WORKSPACE" node scripts/test-profile-preview.mjs
           set +e
           build_output=$(bun run build -- --build-minify 2>&1)
           build_status=$?

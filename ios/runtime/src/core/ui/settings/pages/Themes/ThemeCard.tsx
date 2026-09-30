@@ -2,6 +2,7 @@ import AddonCard, { CardWrapper } from "@core/ui/components/AddonCard";
 import { VdThemeInfo, themes, selectTheme } from "@lib/addons/themes";
 import { findAssetId } from "@lib/api/assets";
 import { settings } from "@lib/api/settings";
+import { isThemeSupported } from "@lib/api/native/loader";
 import { showToast } from "@lib/ui/toasts";
 import { showSheet } from "@lib/ui/sheets";
 import { NavigationNative, React } from "@metro/common";
@@ -22,9 +23,10 @@ export default function ThemeCard({ item: theme }: CardWrapper<VdThemeInfo>) {
         authors ? `by ${authors.map((i) => i.name).join(", ")}` : ""
       }
       descriptionLabel={theme.data.description ?? "No description."}
-      toggleType={!settings.safeMode?.enabled ? "radio" : undefined}
+      toggleType={isThemeSupported() && !settings.safeMode?.enabled ? "radio" : undefined}
       toggleValue={() => themes[theme.id].selected}
       onToggleChange={async (v: boolean) => {
+        if (!isThemeSupported()) return;
         try {
           await selectTheme(v ? theme : null);
           showToast(v ? `Applied ${theme.data.name}` : "Theme disabled", findAssetId("Check"));
