@@ -256,7 +256,7 @@
         if (module)
           return module;
       }
-      if (nmp[name])
+      if (nmp?.[name])
         return nmp[name];
     }
     return void 0;
@@ -4015,7 +4015,7 @@
       metroRequire(0);
     if (blacklistedIds.has(id))
       return void 0;
-    if (globalThis.__CLOUDCORD_BRIDGELESS__ && !metroModules[id]?.isInitialized)
+    if (globalThis.__CLOUDCORD_BRIDGELESS__ && !globalThis.__CLOUDCORD_EARLY_INJECTION__ && !metroModules[id]?.isInitialized)
       return void 0;
     if (Number(id) === -1)
       return init_redesign(), __toCommonJS(redesign_exports);
@@ -4183,7 +4183,7 @@
       _loop = function(key) {
         var id = Number(key);
         var metroModule = metroModules[id];
-        if (globalThis.__CLOUDCORD_BRIDGELESS__ && !metroModule?.isInitialized)
+        if (globalThis.__CLOUDCORD_BRIDGELESS__ && !globalThis.__CLOUDCORD_EARLY_INJECTION__ && !metroModule?.isInitialized)
           return "continue";
         var cache = getMetroCache().flagsIndex[id];
         if (cache & ModuleFlags.BLACKLISTED) {
@@ -9586,6 +9586,8 @@
         joinedSince: preview.signupDate || null,
         oldName: preview.oldName,
         badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && preview.selectedBadges?.[id] ? flags | flag : flags, 0),
+        hiddenBadgeKeys: preview.hiddenBadgeKeys || [],
+        badgeOrder: preview.badgeOrder || [],
         customBadgeIds: [
           ...BADGES.filter(([id, , , , customId]) => customId && preview.selectedBadges?.[id]).map(([, , , , customId]) => customId),
           ...preview.replaceBadges ? [
@@ -9724,6 +9726,8 @@
           signupDate: String(data.signupDate || data.joinedSince || ""),
           oldName: String(data.oldName || ""),
           replaceBadges: remoteReplaceBadges(data),
+          hiddenBadgeKeys: Array.isArray(data.hiddenBadgeKeys) ? data.hiddenBadgeKeys.filter((key) => typeof key === "string").slice(0, 100) : [],
+          badgeOrder: Array.isArray(data.badgeOrder) ? data.badgeOrder.filter((key) => typeof key === "string").slice(0, 100) : [],
           selectedBadges,
           syncRevision: Number(data.syncRevision || 0)
         };
@@ -10208,11 +10212,12 @@
     try {
       cloned = Object.create(Object.getPrototypeOf(original));
       for (var key of Reflect.ownKeys(original)) {
-        if (overriddenKeys.has(String(key)))
-          continue;
         var descriptor = Object.getOwnPropertyDescriptor(original, key);
         if (descriptor)
-          Object.defineProperty(cloned, key, descriptor);
+          Object.defineProperty(cloned, key, {
+            ...descriptor,
+            configurable: true
+          });
       }
     } catch (e) {
       try {
@@ -10331,6 +10336,45 @@
       diagnostics.last = error?.message || `Could not connect ${method}`;
     }
   }
+  function applyBadgeLayout(fake, real, layout, capture = false) {
+    var entries = [
+      ...fake.map((badge) => ({
+        badge,
+        key: `fake:${String(badge?.id || "").replace(/^(fakeprofile-|cloudcord-shared-)/, "")}`
+      })),
+      ...real.map((badge) => ({
+        badge,
+        key: `real:${String(badge?.id || "")}`
+      }))
+    ];
+    var order = Array.isArray(layout?.badgeOrder) ? layout.badgeOrder : [];
+    entries.sort((a, b3) => {
+      var ai = order.indexOf(a.key), bi = order.indexOf(b3.key);
+      return (ai < 0 ? order.length : ai) - (bi < 0 ? order.length : bi);
+    });
+    if (capture)
+      badgeLayoutChoices = entries.map(({ key, badge }) => ({
+        key,
+        label: String(badge?.description || badge?.label || key)
+      }));
+    var hidden = new Set(Array.isArray(layout?.hiddenBadgeKeys) ? layout.hiddenBadgeKeys : []);
+    return entries.filter((entry) => !hidden.has(entry.key)).map((entry) => entry.badge);
+  }
+  function moveBadge(key, direction, save) {
+    var order = badgeLayoutChoices.map((item) => item.key);
+    var index = order.indexOf(key), target = index + direction;
+    if (index < 0 || target < 0 || target >= order.length)
+      return;
+    [order[index], order[target]] = [
+      order[target],
+      order[index]
+    ];
+    [badgeLayoutChoices[index], badgeLayoutChoices[target]] = [
+      badgeLayoutChoices[target],
+      badgeLayoutChoices[index]
+    ];
+    save("badgeOrder", order, true);
+  }
   function connectBadgeRenderer() {
     try {
       after("default", useBadgesModule2, ([user], result) => {
@@ -10377,10 +10421,7 @@
             var badgeId2 = String(item?.id || "");
             return !badgeId2.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeId2 === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
           });
-          return [
-            ...ordered,
-            ...existing
-          ];
+          return applyBadgeLayout(ordered, existing, data);
         }
         var staffBadge1 = cloudCordStaffBadge(id);
         if (!preview.enabled) {
@@ -10414,10 +10455,7 @@
           var label1 = badgeId === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description1;
           addRenderedBadge(ordered2, id2, label1, icon1);
         }
-        return [
-          ...ordered2,
-          ...existing2
-        ];
+        return applyBadgeLayout(ordered2, existing2, preview, true);
       });
       diagnostics.patches += 1;
     } catch (error) {
@@ -10779,12 +10817,14 @@
       try {
         yield awaitStorage(settings);
         bindSavedPreview();
-        yield pullRealCordConfiguration();
+        void pullRealCordConfiguration().catch(() => {
+        });
         if (globalThis.__CLOUDCORD_LOADER__?.loaderName === "RealCord" && !realCordSyncTimer) {
           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5e3);
         }
         ensurePatches();
-        yield pullOwnSharedProfile();
+        void pullOwnSharedProfile().catch(() => {
+        });
         if (!sharedSyncTimer)
           sharedSyncTimer = setInterval(() => {
             void pullOwnSharedProfile();
@@ -12296,6 +12336,68 @@
                     [id]: !preview.selectedBadges?.[id]
                   }, true)
                 }, id)),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/bold",
+                  color: "text-normal",
+                  children: "hide and move badges"
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: "open your profile once to load your badges. keep replace real badges off to keep selected real badges. this layout is shared with updated cloudcord clients, not normal discord users."
+                }),
+                badgeLayoutChoices.map(({ key, label }, index) => /* @__PURE__ */ jsxs(import_react_native16.View, {
+                  style: {
+                    gap: 6
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(ToggleRow, {
+                      label,
+                      subLabel: key.startsWith("real:") ? "real badge \xB7 visible" : "added badge \xB7 visible",
+                      value: !(preview.hiddenBadgeKeys || []).includes(key),
+                      onPress: () => update("hiddenBadgeKeys", (preview.hiddenBadgeKeys || []).includes(key) ? (preview.hiddenBadgeKeys || []).filter((item) => item !== key) : [
+                        ...preview.hiddenBadgeKeys || [],
+                        key
+                      ], true)
+                    }),
+                    /* @__PURE__ */ jsxs(import_react_native16.View, {
+                      style: {
+                        flexDirection: "row",
+                        gap: 16
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx(import_react_native16.Pressable, {
+                          accessibilityLabel: `move ${label} up`,
+                          disabled: index === 0,
+                          onPress: () => moveBadge(key, -1, update),
+                          children: /* @__PURE__ */ jsx(Text, {
+                            color: "text-normal",
+                            children: "\u2191 move up"
+                          })
+                        }),
+                        /* @__PURE__ */ jsx(import_react_native16.Pressable, {
+                          accessibilityLabel: `move ${label} down`,
+                          disabled: index === badgeLayoutChoices.length - 1,
+                          onPress: () => moveBadge(key, 1, update),
+                          children: /* @__PURE__ */ jsx(Text, {
+                            color: "text-normal",
+                            children: "\u2193 move down"
+                          })
+                        })
+                      ]
+                    })
+                  ]
+                }, key)),
+                /* @__PURE__ */ jsx(import_react_native16.Pressable, {
+                  onPress: () => {
+                    update("hiddenBadgeKeys", [], true);
+                    update("badgeOrder", [], true);
+                  },
+                  children: /* @__PURE__ */ jsx(Text, {
+                    color: "text-normal",
+                    children: "reset badge layout"
+                  })
+                }),
                 preview.selectedBadges?.oldname ? /* @__PURE__ */ jsxs(import_react_native16.View, {
                   style: {
                     gap: 8,
@@ -12394,7 +12496,7 @@
       })
     });
   }
-  var import_react4, import_react_native16, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react4, import_react_native16, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, badgeLayoutChoices, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12552,41 +12654,6 @@
       simpleSheets = findByProps("showSimpleActionSheet");
       openGiftingBadgeInfoActionSheet = findByNameLazy("openGiftingBadgeInfoActionSheet", false);
       LinearGradient = findByProps("LinearGradient")?.LinearGradient;
-      overriddenKeys = /* @__PURE__ */ new Set([
-        "username",
-        "globalName",
-        "displayName",
-        "publicFlags",
-        "flags",
-        "badges",
-        "profileBadges",
-        "avatarURL",
-        "avatarUrl",
-        "getAvatarURL",
-        "banner",
-        "bannerURL",
-        "bannerUrl",
-        "getBannerURL",
-        "getPreviewBanner",
-        "hasFlag",
-        "premiumType",
-        "premiumSince",
-        "premiumGuildSince",
-        "avatarDecorationData",
-        "primaryColor",
-        "accentColor",
-        "themeColors",
-        "bio",
-        "pronouns",
-        "createdAt",
-        "joinedAt",
-        "memberSince",
-        "user",
-        "userProfile",
-        "guildMemberProfile",
-        "displayProfile",
-        "profile"
-      ]);
       NITRO_DURATIONS = [
         0,
         1,
@@ -12747,6 +12814,8 @@
         signupDate: "",
         oldName: "",
         replaceBadges: false,
+        hiddenBadgeKeys: [],
+        badgeOrder: [],
         selectedBadges: {},
         syncRevision: 0
       });
@@ -12788,6 +12857,7 @@
       fakeProfileEditorOpen = false;
       suppressOwnPullUntil = 0;
       REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
+      badgeLayoutChoices = [];
       PROFILE_COLORS = [
         "#5865F2",
         "#4752C4",
@@ -19366,9 +19436,11 @@
       headerLabel: theme.data.name,
       headerSublabel: authors ? `by ${authors.map((i) => i.name).join(", ")}` : "",
       descriptionLabel: theme.data.description ?? "No description.",
-      toggleType: !settings.safeMode?.enabled ? "radio" : void 0,
+      toggleType: isThemeSupported() && !settings.safeMode?.enabled ? "radio" : void 0,
       toggleValue: () => themes[theme.id].selected,
       onToggleChange: (v2) => _async_to_generator(function* () {
+        if (!isThemeSupported())
+          return;
         try {
           yield selectTheme(v2 ? theme : null);
           showToast(v2 ? `Applied ${theme.data.name}` : "Theme disabled", findAssetId("Check"));
@@ -19403,6 +19475,7 @@
       init_themes();
       init_assets();
       init_settings();
+      init_loader();
       init_toasts();
       init_sheets();
       init_common();
@@ -19447,7 +19520,13 @@
         })
       },
       CardComponent: ThemeCard,
-      OptionsActionSheetComponent: () => {
+      ListHeaderComponent: !isThemeSupported() ? () => /* @__PURE__ */ jsx(Text, {
+        style: {
+          padding: 16
+        },
+        children: "you can manage themes here. applying themes isn't supported by this loader yet."
+      }) : void 0,
+      OptionsActionSheetComponent: !isThemeSupported() ? void 0 : () => {
         useObservable([
           colorsPref
         ]);
@@ -19558,6 +19637,7 @@
       init_updater();
       init_assets();
       init_settings();
+      init_loader();
       init_storage2();
       init_components();
       import_react_native33 = __toESM(require_react_native());
@@ -20222,7 +20302,10 @@
                     size: "sm",
                     variant: selected ? "secondary" : "primary",
                     text: selected ? "Unapply" : "Apply",
+                    disabled: !isFontSupported(),
                     onPress: () => _async_to_generator(function* () {
+                      if (!isFontSupported())
+                        return;
                       yield selectFont(selected ? null : font.name);
                       showConfirmationAlert({
                         title: Strings.HOLD_UP,
@@ -20256,6 +20339,7 @@
       init_fonts();
       init_assets();
       init_modules();
+      init_loader();
       init_lazy();
       init_metro();
       init_common();
@@ -20290,6 +20374,12 @@
         message: Strings.SAFE_MODE_NOTICE_FONTS
       },
       CardComponent: FontCard,
+      ListHeaderComponent: !isFontSupported() ? () => /* @__PURE__ */ jsx(Text, {
+        style: {
+          padding: 16
+        },
+        children: "you can manage fonts here. applying fonts isn't supported by this loader yet."
+      }) : void 0,
       installAction: {
         label: "Install a font",
         onPress: () => {
@@ -20313,6 +20403,8 @@
       init_storage();
       init_fonts();
       init_settings();
+      init_loader();
+      init_components();
       init_common();
       init_FontCard();
     }
@@ -20392,15 +20484,13 @@
         key: "BUNNY_THEMES",
         title: () => Strings.THEMES,
         icon: safeAsset("PaintPaletteIcon", "ThemeIcon"),
-        render: () => Promise.resolve().then(() => (init_Themes(), Themes_exports)),
-        usePredicate: () => isThemeSupported()
+        render: () => Promise.resolve().then(() => (init_Themes(), Themes_exports))
       },
       {
         key: "BUNNY_FONTS",
         title: () => Strings.FONTS,
         icon: safeAsset("LettersIcon", "TextIcon"),
-        render: () => Promise.resolve().then(() => (init_Fonts(), Fonts_exports)),
-        usePredicate: () => isFontSupported()
+        render: () => Promise.resolve().then(() => (init_Fonts(), Fonts_exports))
       },
       {
         key: "BUNNY_DEVELOPER",
@@ -20473,7 +20563,6 @@
       init_i18n();
       init_storage();
       init_assets();
-      init_loader();
       init_settings();
       init_settings2();
     }
@@ -21027,11 +21116,14 @@
   function initializeCloudCord() {
     return _async_to_generator(function* () {
       try {
-        if (!globalThis.__CLOUDCORD_BRIDGELESS__) {
+        if (!globalThis.__CLOUDCORD_BRIDGELESS__ || globalThis.__CLOUDCORD_EARLY_INJECTION__) {
           Object.freeze = Object.seal = Object;
         }
+        if (globalThis.modules instanceof Map) {
+          globalThis.__CLOUDCORD_MODULE_VIEW__ = Object.fromEntries(globalThis.modules);
+        }
         yield (init_caches(), __toCommonJS(caches_exports)).initMetroCache();
-        (init_src(), __toCommonJS(src_exports)).default();
+        yield (init_src(), __toCommonJS(src_exports)).default();
       } catch (e) {
         var { ClientInfoManager } = (init_modules(), __toCommonJS(modules_exports));
         var stack = e instanceof Error ? e.stack : void 0;
@@ -21112,8 +21204,6 @@
         set(v2) {
           _requireFunc = function patchedRequire(a) {
             if (a === 0) {
-              if (globalThis.modules instanceof Map)
-                globalThis.modules = Object.fromEntries(globalThis.modules);
               onceIndexRequired(v2);
               _requireFunc = v2;
             } else
