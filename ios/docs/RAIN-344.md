@@ -5,6 +5,10 @@ this path targets discord **344.1**. it does not change the 331 build.
 ## what changed
 
 - the RCTHost/JSI path initializes `payload-base.js` before the cloudcord runtime imports its loader identity.
+- the primary path now injects directly after RCTHost initializes the runtime, like RainTweak, before Metro module 0. post-bundle probing is only a fallback.
+- early startup can discover dormant settings modules, awaits cloudcord initialization before handing off to Discord, and keeps Discord's own Metro Map intact.
+- a JSI host call connects the existing native updater registry; Rain-compatible call names are aliases, not a second loader.
+- test IPAs use the newly built runtime artifact rather than an older checked-in bundle.
 - runtime readiness accepts a Metro Map or an object registry.
 - the packager can explicitly replace `RainTweak.dylib` instead of running rain and cloudcord together.
 - hermes, substrate, discord's javascript bundle, and app extensions stay in the base app. signing still needs the original extension entitlements.
@@ -36,4 +40,4 @@ the input must be a decrypted IPA. the replacement currently supports a thin 64-
 - voice calls and BroadcastUpload screen sharing after signing
 - foreground/background transitions and a second launch
 
-the native bridge and platform-specific features must be verified separately. bootstrap initialization alone does not establish that every feature works on 344.1. do not publish this as a stable release until these checks pass.
+the startup ordering, registry ownership, and startup failure handoff have automated tests. the native bridge and platform-specific features still need device verification. do not publish this as a stable release until these checks pass.
