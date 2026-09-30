@@ -127,7 +127,7 @@ static NSString *sha256Hex(NSData *data)
 
 static NSDictionary *fetchRuntimeManifest(void)
 {
-    NSURL *url = [NSURL URLWithString:@"https://cloudcord.xohus.lol/api/proxy/raw/dist/runtime-manifest.json"];
+    NSURL *url = [NSURL URLWithString:@"https://getcloudcord.com/api/proxy/raw/dist/runtime-manifest.json"];
     NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:url
                                                        cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData
                                                    timeoutInterval:10.0];
@@ -181,7 +181,7 @@ static NSURL *resolveDownloadURL(NSString **expectedHash, NSNumber **expectedSiz
     NSString *hash = [manifest[@"sha256"] isKindOfClass:[NSString class]] ? [manifest[@"sha256"] lowercaseString] : nil;
     NSNumber *size = [manifest[@"size"] isKindOfClass:[NSNumber class]] ? manifest[@"size"] : nil;
 
-    if (!urlString || ![urlString hasPrefix:@"https://cloudcord.xohus.lol/api/proxy/"] || hash.length != 64 || !size || size.unsignedLongLongValue < 512 || size.unsignedLongLongValue > 8 * 1024 * 1024)
+    if (!urlString || ![urlString hasPrefix:@"https://getcloudcord.com/api/proxy/"] || hash.length != 64 || !size || size.unsignedLongLongValue < 512 || size.unsignedLongLongValue > 8 * 1024 * 1024)
     {
         BunnyLog(@"[Updater] Runtime manifest is missing or invalid; keeping cached runtime");
         return nil;
@@ -686,3 +686,4 @@ static void registerBridgeMethods(void)
         BunnyLog(@"[Bridge] Native bridge initialised");
     }
 }
+
