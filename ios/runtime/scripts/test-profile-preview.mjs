@@ -16,6 +16,15 @@ function extract(start, end) {
 }
 const functions = extract("function cloneObject(", "function decorateProfileResult(")
     + extract("function setOwnValue(", "function monthsAgo(");
+const layoutContext = vm.createContext({ badgeLayoutChoices: [] });
+vm.runInContext(transformSync(extract("function applyBadgeLayout(", "function moveBadge("), { loader: "ts", format: "cjs" }).code, layoutContext);
+layoutContext.fake = [{ id: "fakeprofile-active" }, { id: "fakeprofile-quest" }];
+layoutContext.real = [{ id: "partner" }, { id: "early_supporter" }];
+layoutContext.layout = { hiddenBadgeKeys: ["real:partner", "fake:quest"], badgeOrder: ["real:early_supporter", "fake:active"] };
+assert.equal(vm.runInContext("applyBadgeLayout(fake, real, layout).map(item => item.id).join(',')", layoutContext), "early_supporter,fakeprofile-active");
+layoutContext.fake = [{ id: "cloudcord-shared-active" }, { id: "cloudcord-shared-quest" }];
+assert.equal(vm.runInContext("applyBadgeLayout(fake, real, layout).map(item => item.id).join(',')", layoutContext), "early_supporter,cloudcord-shared-active");
+assert.equal(vm.runInContext("applyBadgeLayout(fake, real, {}).length", layoutContext), 4);
 const preview = { enabled: true, selectedBadges: {}, bio: "", pronouns: "", avatarDecoration: "" };
 const context = vm.createContext({
     preview, userCache: new WeakMap(), profileCache: new WeakMap(), BADGES: [],
@@ -80,3 +89,4 @@ for (const key of ["BUNNY_THEMES", "BUNNY_FONTS"])
 settings.cloudcordHiddenTabs = ["BUNNY_THEMES"];
 assert.equal(sections.CloudCord.find(row => row.key === "BUNNY_THEMES").usePredicate(), false, "explicit hiding still works");
 console.log("preview banner preservation, custom overrides, and theme/font tab visibility passed");
+
