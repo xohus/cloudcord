@@ -6,6 +6,10 @@ permissions:
 on:
   workflow_dispatch:
     inputs:
+      publish_runtime:
+        description: Publish an already tested runtime only; never build an IPA
+        type: boolean
+        default: false
       publish_existing:
         description: Publish the verified 344.1 test artifact without rebuilding
         type: boolean
@@ -36,8 +40,44 @@ on:
       - "ios/scripts/package-cloudcord-ipa.py"
 
 jobs:
+  publish_runtime:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_runtime == true && github.ref == 'refs/heads/xohus/ios-344-loader'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Verify source runtime build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUNTIME_RUN: ${{ inputs.runtime_run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUNTIME_RUN" > "$RUNNER_TEMP/runtime-run.json"
+          node -e 'const fs=require("fs"),r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/runtime-run.json"));if(r.conclusion!=="success"||r.path!==".github/workflows/cloudcord.yml"||r.head_branch!=="xohus/ios-344-loader")throw Error("unverified runtime");fs.appendFileSync(process.env.GITHUB_ENV,"RUNTIME_SHA="+r.head_sha+"\n")'
+      - uses: actions/download-artifact@v4
+        with:
+          name: cloudcord-mobile-shared-runtime
+          run-id: ${{ inputs.runtime_run_id }}
+          github-token: ${{ github.token }}
+          path: runtime-release
+      - name: Publish runtime files only
+        run: |
+          set -euo pipefail
+          for file in cc.js cloudcord.js cloudcord.min.js dist/cc.js dist/cloudcord.js dist/cloudcord.min.js; do
+            test -s "runtime-release/$file"
+            cp "runtime-release/$file" "$file"
+          done
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add cc.js cloudcord.js cloudcord.min.js dist/cc.js dist/cloudcord.js dist/cloudcord.min.js
+          node -e 'const fs=require("fs"),crypto=require("crypto"),cp=require("child_process"),data=cp.execFileSync("git",["show",":dist/cc.js"]);fs.writeFileSync("dist/runtime-manifest.json",JSON.stringify({schema:1,version:process.env.RUNTIME_SHA,url:"https://raw.githubusercontent.com/xohus/cloudcord/main/dist/cc.js",sha256:crypto.createHash("sha256").update(data).digest("hex"),size:data.length})+"\n")'
+          git add dist/runtime-manifest.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix the runtime loading screen [skip ci]'
+          git push origin HEAD:main
   build:
-    if: inputs.publish_existing != true && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
+    if: inputs.publish_runtime != true && inputs.publish_existing != true && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
     # Repackage whenever the verified 344-compatible runtime changes.
     runs-on: macos-15
     steps:
@@ -168,3 +208,4 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           CLOUDCORD_RELEASE_TAG: ${{ inputs.release_tag }}
         run: gh release upload "$CLOUDCORD_RELEASE_TAG" cloudcord0.ipa --repo xohus/cloudcord
+
