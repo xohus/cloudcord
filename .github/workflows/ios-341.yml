@@ -78,6 +78,7 @@ jobs:
           python3 ios/scripts/package-cloudcord-ipa.py \
             --discord-ipa Discord-344.1-base.ipa \
             --discord-version 344.1 \
+            --replace-rain-loader \
             --runtime-deb "$(find ios/native-ios/packages -name '*.deb' -print -quit)" \
             --output cloudcord0.ipa
           unzip -p cloudcord0.ipa Payload/Discord.app/Info.plist | grep -q '<string>344.1</string>'
@@ -119,6 +120,7 @@ jobs:
           path: cloudcord0.ipa
 
       - name: Publish CloudCord iOS 344.1 test download
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: test
