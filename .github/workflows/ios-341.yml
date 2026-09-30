@@ -143,12 +143,7 @@ jobs:
           name: CloudCord-iOS-344.1
           run-id: 36742853816
           github-token: ${{ github.token }}
-      - uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ios-344.1-loader-test-20260930
-          target_commitish: 95bb08696e773b6d8c52d31f713e36a49edc549c
-          name: cloudcord 344.1 loader test
-          body: test build — native build checks passed, device testing still pending. sign and sideload the ipa.
-          prerelease: true
-          make_latest: false
-          files: cloudcord0.ipa
+      - name: Upload the IPA to its existing test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload ios-344.1-loader-test-20260930 cloudcord0.ipa --repo xohus/cloudcord
