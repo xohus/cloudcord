@@ -112,13 +112,28 @@ if (typeof window.__r === "undefined") {
         }
 
         const startDiscord = async () => {
-            await initializeCloudCord();
-            
-            for (const unpatch of unpatches) unpatch();
-            unpatches.length = 0;
-
-            originalRequire(0);
-            resumeDeferred();
+            let startupTimer: ReturnType<typeof setTimeout> | undefined;
+            try {
+                // Optional plugins, storage and module discovery can wait for
+                // Discord itself. Never deadlock module 0 on those promises.
+                await Promise.race([
+                    initializeCloudCord(),
+                    new Promise<void>(resolve => {
+                        startupTimer = setTimeout(() => {
+                            console.log('CloudCord startup still pending; starting Discord');
+                            resolve();
+                        }, 5000);
+                    })
+                ]);
+            } catch (error) {
+                console.log('CloudCord startup failed; starting Discord', error);
+            } finally {
+                if (startupTimer !== undefined) clearTimeout(startupTimer);
+                for (const unpatch of unpatches) unpatch();
+                unpatches.length = 0;
+                try { originalRequire(0); }
+                finally { resumeDeferred(); }
+            }
         };
 
         startDiscord();

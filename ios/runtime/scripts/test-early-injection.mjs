@@ -6,12 +6,12 @@ import { transformSync } from "esbuild";
 const source = fs.readFileSync(new URL("../src/entry.ts", import.meta.url), "utf8");
 const entry = transformSync(source, { loader: "ts", format: "cjs" }).code;
 
-for (const failCore of [false, true]) {
+for (const failCore of [false, true, 'hang']) {
     const events = [];
     const context = vm.createContext({
         __CLOUDCORD_BRIDGELESS__: true,
         __CLOUDCORD_EARLY_INJECTION__: true,
-        setTimeout, clearTimeout,
+        setTimeout: (callback, delay) => setTimeout(callback, delay === 5000 ? 20 : delay), clearTimeout,
         console: { log() {} },
         alert: () => events.push("reported-error"),
         require(name) {
@@ -27,6 +27,7 @@ for (const failCore of [false, true]) {
             } };
             if (name === "@lib/api/native/modules") return { ClientInfoManager: { getConstants: () => ({ Build: "344.1" }) } };
             if (name === ".") return { async default() {
+                if (failCore === 'hang') await new Promise(() => {});
                 await new Promise(resolve => setTimeout(resolve, 10));
                 if (failCore) throw new Error("test core failure");
                 events.push("cloudcord");
@@ -49,7 +50,7 @@ for (const failCore of [false, true]) {
     `, context);
     await new Promise(resolve => setTimeout(resolve, 30));
     assert.equal(vm.runInContext("modules === registry", context), true, "Discord keeps its Metro Map");
-    assert.deepEqual(events, failCore
+    assert.deepEqual(events, failCore === 'hang' ? ["cache", "discord", "app"] : failCore
         ? ["cache", "reported-error", "discord", "app"]
         : ["cache", "cloudcord", "discord", "app"]);
 }
