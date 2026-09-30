@@ -1628,12 +1628,13 @@ jobs:
                   try {
                       await awaitStorage(settings);
                       bindSavedPreview();
-                      await pullRealCordConfiguration();
+                      void pullRealCordConfiguration().catch(() => {});
                       if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName === "RealCord" && !realCordSyncTimer) {
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
-                      await pullOwnSharedProfile();
+                      // Never wait for the network before starting Discord.
+                      void pullOwnSharedProfile().catch(() => {});
                       if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => {
                           void pullOwnSharedProfile();
                           refreshSharedProfiles();
