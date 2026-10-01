@@ -1,0 +1,7 @@
+{
+  "name": "cloudcord-badge-bot",
+  "private": true,
+  "type": "module",
+  "scripts": { "start": "node index.mjs" },
+  "dependencies": { "discord.js": "^14.22.1" }
+}
