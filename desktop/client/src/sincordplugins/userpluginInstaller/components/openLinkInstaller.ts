@@ -1,9 +1,7 @@
-import { closeAllModals } from "@webpack/common";
 import { Native } from "..";
 import { CLONE_LINK_REGEX } from "../misc/constants";
 
 export function openLinkInstaller() {
-    closeAllModals();
     const existing = document.getElementById("cloudcord-link-installer") as HTMLDialogElement | null;
     if (existing) { existing.querySelector<HTMLInputElement>("input")?.focus(); return; }
     // Native top-layer dialog and input: no Discord Modal/TextInput lookup or
