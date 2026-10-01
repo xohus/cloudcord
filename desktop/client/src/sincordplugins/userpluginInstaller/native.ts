@@ -11,6 +11,8 @@ import { existsSync, readdirSync, readFileSync } from "fs";
 import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
 import { createHash } from "crypto";
 import { join } from "path";
+import { copyFile as copyArchiveFile } from "original-fs";
+import { promisify } from "util";
 import yaml from "yaml-js";
 
 // @ts-ignore fuck off
@@ -27,6 +29,8 @@ const CLONE_LINK_REGEX = /https:\/\/(?:((?:git(?:hub|lab)\.com|git\.(?:[a-zA-Z0-
 const customBuildRoot = join(app.getPath("userData"), "..", "CloudCord", "custom-build");
 const customClientRoot = join(customBuildRoot, "desktop", "client");
 const userPluginsRoot = join(customClientRoot, "src", "userplugins");
+// Electron's patched fs treats ASARs as directories. Copy the physical archive.
+const copyArchive = promisify(copyArchiveFile);
 
 function run(command: string, args: string[], cwd: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -224,13 +228,12 @@ async function build(): Promise<any> {
         throw new Error("Custom ASAR replacement is only available from an installed CloudCord archive");
     }
 
-    const fs = await import("fs/promises");
     const backupAsar = `${__dirname}.userplugins-backup`;
-    await fs.copyFile(__dirname, backupAsar);
+    await copyArchive(__dirname, backupAsar);
     try {
-        await fs.copyFile(outputAsar, __dirname);
+        await copyArchive(outputAsar, __dirname);
     } catch (error) {
-        await fs.copyFile(backupAsar, __dirname);
+        await copyArchive(backupAsar, __dirname);
         throw error;
     }
     return "Success";
