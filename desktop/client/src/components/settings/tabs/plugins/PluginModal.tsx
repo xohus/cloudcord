@@ -35,7 +35,8 @@ import { classes, isObjectEmpty } from "@utils/misc";
 import { OptionType, Plugin, PluginTag } from "@utils/types";
 import { RenderModalProps, User } from "@vencord/discord-types";
 import { findComponentByCodeLazy, findCssClassesLazy } from "@webpack";
-import { Clickable, FluxDispatcher, Modal, openModal, React, Text, Toasts, Tooltip, useEffect, useMemo, UserStore, UserSummaryItem, UserUtils, useState } from "@webpack/common";
+import { Clickable, FluxDispatcher, openModal, React, Text, Toasts, Tooltip, useEffect, useMemo, UserStore, UserSummaryItem, UserUtils, useState } from "@webpack/common";
+import { SettingsModal } from "../../SettingsModal";
 import { Constructor } from "type-fest";
 
 import { PluginMeta } from "~plugins";
@@ -173,10 +174,10 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
     }
 
     const pluginMeta = PluginMeta[plugin.name];
-    const isSincordPlugin = pluginMeta.folderName.startsWith("src/sincordplugins/") ?? false;
+    const isSincordPlugin = pluginMeta?.folderName?.startsWith("src/sincordplugins/") ?? false;
 
     return (
-        <Modal
+        <SettingsModal
             transitionState={transitionState}
             onClose={onClose}
             size="lg"
@@ -271,7 +272,7 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
                     </Flex>
                 </Flex>
             </div>
-        </Modal >
+        </SettingsModal >
     );
 }
 

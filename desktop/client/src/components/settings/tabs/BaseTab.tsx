@@ -19,7 +19,8 @@
 import ErrorBoundary from "@components/ErrorBoundary";
 import { handleComponentFailed } from "@components/handleComponentFailed";
 import { onlyOnce } from "@utils/onlyOnce";
-import { Modal,openModal } from "@webpack/common";
+import { openModal } from "@webpack/common";
+import { SettingsModal } from "../SettingsModal";
 import type { ComponentType, PropsWithChildren } from "react";
 
 export function SettingsTab({ children }: PropsWithChildren) {
@@ -45,13 +46,13 @@ export function openSettingsTabModal(Tab: ComponentType<any>) {
 
     try {
         openModal(props => (
-            <Modal
+            <SettingsModal
                 {...props}
                 size="lg"
                 title={Tab.displayName?.replace("SettingsTab", "") || "Settings"}
             >
                 <Tab />
-            </Modal>
+            </SettingsModal>
         ));
     } catch {
         handleSettingsTabError();
