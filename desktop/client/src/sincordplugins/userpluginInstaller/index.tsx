@@ -9,7 +9,6 @@ import "./misc/style.css";
 import { showNotification } from "@api/Notifications";
 import { definePluginSettings } from "@api/Settings";
 import { Button } from "@components/Button";
-import { openSettingsTabModal } from "@components/settings";
 import { Notice } from "@components/Notice";
 import plSettings from "@plugins/_core/settings";
 import { Devs } from "@utils/constants";
@@ -20,6 +19,7 @@ import { Alerts } from "@webpack/common";
 
 import SettingsTab from "./components/SettingsTab";
 import UserpluginInstallButton from "./components/UserpluginInstallButton";
+import { openLinkInstaller } from "./components/openLinkInstaller";
 import { VariableWithCallbacks } from "./VariableWithCallbacks";
 
 // @ts-ignore
@@ -87,7 +87,7 @@ export default definePlugin({
     },
     toolboxActions: {
         "Add Plugin from Link"() {
-            openSettingsTabModal(SettingsTab);
+            openLinkInstaller();
         }
     },
     async start() {

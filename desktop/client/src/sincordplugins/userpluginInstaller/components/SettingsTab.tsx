@@ -9,7 +9,6 @@ import { useSettings } from "@api/Settings";
 import { BaseText } from "@components/BaseText";
 import { Button } from "@components/Button";
 import { Card } from "@components/Card";
-import { CheckedTextInput } from "@components/CheckedTextInput";
 import { HeadingTertiary } from "@components/Heading";
 import { DeleteIcon } from "@components/Icons";
 import { Paragraph } from "@components/Paragraph";
@@ -119,34 +118,14 @@ function UserPluginsTab() {
                     code from people you trust.
                 </Paragraph>
                 <div className={cl("install-field")}>
-                    <CheckedTextInput
-                        onChange={t => setUrl(t)}
-                        validate={t => {
-                            try {
-                                const web = new URL(t);
-                                if (!t.match(CLONE_LINK_REGEX) && web.protocol === "https:" && !web.username && !web.password && !web.search && !web.hash) { setValid(true); return true; }
-                            } catch {}
-                            const match = t.match(CLONE_LINK_REGEX);
-                            if (match) {
-                                const idpl = match.includes("plugins.nin0.dev")
-                                    ? 1
-                                    : 0;
-                                const installed = plugins
-                                    .map(p => p.directory)
-                                    .includes(match[[3, 6][idpl]]);
-                                if (installed) {
-                                    setValid(false);
-                                    return "Plugin already installed, update below";
-                                }
-                                setValid(true);
-                                return true;
-                            } else {
-                                setValid(false);
-                                return "Invalid URL, read the notice above";
-                            }
-                        }}
-                        initialValue={url}
-                    />
+                    <input type="text" aria-label="plugin link" autoComplete="off" spellCheck={false} value={url}
+                        style={{ width: "100%", boxSizing: "border-box", padding: 12, color: "var(--text-normal, white)", background: "var(--background-base-low, #202024)", border: "1px solid #666", borderRadius: 8, pointerEvents: "auto", userSelect: "text" }}
+                        onChange={event => {
+                            const text = event.currentTarget.value;
+                            setUrl(text);
+                            try { const parsed = new URL(text); setValid(parsed.protocol === "https:" && !parsed.username && !parsed.password && !parsed.search && !parsed.hash); }
+                            catch { setValid(false); }
+                        }} />
                 </div>
                 <div className={cl("button-container")}>
                     <Button
