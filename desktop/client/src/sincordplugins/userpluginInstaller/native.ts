@@ -8,7 +8,8 @@ import { NativeSettings } from "@main/settings";
 import { exec, spawn } from "child_process";
 import { app, BrowserWindow, dialog, shell, WebContentsView } from "electron";
 import { existsSync, readdirSync, readFileSync } from "fs";
-import { mkdir, readdir, readFile, rm } from "fs/promises";
+import { mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
+import { createHash } from "crypto";
 import { join } from "path";
 import yaml from "yaml-js";
 
@@ -49,6 +50,35 @@ async function ensureCustomBuildCheckout() {
 
 export async function ensurePluginsDirectory(_: any) {
     await ensureCustomBuildCheckout();
+}
+
+export async function initOfficialPluginInstall(_: any, link: string): Promise<string> {
+    const base = new URL(link);
+    if (base.protocol !== "https:" || base.username || base.password || base.search || base.hash) throw new Error("use an https plugin folder link");
+    if (!base.pathname.endsWith("/")) base.pathname += "/";
+    const response = await fetch(new URL("manifest.json", base), { redirect: "error", signal: AbortSignal.timeout(10000) });
+    if (!response.ok) throw new Error("couldnt load the plugin");
+    const manifest = await response.json();
+    if (typeof manifest.name !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{0,79}$/.test(manifest.name) || !/^[a-f0-9]{64}$/.test(manifest.sha256)) throw new Error("invalid plugin manifest");
+    const confirm = await dialog.showMessageBox({ type: "warning", title: "add this plugin?", message: `install ${manifest.name}`, detail: `source: ${base.href}\nthis downloads and runs plugin code and rebuilds cloudcord. a matching hash does not prove it is safe. only install from developers you trust.`, buttons: ["cancel", "install"], defaultId: 0, cancelId: 0 });
+    if (confirm.response !== 1) throw new Error("silentStop");
+    const sourceResponse = await fetch(new URL("index.ts", base), { redirect: "error", signal: AbortSignal.timeout(10000) });
+    if (!sourceResponse.ok) throw new Error("couldnt download the plugin");
+    const chunks: Uint8Array[] = []; let size = 0;
+    for await (const chunk of sourceResponse.body!) {
+        size += chunk.length;
+        if (size > 65536) throw new Error("plugin download too large");
+        chunks.push(chunk);
+    }
+    const source = Buffer.concat(chunks);
+    if (createHash("sha256").update(source).digest("hex") !== manifest.sha256) throw new Error("plugin download didnt match its manifest");
+    await ensureCustomBuildCheckout();
+    const bundled = join(customClientRoot, "src", "plugins", "cloudCordPopupBlocker", "index.ts");
+    const target = manifest.name === "CloudCordPopupBlocker" && existsSync(bundled) ? bundled : join(userPluginsRoot, manifest.name, "index.ts");
+    await mkdir(join(target, ".."), { recursive: true });
+    await writeFile(target, source);
+    await build();
+    return JSON.stringify({ name: manifest.name, native: false });
 }
 
 export async function rmPlugin(_, name: string): Promise<string> {

@@ -114,14 +114,18 @@ function UserPluginsTab() {
                     Install Plugin
                 </HeadingTertiary>
                 <Paragraph className={cl("install-desc")}>
-                    You can install a plugin from GitHub, GitLab, Codeberg,
-                    git.nin0.dev, or plugins.nin0.dev by pasting its clone URL
-                    here.
+                    paste a git repo link or an https plugin folder link.
+                    web plugins need a manifest.json and index.ts. only install
+                    code from people you trust.
                 </Paragraph>
                 <div className={cl("install-field")}>
                     <CheckedTextInput
                         onChange={t => setUrl(t)}
                         validate={t => {
+                            try {
+                                const web = new URL(t);
+                                if (!t.match(CLONE_LINK_REGEX) && web.protocol === "https:" && !web.username && !web.password && !web.search && !web.hash) { setValid(true); return true; }
+                            } catch {}
                             const match = t.match(CLONE_LINK_REGEX);
                             if (match) {
                                 const idpl = match.includes("plugins.nin0.dev")
@@ -149,6 +153,15 @@ function UserPluginsTab() {
                         disabled={!valid}
                         className={cl("install-button")}
                         onClick={async () => {
+                            if (!url.match(CLONE_LINK_REGEX)) {
+                                try {
+                                    const { name, native } = JSON.parse(await Native.initOfficialPluginInstall(url));
+                                    showInstallFinishedAlert(name, native);
+                                } catch (e: any) {
+                                    if (!String(e).includes("silentStop")) Alerts.show({ title: "couldnt install it", body: String(e) });
+                                }
+                                return;
+                            }
                             const gitLink = url.match(CLONE_LINK_REGEX)!;
                             const idpl = gitLink.includes("plugins.nin0.dev")
                                 ? 1
