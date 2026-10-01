@@ -27,9 +27,9 @@ export function SettingsModal({ title, subtitle, children, onClose }: SettingsMo
         else if (event.shiftKey && (document.activeElement === first || document.activeElement === root.current)) { event.preventDefault(); last?.focus(); }
         else if (!event.shiftKey && (document.activeElement === last || document.activeElement === root.current)) { event.preventDefault(); first.focus(); }
     }
-    return <div style={{ position: "fixed", inset: 0, zIndex: 10000, background: "rgba(0,0,0,.65)", display: "grid", placeItems: "center", padding: 16 }}>
+    return <div style={{ position: "fixed", inset: 0, zIndex: 10000, pointerEvents: "auto", background: "rgba(0,0,0,.65)", display: "grid", placeItems: "center", padding: 16 }}>
         <div ref={root} role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : "cloudcord settings"} tabIndex={-1} onKeyDown={onKeyDown}
-            style={{ width: "min(960px, 94vw)", maxHeight: "85vh", overflowY: "auto", borderRadius: 16, padding: 24, background: "var(--background-base-low, #202024)", color: "var(--text-normal, #f2f3f5)", boxShadow: "0 20px 70px rgba(0,0,0,.5)" }}>
+            style={{ pointerEvents: "auto", userSelect: "text", width: "min(960px, 94vw)", maxHeight: "85vh", overflowY: "auto", borderRadius: 16, padding: 24, background: "var(--background-base-low, #202024)", color: "var(--text-normal, #f2f3f5)", boxShadow: "0 20px 70px rgba(0,0,0,.5)" }}>
             <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 16 }}>
                 <div style={{ fontSize: 20, fontWeight: 600 }}>{title}</div>
                 <button type="button" aria-label="Close" onClick={onClose} style={{ border: 0, borderRadius: 8, padding: "8px 12px", cursor: "pointer", background: "var(--background-modifier-accent, #35353c)", color: "inherit" }}>close</button>
