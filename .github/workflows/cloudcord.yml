@@ -1,4 +1,4 @@
-name: Build CloudCord Runtime
+name: Build CloudCord Runtime (source)
 
 "on":
   workflow_dispatch:
@@ -78,6 +78,9 @@ jobs:
           cp "../ios/runtime/src/core/ui/settings/pages/Plugins/models/index.ts" "src/core/ui/settings/pages/Plugins/models/index.ts"
           cp "../ios/runtime/src/core/ui/settings/pages/Plugins/models/vendetta.ts" "src/core/ui/settings/pages/Plugins/models/vendetta.ts"
           cp "../ios/runtime/src/core/ui/settings/pages/Themes/ThemeCard.tsx" "src/core/ui/settings/pages/Themes/ThemeCard.tsx"
+          cp "../ios/runtime/src/core/ui/settings/pages/Themes/index.tsx" "src/core/ui/settings/pages/Themes/index.tsx"
+          cp "../ios/runtime/src/core/ui/settings/pages/Fonts/index.tsx" "src/core/ui/settings/pages/Fonts/index.tsx"
+          cp "../ios/runtime/src/core/ui/settings/pages/Fonts/FontCard.tsx" "src/core/ui/settings/pages/Fonts/FontCard.tsx"
           cp "../ios/runtime/src/core/ui/settings/index.ts" "src/core/ui/settings/index.ts"
           cp "../ios/runtime/src/core/vendetta/plugins.ts" "src/core/vendetta/plugins.ts"
           cp "../ios/runtime/src/lib/api/settings.ts" "src/lib/api/settings.ts"
@@ -88,6 +91,7 @@ jobs:
           cp "../ios/runtime/src/lib/ui/settings/patches/tabs.tsx" "src/lib/ui/settings/patches/tabs.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/panel.tsx" "src/lib/ui/settings/patches/panel.tsx"
           cp "../ios/runtime/src/lib/api/native/loader.ts" "src/lib/api/native/loader.ts"
+          cp "../ios/runtime/src/lib/api/native/modules/index.ts" "src/lib/api/native/modules/index.ts"
           # Discord 344 safety lives in the runtime entry and Metro internals.
           # Always overlay these files onto the clean Kettu checkout; otherwise
           # the build silently ships Kettu's legacy force-loading behavior.
@@ -318,6 +322,8 @@ jobs:
               signupDate: string;
               oldName: string;
               replaceBadges: boolean;
+              hiddenBadgeKeys: string[];
+              badgeOrder: string[];
               selectedBadges: Record<string, boolean>;
               syncRevision: number;
           };
@@ -369,11 +375,6 @@ jobs:
           // important because the premium module is split-loaded on mobile.
           const openGiftingBadgeInfoActionSheet = findByNameLazy("openGiftingBadgeInfoActionSheet", false) as any;
           const LinearGradient = (findByProps("LinearGradient") as any)?.LinearGradient as any;
-          const overriddenKeys = new Set([
-              "username", "globalName", "displayName", "publicFlags", "flags", "badges", "profileBadges",
-              "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "getPreviewBanner", "hasFlag",
-              "premiumType", "premiumSince", "premiumGuildSince", "avatarDecorationData", "primaryColor", "accentColor", "themeColors", "bio", "pronouns", "createdAt", "joinedAt", "memberSince", "user", "userProfile", "guildMemberProfile", "displayProfile", "profile"
-          ]);
 
           const NITRO_DURATIONS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
           const BOOST_DURATIONS = [0, 1, 2, 3, 6, 9, 12, 15, 18, 24];
@@ -447,6 +448,8 @@ jobs:
               signupDate: "",
               oldName: "",
               replaceBadges: false,
+              hiddenBadgeKeys: [],
+              badgeOrder: [],
               selectedBadges: {},
               syncRevision: 0
           });
@@ -642,6 +645,8 @@ jobs:
                   joinedSince: preview.signupDate || null,
                   oldName: preview.oldName,
                   badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && preview.selectedBadges?.[id] ? flags | flag : flags, 0),
+                  hiddenBadgeKeys: preview.hiddenBadgeKeys || [],
+                  badgeOrder: preview.badgeOrder || [],
                   customBadgeIds: [
                       ...BADGES.filter(([id, , , , customId]) => customId && preview.selectedBadges?.[id]).map(([, , , , customId]) => customId as string),
                       ...(preview.replaceBadges ? [REPLACE_BADGES_SYNC_ID] : [])
@@ -756,6 +761,8 @@ jobs:
                       signupDate: String(data.signupDate || data.joinedSince || ""),
                       oldName: String(data.oldName || ""),
                       replaceBadges: remoteReplaceBadges(data),
+                      hiddenBadgeKeys: Array.isArray(data.hiddenBadgeKeys) ? data.hiddenBadgeKeys.filter((key: any) => typeof key === "string").slice(0, 100) : [],
+                      badgeOrder: Array.isArray(data.badgeOrder) ? data.badgeOrder.filter((key: any) => typeof key === "string").slice(0, 100) : [],
                       selectedBadges,
                       syncRevision: Number(data.syncRevision || 0)
                   } satisfies PreviewSettings;
@@ -1108,9 +1115,11 @@ jobs:
               try {
                   cloned = Object.create(Object.getPrototypeOf(original));
                   for (const key of Reflect.ownKeys(original)) {
-                      if (overriddenKeys.has(String(key))) continue;
                       const descriptor = Object.getOwnPropertyDescriptor(original, key);
-                      if (descriptor) Object.defineProperty(cloned, key, descriptor);
+                      // Preserve real media, premium eligibility, getters and
+                      // nested profile data unless an explicit override is set.
+                      // Make only the clone's descriptors replaceable.
+                      if (descriptor) Object.defineProperty(cloned, key, { ...descriptor, configurable: true });
                   }
               } catch {
                   try { cloned = { ...original }; }
@@ -1216,6 +1225,32 @@ jobs:
               }
           }
 
+          let badgeLayoutChoices: { key: string; label: string }[] = [];
+
+          function applyBadgeLayout(fake: any[], real: any[], layout: any, capture = false) {
+              const entries = [
+                  ...fake.map(badge => ({ badge, key: `fake:${String(badge?.id || "").replace(/^(fakeprofile-|cloudcord-shared-)/, "")}` })),
+                  ...real.map(badge => ({ badge, key: `real:${String(badge?.id || "")}` }))
+              ];
+              const order = Array.isArray(layout?.badgeOrder) ? layout.badgeOrder : [];
+              entries.sort((a, b) => {
+                  const ai = order.indexOf(a.key), bi = order.indexOf(b.key);
+                  return (ai < 0 ? order.length : ai) - (bi < 0 ? order.length : bi);
+              });
+              if (capture) badgeLayoutChoices = entries.map(({ key, badge }) => ({ key, label: String(badge?.description || badge?.label || key) }));
+              const hidden = new Set(Array.isArray(layout?.hiddenBadgeKeys) ? layout.hiddenBadgeKeys : []);
+              return entries.filter(entry => !hidden.has(entry.key)).map(entry => entry.badge);
+          }
+
+          function moveBadge(key: string, direction: number, save: (key: keyof PreviewSettings, value: any, refresh?: boolean) => void) {
+              const order = badgeLayoutChoices.map(item => item.key);
+              const index = order.indexOf(key), target = index + direction;
+              if (index < 0 || target < 0 || target >= order.length) return;
+              [order[index], order[target]] = [order[target], order[index]];
+              [badgeLayoutChoices[index], badgeLayoutChoices[target]] = [badgeLayoutChoices[target], badgeLayoutChoices[index]];
+              save("badgeOrder", order, true);
+          }
+
           function connectBadgeRenderer() {
               try {
                   after("default", useBadgesModule as any, ([user], result) => {
@@ -1246,7 +1281,7 @@ jobs:
                               const badgeId = String(item?.id || "");
                               return !badgeId.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeId === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
                           });
-                          return [...ordered, ...existing];
+                          return applyBadgeLayout(ordered, existing, data);
                       }
 
                       const staffBadge = cloudCordStaffBadge(id);
@@ -1284,7 +1319,7 @@ jobs:
                           const label = badgeId === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description;
                           addRenderedBadge(ordered, id, label, icon);
                       }
-                      return [...ordered, ...existing];
+                      return applyBadgeLayout(ordered, existing, preview, true);
                   });
                   diagnostics.patches += 1;
               } catch (error: any) {
@@ -1593,12 +1628,13 @@ jobs:
                   try {
                       await awaitStorage(settings);
                       bindSavedPreview();
-                      await pullRealCordConfiguration();
+                      void pullRealCordConfiguration().catch(() => {});
                       if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName === "RealCord" && !realCordSyncTimer) {
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
-                      await pullOwnSharedProfile();
+                      // Never wait for the network before starting Discord.
+                      void pullOwnSharedProfile().catch(() => {});
                       if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => {
                           void pullOwnSharedProfile();
                           refreshSharedProfiles();
@@ -2106,6 +2142,20 @@ jobs:
                                           onPress={() => update("selectedBadges", { ...preview.selectedBadges, [id]: !preview.selectedBadges?.[id] }, true)}
                                       />
                                   ))}
+                                  <Text variant="text-sm/bold" color="text-normal">hide and move badges</Text>
+                                  <Text variant="text-xs/medium" color="text-muted">open your profile once to load your badges. keep replace real badges off to keep selected real badges. this layout is shared with updated cloudcord clients, not normal discord users.</Text>
+                                  {badgeLayoutChoices.map(({ key, label }, index) => (
+                                      <View key={key} style={{ gap: 6 }}>
+                                          <ToggleRow label={label} subLabel={key.startsWith("real:") ? "real badge · visible" : "added badge · visible"}
+                                              value={!(preview.hiddenBadgeKeys || []).includes(key)}
+                                              onPress={() => update("hiddenBadgeKeys", (preview.hiddenBadgeKeys || []).includes(key) ? (preview.hiddenBadgeKeys || []).filter(item => item !== key) : [...(preview.hiddenBadgeKeys || []), key], true)} />
+                                          <View style={{ flexDirection: "row", gap: 16 }}>
+                                              <Pressable accessibilityLabel={`move ${label} up`} disabled={index === 0} onPress={() => moveBadge(key, -1, update)}><Text color="text-normal">↑ move up</Text></Pressable>
+                                              <Pressable accessibilityLabel={`move ${label} down`} disabled={index === badgeLayoutChoices.length - 1} onPress={() => moveBadge(key, 1, update)}><Text color="text-normal">↓ move down</Text></Pressable>
+                                          </View>
+                                      </View>
+                                  ))}
+                                  <Pressable onPress={() => { update("hiddenBadgeKeys", [], true); update("badgeOrder", [], true); }}><Text color="text-normal">reset badge layout</Text></Pressable>
                                   {preview.selectedBadges?.oldname ? <View style={{ gap: 8, marginTop: 4 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Previous username displayed in tooltip</Text>
                                       <TextInput defaultValue={preview.oldName} placeholder="OldUser#0000" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("oldName", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
@@ -2702,6 +2752,10 @@ jobs:
         run: |
           set -e
           cd _cloudcord_source
+          cp ../ios/runtime/scripts/test-early-injection.mjs scripts/test-early-injection.mjs
+          node scripts/test-early-injection.mjs
+          cp ../ios/runtime/scripts/test-profile-preview.mjs scripts/test-profile-preview.mjs
+          CLOUDCORD_REPO_ROOT="$GITHUB_WORKSPACE" node scripts/test-profile-preview.mjs
           set +e
           build_output=$(bun run build -- --build-minify 2>&1)
           build_status=$?
@@ -2741,6 +2795,7 @@ jobs:
             grep -q "$fallback" ../dist/cc.js
           done
       - name: Publish runtime to main
+        if: github.ref == 'refs/heads/main'
         run: |
           set -e
           git config user.name "github-actions[bot]"
@@ -2781,3 +2836,4 @@ jobs:
             dist/cloudcord.js
             dist/cloudcord.min.js
             dist/runtime-manifest.json
+

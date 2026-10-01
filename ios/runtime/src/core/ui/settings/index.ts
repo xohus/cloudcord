@@ -2,7 +2,6 @@ import PupuIcon from "@assets/icons/cloudcord.png";
 import { Strings } from "@core/i18n";
 import { useProxy } from "@core/vendetta/storage";
 import { findAssetId } from "@lib/api/assets";
-import { isFontSupported, isThemeSupported } from "@lib/api/native/loader";
 import { settings } from "@lib/api/settings";
 import { registerSection } from "@ui/settings";
 import type { RowConfig } from "@ui/settings";
@@ -76,15 +75,13 @@ export default function initSettings() {
                 key: "BUNNY_THEMES",
                 title: () => Strings.THEMES,
                 icon: safeAsset("PaintPaletteIcon", "ThemeIcon"),
-                render: () => import("@core/ui/settings/pages/Themes"),
-                usePredicate: () => isThemeSupported()
+                render: () => import("@core/ui/settings/pages/Themes")
             },
             {
                 key: "BUNNY_FONTS",
                 title: () => Strings.FONTS,
                 icon: safeAsset("LettersIcon", "TextIcon"),
-                render: () => import("@core/ui/settings/pages/Fonts"),
-                usePredicate: () => isFontSupported()
+                render: () => import("@core/ui/settings/pages/Fonts")
             },
             {
                 key: "BUNNY_DEVELOPER",

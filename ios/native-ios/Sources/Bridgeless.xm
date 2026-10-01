@@ -21,6 +21,11 @@ extern "C" void MSHookMessageEx(Class, SEL, IMP, IMP *);
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime;
 @end
 
+@interface BridgeRegistry : NSObject
++ (instancetype)shared;
+- (NSDictionary *)dispatchPayload:(NSDictionary *)payload;
+@end
+
 namespace {
 
 class CloudCordNSDataBuffer final : public jsi::Buffer
@@ -40,6 +45,28 @@ private:
 static std::atomic<jsi::Runtime *> cloudCordInjectedRuntime{nullptr};
 static std::atomic_bool cloudCordRCTInstanceHooksInstalled{false};
 static __weak id cloudCordLastRuntimeInstance = nil;
+
+static void installCloudCordNativeBridge(jsi::Runtime &runtime)
+{
+    auto call = jsi::Function::createFromHostFunction(runtime,
+        jsi::PropNameID::forUtf8(runtime, "__CLOUDCORD_NATIVE_CALL__"), 1,
+        [](jsi::Runtime &rt, const jsi::Value &, const jsi::Value *args, size_t count) -> jsi::Value {
+            if (count != 1 || !args[0].isString())
+                throw jsi::JSError(rt, "CloudCord native call expects a JSON payload");
+            std::string json = args[0].asString(rt).utf8(rt);
+            NSData *data = [NSData dataWithBytes:json.data() length:json.size()];
+            id payload = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+            if (![payload isKindOfClass:NSDictionary.class])
+                throw jsi::JSError(rt, "Invalid CloudCord native payload");
+            NSDictionary *result = [[BridgeRegistry shared] dispatchPayload:payload]
+                ?: @{@"error": @"Unsupported CloudCord native payload"};
+            NSData *encoded = [NSJSONSerialization dataWithJSONObject:result options:0 error:nil];
+            if (!encoded) throw jsi::JSError(rt, "Invalid CloudCord native result");
+            return jsi::String::createFromUtf8(rt,
+                std::string(static_cast<const char *>(encoded.bytes), encoded.length));
+        });
+    runtime.global().setProperty(runtime, "__CLOUDCORD_NATIVE_CALL__", std::move(call));
+}
 
 static BOOL evaluateCloudCordData(NSData *data, const char *tag, jsi::Runtime &runtime)
 {
@@ -89,9 +116,9 @@ static BOOL discordRuntimeIsReady(jsi::Runtime &runtime)
          "if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire;"
          "const map=globalThis.modules??globalThis.__c?.();"
          "if(!globalThis.modules&&map)globalThis.modules=map;"
-         "if(!map||typeof map.values!=='function')return false;"
+         "if(!map)return false;"
          "let rn=false,react=false;"
-         "for(const m of map.values()){"
+         "for(const m of(typeof map.values==='function'?map.values():Object.values(map))){"
            "const e=m?.publicModule?.exports??m?.exports??m;"
            "for(const value of[e,e?.default,e?.default?.default]){"
              "if(!value)continue;"
@@ -120,7 +147,7 @@ static void injectCloudCordModulesPatch(jsi::Runtime &runtime)
         evaluateCloudCordData(modulesPatch, "cloudcord:modules", runtime);
 }
 
-static void injectCloudCordRuntime(jsi::Runtime &runtime)
+static void injectCloudCordRuntime(jsi::Runtime &runtime, bool early = false)
 {
     jsi::Runtime *expected = nullptr;
     jsi::Runtime *current = &runtime;
@@ -129,16 +156,30 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
         if (expected == current) return;
         cloudCordInjectedRuntime.store(current);
     }
-    NSData *marker = [@"globalThis.__CLOUDCORD_BRIDGELESS__=true;"
+    NSString *architecture = early
+        ? @"globalThis.__CLOUDCORD_BRIDGELESS__=true;globalThis.__CLOUDCORD_EARLY_INJECTION__=true;"
+        : @"globalThis.__CLOUDCORD_BRIDGELESS__=true;"
                        "if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire;"
                        "(()=>{const m=globalThis.modules??globalThis.__c?.();"
                        "if(!m)return;"
                        "globalThis.modules=m;"
                        "globalThis.__CLOUDCORD_MODULE_VIEW__=typeof m.entries==='function'?Object.fromEntries(m.entries()):m;"
-                       "})()" dataUsingEncoding:NSUTF8StringEncoding];
+                       "})()";
+    NSData *marker = [architecture dataUsingEncoding:NSUTF8StringEncoding];
     if (!evaluateCloudCordData(marker, "cloudcord:architecture", runtime))
     {
         cloudCordInjectedRuntime.store(nullptr);
+        return;
+    }
+    // The legacy bridge path is skipped on 344; initialize the loader identity
+    // here before runtime modules snapshot __PYON_LOADER__ at import time.
+    installCloudCordNativeBridge(runtime);
+    NSData *bootstrap = cloudCordResource(@"payload-base");
+    if (!bootstrap.length ||
+        !evaluateCloudCordData(bootstrap, "cloudcord:loader-bootstrap", runtime))
+    {
+        cloudCordInjectedRuntime.store(nullptr);
+        NSLog(@"[CloudCord] Loader bootstrap missing or invalid; skipping runtime");
         return;
     }
     NSData *runtimeBundle = cloudCordResource(@"runtime");
@@ -229,9 +270,12 @@ static void installRCTInstanceHooks(NSUInteger attempt)
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime
 {
     NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized");
-    injectCloudCordModulesPatch(runtime);
     %orig;
-    scheduleCloudCordRuntime(instance, 0);
+    // Inject on the same runtime-creation boundary used by RainTweak, before
+    // Metro's entry module runs. The bundled entry owns the startup handoff.
+    injectCloudCordRuntime(runtime, true);
+    if (cloudCordInjectedRuntime.load() != &runtime)
+        scheduleCloudCordRuntime(instance, 0);
 }
 
 %end

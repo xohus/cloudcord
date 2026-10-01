@@ -1,0 +1,19 @@
+name: test ios loader packaging
+on:
+  pull_request:
+    paths:
+      - 'ios/scripts/**'
+      - 'ios/native-ios/Sources/Bridgeless.xm'
+      - '.github/workflows/ios-loader-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  packaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python ios/scripts/test-package-cloudcord-ipa.py

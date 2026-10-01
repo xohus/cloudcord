@@ -11,12 +11,18 @@ async function initializeCloudCord() {
         // starts. On Discord 344+ this bundle is attached after startup;
         // replacing these globals then corrupts active account/navigation
         // stores and can leave the client on an infinite loading screen.
-        if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+        if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__ || (globalThis as any).__CLOUDCORD_EARLY_INJECTION__) {
             Object.freeze = Object.seal = Object;
         }
 
+        // Early injection captures Metro before module 0. Keep an object view
+        // for CloudCord's finders without replacing Discord's own registry.
+        if (window.modules instanceof Map) {
+            (globalThis as any).__CLOUDCORD_MODULE_VIEW__ = Object.fromEntries(window.modules);
+        }
+
         await require("@metro/internals/caches").initMetroCache();
-        require(".").default();
+        await require(".").default();
     } catch (e) {
         const { ClientInfoManager } = require("@lib/api/native/modules");
         const stack = e instanceof Error ? e.stack : undefined;
@@ -106,13 +112,28 @@ if (typeof window.__r === "undefined") {
         }
 
         const startDiscord = async () => {
-            await initializeCloudCord();
-            
-            for (const unpatch of unpatches) unpatch();
-            unpatches.length = 0;
-
-            originalRequire(0);
-            resumeDeferred();
+            let startupTimer: ReturnType<typeof setTimeout> | undefined;
+            try {
+                // Optional plugins, storage and module discovery can wait for
+                // Discord itself. Never deadlock module 0 on those promises.
+                await Promise.race([
+                    initializeCloudCord(),
+                    new Promise<void>(resolve => {
+                        startupTimer = setTimeout(() => {
+                            console.log('CloudCord startup still pending; starting Discord');
+                            resolve();
+                        }, 5000);
+                    })
+                ]);
+            } catch (error) {
+                console.log('CloudCord startup failed; starting Discord', error);
+            } finally {
+                if (startupTimer !== undefined) clearTimeout(startupTimer);
+                for (const unpatch of unpatches) unpatch();
+                unpatches.length = 0;
+                try { originalRequire(0); }
+                finally { resumeDeferred(); }
+            }
         };
 
         startDiscord();
@@ -127,7 +148,6 @@ if (typeof window.__r === "undefined") {
                 _requireFunc = function patchedRequire(a: number) {
                     // Initializing index.ts(x)
                     if (a === 0) {
-                        if (window.modules instanceof Map) window.modules = Object.fromEntries(window.modules);
                         onceIndexRequired(v);
                         _requireFunc = v;
                     } else return v(a);

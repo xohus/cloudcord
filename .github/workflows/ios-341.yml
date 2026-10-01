@@ -5,8 +5,29 @@ permissions:
 
 on:
   workflow_dispatch:
+    inputs:
+      publish_runtime:
+        description: Publish an already tested runtime only; never build an IPA
+        type: boolean
+        default: false
+      publish_existing:
+        description: Publish the verified 344.1 test artifact without rebuilding
+        type: boolean
+        default: false
+      runtime_run_id:
+        description: Runtime artifact run to bundle into this test IPA
+        type: string
+        default: ''
+      artifact_run_id:
+        description: Verified IPA build run to publish
+        type: string
+        default: '36742853816'
+      release_tag:
+        description: Existing test release receiving the IPA
+        type: string
+        default: ios-344.1-loader-test-20260930
   workflow_run:
-    workflows: ["Build CloudCord Runtime"]
+    workflows: ["Build CloudCord Runtime (source)"]
     types: [completed]
   push:
     branches:
@@ -19,12 +40,56 @@ on:
       - "ios/scripts/package-cloudcord-ipa.py"
 
 jobs:
+  publish_runtime:
+    if: github.event_name == 'workflow_dispatch' && inputs.publish_runtime == true && github.ref == 'refs/heads/xohus/ios-344-loader'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Verify source runtime build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUNTIME_RUN: ${{ inputs.runtime_run_id }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RUNTIME_RUN" > "$RUNNER_TEMP/runtime-run.json"
+          node -e 'const fs=require("fs"),r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+"/runtime-run.json"));if(r.conclusion!=="success"||r.path!==".github/workflows/cloudcord.yml"||r.head_branch!=="xohus/ios-344-loader")throw Error("unverified runtime");fs.appendFileSync(process.env.GITHUB_ENV,"RUNTIME_SHA="+r.head_sha+"\n")'
+      - uses: actions/download-artifact@v4
+        with:
+          name: cloudcord-mobile-shared-runtime
+          run-id: ${{ inputs.runtime_run_id }}
+          github-token: ${{ github.token }}
+          path: runtime-release
+      - name: Publish runtime files only
+        run: |
+          set -euo pipefail
+          for file in cc.js cloudcord.js cloudcord.min.js dist/cc.js dist/cloudcord.js dist/cloudcord.min.js; do
+            test -s "runtime-release/$file"
+            cp "runtime-release/$file" "$file"
+          done
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add cc.js cloudcord.js cloudcord.min.js dist/cc.js dist/cloudcord.js dist/cloudcord.min.js
+          node -e 'const fs=require("fs"),crypto=require("crypto"),cp=require("child_process"),data=cp.execFileSync("git",["show",":dist/cc.js"]);fs.writeFileSync("dist/runtime-manifest.json",JSON.stringify({schema:1,version:process.env.RUNTIME_SHA,url:"https://raw.githubusercontent.com/xohus/cloudcord/main/dist/cc.js",sha256:crypto.createHash("sha256").update(data).digest("hex"),size:data.length})+"\n")'
+          git add dist/runtime-manifest.json
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix the runtime loading screen [skip ci]'
+          git push origin HEAD:main
   build:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: inputs.publish_runtime != true && inputs.publish_existing != true && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main'))
     # Repackage whenever the verified 344-compatible runtime changes.
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Download rebuilt runtime for this test
+        if: inputs.runtime_run_id != '' && github.event_name == 'workflow_dispatch'
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudcord-mobile-shared-runtime
+          run-id: ${{ inputs.runtime_run_id }}
+          github-token: ${{ github.token }}
 
       - name: Install build tools
         run: |
@@ -78,6 +143,7 @@ jobs:
           python3 ios/scripts/package-cloudcord-ipa.py \
             --discord-ipa Discord-344.1-base.ipa \
             --discord-version 344.1 \
+            --replace-rain-loader \
             --runtime-deb "$(find ios/native-ios/packages -name '*.deb' -print -quit)" \
             --output cloudcord0.ipa
           unzip -p cloudcord0.ipa Payload/Discord.app/Info.plist | grep -q '<string>344.1</string>'
@@ -119,6 +185,7 @@ jobs:
           path: cloudcord0.ipa
 
       - name: Publish CloudCord iOS 344.1 test download
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: test
@@ -126,3 +193,19 @@ jobs:
           prerelease: true
           make_latest: false
           files: cloudcord0.ipa
+
+  publish_existing:
+    if: inputs.publish_existing == true && github.ref == 'refs/heads/xohus/ios-344-loader'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CloudCord-iOS-344.1
+          run-id: ${{ inputs.artifact_run_id }}
+          github-token: ${{ github.token }}
+      - name: Upload the IPA to its existing test release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOUDCORD_RELEASE_TAG: ${{ inputs.release_tag }}
+        run: gh release upload "$CLOUDCORD_RELEASE_TAG" cloudcord0.ipa --repo xohus/cloudcord
+

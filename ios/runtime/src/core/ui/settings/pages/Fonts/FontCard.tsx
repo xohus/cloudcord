@@ -5,6 +5,7 @@ import { useProxy } from "@core/vendetta/storage";
 import { FontDefinition, fonts, selectFont } from "@lib/addons/fonts";
 import { findAssetId } from "@lib/api/assets";
 import { BundleUpdaterManager } from "@lib/api/native/modules";
+import { isFontSupported } from "@lib/api/native/loader";
 import { lazyDestructure } from "@lib/utils/lazy";
 import { findByProps } from "@metro";
 import { NavigationNative, tokens } from "@metro/common";
@@ -52,7 +53,9 @@ export default function FontCard({ item: font }: CardWrapper<FontDefinition>) {
                                 size="sm"
                                 variant={selected ? "secondary" : "primary"}
                                 text={selected ? "Unapply" : "Apply"}
+                                disabled={!isFontSupported()}
                                 onPress={async () => {
+                                    if (!isFontSupported()) return;
                                     await selectFont(selected ? null : font.name);
                                     showConfirmationAlert({
                                         title: Strings.HOLD_UP,
