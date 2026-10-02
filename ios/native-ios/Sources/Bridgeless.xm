@@ -2,6 +2,7 @@
 #import <UIKit/UIKit.h>
 #import <jsi/jsi.h>
 #import <objc/runtime.h>
+#import "Utils.h"
 
 #include <atomic>
 #include <functional>
@@ -141,9 +142,18 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
         cloudCordInjectedRuntime.store(nullptr);
         return;
     }
-    NSData *runtimeBundle = cloudCordResource(@"runtime");
-    if (!runtimeBundle.length ||
-        !evaluateCloudCordData(runtimeBundle, "cloudcord:runtime", runtime))
+    // The updater validates downloaded bytes before storing bundle.js.
+    // Bridgeless launches must use that update too, not only the IPA resource.
+    NSData *cachedRuntime = [NSData dataWithContentsOfURL:
+        [getPyoncordDirectory() URLByAppendingPathComponent:@"bundle.js"]];
+    BOOL loaded = cachedRuntime.length >= 512 && cachedRuntime.length <= 8 * 1024 * 1024
+        && evaluateCloudCordData(cachedRuntime, "cloudcord:updated-runtime", runtime);
+    if (!loaded)
+    {
+        NSData *runtimeBundle = cloudCordResource(@"runtime");
+        loaded = runtimeBundle.length && evaluateCloudCordData(runtimeBundle, "cloudcord:runtime", runtime);
+    }
+    if (!loaded)
     {
         cloudCordInjectedRuntime.store(nullptr);
         NSLog(@"[CloudCord] Full 344 runtime injection failed");

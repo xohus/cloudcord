@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { Alert, Image, Linking, Pressable, Text, TextInput, View } from "react-native";
 import { settings } from "@lib/api/settings";
 import { findByProps } from "@metro";
-import { NativeFileModule } from "@lib/api/native/modules";
 
 const API = "https://getcloudcord.com";
 export default function CustomBadgeBeta() {
@@ -52,7 +51,10 @@ export default function CustomBadgeBeta() {
             if (!picker?.pickSingle) throw new Error("file picker unavailable");
             const asset = await picker.pickSingle({ type: "image/png", mode: "import", copyTo: "documentDirectory" });
             if (asset.size > 524288) throw new Error("PNG must be under 512 KB");
-            const data = await NativeFileModule.readFile((asset.fileCopyUri || asset.uri).replace(/^file:\/\//, ""), "base64");
+            const native = require("@lib/api/native/modules");
+            const files = native.NativeFileModule || native.FileManager;
+            if (!files?.readFile) throw new Error("PNG reader unavailable on this Discord build");
+            const data = await files.readFile((asset.fileCopyUri || asset.uri).replace(/^file:\/\//, ""), "base64");
             if (data.length > 700000) throw new Error("PNG must be under 512 KB");
             setPng(data); setMessage("PNG selected — ready for the AI safety check");
         } catch (e: any) { setMessage(e.message || "could not read PNG"); }

@@ -2,7 +2,7 @@ import { awaitStorage } from "@core/vendetta/storage";
 import { loaderConfig } from "@lib/api/settings";
 import { NativeModules } from "react-native";
 
-const CURRENT_RUNTIME_URL = "https://cloudcord.xohus.lol/api/proxy/raw/dist/cc.js";
+const CURRENT_RUNTIME_URL = "https://getcloudcord.com/api/proxy/raw/dist/cc.js";
 
 async function invokeLegacyReload() {
     const reader = NativeModules.FileReaderModule ?? NativeModules.RCTFileReaderModule;
@@ -28,7 +28,7 @@ export async function initLegacyRuntimeRefresh() {
     const config = loaderConfig as any;
     config.customLoadUrl ??= { enabled: false, url: "" };
 
-    if (config.customLoadUrl.enabled && config.customLoadUrl.url) return;
+    if (config.customLoadUrl.enabled && config.customLoadUrl.url && !config.customLoadUrl.url.startsWith("https://cloudcord.xohus.lol/")) return;
 
     config.customLoadUrl.url = CURRENT_RUNTIME_URL;
     config.customLoadUrl.enabled = true;
