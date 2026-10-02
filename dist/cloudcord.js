@@ -4626,7 +4626,7 @@
   function CustomBadgeBeta() {
     var [name, setName] = (0, import_react2.useState)("");
     var [png, setPng] = (0, import_react2.useState)("");
-    var [message, setMessage] = (0, import_react2.useState)("custom names + PNGs. beta \u2014 reviewed before sharing.");
+    var [message, setMessage] = (0, import_react2.useState)("beta \u2014 AI-approved badges go live, then admins can keep or remove them.");
     var [busy, setBusy] = (0, import_react2.useState)(false);
     var [state2, setState] = (0, import_react2.useState)(null);
     var [verified, setVerified] = (0, import_react2.useState)(Boolean(settings.customBadgeDeviceToken));
@@ -4673,7 +4673,7 @@
     }, [
       state2
     ]);
-    var verify = () => import_react_native6.Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. your name and PNG go to CloudCord admins for review before publication.", [
+    var verify = () => import_react_native6.Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. your name and PNG are sent to OpenAI for safety checks. AI-approved badges publish immediately, then CloudCord admins review and can remove them.", [
       {
         text: "cancel",
         style: "cancel"
@@ -4724,7 +4724,7 @@
         if (data.length > 7e5)
           throw new Error("PNG must be under 512 KB");
         setPng(data);
-        setMessage("PNG selected \u2014 ready to submit for admin review");
+        setMessage("PNG selected \u2014 ready for the AI safety check");
       } catch (e) {
         setMessage(e.message || "could not read PNG");
       }
@@ -4818,7 +4818,7 @@
               }
             }) : null,
             button("choose PNG", pick, busy),
-            button(busy ? "sending\u2026" : "submit for review", submit, busy || !png || !name.trim())
+            button(busy ? "checking with AI\u2026" : "submit badge", submit, busy || !png || !name.trim())
           ]
         }),
         /* @__PURE__ */ jsx(import_react_native6.Text, {
