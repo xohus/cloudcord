@@ -67,6 +67,7 @@ jobs:
           mkdir -p src/core/ui/settings/pages/Themes
           mkdir -p src/core/ui/botcord
           mkdir -p src/core/ui/settings/components
+          cp "../ios/runtime/src/core/ui/settings/components/CustomBadgeBeta.tsx" "src/core/ui/settings/components/CustomBadgeBeta.tsx"
           mkdir -p src/lib/api
           cp "../ios/assets/fakeprofile-icon.png" "src/assets/icons/fakeprofile.png"
           cp "../ios/runtime/src/core/ui/settings/pages/BotCord/index.tsx" "src/core/ui/settings/pages/BotCord/index.tsx"
@@ -283,6 +284,7 @@ jobs:
           cp "../ios/assets/cloudcord-decorations.json" "src/assets/cloudcord-decorations.json"
 
           cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'
+          import CustomBadgeBeta from "@core/ui/settings/components/CustomBadgeBeta";
           import FakeProfileIcon from "@assets/icons/fakeprofile.png";
           import bundledDecorationCatalog from "@assets/cloudcord-decorations.json";
           import { awaitStorage, useProxy } from "@core/vendetta/storage";
@@ -2022,6 +2024,7 @@ jobs:
 
                           <Card border="strong">
                               <View style={{ padding: 14, gap: 14 }}>
+                                  <CustomBadgeBeta />
                                   <ToggleRow
                                       label="Show preview in the client"
                                       subLabel="Show your saved profile preview"
