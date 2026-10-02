@@ -123,13 +123,11 @@ static void injectCloudCordModulesPatch(jsi::Runtime &runtime)
 
 static void injectCloudCordRuntime(jsi::Runtime &runtime)
 {
-    jsi::Runtime *expected = nullptr;
-    jsi::Runtime *current = &runtime;
-    if (!cloudCordInjectedRuntime.compare_exchange_strong(expected, current))
-    {
-        if (expected == current) return;
-        cloudCordInjectedRuntime.store(current);
-    }
+    // Hermes can reuse a destroyed runtime's address after reload. A process-wide
+    // pointer is not an identity: keep the injection guard inside this JS realm.
+    const char *guard = "__CLOUDCORD_NATIVE_INJECTED__";
+    auto injected = runtime.global().getProperty(runtime, guard);
+    if (injected.isBool() && injected.getBool()) return;
     NSData *marker = [@"globalThis.__CLOUDCORD_BRIDGELESS__=true;"
                        "if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire;"
                        "(()=>{const m=globalThis.modules??globalThis.__c?.();"
@@ -159,6 +157,8 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
         NSLog(@"[CloudCord] Full 344 runtime injection failed");
         return;
     }
+    runtime.global().setProperty(runtime, guard, true);
+    cloudCordInjectedRuntime.store(&runtime);
     NSLog(@"[CloudCord] Full 344 runtime injected after Discord bundle");
 }
 
@@ -239,6 +239,7 @@ static void installRCTInstanceHooks(NSUInteger attempt)
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime
 {
     NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized");
+    cloudCordInjectedRuntime.store(nullptr);
     injectCloudCordModulesPatch(runtime);
     %orig;
     scheduleCloudCordRuntime(instance, 0);
