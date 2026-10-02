@@ -33,7 +33,7 @@ export default function CustomBadgeBeta() {
         }, 3000);
         return () => { alive = false; clearInterval(timer); };
     }, [state]);
-    const verify = () => Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. submissions send your name and PNG to OpenAI for safety checks. PNGs need further review before publication.", [
+    const verify = () => Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. your name and PNG go to CloudCord admins for review before publication.", [
         { text: "cancel", style: "cancel" },
         { text: "view terms", onPress: () => Linking.openURL(`${API}/tos`) },
         { text: "accept & verify", onPress: async () => {
@@ -54,7 +54,7 @@ export default function CustomBadgeBeta() {
             if (asset.size > 524288) throw new Error("PNG must be under 512 KB");
             const data = await NativeFileModule.readFile((asset.fileCopyUri || asset.uri).replace(/^file:\/\//, ""), "base64");
             if (data.length > 700000) throw new Error("PNG must be under 512 KB");
-            setPng(data); setMessage("PNG selected — it will be checked before review");
+            setPng(data); setMessage("PNG selected — ready to submit for admin review");
         } catch (e: any) { setMessage(e.message || "could not read PNG"); }
     };
     const submit = async () => {
@@ -76,7 +76,7 @@ export default function CustomBadgeBeta() {
             <TextInput value={name} onChangeText={setName} maxLength={40} placeholder="badge name" placeholderTextColor="#aaa" style={{ color: "white", padding: 10, backgroundColor: "#111214", borderRadius: 10 }} />
             {png ? <Image source={{ uri: `data:image/png;base64,${png}` }} style={{ width: 48, height: 48 }} /> : null}
             {button("choose PNG", pick, busy)}
-            {button(busy ? "checking…" : "submit for review", submit, busy || !png || !name.trim())}
+            {button(busy ? "sending…" : "submit for review", submit, busy || !png || !name.trim())}
         </>}
         <Text accessibilityLiveRegion="polite" style={{ color: "#b5bac1" }}>{message}</Text>
     </View>;
