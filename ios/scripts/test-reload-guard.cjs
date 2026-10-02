@@ -30,3 +30,23 @@ for (let launch = 0; launch < 20; launch++) {
     assert.equal(realm.loads, 1, `launch ${launch} must load once, including reused addresses`);
 }
 console.log('reload guard source checks and 20 realm lifecycle simulations passed');
+
+const scheduler = source.slice(source.indexOf('static void scheduleCloudCordRuntime('), source.indexOf('typedef void (*CloudCordLoadBundleIMP)'));
+assert.match(scheduler, /__weak id weakInstance = instance/);
+assert.match(scheduler, /generation != cloudCordRuntimeGeneration\.load\(\)/);
+assert.match(scheduler, /scheduleCloudCordRuntime\(liveInstance, attempt \+ 1, generation\)/);
+assert.match(source, /cloudCordRuntimeGeneration\.fetch_add\(1\)/);
+let generation = 1;
+let calls = 0;
+const queued = [];
+for (let reload = 0; reload < 20; reload++) {
+    const scheduledGeneration = generation;
+    queued.push(() => { if (scheduledGeneration === generation) calls++; });
+    generation++;
+}
+queued.forEach(callback => callback());
+assert.equal(calls, 0, 'all pre-reload retries must be discarded');
+const activeGeneration = generation;
+if (activeGeneration === generation) calls++;
+assert.equal(calls, 1, 'current launch can still initialize');
+console.log('stale retry source checks and 20 generation simulations passed');

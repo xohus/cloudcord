@@ -121,6 +121,15 @@ jobs:
           name: CloudCord-iOS-344.1
           path: cloudcord0.ipa
 
+      - name: Package startup diagnostic IPA
+        run: |
+          python3 ios/scripts/package-cloudcord-ipa.py \
+            --discord-ipa Discord-344.1-base.ipa \
+            --discord-version 344.1 \
+            --runtime-deb "$(find ios/native-ios/packages -name '*.deb' -print -quit)" \
+            --startup-diagnostics \
+            --output cloudcord-diagnostics.ipa
+
       - name: Publish CloudCord iOS 344.1 test download
         uses: softprops/action-gh-release@v2
         with:
@@ -128,4 +137,6 @@ jobs:
           name: CloudCord 344.1 Testing
           prerelease: true
           make_latest: false
-          files: cloudcord0.ipa
+          files: |
+            cloudcord0.ipa
+            cloudcord-diagnostics.ipa

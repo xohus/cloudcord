@@ -5,6 +5,8 @@
 #import "Utils.h"
 
 #include <atomic>
+#include <cstdint>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <string>
@@ -40,16 +42,28 @@ private:
 
 static std::atomic<jsi::Runtime *> cloudCordInjectedRuntime{nullptr};
 static std::atomic_bool cloudCordRCTInstanceHooksInstalled{false};
+static std::atomic<uint64_t> cloudCordRuntimeGeneration{0};
 static __weak id cloudCordLastRuntimeInstance = nil;
+
+static void recordCloudCordStage(NSString *stage)
+{
+    // Last stage only: no account data, tokens or remote telemetry.
+    NSString *line = [NSString stringWithFormat:@"CloudCord loader 344.1\n%@\n%@\n", NSDate.date, stage];
+    [line writeToURL:[getPyoncordDirectory() URLByAppendingPathComponent:@"startup.txt"]
+        atomically:YES encoding:NSUTF8StringEncoding error:nil];
+}
 
 static BOOL evaluateCloudCordData(NSData *data, const char *tag, jsi::Runtime &runtime)
 {
     if (data.length == 0) return NO;
+    BOOL trace = strcmp(tag, "cloudcord:modules") != 0;
+    if (trace) recordCloudCordStage([NSString stringWithFormat:@"begin %s", tag]);
     try
     {
         std::string source(static_cast<const char *>(data.bytes), data.length);
         auto buffer = std::make_shared<jsi::StringBuffer>(std::move(source));
         runtime.evaluateJavaScript(buffer, tag);
+        if (trace) recordCloudCordStage([NSString stringWithFormat:@"completed %s", tag]);
         return YES;
     }
     catch (const std::exception &error)
@@ -176,12 +190,16 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
     NSLog(@"[CloudCord] Full 344 runtime injected after Discord bundle");
 }
 
-static void scheduleCloudCordRuntime(id instance, NSUInteger attempt)
+static void scheduleCloudCordRuntime(id instance, NSUInteger attempt, uint64_t generation = UINT64_MAX)
 {
+    if (generation == UINT64_MAX) generation = cloudCordRuntimeGeneration.load();
+    if (generation != cloudCordRuntimeGeneration.load()) return;
     if (!instance || ![instance respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
         return;
     cloudCordLastRuntimeInstance = instance;
-    [instance callFunctionOnBufferedRuntimeExecutor:[instance, attempt](jsi::Runtime &runtime) {
+    __weak id weakInstance = instance;
+    [instance callFunctionOnBufferedRuntimeExecutor:[weakInstance, attempt, generation](jsi::Runtime &runtime) {
+        if (generation != cloudCordRuntimeGeneration.load()) return;
         // Repeat the small registry capture as Discord replaces __d during boot.
         injectCloudCordModulesPatch(runtime);
         if (discordRuntimeIsReady(runtime))
@@ -194,7 +212,11 @@ static void scheduleCloudCordRuntime(id instance, NSUInteger attempt)
         {
             NSTimeInterval delay = attempt < 50 ? 0.1 : (attempt < 150 ? 0.25 : 0.5);
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay * NSEC_PER_SEC),
-                dispatch_get_main_queue(), ^{ scheduleCloudCordRuntime(instance, attempt + 1); });
+                dispatch_get_main_queue(), ^{
+                    id liveInstance = weakInstance;
+                    if (liveInstance && generation == cloudCordRuntimeGeneration.load())
+                        scheduleCloudCordRuntime(liveInstance, attempt + 1, generation);
+                });
         }
         else
             NSLog(@"[CloudCord] Discord runtime readiness timed out; skipping injection");
@@ -253,6 +275,8 @@ static void installRCTInstanceHooks(NSUInteger attempt)
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime
 {
     NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized");
+    cloudCordRuntimeGeneration.fetch_add(1);
+    recordCloudCordStage(@"Discord runtime initialized");
     cloudCordInjectedRuntime.store(nullptr);
     injectCloudCordModulesPatch(runtime);
     %orig;
@@ -265,6 +289,7 @@ static void installRCTInstanceHooks(NSUInteger attempt)
 {
     @autoreleasepool
     {
+        recordCloudCordStage(@"native loader loaded");
         installRCTInstanceHooks(0);
         [NSNotificationCenter.defaultCenter
             addObserverForName:UIApplicationDidBecomeActiveNotification

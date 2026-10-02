@@ -186,6 +186,7 @@ def main() -> None:
     parser.add_argument("--discord-version", required=True)
     parser.add_argument("--runtime-deb", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--startup-diagnostics", action="store_true", help="Expose local startup.txt through Files for testing")
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory(prefix="cloudcord-ios-") as temporary:
@@ -195,6 +196,10 @@ def main() -> None:
             archive.extractall(app_root)
         discord_app = next((app_root / "Payload").glob("*.app"))
         info = plistlib.loads((discord_app / "Info.plist").read_bytes())
+        if args.startup_diagnostics:
+            info["UIFileSharingEnabled"] = True
+            info["LSSupportsOpeningDocumentsInPlace"] = True
+            (discord_app / "Info.plist").write_bytes(plistlib.dumps(info))
         if info.get("CFBundleShortVersionString") != args.discord_version:
             raise RuntimeError(
                 f"Expected Discord {args.discord_version}, got {info.get('CFBundleShortVersionString')}"
