@@ -70,12 +70,12 @@ export default function CustomBadgeBeta() {
         } catch { setMessage("connection failed — nothing was published"); }
         finally { setBusy(false); }
     };
-    const button = (label: string, action: () => void, disabled = false) => <Pressable disabled={disabled} onPress={action} style={{ padding: 12, borderRadius: 10, backgroundColor: disabled ? "#36373d" : "#5865f2" }}><Text style={{ color: "white" }}>{label}</Text></Pressable>;
-    return <View style={{ gap: 10, padding: 12, borderRadius: 14, backgroundColor: "#232428" }}>
+    const button = (label: string, action: () => void, disabled = false) => <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={action} style={({ pressed }) => ({ minHeight: 50, justifyContent: "center", alignItems: "center", padding: 14, borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.14)", backgroundColor: disabled ? "rgba(255,255,255,0.06)" : "#6575ef", opacity: pressed ? 0.78 : 1 })}><Text style={{ color: disabled ? "#b5bad0" : "white", fontWeight: "600", textAlign: "center" }}>{label}</Text></Pressable>;
+    return <View style={{ gap: 14, padding: 2 }}>
         <Text style={{ color: "white", fontWeight: "bold" }}>custom badges · beta</Text>
         <Text style={{ color: "#b5bac1" }}>no staff/verified impersonation, unsafe content, links or personal information. custom badges do not prove staff status.</Text>
         {!verified ? button(state ? "waiting for verification…" : "verify Discord", verify, Boolean(state)) : <>
-            <TextInput value={name} onChangeText={setName} maxLength={40} placeholder="badge name" placeholderTextColor="#aaa" style={{ color: "white", padding: 10, backgroundColor: "#111214", borderRadius: 10 }} />
+            <TextInput accessibilityLabel="Custom badge name" value={name} onChangeText={setName} maxLength={40} placeholder="badge name" placeholderTextColor="#9faac4" style={{ color: "white", minHeight: 50, padding: 14, backgroundColor: "rgba(15,19,32,0.55)", borderWidth: 1, borderColor: "rgba(190,202,255,0.16)", borderRadius: 16 }} />
             {png ? <Image source={{ uri: `data:image/png;base64,${png}` }} style={{ width: 48, height: 48 }} /> : null}
             {button("choose PNG", pick, busy)}
             {button(busy ? "checking with AI…" : "submit badge", submit, busy || !png || !name.trim())}
