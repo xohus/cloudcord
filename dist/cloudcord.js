@@ -4622,16 +4622,189 @@
     }
   });
 
+  // src/core/ui/settings/components/FakeProfileGlass.tsx
+  function GlassCard({ children }) {
+    var [opaque, setOpaque] = (0, import_react2.useState)(false);
+    (0, import_react2.useEffect)(() => {
+      var alive = true;
+      import_react_native6.AccessibilityInfo.isReduceTransparencyEnabled?.().then((value) => {
+        if (alive)
+          setOpaque(value);
+      }).catch(() => {
+      });
+      var listener = import_react_native6.AccessibilityInfo.addEventListener?.("reduceTransparencyChanged", setOpaque);
+      return () => {
+        alive = false;
+        listener?.remove?.();
+      };
+    }, []);
+    return /* @__PURE__ */ jsxs(import_react_native6.View, {
+      style: {
+        borderRadius: 24,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: "rgba(194,207,255,0.18)",
+        backgroundColor: opaque ? "#252936" : "rgba(39,44,61,0.80)",
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: 6
+        },
+        shadowOpacity: 0.16,
+        shadowRadius: 14
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native6.View, {
+          pointerEvents: "none",
+          style: {
+            position: "absolute",
+            top: 0,
+            left: 18,
+            right: 18,
+            height: 1,
+            backgroundColor: "rgba(255,255,255,0.24)"
+          }
+        }),
+        children
+      ]
+    });
+  }
+  function GlassButton({ label, onPress, muted = false, disabled = false }) {
+    return /* @__PURE__ */ jsx(import_react_native6.Pressable, {
+      accessibilityRole: "button",
+      accessibilityLabel: label,
+      accessibilityState: {
+        disabled
+      },
+      disabled,
+      onPress,
+      style: ({ pressed }) => ({
+        width: "100%",
+        minHeight: 50,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 18,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: muted ? "rgba(190,202,255,0.24)" : "rgba(255,255,255,0.30)",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: disabled ? "#303647" : muted ? "#30394e" : pressed ? "#5261cc" : "#6575ef",
+        opacity: disabled ? 0.6 : 1
+      }),
+      children: ({ pressed }) => /* @__PURE__ */ jsxs(Fragment, {
+        children: [
+          /* @__PURE__ */ jsx(import_react_native6.View, {
+            pointerEvents: "none",
+            style: {
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "48%",
+              backgroundColor: pressed ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.10)"
+            }
+          }),
+          /* @__PURE__ */ jsx(import_react_native6.View, {
+            pointerEvents: "none",
+            style: {
+              position: "absolute",
+              top: 1,
+              left: 14,
+              right: 14,
+              height: 1,
+              backgroundColor: "rgba(255,255,255,0.35)"
+            }
+          }),
+          /* @__PURE__ */ jsx(import_react_native6.View, {
+            pointerEvents: "none",
+            style: {
+              position: "absolute",
+              bottom: 1,
+              left: 12,
+              right: 12,
+              height: 1,
+              backgroundColor: "rgba(0,0,0,0.16)"
+            }
+          }),
+          /* @__PURE__ */ jsx(import_react_native6.Text, {
+            style: {
+              color: muted ? "#d5ddff" : "#fff",
+              textAlign: "center",
+              fontSize: 14,
+              fontWeight: "600"
+            },
+            children: label
+          })
+        ]
+      })
+    });
+  }
+  function ProfileTabs({ selected, onSelect }) {
+    return /* @__PURE__ */ jsx(import_react_native6.View, {
+      accessibilityRole: "tablist",
+      style: {
+        flexDirection: "row",
+        gap: 6,
+        padding: 5,
+        borderRadius: 20,
+        backgroundColor: "rgba(255,255,255,0.05)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.1)"
+      },
+      children: [
+        "profile",
+        "badges",
+        "custom"
+      ].map((tab) => /* @__PURE__ */ jsx(import_react_native6.Pressable, {
+        accessibilityRole: "tab",
+        accessibilityState: {
+          selected: selected === tab
+        },
+        onPress: () => onSelect(tab),
+        style: ({ pressed }) => ({
+          flex: 1,
+          minHeight: 46,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 15,
+          paddingHorizontal: 4,
+          backgroundColor: selected === tab ? "#6575ef" : pressed ? "rgba(255,255,255,0.10)" : "transparent"
+        }),
+        children: /* @__PURE__ */ jsx(import_react_native6.Text, {
+          allowFontScaling: true,
+          style: {
+            fontSize: 14,
+            fontWeight: "600",
+            color: selected === tab ? "#fff" : "#b8c0d8"
+          },
+          children: tab
+        })
+      }, tab))
+    });
+  }
+  var import_react2, import_react_native6;
+  var init_FakeProfileGlass = __esm({
+    "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      import_react2 = __toESM(require_react());
+      import_react_native6 = __toESM(require_react_native());
+    }
+  });
+
   // src/core/ui/settings/components/CustomBadgeBeta.tsx
   function CustomBadgeBeta() {
-    var [name, setName] = (0, import_react2.useState)("");
-    var [png, setPng] = (0, import_react2.useState)("");
-    var [message, setMessage] = (0, import_react2.useState)("beta \u2014 AI-approved badges go live, then admins can keep or remove them.");
-    var [busy, setBusy] = (0, import_react2.useState)(false);
-    var [state2, setState] = (0, import_react2.useState)(null);
-    var [verified, setVerified] = (0, import_react2.useState)(Boolean(settings.customBadgeDeviceToken));
-    var polling = (0, import_react2.useRef)(false);
-    (0, import_react2.useEffect)(() => {
+    var [name, setName] = (0, import_react3.useState)("");
+    var [png, setPng] = (0, import_react3.useState)("");
+    var [message, setMessage] = (0, import_react3.useState)("beta \u2014 AI-approved badges go live, then admins can keep or remove them.");
+    var [busy, setBusy] = (0, import_react3.useState)(false);
+    var [state2, setState] = (0, import_react3.useState)(null);
+    var [verified, setVerified] = (0, import_react3.useState)(Boolean(settings.customBadgeDeviceToken));
+    var polling = (0, import_react3.useRef)(false);
+    (0, import_react3.useEffect)(() => {
       if (!state2)
         return;
       var alive = true;
@@ -4673,14 +4846,14 @@
     }, [
       state2
     ]);
-    var verify = () => import_react_native6.Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. your name and PNG are sent to OpenAI for safety checks. AI-approved badges publish immediately, then CloudCord admins review and can remove them.", [
+    var verify = () => import_react_native7.Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. your name and PNG are sent to OpenAI for safety checks. AI-approved badges publish immediately, then CloudCord admins review and can remove them.", [
       {
         text: "cancel",
         style: "cancel"
       },
       {
         text: "view terms",
-        onPress: () => import_react_native6.Linking.openURL(`${API}/tos`)
+        onPress: () => import_react_native7.Linking.openURL(`${API}/tos`)
       },
       {
         text: "accept & verify",
@@ -4701,7 +4874,7 @@
             if (!r.ok || !result.state || !result.authorizeUrl)
               throw new Error(result.error || "verification unavailable");
             setState(result.state);
-            yield import_react_native6.Linking.openURL(result.authorizeUrl);
+            yield import_react_native7.Linking.openURL(result.authorizeUrl);
           } catch (e) {
             setMessage(e.message || "verification unavailable");
           }
@@ -4761,47 +4934,25 @@
         setBusy(false);
       }
     })();
-    var button = (label, action, disabled = false) => /* @__PURE__ */ jsx(import_react_native6.Pressable, {
-      accessibilityRole: "button",
-      accessibilityState: {
-        disabled
-      },
-      disabled,
+    var button = (label, action, disabled = false) => /* @__PURE__ */ jsx(GlassButton, {
+      label,
       onPress: action,
-      style: ({ pressed }) => ({
-        minHeight: 50,
-        justifyContent: "center",
-        alignItems: "center",
-        padding: 14,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.14)",
-        backgroundColor: disabled ? "rgba(255,255,255,0.06)" : "#6575ef",
-        opacity: pressed ? 0.78 : 1
-      }),
-      children: /* @__PURE__ */ jsx(import_react_native6.Text, {
-        style: {
-          color: disabled ? "#b5bad0" : "white",
-          fontWeight: "600",
-          textAlign: "center"
-        },
-        children: label
-      })
+      disabled
     });
-    return /* @__PURE__ */ jsxs(import_react_native6.View, {
+    return /* @__PURE__ */ jsxs(import_react_native7.View, {
       style: {
         gap: 14,
         padding: 2
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native6.Text, {
+        /* @__PURE__ */ jsx(import_react_native7.Text, {
           style: {
             color: "white",
             fontWeight: "bold"
           },
           children: "custom badges \xB7 beta"
         }),
-        /* @__PURE__ */ jsx(import_react_native6.Text, {
+        /* @__PURE__ */ jsx(import_react_native7.Text, {
           style: {
             color: "#b5bac1"
           },
@@ -4809,7 +4960,7 @@
         }),
         !verified ? button(state2 ? "waiting for verification\u2026" : "verify Discord", verify, Boolean(state2)) : /* @__PURE__ */ jsxs(Fragment, {
           children: [
-            /* @__PURE__ */ jsx(import_react_native6.TextInput, {
+            /* @__PURE__ */ jsx(import_react_native7.TextInput, {
               accessibilityLabel: "Custom badge name",
               value: name,
               onChangeText: setName,
@@ -4826,7 +4977,7 @@
                 borderRadius: 16
               }
             }),
-            png ? /* @__PURE__ */ jsx(import_react_native6.Image, {
+            png ? /* @__PURE__ */ jsx(import_react_native7.Image, {
               source: {
                 uri: `data:image/png;base64,${png}`
               },
@@ -4839,7 +4990,7 @@
             button(busy ? "checking with AI\u2026" : "submit badge", submit, busy || !png || !name.trim())
           ]
         }),
-        /* @__PURE__ */ jsx(import_react_native6.Text, {
+        /* @__PURE__ */ jsx(import_react_native7.Text, {
           accessibilityLiveRegion: "polite",
           style: {
             color: "#b5bac1"
@@ -4849,7 +5000,7 @@
       ]
     });
   }
-  var import_react2, import_react_native6, API;
+  var import_react3, import_react_native7, API;
   var init_CustomBadgeBeta = __esm({
     "src/core/ui/settings/components/CustomBadgeBeta.tsx"() {
       "use strict";
@@ -4857,113 +5008,12 @@
       init_promiseAllSettled();
       init_async_to_generator();
       init_jsxRuntime();
-      import_react2 = __toESM(require_react());
-      import_react_native6 = __toESM(require_react_native());
+      import_react3 = __toESM(require_react());
+      import_react_native7 = __toESM(require_react_native());
+      init_FakeProfileGlass();
       init_settings();
       init_metro();
       API = "https://getcloudcord.com";
-    }
-  });
-
-  // src/core/ui/settings/components/FakeProfileGlass.tsx
-  function GlassCard({ children }) {
-    var [opaque, setOpaque] = (0, import_react3.useState)(false);
-    (0, import_react3.useEffect)(() => {
-      var alive = true;
-      import_react_native7.AccessibilityInfo.isReduceTransparencyEnabled?.().then((value) => {
-        if (alive)
-          setOpaque(value);
-      }).catch(() => {
-      });
-      var listener = import_react_native7.AccessibilityInfo.addEventListener?.("reduceTransparencyChanged", setOpaque);
-      return () => {
-        alive = false;
-        listener?.remove?.();
-      };
-    }, []);
-    return /* @__PURE__ */ jsxs(import_react_native7.View, {
-      style: {
-        borderRadius: 24,
-        overflow: "hidden",
-        borderWidth: 1,
-        borderColor: "rgba(194,207,255,0.18)",
-        backgroundColor: opaque ? "#252936" : "rgba(39,44,61,0.80)",
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 6
-        },
-        shadowOpacity: 0.16,
-        shadowRadius: 14
-      },
-      children: [
-        /* @__PURE__ */ jsx(import_react_native7.View, {
-          pointerEvents: "none",
-          style: {
-            position: "absolute",
-            top: 0,
-            left: 18,
-            right: 18,
-            height: 1,
-            backgroundColor: "rgba(255,255,255,0.24)"
-          }
-        }),
-        children
-      ]
-    });
-  }
-  function ProfileTabs({ selected, onSelect }) {
-    return /* @__PURE__ */ jsx(import_react_native7.View, {
-      accessibilityRole: "tablist",
-      style: {
-        flexDirection: "row",
-        gap: 6,
-        padding: 5,
-        borderRadius: 20,
-        backgroundColor: "rgba(255,255,255,0.05)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.1)"
-      },
-      children: [
-        "profile",
-        "badges",
-        "custom"
-      ].map((tab) => /* @__PURE__ */ jsx(import_react_native7.Pressable, {
-        accessibilityRole: "tab",
-        accessibilityState: {
-          selected: selected === tab
-        },
-        onPress: () => onSelect(tab),
-        style: ({ pressed }) => ({
-          flex: 1,
-          minHeight: 46,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: 15,
-          paddingHorizontal: 4,
-          backgroundColor: selected === tab ? "#6575ef" : pressed ? "rgba(255,255,255,0.10)" : "transparent"
-        }),
-        children: /* @__PURE__ */ jsx(import_react_native7.Text, {
-          allowFontScaling: true,
-          style: {
-            fontSize: 14,
-            fontWeight: "600",
-            color: selected === tab ? "#fff" : "#b8c0d8"
-          },
-          children: tab
-        })
-      }, tab))
-    });
-  }
-  var import_react3, import_react_native7;
-  var init_FakeProfileGlass = __esm({
-    "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      import_react3 = __toESM(require_react());
-      import_react_native7 = __toESM(require_react_native());
     }
   });
 
@@ -11320,31 +11370,10 @@
     })();
   }
   function ActionButton({ label, onPress, muted = false }) {
-    return /* @__PURE__ */ jsx(import_react_native18.Pressable, {
-      accessibilityRole: "button",
-      accessibilityLabel: label,
+    return /* @__PURE__ */ jsx(GlassButton, {
+      label,
       onPress,
-      style: ({ pressed }) => ({
-        width: "100%",
-        minHeight: 50,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        borderRadius: 16,
-        borderWidth: 1,
-        borderColor: muted ? "rgba(190,202,255,0.18)" : "rgba(255,255,255,0.18)",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: muted ? "rgba(255,255,255,0.06)" : "#6575ef",
-        opacity: pressed ? 0.78 : 1
-      }),
-      children: /* @__PURE__ */ jsx(Text, {
-        variant: "text-sm/bold",
-        style: {
-          color: muted ? "#c4ceff" : "#fff",
-          textAlign: "center"
-        },
-        children: label
-      })
+      muted
     });
   }
   function ToggleRow({ label, subLabel, value, onPress, accent = false }) {
