@@ -4720,7 +4720,11 @@
         });
         if (asset.size > 524288)
           throw new Error("PNG must be under 512 KB");
-        var data = yield NativeFileModule.readFile((asset.fileCopyUri || asset.uri).replace(/^file:\/\//, ""), "base64");
+        var native = (init_modules(), __toCommonJS(modules_exports));
+        var files = native.NativeFileModule || native.FileManager;
+        if (!files?.readFile)
+          throw new Error("PNG reader unavailable on this Discord build");
+        var data = yield files.readFile((asset.fileCopyUri || asset.uri).replace(/^file:\/\//, ""), "base64");
         if (data.length > 7e5)
           throw new Error("PNG must be under 512 KB");
         setPng(data);
@@ -4843,7 +4847,6 @@
       import_react_native6 = __toESM(require_react_native());
       init_settings();
       init_metro();
-      init_modules();
       API = "https://getcloudcord.com";
     }
   });
@@ -21036,7 +21039,7 @@
         enabled: false,
         url: ""
       };
-      if (config.customLoadUrl.enabled && config.customLoadUrl.url)
+      if (config.customLoadUrl.enabled && config.customLoadUrl.url && !config.customLoadUrl.url.startsWith("https://cloudcord.xohus.lol/"))
         return;
       config.customLoadUrl.url = CURRENT_RUNTIME_URL;
       config.customLoadUrl.enabled = true;
@@ -21056,7 +21059,7 @@
       init_storage();
       init_settings();
       import_react_native38 = __toESM(require_react_native());
-      CURRENT_RUNTIME_URL = "https://cloudcord.xohus.lol/api/proxy/raw/dist/cc.js";
+      CURRENT_RUNTIME_URL = "https://getcloudcord.com/api/proxy/raw/dist/cc.js";
     }
   });
 
