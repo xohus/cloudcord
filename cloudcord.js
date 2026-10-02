@@ -4673,7 +4673,7 @@
     }, [
       state2
     ]);
-    var verify = () => import_react_native6.Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. submissions send your name and PNG to OpenAI for safety checks. PNGs need further review before publication.", [
+    var verify = () => import_react_native6.Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. your name and PNG go to CloudCord admins for review before publication.", [
       {
         text: "cancel",
         style: "cancel"
@@ -4724,7 +4724,7 @@
         if (data.length > 7e5)
           throw new Error("PNG must be under 512 KB");
         setPng(data);
-        setMessage("PNG selected \u2014 it will be checked before review");
+        setMessage("PNG selected \u2014 ready to submit for admin review");
       } catch (e) {
         setMessage(e.message || "could not read PNG");
       }
@@ -4818,7 +4818,7 @@
               }
             }) : null,
             button("choose PNG", pick, busy),
-            button(busy ? "checking\u2026" : "submit for review", submit, busy || !png || !name.trim())
+            button(busy ? "sending\u2026" : "submit for review", submit, busy || !png || !name.trim())
           ]
         }),
         /* @__PURE__ */ jsx(import_react_native6.Text, {
