@@ -5,10 +5,12 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../native-ios/Sources/Bridgeless.xm'), 'utf8');
 const injection = source.slice(source.indexOf('static void injectCloudCordRuntime('), source.indexOf('static void scheduleCloudCordRuntime('));
-assert.match(injection, /runtime\.global\(\)\.getProperty\(runtime, guard\)/);
-assert.match(injection, /runtime\.global\(\)\.setProperty\(runtime, guard, true\)/);
+assert.match(injection, /globalThis\.__CLOUDCORD_NATIVE_INJECTED__ === true/);
+assert.match(injection, /globalThis\.__CLOUDCORD_NATIVE_INJECTED__=true/);
+assert.doesNotMatch(injection, /runtime\.global\(\)/);
+assert.match(injection, /catch \(\.\.\.\)/);
 assert.doesNotMatch(injection, /compare_exchange|expected == current/);
-assert.ok(injection.indexOf('setProperty(runtime, guard, true)') > injection.indexOf('if (!loaded)'));
+assert.ok(injection.indexOf('globalThis.__CLOUDCORD_NATIVE_INJECTED__=true') > injection.indexOf('if (!loaded)'));
 
 // Exercise the realm-local guard across reused simulated native addresses.
 // This verifies guard semantics, not an on-device Hermes/Discord launch.

@@ -125,9 +125,21 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
 {
     // Hermes can reuse a destroyed runtime's address after reload. A process-wide
     // pointer is not an identity: keep the injection guard inside this JS realm.
-    const char *guard = "__CLOUDCORD_NATIVE_INJECTED__";
-    auto injected = runtime.global().getProperty(runtime, guard);
-    if (injected.isBool() && injected.getBool()) return;
+    // Use the same protected evaluator as the readiness probe. Direct JSI
+    // property access introduces another ABI surface and can throw outside the
+    // evaluator's exception handler during startup.
+    try
+    {
+        auto probe = std::make_shared<jsi::StringBuffer>(
+            "globalThis.__CLOUDCORD_NATIVE_INJECTED__ === true");
+        auto injected = runtime.evaluateJavaScript(probe, "cloudcord:injection-guard");
+        if (injected.isBool() && injected.getBool()) return;
+    }
+    catch (...)
+    {
+        NSLog(@"[CloudCord] Runtime guard probe failed; leaving Discord running");
+        return;
+    }
     NSData *marker = [@"globalThis.__CLOUDCORD_BRIDGELESS__=true;"
                        "if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire;"
                        "(()=>{const m=globalThis.modules??globalThis.__c?.();"
@@ -157,7 +169,9 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
         NSLog(@"[CloudCord] Full 344 runtime injection failed");
         return;
     }
-    runtime.global().setProperty(runtime, guard, true);
+    NSData *completed = [@"globalThis.__CLOUDCORD_NATIVE_INJECTED__=true;"
+        dataUsingEncoding:NSUTF8StringEncoding];
+    if (!evaluateCloudCordData(completed, "cloudcord:injection-complete", runtime)) return;
     cloudCordInjectedRuntime.store(&runtime);
     NSLog(@"[CloudCord] Full 344 runtime injected after Discord bundle");
 }
