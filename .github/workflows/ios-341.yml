@@ -26,6 +26,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check reload guard regression
+        run: node ios/scripts/test-reload-guard.cjs
+
       - name: Install build tools
         run: |
           brew install ldid
