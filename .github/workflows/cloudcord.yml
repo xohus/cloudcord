@@ -286,7 +286,7 @@ jobs:
 
           cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'
           import CustomBadgeBeta from "@core/ui/settings/components/CustomBadgeBeta";
-          import { GlassCard as Card, ProfileTabs, type ProfileTab } from "@core/ui/settings/components/FakeProfileGlass";
+          import { GlassCard as Card, GlassButton, ProfileTabs, type ProfileTab } from "@core/ui/settings/components/FakeProfileGlass";
           import FakeProfileIcon from "@assets/icons/fakeprofile.png";
           import bundledDecorationCatalog from "@assets/cloudcord-decorations.json";
           import { awaitStorage, useProxy } from "@core/vendetta/storage";
@@ -1717,11 +1717,7 @@ jobs:
           }
 
           function ActionButton({ label, onPress, muted = false }: { label: string; onPress: () => void; muted?: boolean }) {
-              return (
-                  <Pressable accessibilityRole="button" accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 50, paddingHorizontal: 16, paddingVertical: 14, borderRadius: 16, borderWidth: 1, borderColor: muted ? "rgba(190,202,255,0.18)" : "rgba(255,255,255,0.18)", alignItems: "center", justifyContent: "center", backgroundColor: muted ? "rgba(255,255,255,0.06)" : "#6575ef", opacity: pressed ? 0.78 : 1 })}>
-                      <Text variant="text-sm/bold" style={{ color: muted ? "#c4ceff" : "#fff", textAlign: "center" }}>{label}</Text>
-                  </Pressable>
-              );
+              return <GlassButton label={label} onPress={onPress} muted={muted} />;
           }
 
           function ToggleRow({ label, subLabel, value, onPress, accent = false }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {

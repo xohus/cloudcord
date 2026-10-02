@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Image, Linking, Pressable, Text, TextInput, View } from "react-native";
+import { Alert, Image, Linking, Text, TextInput, View } from "react-native";
+import { GlassButton } from "./FakeProfileGlass";
 import { settings } from "@lib/api/settings";
 import { findByProps } from "@metro";
 
@@ -70,7 +71,7 @@ export default function CustomBadgeBeta() {
         } catch { setMessage("connection failed — nothing was published"); }
         finally { setBusy(false); }
     };
-    const button = (label: string, action: () => void, disabled = false) => <Pressable accessibilityRole="button" accessibilityState={{ disabled }} disabled={disabled} onPress={action} style={({ pressed }) => ({ minHeight: 50, justifyContent: "center", alignItems: "center", padding: 14, borderRadius: 16, borderWidth: 1, borderColor: "rgba(255,255,255,0.14)", backgroundColor: disabled ? "rgba(255,255,255,0.06)" : "#6575ef", opacity: pressed ? 0.78 : 1 })}><Text style={{ color: disabled ? "#b5bad0" : "white", fontWeight: "600", textAlign: "center" }}>{label}</Text></Pressable>;
+    const button = (label: string, action: () => void, disabled = false) => <GlassButton label={label} onPress={action} disabled={disabled} />;
     return <View style={{ gap: 14, padding: 2 }}>
         <Text style={{ color: "white", fontWeight: "bold" }}>custom badges · beta</Text>
         <Text style={{ color: "#b5bac1" }}>no staff/verified impersonation, unsafe content, links or personal information. custom badges do not prove staff status.</Text>
