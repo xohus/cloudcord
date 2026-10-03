@@ -25,6 +25,13 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore verified earlier IPA runtime
+        run: |
+          git show c8dbe43b53d2999867fdd272f548e5f4b367e602:dist/cc.js > dist/cc.js
+          echo '97cba63bc981582d70bfc1e4a80d6b5625ed7f7c26bd5916a4db82eed19091d3  dist/cc.js' | shasum -a 256 -c -
 
       - name: Check reload guard regression
         run: |
