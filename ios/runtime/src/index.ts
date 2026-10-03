@@ -20,6 +20,10 @@ import { initDebugger } from "@lib/api/debug";
 import * as lib from "./lib";
 
 export default async () => {
+    if ((globalThis as any).__CLOUDCORD_ORIGINAL_RAIN__) {
+        const updater = require("@lib/api/native/modules").BundleUpdaterManager;
+        void updater.checkForUpdates().catch((error: unknown) => console.warn("CloudCord update check failed", error));
+    }
     if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) await initLegacyRuntimeRefresh();
 
     // Load everything in parallel. The shared build workflow wraps core

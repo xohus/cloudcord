@@ -30,9 +30,12 @@ export const NativeDeviceModule = getNativeModule(
 export const NativeThemeModule = getNativeModule(
     "NativeThemeModule", "RTNThemeManager", "DCDTheme"
 )!;
-export const BundleUpdaterManager = getNativeModule(
+const nativeUpdater = getNativeModule(
     "BundleUpdaterManager"
 )!;
+export const BundleUpdaterManager = (globalThis as any).__CLOUDCORD_ORIGINAL_RAIN__
+    ? require("../runtimeUpdates").createRainUpdater(NativeFileModule)
+    : nativeUpdater;
 export const ImageLoader = getNativeModule(
     "ImageLoader"
 )!;

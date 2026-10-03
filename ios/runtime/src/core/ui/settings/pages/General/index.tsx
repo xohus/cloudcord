@@ -73,9 +73,13 @@ export default function General() {
                         onValueChange={(value: boolean) => settings.cloudcordDiagnosticsEnabled = value}
                     />
                     <TableRow
-                        label={Strings.RELOAD_DISCORD}
+                        label={(globalThis as any).__CLOUDCORD_ORIGINAL_RAIN__ ? "Update runtime & restart" : Strings.RELOAD_DISCORD}
                         icon={<TableRow.Icon source={findAssetId("RetryIcon")!} />}
-                        onPress={() => BundleUpdaterManager.reload()}
+                        onPress={() => {
+                            Promise.resolve(BundleUpdaterManager.reload()).catch((error: any) => {
+                                require("react-native").Alert.alert("Update failed", error?.message ?? "Try again later.");
+                            });
+                        }}
                     />
                     <TableSwitchRow
                         label={"Safe Mode"}
