@@ -11,6 +11,8 @@ const mmkvStorage = proxyLazy(() => {
 });
 
 export default function patchStorage() {
+    // Keep Discord's persisted/native theme enum intact on Rain's 344 loader.
+    if ((globalThis as any).__RAIN_LOADER__) return () => {};
     const patchedKeys = new Set(["ThemeStore", "SelectivelySyncedUserSettingsStore"]);
 
     const patches = [

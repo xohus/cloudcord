@@ -29,6 +29,11 @@ jobs:
       - name: Check startup error handling
         run: node ios/scripts/test-startup-errors.cjs
 
+      - name: Check Discord theme compatibility
+        run: |
+          npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2
+          CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-theme-compatibility.cjs
+
       - name: Clone clean Kettu source
         run: |
           set -e
@@ -93,6 +98,9 @@ jobs:
           cp "../ios/runtime/src/lib/ui/settings/patches/tabs.tsx" "src/lib/ui/settings/patches/tabs.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/panel.tsx" "src/lib/ui/settings/patches/panel.tsx"
           cp "../ios/runtime/src/lib/api/native/loader.ts" "src/lib/api/native/loader.ts"
+          cp "../ios/runtime/src/lib/addons/themes/colors/updater.ts" "src/lib/addons/themes/colors/updater.ts"
+          cp "../ios/runtime/src/lib/addons/themes/colors/patches/resolver.ts" "src/lib/addons/themes/colors/patches/resolver.ts"
+          cp "../ios/runtime/src/lib/addons/themes/colors/patches/storage.ts" "src/lib/addons/themes/colors/patches/storage.ts"
           # Discord 344 safety lives in the runtime entry and Metro internals.
           # Always overlay these files onto the clean Kettu checkout; otherwise
           # the build silently ships Kettu's legacy force-loading behavior.

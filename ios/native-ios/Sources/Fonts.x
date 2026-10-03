@@ -66,7 +66,16 @@ void patchFonts(NSDictionary<NSString *, NSString *> *mainFonts, NSString *fontD
         NSMutableString *filename = [NSMutableString string];
         for (NSUInteger i = 0; i < sizeof(digest); i++) [filename appendFormat:@"%02x", digest[i]];
         NSURL *cache = [directory URLByAppendingPathComponent:filename];
-        NSData *cached = [NSData dataWithContentsOfURL:cache];
+        // Kettu already downloads fonts to definition/family.ext. Reuse that
+        // exact cache instead of downloading a second copy during launch.
+        NSData *cached = nil;
+        if ([fontDefName isKindOfClass:NSString.class] && [fontDefName isEqualToString:fontDefName.lastPathComponent] && ![fontDefName isEqualToString:@".."] && [key isEqualToString:[key lastPathComponent]] && ![key isEqualToString:@".."]) {
+            NSString *extension = [value hasSuffix:@".otf"] ? @"otf" : @"ttf";
+            NSURL *legacyCache = [[directory URLByAppendingPathComponent:fontDefName isDirectory:YES] URLByAppendingPathComponent:[NSString stringWithFormat:@"%@.%@", key, extension]];
+            NSNumber *size = [NSFileManager.defaultManager attributesOfItemAtPath:legacyCache.path error:nil][NSFileSize];
+            if (size.unsignedLongLongValue <= 16 * 1024 * 1024) cached = [NSData dataWithContentsOfURL:legacyCache];
+        }
+        if (!cached.length) cached = [NSData dataWithContentsOfURL:cache];
         if (cached.length) { registerFontData(cached, key); continue; }
         // Never synchronously wait for the internet during app launch.
         NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];

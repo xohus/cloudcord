@@ -116,8 +116,9 @@ static void injectPreBundle(jsi::Runtime &runtime)
             [NSNotificationCenter.defaultCenter removeObserver:observer];
             observer = nil;
             if ([theme isKindOfClass:NSDictionary.class]) {
-                id main = theme[@"main"];
                 id data = theme[@"data"];
+                id main = [data isKindOfClass:NSDictionary.class] ? data[@"main"] : nil;
+                if (![main isKindOfClass:NSDictionary.class]) main = theme[@"main"];
                 if ([main isKindOfClass:NSDictionary.class]) initializeThemeColors(main[@"semantic"], main[@"raw"]);
                 else if ([data isKindOfClass:NSDictionary.class]) initializeThemeColors(data[@"semanticColors"], data[@"rawColors"]);
             }

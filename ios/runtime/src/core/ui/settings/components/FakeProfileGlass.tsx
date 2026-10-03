@@ -4,7 +4,7 @@ import { findAssetId } from "@lib/api/assets";
 
 function ProfileTabIcon({ tab, color }: { tab: ProfileTab; color: string }) {
     let icon: number | undefined;
-    for (const name of tab === "profile" ? ["PersonIcon", "UserIcon"] : tab === "badges" ? ["AwardIcon", "StarIcon"] : ["PaintPaletteIcon", "SparklesIcon"]) {
+    for (const name of tab === "profile" ? ["UserIcon"] : tab === "badges" ? ["StarIcon"] : ["PaintPaletteIcon", "SparklesIcon"]) {
         try { icon = findAssetId(name); } catch {}
         if (icon) break;
     }
