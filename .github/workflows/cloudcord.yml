@@ -75,8 +75,6 @@ jobs:
           mkdir -p src/core/ui/settings/pages/Themes
           mkdir -p src/core/ui/botcord
           mkdir -p src/core/ui/settings/components
-          cp "../ios/runtime/src/core/ui/settings/components/CustomBadgeBeta.tsx" "src/core/ui/settings/components/CustomBadgeBeta.tsx"
-          cp "../ios/runtime/src/core/ui/settings/components/FakeProfileGlass.tsx" "src/core/ui/settings/components/FakeProfileGlass.tsx"
           mkdir -p src/lib/api
           cp "../ios/assets/fakeprofile-icon.png" "src/assets/icons/fakeprofile.png"
           cp "../ios/runtime/src/core/ui/settings/pages/BotCord/index.tsx" "src/core/ui/settings/pages/BotCord/index.tsx"
@@ -296,13 +294,6 @@ jobs:
           cp "../ios/assets/cloudcord-decorations.json" "src/assets/cloudcord-decorations.json"
 
           cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'
-          import type { ProfileTab } from "@core/ui/settings/components/FakeProfileGlass";
-          // FakeProfile is imported for its profile patches during startup.
-          // Its new visual/native dependencies must load only when the page renders.
-          function Card(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassCard; return <Component {...props} />; }
-          function GlassButton(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassButton; return <Component {...props} />; }
-          function ProfileTabs(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").ProfileTabs; return <Component {...props} />; }
-          function CustomBadgeBeta() { const Component = require("@core/ui/settings/components/CustomBadgeBeta").default; return <Component />; }
           import FakeProfileIcon from "@assets/icons/fakeprofile.png";
           import bundledDecorationCatalog from "@assets/cloudcord-decorations.json";
           import { awaitStorage, useProxy } from "@core/vendetta/storage";
@@ -312,7 +303,7 @@ jobs:
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByNameLazy, findByProps, findByStoreName } from "@metro";
           import { FluxDispatcher, NavigationNative } from "@metro/common";
-          import { Text } from "@metro/common/components";
+          import { Card, Text } from "@metro/common/components";
           import { useEffect, useReducer, useState } from "react";
           import { Alert, Image, NativeModules, Pressable, ScrollView, TextInput, View } from "react-native";
 
@@ -1733,18 +1724,22 @@ jobs:
           }
 
           function ActionButton({ label, onPress, muted = false }: { label: string; onPress: () => void; muted?: boolean }) {
-              return <GlassButton label={label} onPress={onPress} muted={muted} />;
+              return (
+                  <Pressable onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 48, paddingHorizontal: 14, paddingVertical: 12, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: muted ? "#243c46" : "#50fa9b", opacity: pressed ? 0.72 : 1 })}>
+                      <Text variant="text-sm/bold" style={{ color: muted ? "#78e7ff" : "#10251a", textAlign: "center" }}>{label}</Text>
+                  </Pressable>
+              );
           }
 
           function ToggleRow({ label, subLabel, value, onPress, accent = false }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {
               return (
-                  <Pressable accessibilityRole="switch" accessibilityState={{ checked: value }} accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 13, borderRadius: 16, backgroundColor: pressed ? "rgba(101,117,239,0.18)" : "rgba(255,255,255,0.045)", opacity: pressed ? 0.85 : 1 })}>
+                  <Pressable onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 58, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 11, backgroundColor: pressed ? "rgba(80,250,155,0.16)" : "rgba(255,255,255,0.04)", opacity: pressed ? 0.8 : 1 })}>
                       <View style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
-                          <Text variant="text-sm/bold" style={{ color: accent ? "#bdc8ff" : "#f0f3f6" }}>{label}</Text>
+                          <Text variant="text-sm/bold" style={{ color: accent ? "#50fa9b" : "#f0f3f6" }}>{label}</Text>
                           {subLabel ? <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>{subLabel}</Text> : null}
                       </View>
-                      <View style={{ width: 48, height: 28, borderRadius: 14, padding: 3, alignItems: value ? "flex-end" : "flex-start", backgroundColor: value ? "#6575ef" : "#484d60" }}>
-                          <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff" }} />
+                      <View style={{ width: 48, height: 28, borderRadius: 14, padding: 3, alignItems: value ? "flex-end" : "flex-start", backgroundColor: value ? "#50fa9b" : "#4b4f58" }}>
+                          <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: value ? "#10251a" : "#d4d7dc" }} />
                       </View>
                   </Pressable>
               );
@@ -1752,14 +1747,14 @@ jobs:
 
           function DurationSelect({ label, value, onPress }: { label: string; value: number; onPress: () => void }) {
               return (
-                  <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 13, borderRadius: 16, backgroundColor: pressed ? "rgba(101,117,239,0.18)" : "rgba(255,255,255,0.045)" })}>
+                  <Pressable onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 58, flexDirection: "row", alignItems: "center", paddingHorizontal: 12, paddingVertical: 10, borderRadius: 11, backgroundColor: pressed ? "rgba(120,231,255,0.16)" : "rgba(255,255,255,0.04)" })}>
                       <View style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-                          <Text variant="text-sm/bold" style={{ color: "#bdc8ff" }}>{label}</Text>
+                          <Text variant="text-sm/bold" style={{ color: "#50fa9b" }}>{label}</Text>
                           <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>Profile appearance</Text>
                       </View>
                       <View style={{ maxWidth: "48%", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: "#243c46" }}>
                           <Text variant="text-xs/bold" style={{ color: "#78e7ff" }} numberOfLines={1}>{label === "Gifting badge" ? (GIFT_LEVELS[value]?.name || "None") : label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value)}</Text>
-                          <Text variant="text-sm/bold" style={{ color: "#bdc8ff" }}>›</Text>
+                          <Text variant="text-sm/bold" style={{ color: "#78e7ff" }}>v</Text>
                       </View>
                   </Pressable>
               );
@@ -1799,7 +1794,7 @@ jobs:
                       <Text variant="text-sm/bold" color="text-normal">{label}</Text>
                       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 9 }}>
                           {PROFILE_COLORS.map(color => (
-                              <Pressable key={color} accessibilityRole="button" accessibilityState={{ selected: value.toUpperCase() === color }} accessibilityLabel={`${label} ${color}`} onPress={() => onSelect(color)} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: color, borderWidth: value.toUpperCase() === color ? 3 : 1, borderColor: value.toUpperCase() === color ? "#ffffff" : "rgba(255,255,255,0.25)", opacity: pressed ? 0.65 : 1 })} />
+                              <Pressable key={color} accessibilityLabel={`${label} ${color}`} onPress={() => onSelect(color)} style={({ pressed }) => ({ width: 34, height: 34, borderRadius: 17, backgroundColor: color, borderWidth: value.toUpperCase() === color ? 3 : 1, borderColor: value.toUpperCase() === color ? "#ffffff" : "rgba(255,255,255,0.25)", opacity: pressed ? 0.65 : 1 })} />
                           ))}
                       </View>
                       <ActionButton label="Open custom color picker" muted onPress={onOpen} />
@@ -1886,8 +1881,6 @@ jobs:
           }
 
           export default function FakeProfile() {
-              const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
-              const [showDetails, setShowDetails] = useState(false);
               useProxy(settings);
               const [, redraw] = useReducer(value => value + 1, 0);
               const navigation = NavigationNative.useNavigation();
@@ -2013,13 +2006,13 @@ jobs:
               const banner = mediaUri("bannerMedia");
 
               return (
-                  <ScrollView style={{ flex: 1, width: "100%", backgroundColor: "#111521" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 20, paddingBottom: 110 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator={false}>
+                  <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 16, paddingBottom: 110 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator>
                       <View style={{ width: "100%", gap: 16 }}>
                           <View style={{ width: "100%", flexDirection: "row", alignItems: "center", gap: 12 }}>
-                              <View style={{ width: 52, height: 52, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", backgroundColor: "rgba(101,117,239,0.16)", alignItems: "center", justifyContent: "center" }}><Image source={{ uri: FakeProfileIcon }} style={{ width: 34, height: 34, resizeMode: "contain" }} /></View>
+                              <View style={{ width: 52, height: 52, alignItems: "center", justifyContent: "center" }}><Image source={{ uri: FakeProfileIcon }} style={{ width: 48, height: 48, resizeMode: "contain" }} /></View>
                               <View style={{ flex: 1, minWidth: 0 }}>
                                   <Text variant="heading-lg/semibold" color="text-normal">FakeProfile</Text>
-                                  <Text variant="text-sm/medium" style={{ color: "#aeb8d2" }}>make it yours. visible to other CloudCord users when synced.</Text>
+                                  <Text variant="text-sm/medium" color="text-muted">Built-in local profile preview</Text>
                               </View>
                           </View>
 
@@ -2033,18 +2026,16 @@ jobs:
                                       </View>
                                       <Text variant="heading-md/semibold" color="text-normal" style={{ marginTop: 10 }}>{preview.displayName || "Preview Name"}</Text>
                                       <Text variant="text-sm/medium" color="text-muted">@{preview.username || "preview"}</Text>
-                                      <View style={{ alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: "rgba(101,117,239,0.18)", marginTop: 8 }}><Text variant="text-xs/bold" style={{ color: "#bdc8ff" }}>{preview.enabled ? "preview on" : "preview off"}</Text></View>
+                                      <Text variant="text-xs/bold" style={{ color: "#7ee787", marginTop: 8 }}>PREVIEW</Text>
                                   </View>
                               </View>
                           </Card>
 
-                          <ProfileTabs selected={activeTab} onSelect={setActiveTab} />
-                          {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
-                          {activeTab === "profile" ? <Card border="strong">
+                          <Card border="strong">
                               <View style={{ padding: 14, gap: 14 }}>
                                   <ToggleRow
-                                      label="preview on this device"
-                                      subLabel="try your changes here before syncing"
+                                      label="Show preview in the client"
+                                      subLabel="Show your saved profile preview"
                                       value={preview.enabled}
                                       accent
                                       onPress={() => update("enabled", !preview.enabled, true)}
@@ -2058,7 +2049,7 @@ jobs:
                                       <TextInput defaultValue={preview.username} placeholder="preview" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">about you</Text>
+                                      <Text variant="text-sm/bold" color="text-normal">Bio</Text>
                                       <TextInput defaultValue={preview.bio} placeholder="My description..." placeholderTextColor="#777" multiline onChangeText={value => update("bio", value, true)} style={{ minHeight: 88, color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12, textAlignVertical: "top" }} />
                                   </View>
                                   <View style={{ gap: 8 }}>
@@ -2107,10 +2098,11 @@ jobs:
                                       redraw();
                                   })()} />
                               </View>
-                          </Card> : null}
-                          {activeTab === "badges" ? <Card border="strong">
+                          </Card>
+
+                          <Card border="strong">
                               <View style={{ padding: 14, gap: 10 }}>
-                                  <Text variant="heading-md/semibold" style={{ color: "#bdc8ff" }}>your badges</Text>
+                                  <Text variant="heading-md/semibold" style={{ color: "#50fa9b" }}>Choose badges</Text>
                                   <ToggleRow
                                       label="Replace real badges"
                                       subLabel="Selected fake badges replace your real Discord badges for CloudCord users"
@@ -2130,10 +2122,9 @@ jobs:
                                       <TextInput defaultValue={preview.oldName} placeholder="OldUser#0000" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("oldName", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
                                   </View> : null}
                               </View>
-                          </Card> : null}
+                          </Card>
 
-                          <ActionButton label={showDetails ? "Hide connection details" : "Connection details"} muted onPress={() => setShowDetails(!showDetails)} />
-                          {showDetails ? <Card border="strong">
+                          <Card border="strong">
                               <View style={{ padding: 14, gap: 5 }}>
                                   <Text variant="text-sm/bold" color="text-normal">Diagnostics</Text>
                                   <Text variant="text-xs/medium" color="text-muted">Preview hooks: {diagnostics.patches}</Text>
@@ -2143,7 +2134,7 @@ jobs:
                                   <Text variant="text-xs/medium" color="text-muted">Banner resolver: {diagnostics.bannerResolver ? "Connected" : "Unavailable"}</Text>
                                   <Text variant="text-xs/medium" color="text-muted">Last action: {diagnostics.last}</Text>
                               </View>
-                          </Card> : null}
+                          </Card>
                       </View>
                   </ScrollView>
               );

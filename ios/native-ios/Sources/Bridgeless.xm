@@ -7,6 +7,8 @@
 #import "Fonts.h"
 #import "Themes.h"
 #import "Utils.h"
+#import "LoaderConfig.h"
+#import <CommonCrypto/CommonDigest.h>
 @interface BridgeRegistry : NSObject
 + (instancetype)shared;
 - (NSDictionary *)dispatchPayload:(NSDictionary *)payload;
@@ -15,6 +17,93 @@
 - (void)instance:(id)instance didInitializeRuntime:(facebook::jsi::Runtime &)runtime;
 @end
 using namespace facebook;
+static NSURL *resolveDownloadURL(void)
+{
+    LoaderConfig *fresh = [LoaderConfig getLoaderConfig];
+    if (fresh.customLoadUrlEnabled && fresh.customLoadUrl)
+    {
+        return fresh.customLoadUrl;
+    }
+    return [NSURL URLWithString:@"https://getcloudcord.com/api/proxy/raw/dist/cc.js"];
+}
+
+static dispatch_queue_t fsQueue(void)
+{
+    static dispatch_queue_t queue;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        queue = dispatch_queue_create("app.cloudcord.fsQueue", DISPATCH_QUEUE_SERIAL);
+    });
+    return queue;
+}
+
+static void downloadBundleForNextLaunch(NSURL *rainDir)
+{
+    NSURL *bundleFileURL = [rainDir URLByAppendingPathComponent:@"bundle.js"];
+    NSURL *targetURL = resolveDownloadURL();
+
+    if (!targetURL) return;
+
+    NSMutableURLRequest *req = [NSMutableURLRequest requestWithURL:targetURL
+                                                       cachePolicy:NSURLRequestReloadIgnoringLocalAndRemoteCacheData
+                                                   timeoutInterval:15.0];
+
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSURL *etagFileURL = [rainDir URLByAppendingPathComponent:@"etag.txt"];
+
+    __block NSString *etag = nil;
+    dispatch_sync(fsQueue(), ^{
+        if ([fm fileExistsAtPath:bundleFileURL.path])
+            etag = [NSString stringWithContentsOfURL:etagFileURL encoding:NSUTF8StringEncoding error:nil];
+    });
+    if (etag)
+        [req setValue:etag forHTTPHeaderField:@"If-None-Match"];
+
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
+    [[session dataTaskWithRequest:req
+                completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+        if ([response isKindOfClass:[NSHTTPURLResponse class]])
+        {
+            NSHTTPURLResponse *http = (NSHTTPURLResponse *)response;
+            if (http.statusCode == 200 && data.length > 0)
+            {
+                dispatch_sync(fsQueue(), ^{
+                    [data writeToURL:bundleFileURL atomically:YES];
+                    NSString *newEtag = [http valueForHTTPHeaderField:@"Etag"];
+                    if (newEtag)
+                        [newEtag writeToURL:etagFileURL atomically:YES encoding:NSUTF8StringEncoding error:nil];
+                    else
+                        [fm removeItemAtURL:etagFileURL error:nil];
+                });
+            }
+        }
+        else if (error)
+        {
+            BunnyLog(@"downloadBundleForNextLaunch: Error: %@", error.localizedDescription);
+        }
+        [session finishTasksAndInvalidate];
+    }] resume];
+}
+
+static void executePreloads(jsi::Runtime &runtime, NSURL *rainDir)
+{
+    NSURL *preloadsDirectory = [rainDir URLByAppendingPathComponent:@"preloads"];
+    if ([[NSFileManager defaultManager] fileExistsAtPath:preloadsDirectory.path])
+    {
+        NSArray *contents = [[NSFileManager defaultManager] contentsOfDirectoryAtURL:preloadsDirectory
+                                                           includingPropertiesForKeys:nil options:0 error:nil];
+        for (NSURL *fileURL in contents)
+        {
+            if ([[fileURL pathExtension] isEqualToString:@"js"])
+            {
+                NSData *data = [NSData dataWithContentsOfURL:fileURL];
+                if (data) [JSI evaluate:data tag:@"rain:preload" runtime:runtime];
+            }
+        }
+    }
+}
+
+
 static void injectPreBundle(jsi::Runtime &runtime)
 {
     try
@@ -95,6 +184,8 @@ static void injectPreBundle(jsi::Runtime &runtime)
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime
 {
     %orig;
+    [[LoaderConfig getLoaderConfig] loadConfig];
+    NSURL *rainDir = getPyoncordDirectory();
     injectPreBundle(runtime);
     NSString *bundlePath = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"BunnyResources.bundle"];
     NSBundle *resources = [NSBundle bundleWithPath:bundlePath];
@@ -125,8 +216,30 @@ static void injectPreBundle(jsi::Runtime &runtime)
             if ([fonts isKindOfClass:NSDictionary.class]) patchFonts(fonts[@"main"], fonts[@"name"]);
         }];
     }
-    NSData *bundle = [NSData dataWithContentsOfURL:[resources URLForResource:@"runtime" withExtension:@"js"]];
-    if (bundle.length) [JSI evaluate:bundle tag:@"cloudcord:rain-runtime" runtime:runtime];
+    // Seed each new IPA once so an older download cannot override its runtime.
+    NSData *packaged = [NSData dataWithContentsOfURL:[resources URLForResource:@"runtime" withExtension:@"js"]];
+    NSURL *bundleFileURL = [rainDir URLByAppendingPathComponent:@"bundle.js"];
+    NSURL *seedURL = [rainDir URLByAppendingPathComponent:@"packaged-runtime.sha256"];
+    if (packaged.length) {
+        unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+        CC_SHA256(packaged.bytes, (CC_LONG)packaged.length, digest);
+        NSMutableString *hash = [NSMutableString string];
+        for (NSUInteger i = 0; i < sizeof(digest); i++) [hash appendFormat:@"%02x", digest[i]];
+        NSString *previous = [NSString stringWithContentsOfURL:seedURL encoding:NSUTF8StringEncoding error:nil];
+        if (![hash isEqualToString:previous]) {
+            if ([packaged writeToURL:bundleFileURL atomically:YES]) {
+                [hash writeToURL:seedURL atomically:YES encoding:NSUTF8StringEncoding error:nil];
+                [NSFileManager.defaultManager removeItemAtURL:[rainDir URLByAppendingPathComponent:@"etag.txt"] error:nil];
+            }
+        }
+    }
+    NSData *bundle = [NSData dataWithContentsOfURL:bundleFileURL];
+    if (bundle && bundle.length > 0) {
+        [JSI evaluate:bundle tag:@"rain:bundle" runtime:runtime];
+        executePreloads(runtime, rainDir);
+    } else {
+        downloadBundleForNextLaunch(rainDir);
+    }
     NSLog(@"[CloudCord] Rain runtime callback injected");
 }
 %end
