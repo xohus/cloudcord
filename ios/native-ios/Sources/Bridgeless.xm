@@ -103,16 +103,27 @@ static void injectPreBundle(jsi::Runtime &runtime)
     NSData *themeData = [NSData dataWithContentsOfURL:[getPyoncordDirectory() URLByAppendingPathComponent:@"current-theme.json"]];
     id theme = themeData.length ? [NSJSONSerialization JSONObjectWithData:themeData options:0 error:nil] : nil;
     if ([theme isKindOfClass:NSDictionary.class]) {
-        id data = theme[@"data"];
-        id main = theme[@"main"];
-        if ([main isKindOfClass:NSDictionary.class]) initializeThemeColors(main[@"semantic"], main[@"raw"]);
-        else if ([data isKindOfClass:NSDictionary.class]) initializeThemeColors(data[@"semanticColors"], data[@"rawColors"]);
         NSString *json = [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:theme options:0 error:nil] encoding:NSUTF8StringEncoding];
         if (json) [JSI evaluate:[[NSString stringWithFormat:@"globalThis.__CLOUDCORD_LOADER__.storedTheme=%@;", json] dataUsingEncoding:NSUTF8StringEncoding] tag:@"cloudcord:saved-theme" runtime:runtime];
     }
     NSData *fontData = [NSData dataWithContentsOfURL:[getPyoncordDirectory() URLByAppendingPathComponent:@"fonts.json"]];
     id fonts = fontData.length ? [NSJSONSerialization JSONObjectWithData:fontData options:0 error:nil] : nil;
-    if ([fonts isKindOfClass:NSDictionary.class]) patchFonts(fonts[@"main"], fonts[@"name"]);
+    // Rain's callback precedes Discord's JS bundle. Appearance work belongs
+    // after that bundle loads, on the UI thread, not inside runtime creation.
+    if ([theme isKindOfClass:NSDictionary.class] || [fonts isKindOfClass:NSDictionary.class]) {
+        __block id observer = nil;
+        observer = [NSNotificationCenter.defaultCenter addObserverForName:@"RCTJavaScriptDidLoadNotification" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *note) {
+            [NSNotificationCenter.defaultCenter removeObserver:observer];
+            observer = nil;
+            if ([theme isKindOfClass:NSDictionary.class]) {
+                id main = theme[@"main"];
+                id data = theme[@"data"];
+                if ([main isKindOfClass:NSDictionary.class]) initializeThemeColors(main[@"semantic"], main[@"raw"]);
+                else if ([data isKindOfClass:NSDictionary.class]) initializeThemeColors(data[@"semanticColors"], data[@"rawColors"]);
+            }
+            if ([fonts isKindOfClass:NSDictionary.class]) patchFonts(fonts[@"main"], fonts[@"name"]);
+        }];
+    }
     NSData *bundle = [NSData dataWithContentsOfURL:[resources URLForResource:@"runtime" withExtension:@"js"]];
     if (bundle.length) [JSI evaluate:bundle tag:@"cloudcord:rain-runtime" runtime:runtime];
     NSLog(@"[CloudCord] Rain runtime callback injected");

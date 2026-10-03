@@ -288,8 +288,13 @@ jobs:
           cp "../ios/assets/cloudcord-decorations.json" "src/assets/cloudcord-decorations.json"
 
           cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'
-          import CustomBadgeBeta from "@core/ui/settings/components/CustomBadgeBeta";
-          import { GlassCard as Card, GlassButton, ProfileTabs, type ProfileTab } from "@core/ui/settings/components/FakeProfileGlass";
+          import type { ProfileTab } from "@core/ui/settings/components/FakeProfileGlass";
+          // FakeProfile is imported for its profile patches during startup.
+          // Its new visual/native dependencies must load only when the page renders.
+          function Card(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassCard; return <Component {...props} />; }
+          function GlassButton(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassButton; return <Component {...props} />; }
+          function ProfileTabs(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").ProfileTabs; return <Component {...props} />; }
+          function CustomBadgeBeta() { const Component = require("@core/ui/settings/components/CustomBadgeBeta").default; return <Component />; }
           import FakeProfileIcon from "@assets/icons/fakeprofile.png";
           import bundledDecorationCatalog from "@assets/cloudcord-decorations.json";
           import { awaitStorage, useProxy } from "@core/vendetta/storage";

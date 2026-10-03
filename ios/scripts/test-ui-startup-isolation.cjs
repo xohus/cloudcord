@@ -1,0 +1,13 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const root = path.join(__dirname, '../..');
+const workflow = fs.readFileSync(path.join(root, '.github/workflows/cloudcord.yml'), 'utf8');
+const page = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'")[1].split('\n          TSX')[0];
+assert.doesNotMatch(page, /import CustomBadgeBeta|import \{ GlassCard/);
+assert.match(page, /function CustomBadgeBeta\(\) \{ const Component = require/);
+assert.match(page, /function Card\(props: any\) \{ const Component = require/);
+const native = fs.readFileSync(path.join(root, 'ios/native-ios/Sources/Bridgeless.xm'), 'utf8');
+assert.ok(native.indexOf('RCTJavaScriptDidLoadNotification') < native.indexOf('initializeThemeColors('));
+assert.ok(native.indexOf('RCTJavaScriptDidLoadNotification') < native.indexOf('patchFonts('));
+console.log('new UI loads on page render; native appearance waits for Discord bundle load');

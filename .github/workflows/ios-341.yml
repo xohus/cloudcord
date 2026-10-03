@@ -31,6 +31,7 @@ jobs:
       - name: Check reload guard regression
         run: |
           node ios/scripts/test-rain-loader.cjs
+          node ios/scripts/test-ui-startup-isolation.cjs
           node ios/scripts/test-metro-capture.cjs
 
       - name: Check native hook isolation

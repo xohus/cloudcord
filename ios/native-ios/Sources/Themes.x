@@ -43,8 +43,15 @@ static void swizzleRawColorMethods(void) {
     BunnyLog(@"Processing %lu raw color methods", (unsigned long)gRawColors.count);
 
     for (NSString *key in gRawColors) {
+        if (![key isKindOfClass:NSString.class] || ![gRawColors[key] isKindOfClass:NSString.class]) continue;
         SEL selector          = NSSelectorFromString(key);
         Method existingMethod = class_getClassMethod(targetClass, selector);
+        // Never replace parameterized or scalar-returning UIKit methods.
+        if (existingMethod) {
+            char type[16];
+            method_getReturnType(existingMethod, type, sizeof(type));
+            if (method_getNumberOfArguments(existingMethod) != 2 || type[0] != '@') continue;
+        }
         IMP original          = existingMethod ? method_getImplementation(existingMethod) : NULL;
 
         IMP implementation = imp_implementationWithBlock(^UIColor *(id self) {
@@ -87,7 +94,7 @@ static void swizzleDCDThemeColorMethods(void) {
         Method method = methods[i];
         char returnType[256];
         method_getReturnType(method, returnType, sizeof(returnType));
-        if (strcmp(returnType, @encode(UIColor *)) != 0)
+        if (strcmp(returnType, @encode(UIColor *)) != 0 || method_getNumberOfArguments(method) != 2)
             continue;
 
         SEL selector   = method_getName(method);
