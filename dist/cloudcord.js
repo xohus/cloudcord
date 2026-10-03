@@ -238,6 +238,58 @@
     }
   });
 
+  // src/lib/api/native/runtimeUpdates.ts
+  var runtimeUpdates_exports = {};
+  __export(runtimeUpdates_exports, {
+    createRainUpdater: () => createRainUpdater
+  });
+  function createRainUpdater(files) {
+    var download = () => pending ??= (() => _async_to_generator(function* () {
+      var response = yield fetch(URL2 + "?t=" + Date.now(), {
+        headers: {
+          "X-CC-Client": "1"
+        },
+        cache: "no-store"
+      });
+      if (!response.ok)
+        throw new Error("runtime download failed (" + response.status + ")");
+      var code = yield response.text();
+      if (code.length < 1e4 || !code.includes("CloudCord"))
+        throw new Error("invalid runtime response");
+      yield files.writeFile("documents", "rain/bundle.js", code, "utf8");
+    })())().finally(() => {
+      pending = void 0;
+    });
+    return {
+      download,
+      checkForUpdates: download,
+      reload: () => _async_to_generator(function* () {
+        yield download();
+        var bridge = globalThis.__RAIN_BRIDGE_CALL_SYNC__;
+        if (typeof bridge !== "function")
+          throw new Error("Rain reload bridge unavailable");
+        var result = bridge({
+          rain: {
+            method: "updater.reload",
+            args: []
+          }
+        });
+        if (result?.error)
+          throw new Error(result.error);
+      })()
+    };
+  }
+  var URL2, pending;
+  var init_runtimeUpdates = __esm({
+    "src/lib/api/native/runtimeUpdates.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      URL2 = "https://getcloudcord.com/api/proxy/raw/dist/cc.js";
+    }
+  });
+
   // src/lib/api/native/modules/index.ts
   var modules_exports = {};
   __export(modules_exports, {
@@ -261,7 +313,7 @@
     }
     return void 0;
   }
-  var nmp, NativeCacheModule, NativeFileModule, NativeClientInfoModule, NativeDeviceModule, NativeThemeModule, BundleUpdaterManager, ImageLoader;
+  var nmp, NativeCacheModule, NativeFileModule, NativeClientInfoModule, NativeDeviceModule, NativeThemeModule, nativeUpdater, BundleUpdaterManager, ImageLoader;
   var init_modules = __esm({
     "src/lib/api/native/modules/index.ts"() {
       "use strict";
@@ -273,7 +325,8 @@
       NativeClientInfoModule = getNativeModule("NativeClientInfoModule", "RTNClientInfoManager", "InfoDictionaryManager");
       NativeDeviceModule = getNativeModule("NativeDeviceModule", "RTNDeviceManager", "DCDDeviceManager");
       NativeThemeModule = getNativeModule("NativeThemeModule", "RTNThemeManager", "DCDTheme");
-      BundleUpdaterManager = getNativeModule("BundleUpdaterManager");
+      nativeUpdater = getNativeModule("BundleUpdaterManager");
+      BundleUpdaterManager = globalThis.__CLOUDCORD_ORIGINAL_RAIN__ ? (init_runtimeUpdates(), __toCommonJS(runtimeUpdates_exports)).createRainUpdater(NativeFileModule) : nativeUpdater;
       ImageLoader = getNativeModule("ImageLoader");
     }
   });
@@ -290,40 +343,40 @@
     writeFile: () => writeFile
   });
   function clearFolder(_0) {
-    return _async_to_generator(function* (path, { prefix = "pyoncord/" } = {}) {
+    return _async_to_generator(function* (path, { prefix = dataPrefix } = {}) {
       if (typeof NativeFileModule.clearFolder !== "function")
         throw new Error("'fs.clearFolder' is not supported");
       return void (yield NativeFileModule.clearFolder("documents", `${prefix}${path}`));
     }).apply(this, arguments);
   }
   function removeFile(_0) {
-    return _async_to_generator(function* (path, { prefix = "pyoncord/" } = {}) {
+    return _async_to_generator(function* (path, { prefix = dataPrefix } = {}) {
       if (typeof NativeFileModule.removeFile !== "function")
         throw new Error("'fs.removeFile' is not supported");
       return void (yield NativeFileModule.removeFile("documents", `${prefix}${path}`));
     }).apply(this, arguments);
   }
-  function removeCacheFile(path, prefix = "pyoncord/") {
-    return _async_to_generator(function* () {
+  function removeCacheFile(_0) {
+    return _async_to_generator(function* (path, prefix = dataPrefix) {
       if (typeof NativeFileModule.removeFile !== "function")
         throw new Error("'fs.removeFile' is not supported");
       return void (yield NativeFileModule.removeFile("cache", `${prefix}${path}`));
-    })();
+    }).apply(this, arguments);
   }
   function fileExists(_0) {
-    return _async_to_generator(function* (path, { prefix = "pyoncord/" } = {}) {
+    return _async_to_generator(function* (path, { prefix = dataPrefix } = {}) {
       return yield NativeFileModule.fileExists(`${NativeFileModule.getConstants().DocumentsDirPath}/${prefix}${path}`);
     }).apply(this, arguments);
   }
   function writeFile(_0, _1) {
-    return _async_to_generator(function* (path, data, { prefix = "pyoncord/" } = {}) {
+    return _async_to_generator(function* (path, data, { prefix = dataPrefix } = {}) {
       if (typeof data !== "string")
         throw new Error("Argument 'data' must be a string");
       return void (yield NativeFileModule.writeFile("documents", `${prefix}${path}`, data, "utf8"));
     }).apply(this, arguments);
   }
   function readFile(_0) {
-    return _async_to_generator(function* (path, { prefix = "pyoncord/" } = {}) {
+    return _async_to_generator(function* (path, { prefix = dataPrefix } = {}) {
       try {
         return yield NativeFileModule.readFile(`${NativeFileModule.getConstants().DocumentsDirPath}/${prefix}${path}`, "utf8");
       } catch (err) {
@@ -334,7 +387,7 @@
     }).apply(this, arguments);
   }
   function downloadFile(_0, _1) {
-    return _async_to_generator(function* (url2, path, { prefix = "pyoncord/" } = {}) {
+    return _async_to_generator(function* (url2, path, { prefix = dataPrefix } = {}) {
       var response = yield fetch(url2);
       if (!response.ok) {
         throw new Error(`Failed to download file from ${url2}: ${response.status}`);
@@ -344,6 +397,7 @@
       yield NativeFileModule.writeFile("documents", `${prefix}${path}`, data, "base64");
     }).apply(this, arguments);
   }
+  var dataPrefix;
   var init_fs = __esm({
     "src/lib/api/native/fs.ts"() {
       "use strict";
@@ -351,6 +405,7 @@
       init_promiseAllSettled();
       init_async_to_generator();
       init_modules();
+      dataPrefix = globalThis.__CLOUDCORD_ORIGINAL_RAIN__ ? "rain/" : "cloudcord/";
     }
   });
 
@@ -9919,11 +9974,11 @@
     };
   }
   function unmarkMediaCleared(key) {
-    var pending = {
+    var pending2 = {
       ...rootSettings.fakeProfileMediaCleared || {}
     };
-    delete pending[key];
-    rootSettings.fakeProfileMediaCleared = pending;
+    delete pending2[key];
+    rootSettings.fakeProfileMediaCleared = pending2;
   }
   function localHasFakeBadges() {
     return preview.nitroEnabled || preview.boostMonths > 0 || preview.giftLevel >= 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
@@ -14709,11 +14764,15 @@
                 onValueChange: (value) => settings.cloudcordDiagnosticsEnabled = value
               }),
               /* @__PURE__ */ jsx(TableRow, {
-                label: Strings.RELOAD_DISCORD,
+                label: globalThis.__CLOUDCORD_ORIGINAL_RAIN__ ? "Update runtime & restart" : Strings.RELOAD_DISCORD,
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("RetryIcon")
                 }),
-                onPress: () => BundleUpdaterManager.reload()
+                onPress: () => {
+                  Promise.resolve(BundleUpdaterManager.reload()).catch((error) => {
+                    require_react_native().Alert.alert("Update failed", error?.message ?? "Try again later.");
+                  });
+                }
               }),
               /* @__PURE__ */ jsx(TableSwitchRow, {
                 label: "Safe Mode",
@@ -21410,6 +21469,10 @@
       init_debug();
       init_lib();
       src_default = () => _async_to_generator(function* () {
+        if (globalThis.__CLOUDCORD_ORIGINAL_RAIN__) {
+          var updater = (init_modules(), __toCommonJS(modules_exports)).BundleUpdaterManager;
+          void updater.checkForUpdates().catch((error) => console.warn("CloudCord update check failed", error));
+        }
         if (!globalThis.__CLOUDCORD_BRIDGELESS__)
           yield initLegacyRuntimeRefresh();
         var cloudCordCoreUnloads = [];
