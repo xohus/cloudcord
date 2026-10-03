@@ -1,6 +1,27 @@
 #import "LoaderConfig.h"
 #import "Logger.h"
-#import "Utils.h"
+extern NSURL *getPyoncordDirectory(void);
+
+static NSDictionary *readLoaderConfig(NSURL *url)
+{
+    NSData *data = [NSData dataWithContentsOfURL:url];
+    if (!data.length) return nil;
+    id parsed = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+    return [parsed isKindOfClass:NSDictionary.class] ? parsed : nil;
+}
+
+static void applyLoaderConfig(LoaderConfig *config, NSDictionary *json)
+{
+    id custom = json[@"customLoadUrl"];
+    if (![custom isKindOfClass:NSDictionary.class]) return;
+    id enabled = custom[@"enabled"];
+    id value = custom[@"url"];
+    if (![value isKindOfClass:NSString.class]) return;
+    NSURL *url = [NSURL URLWithString:value];
+    if (!url || ![@[@"https", @"http"] containsObject:url.scheme.lowercaseString] || !url.host.length) return;
+    config.customLoadUrl = url;
+    config.customLoadUrlEnabled = [enabled isKindOfClass:NSNumber.class] && [enabled boolValue];
+}
 
 @implementation LoaderConfig
 
@@ -18,24 +39,10 @@
     BunnyLog(@"Attempting to load config from: %@", loaderConfigUrl.path);
 
     if ([[NSFileManager defaultManager] fileExistsAtPath:loaderConfigUrl.path]) {
-        NSError *error     = nil;
-        NSData *data       = [NSData dataWithContentsOfURL:loaderConfigUrl];
-        NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
-
-        if (error) {
-            BunnyLog(@"Error parsing loader config: %@", error);
-            return NO;
-        }
+        NSDictionary *json = readLoaderConfig(loaderConfigUrl);
 
         if (json) {
-            NSDictionary *customLoadUrl = json[@"customLoadUrl"];
-            if (customLoadUrl) {
-                self.customLoadUrlEnabled = [customLoadUrl[@"enabled"] boolValue];
-                NSString *urlString       = customLoadUrl[@"url"];
-                if (urlString) {
-                    self.customLoadUrl = [NSURL URLWithString:urlString];
-                }
-            }
+            applyLoaderConfig(self, json);
 
             BunnyLog(@"Loader config loaded - Custom URL %@: %@",
                      self.customLoadUrlEnabled ? @"enabled" : @"disabled",
@@ -61,20 +68,11 @@
     NSURL *loaderConfigUrl = [getPyoncordDirectory() URLByAppendingPathComponent:@"loader.json"];
 
     if ([[NSFileManager defaultManager] fileExistsAtPath:loaderConfigUrl.path]) {
-        NSError *error     = nil;
-        NSData *data       = [NSData dataWithContentsOfURL:loaderConfigUrl];
-        NSDictionary *json = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+        NSDictionary *json = readLoaderConfig(loaderConfigUrl);
 
-        if (json && !error) {
+        if (json) {
             LoaderConfig *config        = [[LoaderConfig alloc] init];
-            NSDictionary *customLoadUrl = json[@"customLoadUrl"];
-            if (customLoadUrl) {
-                config.customLoadUrlEnabled = [customLoadUrl[@"enabled"] boolValue];
-                NSString *urlString         = customLoadUrl[@"url"];
-                if (urlString) {
-                    config.customLoadUrl = [NSURL URLWithString:urlString];
-                }
-            }
+            applyLoaderConfig(config, json);
             return config;
         }
     }

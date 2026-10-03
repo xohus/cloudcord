@@ -33,6 +33,8 @@ jobs:
         run: |
           clang -fobjc-arc -framework Foundation ios/scripts/test-hook-isolation.m -o "$RUNNER_TEMP/test-hook-isolation"
           "$RUNNER_TEMP/test-hook-isolation"
+          clang -fobjc-arc -framework Foundation -Iios/native-ios/Headers ios/scripts/test-loader-config.m -o "$RUNNER_TEMP/test-loader-config"
+          "$RUNNER_TEMP/test-loader-config"
 
       - name: Install build tools
         run: |
