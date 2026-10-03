@@ -3589,6 +3589,8 @@
     return null;
   }
   function getThemeFilePath() {
+    if (globalThis.__CLOUDCORD_ORIGINAL_RAIN__)
+      return "rain/current-theme.json";
     if (isCloudCordLoader())
       return "cloudcord/current-theme.json";
     if (isPyonLoader()) {
@@ -3633,6 +3635,8 @@
     return null;
   }
   function getLoaderConfigPath() {
+    if (globalThis.__CLOUDCORD_ORIGINAL_RAIN__)
+      return "rain/loader.json";
     if (isCloudCordLoader())
       return "cloudcord/loader.json";
     if (isPyonLoader()) {
@@ -3641,6 +3645,11 @@
       return "vendetta_loader.json";
     }
     return "loader.json";
+  }
+  function isFontSupported() {
+    if (isPyonLoader())
+      return pyonLoaderIdentity.fontPatch === 2;
+    return false;
   }
   var pyonLoaderIdentity, cloudCordLoaderIdentity, vendettaLoaderIdentity;
   var init_loader = __esm({
@@ -20333,14 +20342,14 @@
         title: () => Strings.THEMES,
         icon: safeAsset("PaintPaletteIcon", "ThemeIcon"),
         render: () => Promise.resolve().then(() => (init_Themes(), Themes_exports)),
-        usePredicate: () => false
+        usePredicate: () => isThemeSupported()
       },
       {
         key: "BUNNY_FONTS",
         title: () => Strings.FONTS,
         icon: safeAsset("LettersIcon", "TextIcon"),
         render: () => Promise.resolve().then(() => (init_Fonts(), Fonts_exports)),
-        usePredicate: () => false
+        usePredicate: () => isFontSupported()
       },
       {
         key: "BUNNY_DEVELOPER",
@@ -20413,6 +20422,7 @@
       init_i18n();
       init_storage();
       init_assets();
+      init_loader();
       init_settings();
       init_settings2();
     }
@@ -20897,6 +20907,8 @@
       init_settings3();
       init_api3();
       init_plugins();
+      init_fonts();
+      init_themes();
       init_plugins4();
       init_commands();
       init_debug();
@@ -20928,6 +20940,8 @@
           console.error("CloudCord settings patch failed", error);
         }
         yield Promise.all([
+          initThemes(),
+          updateFonts(),
           injectFluxInterceptor(),
           patchLogHook(),
           patchCommands(),
@@ -20957,6 +20971,16 @@
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
+  var rain = globalThis.__RAIN_LOADER__;
+  if (rain && !globalThis.__CLOUDCORD_LOADER__) {
+    globalThis.__CLOUDCORD_ORIGINAL_RAIN__ = true;
+    globalThis.__CLOUDCORD_LOADER__ = {
+      ...rain,
+      loaderName: "CloudCord",
+      cloudcordAutoUpdateVersion: 3
+    };
+    globalThis.__PYON_LOADER__ = globalThis.__CLOUDCORD_LOADER__;
+  }
   var { instead: instead3 } = require_cjs();
   globalThis.window = globalThis;
   function initializeCloudCord() {
