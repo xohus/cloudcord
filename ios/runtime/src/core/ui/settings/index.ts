@@ -77,14 +77,14 @@ export default function initSettings() {
                 title: () => Strings.THEMES,
                 icon: safeAsset("PaintPaletteIcon", "ThemeIcon"),
                 render: () => import("@core/ui/settings/pages/Themes"),
-                usePredicate: () => false
+                usePredicate: () => isThemeSupported()
             },
             {
                 key: "BUNNY_FONTS",
                 title: () => Strings.FONTS,
                 icon: safeAsset("LettersIcon", "TextIcon"),
                 render: () => import("@core/ui/settings/pages/Fonts"),
-                usePredicate: () => false
+                usePredicate: () => isFontSupported()
             },
             {
                 key: "BUNNY_DEVELOPER",

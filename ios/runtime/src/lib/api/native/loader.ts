@@ -162,6 +162,7 @@ export function getStoredTheme(): VdThemeInfo | null {
 }
 
 export function getThemeFilePath() {
+    if ((globalThis as any).__CLOUDCORD_ORIGINAL_RAIN__) return "rain/current-theme.json";
     if (isCloudCordLoader()) return "cloudcord/current-theme.json";
     if (isPyonLoader()) {
         return "cloudcord/current-theme.json";
@@ -227,6 +228,7 @@ export function getSysColors() {
 }
 
 export function getLoaderConfigPath() {
+    if ((globalThis as any).__CLOUDCORD_ORIGINAL_RAIN__) return "rain/loader.json";
     if (isCloudCordLoader()) return "cloudcord/loader.json";
     if (isPyonLoader()) {
         return "cloudcord/loader.json";

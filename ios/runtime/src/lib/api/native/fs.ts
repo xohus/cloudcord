@@ -1,10 +1,11 @@
 import { NativeFileModule } from "./modules";
+const dataPrefix = (globalThis as any).__CLOUDCORD_ORIGINAL_RAIN__ ? "rain/" : "cloudcord/";
 
 /**
  * Removes all files in a directory from the path given
  * @param path Path to the targeted directory
  */
-export async function clearFolder(path: string, { prefix = "cloudcord/" } = {}) {
+export async function clearFolder(path: string, { prefix = dataPrefix } = {}) {
     if (typeof NativeFileModule.clearFolder !== "function") throw new Error("'fs.clearFolder' is not supported");
     return void await NativeFileModule.clearFolder("documents", `${prefix}${path}`);
 }
@@ -13,7 +14,7 @@ export async function clearFolder(path: string, { prefix = "cloudcord/" } = {}) 
  * Remove file from given path, currently no check for any failure
  * @param path Path to the file
  */
-export async function removeFile(path: string, { prefix = "cloudcord/" } = {}) {
+export async function removeFile(path: string, { prefix = dataPrefix } = {}) {
     if (typeof NativeFileModule.removeFile !== "function") throw new Error("'fs.removeFile' is not supported");
     return void await NativeFileModule.removeFile("documents", `${prefix}${path}`);
 }
@@ -22,7 +23,7 @@ export async function removeFile(path: string, { prefix = "cloudcord/" } = {}) {
  * Remove file from given path, currently no check for any failure
  * @param path Path to the file
  */
-export async function removeCacheFile(path: string, prefix = "cloudcord/") {
+export async function removeCacheFile(path: string, prefix = dataPrefix) {
     if (typeof NativeFileModule.removeFile !== "function") throw new Error("'fs.removeFile' is not supported");
     return void await NativeFileModule.removeFile("cache", `${prefix}${path}`);
 }
@@ -31,7 +32,7 @@ export async function removeCacheFile(path: string, prefix = "cloudcord/") {
  * Check if the file or directory given by the path exists
  * @param path Path to the file
  */
-export async function fileExists(path: string, { prefix = "cloudcord/" } = {}) {
+export async function fileExists(path: string, { prefix = dataPrefix } = {}) {
     return await NativeFileModule.fileExists(`${NativeFileModule.getConstants().DocumentsDirPath}/${prefix}${path}`);
 }
 
@@ -40,7 +41,7 @@ export async function fileExists(path: string, { prefix = "cloudcord/" } = {}) {
  * @param path Path to the file
  * @param data String data to write to the file
  */
-export async function writeFile(path: string, data: string, { prefix = "cloudcord/" } = {}): Promise<void> {
+export async function writeFile(path: string, data: string, { prefix = dataPrefix } = {}): Promise<void> {
     if (typeof data !== "string") throw new Error("Argument 'data' must be a string");
     return void await NativeFileModule.writeFile("documents", `${prefix}${path}`, data, "utf8");
 }
@@ -50,7 +51,7 @@ export async function writeFile(path: string, data: string, { prefix = "cloudcor
  * @param path Path to the file
  * @param fallback Fallback data to return if the file doesn't exist, and will be written to the file
  */
-export async function readFile(path: string, { prefix = "cloudcord/" } = {}): Promise<string> {
+export async function readFile(path: string, { prefix = dataPrefix } = {}): Promise<string> {
     try {
         return await NativeFileModule.readFile(`${NativeFileModule.getConstants().DocumentsDirPath}/${prefix}${path}`, "utf8");
     } catch (err) {
@@ -63,7 +64,7 @@ export async function readFile(path: string, { prefix = "cloudcord/" } = {}): Pr
  * @param url URL to download the file from
  * @param path Path to save the file to
  */
-export async function downloadFile(url: string, path: string, { prefix = "cloudcord/" } = {}) {
+export async function downloadFile(url: string, path: string, { prefix = dataPrefix } = {}) {
     const response = await fetch(url);
     if (!response.ok) {
         throw new Error(`Failed to download file from ${url}: ${response.status}`);

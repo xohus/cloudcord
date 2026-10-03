@@ -2,6 +2,9 @@
 """Inject the unsigned CloudCord runtime package into a decrypted Discord IPA."""
 
 import argparse
+import base64
+import hashlib
+import json
 import io
 import lzma
 import plistlib
@@ -180,11 +183,39 @@ def add_load_command(executable: Path, dylib_path: str) -> None:
     executable.write_bytes(data)
 
 
+def strip_mod_load_commands(executable: Path) -> None:
+    """Only detach known old mod injectors; preserve every Discord dependency."""
+    data = bytearray(executable.read_bytes())
+    magic, count, size = struct.unpack_from("<I12xII", data, 0)
+    if magic != 0xFEEDFACF:
+        raise RuntimeError("Unsupported Discord executable")
+    cursor = 32
+    commands = []
+    for _ in range(count):
+        kind, length = struct.unpack_from("<II", data, cursor)
+        command = bytes(data[cursor:cursor + length])
+        discard = False
+        if kind == LC_LOAD_DYLIB:
+            offset = struct.unpack_from("<I", command, 8)[0]
+            name = command[offset:].split(b"\\0", 1)[0].decode()
+            discard = Path(name).name in {"RainTweak.dylib", "CloudCordTweak.dylib", "CloudCordBootstrap.dylib"}
+        if not discard:
+            commands.append(command)
+        cursor += length
+    joined = b"".join(commands)
+    data[32:32 + size] = joined + bytes(size - len(joined))
+    struct.pack_into("<II", data, 16, len(commands), len(joined))
+    executable.write_bytes(data)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--discord-ipa", type=Path, required=True)
     parser.add_argument("--discord-version", required=True)
-    parser.add_argument("--runtime-deb", type=Path, required=True)
+    parser.add_argument("--runtime-deb", type=Path)
+    parser.add_argument("--rain-loader", type=Path)
+    parser.add_argument("--rain-bootstrap", type=Path)
+    parser.add_argument("--runtime-js", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--startup-diagnostics", action="store_true", help="Expose local startup.txt through Files for testing")
     args = parser.parse_args()
@@ -239,20 +270,54 @@ def main() -> None:
         app_entitlements = add_discord_app_group(app_entitlements)
         extension_entitlements[broadcast] = add_discord_app_group(extension_entitlements[broadcast])
 
-        dylibs, bundles = extract_deb(args.runtime_deb, root / "runtime")
-        if not any(path.name == "CloudCordTweak.dylib" for path in dylibs):
-            raise RuntimeError("CloudCordTweak.dylib is missing")
         frameworks = discord_app / "Frameworks"
         frameworks.mkdir(exist_ok=True)
-        for dylib in dylibs:
-            shutil.copy2(dylib, frameworks / dylib.name)
-            add_load_command(executable, f"@executable_path/Frameworks/{dylib.name}")
-            sign_with_entitlements(frameworks / dylib.name, None, root)
-        for bundle in bundles:
-            target = discord_app / bundle.name
-            if target.exists():
-                shutil.rmtree(target)
-            shutil.copytree(bundle, target)
+        if args.rain_loader:
+            if not args.rain_bootstrap or not args.runtime_js:
+                raise RuntimeError("Rain mode requires the bootstrap and runtime")
+            raw = base64.b64decode(args.rain_loader.read_text(), validate=False)
+            expected = "e43cad3e64c2d518b1744a214d1ecb8fe89342e064976c5eed8e6b6f1d82b825"
+            if hashlib.sha256(raw).hexdigest() != expected:
+                raise RuntimeError("Original RainTweak binary changed")
+            strip_mod_load_commands(executable)
+            legacy = frameworks / "CloudCordTweak.dylib"
+            if legacy.exists():
+                legacy.unlink()
+            rain = frameworks / "RainTweak.dylib"
+            rain.write_bytes(raw)
+            # Preserve Rain's actual hook engine, not our compatibility shim.
+            substrate_files = json.loads((args.rain_loader.parent / "CydiaSubstrate.framework.json").read_text())
+            for original_path, encoded in substrate_files.items():
+                suffix = original_path.split("/CydiaSubstrate.framework/", 1)[1]
+                target = frameworks / "CydiaSubstrate.framework" / suffix
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(base64.b64decode(encoded))
+            # Keep Rain byte-for-byte intact; the sideload signer signs nested code.
+            bootstrap = frameworks / "CloudCordBootstrap.dylib"
+            shutil.copy2(args.rain_bootstrap, bootstrap)
+            add_load_command(executable, "@executable_path/Frameworks/CloudCordBootstrap.dylib")
+            sign_with_entitlements(bootstrap, None, root)
+            resources = discord_app / "BunnyResources.bundle"
+            resources.mkdir(exist_ok=True)
+            shutil.copy2(args.runtime_js, resources / "runtime.js")
+            shutil.copy2(args.rain_loader.parent / "payload-base.js", resources / "payload-base.js")
+            for filename in ("RAIN-LICENSE", "RAIN-NOTICE.md"):
+                shutil.copy2(Path(__file__).parent.parent / "native-ios" / filename, resources / filename)
+        else:
+            if not args.runtime_deb:
+                raise RuntimeError("A runtime package is required")
+            dylibs, bundles = extract_deb(args.runtime_deb, root / "runtime")
+            if not any(path.name == "CloudCordTweak.dylib" for path in dylibs):
+                raise RuntimeError("CloudCordTweak.dylib is missing")
+            for dylib in dylibs:
+                shutil.copy2(dylib, frameworks / dylib.name)
+                add_load_command(executable, f"@executable_path/Frameworks/{dylib.name}")
+                sign_with_entitlements(frameworks / dylib.name, None, root)
+            for bundle in bundles:
+                target = discord_app / bundle.name
+                if target.exists():
+                    shutil.rmtree(target)
+                shutil.copytree(bundle, target)
 
         # Screen sharing runs in BroadcastUpload.appex. Preserve and re-apply every
         # extension's original capabilities, then sign the containing app last.

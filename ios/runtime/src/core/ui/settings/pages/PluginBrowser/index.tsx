@@ -329,6 +329,7 @@ export default function BrowserPage() {
 
     React.useEffect(() => {
         fetchPlugins();
+        fetchThemes();
     }, [fetchPlugins, fetchThemes]);
 
     const filterList = (list: AddonData[]) => {
@@ -419,6 +420,14 @@ export default function BrowserPage() {
                                 text="Plugins"
                                 variant={mode === "plugins" ? "primary" : "secondary"}
                                 onPress={() => setMode("plugins")}
+                                style={{ flex: 1 }}
+                            />
+                            <View style={{ width: 8 }} />
+                            <Button
+                                size="md"
+                                text="Themes"
+                                variant={mode === "themes" ? "primary" : "secondary"}
+                                onPress={() => setMode("themes")}
                                 style={{ flex: 1 }}
                             />
                         </View>

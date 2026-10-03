@@ -5,6 +5,8 @@ import { initFetchI18nStrings } from "@core/i18n";
 import initSettings from "@core/ui/settings";
 import { initVendettaObject } from "@core/vendetta/api";
 import { VdPluginManager } from "@core/vendetta/plugins";
+import { updateFonts } from "@lib/addons/fonts";
+import { initThemes } from "@lib/addons/themes";
 import { initPlugins, updatePlugins } from "@lib/addons/plugins";
 import { patchCommands } from "@lib/api/commands";
 import { patchLogHook } from "@lib/api/debug";
@@ -23,6 +25,8 @@ export default async () => {
     // Load everything in parallel. The shared build workflow wraps core
     // settings separately and applies the version-specific fallbacks.
     await Promise.all([
+        initThemes(),
+        updateFonts(),
         injectFluxInterceptor(),
         patchSettings(),
         patchLogHook(),
