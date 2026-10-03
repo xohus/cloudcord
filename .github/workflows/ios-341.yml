@@ -35,7 +35,7 @@ jobs:
 
       - name: Check reload guard regression
         run: |
-          node ios/scripts/test-reload-guard.cjs
+          node ios/scripts/test-rain-loader.cjs
           node ios/scripts/test-metro-capture.cjs
 
       - name: Check native hook isolation
@@ -104,11 +104,11 @@ jobs:
           otool -L "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Discord" \
             | grep -q '@rpath/hermesvm.framework/hermesvm'
           strings "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
-            | grep -q 'RCTHost bridgeless runtime initialized'
+            | grep -q 'Rain runtime callback injected'
           strings "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
-            | grep -q '_loadJSBundle:'
+            | grep -q '__RAIN_BRIDGE_CALL_SYNC__'
           strings "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
-            | grep -q '_loadScriptFromSource:'
+            | grep -q '__RAIN_BRIDGE_CALL_ASYNC__'
           if otool -L "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
             | grep -qi 'CydiaSubstrate'; then
             echo 'CloudCordTweak unexpectedly depends on CydiaSubstrate' >&2

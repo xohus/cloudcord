@@ -1,294 +1,105 @@
+// Adapted from raincord/RainTweak c2fa89a6 under OSL-3.0.
+// Modified for CloudCord identity, bridge dispatch and bundled runtime.
 #import <Foundation/Foundation.h>
-#import <UIKit/UIKit.h>
 #import <jsi/jsi.h>
-#import <objc/runtime.h>
-#import "Utils.h"
-
-#include <atomic>
-#include <cstdint>
-#include <cstring>
-#include <functional>
-#include <memory>
-#include <string>
-
-using namespace facebook;
-
-extern "C" void MSHookMessageEx(Class, SEL, IMP, IMP *);
-
-@interface NSObject (CloudCordRuntimeExecutor)
-- (void)callFunctionOnBufferedRuntimeExecutor:
-    (std::function<void(jsi::Runtime &)> &&)executor;
+#import "JSI.h"
+#import "Logger.h"
+@interface BridgeRegistry : NSObject
++ (instancetype)shared;
+- (NSDictionary *)dispatchPayload:(NSDictionary *)payload;
 @end
-
 @interface RCTHost : NSObject
-- (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime;
+- (void)instance:(id)instance didInitializeRuntime:(facebook::jsi::Runtime &)runtime;
 @end
-
-namespace {
-
-class CloudCordNSDataBuffer final : public jsi::Buffer
+using namespace facebook;
+static void injectPreBundle(jsi::Runtime &runtime)
 {
-public:
-    explicit CloudCordNSDataBuffer(NSData *data) : data_(data) {}
-    size_t size() const override { return data_.length; }
-    const uint8_t *data() const override
-    {
-        return static_cast<const uint8_t *>(data_.bytes);
-    }
-
-private:
-    NSData *data_;
-};
-
-static std::atomic<jsi::Runtime *> cloudCordInjectedRuntime{nullptr};
-static std::atomic_bool cloudCordRCTInstanceHooksInstalled{false};
-static std::atomic<uint64_t> cloudCordRuntimeGeneration{0};
-static __weak id cloudCordLastRuntimeInstance = nil;
-
-static void recordCloudCordStage(NSString *stage)
-{
-    // Last stage only: no account data, tokens or remote telemetry.
-    NSString *line = [NSString stringWithFormat:@"CloudCord loader 344.1\n%@\n%@\n", NSDate.date, stage];
-    [line writeToURL:[getPyoncordDirectory() URLByAppendingPathComponent:@"startup.txt"]
-        atomically:YES encoding:NSUTF8StringEncoding error:nil];
-}
-
-static BOOL evaluateCloudCordData(NSData *data, const char *tag, jsi::Runtime &runtime)
-{
-    if (data.length == 0) return NO;
-    BOOL trace = strcmp(tag, "cloudcord:modules") != 0;
-    if (trace) recordCloudCordStage([NSString stringWithFormat:@"begin %s", tag]);
     try
     {
-        std::string source(static_cast<const char *>(data.bytes), data.length);
-        auto buffer = std::make_shared<jsi::StringBuffer>(std::move(source));
-        runtime.evaluateJavaScript(buffer, tag);
-        if (trace) recordCloudCordStage([NSString stringWithFormat:@"completed %s", tag]);
-        return YES;
+        jsi::Object loaderObj(runtime);
+        loaderObj.setProperty(runtime, "loaderName", jsi::String::createFromUtf8(runtime, "RainTweak"));
+        loaderObj.setProperty(runtime, "loaderVersion", jsi::String::createFromUtf8(runtime, [PACKAGE_VERSION UTF8String]));
+        loaderObj.setProperty(runtime, "hasThemeSupport", true);
+        loaderObj.setProperty(runtime, "storedTheme", jsi::Value::null());
+        loaderObj.setProperty(runtime, "fontPatch", 2);
+        runtime.global().setProperty(runtime, "__RAIN_LOADER__", loaderObj);
+
+        auto parsePayload = [](jsi::Runtime &rt, const jsi::Value *args, size_t count, NSString **methodOut, NSArray **argsOut) {
+            if (count < 1 || !args[0].isObject()) {
+                throw jsi::JSError(rt, "Expected a single payload object as argument.");
+            }
+            jsi::Object payload = args[0].asObject(rt);
+
+            jsi::Value rainVal = payload.getProperty(rt, "rain");
+            if (!rainVal.isObject()) throw jsi::JSError(rt, "Payload missing 'rain' object.");
+            jsi::Object rain = rainVal.asObject(rt);
+
+            jsi::Value methodVal = rain.getProperty(rt, "method");
+            if (!methodVal.isString()) throw jsi::JSError(rt, "'method' property must be a string.");
+            *methodOut = [JSI toNSString:methodVal runtime:rt];
+
+            *argsOut = @[];
+            jsi::Value argsVal = rain.getProperty(rt, "args");
+            if (argsVal.isObject() && argsVal.asObject(rt).isArray(rt)) {
+                *argsOut = [JSI toObjC:argsVal runtime:rt];
+            }
+        };
+
+        auto syncCall = jsi::Function::createFromHostFunction(
+            runtime,
+            jsi::PropNameID::forUtf8(runtime, "__RAIN_BRIDGE_CALL_SYNC__"),
+            1,
+            [parsePayload](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+                NSString *methodName;
+                NSArray *objcArgs;
+                parsePayload(rt, args, count, &methodName, &objcArgs);
+
+                NSDictionary *res = [[BridgeRegistry shared] dispatchPayload:@{@"rain": @{@"method": methodName, @"args": objcArgs ?: @[]}}];
+                return [JSI fromObjC:res runtime:rt];
+            }
+        );
+        runtime.global().setProperty(runtime, "__RAIN_BRIDGE_CALL_SYNC__", syncCall);
+
+        auto asyncCall = jsi::Function::createFromHostFunction(
+            runtime,
+            jsi::PropNameID::forUtf8(runtime, "__RAIN_BRIDGE_CALL_ASYNC__"),
+            1,
+            [parsePayload](jsi::Runtime &rt, const jsi::Value &thisVal, const jsi::Value *args, size_t count) -> jsi::Value {
+                NSString *methodName;
+                NSArray *objcArgs;
+                parsePayload(rt, args, count, &methodName, &objcArgs);
+
+                jsi::Function promiseCtor = rt.global().getPropertyAsFunction(rt, "Promise");
+                jsi::Function executor = jsi::Function::createFromHostFunction(rt, jsi::PropNameID::forUtf8(rt, "executor"), 2,
+                    [methodName, objcArgs](jsi::Runtime &innerRt, const jsi::Value &thisVal, const jsi::Value *innerArgs, size_t innerCount) -> jsi::Value {
+                        jsi::Function resolve = innerArgs[0].asObject(innerRt).asFunction(innerRt);
+                        NSDictionary *res = [[BridgeRegistry shared] dispatchPayload:@{@"rain": @{@"method": methodName, @"args": objcArgs ?: @[]}}];
+                        resolve.call(innerRt, [JSI fromObjC:res runtime:innerRt]);
+                        return jsi::Value::undefined();
+                    });
+                return promiseCtor.callAsConstructor(rt, executor);
+            }
+        );
+        runtime.global().setProperty(runtime, "__RAIN_BRIDGE_CALL_ASYNC__", asyncCall);
+
     }
-    catch (const std::exception &error)
-    {
-        NSLog(@"[CloudCord] Bridgeless evaluation failed for %s: %s", tag, error.what());
-        return NO;
-    }
-    catch (...)
-    {
-        NSLog(@"[CloudCord] Bridgeless evaluation failed for %s", tag);
-        return NO;
-    }
+    catch (const jsi::JSError &e) { BunnyLog(@"injectPreBundle: JSError: %s", e.what()); }
+    catch (const std::exception &e) { BunnyLog(@"injectPreBundle: exception: %s", e.what()); }
 }
 
-static NSData *cloudCordResource(NSString *name)
-{
-    for (NSString *bundleName in @[@"BunnyResources.bundle", @"CloudCordResources.bundle"])
-    {
-        NSString *path = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:bundleName];
-        NSURL *url = [[NSBundle bundleWithPath:path] URLForResource:name withExtension:@"js"];
-        if (url)
-        {
-            NSData *data = [NSData dataWithContentsOfURL:url];
-            if (data.length) return data;
-        }
-    }
-    NSURL *fallback = [NSBundle.mainBundle URLForResource:name withExtension:@"js"];
-    return fallback ? [NSData dataWithContentsOfURL:fallback] : nil;
-}
-
-static BOOL discordRuntimeIsReady(jsi::Runtime &runtime)
-{
-    // Discord 344 creates Metro before its React/React Native modules are ready.
-    // Running CloudCord at that earlier point succeeds syntactically but misses
-    // the settings stores, so no CloudCord sections are registered.
-    NSString *script =
-        @"(()=>{"
-         "if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire;"
-         "const map=globalThis.modules??globalThis.__c?.();"
-         "if(!globalThis.modules&&map)globalThis.modules=map;"
-         "if(!map||typeof map.values!=='function')return false;"
-         "let rn=false,react=false;"
-         "for(const m of map.values()){"
-           "const e=m?.publicModule?.exports??m?.exports??m;"
-           "for(const value of[e,e?.default,e?.default?.default]){"
-             "if(!value)continue;"
-             "if(!rn&&value.AppState&&value.NativeModules)rn=true;"
-             "if(!react&&typeof value.createElement==='function')react=true;"
-             "if(rn&&react)return true;"
-           "}"
-         "}"
-         "return false;"
-        "})()";
-    NSData *probe = [script dataUsingEncoding:NSUTF8StringEncoding];
-    try
-    {
-        std::string source(static_cast<const char *>(probe.bytes), probe.length);
-        auto buffer = std::make_shared<jsi::StringBuffer>(std::move(source));
-        jsi::Value result = runtime.evaluateJavaScript(buffer, "cloudcord:discord-ready");
-        return result.isBool() && result.getBool();
-    }
-    catch (...) { return NO; }
-}
-
-static void injectCloudCordModulesPatch(jsi::Runtime &runtime)
-{
-    NSData *modulesPatch = cloudCordResource(@"modules");
-    if (modulesPatch.length)
-        evaluateCloudCordData(modulesPatch, "cloudcord:modules", runtime);
-}
-
-static void injectCloudCordRuntime(jsi::Runtime &runtime)
-{
-    // Hermes can reuse a destroyed runtime's address after reload. A process-wide
-    // pointer is not an identity: keep the injection guard inside this JS realm.
-    // Use the same protected evaluator as the readiness probe. Direct JSI
-    // property access introduces another ABI surface and can throw outside the
-    // evaluator's exception handler during startup.
-    try
-    {
-        auto probe = std::make_shared<jsi::StringBuffer>(
-            "globalThis.__CLOUDCORD_NATIVE_INJECTED__ === true");
-        auto injected = runtime.evaluateJavaScript(probe, "cloudcord:injection-guard");
-        if (injected.isBool() && injected.getBool()) return;
-    }
-    catch (...)
-    {
-        NSLog(@"[CloudCord] Runtime guard probe failed; leaving Discord running");
-        return;
-    }
-    NSData *marker = [@"globalThis.__CLOUDCORD_BRIDGELESS__=true;"
-                       "if(typeof globalThis.__r!=='function'&&typeof globalThis.metroRequire==='function')globalThis.__r=globalThis.metroRequire;"
-                       "(()=>{const m=globalThis.modules??globalThis.__c?.();"
-                       "if(!m)return;"
-                       "globalThis.modules=m;"
-                       "globalThis.__CLOUDCORD_MODULE_VIEW__=typeof m.entries==='function'?Object.fromEntries(m.entries()):m;"
-                       "})()" dataUsingEncoding:NSUTF8StringEncoding];
-    if (!evaluateCloudCordData(marker, "cloudcord:architecture", runtime))
-    {
-        cloudCordInjectedRuntime.store(nullptr);
-        return;
-    }
-    // Recovery baseline: use the exact bundled runtime from the working IPA.
-    // Never let a previously downloaded runtime override this recovery build.
-    NSData *runtimeBundle = cloudCordResource(@"runtime");
-    BOOL loaded = runtimeBundle.length && evaluateCloudCordData(runtimeBundle, "cloudcord:runtime", runtime);
-    if (!loaded)
-    {
-        cloudCordInjectedRuntime.store(nullptr);
-        NSLog(@"[CloudCord] Full 344 runtime injection failed");
-        return;
-    }
-    NSData *completed = [@"globalThis.__CLOUDCORD_NATIVE_INJECTED__=true;"
-        dataUsingEncoding:NSUTF8StringEncoding];
-    if (!evaluateCloudCordData(completed, "cloudcord:injection-complete", runtime)) return;
-    cloudCordInjectedRuntime.store(&runtime);
-    NSLog(@"[CloudCord] Full 344 runtime injected after Discord bundle");
-}
-
-static void scheduleCloudCordRuntime(id instance, NSUInteger attempt, uint64_t generation = UINT64_MAX)
-{
-    if (generation == UINT64_MAX) generation = cloudCordRuntimeGeneration.load();
-    if (generation != cloudCordRuntimeGeneration.load()) return;
-    if (!instance || ![instance respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
-        return;
-    cloudCordLastRuntimeInstance = instance;
-    __weak id weakInstance = instance;
-    [instance callFunctionOnBufferedRuntimeExecutor:[weakInstance, attempt, generation](jsi::Runtime &runtime) {
-        if (generation != cloudCordRuntimeGeneration.load()) return;
-        // Repeat the small registry capture as Discord replaces __d during boot.
-        injectCloudCordModulesPatch(runtime);
-        if (discordRuntimeIsReady(runtime))
-        {
-            NSLog(@"[CloudCord] Discord React Native modules are ready");
-            injectCloudCordRuntime(runtime);
-            return;
-        }
-        if (attempt < 300)
-        {
-            NSTimeInterval delay = attempt < 50 ? 0.1 : (attempt < 150 ? 0.25 : 0.5);
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, delay * NSEC_PER_SEC),
-                dispatch_get_main_queue(), ^{
-                    id liveInstance = weakInstance;
-                    if (liveInstance && generation == cloudCordRuntimeGeneration.load())
-                        scheduleCloudCordRuntime(liveInstance, attempt + 1, generation);
-                });
-        }
-        else
-            NSLog(@"[CloudCord] Discord runtime readiness timed out; skipping injection");
-    }];
-}
-
-typedef void (*CloudCordLoadBundleIMP)(id, SEL, NSURL *);
-typedef void (*CloudCordLoadSourceIMP)(id, SEL, id);
-static CloudCordLoadBundleIMP originalLoadBundle = nullptr;
-static CloudCordLoadSourceIMP originalLoadSource = nullptr;
-
-static void cloudCordLoadBundle(id self, SEL selector, NSURL *url)
-{
-    if ([self respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
-        [self callFunctionOnBufferedRuntimeExecutor:[](jsi::Runtime &runtime) {
-            injectCloudCordModulesPatch(runtime);
-        }];
-    if (originalLoadBundle) originalLoadBundle(self, selector, url);
-    scheduleCloudCordRuntime(self, 0);
-}
-
-static void cloudCordLoadSource(id self, SEL selector, id source)
-{
-    if ([self respondsToSelector:@selector(callFunctionOnBufferedRuntimeExecutor:)])
-        [self callFunctionOnBufferedRuntimeExecutor:[](jsi::Runtime &runtime) {
-            injectCloudCordModulesPatch(runtime);
-        }];
-    if (originalLoadSource) originalLoadSource(self, selector, source);
-    scheduleCloudCordRuntime(self, 0);
-}
-
-static void installRCTInstanceHooks(NSUInteger attempt)
-{
-    if (cloudCordRCTInstanceHooksInstalled.load()) return;
-    Class cls = NSClassFromString(@"RCTInstance");
-    Method bundle = cls ? class_getInstanceMethod(cls, NSSelectorFromString(@"_loadJSBundle:")) : nullptr;
-    Method source = cls ? class_getInstanceMethod(cls, NSSelectorFromString(@"_loadScriptFromSource:")) : nullptr;
-    if (!cls || (!bundle && !source))
-    {
-        if (attempt < 300) dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.1 * NSEC_PER_SEC),
-            dispatch_get_main_queue(), ^{ installRCTInstanceHooks(attempt + 1); });
-        return;
-    }
-    if (bundle) MSHookMessageEx(cls, NSSelectorFromString(@"_loadJSBundle:"),
-        (IMP)cloudCordLoadBundle, (IMP *)&originalLoadBundle);
-    if (source) MSHookMessageEx(cls, NSSelectorFromString(@"_loadScriptFromSource:"),
-        (IMP)cloudCordLoadSource, (IMP *)&originalLoadSource);
-    cloudCordRCTInstanceHooksInstalled.store(true);
-    NSLog(@"[CloudCord] Installed Discord 344 RCTInstance loader hooks");
-}
-
-} // namespace
 
 %hook RCTHost
-
 - (void)instance:(id)instance didInitializeRuntime:(jsi::Runtime &)runtime
 {
-    NSLog(@"[CloudCord] RCTHost bridgeless runtime initialized");
-    cloudCordRuntimeGeneration.fetch_add(1);
-    recordCloudCordStage(@"Discord runtime initialized");
-    cloudCordInjectedRuntime.store(nullptr);
-    injectCloudCordModulesPatch(runtime);
     %orig;
-    scheduleCloudCordRuntime(instance, 0);
+    injectPreBundle(runtime);
+    NSString *bundlePath = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"BunnyResources.bundle"];
+    NSBundle *resources = [NSBundle bundleWithPath:bundlePath];
+    NSData *identity = [@"globalThis.__CLOUDCORD_LOADER__=Object.assign(globalThis.__RAIN_LOADER__,{loaderName:'CloudCord',cloudcordAutoUpdateVersion:3,hasThemeSupport:false,fontPatch:0});globalThis.__PYON_LOADER__=globalThis.__CLOUDCORD_LOADER__;" dataUsingEncoding:NSUTF8StringEncoding];
+    [JSI evaluate:identity tag:@"cloudcord:rain-identity" runtime:runtime];
+    NSData *bundle = [NSData dataWithContentsOfURL:[resources URLForResource:@"runtime" withExtension:@"js"]];
+    if (bundle.length) [JSI evaluate:bundle tag:@"cloudcord:rain-runtime" runtime:runtime];
+    NSLog(@"[CloudCord] Rain runtime callback injected");
 }
-
 %end
-
-%ctor
-{
-    @autoreleasepool
-    {
-        recordCloudCordStage(@"native loader loaded");
-        installRCTInstanceHooks(0);
-        [NSNotificationCenter.defaultCenter
-            addObserverForName:UIApplicationDidBecomeActiveNotification
-            object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *note) {
-                if (!cloudCordInjectedRuntime.load() && cloudCordLastRuntimeInstance)
-                    scheduleCloudCordRuntime(cloudCordLastRuntimeInstance, 0);
-            }];
-    }
-}
+%ctor { @autoreleasepool { %init; } }
