@@ -4622,502 +4622,6 @@
     }
   });
 
-  // src/lib/api/assets/index.ts
-  var assets_exports = {};
-  __export(assets_exports, {
-    filterAssets: () => filterAssets,
-    findAsset: () => findAsset,
-    findAssetId: () => findAssetId,
-    iterateAssets: () => iterateAssets
-  });
-  function* iterateAssets() {
-    var { flagsIndex } = getMetroCache();
-    var yielded = /* @__PURE__ */ new Set();
-    for (var id in flagsIndex) {
-      if (flagsIndex[id] & ModuleFlags.ASSET) {
-        var assetId = requireModule(Number(id));
-        if (typeof assetId !== "number" || yielded.has(assetId))
-          continue;
-        yield getAssetById(assetId);
-        yielded.add(assetId);
-      }
-    }
-  }
-  function getAssetById(id) {
-    var asset = assetsModule.getAssetByID(id);
-    if (!asset)
-      return asset;
-    return Object.assign(asset, {
-      id
-    });
-  }
-  function findAsset(param) {
-    if (typeof param === "number")
-      return getAssetById(param);
-    if (typeof param === "string" && _nameToAssetCache[param]) {
-      return _nameToAssetCache[param];
-    }
-    for (var asset of iterateAssets()) {
-      if (typeof param === "string" && asset.name === param) {
-        _nameToAssetCache[param] = asset;
-        return asset;
-      } else if (typeof param === "function" && param(asset)) {
-        return asset;
-      }
-    }
-  }
-  function filterAssets(param) {
-    var filteredAssets = [];
-    for (var asset of iterateAssets()) {
-      if (typeof param === "string" ? asset.name === param : param(asset)) {
-        filteredAssets.push(asset);
-      }
-    }
-    return filteredAssets;
-  }
-  function findAssetId(name) {
-    return findAsset(name)?.id;
-  }
-  var _nameToAssetCache;
-  var init_assets = __esm({
-    "src/lib/api/assets/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_caches();
-      init_enums();
-      init_modules2();
-      init_patches();
-      _nameToAssetCache = {};
-    }
-  });
-
-  // src/core/ui/settings/components/FakeProfileGlass.tsx
-  function ProfileTabIcon({ tab, color: color2 }) {
-    var icon;
-    for (var name of tab === "profile" ? [
-      "PersonIcon",
-      "UserIcon"
-    ] : tab === "badges" ? [
-      "AwardIcon",
-      "StarIcon"
-    ] : [
-      "PaintPaletteIcon",
-      "SparklesIcon"
-    ]) {
-      try {
-        icon = findAssetId(name);
-      } catch (e) {
-      }
-      if (icon)
-        break;
-    }
-    return icon ? /* @__PURE__ */ jsx(import_react_native6.Image, {
-      accessible: false,
-      source: icon,
-      style: {
-        width: 18,
-        height: 18,
-        tintColor: color2
-      }
-    }) : /* @__PURE__ */ jsx(import_react_native6.Text, {
-      accessible: false,
-      style: {
-        color: color2,
-        fontSize: 17
-      },
-      children: tab === "profile" ? "\u25C9" : tab === "badges" ? "\u2726" : "\u2727"
-    });
-  }
-  function GlassCard({ children }) {
-    var opaque = false;
-    return /* @__PURE__ */ jsxs(import_react_native6.View, {
-      style: {
-        borderRadius: 24,
-        overflow: "hidden",
-        borderWidth: 1,
-        borderColor: "rgba(194,207,255,0.18)",
-        backgroundColor: opaque ? "#252936" : "rgba(39,44,61,0.80)",
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 6
-        },
-        shadowOpacity: 0.16,
-        shadowRadius: 14
-      },
-      children: [
-        /* @__PURE__ */ jsx(import_react_native6.View, {
-          pointerEvents: "none",
-          style: {
-            position: "absolute",
-            top: 0,
-            left: 18,
-            right: 18,
-            height: 1,
-            backgroundColor: "rgba(255,255,255,0.24)"
-          }
-        }),
-        children
-      ]
-    });
-  }
-  function GlassButton({ label, onPress, muted = false, disabled = false }) {
-    return /* @__PURE__ */ jsx(import_react_native6.Pressable, {
-      accessibilityRole: "button",
-      accessibilityLabel: label,
-      accessibilityState: {
-        disabled
-      },
-      disabled,
-      onPress,
-      style: ({ pressed }) => ({
-        width: "100%",
-        minHeight: 50,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        borderRadius: 18,
-        overflow: "hidden",
-        borderWidth: 1,
-        borderColor: muted ? "rgba(190,202,255,0.24)" : "rgba(255,255,255,0.30)",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: disabled ? "#303647" : muted ? "#30394e" : pressed ? "#5261cc" : "#6575ef",
-        opacity: disabled ? 0.6 : 1
-      }),
-      children: ({ pressed }) => /* @__PURE__ */ jsxs(Fragment, {
-        children: [
-          /* @__PURE__ */ jsx(import_react_native6.View, {
-            pointerEvents: "none",
-            style: {
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "48%",
-              backgroundColor: pressed ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.10)"
-            }
-          }),
-          /* @__PURE__ */ jsx(import_react_native6.View, {
-            pointerEvents: "none",
-            style: {
-              position: "absolute",
-              top: 1,
-              left: 14,
-              right: 14,
-              height: 1,
-              backgroundColor: "rgba(255,255,255,0.35)"
-            }
-          }),
-          /* @__PURE__ */ jsx(import_react_native6.View, {
-            pointerEvents: "none",
-            style: {
-              position: "absolute",
-              bottom: 1,
-              left: 12,
-              right: 12,
-              height: 1,
-              backgroundColor: "rgba(0,0,0,0.16)"
-            }
-          }),
-          /* @__PURE__ */ jsx(import_react_native6.Text, {
-            style: {
-              color: muted ? "#d5ddff" : "#fff",
-              textAlign: "center",
-              fontSize: 14,
-              fontWeight: "600"
-            },
-            children: label
-          })
-        ]
-      })
-    });
-  }
-  function ProfileTabs({ selected, onSelect }) {
-    return /* @__PURE__ */ jsx(import_react_native6.View, {
-      accessibilityRole: "tablist",
-      style: {
-        flexDirection: "row",
-        gap: 6,
-        padding: 5,
-        borderRadius: 20,
-        backgroundColor: "rgba(255,255,255,0.05)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.1)"
-      },
-      children: [
-        "profile",
-        "badges",
-        "custom"
-      ].map((tab) => /* @__PURE__ */ jsxs(import_react_native6.Pressable, {
-        accessibilityRole: "tab",
-        accessibilityLabel: tab === "custom" ? "custom badges beta" : tab,
-        accessibilityState: {
-          selected: selected === tab
-        },
-        onPress: () => onSelect(tab),
-        style: ({ pressed }) => ({
-          flex: 1,
-          minHeight: 52,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: 15,
-          paddingHorizontal: 4,
-          gap: 3,
-          backgroundColor: selected === tab ? "#6575ef" : pressed ? "rgba(255,255,255,0.10)" : "transparent"
-        }),
-        children: [
-          /* @__PURE__ */ jsx(ProfileTabIcon, {
-            tab,
-            color: selected === tab ? "#fff" : "#b8c0d8"
-          }),
-          /* @__PURE__ */ jsx(import_react_native6.Text, {
-            allowFontScaling: true,
-            style: {
-              fontSize: 12,
-              fontWeight: "600",
-              color: selected === tab ? "#fff" : "#b8c0d8"
-            },
-            children: tab === "custom" ? "custom \xB7 beta" : tab
-          })
-        ]
-      }, tab))
-    });
-  }
-  var import_react_native6;
-  var init_FakeProfileGlass = __esm({
-    "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      import_react_native6 = __toESM(require_react_native());
-      init_assets();
-    }
-  });
-
-  // src/core/ui/settings/components/CustomBadgeBeta.tsx
-  function CustomBadgeBeta() {
-    var [name, setName] = (0, import_react2.useState)("");
-    var [png, setPng] = (0, import_react2.useState)("");
-    var [message, setMessage] = (0, import_react2.useState)("beta \u2014 AI-approved badges go live, then admins can keep or remove them.");
-    var [busy, setBusy] = (0, import_react2.useState)(false);
-    var [state2, setState] = (0, import_react2.useState)(null);
-    var [verified, setVerified] = (0, import_react2.useState)(Boolean(settings.customBadgeDeviceToken));
-    var polling = (0, import_react2.useRef)(false);
-    (0, import_react2.useEffect)(() => {
-      if (!state2)
-        return;
-      var alive = true;
-      var started = Date.now();
-      var timer = setInterval(() => _async_to_generator(function* () {
-        if (polling.current || !alive)
-          return;
-        if (Date.now() - started > 6e5) {
-          setState(null);
-          setMessage("verification expired \u2014 try again");
-          return;
-        }
-        polling.current = true;
-        try {
-          var r = yield fetch(`${API}/api/cloudcord/onboarding/status/${encodeURIComponent(state2)}`);
-          var result = yield r.json();
-          if (alive && result.status === "complete" && result.deviceToken) {
-            settings.customBadgeDeviceToken = result.deviceToken;
-            setVerified(true);
-            setState(null);
-            setMessage("verified \u2014 choose a name and PNG");
-          } else if (alive && [
-            "error",
-            "expired",
-            "blacklisted"
-          ].includes(result.status)) {
-            setState(null);
-            setMessage("verification failed \u2014 try again");
-          }
-        } catch (e) {
-        } finally {
-          polling.current = false;
-        }
-      })(), 3e3);
-      return () => {
-        alive = false;
-        clearInterval(timer);
-      };
-    }, [
-      state2
-    ]);
-    var verify = () => import_react_native7.Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. your name and PNG are sent to OpenAI for safety checks. AI-approved badges publish immediately, then CloudCord admins review and can remove them.", [
-      {
-        text: "cancel",
-        style: "cancel"
-      },
-      {
-        text: "view terms",
-        onPress: () => import_react_native7.Linking.openURL(`${API}/tos`)
-      },
-      {
-        text: "accept & verify",
-        onPress: () => _async_to_generator(function* () {
-          try {
-            var config = yield (yield fetch(`${API}/api/cloudcord/onboarding/config`)).json();
-            var r = yield fetch(`${API}/api/cloudcord/onboarding/start`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                accepted: true,
-                termsVersion: config.termsVersion
-              })
-            });
-            var result = yield r.json();
-            if (!r.ok || !result.state || !result.authorizeUrl)
-              throw new Error(result.error || "verification unavailable");
-            setState(result.state);
-            yield import_react_native7.Linking.openURL(result.authorizeUrl);
-          } catch (e) {
-            setMessage(e.message || "verification unavailable");
-          }
-        })()
-      }
-    ]);
-    var pick = () => _async_to_generator(function* () {
-      try {
-        var picker = findByProps("pickSingle", "isCancel");
-        if (!picker?.pickSingle)
-          throw new Error("file picker unavailable");
-        var asset = yield picker.pickSingle({
-          type: "image/png",
-          mode: "import",
-          copyTo: "documentDirectory"
-        });
-        if (asset.size > 524288)
-          throw new Error("PNG must be under 512 KB");
-        var native = (init_modules(), __toCommonJS(modules_exports));
-        var files = native.NativeFileModule || native.FileManager;
-        if (!files?.readFile)
-          throw new Error("PNG reader unavailable on this Discord build");
-        var data = yield files.readFile((asset.fileCopyUri || asset.uri).replace(/^file:\/\//, ""), "base64");
-        if (data.length > 7e5)
-          throw new Error("PNG must be under 512 KB");
-        setPng(data);
-        setMessage("PNG selected \u2014 ready for the AI safety check");
-      } catch (e) {
-        setMessage(e.message || "could not read PNG");
-      }
-    })();
-    var submit = () => _async_to_generator(function* () {
-      if (busy || !png || !name.trim())
-        return;
-      setBusy(true);
-      try {
-        var r = yield fetch(`${API}/v1/badge-submissions`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${settings.customBadgeDeviceToken}`
-          },
-          body: JSON.stringify({
-            name,
-            png
-          })
-        });
-        var result = yield r.json();
-        if (r.status === 401) {
-          settings.customBadgeDeviceToken = null;
-          setVerified(false);
-        }
-        setMessage(result.message || "could not submit \u2014 nothing was published");
-      } catch (e) {
-        setMessage("connection failed \u2014 nothing was published");
-      } finally {
-        setBusy(false);
-      }
-    })();
-    var button = (label, action, disabled = false) => /* @__PURE__ */ jsx(GlassButton, {
-      label,
-      onPress: action,
-      disabled
-    });
-    return /* @__PURE__ */ jsxs(import_react_native7.View, {
-      style: {
-        gap: 14,
-        padding: 2
-      },
-      children: [
-        /* @__PURE__ */ jsx(import_react_native7.Text, {
-          style: {
-            color: "white",
-            fontWeight: "bold"
-          },
-          children: "custom badges \xB7 beta"
-        }),
-        /* @__PURE__ */ jsx(import_react_native7.Text, {
-          style: {
-            color: "#b5bac1"
-          },
-          children: "no staff/verified impersonation, unsafe content, links or personal information. custom badges do not prove staff status."
-        }),
-        !verified ? button(state2 ? "waiting for verification\u2026" : "verify Discord", verify, Boolean(state2)) : /* @__PURE__ */ jsxs(Fragment, {
-          children: [
-            /* @__PURE__ */ jsx(import_react_native7.TextInput, {
-              accessibilityLabel: "Custom badge name",
-              value: name,
-              onChangeText: setName,
-              maxLength: 40,
-              placeholder: "badge name",
-              placeholderTextColor: "#9faac4",
-              style: {
-                color: "white",
-                minHeight: 50,
-                padding: 14,
-                backgroundColor: "rgba(15,19,32,0.55)",
-                borderWidth: 1,
-                borderColor: "rgba(190,202,255,0.16)",
-                borderRadius: 16
-              }
-            }),
-            png ? /* @__PURE__ */ jsx(import_react_native7.Image, {
-              source: {
-                uri: `data:image/png;base64,${png}`
-              },
-              style: {
-                width: 48,
-                height: 48
-              }
-            }) : null,
-            button("choose PNG", pick, busy),
-            button(busy ? "checking with AI\u2026" : "submit badge", submit, busy || !png || !name.trim())
-          ]
-        }),
-        /* @__PURE__ */ jsx(import_react_native7.Text, {
-          accessibilityLiveRegion: "polite",
-          style: {
-            color: "#b5bac1"
-          },
-          children: message
-        })
-      ]
-    });
-  }
-  var import_react2, import_react_native7, API;
-  var init_CustomBadgeBeta = __esm({
-    "src/core/ui/settings/components/CustomBadgeBeta.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_jsxRuntime();
-      import_react2 = __toESM(require_react());
-      import_react_native7 = __toESM(require_react_native());
-      init_FakeProfileGlass();
-      init_settings();
-      init_metro();
-      API = "https://getcloudcord.com";
-    }
-  });
-
   // src/assets/icons/fakeprofile.png
   var fakeprofile_default;
   var init_fakeprofile = __esm({
@@ -7136,11 +6640,81 @@
     }
   });
 
+  // src/lib/api/assets/index.ts
+  var assets_exports = {};
+  __export(assets_exports, {
+    filterAssets: () => filterAssets,
+    findAsset: () => findAsset,
+    findAssetId: () => findAssetId,
+    iterateAssets: () => iterateAssets
+  });
+  function* iterateAssets() {
+    var { flagsIndex } = getMetroCache();
+    var yielded = /* @__PURE__ */ new Set();
+    for (var id in flagsIndex) {
+      if (flagsIndex[id] & ModuleFlags.ASSET) {
+        var assetId = requireModule(Number(id));
+        if (typeof assetId !== "number" || yielded.has(assetId))
+          continue;
+        yield getAssetById(assetId);
+        yielded.add(assetId);
+      }
+    }
+  }
+  function getAssetById(id) {
+    var asset = assetsModule.getAssetByID(id);
+    if (!asset)
+      return asset;
+    return Object.assign(asset, {
+      id
+    });
+  }
+  function findAsset(param) {
+    if (typeof param === "number")
+      return getAssetById(param);
+    if (typeof param === "string" && _nameToAssetCache[param]) {
+      return _nameToAssetCache[param];
+    }
+    for (var asset of iterateAssets()) {
+      if (typeof param === "string" && asset.name === param) {
+        _nameToAssetCache[param] = asset;
+        return asset;
+      } else if (typeof param === "function" && param(asset)) {
+        return asset;
+      }
+    }
+  }
+  function filterAssets(param) {
+    var filteredAssets = [];
+    for (var asset of iterateAssets()) {
+      if (typeof param === "string" ? asset.name === param : param(asset)) {
+        filteredAssets.push(asset);
+      }
+    }
+    return filteredAssets;
+  }
+  function findAssetId(name) {
+    return findAsset(name)?.id;
+  }
+  var _nameToAssetCache;
+  var init_assets = __esm({
+    "src/lib/api/assets/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_caches();
+      init_enums();
+      init_modules2();
+      init_patches();
+      _nameToAssetCache = {};
+    }
+  });
+
   // src/lib/ui/components/wrappers/AlertModal.tsx
   function AlertModal2(props) {
     var forwardFailedModal = findByFilePath("modules/forwarding/native/ForwardFailedAlertModal.tsx");
     if (!forwardFailedModal && "extraContent" in props) {
-      props.content = /* @__PURE__ */ jsxs(import_react_native8.View, {
+      props.content = /* @__PURE__ */ jsxs(import_react_native6.View, {
         style: {
           gap: 16
         },
@@ -7150,7 +6724,7 @@
             color: "text-muted",
             children: props.content
           }),
-          /* @__PURE__ */ jsx(import_react_native8.View, {
+          /* @__PURE__ */ jsx(import_react_native6.View, {
             children: props.extraContent
           })
         ]
@@ -7161,7 +6735,7 @@
       ...props
     });
   }
-  var import_react_native8, _AlertModal, _AlertActionButton, AlertActionButton2;
+  var import_react_native6, _AlertModal, _AlertActionButton, AlertActionButton2;
   var init_AlertModal = __esm({
     "src/lib/ui/components/wrappers/AlertModal.tsx"() {
       "use strict";
@@ -7171,7 +6745,7 @@
       init_lazy();
       init_metro();
       init_components();
-      import_react_native8 = __toESM(require_react_native());
+      import_react_native6 = __toESM(require_react_native());
       ({ AlertModal: _AlertModal, AlertActionButton: _AlertActionButton } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
       AlertActionButton2 = _AlertActionButton;
     }
@@ -7232,7 +6806,7 @@
   }
   function createThemedStyleSheet(sheet) {
     for (var key in sheet) {
-      sheet[key] = new Proxy(import_react_native9.StyleSheet.flatten(sheet[key]), {
+      sheet[key] = new Proxy(import_react_native7.StyleSheet.flatten(sheet[key]), {
         get(target, prop, receiver) {
           var res = Reflect.get(target, prop, receiver);
           return isSemanticColor(res) ? resolveSemanticColor(res) : res;
@@ -7241,7 +6815,7 @@
     }
     return sheet;
   }
-  var import_react_native9, Styles, ThemeContext, TextStyleSheet;
+  var import_react_native7, Styles, ThemeContext, TextStyleSheet;
   var init_styles = __esm({
     "src/lib/ui/styles.ts"() {
       "use strict";
@@ -7250,7 +6824,7 @@
       init_lazy();
       init_wrappers();
       init_color();
-      import_react_native9 = __toESM(require_react_native());
+      import_react_native7 = __toESM(require_react_native());
       Styles = findByPropsLazy("createStyles");
       ({ ThemeContext } = lazyDestructure(() => findByProps("ThemeContext"), {
         hint: "object"
@@ -7266,7 +6840,7 @@
         style,
         children
       });
-    return import_react_native10.Platform.select({
+    return import_react_native8.Platform.select({
       ios: /* @__PURE__ */ jsx(InputBasedCodeblock, {
         style,
         children
@@ -7278,7 +6852,7 @@
       })
     });
   }
-  var import_react_native10, useStyles, InputBasedCodeblock, TextBasedCodeblock;
+  var import_react_native8, useStyles, InputBasedCodeblock, TextBasedCodeblock;
   var init_Codeblock = __esm({
     "src/lib/ui/components/Codeblock.tsx"() {
       "use strict";
@@ -7288,7 +6862,7 @@
       init_common();
       init_color();
       init_styles();
-      import_react_native10 = __toESM(require_react_native());
+      import_react_native8 = __toESM(require_react_native());
       useStyles = createStyles({
         codeBlock: {
           fontFamily: constants.Fonts.CODE_NORMAL,
@@ -7302,7 +6876,7 @@
           padding: 10
         }
       });
-      InputBasedCodeblock = ({ style, children }) => /* @__PURE__ */ jsx(import_react_native10.TextInput, {
+      InputBasedCodeblock = ({ style, children }) => /* @__PURE__ */ jsx(import_react_native8.TextInput, {
         editable: false,
         multiline: true,
         style: [
@@ -7311,7 +6885,7 @@
         ],
         value: children
       });
-      TextBasedCodeblock = ({ selectable, style, children }) => /* @__PURE__ */ jsx(import_react_native10.Text, {
+      TextBasedCodeblock = ({ selectable, style, children }) => /* @__PURE__ */ jsx(import_react_native8.Text, {
         selectable,
         style: [
           useStyles().codeBlock,
@@ -7378,7 +6952,7 @@
 
   // src/core/ui/reporter/components/ErrorComponentStackCard.tsx
   function ErrorComponentStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react2.useState)(true);
     var stack;
     try {
       stack = parseComponentStack(props.componentStack);
@@ -7387,7 +6961,7 @@
       return;
     }
     return /* @__PURE__ */ jsx(Card, {
-      children: /* @__PURE__ */ jsxs(import_react_native11.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native9.View, {
         style: {
           gap: 8
         },
@@ -7396,11 +6970,11 @@
             variant: "heading-lg/bold",
             children: "Component Stack"
           }),
-          /* @__PURE__ */ jsx(import_react_native11.View, {
+          /* @__PURE__ */ jsx(import_react_native9.View, {
             style: {
               gap: 4
             },
-            children: stack.map((component) => /* @__PURE__ */ jsxs(import_react_native11.View, {
+            children: stack.map((component) => /* @__PURE__ */ jsxs(import_react_native9.View, {
               style: {
                 flexDirection: "row"
               },
@@ -7425,7 +6999,7 @@
           collapsed && /* @__PURE__ */ jsx(Text, {
             children: "..."
           }),
-          /* @__PURE__ */ jsxs(import_react_native11.View, {
+          /* @__PURE__ */ jsxs(import_react_native9.View, {
             style: {
               gap: 8,
               flexDirection: "row",
@@ -7436,7 +7010,7 @@
               /* @__PURE__ */ jsx(Button, {
                 variant: "secondary",
                 text: `Show ${collapsed ? "more" : "less"}`,
-                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native11.Image, {
+                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native9.Image, {
                   style: {
                     transform: [
                       {
@@ -7460,7 +7034,7 @@
       })
     });
   }
-  var import_react3, import_react_native11;
+  var import_react2, import_react_native9;
   var init_ErrorComponentStackCard = __esm({
     "src/core/ui/reporter/components/ErrorComponentStackCard.tsx"() {
       "use strict";
@@ -7471,8 +7045,8 @@
       init_assets();
       init_common();
       init_components();
-      import_react3 = __toESM(require_react());
-      import_react_native11 = __toESM(require_react_native());
+      import_react2 = __toESM(require_react());
+      import_react_native9 = __toESM(require_react_native());
     }
   });
 
@@ -7580,7 +7154,7 @@
 
   // src/core/ui/reporter/components/ErrorStackCard.tsx
   function ErrorStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react4.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
     var stack;
     try {
       var parsedErrorStack = parseErrorStack(props.error.stack);
@@ -7589,7 +7163,7 @@
       return null;
     }
     return /* @__PURE__ */ jsx(Card, {
-      children: /* @__PURE__ */ jsxs(import_react_native12.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native10.View, {
         style: {
           gap: 12
         },
@@ -7598,7 +7172,7 @@
             variant: "heading-lg/bold",
             children: "Call Stack"
           }),
-          /* @__PURE__ */ jsx(import_react_native12.View, {
+          /* @__PURE__ */ jsx(import_react_native10.View, {
             style: {
               gap: 4
             },
@@ -7610,7 +7184,7 @@
           collapsed && /* @__PURE__ */ jsx(Text, {
             children: "..."
           }),
-          /* @__PURE__ */ jsxs(import_react_native12.View, {
+          /* @__PURE__ */ jsxs(import_react_native10.View, {
             style: {
               gap: 8,
               flexDirection: "row",
@@ -7621,7 +7195,7 @@
               /* @__PURE__ */ jsx(Button, {
                 variant: "secondary",
                 text: `Show ${collapsed ? "more" : "less"}`,
-                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native12.Image, {
+                icon: collapsed ? findAssetId("down_arrow") : /* @__PURE__ */ jsx(import_react_native10.Image, {
                   style: {
                     transform: [
                       {
@@ -7646,8 +7220,8 @@
     });
   }
   function Line(props) {
-    var [collapsed, setCollapsed] = (0, import_react4.useState)(true);
-    return /* @__PURE__ */ jsxs(import_react_native12.Pressable, {
+    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
+    return /* @__PURE__ */ jsxs(import_react_native10.Pressable, {
       onPress: () => setCollapsed((v2) => !v2),
       children: [
         /* @__PURE__ */ jsx(Text, {
@@ -7676,7 +7250,7 @@
       ]
     }, props.id);
   }
-  var import_react4, import_react_native12;
+  var import_react3, import_react_native10;
   var init_ErrorStackCard = __esm({
     "src/core/ui/reporter/components/ErrorStackCard.tsx"() {
       "use strict";
@@ -7687,8 +7261,8 @@
       init_assets();
       init_common();
       init_components();
-      import_react4 = __toESM(require_react());
-      import_react_native12 = __toESM(require_react_native());
+      import_react3 = __toESM(require_react());
+      import_react_native10 = __toESM(require_react_native());
       init_ErrorCard();
     }
   });
@@ -7696,7 +7270,7 @@
   // src/core/ui/reporter/components/ErrorDetailsActionSheet.tsx
   function ErrorDetailsActionSheet(props) {
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native13.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native11.View, {
         style: {
           gap: 12,
           paddingVertical: 12
@@ -7720,7 +7294,7 @@
       })
     });
   }
-  var import_react_native13;
+  var import_react_native11;
   var init_ErrorDetailsActionSheet = __esm({
     "src/core/ui/reporter/components/ErrorDetailsActionSheet.tsx"() {
       "use strict";
@@ -7730,7 +7304,7 @@
       init_isStack();
       init_components2();
       init_components();
-      import_react_native13 = __toESM(require_react_native());
+      import_react_native11 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
     }
@@ -7843,7 +7417,7 @@
 
   // src/lib/ui/components/Search.tsx
   function SearchIcon() {
-    return /* @__PURE__ */ jsx(import_react_native14.Image, {
+    return /* @__PURE__ */ jsx(import_react_native12.Image, {
       style: {
         width: 16,
         height: 16
@@ -7851,7 +7425,7 @@
       source: findAssetId("icon-search")
     });
   }
-  var import_react_native14, Search_default;
+  var import_react_native12, Search_default;
   var init_Search = __esm({
     "src/lib/ui/components/Search.tsx"() {
       "use strict";
@@ -7862,7 +7436,7 @@
       init_assets();
       init_components();
       init_ErrorBoundary();
-      import_react_native14 = __toESM(require_react_native());
+      import_react_native12 = __toESM(require_react_native());
       Search_default = ({ onChangeText, placeholder, style, isRound }) => {
         var [query, setQuery] = React.useState("");
         var onChange = (value) => {
@@ -7870,7 +7444,7 @@
           onChangeText?.(value);
         };
         return /* @__PURE__ */ jsx(ErrorBoundary, {
-          children: /* @__PURE__ */ jsx(import_react_native14.View, {
+          children: /* @__PURE__ */ jsx(import_react_native12.View, {
             style,
             children: /* @__PURE__ */ jsx(TextInput, {
               grow: true,
@@ -7913,11 +7487,11 @@
           onPress: () => {
             setHidden(!hidden);
             if (!noAnimation)
-              import_react_native15.LayoutAnimation.configureNext(import_react_native15.LayoutAnimation.Presets.easeInEaseOut);
+              import_react_native13.LayoutAnimation.configureNext(import_react_native13.LayoutAnimation.Presets.easeInEaseOut);
           }
         }),
         !hidden && /* @__PURE__ */ jsx(Fragment, {
-          children: /* @__PURE__ */ jsx(import_react_native15.View, {
+          children: /* @__PURE__ */ jsx(import_react_native13.View, {
             style: !noPadding && {
               paddingHorizontal: 15
             },
@@ -7927,7 +7501,7 @@
       ]
     });
   }
-  var import_react_native15;
+  var import_react_native13;
   var init_Summary = __esm({
     "src/lib/ui/components/Summary.tsx"() {
       "use strict";
@@ -7936,7 +7510,7 @@
       init_jsxRuntime();
       init_assets();
       init_components();
-      import_react_native15 = __toESM(require_react_native());
+      import_react_native13 = __toESM(require_react_native());
     }
   });
 
@@ -8216,7 +7790,7 @@
       showToast(e.message, findAssetId("Small"));
     });
   }
-  var import_react_native16, showSimpleActionSheet, handleClick, getChannelId, getChannel, url_default;
+  var import_react_native14, showSimpleActionSheet, handleClick, getChannelId, getChannel, url_default;
   var init_url = __esm({
     "src/core/plugins/quickinstall/url.tsx"() {
       "use strict";
@@ -8237,7 +7811,7 @@
       init_finders();
       init_wrappers();
       init_toasts();
-      import_react_native16 = __toESM(require_react_native());
+      import_react_native14 = __toESM(require_react_native());
       showSimpleActionSheet = findExports(byMutableProp("showSimpleActionSheet"));
       handleClick = findByPropsLazy("handleClick");
       ({ getChannelId } = lazyDestructure(() => channels));
@@ -8273,7 +7847,7 @@
               confirmText: Strings.INSTALL,
               cancelText: Strings.CANCEL,
               secondaryConfirmText: Strings.OPEN_IN_BROWSER,
-              onConfirmSecondary: () => import_react_native16.Linking.openURL(url2)
+              onConfirmSecondary: () => import_react_native14.Linking.openURL(url2)
             });
           }).call(this);
         }));
@@ -9000,7 +8574,7 @@
     if (devTools?.connectToDevTools) {
       devTools.connectToDevTools({
         websocket: ws,
-        resolveRNStyle: import_react_native17.StyleSheet.flatten
+        resolveRNStyle: import_react_native15.StyleSheet.flatten
       });
     }
   }
@@ -9031,7 +8605,7 @@
     var hermesProps = globalThis.HermesInternal.getRuntimeProperties();
     var hermesVer = hermesProps["OSS Release Version"];
     var padding = "for RN ";
-    var PlatformConstants = import_react_native17.Platform.constants;
+    var PlatformConstants = import_react_native15.Platform.constants;
     var rnVer = PlatformConstants.reactNativeVersion;
     return {
       vendetta: {
@@ -9058,7 +8632,7 @@
         buildType: hermesProps.Build,
         bytecodeVersion: hermesProps["Bytecode Version"]
       },
-      ...import_react_native17.Platform.select({
+      ...import_react_native15.Platform.select({
         android: {
           os: {
             name: "Android",
@@ -9073,7 +8647,7 @@
           }
         }
       }),
-      ...import_react_native17.Platform.select({
+      ...import_react_native15.Platform.select({
         android: {
           device: {
             manufacturer: PlatformConstants.Manufacturer,
@@ -9111,7 +8685,7 @@
       }
     }
   }
-  var import_react_native17, socket2, originalConsoleLog2, originalConsoleError2, originalConsoleWarn2, originalLoggerLog2, originalLoggerError2, originalLoggerWarn2, VERSION2, rdtPort, rdtClient, rdtConnected, changeHooks, versionHash;
+  var import_react_native15, socket2, originalConsoleLog2, originalConsoleError2, originalConsoleWarn2, originalLoggerLog2, originalLoggerError2, originalLoggerWarn2, VERSION2, rdtPort, rdtClient, rdtConnected, changeHooks, versionHash;
   var init_debug = __esm({
     "src/lib/api/debug.ts"() {
       "use strict";
@@ -9126,7 +8700,7 @@
       init_settings();
       init_logger();
       init_toasts();
-      import_react_native17 = __toESM(require_react_native());
+      import_react_native15 = __toESM(require_react_native());
       VERSION2 = 1;
       rdtPort = 8097;
       rdtClient = null;
@@ -9805,12 +9379,470 @@
     }
   });
 
+  // src/core/ui/settings/components/FakeProfileGlass.tsx
+  var FakeProfileGlass_exports = {};
+  __export(FakeProfileGlass_exports, {
+    GlassButton: () => GlassButton,
+    GlassCard: () => GlassCard,
+    ProfileTabs: () => ProfileTabs
+  });
+  function ProfileTabIcon({ tab, color: color2 }) {
+    var icon;
+    for (var name of tab === "profile" ? [
+      "PersonIcon",
+      "UserIcon"
+    ] : tab === "badges" ? [
+      "AwardIcon",
+      "StarIcon"
+    ] : [
+      "PaintPaletteIcon",
+      "SparklesIcon"
+    ]) {
+      try {
+        icon = findAssetId(name);
+      } catch (e) {
+      }
+      if (icon)
+        break;
+    }
+    return icon ? /* @__PURE__ */ jsx(import_react_native16.Image, {
+      accessible: false,
+      source: icon,
+      style: {
+        width: 18,
+        height: 18,
+        tintColor: color2
+      }
+    }) : /* @__PURE__ */ jsx(import_react_native16.Text, {
+      accessible: false,
+      style: {
+        color: color2,
+        fontSize: 17
+      },
+      children: tab === "profile" ? "\u25C9" : tab === "badges" ? "\u2726" : "\u2727"
+    });
+  }
+  function GlassCard({ children }) {
+    var opaque = false;
+    return /* @__PURE__ */ jsxs(import_react_native16.View, {
+      style: {
+        borderRadius: 24,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: "rgba(194,207,255,0.18)",
+        backgroundColor: opaque ? "#252936" : "rgba(39,44,61,0.80)",
+        shadowColor: "#000",
+        shadowOffset: {
+          width: 0,
+          height: 6
+        },
+        shadowOpacity: 0.16,
+        shadowRadius: 14
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native16.View, {
+          pointerEvents: "none",
+          style: {
+            position: "absolute",
+            top: 0,
+            left: 18,
+            right: 18,
+            height: 1,
+            backgroundColor: "rgba(255,255,255,0.24)"
+          }
+        }),
+        children
+      ]
+    });
+  }
+  function GlassButton({ label, onPress, muted = false, disabled = false }) {
+    return /* @__PURE__ */ jsx(import_react_native16.Pressable, {
+      accessibilityRole: "button",
+      accessibilityLabel: label,
+      accessibilityState: {
+        disabled
+      },
+      disabled,
+      onPress,
+      style: ({ pressed }) => ({
+        width: "100%",
+        minHeight: 50,
+        paddingHorizontal: 16,
+        paddingVertical: 14,
+        borderRadius: 18,
+        overflow: "hidden",
+        borderWidth: 1,
+        borderColor: muted ? "rgba(190,202,255,0.24)" : "rgba(255,255,255,0.30)",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: disabled ? "#303647" : muted ? "#30394e" : pressed ? "#5261cc" : "#6575ef",
+        opacity: disabled ? 0.6 : 1
+      }),
+      children: ({ pressed }) => /* @__PURE__ */ jsxs(Fragment, {
+        children: [
+          /* @__PURE__ */ jsx(import_react_native16.View, {
+            pointerEvents: "none",
+            style: {
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "48%",
+              backgroundColor: pressed ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.10)"
+            }
+          }),
+          /* @__PURE__ */ jsx(import_react_native16.View, {
+            pointerEvents: "none",
+            style: {
+              position: "absolute",
+              top: 1,
+              left: 14,
+              right: 14,
+              height: 1,
+              backgroundColor: "rgba(255,255,255,0.35)"
+            }
+          }),
+          /* @__PURE__ */ jsx(import_react_native16.View, {
+            pointerEvents: "none",
+            style: {
+              position: "absolute",
+              bottom: 1,
+              left: 12,
+              right: 12,
+              height: 1,
+              backgroundColor: "rgba(0,0,0,0.16)"
+            }
+          }),
+          /* @__PURE__ */ jsx(import_react_native16.Text, {
+            style: {
+              color: muted ? "#d5ddff" : "#fff",
+              textAlign: "center",
+              fontSize: 14,
+              fontWeight: "600"
+            },
+            children: label
+          })
+        ]
+      })
+    });
+  }
+  function ProfileTabs({ selected, onSelect }) {
+    return /* @__PURE__ */ jsx(import_react_native16.View, {
+      accessibilityRole: "tablist",
+      style: {
+        flexDirection: "row",
+        gap: 6,
+        padding: 5,
+        borderRadius: 20,
+        backgroundColor: "rgba(255,255,255,0.05)",
+        borderWidth: 1,
+        borderColor: "rgba(255,255,255,0.1)"
+      },
+      children: [
+        "profile",
+        "badges",
+        "custom"
+      ].map((tab) => /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
+        accessibilityRole: "tab",
+        accessibilityLabel: tab === "custom" ? "custom badges beta" : tab,
+        accessibilityState: {
+          selected: selected === tab
+        },
+        onPress: () => onSelect(tab),
+        style: ({ pressed }) => ({
+          flex: 1,
+          minHeight: 52,
+          alignItems: "center",
+          justifyContent: "center",
+          borderRadius: 15,
+          paddingHorizontal: 4,
+          gap: 3,
+          backgroundColor: selected === tab ? "#6575ef" : pressed ? "rgba(255,255,255,0.10)" : "transparent"
+        }),
+        children: [
+          /* @__PURE__ */ jsx(ProfileTabIcon, {
+            tab,
+            color: selected === tab ? "#fff" : "#b8c0d8"
+          }),
+          /* @__PURE__ */ jsx(import_react_native16.Text, {
+            allowFontScaling: true,
+            style: {
+              fontSize: 12,
+              fontWeight: "600",
+              color: selected === tab ? "#fff" : "#b8c0d8"
+            },
+            children: tab === "custom" ? "custom \xB7 beta" : tab
+          })
+        ]
+      }, tab))
+    });
+  }
+  var import_react_native16;
+  var init_FakeProfileGlass = __esm({
+    "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      import_react_native16 = __toESM(require_react_native());
+      init_assets();
+    }
+  });
+
+  // src/core/ui/settings/components/CustomBadgeBeta.tsx
+  var CustomBadgeBeta_exports = {};
+  __export(CustomBadgeBeta_exports, {
+    default: () => CustomBadgeBeta
+  });
+  function CustomBadgeBeta() {
+    var [name, setName] = (0, import_react4.useState)("");
+    var [png, setPng] = (0, import_react4.useState)("");
+    var [message, setMessage] = (0, import_react4.useState)("beta \u2014 AI-approved badges go live, then admins can keep or remove them.");
+    var [busy, setBusy] = (0, import_react4.useState)(false);
+    var [state2, setState] = (0, import_react4.useState)(null);
+    var [verified, setVerified] = (0, import_react4.useState)(Boolean(settings.customBadgeDeviceToken));
+    var polling = (0, import_react4.useRef)(false);
+    (0, import_react4.useEffect)(() => {
+      if (!state2)
+        return;
+      var alive = true;
+      var started = Date.now();
+      var timer = setInterval(() => _async_to_generator(function* () {
+        if (polling.current || !alive)
+          return;
+        if (Date.now() - started > 6e5) {
+          setState(null);
+          setMessage("verification expired \u2014 try again");
+          return;
+        }
+        polling.current = true;
+        try {
+          var r = yield fetch(`${API}/api/cloudcord/onboarding/status/${encodeURIComponent(state2)}`);
+          var result = yield r.json();
+          if (alive && result.status === "complete" && result.deviceToken) {
+            settings.customBadgeDeviceToken = result.deviceToken;
+            setVerified(true);
+            setState(null);
+            setMessage("verified \u2014 choose a name and PNG");
+          } else if (alive && [
+            "error",
+            "expired",
+            "blacklisted"
+          ].includes(result.status)) {
+            setState(null);
+            setMessage("verification failed \u2014 try again");
+          }
+        } catch (e) {
+        } finally {
+          polling.current = false;
+        }
+      })(), 3e3);
+      return () => {
+        alive = false;
+        clearInterval(timer);
+      };
+    }, [
+      state2
+    ]);
+    var verify = () => import_react_native17.Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. your name and PNG are sent to OpenAI for safety checks. AI-approved badges publish immediately, then CloudCord admins review and can remove them.", [
+      {
+        text: "cancel",
+        style: "cancel"
+      },
+      {
+        text: "view terms",
+        onPress: () => import_react_native17.Linking.openURL(`${API}/tos`)
+      },
+      {
+        text: "accept & verify",
+        onPress: () => _async_to_generator(function* () {
+          try {
+            var config = yield (yield fetch(`${API}/api/cloudcord/onboarding/config`)).json();
+            var r = yield fetch(`${API}/api/cloudcord/onboarding/start`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                accepted: true,
+                termsVersion: config.termsVersion
+              })
+            });
+            var result = yield r.json();
+            if (!r.ok || !result.state || !result.authorizeUrl)
+              throw new Error(result.error || "verification unavailable");
+            setState(result.state);
+            yield import_react_native17.Linking.openURL(result.authorizeUrl);
+          } catch (e) {
+            setMessage(e.message || "verification unavailable");
+          }
+        })()
+      }
+    ]);
+    var pick = () => _async_to_generator(function* () {
+      try {
+        var picker = findByProps("pickSingle", "isCancel");
+        if (!picker?.pickSingle)
+          throw new Error("file picker unavailable");
+        var asset = yield picker.pickSingle({
+          type: "image/png",
+          mode: "import",
+          copyTo: "documentDirectory"
+        });
+        if (asset.size > 524288)
+          throw new Error("PNG must be under 512 KB");
+        var native = (init_modules(), __toCommonJS(modules_exports));
+        var files = native.NativeFileModule || native.FileManager;
+        if (!files?.readFile)
+          throw new Error("PNG reader unavailable on this Discord build");
+        var data = yield files.readFile((asset.fileCopyUri || asset.uri).replace(/^file:\/\//, ""), "base64");
+        if (data.length > 7e5)
+          throw new Error("PNG must be under 512 KB");
+        setPng(data);
+        setMessage("PNG selected \u2014 ready for the AI safety check");
+      } catch (e) {
+        setMessage(e.message || "could not read PNG");
+      }
+    })();
+    var submit = () => _async_to_generator(function* () {
+      if (busy || !png || !name.trim())
+        return;
+      setBusy(true);
+      try {
+        var r = yield fetch(`${API}/v1/badge-submissions`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${settings.customBadgeDeviceToken}`
+          },
+          body: JSON.stringify({
+            name,
+            png
+          })
+        });
+        var result = yield r.json();
+        if (r.status === 401) {
+          settings.customBadgeDeviceToken = null;
+          setVerified(false);
+        }
+        setMessage(result.message || "could not submit \u2014 nothing was published");
+      } catch (e) {
+        setMessage("connection failed \u2014 nothing was published");
+      } finally {
+        setBusy(false);
+      }
+    })();
+    var button = (label, action, disabled = false) => /* @__PURE__ */ jsx(GlassButton, {
+      label,
+      onPress: action,
+      disabled
+    });
+    return /* @__PURE__ */ jsxs(import_react_native17.View, {
+      style: {
+        gap: 14,
+        padding: 2
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native17.Text, {
+          style: {
+            color: "white",
+            fontWeight: "bold"
+          },
+          children: "custom badges \xB7 beta"
+        }),
+        /* @__PURE__ */ jsx(import_react_native17.Text, {
+          style: {
+            color: "#b5bac1"
+          },
+          children: "no staff/verified impersonation, unsafe content, links or personal information. custom badges do not prove staff status."
+        }),
+        !verified ? button(state2 ? "waiting for verification\u2026" : "verify Discord", verify, Boolean(state2)) : /* @__PURE__ */ jsxs(Fragment, {
+          children: [
+            /* @__PURE__ */ jsx(import_react_native17.TextInput, {
+              accessibilityLabel: "Custom badge name",
+              value: name,
+              onChangeText: setName,
+              maxLength: 40,
+              placeholder: "badge name",
+              placeholderTextColor: "#9faac4",
+              style: {
+                color: "white",
+                minHeight: 50,
+                padding: 14,
+                backgroundColor: "rgba(15,19,32,0.55)",
+                borderWidth: 1,
+                borderColor: "rgba(190,202,255,0.16)",
+                borderRadius: 16
+              }
+            }),
+            png ? /* @__PURE__ */ jsx(import_react_native17.Image, {
+              source: {
+                uri: `data:image/png;base64,${png}`
+              },
+              style: {
+                width: 48,
+                height: 48
+              }
+            }) : null,
+            button("choose PNG", pick, busy),
+            button(busy ? "checking with AI\u2026" : "submit badge", submit, busy || !png || !name.trim())
+          ]
+        }),
+        /* @__PURE__ */ jsx(import_react_native17.Text, {
+          accessibilityLiveRegion: "polite",
+          style: {
+            color: "#b5bac1"
+          },
+          children: message
+        })
+      ]
+    });
+  }
+  var import_react4, import_react_native17, API;
+  var init_CustomBadgeBeta = __esm({
+    "src/core/ui/settings/components/CustomBadgeBeta.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_jsxRuntime();
+      import_react4 = __toESM(require_react());
+      import_react_native17 = __toESM(require_react_native());
+      init_FakeProfileGlass();
+      init_settings();
+      init_metro();
+      API = "https://getcloudcord.com";
+    }
+  });
+
   // src/core/ui/settings/pages/FakeProfile/index.tsx
   var FakeProfile_exports = {};
   __export(FakeProfile_exports, {
     default: () => FakeProfile,
     initializeFakeProfile: () => initializeFakeProfile
   });
+  function Card2(props) {
+    var Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).GlassCard;
+    return /* @__PURE__ */ jsx(Component, {
+      ...props
+    });
+  }
+  function GlassButton2(props) {
+    var Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).GlassButton;
+    return /* @__PURE__ */ jsx(Component, {
+      ...props
+    });
+  }
+  function ProfileTabs2(props) {
+    var Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).ProfileTabs;
+    return /* @__PURE__ */ jsx(Component, {
+      ...props
+    });
+  }
+  function CustomBadgeBeta2() {
+    var Component = (init_CustomBadgeBeta(), __toCommonJS(CustomBadgeBeta_exports)).default;
+    return /* @__PURE__ */ jsx(Component, {});
+  }
   function cloudCordStaffBadge(userId) {
     if (userId === CLOUDCORD_OWNER_ID)
       return {
@@ -11401,7 +11433,7 @@
     })();
   }
   function ActionButton({ label, onPress, muted = false }) {
-    return /* @__PURE__ */ jsx(GlassButton, {
+    return /* @__PURE__ */ jsx(GlassButton2, {
       label,
       onPress,
       muted
@@ -12274,7 +12306,7 @@
               })
             ]
           }),
-          /* @__PURE__ */ jsx(GlassCard, {
+          /* @__PURE__ */ jsx(Card2, {
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native18.View, {
               style: {
@@ -12384,20 +12416,20 @@
               ]
             })
           }),
-          /* @__PURE__ */ jsx(ProfileTabs, {
+          /* @__PURE__ */ jsx(ProfileTabs2, {
             selected: activeTab,
             onSelect: setActiveTab
           }),
-          activeTab === "custom" ? /* @__PURE__ */ jsx(GlassCard, {
+          activeTab === "custom" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
             children: /* @__PURE__ */ jsx(import_react_native18.View, {
               style: {
                 padding: 16
               },
-              children: /* @__PURE__ */ jsx(CustomBadgeBeta, {})
+              children: /* @__PURE__ */ jsx(CustomBadgeBeta2, {})
             })
           }) : null,
-          activeTab === "profile" ? /* @__PURE__ */ jsx(GlassCard, {
+          activeTab === "profile" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native18.View, {
               style: {
@@ -12718,7 +12750,7 @@
               ]
             })
           }) : null,
-          activeTab === "badges" ? /* @__PURE__ */ jsx(GlassCard, {
+          activeTab === "badges" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native18.View, {
               style: {
@@ -12782,7 +12814,7 @@
             muted: true,
             onPress: () => setShowDetails(!showDetails)
           }),
-          showDetails ? /* @__PURE__ */ jsx(GlassCard, {
+          showDetails ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native18.View, {
               style: {
@@ -12858,8 +12890,6 @@
       init_promiseAllSettled();
       init_async_to_generator();
       init_jsxRuntime();
-      init_CustomBadgeBeta();
-      init_FakeProfileGlass();
       init_fakeprofile();
       init_cloudcord_decorations();
       init_storage();
