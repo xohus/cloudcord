@@ -5,7 +5,6 @@
 #import "JSI.h"
 #import "Logger.h"
 #import "Fonts.h"
-#import "Themes.h"
 #import "Utils.h"
 #import "LoaderConfig.h"
 #import <CommonCrypto/CommonDigest.h>
@@ -111,7 +110,7 @@ static void injectPreBundle(jsi::Runtime &runtime)
         jsi::Object loaderObj(runtime);
         loaderObj.setProperty(runtime, "loaderName", jsi::String::createFromUtf8(runtime, "RainTweak"));
         loaderObj.setProperty(runtime, "loaderVersion", jsi::String::createFromUtf8(runtime, [PACKAGE_VERSION UTF8String]));
-        loaderObj.setProperty(runtime, "hasThemeSupport", true);
+        loaderObj.setProperty(runtime, "hasThemeSupport", false);
         loaderObj.setProperty(runtime, "storedTheme", jsi::Value::null());
         loaderObj.setProperty(runtime, "fontPatch", 2);
         runtime.global().setProperty(runtime, "__RAIN_LOADER__", loaderObj);
@@ -189,30 +188,17 @@ static void injectPreBundle(jsi::Runtime &runtime)
     injectPreBundle(runtime);
     NSString *bundlePath = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"BunnyResources.bundle"];
     NSBundle *resources = [NSBundle bundleWithPath:bundlePath];
-    NSData *identity = [@"globalThis.__CLOUDCORD_LOADER__=Object.assign(globalThis.__RAIN_LOADER__,{loaderName:'CloudCord',cloudcordAutoUpdateVersion:3,hasThemeSupport:true,fontPatch:2});globalThis.__PYON_LOADER__=globalThis.__CLOUDCORD_LOADER__;" dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *identity = [@"globalThis.__CLOUDCORD_LOADER__=Object.assign(globalThis.__RAIN_LOADER__,{loaderName:'CloudCord',cloudcordAutoUpdateVersion:3,hasThemeSupport:false,fontPatch:2});globalThis.__PYON_LOADER__=globalThis.__CLOUDCORD_LOADER__;" dataUsingEncoding:NSUTF8StringEncoding];
     [JSI evaluate:identity tag:@"cloudcord:rain-identity" runtime:runtime];
-    NSData *themeData = [NSData dataWithContentsOfURL:[getPyoncordDirectory() URLByAppendingPathComponent:@"current-theme.json"]];
-    id theme = themeData.length ? [NSJSONSerialization JSONObjectWithData:themeData options:0 error:nil] : nil;
-    if ([theme isKindOfClass:NSDictionary.class]) {
-        NSString *json = [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:theme options:0 error:nil] encoding:NSUTF8StringEncoding];
-        if (json) [JSI evaluate:[[NSString stringWithFormat:@"globalThis.__CLOUDCORD_LOADER__.storedTheme=%@;", json] dataUsingEncoding:NSUTF8StringEncoding] tag:@"cloudcord:saved-theme" runtime:runtime];
-    }
     NSData *fontData = [NSData dataWithContentsOfURL:[getPyoncordDirectory() URLByAppendingPathComponent:@"fonts.json"]];
     id fonts = fontData.length ? [NSJSONSerialization JSONObjectWithData:fontData options:0 error:nil] : nil;
     // Rain's callback precedes Discord's JS bundle. Appearance work belongs
     // after that bundle loads, on the UI thread, not inside runtime creation.
-    if ([theme isKindOfClass:NSDictionary.class] || [fonts isKindOfClass:NSDictionary.class]) {
+    if ([fonts isKindOfClass:NSDictionary.class]) {
         __block id observer = nil;
         observer = [NSNotificationCenter.defaultCenter addObserverForName:@"RCTJavaScriptDidLoadNotification" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *note) {
             [NSNotificationCenter.defaultCenter removeObserver:observer];
             observer = nil;
-            if ([theme isKindOfClass:NSDictionary.class]) {
-                id data = theme[@"data"];
-                id main = [data isKindOfClass:NSDictionary.class] ? data[@"main"] : nil;
-                if (![main isKindOfClass:NSDictionary.class]) main = theme[@"main"];
-                if ([main isKindOfClass:NSDictionary.class]) initializeThemeColors(main[@"semantic"], main[@"raw"]);
-                else if ([data isKindOfClass:NSDictionary.class]) initializeThemeColors(data[@"semanticColors"], data[@"rawColors"]);
-            }
             if ([fonts isKindOfClass:NSDictionary.class]) patchFonts(fonts[@"main"], fonts[@"name"]);
         }];
     }

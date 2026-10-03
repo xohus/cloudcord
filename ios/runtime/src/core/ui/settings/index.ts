@@ -77,7 +77,7 @@ export default function initSettings() {
                 title: () => Strings.THEMES,
                 icon: safeAsset("PaintPaletteIcon", "ThemeIcon"),
                 render: () => import("@core/ui/settings/pages/Themes"),
-                usePredicate: () => isThemeSupported()
+                usePredicate: () => false
             },
             {
                 key: "BUNNY_FONTS",

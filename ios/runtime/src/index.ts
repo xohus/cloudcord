@@ -7,7 +7,6 @@ import { initVendettaObject } from "@core/vendetta/api";
 import { VdPluginManager } from "@core/vendetta/plugins";
 import { updateFonts } from "@lib/addons/fonts";
 import { initPlugins, updatePlugins } from "@lib/addons/plugins";
-import { initThemes } from "@lib/addons/themes";
 import { patchCommands } from "@lib/api/commands";
 import { patchLogHook } from "@lib/api/debug";
 import { initLegacyRuntimeRefresh } from "@lib/api/native/legacyRuntimeRefresh";
@@ -25,7 +24,6 @@ export default async () => {
     // Load everything in parallel. The shared build workflow wraps core
     // settings separately and applies the version-specific fallbacks.
     await Promise.all([
-        initThemes(),
         injectFluxInterceptor(),
         patchSettings(),
         patchLogHook(),
