@@ -20338,7 +20338,7 @@
         title: () => Strings.THEMES,
         icon: safeAsset("PaintPaletteIcon", "ThemeIcon"),
         render: () => Promise.resolve().then(() => (init_Themes(), Themes_exports)),
-        usePredicate: () => isThemeSupported()
+        usePredicate: () => false
       },
       {
         key: "BUNNY_FONTS",
@@ -20905,7 +20905,6 @@
       init_plugins();
       init_fonts();
       init_plugins4();
-      init_themes();
       init_commands();
       init_debug();
       init_legacyRuntimeRefresh();
@@ -20936,7 +20935,6 @@
           console.error("CloudCord settings patch failed", error);
         }
         yield Promise.all([
-          initThemes(),
           injectFluxInterceptor(),
           patchLogHook(),
           patchCommands(),
