@@ -29,6 +29,11 @@ jobs:
       - name: Check reload guard regression
         run: node ios/scripts/test-reload-guard.cjs
 
+      - name: Check native hook isolation
+        run: |
+          clang -fobjc-arc -framework Foundation ios/scripts/test-hook-isolation.m -o "$RUNNER_TEMP/test-hook-isolation"
+          "$RUNNER_TEMP/test-hook-isolation"
+
       - name: Install build tools
         run: |
           brew install ldid
@@ -64,16 +69,6 @@ jobs:
           )
           source.write_text(text)
           PY
-          cat > Sources/SubstrateCompat.m <<'OBJC'
-          #import <objc/runtime.h>
-          void MSHookMessageEx(Class targetClass, SEL selector, IMP replacement, IMP *original) {
-              Method method = class_getInstanceMethod(targetClass, selector);
-              if (!method) return;
-              IMP previous = method_getImplementation(method);
-              if (original) *original = previous;
-              method_setImplementation(method, replacement);
-          }
-          OBJC
           make package FINALPACKAGE=1 CLOUDCORD_SAFE_UI=1
 
       - name: Package Discord 344.1 IPA
