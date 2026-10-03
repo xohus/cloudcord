@@ -27,7 +27,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Check reload guard regression
-        run: node ios/scripts/test-reload-guard.cjs
+        run: |
+          node ios/scripts/test-reload-guard.cjs
+          node ios/scripts/test-metro-capture.cjs
 
       - name: Check native hook isolation
         run: |
