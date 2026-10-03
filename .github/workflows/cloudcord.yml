@@ -72,6 +72,7 @@ jobs:
           mkdir -p src/core/ui/settings/pages/Customization
           mkdir -p src/core/ui/settings/pages/Plugins/components
           mkdir -p src/core/ui/settings/pages/Plugins/models
+          mkdir -p src/core/ui/settings/components
           cp "../ios/runtime/src/core/ui/settings/components/FakeProfileGlass.tsx" "src/core/ui/settings/components/FakeProfileGlass.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/CustomBadgeBeta.tsx" "src/core/ui/settings/components/CustomBadgeBeta.tsx"
           mkdir -p src/core/ui/settings/pages/Themes
