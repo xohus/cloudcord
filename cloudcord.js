@@ -4622,12 +4622,118 @@
     }
   });
 
+  // src/lib/api/assets/index.ts
+  var assets_exports = {};
+  __export(assets_exports, {
+    filterAssets: () => filterAssets,
+    findAsset: () => findAsset,
+    findAssetId: () => findAssetId,
+    iterateAssets: () => iterateAssets
+  });
+  function* iterateAssets() {
+    var { flagsIndex } = getMetroCache();
+    var yielded = /* @__PURE__ */ new Set();
+    for (var id in flagsIndex) {
+      if (flagsIndex[id] & ModuleFlags.ASSET) {
+        var assetId = requireModule(Number(id));
+        if (typeof assetId !== "number" || yielded.has(assetId))
+          continue;
+        yield getAssetById(assetId);
+        yielded.add(assetId);
+      }
+    }
+  }
+  function getAssetById(id) {
+    var asset = assetsModule.getAssetByID(id);
+    if (!asset)
+      return asset;
+    return Object.assign(asset, {
+      id
+    });
+  }
+  function findAsset(param) {
+    if (typeof param === "number")
+      return getAssetById(param);
+    if (typeof param === "string" && _nameToAssetCache[param]) {
+      return _nameToAssetCache[param];
+    }
+    for (var asset of iterateAssets()) {
+      if (typeof param === "string" && asset.name === param) {
+        _nameToAssetCache[param] = asset;
+        return asset;
+      } else if (typeof param === "function" && param(asset)) {
+        return asset;
+      }
+    }
+  }
+  function filterAssets(param) {
+    var filteredAssets = [];
+    for (var asset of iterateAssets()) {
+      if (typeof param === "string" ? asset.name === param : param(asset)) {
+        filteredAssets.push(asset);
+      }
+    }
+    return filteredAssets;
+  }
+  function findAssetId(name) {
+    return findAsset(name)?.id;
+  }
+  var _nameToAssetCache;
+  var init_assets = __esm({
+    "src/lib/api/assets/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_caches();
+      init_enums();
+      init_modules2();
+      init_patches();
+      _nameToAssetCache = {};
+    }
+  });
+
   // src/core/ui/settings/components/FakeProfileGlass.tsx
+  function ProfileTabIcon({ tab, color: color2 }) {
+    var icon;
+    for (var name of tab === "profile" ? [
+      "PersonIcon",
+      "UserIcon"
+    ] : tab === "badges" ? [
+      "AwardIcon",
+      "StarIcon"
+    ] : [
+      "PaintPaletteIcon",
+      "SparklesIcon"
+    ]) {
+      try {
+        icon = findAssetId(name);
+      } catch (e) {
+      }
+      if (icon)
+        break;
+    }
+    return icon ? /* @__PURE__ */ jsx(import_react_native6.Image, {
+      accessible: false,
+      source: icon,
+      style: {
+        width: 18,
+        height: 18,
+        tintColor: color2
+      }
+    }) : /* @__PURE__ */ jsx(import_react_native6.Text, {
+      accessible: false,
+      style: {
+        color: color2,
+        fontSize: 17
+      },
+      children: tab === "profile" ? "\u25C9" : tab === "badges" ? "\u2726" : "\u2727"
+    });
+  }
   function GlassCard({ children }) {
     var [opaque, setOpaque] = (0, import_react2.useState)(false);
     (0, import_react2.useEffect)(() => {
       var alive = true;
-      import_react_native6.AccessibilityInfo.isReduceTransparencyEnabled?.().then((value) => {
+      Promise.resolve(import_react_native6.AccessibilityInfo.isReduceTransparencyEnabled?.() ?? false).then((value) => {
         if (alive)
           setOpaque(value);
       }).catch(() => {
@@ -4756,30 +4862,38 @@
         "profile",
         "badges",
         "custom"
-      ].map((tab) => /* @__PURE__ */ jsx(import_react_native6.Pressable, {
+      ].map((tab) => /* @__PURE__ */ jsxs(import_react_native6.Pressable, {
         accessibilityRole: "tab",
+        accessibilityLabel: tab === "custom" ? "custom badges beta" : tab,
         accessibilityState: {
           selected: selected === tab
         },
         onPress: () => onSelect(tab),
         style: ({ pressed }) => ({
           flex: 1,
-          minHeight: 46,
+          minHeight: 52,
           alignItems: "center",
           justifyContent: "center",
           borderRadius: 15,
           paddingHorizontal: 4,
+          gap: 3,
           backgroundColor: selected === tab ? "#6575ef" : pressed ? "rgba(255,255,255,0.10)" : "transparent"
         }),
-        children: /* @__PURE__ */ jsx(import_react_native6.Text, {
-          allowFontScaling: true,
-          style: {
-            fontSize: 14,
-            fontWeight: "600",
+        children: [
+          /* @__PURE__ */ jsx(ProfileTabIcon, {
+            tab,
             color: selected === tab ? "#fff" : "#b8c0d8"
-          },
-          children: tab
-        })
+          }),
+          /* @__PURE__ */ jsx(import_react_native6.Text, {
+            allowFontScaling: true,
+            style: {
+              fontSize: 12,
+              fontWeight: "600",
+              color: selected === tab ? "#fff" : "#b8c0d8"
+            },
+            children: tab === "custom" ? "custom \xB7 beta" : tab
+          })
+        ]
       }, tab))
     });
   }
@@ -4792,6 +4906,7 @@
       init_jsxRuntime();
       import_react2 = __toESM(require_react());
       import_react_native6 = __toESM(require_react_native());
+      init_assets();
     }
   });
 
@@ -7032,76 +7147,6 @@
         },
         getSettings: (id) => pluginInstance[id]?.settings
       };
-    }
-  });
-
-  // src/lib/api/assets/index.ts
-  var assets_exports = {};
-  __export(assets_exports, {
-    filterAssets: () => filterAssets,
-    findAsset: () => findAsset,
-    findAssetId: () => findAssetId,
-    iterateAssets: () => iterateAssets
-  });
-  function* iterateAssets() {
-    var { flagsIndex } = getMetroCache();
-    var yielded = /* @__PURE__ */ new Set();
-    for (var id in flagsIndex) {
-      if (flagsIndex[id] & ModuleFlags.ASSET) {
-        var assetId = requireModule(Number(id));
-        if (typeof assetId !== "number" || yielded.has(assetId))
-          continue;
-        yield getAssetById(assetId);
-        yielded.add(assetId);
-      }
-    }
-  }
-  function getAssetById(id) {
-    var asset = assetsModule.getAssetByID(id);
-    if (!asset)
-      return asset;
-    return Object.assign(asset, {
-      id
-    });
-  }
-  function findAsset(param) {
-    if (typeof param === "number")
-      return getAssetById(param);
-    if (typeof param === "string" && _nameToAssetCache[param]) {
-      return _nameToAssetCache[param];
-    }
-    for (var asset of iterateAssets()) {
-      if (typeof param === "string" && asset.name === param) {
-        _nameToAssetCache[param] = asset;
-        return asset;
-      } else if (typeof param === "function" && param(asset)) {
-        return asset;
-      }
-    }
-  }
-  function filterAssets(param) {
-    var filteredAssets = [];
-    for (var asset of iterateAssets()) {
-      if (typeof param === "string" ? asset.name === param : param(asset)) {
-        filteredAssets.push(asset);
-      }
-    }
-    return filteredAssets;
-  }
-  function findAssetId(name) {
-    return findAsset(name)?.id;
-  }
-  var _nameToAssetCache;
-  var init_assets = __esm({
-    "src/lib/api/assets/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_caches();
-      init_enums();
-      init_modules2();
-      init_patches();
-      _nameToAssetCache = {};
     }
   });
 
@@ -12237,7 +12282,7 @@
                     style: {
                       color: "#aeb8d2"
                     },
-                    children: "your profile, your way."
+                    children: "make it yours. visible to other CloudCord users when synced."
                   })
                 ]
               })
@@ -12375,8 +12420,8 @@
               },
               children: [
                 /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "Show preview in the client",
-                  subLabel: "Show your saved profile preview",
+                  label: "preview on this device",
+                  subLabel: "try your changes here before syncing",
                   value: preview.enabled,
                   accent: true,
                   onPress: () => update("enabled", !preview.enabled, true)
@@ -12439,7 +12484,7 @@
                     /* @__PURE__ */ jsx(Text, {
                       variant: "text-sm/bold",
                       color: "text-normal",
-                      children: "Bio"
+                      children: "about you"
                     }),
                     /* @__PURE__ */ jsx(import_react_native18.TextInput, {
                       defaultValue: preview.bio,
