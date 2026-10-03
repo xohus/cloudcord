@@ -21458,17 +21458,28 @@
           Object.freeze = Object.seal = Object;
         }
         yield (init_caches(), __toCommonJS(caches_exports)).initMetroCache();
-        (init_src(), __toCommonJS(src_exports)).default();
+        yield (init_src(), __toCommonJS(src_exports)).default();
       } catch (e) {
-        var { ClientInfoManager } = (init_modules(), __toCommonJS(modules_exports));
         var stack = e instanceof Error ? e.stack : void 0;
         console.log(stack ?? e?.toString?.() ?? e);
-        alert([
+        var build = "unavailable";
+        try {
+          var { ClientInfoManager } = (init_modules(), __toCommonJS(modules_exports));
+          build = String(ClientInfoManager?.getConstants?.()?.Build ?? build);
+        } catch (e2) {
+        }
+        var message = [
           "Failed to load CloudCord!\n",
-          `Build Number: ${ClientInfoManager.getConstants().Build}`,
+          `Build Number: ${build}`,
           `CloudCord: ${"v1.4.3"}`,
           stack || e?.toString?.()
-        ].join("\n"));
+        ].join("\n");
+        try {
+          if (typeof alert === "function")
+            alert(message);
+        } catch (reportError) {
+          console.log("CloudCord startup alert unavailable", reportError);
+        }
       }
     })();
   }
