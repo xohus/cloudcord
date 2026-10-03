@@ -166,6 +166,17 @@ static void injectCloudCordRuntime(jsi::Runtime &runtime)
         cloudCordInjectedRuntime.store(nullptr);
         return;
     }
+    // The runtime's native loader module reads __PYON_LOADER__ during import.
+    // The bridgeless path bypasses Tweak.x's legacy bootstrap, so it must
+    // initialize the same payload before evaluating either runtime source.
+    NSData *loaderBootstrap = cloudCordResource(@"payload-base");
+    if (!loaderBootstrap.length ||
+        !evaluateCloudCordData(loaderBootstrap, "cloudcord:loader-bootstrap", runtime))
+    {
+        cloudCordInjectedRuntime.store(nullptr);
+        NSLog(@"[CloudCord] Loader bootstrap failed; deferring runtime injection");
+        return;
+    }
     // The updater validates downloaded bytes before storing bundle.js.
     // Bridgeless launches must use that update too, not only the IPA resource.
     NSData *cachedRuntime = [NSData dataWithContentsOfURL:

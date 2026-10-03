@@ -10,6 +10,9 @@ assert.match(injection, /globalThis\.__CLOUDCORD_NATIVE_INJECTED__=true/);
 assert.doesNotMatch(injection, /runtime\.global\(\)/);
 assert.match(injection, /catch \(\.\.\.\)/);
 assert.doesNotMatch(injection, /compare_exchange|expected == current/);
+assert.match(injection, /cloudCordResource\(@"payload-base"\)/);
+assert.ok(injection.indexOf('cloudcord:loader-bootstrap') < injection.indexOf('cloudcord:updated-runtime'));
+assert.ok(injection.indexOf('cloudcord:loader-bootstrap') < injection.indexOf('cloudcord:runtime'));
 assert.ok(injection.indexOf('globalThis.__CLOUDCORD_NATIVE_INJECTED__=true') > injection.indexOf('if (!loaded)'));
 
 // Exercise the realm-local guard across reused simulated native addresses.
