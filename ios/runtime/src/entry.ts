@@ -16,7 +16,13 @@ async function initializeCloudCord() {
         }
 
         await require("@metro/internals/caches").initMetroCache();
-        await require(".").default();
+        // Rain injects before AppRegistry starts. Optional async work (plugins,
+        // theme setup, network updates) must not hold Discord's launch queue.
+        // Keep rejection handling without awaiting it before resumeDeferred().
+        const startup = require(".").default();
+        if (startup && typeof startup.catch === "function") {
+            startup.catch((error: unknown) => console.error("CloudCord optional startup failed", error));
+        }
     } catch (e) {
         const stack = e instanceof Error ? e.stack : undefined;
         console.log(stack ?? e?.toString?.() ?? e);

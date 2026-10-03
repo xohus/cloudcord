@@ -5,6 +5,7 @@
 #import "Logger.h"
 NSDictionary<NSString *, NSString *> *fontMap;
 
+%group CloudCordFontOverrides
 %hook UIFont
 + (UIFont *)fontWithName:(NSString *)name size:(CGFloat)size {
     NSString *replacement;
@@ -20,6 +21,7 @@ NSDictionary<NSString *, NSString *> *fontMap;
     if (replacement) return [UIFont fontWithDescriptor:[UIFontDescriptor fontDescriptorWithName:replacement size:size] size:size];
     return %orig;
 }
+%end
 %end
 
 static void registerFontData(NSData *data, NSString *key) {
@@ -40,6 +42,8 @@ static void registerFontData(NSData *data, NSString *key) {
                     fontMap = [next copy];
                 }
                 CFRelease(name);
+                static dispatch_once_t hooks;
+                dispatch_once(&hooks, ^{ %init(CloudCordFontOverrides); });
             }
         }
         if (error) CFRelease(error);
@@ -75,4 +79,4 @@ void patchFonts(NSDictionary<NSString *, NSString *> *mainFonts, NSString *fontD
         }] resume];
     }
 }
-%ctor { @autoreleasepool { fontMap = @{}; %init; } }
+%ctor { @autoreleasepool { fontMap = @{}; } }

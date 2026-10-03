@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-import { useEffect, useState } from "react";
-import { AccessibilityInfo, Image, Pressable, Text, View } from "react-native";
+import { Image, Pressable, Text, View } from "react-native";
 import { findAssetId } from "@lib/api/assets";
 
 function ProfileTabIcon({ tab, color }: { tab: ProfileTab; color: string }) {
@@ -14,13 +13,8 @@ function ProfileTabIcon({ tab, color }: { tab: ProfileTab; color: string }) {
 
 // Code-native glass styling: no new native module or startup-time blur lookup.
 export function GlassCard({ children }: { children: ReactNode; border?: string }) {
-    const [opaque, setOpaque] = useState(false);
-    useEffect(() => {
-        let alive = true;
-        Promise.resolve(AccessibilityInfo.isReduceTransparencyEnabled?.() ?? false).then(value => { if (alive) setOpaque(value); }).catch(() => {});
-        const listener = AccessibilityInfo.addEventListener?.("reduceTransparencyChanged", setOpaque);
-        return () => { alive = false; listener?.remove?.(); };
-    }, []);
+    // No AccessibilityInfo/TurboModule lookup during early Rain injection.
+    const opaque = false;
     return <View style={{ borderRadius: 24, overflow: "hidden", borderWidth: 1, borderColor: "rgba(194,207,255,0.18)", backgroundColor: opaque ? "#252936" : "rgba(39,44,61,0.80)", shadowColor: "#000", shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.16, shadowRadius: 14 }}>
         <View pointerEvents="none" style={{ position: "absolute", top: 0, left: 18, right: 18, height: 1, backgroundColor: "rgba(255,255,255,0.24)" }} />
         {children}
