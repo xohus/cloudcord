@@ -3126,31 +3126,23 @@
   });
 
   // src/lib/addons/themes/colors/updater.ts
-  function updateBunnyColor(colorManifest, { update = true }) {
+  function updateBunnyColor(manifest, { update = true } = {}) {
     if (settings.safeMode?.enabled)
       return;
-    var internalDef = colorManifest ? parseColorManifest(colorManifest) : null;
-    var ref = Object.assign(_colorRef, {
-      current: internalDef,
-      key: `bn-theme-${++_inc}`,
-      lastSetDiscordTheme: !ThemeStore.theme.startsWith("bn-theme-") ? ThemeStore.theme : _colorRef.lastSetDiscordTheme
-    });
-    if (internalDef != null) {
-      tokenRef2.Theme[ref.key.toUpperCase()] = ref.key;
-      FormDivider.DIVIDER_COLORS[ref.key] = FormDivider.DIVIDER_COLORS[ref.current.reference];
-      Object.keys(tokenRef2.Shadow).forEach((k) => tokenRef2.Shadow[k][ref.key] = tokenRef2.Shadow[k][ref.current.reference]);
-      Object.keys(tokenRef2.SemanticColor).forEach((k) => {
-        tokenRef2.SemanticColor[k][ref.key] = {
-          ...tokenRef2.SemanticColor[k][ref.current.reference]
-        };
-      });
-    }
+    var current = manifest ? parseColorManifest(manifest) : null;
+    var existing = String(ThemeStore?.theme ?? "darker");
+    if (!existing.startsWith("bn-theme-"))
+      _colorRef.lastSetDiscordTheme = existing;
+    _colorRef.current = current;
+    _colorRef.key = `bn-theme-${++sequence}`;
     if (update) {
-      AppearanceManager.setShouldSyncAppearanceSettings(false);
-      AppearanceManager.updateTheme(internalDef != null ? ref.key : ref.lastSetDiscordTheme);
+      if (typeof AppearanceManager?.setShouldSyncAppearanceSettings === "function")
+        AppearanceManager.setShouldSyncAppearanceSettings(false);
+      if (typeof AppearanceManager?.updateTheme === "function")
+        AppearanceManager.updateTheme(current?.reference ?? _colorRef.lastSetDiscordTheme);
     }
   }
-  var tokenRef2, origRawColor, AppearanceManager, ThemeStore, FormDivider, _inc, _colorRef;
+  var tokenRef2, origRawColor, AppearanceManager, ThemeStore, sequence, _colorRef;
   var init_updater = __esm({
     "src/lib/addons/themes/colors/updater.ts"() {
       "use strict";
@@ -3161,15 +3153,14 @@
       init_parser();
       tokenRef2 = findByProps("SemanticColor");
       origRawColor = {
-        ...tokenRef2.RawColor
+        ...tokenRef2?.RawColor
       };
       AppearanceManager = findByPropsLazy("updateTheme");
       ThemeStore = findByStoreNameLazy("ThemeStore");
-      FormDivider = findByPropsLazy("DIVIDER_COLORS");
-      _inc = 1;
+      sequence = 0;
       _colorRef = {
         current: null,
-        key: `bn-theme-${_inc}`,
+        key: "bn-theme-0",
         origRaw: origRawColor,
         lastSetDiscordTheme: "darker"
       };
@@ -3178,82 +3169,51 @@
 
   // src/lib/addons/themes/colors/patches/resolver.ts
   function patchDefinitionAndResolver() {
-    var callback = ([theme]) => theme === _colorRef.key ? [
-      _colorRef.current.reference
-    ] : void 0;
-    Object.defineProperty(themeTypes, "DARKER", {
-      configurable: true,
-      enumerable: true,
-      get: () => _colorRef.current?.reference === "darker" ? _colorRef.key : origDarker
-    });
-    Object.defineProperty(themeTypes, "LIGHT", {
-      configurable: true,
-      enumerable: true,
-      get: () => _colorRef.current?.reference === "light" ? _colorRef.key : origLight
-    });
-    Object.keys(tokenReference.RawColor).forEach((key) => {
-      Object.defineProperty(tokenReference.RawColor, key, {
+    var _loop2 = function(key2) {
+      var descriptor = Object.getOwnPropertyDescriptor(raw, key2);
+      if (!descriptor?.configurable)
+        return "continue";
+      Object.defineProperty(raw, key2, {
         configurable: true,
-        enumerable: true,
-        get: () => {
-          var ret = _colorRef.current?.raw[key];
-          if (ret)
-            return ret;
-          return origRawColor2[key];
-        }
+        enumerable: descriptor.enumerable,
+        get: () => _colorRef.current?.raw[key2] ?? _colorRef.origRaw[key2]
       });
-    });
-    var unpatches = [
-      before("updateTheme", NativeThemeModule, callback),
-      instead("resolveSemanticColor", tokenReference.default.meta ?? tokenReference.default.internal, (args, orig) => {
-        if (!_colorRef.current)
-          return orig(...args);
-        if (args[0] !== _colorRef.key)
-          return orig(...args);
-        args[0] = _colorRef.current.reference;
-        var [name, colorDef] = extractInfo(_colorRef.current.reference, args[1]);
-        var semanticDef = _colorRef.current.semantic[name];
-        if (!semanticDef && _colorRef.current.spec === 2 && name in SEMANTIC_FALLBACK_MAP) {
-          semanticDef = _colorRef.current.semantic[SEMANTIC_FALLBACK_MAP[name]];
-        }
-        if (semanticDef?.value) {
-          return semanticDef.opacity === 1 ? semanticDef.value : (0, import_chroma_js2.default)(semanticDef.value).alpha(semanticDef.opacity).hex();
-        }
-        var rawValue = _colorRef.current.raw[colorDef.raw];
-        if (rawValue) {
-          return colorDef.opacity === 1 ? rawValue : (0, import_chroma_js2.default)(rawValue).alpha(colorDef.opacity).hex();
-        }
-        return orig(...args);
-      }),
-      () => {
-        Object.defineProperty(themeTypes, "DARKER", {
-          configurable: true,
-          writable: true,
-          value: origDarker
-        });
-        Object.defineProperty(themeTypes, "LIGHT", {
-          configurable: true,
-          writable: true,
-          value: origLight
-        });
-        Object.defineProperty(tokenReference, "RawColor", {
-          configurable: true,
-          writable: true,
-          value: origRawColor2
-        });
-      }
-    ];
-    return () => unpatches.forEach((p) => p());
+      undo.push(() => Object.defineProperty(raw, key2, descriptor));
+    };
+    var undo = [];
+    var raw = tokenReference?.RawColor;
+    if (raw)
+      for (var key of Object.keys(raw))
+        _loop2(key);
+    if (typeof NativeThemeModule?.updateTheme === "function") {
+      undo.push(before("updateTheme", NativeThemeModule, (args) => {
+        if (typeof args[0] === "string" && args[0].startsWith("bn-theme-"))
+          return [
+            _colorRef.current?.reference ?? _colorRef.lastSetDiscordTheme,
+            ...args.slice(1)
+          ];
+      }));
+    }
+    var resolver = tokenReference?.default?.meta ?? tokenReference?.default?.internal;
+    if (typeof resolver?.resolveSemanticColor === "function") {
+      undo.push(instead("resolveSemanticColor", resolver, (args, original) => {
+        var current = _colorRef.current;
+        if (!current)
+          return original(...args);
+        var object = args[1];
+        if (!object || typeof object !== "object" && typeof object !== "function")
+          return original(...args);
+        var symbol = Object.getOwnPropertySymbols(object)[0];
+        var name = symbol ? object[symbol] : object.name;
+        var semantic = typeof name === "string" ? current.semantic[name] : void 0;
+        if (semantic?.value)
+          return semantic.opacity === 1 ? semantic.value : (0, import_chroma_js2.default)(semantic.value).alpha(semantic.opacity).hex();
+        return original(...args);
+      }));
+    }
+    return () => undo.reverse().forEach((fn) => fn());
   }
-  function extractInfo(themeName, colorObj) {
-    var propName = colorObj[extractInfo._sym ??= Object.getOwnPropertySymbols(colorObj)[0]];
-    var colorDef = tokenReference.SemanticColor[propName];
-    return [
-      propName,
-      colorDef[themeName]
-    ];
-  }
-  var import_chroma_js2, tokenReference, themeTypes, origRawColor2, origDarker, origLight, SEMANTIC_FALLBACK_MAP;
+  var import_chroma_js2, tokenReference;
   var init_resolver = __esm({
     "src/lib/addons/themes/colors/patches/resolver.ts"() {
       "use strict";
@@ -3265,29 +3225,14 @@
       init_metro();
       import_chroma_js2 = __toESM(require_chroma_js());
       tokenReference = findByProps("SemanticColor");
-      themeTypes = findByProps("ThemeTypes")?.ThemeTypes;
-      origRawColor2 = {
-        ...tokenReference.RawColor
-      };
-      origDarker = themeTypes.DARKER;
-      origLight = themeTypes.LIGHT;
-      SEMANTIC_FALLBACK_MAP = {
-        "BG_BACKDROP": "BACKGROUND_FLOATING",
-        "BG_BASE_PRIMARY": "BACKGROUND_PRIMARY",
-        "BG_BASE_SECONDARY": "BACKGROUND_SECONDARY",
-        "BG_BASE_TERTIARY": "BACKGROUND_SECONDARY_ALT",
-        "BG_MOD_FAINT": "BACKGROUND_MODIFIER_ACCENT",
-        "BG_MOD_STRONG": "BACKGROUND_MODIFIER_ACCENT",
-        "BG_MOD_SUBTLE": "BACKGROUND_MODIFIER_ACCENT",
-        "BG_SURFACE_OVERLAY": "BACKGROUND_FLOATING",
-        "BG_SURFACE_OVERLAY_TMP": "BACKGROUND_FLOATING",
-        "BG_SURFACE_RAISED": "BACKGROUND_MOBILE_PRIMARY"
-      };
     }
   });
 
   // src/lib/addons/themes/colors/patches/storage.ts
   function patchStorage() {
+    if (globalThis.__RAIN_LOADER__)
+      return () => {
+      };
     var patchedKeys = /* @__PURE__ */ new Set([
       "ThemeStore",
       "SelectivelySyncedUserSettingsStore"
@@ -9389,10 +9334,8 @@
   function ProfileTabIcon({ tab, color: color2 }) {
     var icon;
     for (var name of tab === "profile" ? [
-      "PersonIcon",
       "UserIcon"
     ] : tab === "badges" ? [
-      "AwardIcon",
       "StarIcon"
     ] : [
       "PaintPaletteIcon",
