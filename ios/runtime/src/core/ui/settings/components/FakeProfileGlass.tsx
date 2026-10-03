@@ -1,13 +1,23 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { AccessibilityInfo, Pressable, Text, View } from "react-native";
+import { AccessibilityInfo, Image, Pressable, Text, View } from "react-native";
+import { findAssetId } from "@lib/api/assets";
+
+function ProfileTabIcon({ tab, color }: { tab: ProfileTab; color: string }) {
+    let icon: number | undefined;
+    for (const name of tab === "profile" ? ["PersonIcon", "UserIcon"] : tab === "badges" ? ["AwardIcon", "StarIcon"] : ["PaintPaletteIcon", "SparklesIcon"]) {
+        try { icon = findAssetId(name); } catch {}
+        if (icon) break;
+    }
+    return icon ? <Image accessible={false} source={icon} style={{ width: 18, height: 18, tintColor: color }} /> : <Text accessible={false} style={{ color, fontSize: 17 }}>{tab === "profile" ? "◉" : tab === "badges" ? "✦" : "✧"}</Text>;
+}
 
 // Code-native glass styling: no new native module or startup-time blur lookup.
 export function GlassCard({ children }: { children: ReactNode; border?: string }) {
     const [opaque, setOpaque] = useState(false);
     useEffect(() => {
         let alive = true;
-        AccessibilityInfo.isReduceTransparencyEnabled?.().then(value => { if (alive) setOpaque(value); }).catch(() => {});
+        Promise.resolve(AccessibilityInfo.isReduceTransparencyEnabled?.() ?? false).then(value => { if (alive) setOpaque(value); }).catch(() => {});
         const listener = AccessibilityInfo.addEventListener?.("reduceTransparencyChanged", setOpaque);
         return () => { alive = false; listener?.remove?.(); };
     }, []);
@@ -29,8 +39,9 @@ export function GlassButton({ label, onPress, muted = false, disabled = false }:
 }
 export function ProfileTabs({ selected, onSelect }: { selected: ProfileTab; onSelect: (tab: ProfileTab) => void }) {
     return <View accessibilityRole="tablist" style={{ flexDirection: "row", gap: 6, padding: 5, borderRadius: 20, backgroundColor: "rgba(255,255,255,0.05)", borderWidth: 1, borderColor: "rgba(255,255,255,0.1)" }}>
-        {(["profile", "badges", "custom"] as ProfileTab[]).map(tab => <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected: selected === tab }} onPress={() => onSelect(tab)} style={({ pressed }) => ({ flex: 1, minHeight: 46, alignItems: "center", justifyContent: "center", borderRadius: 15, paddingHorizontal: 4, backgroundColor: selected === tab ? "#6575ef" : pressed ? "rgba(255,255,255,0.10)" : "transparent" })}>
-            <Text allowFontScaling style={{ fontSize: 14, fontWeight: "600", color: selected === tab ? "#fff" : "#b8c0d8" }}>{tab}</Text>
+        {(["profile", "badges", "custom"] as ProfileTab[]).map(tab => <Pressable key={tab} accessibilityRole="tab" accessibilityLabel={tab === "custom" ? "custom badges beta" : tab} accessibilityState={{ selected: selected === tab }} onPress={() => onSelect(tab)} style={({ pressed }) => ({ flex: 1, minHeight: 52, alignItems: "center", justifyContent: "center", borderRadius: 15, paddingHorizontal: 4, gap: 3, backgroundColor: selected === tab ? "#6575ef" : pressed ? "rgba(255,255,255,0.10)" : "transparent" })}>
+            <ProfileTabIcon tab={tab} color={selected === tab ? "#fff" : "#b8c0d8"} />
+            <Text allowFontScaling style={{ fontSize: 12, fontWeight: "600", color: selected === tab ? "#fff" : "#b8c0d8" }}>{tab === "custom" ? "custom · beta" : tab}</Text>
         </Pressable>)}
     </View>;
 }

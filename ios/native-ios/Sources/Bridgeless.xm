@@ -4,6 +4,9 @@
 #import <jsi/jsi.h>
 #import "JSI.h"
 #import "Logger.h"
+#import "Fonts.h"
+#import "Themes.h"
+#import "Utils.h"
 @interface BridgeRegistry : NSObject
 + (instancetype)shared;
 - (NSDictionary *)dispatchPayload:(NSDictionary *)payload;
@@ -95,8 +98,21 @@ static void injectPreBundle(jsi::Runtime &runtime)
     injectPreBundle(runtime);
     NSString *bundlePath = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"BunnyResources.bundle"];
     NSBundle *resources = [NSBundle bundleWithPath:bundlePath];
-    NSData *identity = [@"globalThis.__CLOUDCORD_LOADER__=Object.assign(globalThis.__RAIN_LOADER__,{loaderName:'CloudCord',cloudcordAutoUpdateVersion:3,hasThemeSupport:false,fontPatch:0});globalThis.__PYON_LOADER__=globalThis.__CLOUDCORD_LOADER__;" dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *identity = [@"globalThis.__CLOUDCORD_LOADER__=Object.assign(globalThis.__RAIN_LOADER__,{loaderName:'CloudCord',cloudcordAutoUpdateVersion:3,hasThemeSupport:true,fontPatch:2});globalThis.__PYON_LOADER__=globalThis.__CLOUDCORD_LOADER__;" dataUsingEncoding:NSUTF8StringEncoding];
     [JSI evaluate:identity tag:@"cloudcord:rain-identity" runtime:runtime];
+    NSData *themeData = [NSData dataWithContentsOfURL:[getPyoncordDirectory() URLByAppendingPathComponent:@"current-theme.json"]];
+    id theme = themeData.length ? [NSJSONSerialization JSONObjectWithData:themeData options:0 error:nil] : nil;
+    if ([theme isKindOfClass:NSDictionary.class]) {
+        id data = theme[@"data"];
+        id main = theme[@"main"];
+        if ([main isKindOfClass:NSDictionary.class]) initializeThemeColors(main[@"semantic"], main[@"raw"]);
+        else if ([data isKindOfClass:NSDictionary.class]) initializeThemeColors(data[@"semanticColors"], data[@"rawColors"]);
+        NSString *json = [[NSString alloc] initWithData:[NSJSONSerialization dataWithJSONObject:theme options:0 error:nil] encoding:NSUTF8StringEncoding];
+        if (json) [JSI evaluate:[[NSString stringWithFormat:@"globalThis.__CLOUDCORD_LOADER__.storedTheme=%@;", json] dataUsingEncoding:NSUTF8StringEncoding] tag:@"cloudcord:saved-theme" runtime:runtime];
+    }
+    NSData *fontData = [NSData dataWithContentsOfURL:[getPyoncordDirectory() URLByAppendingPathComponent:@"fonts.json"]];
+    id fonts = fontData.length ? [NSJSONSerialization JSONObjectWithData:fontData options:0 error:nil] : nil;
+    if ([fonts isKindOfClass:NSDictionary.class]) patchFonts(fonts[@"main"], fonts[@"name"]);
     NSData *bundle = [NSData dataWithContentsOfURL:[resources URLForResource:@"runtime" withExtension:@"js"]];
     if (bundle.length) [JSI evaluate:bundle tag:@"cloudcord:rain-runtime" runtime:runtime];
     NSLog(@"[CloudCord] Rain runtime callback injected");

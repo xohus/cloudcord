@@ -28,11 +28,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Restore verified earlier IPA runtime
-        run: |
-          git show c8dbe43b53d2999867fdd272f548e5f4b367e602:dist/cc.js > dist/cc.js
-          echo '97cba63bc981582d70bfc1e4a80d6b5625ed7f7c26bd5916a4db82eed19091d3  dist/cc.js' | shasum -a 256 -c -
-
       - name: Check reload guard regression
         run: |
           node ios/scripts/test-rain-loader.cjs
@@ -80,7 +75,7 @@ jobs:
           )
           source.write_text(text)
           PY
-          make package FINALPACKAGE=1 CLOUDCORD_SAFE_UI=1
+          make package FINALPACKAGE=1
 
       - name: Package Discord 344.1 IPA
         run: |
@@ -115,7 +110,7 @@ jobs:
             exit 1
           fi
           if strings "$RUNNER_TEMP/cloudcord-stream-check/Payload/Discord.app/Frameworks/CloudCordTweak.dylib" \
-            | grep -Eq 'UIKeyboardDockView|TUIPredictionView|TUIEmojiSearchInputView|DCDThemeColor|fontWithName:size:'; then
+            | grep -Eq 'UIKeyboardDockView|TUIPredictionView|TUIEmojiSearchInputView'; then
             echo 'Discord 344 build still contains incompatible native UI hooks' >&2
             exit 1
           fi

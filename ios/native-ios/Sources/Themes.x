@@ -1,4 +1,7 @@
 #import "Themes.h"
+#import <objc/runtime.h>
+#include <ctype.h>
+#include <string.h>
 
 static NSDictionary *gSemanticColors = nil;
 static NSDictionary *gRawColors      = nil;
@@ -46,6 +49,7 @@ static void swizzleRawColorMethods(void) {
 
         IMP implementation = imp_implementationWithBlock(^UIColor *(id self) {
             NSString *hexColor = gRawColors[key];
+            if (![hexColor isKindOfClass:NSString.class]) return original ? ((UIColor * (*)(id, SEL)) original)(self, selector) : nil;
             UIColor *color     = hexToUIColor(hexColor);
             if (color && ![loggedColors containsObject:key]) {
                 [loggedColors addObject:key];
@@ -59,7 +63,7 @@ static void swizzleRawColorMethods(void) {
         });
 
         if (existingMethod) {
-            method_setImplementation(existingMethod, implementation);
+            class_replaceMethod(object_getClass(targetClass), selector, implementation, method_getTypeEncoding(existingMethod));
         } else {
             class_addMethod(object_getClass(targetClass), selector, implementation, "@16@0:8");
         }
@@ -96,7 +100,7 @@ static void swizzleDCDThemeColorMethods(void) {
 
             if (colors && [colors isKindOfClass:[NSArray class]]) {
                 NSInteger themeIndex = getThemeIndex();
-                if (themeIndex < colors.count) {
+                if (themeIndex >= 0 && themeIndex < (NSInteger)colors.count && [colors[themeIndex] isKindOfClass:NSString.class]) {
                     UIColor *color = hexToUIColor(colors[themeIndex]);
                     if (color) {
                         if (![loggedColors containsObject:name]) {
@@ -243,135 +247,8 @@ BOOL isThemeLight(UIColor *color) {
   return FALSE;
 }
 
-@interface UIKeyboard : UIView
-@end
-
-@interface UIKeyboardDockView : UIView
-@end
-
-@interface TUIPredictionView : UIView
-@end
-
-@interface TUIEmojiSearchInputView : UIView
-@end
-
-@interface UIKBRenderConfig : NSObject
--(void)setLightKeyboard:(BOOL)light;
-+(void)refreshKeyboard;
-+(id)darkConfig;
-+(id)defaultConfig;
-+(id)defaultEmojiConfig;
-+(id)lowQualityDarkConfig;
-@end
-
-
-%group KEYBOARD
-
-	id originalKeyboardColor;
-
-	%hook UIKeyboard
-	- (void)didMoveToWindow {
-		%orig;
-
-		id color = getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic");
-
-		if (color != nil)
-			[%c(UIKBRenderConfig) refreshKeyboard];
-
-		if (originalKeyboardColor == nil) {
-			originalKeyboardColor = [self backgroundColor];
-		}
-		if (color != nil) {
-				[self setBackgroundColor:color];
-			} else {
-			[self setBackgroundColor:originalKeyboardColor];
-		}
-	}
-
-	%end
-
-	%hook UIKeyboardDockView
-
-	- (void)didMoveToWindow {
-		%orig;
-
-		id color = getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic");
-		if (originalKeyboardColor == nil) {
-			originalKeyboardColor = [self backgroundColor];
-		}
-		if (color != nil) {
-				[self setBackgroundColor:color];
-			} else {
-			[self setBackgroundColor:originalKeyboardColor];
-		}
-	}
-
-	%end
-
-	%hook UIKBRenderConfig
-
-	- (void)setLightKeyboard:(BOOL)arg1 {
-	    UIColor *color = getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic");
-	    %orig(color ? isThemeLight(color) : arg1);
-    }
-
-    %new
-    +(void)refreshKeyboard {
-       	[[self darkConfig] setLightKeyboard:TRUE];
-    	[[self defaultConfig] setLightKeyboard:TRUE];
-    	[[self defaultEmojiConfig] setLightKeyboard:TRUE];
-    	[[self lowQualityDarkConfig] setLightKeyboard:TRUE];
-
-    }
-
-	%end
-
-	%hook TUIPredictionView
-	- (void)didMoveToWindow {
-		%orig;
-
-
-		id color = getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic");
-		if (originalKeyboardColor == nil) {
-			originalKeyboardColor = [self backgroundColor];
-		}
-		if (color != nil) {
-			[self setBackgroundColor:color];
-
-			for (UIView *subview in self.subviews) {
-				[subview setBackgroundColor:color];
-			}
-		} else {
-			[self setBackgroundColor:originalKeyboardColor];
-
-			for (UIView *subview in self.subviews) {
-				[subview setBackgroundColor:originalKeyboardColor];
-			}
-		}
-	}
-	%end
-
-	%hook TUIEmojiSearchInputView
-
-	- (void)didMoveToWindow {
-		%orig;
-
-		id color = getColor(@"KEYBOARD", @"semantic") ?: getColor(@"BACKGROUND_PRIMARY", @"semantic");
-		if (originalKeyboardColor == nil) {
-			originalKeyboardColor = [self backgroundColor];
-		}
-		if (color != nil) {
-				[self setBackgroundColor:color];
-			} else {
-			[self setBackgroundColor:originalKeyboardColor];
-		}
-	}
-	%end
-
-%end
-
 void initializeThemeColors(NSDictionary *semanticColors, NSDictionary *rawColors) {
-    if (!semanticColors || !rawColors)
+    if (![semanticColors isKindOfClass:NSDictionary.class] || ![rawColors isKindOfClass:NSDictionary.class])
         return;
 
     BunnyLog(@"Initializing theme (%lu semantic colors, %lu raw colors)",
@@ -383,13 +260,4 @@ void initializeThemeColors(NSDictionary *semanticColors, NSDictionary *rawColors
 
     swizzleDCDThemeColorMethods();
     swizzleRawColorMethods();
-}
-
-%ctor {
-
-    NSBundle* bundle = [NSBundle bundleWithPath:@"/System/Library/PrivateFrameworks/TextInputUI.framework"];
-	if (!bundle.loaded) [bundle load];
-
-	%init(KEYBOARD);
-
 }

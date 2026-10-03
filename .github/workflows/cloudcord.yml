@@ -2006,7 +2006,7 @@ jobs:
                               <View style={{ width: 52, height: 52, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", backgroundColor: "rgba(101,117,239,0.16)", alignItems: "center", justifyContent: "center" }}><Image source={{ uri: FakeProfileIcon }} style={{ width: 34, height: 34, resizeMode: "contain" }} /></View>
                               <View style={{ flex: 1, minWidth: 0 }}>
                                   <Text variant="heading-lg/semibold" color="text-normal">FakeProfile</Text>
-                                  <Text variant="text-sm/medium" style={{ color: "#aeb8d2" }}>your profile, your way.</Text>
+                                  <Text variant="text-sm/medium" style={{ color: "#aeb8d2" }}>make it yours. visible to other CloudCord users when synced.</Text>
                               </View>
                           </View>
 
@@ -2030,8 +2030,8 @@ jobs:
                           {activeTab === "profile" ? <Card border="strong">
                               <View style={{ padding: 14, gap: 14 }}>
                                   <ToggleRow
-                                      label="Show preview in the client"
-                                      subLabel="Show your saved profile preview"
+                                      label="preview on this device"
+                                      subLabel="try your changes here before syncing"
                                       value={preview.enabled}
                                       accent
                                       onPress={() => update("enabled", !preview.enabled, true)}
@@ -2045,7 +2045,7 @@ jobs:
                                       <TextInput defaultValue={preview.username} placeholder="preview" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Bio</Text>
+                                      <Text variant="text-sm/bold" color="text-normal">about you</Text>
                                       <TextInput defaultValue={preview.bio} placeholder="My description..." placeholderTextColor="#777" multiline onChangeText={value => update("bio", value, true)} style={{ minHeight: 88, color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12, textAlignVertical: "top" }} />
                                   </View>
                                   <View style={{ gap: 8 }}>

@@ -1,204 +1,78 @@
-#import <CoreFoundation/CoreFoundation.h>
-#import <CoreGraphics/CoreGraphics.h>
 #import <CoreText/CoreText.h>
-
+#import <CommonCrypto/CommonDigest.h>
 #import "Fonts.h"
-#import "Logger.h"
 #import "Utils.h"
-
-NSMutableDictionary<NSString *, NSString *> *fontMap;
+#import "Logger.h"
+NSDictionary<NSString *, NSString *> *fontMap;
 
 %hook UIFont
-
-+ (UIFont *)fontWithName:(NSString *)name size:(CGFloat)size
-{
-    NSString *replacementName = fontMap[name];
-    if (replacementName)
-    {
-        UIFontDescriptor *replacementDescriptor =
-            [UIFontDescriptor fontDescriptorWithName:replacementName size:size];
-        UIFontDescriptor *fallbackDescriptor =
-            [replacementDescriptor fontDescriptorByAddingAttributes:@{
-                UIFontDescriptorNameAttribute : @[ name ]
-            }];
-        UIFontDescriptor *finalDescriptor =
-            [replacementDescriptor fontDescriptorByAddingAttributes:@{
-                UIFontDescriptorCascadeListAttribute : @[ fallbackDescriptor ]
-            }];
-
-        return [UIFont fontWithDescriptor:finalDescriptor size:size];
-    }
++ (UIFont *)fontWithName:(NSString *)name size:(CGFloat)size {
+    NSString *replacement;
+    @synchronized(UIFont.class) { replacement = fontMap[name]; }
+    // Do not hook fontWithDescriptor: returning through another hooked font
+    // constructor can recurse when systemFont maps to a mapped family.
+    if (replacement) return [UIFont fontWithDescriptor:[UIFontDescriptor fontDescriptorWithName:replacement size:size] size:size];
     return %orig;
 }
-
-+ (UIFont *)fontWithDescriptor:(UIFontDescriptor *)descriptor size:(CGFloat)size
-{
-    NSString *replacementName = fontMap[descriptor.postscriptName];
-    if (replacementName)
-    {
-        UIFontDescriptor *replacementDescriptor =
-            [UIFontDescriptor fontDescriptorWithName:replacementName size:size];
-        UIFontDescriptor *finalDescriptor =
-            [replacementDescriptor fontDescriptorByAddingAttributes:@{
-                UIFontDescriptorCascadeListAttribute : @[ descriptor ]
-            }];
-
-        return [UIFont fontWithDescriptor:finalDescriptor size:size];
-    }
++ (UIFont *)systemFontOfSize:(CGFloat)size {
+    NSString *replacement;
+    @synchronized(UIFont.class) { replacement = fontMap[@"systemFont"]; }
+    if (replacement) return [UIFont fontWithDescriptor:[UIFontDescriptor fontDescriptorWithName:replacement size:size] size:size];
     return %orig;
 }
-
-+ (UIFont *)systemFontOfSize:(CGFloat)size
-{
-    NSString *replacementName = fontMap[@"systemFont"];
-    if (replacementName)
-    {
-        return [UIFont fontWithName:replacementName size:size];
-    }
-    return %orig;
-}
-
-+ (UIFont *)preferredFontForTextStyle:(UIFontTextStyle)style
-{
-    NSString *replacementName = fontMap[@"systemFont"];
-    if (replacementName)
-    {
-        return [UIFont fontWithName:replacementName size:[UIFont systemFontSize]];
-    }
-    return %orig;
-}
-
 %end
 
-void patchFonts(NSDictionary<NSString *, NSString *> *mainFonts, NSString *fontDefName)
-{
-    BunnyLog(@"patchFonts called with fonts: %@ and def name: %@", mainFonts, fontDefName);
-
-    if (!fontMap)
-    {
-        BunnyLog(@"Creating new fontMap");
-        fontMap = [NSMutableDictionary dictionary];
-    }
-
-    NSString *fontJson = [NSString
-        stringWithContentsOfURL:[getPyoncordDirectory() URLByAppendingPathComponent:@"fonts.json"]
-                       encoding:NSUTF8StringEncoding
-                          error:nil];
-    if (fontJson)
-    {
-        BunnyLog(@"Found existing fonts.json: %@", fontJson);
-    }
-
-    for (NSString *fontName in mainFonts)
-    {
-        NSString *url = mainFonts[fontName];
-        BunnyLog(@"Replacing font %@ with URL: %@", fontName, url);
-
-        NSURL    *fontURL       = [NSURL URLWithString:url];
-        NSString *fontExtension = fontURL.pathExtension;
-
-        NSURL *fontCachePath = [[[getPyoncordDirectory() URLByAppendingPathComponent:@"downloads"
-                                                                         isDirectory:YES]
-            URLByAppendingPathComponent:@"fonts"
-                            isDirectory:YES] URLByAppendingPathComponent:fontDefName
-                                                             isDirectory:YES];
-
-        fontCachePath = [fontCachePath
-            URLByAppendingPathComponent:[NSString
-                                            stringWithFormat:@"%@.%@", fontName, fontExtension]];
-
-        NSURL *parentDir = [fontCachePath URLByDeletingLastPathComponent];
-        if (![[NSFileManager defaultManager] fileExistsAtPath:parentDir.path])
-        {
-            BunnyLog(@"Creating parent directory: %@", parentDir.path);
-            [[NSFileManager defaultManager] createDirectoryAtURL:parentDir
-                                     withIntermediateDirectories:YES
-                                                      attributes:nil
-                                                           error:nil];
-        }
-
-        if (![[NSFileManager defaultManager] fileExistsAtPath:fontCachePath.path])
-        {
-            BunnyLog(@"Downloading font %@ from %@", fontName, url);
-            NSData *data = [NSData dataWithContentsOfURL:fontURL];
-            if (data)
-            {
-                BunnyLog(@"Writing font data to: %@", fontCachePath.path);
-                [data writeToURL:fontCachePath atomically:YES];
+static void registerFontData(NSData *data, NSString *key) {
+    if (!data.length || data.length > 16 * 1024 * 1024) return;
+    CGDataProviderRef provider = CGDataProviderCreateWithCFData((__bridge CFDataRef)data);
+    if (!provider) return;
+    CGFontRef font = CGFontCreateWithDataProvider(provider);
+    if (font) {
+        CFErrorRef error = NULL;
+        BOOL registered = CTFontManagerRegisterGraphicsFont(font, &error);
+        // Already registered fonts remain usable.
+        if (registered || (error && CFErrorGetCode(error) == kCTFontManagerErrorAlreadyRegistered)) {
+            CFStringRef name = CGFontCopyPostScriptName(font);
+            if (name) {
+                @synchronized(UIFont.class) {
+                    NSMutableDictionary *next = [fontMap mutableCopy] ?: [NSMutableDictionary dictionary];
+                    next[key] = (__bridge NSString *)name;
+                    fontMap = [next copy];
+                }
+                CFRelease(name);
             }
         }
-
-        NSData *fontData = [NSData dataWithContentsOfURL:fontCachePath];
-        if (fontData)
-        {
-            BunnyLog(@"Registering font %@ with provider", fontName);
-            CGDataProviderRef provider =
-                CGDataProviderCreateWithCFData((__bridge CFDataRef) fontData);
-            CGFontRef font = CGFontCreateWithDataProvider(provider);
-
-            if (font)
-            {
-                CFStringRef postScriptName = CGFontCopyPostScriptName(font);
-
-                CTFontRef existingFont = CTFontCreateWithName(postScriptName, 0, NULL);
-                if (existingFont)
-                {
-                    CFErrorRef unregisterError = NULL;
-                    if (!CTFontManagerUnregisterGraphicsFont(font, &unregisterError))
-                    {
-                        BunnyLog(@"Failed to deregister font %@: %@",
-                                 (__bridge NSString *) postScriptName,
-                                 unregisterError
-                                     ? (__bridge NSString *) CFErrorCopyDescription(unregisterError)
-                                     : @"Unknown error");
-                        if (unregisterError)
-                            CFRelease(unregisterError);
-                    }
-                    CFRelease(existingFont);
-                }
-
-                CFErrorRef error = NULL;
-                if (CTFontManagerRegisterGraphicsFont(font, &error))
-                {
-                    fontMap[fontName] = (__bridge NSString *) postScriptName;
-                    BunnyLog(@"Successfully registered font %@ to %@", fontName,
-                             (__bridge NSString *) postScriptName);
-
-                    NSError *jsonError;
-                    NSData  *jsonData = [NSJSONSerialization dataWithJSONObject:fontMap
-                                                                       options:0
-                                                                         error:&jsonError];
-                    if (!jsonError)
-                    {
-                        [jsonData writeToURL:[getPyoncordDirectory()
-                                                 URLByAppendingPathComponent:@"fontMap.json"]
-                                  atomically:YES];
-                    }
-                }
-                else
-                {
-                    NSString *errorDesc = error
-                                              ? (__bridge NSString *) CFErrorCopyDescription(error)
-                                              : @"Unknown error";
-                    BunnyLog(@"Failed to register font %@: %@", fontName, errorDesc);
-                    if (error)
-                        CFRelease(error);
-                }
-
-                CFRelease(postScriptName);
-                CFRelease(font);
-            }
-            CGDataProviderRelease(provider);
-        }
+        if (error) CFRelease(error);
+        CFRelease(font);
+    }
+    CGDataProviderRelease(provider);
+}
+void patchFonts(NSDictionary<NSString *, NSString *> *mainFonts, NSString *fontDefName) {
+    if (![mainFonts isKindOfClass:NSDictionary.class]) return;
+    NSURL *directory = [getPyoncordDirectory() URLByAppendingPathComponent:@"downloads/fonts" isDirectory:YES];
+    [NSFileManager.defaultManager createDirectoryAtURL:directory withIntermediateDirectories:YES attributes:nil error:nil];
+    for (id key in mainFonts) {
+        id value = mainFonts[key];
+        if (![key isKindOfClass:NSString.class] || ![value isKindOfClass:NSString.class]) continue;
+        NSURL *url = [NSURL URLWithString:value];
+        if (![url.scheme.lowercaseString isEqualToString:@"https"] || !url.host.length) continue;
+        NSData *urlData = [value dataUsingEncoding:NSUTF8StringEncoding];
+        unsigned char digest[CC_SHA256_DIGEST_LENGTH];
+        CC_SHA256(urlData.bytes, (CC_LONG)urlData.length, digest);
+        NSMutableString *filename = [NSMutableString string];
+        for (NSUInteger i = 0; i < sizeof(digest); i++) [filename appendFormat:@"%02x", digest[i]];
+        NSURL *cache = [directory URLByAppendingPathComponent:filename];
+        NSData *cached = [NSData dataWithContentsOfURL:cache];
+        if (cached.length) { registerFontData(cached, key); continue; }
+        // Never synchronously wait for the internet during app launch.
+        NSMutableURLRequest *request = [NSMutableURLRequest requestWithURL:url];
+        request.timeoutInterval = 15;
+        [[NSURLSession.sharedSession dataTaskWithRequest:request completionHandler:^(NSData *data, NSURLResponse *response, NSError *error) {
+            if (error || ![response isKindOfClass:NSHTTPURLResponse.class] ||
+                ((NSHTTPURLResponse *)response).statusCode != 200 || !data.length || data.length > 16 * 1024 * 1024) return;
+            [data writeToURL:cache atomically:YES];
+            dispatch_async(dispatch_get_main_queue(), ^{ registerFontData(data, key); });
+        }] resume];
     }
 }
-
-%ctor
-{
-    @autoreleasepool
-    {
-        fontMap = [NSMutableDictionary dictionary];
-        BunnyLog(@"Font hooks initialized");
-        %init;
-    }
-}
+%ctor { @autoreleasepool { fontMap = @{}; %init; } }
