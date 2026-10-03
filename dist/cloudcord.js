@@ -3642,11 +3642,6 @@
     }
     return "loader.json";
   }
-  function isFontSupported() {
-    if (isPyonLoader())
-      return pyonLoaderIdentity.fontPatch === 2;
-    return false;
-  }
   var pyonLoaderIdentity, cloudCordLoaderIdentity, vendettaLoaderIdentity;
   var init_loader = __esm({
     "src/lib/api/native/loader.ts"() {
@@ -20345,7 +20340,7 @@
         title: () => Strings.FONTS,
         icon: safeAsset("LettersIcon", "TextIcon"),
         render: () => Promise.resolve().then(() => (init_Fonts(), Fonts_exports)),
-        usePredicate: () => isFontSupported()
+        usePredicate: () => false
       },
       {
         key: "BUNNY_DEVELOPER",
@@ -20418,7 +20413,6 @@
       init_i18n();
       init_storage();
       init_assets();
-      init_loader();
       init_settings();
       init_settings2();
     }
@@ -20903,7 +20897,6 @@
       init_settings3();
       init_api3();
       init_plugins();
-      init_fonts();
       init_plugins4();
       init_commands();
       init_debug();
@@ -20947,7 +20940,6 @@
           fixes_default(),
           patchErrorBoundary(),
           updatePlugins(),
-          updateFonts(),
           initPlugins(),
           VdPluginManager.initPlugins()
         ]).then((u) => [
