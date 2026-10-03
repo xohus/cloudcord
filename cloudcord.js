@@ -4730,20 +4730,7 @@
     });
   }
   function GlassCard({ children }) {
-    var [opaque, setOpaque] = (0, import_react2.useState)(false);
-    (0, import_react2.useEffect)(() => {
-      var alive = true;
-      Promise.resolve(import_react_native6.AccessibilityInfo.isReduceTransparencyEnabled?.() ?? false).then((value) => {
-        if (alive)
-          setOpaque(value);
-      }).catch(() => {
-      });
-      var listener = import_react_native6.AccessibilityInfo.addEventListener?.("reduceTransparencyChanged", setOpaque);
-      return () => {
-        alive = false;
-        listener?.remove?.();
-      };
-    }, []);
+    var opaque = false;
     return /* @__PURE__ */ jsxs(import_react_native6.View, {
       style: {
         borderRadius: 24,
@@ -4897,14 +4884,13 @@
       }, tab))
     });
   }
-  var import_react2, import_react_native6;
+  var import_react_native6;
   var init_FakeProfileGlass = __esm({
     "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      import_react2 = __toESM(require_react());
       import_react_native6 = __toESM(require_react_native());
       init_assets();
     }
@@ -4912,14 +4898,14 @@
 
   // src/core/ui/settings/components/CustomBadgeBeta.tsx
   function CustomBadgeBeta() {
-    var [name, setName] = (0, import_react3.useState)("");
-    var [png, setPng] = (0, import_react3.useState)("");
-    var [message, setMessage] = (0, import_react3.useState)("beta \u2014 AI-approved badges go live, then admins can keep or remove them.");
-    var [busy, setBusy] = (0, import_react3.useState)(false);
-    var [state2, setState] = (0, import_react3.useState)(null);
-    var [verified, setVerified] = (0, import_react3.useState)(Boolean(settings.customBadgeDeviceToken));
-    var polling = (0, import_react3.useRef)(false);
-    (0, import_react3.useEffect)(() => {
+    var [name, setName] = (0, import_react2.useState)("");
+    var [png, setPng] = (0, import_react2.useState)("");
+    var [message, setMessage] = (0, import_react2.useState)("beta \u2014 AI-approved badges go live, then admins can keep or remove them.");
+    var [busy, setBusy] = (0, import_react2.useState)(false);
+    var [state2, setState] = (0, import_react2.useState)(null);
+    var [verified, setVerified] = (0, import_react2.useState)(Boolean(settings.customBadgeDeviceToken));
+    var polling = (0, import_react2.useRef)(false);
+    (0, import_react2.useEffect)(() => {
       if (!state2)
         return;
       var alive = true;
@@ -5115,7 +5101,7 @@
       ]
     });
   }
-  var import_react3, import_react_native7, API;
+  var import_react2, import_react_native7, API;
   var init_CustomBadgeBeta = __esm({
     "src/core/ui/settings/components/CustomBadgeBeta.tsx"() {
       "use strict";
@@ -5123,7 +5109,7 @@
       init_promiseAllSettled();
       init_async_to_generator();
       init_jsxRuntime();
-      import_react3 = __toESM(require_react());
+      import_react2 = __toESM(require_react());
       import_react_native7 = __toESM(require_react_native());
       init_FakeProfileGlass();
       init_settings();
@@ -7392,7 +7378,7 @@
 
   // src/core/ui/reporter/components/ErrorComponentStackCard.tsx
   function ErrorComponentStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react4.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react3.useState)(true);
     var stack;
     try {
       stack = parseComponentStack(props.componentStack);
@@ -7474,7 +7460,7 @@
       })
     });
   }
-  var import_react4, import_react_native11;
+  var import_react3, import_react_native11;
   var init_ErrorComponentStackCard = __esm({
     "src/core/ui/reporter/components/ErrorComponentStackCard.tsx"() {
       "use strict";
@@ -7485,7 +7471,7 @@
       init_assets();
       init_common();
       init_components();
-      import_react4 = __toESM(require_react());
+      import_react3 = __toESM(require_react());
       import_react_native11 = __toESM(require_react_native());
     }
   });
@@ -7594,7 +7580,7 @@
 
   // src/core/ui/reporter/components/ErrorStackCard.tsx
   function ErrorStackCard(props) {
-    var [collapsed, setCollapsed] = (0, import_react5.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react4.useState)(true);
     var stack;
     try {
       var parsedErrorStack = parseErrorStack(props.error.stack);
@@ -7660,7 +7646,7 @@
     });
   }
   function Line(props) {
-    var [collapsed, setCollapsed] = (0, import_react5.useState)(true);
+    var [collapsed, setCollapsed] = (0, import_react4.useState)(true);
     return /* @__PURE__ */ jsxs(import_react_native12.Pressable, {
       onPress: () => setCollapsed((v2) => !v2),
       children: [
@@ -7690,7 +7676,7 @@
       ]
     }, props.id);
   }
-  var import_react5, import_react_native12;
+  var import_react4, import_react_native12;
   var init_ErrorStackCard = __esm({
     "src/core/ui/reporter/components/ErrorStackCard.tsx"() {
       "use strict";
@@ -7701,7 +7687,7 @@
       init_assets();
       init_common();
       init_components();
-      import_react5 = __toESM(require_react());
+      import_react4 = __toESM(require_react());
       import_react_native12 = __toESM(require_react_native());
       init_ErrorCard();
     }
@@ -11671,15 +11657,15 @@
   }
   function CustomColorPicker({ title, initialColor, onApply }) {
     var initial = hexToHsv(initialColor);
-    var [hue, setHue] = (0, import_react6.useState)(initial.hue);
-    var [saturation, setSaturation] = (0, import_react6.useState)(initial.saturation);
-    var [brightness, setBrightness] = (0, import_react6.useState)(initial.brightness);
-    var [color2, setColor] = (0, import_react6.useState)(hsvToHex(initial.hue, initial.saturation, initial.brightness));
-    var [squareSize, setSquareSize] = (0, import_react6.useState)({
+    var [hue, setHue] = (0, import_react5.useState)(initial.hue);
+    var [saturation, setSaturation] = (0, import_react5.useState)(initial.saturation);
+    var [brightness, setBrightness] = (0, import_react5.useState)(initial.brightness);
+    var [color2, setColor] = (0, import_react5.useState)(hsvToHex(initial.hue, initial.saturation, initial.brightness));
+    var [squareSize, setSquareSize] = (0, import_react5.useState)({
       width: 1,
       height: 1
     });
-    var [hueWidth, setHueWidth] = (0, import_react6.useState)(1);
+    var [hueWidth, setHueWidth] = (0, import_react5.useState)(1);
     var validColor = colorNumber(color2) != null ? color2 : "#5865F2";
     var syncHsv = (nextHue, nextSaturation, nextBrightness) => {
       setHue(nextHue);
@@ -11901,9 +11887,9 @@
     });
   }
   function DecorationGallery({ onSelect }) {
-    var [items, setItems] = (0, import_react6.useState)([]);
-    var [loading, setLoading] = (0, import_react6.useState)(true);
-    (0, import_react6.useEffect)(() => {
+    var [items, setItems] = (0, import_react5.useState)([]);
+    var [loading, setLoading] = (0, import_react5.useState)(true);
+    (0, import_react5.useEffect)(() => {
       var active = true;
       void findDecorationCatalog().then((result) => {
         if (active) {
@@ -11991,12 +11977,12 @@
     });
   }
   function FakeProfile() {
-    var [activeTab, setActiveTab] = (0, import_react6.useState)("profile");
-    var [showDetails, setShowDetails] = (0, import_react6.useState)(false);
+    var [activeTab, setActiveTab] = (0, import_react5.useState)("profile");
+    var [showDetails, setShowDetails] = (0, import_react5.useState)(false);
     useProxy(settings);
-    var [, redraw] = (0, import_react6.useReducer)((value) => value + 1, 0);
+    var [, redraw] = (0, import_react5.useReducer)((value) => value + 1, 0);
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react6.useEffect)(() => {
+    (0, import_react5.useEffect)(() => {
       fakeProfileEditorOpen = true;
       initializeFakeProfile();
       redraw();
@@ -12864,7 +12850,7 @@
       })
     });
   }
-  var import_react6, import_react_native18, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react5, import_react_native18, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12884,7 +12870,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react6 = __toESM(require_react());
+      import_react5 = __toESM(require_react());
       import_react_native18 = __toESM(require_react_native());
       BADGES = [
         [
@@ -14164,10 +14150,10 @@
       ...savedOrder.filter((key) => TAB_KEYS.includes(key)),
       ...TAB_KEYS.filter((key) => !savedOrder.includes(key))
     ];
-    var [movingKey, setMovingKey] = (0, import_react7.useState)(null);
-    var [versions, setVersions] = (0, import_react7.useState)([]);
-    (0, import_react7.useEffect)(() => initializeDiagnosticsCapture(), []);
-    (0, import_react7.useEffect)(() => {
+    var [movingKey, setMovingKey] = (0, import_react6.useState)(null);
+    var [versions, setVersions] = (0, import_react6.useState)([]);
+    (0, import_react6.useEffect)(() => initializeDiagnosticsCapture(), []);
+    (0, import_react6.useEffect)(() => {
       fetch("https://api.github.com/repos/xohus/cloudcord/commits?path=dist/cc.js&per_page=10").then((response) => response.ok ? response.json() : []).then((items) => setVersions(items.slice(0, 10).map((item) => ({
         sha: String(item.sha),
         date: String(item.commit?.committer?.date ?? ""),
@@ -14394,7 +14380,7 @@
       })
     });
   }
-  var import_react7, import_react_native20, requestEvents, uiEvents, runtimeErrors, lastUiEvent, fetchWrapped, uiCaptureInstalled, errorCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
+  var import_react6, import_react_native20, requestEvents, uiEvents, runtimeErrors, lastUiEvent, fetchWrapped, uiCaptureInstalled, errorCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
   var init_Diagnostics = __esm({
     "src/core/ui/settings/pages/Diagnostics/index.tsx"() {
       "use strict";
@@ -14413,7 +14399,7 @@
       init_components();
       init_modules2();
       init_toasts();
-      import_react7 = __toESM(require_react());
+      import_react6 = __toESM(require_react());
       import_react_native20 = __toESM(require_react_native());
       requestEvents = [];
       uiEvents = [];
@@ -15068,8 +15054,8 @@
     })();
   }
   function useBotCordState() {
-    var [value, setValue] = import_react8.default.useState(() => snapshot());
-    import_react8.default.useEffect(() => {
+    var [value, setValue] = import_react7.default.useState(() => snapshot());
+    import_react7.default.useEffect(() => {
       var active = true;
       var update = () => active && setValue(snapshot());
       listeners.add(update);
@@ -15284,7 +15270,7 @@
       return response.json();
     })();
   }
-  var import_react8, FILE_PATH, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners;
+  var import_react7, FILE_PATH, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners;
   var init_botcord = __esm({
     "src/lib/api/botcord.ts"() {
       "use strict";
@@ -15293,7 +15279,7 @@
       init_async_to_generator();
       init_type_of();
       init_modules();
-      import_react8 = __toESM(require_react());
+      import_react7 = __toESM(require_react());
       FILE_PATH = "botcord/accounts.json";
       MAX_FILE_BYTES = 256 * 1024;
       MAX_ACCOUNTS = 50;
@@ -15508,21 +15494,21 @@
     var navigation2 = NavigationNative.useNavigation();
     var state2 = useBotCordState();
     var active = accounts.find((a) => a.id === activeId) ?? accounts[0] ?? null;
-    var [guilds, setGuilds] = (0, import_react9.useState)([]);
-    var [channels2, setChannels] = (0, import_react9.useState)([]);
-    var [guild, setGuild] = (0, import_react9.useState)(null);
-    var [channel, setChannel] = (0, import_react9.useState)(null);
-    var [messages, setMessages] = (0, import_react9.useState)([]);
-    var [composer, setComposer] = (0, import_react9.useState)("");
-    var [selectedImage, setSelectedImage] = (0, import_react9.useState)(null);
-    var [loading, setLoading] = (0, import_react9.useState)(false);
-    var [error, setError] = (0, import_react9.useState)(null);
-    var [screen, setScreen] = (0, import_react9.useState)("messages");
-    var [members, setMembers] = (0, import_react9.useState)([]);
-    var [memberSearch, setMemberSearch] = (0, import_react9.useState)("");
-    var [memberStatus, setMemberStatus] = (0, import_react9.useState)("");
-    var listRef = (0, import_react9.useRef)(null);
-    (0, import_react9.useEffect)(() => {
+    var [guilds, setGuilds] = (0, import_react8.useState)([]);
+    var [channels2, setChannels] = (0, import_react8.useState)([]);
+    var [guild, setGuild] = (0, import_react8.useState)(null);
+    var [channel, setChannel] = (0, import_react8.useState)(null);
+    var [messages, setMessages] = (0, import_react8.useState)([]);
+    var [composer, setComposer] = (0, import_react8.useState)("");
+    var [selectedImage, setSelectedImage] = (0, import_react8.useState)(null);
+    var [loading, setLoading] = (0, import_react8.useState)(false);
+    var [error, setError] = (0, import_react8.useState)(null);
+    var [screen, setScreen] = (0, import_react8.useState)("messages");
+    var [members, setMembers] = (0, import_react8.useState)([]);
+    var [memberSearch, setMemberSearch] = (0, import_react8.useState)("");
+    var [memberStatus, setMemberStatus] = (0, import_react8.useState)("");
+    var listRef = (0, import_react8.useRef)(null);
+    (0, import_react8.useEffect)(() => {
       if (!active)
         return;
       setLoading(true);
@@ -15539,7 +15525,7 @@
     }, [
       active?.id
     ]);
-    (0, import_react9.useEffect)(() => {
+    (0, import_react8.useEffect)(() => {
       if (!active || !channel?.id)
         return;
       var disposed = false;
@@ -16375,12 +16361,12 @@
   }
   function BotCord() {
     var state2 = useBotCordState();
-    var [token, setToken] = (0, import_react9.useState)("");
-    var [adding, setAdding] = (0, import_react9.useState)(false);
-    var [error, setError] = (0, import_react9.useState)(null);
-    var [opened, setOpened] = (0, import_react9.useState)(false);
+    var [token, setToken] = (0, import_react8.useState)("");
+    var [adding, setAdding] = (0, import_react8.useState)(false);
+    var [error, setError] = (0, import_react8.useState)(null);
+    var [opened, setOpened] = (0, import_react8.useState)(false);
     var accounts = state2.accounts;
-    var active = (0, import_react9.useMemo)(() => accounts.find((a) => a.id === state2.activeAccountId) ?? accounts[0] ?? null, [
+    var active = (0, import_react8.useMemo)(() => accounts.find((a) => a.id === state2.activeAccountId) ?? accounts[0] ?? null, [
       accounts,
       state2.activeAccountId
     ]);
@@ -16496,7 +16482,7 @@
       })
     });
   }
-  var import_react9, import_react_native24, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
+  var import_react8, import_react_native24, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -16512,7 +16498,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react9 = __toESM(require_react());
+      import_react8 = __toESM(require_react());
       import_react_native24 = __toESM(require_react_native());
       useStyles3 = createStyles({
         root: {
@@ -16675,8 +16661,8 @@
   });
   function StoreCloud() {
     useProxy(VdPluginManager.plugins);
-    var [busy, setBusy] = (0, import_react10.useState)(false);
-    var [refresh, setRefresh] = (0, import_react10.useState)(0);
+    var [busy, setBusy] = (0, import_react9.useState)(false);
+    var [refresh, setRefresh] = (0, import_react9.useState)(0);
     var plugin = VdPluginManager.plugins[PLUGIN_URL];
     var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
     function installOrStart() {
@@ -16831,7 +16817,7 @@
       })
     });
   }
-  var import_react10, import_react_native26, PLUGIN_URL, STORECLOUD_ICON;
+  var import_react9, import_react_native26, PLUGIN_URL, STORECLOUD_ICON;
   var init_StoreCloud = __esm({
     "src/core/ui/settings/pages/StoreCloud/index.tsx"() {
       "use strict";
@@ -16845,7 +16831,7 @@
       init_assets();
       init_toasts();
       init_components();
-      import_react10 = __toESM(require_react());
+      import_react9 = __toESM(require_react());
       import_react_native26 = __toESM(require_react_native());
       PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
       STORECLOUD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
@@ -17686,9 +17672,9 @@
 
   // src/core/ui/components/AddonPage.tsx
   function InputAlert2(props) {
-    var [value, setValue] = (0, import_react11.useState)("");
-    var [error, setError] = (0, import_react11.useState)("");
-    var [isFetching, setIsFetching] = (0, import_react11.useState)(false);
+    var [value, setValue] = (0, import_react10.useState)("");
+    var [error, setError] = (0, import_react10.useState)("");
+    var [isFetching, setIsFetching] = (0, import_react10.useState)(false);
     function onConfirmWrapper() {
       setIsFetching(true);
       props.fetchFn(value).then(() => dismissAlert("AddonInputAlert")).catch((e) => e instanceof Error ? setError(e.message) : String(e)).finally(() => setIsFetching(false));
@@ -17750,11 +17736,11 @@
     });
   }
   function AddonPage({ CardComponent, ...props }) {
-    var [search, setSearch] = (0, import_react11.useState)("");
+    var [search, setSearch] = (0, import_react10.useState)("");
     var [sortFn, setSortFn] = React.useState(() => null);
     var { bottom: bottomInset } = useSafeAreaInsets();
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react11.useEffect)(() => {
+    (0, import_react10.useEffect)(() => {
       if (props.OptionsActionSheetComponent) {
         navigation2.setOptions({
           headerRight: () => /* @__PURE__ */ jsx(IconButton, {
@@ -17768,7 +17754,7 @@
     }, [
       navigation2
     ]);
-    var results = (0, import_react11.useMemo)(() => {
+    var results = (0, import_react10.useMemo)(() => {
       var values = props.items;
       if (props.resolveItem)
         values = values.map(props.resolveItem).filter(isNotNil);
@@ -17784,7 +17770,7 @@
       sortFn,
       search
     ]);
-    var onInstallPress = (0, import_react11.useCallback)(() => {
+    var onInstallPress = (0, import_react10.useCallback)(() => {
       if (!props.installAction)
         return () => {
         };
@@ -17931,7 +17917,7 @@
       ]
     });
   }
-  var import_fuzzysort, import_react11, import_react_native27, showSimpleActionSheet2, hideActionSheet;
+  var import_fuzzysort, import_react10, import_react_native27, showSimpleActionSheet2, hideActionSheet;
   var init_AddonPage = __esm({
     "src/core/ui/components/AddonPage.tsx"() {
       "use strict";
@@ -17950,7 +17936,7 @@
       init_components2();
       init_dist();
       import_fuzzysort = __toESM(require_fuzzysort());
-      import_react11 = __toESM(require_react());
+      import_react10 = __toESM(require_react());
       import_react_native27 = __toESM(require_react_native());
       ({ showSimpleActionSheet: showSimpleActionSheet2, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
     }
@@ -18075,8 +18061,8 @@
   }
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
-    var [toggling, setToggling] = (0, import_react12.useState)(false);
-    var cardContextValue = (0, import_react12.useMemo)(() => ({
+    var [toggling, setToggling] = (0, import_react11.useState)(false);
+    var cardContextValue = (0, import_react11.useMemo)(() => ({
       plugin,
       result
     }), [
@@ -18143,7 +18129,7 @@
       })
     });
   }
-  var import_chroma_js3, import_react12, import_react_native28, CardContext, useCardContext, Actions;
+  var import_chroma_js3, import_react11, import_react_native28, CardContext, useCardContext, Actions;
   var init_PluginCard = __esm({
     "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"() {
       "use strict";
@@ -18158,11 +18144,11 @@
       init_components();
       init_sheets();
       import_chroma_js3 = __toESM(require_chroma_js());
-      import_react12 = __toESM(require_react());
+      import_react11 = __toESM(require_react());
       import_react_native28 = __toESM(require_react_native());
       init_plugins4();
-      CardContext = /* @__PURE__ */ (0, import_react12.createContext)(null);
-      useCardContext = () => (0, import_react12.useContext)(CardContext);
+      CardContext = /* @__PURE__ */ (0, import_react11.createContext)(null);
+      useCardContext = () => (0, import_react11.useContext)(CardContext);
       Actions = () => {
         var { plugin } = useCardContext();
         var navigation2 = NavigationNative.useNavigation();
@@ -18315,7 +18301,7 @@
   }
   function PluginInfoActionSheet({ plugin, navigation: navigation2 }) {
     plugin.usePluginState();
-    var [loading, setLoading] = (0, import_react13.useState)(false);
+    var [loading, setLoading] = (0, import_react12.useState)(false);
     var isVendettaPlugin = plugin.id.includes("/");
     var isCorePlugin2 = plugin.id.startsWith("bunny.") || plugin.id.startsWith("vendetta.");
     var copyPluginUrl = () => {
@@ -18502,7 +18488,7 @@
       })
     });
   }
-  var import_react13, import_react_native30;
+  var import_react12, import_react_native30;
   var init_PluginInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx"() {
       "use strict";
@@ -18519,7 +18505,7 @@
       init_storage();
       init_storage2();
       init_assets();
-      import_react13 = __toESM(require_react());
+      import_react12 = __toESM(require_react());
       import_react_native30 = __toESM(require_react_native());
       init_TitleComponent();
       init_ScaledPluginSettings();
@@ -19667,11 +19653,11 @@
     });
   }
   function ThemeInfoActionSheet({ theme, navigation: navigation2 }) {
-    var [themeState, setThemeState] = (0, import_react14.useState)({
+    var [themeState, setThemeState] = (0, import_react13.useState)({
       ...theme
     });
-    var [loading, setLoading] = (0, import_react14.useState)(false);
-    (0, import_react14.useEffect)(() => {
+    var [loading, setLoading] = (0, import_react13.useState)(false);
+    (0, import_react13.useEffect)(() => {
       var interval = setInterval(() => {
         setThemeState({
           ...theme
@@ -19805,7 +19791,7 @@
       })
     });
   }
-  var import_react14, import_react_native34;
+  var import_react13, import_react_native34;
   var init_ThemeInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Themes/sheets/ThemeInfoActionSheet.tsx"() {
       "use strict";
@@ -19817,7 +19803,7 @@
       init_sheets();
       init_components();
       init_common();
-      import_react14 = __toESM(require_react());
+      import_react13 = __toESM(require_react());
       import_react_native34 = __toESM(require_react_native());
       init_toasts();
       init_alerts();
@@ -20216,8 +20202,8 @@
   function RevengeFontsExtractor({ fonts: fonts2, setName }) {
     var currentTheme = getCurrentTheme().data;
     var themeFonts = currentTheme.fonts;
-    var [fontName, setFontName] = (0, import_react15.useState)(guessFontName(Object.values(themeFonts)));
-    var [error, setError] = (0, import_react15.useState)(void 0);
+    var [fontName, setFontName] = (0, import_react14.useState)(guessFontName(Object.values(themeFonts)));
+    var [error, setError] = (0, import_react14.useState)(void 0);
     return /* @__PURE__ */ jsxs(import_react_native36.View, {
       style: {
         padding: 8,
@@ -20268,9 +20254,9 @@
     });
   }
   function JsonFontImporter({ fonts: fonts2, setName, setSource }) {
-    var [fontLink, setFontLink] = (0, import_react15.useState)("");
-    var [saving, setSaving] = (0, import_react15.useState)(false);
-    var [error, setError] = (0, import_react15.useState)(void 0);
+    var [fontLink, setFontLink] = (0, import_react14.useState)("");
+    var [saving, setSaving] = (0, import_react14.useState)(false);
+    var [error, setError] = (0, import_react14.useState)(void 0);
     return /* @__PURE__ */ jsxs(import_react_native36.View, {
       style: {
         padding: 8,
@@ -20312,8 +20298,8 @@
     });
   }
   function EntryEditorActionSheet(props) {
-    var [familyName, setFamilyName] = (0, import_react15.useState)(props.name);
-    var [fontUrl, setFontUrl] = (0, import_react15.useState)(props.fontEntries[props.name]);
+    var [familyName, setFamilyName] = (0, import_react14.useState)(props.name);
+    var [fontUrl, setFontUrl] = (0, import_react14.useState)(props.fontEntries[props.name]);
     return /* @__PURE__ */ jsxs(import_react_native36.View, {
       style: {
         padding: 8,
@@ -20368,10 +20354,10 @@
     }), "FontEditorActionSheet");
   }
   function NewEntryRow({ fontName, fontEntry }) {
-    var nameRef = (0, import_react15.useRef)();
-    var urlRef = (0, import_react15.useRef)();
-    var [nameSet, setNameSet] = (0, import_react15.useState)(false);
-    var [error, setError] = (0, import_react15.useState)();
+    var nameRef = (0, import_react14.useRef)();
+    var urlRef = (0, import_react14.useRef)();
+    var [nameSet, setNameSet] = (0, import_react14.useState)(false);
+    var [error, setError] = (0, import_react14.useState)();
     return /* @__PURE__ */ jsxs(import_react_native36.View, {
       style: {
         flexDirection: "row",
@@ -20433,11 +20419,11 @@
     });
   }
   function FontEditor(props) {
-    var [name, setName] = (0, import_react15.useState)(props.name);
-    var [source, setSource] = (0, import_react15.useState)(props.name && fonts[props.name].source);
-    var [importing, setIsImporting] = (0, import_react15.useState)(false);
-    var [errors, setErrors] = (0, import_react15.useState)();
-    var memoEntry = (0, import_react15.useMemo)(() => {
+    var [name, setName] = (0, import_react14.useState)(props.name);
+    var [source, setSource] = (0, import_react14.useState)(props.name && fonts[props.name].source);
+    var [importing, setIsImporting] = (0, import_react14.useState)(false);
+    var [errors, setErrors] = (0, import_react14.useState)();
+    var memoEntry = (0, import_react14.useMemo)(() => {
       return createProxy(props.name ? {
         ...fonts[props.name].main
       } : {}).proxy;
@@ -20621,7 +20607,7 @@
       })
     });
   }
-  var import_react15, import_react_native36, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
+  var import_react14, import_react_native36, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
   var init_FontEditor = __esm({
     "src/core/ui/settings/pages/Fonts/FontEditor.tsx"() {
       "use strict";
@@ -20640,7 +20626,7 @@
       init_components();
       init_wrappers();
       init_components2();
-      import_react15 = __toESM(require_react());
+      import_react14 = __toESM(require_react());
       import_react_native36 = __toESM(require_react_native());
       actionSheet2 = findByPropsLazy("hideActionSheet");
       ({ openAlert: openAlert3 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -20970,7 +20956,7 @@
   });
 
   // src/core/vendetta/api.tsx
-  var import_react16, import_react_native38, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react15, import_react_native38, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -21000,14 +20986,14 @@
       init_styles();
       init_toasts();
       init_dist();
-      import_react16 = __toESM(require_react());
+      import_react15 = __toESM(require_react());
       import_react_native38 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
       CompatRow = TableRow ?? Forms.FormRow ?? ReactNative.View;
       CompatSwitchRow = TableSwitchRow ?? Forms.FormSwitchRow ?? CompatRow;
       CompatSection = TableRowGroup ?? Forms.FormSection ?? ReactNative.View;
-      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatRow, {
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -21018,7 +21004,7 @@
       });
       PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow?.Icon ?? (() => null);
       PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow?.Arrow ?? (() => null);
-      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatSwitchRow, {
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatSwitchRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -21026,7 +21012,7 @@
         onValueChange: props.onValueChange,
         disabled: props.disabled
       });
-      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatSection, {
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatSection, {
         title: props.title,
         ...props
       }, props.children);
@@ -21065,8 +21051,8 @@
                     ...module,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
-                      (0, import_react16.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react16.createElement)(import_react_native38.View, null, children);
+                      (0, import_react15.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
+                      return /* @__PURE__ */ (0, import_react15.createElement)(import_react_native38.View, null, children);
                     }
                   };
                 }
@@ -21503,7 +21489,10 @@
           Object.freeze = Object.seal = Object;
         }
         yield (init_caches(), __toCommonJS(caches_exports)).initMetroCache();
-        yield (init_src(), __toCommonJS(src_exports)).default();
+        var startup = (init_src(), __toCommonJS(src_exports)).default();
+        if (startup && typeof startup.catch === "function") {
+          startup.catch((error) => console.error("CloudCord optional startup failed", error));
+        }
       } catch (e) {
         var stack = e instanceof Error ? e.stack : void 0;
         console.log(stack ?? e?.toString?.() ?? e);
