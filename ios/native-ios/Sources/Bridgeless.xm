@@ -4,7 +4,6 @@
 #import <jsi/jsi.h>
 #import "JSI.h"
 #import "Logger.h"
-#import "Fonts.h"
 #import "Utils.h"
 #import "LoaderConfig.h"
 #import <CommonCrypto/CommonDigest.h>
@@ -112,7 +111,7 @@ static void injectPreBundle(jsi::Runtime &runtime)
         loaderObj.setProperty(runtime, "loaderVersion", jsi::String::createFromUtf8(runtime, [PACKAGE_VERSION UTF8String]));
         loaderObj.setProperty(runtime, "hasThemeSupport", false);
         loaderObj.setProperty(runtime, "storedTheme", jsi::Value::null());
-        loaderObj.setProperty(runtime, "fontPatch", 2);
+        loaderObj.setProperty(runtime, "fontPatch", 0);
         runtime.global().setProperty(runtime, "__RAIN_LOADER__", loaderObj);
 
         auto parsePayload = [](jsi::Runtime &rt, const jsi::Value *args, size_t count, NSString **methodOut, NSArray **argsOut) {
@@ -188,20 +187,8 @@ static void injectPreBundle(jsi::Runtime &runtime)
     injectPreBundle(runtime);
     NSString *bundlePath = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"BunnyResources.bundle"];
     NSBundle *resources = [NSBundle bundleWithPath:bundlePath];
-    NSData *identity = [@"globalThis.__CLOUDCORD_LOADER__=Object.assign(globalThis.__RAIN_LOADER__,{loaderName:'CloudCord',cloudcordAutoUpdateVersion:3,hasThemeSupport:false,fontPatch:2});globalThis.__PYON_LOADER__=globalThis.__CLOUDCORD_LOADER__;" dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *identity = [@"globalThis.__CLOUDCORD_LOADER__=Object.assign(globalThis.__RAIN_LOADER__,{loaderName:'CloudCord',cloudcordAutoUpdateVersion:3,hasThemeSupport:false,fontPatch:0});globalThis.__PYON_LOADER__=globalThis.__CLOUDCORD_LOADER__;" dataUsingEncoding:NSUTF8StringEncoding];
     [JSI evaluate:identity tag:@"cloudcord:rain-identity" runtime:runtime];
-    NSData *fontData = [NSData dataWithContentsOfURL:[getPyoncordDirectory() URLByAppendingPathComponent:@"fonts.json"]];
-    id fonts = fontData.length ? [NSJSONSerialization JSONObjectWithData:fontData options:0 error:nil] : nil;
-    // Rain's callback precedes Discord's JS bundle. Appearance work belongs
-    // after that bundle loads, on the UI thread, not inside runtime creation.
-    if ([fonts isKindOfClass:NSDictionary.class]) {
-        __block id observer = nil;
-        observer = [NSNotificationCenter.defaultCenter addObserverForName:@"RCTJavaScriptDidLoadNotification" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(__unused NSNotification *note) {
-            [NSNotificationCenter.defaultCenter removeObserver:observer];
-            observer = nil;
-            if ([fonts isKindOfClass:NSDictionary.class]) patchFonts(fonts[@"main"], fonts[@"name"]);
-        }];
-    }
     // Seed each new IPA once so an older download cannot override its runtime.
     NSData *packaged = [NSData dataWithContentsOfURL:[resources URLForResource:@"runtime" withExtension:@"js"]];
     NSURL *bundleFileURL = [rainDir URLByAppendingPathComponent:@"bundle.js"];

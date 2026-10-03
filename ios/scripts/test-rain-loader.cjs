@@ -21,6 +21,6 @@ for (let launch = 0; launch < 30; launch++) {
   assert.equal(realm.__PYON_LOADER__, realm.__CLOUDCORD_LOADER__);
   assert.equal(realm.__CLOUDCORD_LOADER__.cloudcordAutoUpdateVersion, 3);
   assert.equal(realm.__CLOUDCORD_LOADER__.hasThemeSupport, false);
-  assert.equal(realm.__CLOUDCORD_LOADER__.fontPatch, 2);
+  assert.equal(realm.__CLOUDCORD_LOADER__.fontPatch, 0);
 }
 console.log('Rain callback structure and 30 fresh loader identities passed (not device launch testing)');

@@ -84,7 +84,7 @@ export default function initSettings() {
                 title: () => Strings.FONTS,
                 icon: safeAsset("LettersIcon", "TextIcon"),
                 render: () => import("@core/ui/settings/pages/Fonts"),
-                usePredicate: () => isFontSupported()
+                usePredicate: () => false
             },
             {
                 key: "BUNNY_DEVELOPER",

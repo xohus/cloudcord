@@ -9,5 +9,5 @@ assert.doesNotMatch(page, /FakeProfileGlass|ProfileTabs|CustomBadgeBeta/);
 assert.match(page, /function ActionButton/);
 const native = fs.readFileSync(path.join(root, 'ios/native-ios/Sources/Bridgeless.xm'), 'utf8');
 assert.doesNotMatch(native, /initializeThemeColors|current-theme\.json/);
-assert.ok(native.indexOf('RCTJavaScriptDidLoadNotification') < native.indexOf('patchFonts('));
-console.log('old FakeProfile UI restored; native appearance waits for Discord bundle load');
+assert.doesNotMatch(native, /patchFonts|fonts\.json|RCTJavaScriptDidLoadNotification/);
+console.log('old FakeProfile UI restored; native themes and fonts disabled');

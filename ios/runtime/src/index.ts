@@ -5,7 +5,6 @@ import { initFetchI18nStrings } from "@core/i18n";
 import initSettings from "@core/ui/settings";
 import { initVendettaObject } from "@core/vendetta/api";
 import { VdPluginManager } from "@core/vendetta/plugins";
-import { updateFonts } from "@lib/addons/fonts";
 import { initPlugins, updatePlugins } from "@lib/addons/plugins";
 import { patchCommands } from "@lib/api/commands";
 import { patchLogHook } from "@lib/api/debug";
@@ -36,7 +35,6 @@ export default async () => {
         initFixes(),
         patchErrorBoundary(),
         updatePlugins(),
-        updateFonts(),
         initPlugins(),
         VdPluginManager.initPlugins(),
     ]).then(
