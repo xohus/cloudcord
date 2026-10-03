@@ -26,6 +26,9 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
+      - name: Check startup error handling
+        run: node ios/scripts/test-startup-errors.cjs
+
       - name: Clone clean Kettu source
         run: |
           set -e

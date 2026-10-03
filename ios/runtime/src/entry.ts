@@ -16,18 +16,28 @@ async function initializeCloudCord() {
         }
 
         await require("@metro/internals/caches").initMetroCache();
-        require(".").default();
+        await require(".").default();
     } catch (e) {
-        const { ClientInfoManager } = require("@lib/api/native/modules");
         const stack = e instanceof Error ? e.stack : undefined;
-
         console.log(stack ?? e?.toString?.() ?? e);
-        alert([
+        let build = "unavailable";
+        // Reporting a startup failure must not itself import a failing native
+        // module and create a second unhandled promise rejection.
+        try {
+            const { ClientInfoManager } = require("@lib/api/native/modules");
+            build = String(ClientInfoManager?.getConstants?.()?.Build ?? build);
+        } catch {}
+        const message = [
             "Failed to load CloudCord!\n",
-            `Build Number: ${ClientInfoManager.getConstants().Build}`,
+            `Build Number: ${build}`,
             `CloudCord: ${version}`,
             stack || e?.toString?.(),
-        ].join("\n"));
+        ].join("\n");
+        try {
+            if (typeof alert === "function") alert(message);
+        } catch (reportError) {
+            console.log("CloudCord startup alert unavailable", reportError);
+        }
     }
 }
 
