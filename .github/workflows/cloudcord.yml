@@ -743,11 +743,11 @@ jobs:
               }), 1200);
           }
 
-          async function pullOwnSharedProfile() {
+          async function pullOwnSharedProfile(force = false) {
               // The server contains the last completed save. Do not let the
               // background poll replace fields while the user is editing, or
               // immediately after a newer local revision was queued.
-              if (fakeProfileEditorOpen || Date.now() < suppressOwnPullUntil) return;
+              if (!force && (fakeProfileEditorOpen || Date.now() < suppressOwnPullUntil)) return;
               if (!currentUserId) return;
               const now = Date.now();
               if ((pullOwnSharedProfile as any).pending || now - Number((pullOwnSharedProfile as any).lastAttempt || 0) < 12000) return;
@@ -1947,7 +1947,7 @@ jobs:
                                   try {
                                       suppressOwnPullUntil = 0;
                                       (pullOwnSharedProfile as any).lastAttempt = 0;
-                                      await pullOwnSharedProfile();
+                                      await pullOwnSharedProfile(true);
                                       clearCache(); refreshPreview(); redraw();
                                   } catch (error: any) { Alert.alert("Couldn't refresh", error?.message || "Try again later."); }
                               })()} />
