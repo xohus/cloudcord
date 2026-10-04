@@ -77,7 +77,7 @@ function CloudCordDiagnostics() {
         <Heading tag="h2">Diagnostics</Heading>
         <Paragraph>Updates, backups and client troubleshooting.</Paragraph>
         <Flex style={{ gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
-            <Button onClick={() => openSettingsTabModal(UpdaterTab)}>Updates</Button>
+            <Button disabled={!UpdaterTab} onClick={() => { if (UpdaterTab) openSettingsTabModal(UpdaterTab); }}>Updates</Button>
             <Button onClick={() => openSettingsTabModal(BackupAndRestoreTab)}>Backup & Restore</Button>
             <Button onClick={() => openSettingsTabModal(CustomizationTab)}>Customization</Button>
         </Flex>
