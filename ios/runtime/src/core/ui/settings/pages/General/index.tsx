@@ -66,10 +66,11 @@ export default function General() {
                 <TableRowGroup title={Strings.ACTIONS}>
                     <TableSwitchRow
                         label="Auto-update"
-                        subLabel="Download runtime updates in the background. Apply them next time Discord opens."
+                        subLabel="Check every five minutes. Saved updates apply after Discord restarts."
                         value={(settings as any).cloudcordAutoUpdate !== false}
                         onValueChange={(value: boolean) => (settings as any).cloudcordAutoUpdate = value}
                     />
+                    <TableRow label="Update status" subLabel={(settings as any).cloudcordUpdateStatus || "Waiting for the next update check"} />
                     <TableRow arrow label="Diagnostics" subLabel="Updates, safe mode, troubleshooting, and local resets"
                         onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Diagnostics", render: () => {
                             const Diagnostics = require("@core/ui/settings/pages/Diagnostics").default;

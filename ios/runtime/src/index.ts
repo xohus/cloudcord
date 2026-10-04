@@ -23,8 +23,8 @@ export default async () => {
     if ((globalThis as any).__CLOUDCORD_ORIGINAL_RAIN__) {
         const prefs = require("@lib/api/settings").settings;
         void require("@core/vendetta/storage").awaitStorage(prefs).then(() => {
-            if (prefs.cloudcordAutoUpdate === false) return;
-            return require("@lib/api/native/modules").BundleUpdaterManager.checkForUpdates();
+            const updater = require("@lib/api/native/modules").BundleUpdaterManager;
+            lib.unload.push(require("@lib/api/native/runtimeUpdates").startAutoUpdates(prefs, updater));
         }).catch((error: unknown) => console.warn("CloudCord update check failed", error));
     }
     if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) await initLegacyRuntimeRefresh();
