@@ -10051,9 +10051,9 @@
       diagnostics.last = error?.message || "Sharing will retry later";
     }), 1200);
   }
-  function pullOwnSharedProfile() {
+  function pullOwnSharedProfile(force = false) {
     return _async_to_generator(function* () {
-      if (fakeProfileEditorOpen || Date.now() < suppressOwnPullUntil)
+      if (!force && (fakeProfileEditorOpen || Date.now() < suppressOwnPullUntil))
         return;
       if (!currentUserId)
         return;
@@ -11662,7 +11662,7 @@
                   try {
                     suppressOwnPullUntil = 0;
                     pullOwnSharedProfile.lastAttempt = 0;
-                    yield pullOwnSharedProfile();
+                    yield pullOwnSharedProfile(true);
                     clearCache();
                     refreshPreview();
                     redraw();
