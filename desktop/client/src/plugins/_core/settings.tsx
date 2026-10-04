@@ -88,7 +88,7 @@ export const settings = definePluginSettings({
     },
     includeVencordInfoWhenCopying: {
         type: OptionType.BOOLEAN,
-        description: "Also copy Vencord info (Vencord, Electron, Chromium) when clicking the version info in the bottom left area of the Settings page",
+        description: "Include CloudCord, Electron and Chromium versions when copying version info",
         default: true
     },
     diagnosticsMode: {

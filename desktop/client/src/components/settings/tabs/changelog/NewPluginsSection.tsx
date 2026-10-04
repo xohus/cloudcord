@@ -95,7 +95,7 @@ export function NewPluginsSection({
                         ) ||
                         plugin.name.endsWith("API");
                     const tooltipText = plugin.required
-                        ? "This plugin is required for Sincord to function."
+                        ? "CloudCord needs this plugin to run."
                         : makeDependencyList(
                             depMap[plugin.name]?.filter(
                                 d => settings.plugins[d].enabled,
@@ -203,7 +203,7 @@ function CompactPluginCard({
         depMap[plugin.name]?.some(d => settings.plugins[d].enabled);
 
     const tooltipText = plugin.required
-        ? "This plugin is required for Sincord to function."
+        ? "CloudCord needs this plugin to run."
         : depMap[plugin.name]?.length > 0
             ? `This plugin is required by: ${depMap[plugin.name]
                 ?.filter(d => settings.plugins[d].enabled)

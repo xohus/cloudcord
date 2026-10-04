@@ -204,7 +204,7 @@ function CloudCordSettings() {
                 <QuickAction
                     Icon={OpenExternalIcon}
                     text="CloudCord Website"
-                    action={() => VencordNative.native.openExternal("https://cloudcord.xohus.lol")}
+                    action={() => VencordNative.native.openExternal("https://getcloudcord.com")}
                 />
                 <QuickAction
                     Icon={GithubIcon}

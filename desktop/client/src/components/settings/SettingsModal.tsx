@@ -32,7 +32,7 @@ export function SettingsModal({ title, subtitle, children, onClose }: SettingsMo
             style={{ pointerEvents: "auto", userSelect: "text", width: "min(960px, 94vw)", maxHeight: "85vh", overflowY: "auto", borderRadius: 16, padding: 24, background: "var(--background-base-low, #202024)", color: "var(--text-normal, #f2f3f5)", boxShadow: "0 20px 70px rgba(0,0,0,.5)" }}>
             <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 16 }}>
                 <div style={{ fontSize: 20, fontWeight: 600 }}>{title}</div>
-                <button type="button" aria-label="Close" onClick={onClose} style={{ border: 0, borderRadius: 8, padding: "8px 12px", cursor: "pointer", background: "var(--background-modifier-accent, #35353c)", color: "inherit" }}>close</button>
+                <button type="button" aria-label="Close" title="Close" onClick={onClose} style={{ border: 0, borderRadius: "50%", width: 36, height: 36, flexShrink: 0, fontSize: 26, lineHeight: 1, cursor: "pointer", background: "transparent", color: "var(--text-danger, #ed4245)" }}>×</button>
             </header>
             {subtitle}
             {children}

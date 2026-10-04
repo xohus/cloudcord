@@ -14,13 +14,12 @@ import { ProfileBadge } from "@api/Badges";
 import { addContextMenuPatch, NavContextMenuPatchCallback, removeContextMenuPatch } from "@api/ContextMenu";
 import { addHeaderBarButton, HeaderBarButton, removeHeaderBarButton } from "@api/HeaderBar";
 import { DataStore } from "@api/index";
-import { ModalCloseButton as _ModalCloseButton, ModalContent as _ModalContent, ModalFooter as _ModalFooter, ModalHeader as _ModalHeader, ModalRoot as _ModalRoot, openModal } from "@utils/modal";
+import { ModalContent as _ModalContent, ModalFooter as _ModalFooter, ModalHeader as _ModalHeader, ModalRoot as _ModalRoot, openModal } from "@utils/modal";
 
 const ModalRoot = _ModalRoot as any;
 const ModalHeader = _ModalHeader as any;
 const ModalContent = _ModalContent as any;
 const ModalFooter = _ModalFooter as any;
-const ModalCloseButton = _ModalCloseButton as any;
 import { SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, Popout, React, Select, SnowflakeUtils, UserStore } from "@webpack/common";
@@ -726,7 +725,7 @@ function ImageUpload({ label, value, onChange }: { label: string; value: string;
     </div></div>);
 }
 function Toggle({ label, checked, onChange, sublabel }: { label: string; checked: boolean; onChange: (v: boolean) => void; sublabel?: string; }) {
-    return (<div className="cp-toggle-row" onClick={() => onChange(!checked)}>
+    return (<div className="cp-toggle-row" role="switch" aria-checked={checked} tabIndex={0} onKeyDown={e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onChange(!checked); } }} onClick={() => onChange(!checked)}>
         <div className="cp-toggle-text"><span className="cp-toggle-label">{label}</span>{sublabel && <span className="cp-toggle-sub">{sublabel}</span>}</div>
         <div className={`cp-toggle ${checked ? "cp-toggle-on" : ""}`}><div className="cp-toggle-thumb" /></div>
     </div>);
@@ -781,6 +780,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     const [selectedAccountId, setSelectedAccountId] = React.useState(myId);
     const [data, setData] = React.useState<CustomProfileData>(() => ({ ...(allAccountsData[myId] || storedData || {}) }));
     const [saving, setSaving] = React.useState(false);
+    const [saveError, setSaveError] = React.useState("");
     const [decorationLimit, setDecorationLimit] = React.useState(24);
     const [decorationSearch, setDecorationSearch] = React.useState("");
     const decorations = ALL_DECORATIONS.filter(item => item.label.toLowerCase().includes(decorationSearch.toLowerCase()));
@@ -809,6 +809,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
 
     async function save(useEverywhere = false) {
         setSaving(true);
+        setSaveError("");
         try {
             const savedData = { ...data, ...(useEverywhere ? { syncRevision: Date.now() } : {}) };
             allAccountsData[selectedAccountId] = savedData; allAccountsEnabled[selectedAccountId] = true;
@@ -827,7 +828,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                 if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
                 await publishSharedProfile();
             }
-        } catch (err) { console.error("[ProfileSpoofer] save error:", err); }
+        } catch (err) { console.error("[ProfileSpoofer] save error:", err); setSaveError("Couldn't save your profile. Try again."); setSaving(false); return; }
         setSaving(false); rootProps.onClose();
     }
 
@@ -839,7 +840,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         }
         saveAllDataSync();
         DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
-        DataStore.set(DS_KEY, {}).catch(() => { }); DataStore.set(DS_ENABLED, false).catch(() => { });
+        if (selectedAccountId === myId) { DataStore.set(DS_KEY, {}).catch(() => { }); DataStore.set(DS_ENABLED, false).catch(() => { }); }
         forceAccountPanelRerender(); rootProps.onClose();
     }
 
@@ -859,7 +860,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                     renderOptionValue={(selected: any[]) => { const option = selected[0]; if (!option) return <span>Select Account</span>; return <div style={{ display: "flex", alignItems: "center", gap: 8 }}><img src={IconUtils.getUserAvatarURL(accounts.find((a: any) => a.id === option.value), false, 20)} style={{ borderRadius: "50%", width: 20, height: 20 }} />{option.label}</div>; }}
                 />
             </div>
-            <ModalCloseButton onClick={rootProps.onClose} />
+            <button type="button" className="cp-close-button" aria-label="Close" title="Close" onClick={rootProps.onClose}><CloseIcon /></button>
         </ModalHeader>
 
         <ModalContent className="cp-content">
@@ -913,6 +914,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         </ModalContent>
 
         <ModalFooter className="cp-footer">
+            {saveError && <div role="alert" style={{ width: "100%", color: "var(--text-danger)", lineHeight: 1.5 }}>{saveError}</div>}
             <button className="cp-btn cp-btn-ghost" onClick={rootProps.onClose}>Cancel</button>
             <button className="cp-btn cp-btn-danger" onClick={reset}><TrashIcon /><span>Reset</span></button>
             <button className="cp-btn cp-btn-ghost" onClick={() => void save(false)} disabled={saving}><SaveIcon /><span>Save on this device</span></button>

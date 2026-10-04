@@ -48,19 +48,19 @@ function SinbopSection() {
     return (
         <Flex className={Margins.bottom20} flexDirection="column" gap="1em">
             <Card variant="brand">
-                <HeadingSecondary>Sinbop & Sincord</HeadingSecondary>
+                <HeadingSecondary>App Updates</HeadingSecondary>
                 <Paragraph>CloudCord updates itself automatically and keeps your plugins, themes, settings, and shared profile.</Paragraph>
                 <Paragraph className={Margins.top8}>
-                    You receive separate popups for Sinbop updates. You can also manually update by installing the <Link href="https://sinbop.org/install">latest version</Link>.
+                    Your desktop app updates separately from CloudCord. You can also install its <Link href="https://sinbop.org/install">latest version</Link>.
                 </Paragraph>
             </Card>
 
             {isSinbopOutdated && (
                 <Card variant="warning">
-                    <HeadingSecondary>Sinbop Outdated</HeadingSecondary>
+                    <HeadingSecondary>App Update Available</HeadingSecondary>
                     <Flex flexDirection="column" gap="0.5em">
-                        <Paragraph>Your version of Sinbop is outdated!</Paragraph>
-                        <Button variant="link" onClick={() => VesktopNative.app.openUpdater()}>Open Sinbop Updater</Button>
+                        <Paragraph>A newer version of your desktop app is available.</Paragraph>
+                        <Button variant="link" onClick={() => VesktopNative.app.openUpdater()}>Open App Updater</Button>
                     </Flex>
                 </Card>
             )}
@@ -86,20 +86,14 @@ function Updater() {
     return (
         <SettingsTab>
             <SinbopSection />
-            <Card variant="warning" className={Margins.bottom20}>
-                <HeadingSecondary>Windows installer &amp; updater temporarily down</HeadingSecondary>
-                <Paragraph>
-                    CloudCord's Windows installer and updater are currently unavailable. Existing installations can still be used, but automatic and manual updates may fail until service is restored.
-                </Paragraph>
-            </Card>
             <Heading className={Margins.top16}>Update Preferences</Heading>
             <Paragraph className={Margins.bottom20}>
-                Control how Sincord keeps itself up to date. You can choose to update automatically in the background or be notified when new updates are available.
+                Choose how CloudCord checks for and installs updates.
             </Paragraph>
 
             <FormSwitch
                 title="Automatically update"
-                description="When enabled, Sincord will automatically download and install updates in the background without asking for confirmation. You'll need to restart Discord to apply the changes."
+                description="Download updates in the background. Restart Discord to apply them."
                 value={settings.autoUpdate}
                 onChange={(v: boolean) => settings.autoUpdate = v}
                 hideBorder
@@ -108,7 +102,7 @@ function Updater() {
                 value={settings.autoUpdateNotification}
                 onChange={(v: boolean) => settings.autoUpdateNotification = v}
                 title="Get notified when an automatic update completes"
-                description="Receive a notification when Sincord finishes downloading an update in the background, so you know when to restart Discord."
+                description="Show a notification when an update is ready."
                 disabled={!settings.autoUpdate}
                 hideBorder
             />
