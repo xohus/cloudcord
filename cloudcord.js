@@ -10570,18 +10570,62 @@
       diagnostics.last = error?.message || `Could not connect ${method}`;
     }
   }
+  function refreshPublishedBadges(force = false) {
+    return _async_to_generator(function* () {
+      if (publishedBadgeRequest || !force && Date.now() - publishedBadgeFetchedAt < 5e3)
+        return;
+      publishedBadgeRequest = true;
+      publishedBadgeFetchedAt = Date.now();
+      try {
+        var response = yield fetch("https://getcloudcord.com/v1/custom-badges", {
+          cache: "no-store"
+        });
+        if (!response.ok)
+          return;
+        var payload = yield response.json();
+        if (!Array.isArray(payload?.badges))
+          return;
+        var next = payload.badges.filter((badge) => typeof badge?.id === "string" && typeof badge?.userId === "string" && typeof badge?.name === "string" && typeof badge?.icon === "string" && badge.icon.startsWith("https://getcloudcord.com/v1/custom-badges/"));
+        if (JSON.stringify(next) !== JSON.stringify(publishedBadges)) {
+          publishedBadges = next;
+          try {
+            safeStore("UserStore")?.emitChange?.();
+          } catch (e) {
+          }
+          try {
+            safeStore("UserProfileStore")?.emitChange?.();
+          } catch (e) {
+          }
+        }
+      } catch (e) {
+      } finally {
+        publishedBadgeRequest = false;
+      }
+    })();
+  }
+  function appendPublishedBadges(result, userId) {
+    var next = [
+      ...result
+    ];
+    for (var badge of publishedBadges) {
+      if (badge.userId === userId)
+        addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
+    }
+    return next;
+  }
   function connectBadgeRenderer() {
     try {
       after("default", useBadgesModule2, ([user], result) => {
         if (!Array.isArray(result))
           return result;
         var id = String(user?.userId || user?.id || user?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || "");
+        void refreshPublishedBadges();
         if (!isCurrentUser(id)) {
           requestSharedProfile(id);
           var data = getProfileOverride(id);
           var staffBadge = cloudCordStaffBadge(id);
           if (!data && !staffBadge)
-            return;
+            return appendPublishedBadges(result, id);
           var ordered = [];
           if (staffBadge)
             addRenderedBadge(ordered, staffBadge.id, staffBadge.label, CLOUDCORD_BADGE_ICON);
@@ -10616,22 +10660,22 @@
             var badgeId2 = String(item?.id || "");
             return !badgeId2.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeId2 === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
           });
-          return [
+          return appendPublishedBadges([
             ...ordered,
             ...existing
-          ];
+          ], id);
         }
         var staffBadge1 = cloudCordStaffBadge(id);
         if (!preview.enabled) {
           if (!staffBadge1)
-            return;
+            return appendPublishedBadges(result, id);
           var existing1 = result.filter((item) => !String(item?.id || "").startsWith("cloudcord-"));
           var ordered1 = [];
           addRenderedBadge(ordered1, staffBadge1.id, staffBadge1.label, CLOUDCORD_BADGE_ICON);
-          return [
+          return appendPublishedBadges([
             ...ordered1,
             ...existing1
-          ];
+          ], id);
         }
         var existing2 = shouldReplaceLocalBadges() ? [] : result.filter((item) => {
           var badgeId2 = String(item?.id || "");
@@ -10653,10 +10697,10 @@
           var label1 = badgeId === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description1;
           addRenderedBadge(ordered2, id2, label1, icon1);
         }
-        return [
+        return appendPublishedBadges([
           ...ordered2,
           ...existing2
-        ];
+        ], id);
       });
       diagnostics.patches += 1;
     } catch (error) {
@@ -11024,10 +11068,17 @@
         }
         ensurePatches();
         yield pullOwnSharedProfile();
+        void refreshPublishedBadges(true);
+        import_react_native18.AppState.addEventListener("change", (state2) => {
+          if (state2 === "active")
+            void refreshPublishedBadges(true);
+        });
         if (!sharedSyncTimer)
           sharedSyncTimer = setInterval(() => {
             void pullOwnSharedProfile();
             refreshSharedProfiles();
+            if (import_react_native18.AppState.currentState === "active")
+              void refreshPublishedBadges();
           }, 5e3);
         if (preview.enabled) {
           refreshPreview();
@@ -12104,7 +12155,7 @@
       })
     });
   }
-  var import_react5, import_react_native18, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react5, import_react_native18, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12497,6 +12548,9 @@
       fakeProfileEditorOpen = false;
       suppressOwnPullUntil = 0;
       REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
+      publishedBadges = [];
+      publishedBadgeRequest = false;
+      publishedBadgeFetchedAt = 0;
       PROFILE_COLORS = [
         "#5865F2",
         "#4752C4",
