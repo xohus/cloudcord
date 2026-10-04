@@ -239,7 +239,7 @@ function CloudCordSettings() {
                 hideBorder
             />
             <FormSwitch title="Show BotCord" value={customization.showBotCordTab} onChange={(value: boolean) => cloudCordSettings.store.showBotCordTab = value} hideBorder />
-            <FormSwitch title="Show Fake Profile" value={customization.showFakeProfileTab} onChange={(value: boolean) => cloudCordSettings.store.showFakeProfileTab = value} hideBorder />
+            <FormSwitch title="Show Profile" value={customization.showFakeProfileTab} onChange={(value: boolean) => cloudCordSettings.store.showFakeProfileTab = value} hideBorder />
             <FormSwitch title="Show CloudSync" value={customization.showCloudSyncTab} onChange={(value: boolean) => cloudCordSettings.store.showCloudSyncTab = value} hideBorder />
             <FormSwitch title="Show Plugins" value={customization.showPluginsTab} onChange={(value: boolean) => cloudCordSettings.store.showPluginsTab = value} hideBorder />
             <FormSwitch title="Show Themes" value={customization.showThemesTab} onChange={(value: boolean) => cloudCordSettings.store.showThemesTab = value} hideBorder />
@@ -279,7 +279,7 @@ function CloudCordSettings() {
     );
 }
 
-export default wrapTab(CloudCordSettings, "CloudCord Settings");
+export default wrapTab(CloudCordSettings, "Overview");
 
 export function isSincordDonor(userId: string): boolean {
     const donorBadges = BadgeAPI.getSincordDonorBadges(userId);

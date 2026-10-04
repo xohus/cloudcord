@@ -6,22 +6,17 @@
 
 import { definePluginSettings } from "@api/Settings";
 import {
-    BackupRestoreIcon,
-    CloudIcon,
     MainSettingsIcon,
-    PaintbrushIcon,
+    InfoIcon,
     PluginsIcon,
     RobotIcon,
     UserIcon
 } from "@components/Icons";
 import {
-    BackupAndRestoreTab,
+    AddonsTab,
     BotCordTab,
-    CloudTab,
     CloudCordDiagnosticsTab,
     FakeProfileTab,
-    PluginsTab,
-    ThemesTab,
     VencordTab,
 } from "@components/settings";
 import { CloudCordDeveloperControls } from "@components/settings/tabs/customization";
@@ -226,54 +221,33 @@ export default definePlugin({
         const cloudcordEntries: SettingsLayoutNode[] = [
             buildEntry({
                 key: "cloudcord_main",
-                title: "CloudCord",
-                panelTitle: "CloudCord Settings",
+                title: "Overview",
+                panelTitle: "Overview",
                 Component: VencordTab,
-                Icon: MainSettingsIcon
+                Icon: InfoIcon
             }),
             settings.store.showBotCordTab && buildEntry({
                 key: "cloudcord_botcord",
-                title: IS_WEB ? "BotCord" : "BotCord (Down)",
-                panelTitle: IS_WEB ? "BotCord" : "BotCord — Temporarily Unavailable",
+                title: "Botcord",
+                panelTitle: "Botcord",
                 Component: BotCordTab,
                 Icon: RobotIcon
             }),
             settings.store.showFakeProfileTab && buildEntry({
                 key: "cloudcord_fake_profile",
-                title: "Fake Profile",
-                panelTitle: "Fake Profile",
+                title: "Profile",
+                panelTitle: "Profile",
                 Component: FakeProfileTab,
                 Icon: UserIcon
             }),
-            settings.store.showCloudSyncTab && buildEntry({
+            buildEntry({
                 key: "cloudcord_cloud_sync",
-                title: "CloudSync",
-                panelTitle: "CloudSync",
-                Component: CloudTab,
-                Icon: CloudIcon
-            }),
-            settings.store.showPluginsTab && buildEntry({
-                key: "cloudcord_plugins",
-                title: "Plugins",
-                panelTitle: "CloudCord Plugins",
-                Component: PluginsTab,
+                title: "Add-ons",
+                panelTitle: "Add-ons",
+                Component: AddonsTab,
                 Icon: PluginsIcon
             }),
-            settings.store.showThemesTab && buildEntry({
-                key: "cloudcord_themes",
-                title: "Themes",
-                panelTitle: "CloudCord Themes",
-                Component: ThemesTab,
-                Icon: PaintbrushIcon
-            }),
-            settings.store.showBackupTab && buildEntry({
-                key: "cloudcord_backup_restore",
-                title: "Backup & Restore",
-                panelTitle: "Backup & Restore",
-                Component: BackupAndRestoreTab,
-                Icon: BackupRestoreIcon
-            }),
-            settings.store.diagnosticsMode && buildEntry({
+            buildEntry({
                 key: "cloudcord_diagnostics",
                 title: "Diagnostics",
                 panelTitle: "CloudCord Diagnostics",

@@ -4,6 +4,10 @@ import { Flex } from "@components/Flex";
 import { Heading } from "@components/Heading";
 import { Paragraph } from "@components/Paragraph";
 import { SettingsTab, wrapTab } from "@components/settings/tabs/BaseTab";
+import { openSettingsTabModal } from "@components/settings/tabs/BaseTab";
+import BackupAndRestoreTab from "../sync/BackupAndRestoreTab";
+import UpdaterTab from "../updater";
+import CustomizationTab from "../customization";
 import { gitHashShort } from "@shared/vencordUserAgent";
 import { copyWithToast } from "@utils/discord";
 import { Margins } from "@utils/margins";
@@ -70,6 +74,13 @@ function CloudCordDiagnostics() {
     }, null, 2));
 
     return <SettingsTab>
+        <Heading tag="h2">Diagnostics</Heading>
+        <Paragraph>Updates, backups and client troubleshooting.</Paragraph>
+        <Flex style={{ gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
+            <Button onClick={() => openSettingsTabModal(UpdaterTab)}>Updates</Button>
+            <Button onClick={() => openSettingsTabModal(BackupAndRestoreTab)}>Backup & Restore</Button>
+            <Button onClick={() => openSettingsTabModal(CustomizationTab)}>Customization</Button>
+        </Flex>
         <Heading className={Margins.top16}>CloudCord Diagnostics</Heading>
         <Paragraph className={Margins.bottom20}>Safe runtime and request diagnostics for CloudCord. Authorization headers, cookies, request bodies and query values are never recorded.</Paragraph>
         <Flex gap="8px" className={Margins.bottom20} style={{ flexWrap: "wrap" }}>

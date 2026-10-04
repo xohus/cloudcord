@@ -43,13 +43,13 @@ export function CloudCordDeveloperControls() {
                 hideBorder
             />
             <FormSwitch title="Show section heading" value={values.showSectionHeading} onChange={value => toggle("showSectionHeading", value)} hideBorder />
-            <FormSwitch title="Show BotCord" value={values.showBotCordTab} onChange={value => toggle("showBotCordTab", value)} hideBorder />
-            <FormSwitch title="Show Fake Profile" value={values.showFakeProfileTab} onChange={value => toggle("showFakeProfileTab", value)} hideBorder />
-            <FormSwitch title="Show CloudSync" value={values.showCloudSyncTab} onChange={value => toggle("showCloudSyncTab", value)} hideBorder />
+            <FormSwitch title="Show Botcord" value={values.showBotCordTab} onChange={value => toggle("showBotCordTab", value)} hideBorder />
+            <FormSwitch title="Show Profile" value={values.showFakeProfileTab} onChange={value => toggle("showFakeProfileTab", value)} hideBorder />
+            <FormSwitch title="Show Cloudsync in Add-ons" value={values.showCloudSyncTab} onChange={value => toggle("showCloudSyncTab", value)} hideBorder />
             <FormSwitch title="Show Plugins" value={values.showPluginsTab} onChange={value => toggle("showPluginsTab", value)} hideBorder />
             <FormSwitch title="Show Themes" value={values.showThemesTab} onChange={value => toggle("showThemesTab", value)} hideBorder />
             <FormSwitch title="Show Backup & Restore" value={values.showBackupTab} onChange={value => toggle("showBackupTab", value)} hideBorder />
-            <FormSwitch title="Show Diagnostics" value={values.diagnosticsMode} onChange={value => toggle("diagnosticsMode", value)} hideBorder />
+            <FormSwitch title="Advanced diagnostics" value={values.diagnosticsMode} onChange={value => toggle("diagnosticsMode", value)} hideBorder />
         </>
     );
 }

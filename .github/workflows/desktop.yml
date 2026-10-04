@@ -69,6 +69,10 @@ jobs:
           set -e
           pnpm install --frozen-lockfile=false
 
+      - name: Check CloudCord profile sync and tab layout
+        working-directory: desktop/client
+        run: node scripts/test-cloudcord-badge-sync.cjs
+
       - name: Typecheck
         working-directory: desktop/client
         shell: bash

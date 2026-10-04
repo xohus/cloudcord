@@ -27,8 +27,8 @@ function FakeProfileTabComponent() {
                 <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <UserIcon style={{ width: "28px", height: "28px", color: "var(--brand-500)" }} />
                     <div>
-                        <div style={{ fontWeight: 600, fontSize: "16px" }}>Profile Customizer</div>
-                        <div style={{ fontSize: "13px", opacity: 0.7 }}>Edit your fake badges, nitro status, banner, and bio</div>
+                        <div style={{ fontWeight: 600, fontSize: "16px" }}>Profile</div>
+                        <div style={{ fontSize: "13px", opacity: 0.7 }}>Edit your badges, profile pictures, banner and bio</div>
                     </div>
                 </div>
 
@@ -41,15 +41,17 @@ function FakeProfileTabComponent() {
                     Open Profile Editor
                 </Button>
             </Card>
+            <Button onClick={() => window.open("https://getcloudcord.com/upload", "_blank", "noopener,noreferrer")}>Upload</Button>
+            <Paragraph>Choose a badge name and image, or crop your profile picture and banner. Published badges refresh automatically when you return to Discord.</Paragraph>
 
             <Divider className={Margins.top16 + " " + Margins.bottom16} />
 
             <Heading tag="h2" className={Margins.bottom16}>Profile Sync & Badges</Heading>
             <Paragraph style={{ opacity: 0.8 }}>
-                Changes made with Fake Profile can be synced across other CloudCord users using Cloud Profiles so others with CloudCord see your customized profile and badges.
+                Shared profile changes are visible to other CloudCord users, not unmodified Discord. Local edits stay on your device.
             </Paragraph>
         </SettingsTab>
     );
 }
 
-export default wrapTab(FakeProfileTabComponent, "Fake Profile");
+export default wrapTab(FakeProfileTabComponent, "Profile");
