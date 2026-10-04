@@ -195,7 +195,7 @@ function getDecorationUrl(assetId: string, animated = false): string {
 
 const ALL_DECORATIONS = Array.from(new Map(decorationCatalog.filter(item => item.category === "decorations").map(item => {
     const asset = item.url.match(/avatar-decoration-presets\/([^/.]+)\.png/)?.[1];
-    return [asset, { id: asset || "", label: item.label || "Avatar Decoration" } ] as const;
+    return [asset, { id: asset || "", skuId: item.id, label: item.label || "Avatar Decoration", url: item.url } ] as const;
 })).values()).filter(item => item.id);
 
 function sharedDecorationAsset(value: unknown): string {
@@ -210,12 +210,18 @@ function sharedDecorationAsset(value: unknown): string {
     catch { return raw; }
 }
 
+function nativeDecoration(data: CustomProfileData) {
+    const asset = sharedDecorationAsset(data.decorationAsset);
+    const skuId = data.decorationSkuId || ALL_DECORATIONS.find(item => item.id === asset)?.skuId;
+    return { asset, ...(skuId ? { skuId } : {}) };
+}
+
 interface CustomProfileData {
     username?: string; globalName?: string; avatar?: string; banner?: string;
     bio?: string; accentColor?: number; accentColor2?: number; pronouns?: string;
     badgeFlags?: number; createdAt?: string; nitro?: boolean; nitroLevel?: number; nitroSince?: string;
     boostMonths?: number; email?: string; phone?: string; customBadgeIds?: string[];
-    oldName?: string; decorationAsset?: string; copiedUserId?: string; signupDate?: string; replaceRealBadges?: boolean; giftLevel?: number;
+    oldName?: string; decorationAsset?: string; decorationSkuId?: string; copiedUserId?: string; signupDate?: string; replaceRealBadges?: boolean; giftLevel?: number;
     syncRevision?: number;
 }
 
@@ -281,6 +287,7 @@ function fromSharedProfile(data: any): CustomProfileData {
         boostMonths: data?.boostMonths, giftLevel: Number.isInteger(data?.giftLevel) ? data.giftLevel : undefined, customBadgeIds: Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id: string) => id !== REPLACE_BADGES_SYNC_ID) : [],
         oldName: data?.oldName || "", createdAt: data?.createdAt || "", signupDate: data?.signupDate || data?.joinedSince || "",
         decorationAsset: sharedDecorationAsset(data?.decorationAsset || data?.avatarDecoration), replaceRealBadges: data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID),
+        decorationSkuId: data?.decorationSkuId || data?.avatarDecorationSku,
         syncRevision: Number(data?.syncRevision || 0)
     };
 }
@@ -352,6 +359,7 @@ function toSharedProfile(data: CustomProfileData) {
         displayName: data.globalName,
         joinedSince: data.signupDate,
         avatarDecoration: data.decorationAsset ? getDecorationUrl(data.decorationAsset) : null,
+        avatarDecorationSku: data.decorationSkuId || ALL_DECORATIONS.find(item => item.id === data.decorationAsset)?.skuId,
         profileColorsEnabled: data.accentColor != null,
         primaryColor: data.accentColor,
         accentColor: data.accentColor2 ?? data.accentColor,
@@ -361,7 +369,15 @@ function toSharedProfile(data: CustomProfileData) {
 
 async function publishSharedProfile(): Promise<void> {
     const ownerId = activeUserId();
-    if (!ownerId || !isEnabled) return;
+    if (!ownerId || !isEnabled) throw new Error("Sign in to Discord before syncing your profile.");
+    // Advance the revision without pulling old fields into the open editor.
+    const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
+    if (latestResponse.ok) {
+        const latest = await latestResponse.json();
+        storedData.syncRevision = Math.max(Date.now(), Number(storedData.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
+        allAccountsData[ownerId] = storedData;
+        saveDataSync(storedData, true); saveAllDataSync();
+    }
     let saved: any = {};
     try { saved = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { }
     const response = await fetch(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
@@ -370,9 +386,10 @@ async function publishSharedProfile(): Promise<void> {
         body: JSON.stringify({ ownerId, profile: toSharedProfile(storedData) })
     });
     if (!response.ok) {
-        if (response.status === 409) { await pullOwnSharedProfile(); return; }
+        if (response.status === 409) throw new Error("Your shared profile changed on another device. Reopen the editor and try again.");
         if (saved.id && (response.status === 401 || response.status === 404)) { localStorage.removeItem(LS_SHARE); return publishSharedProfile(); }
-        throw new Error(`CloudCord profile sync failed (${response.status})`);
+        const details = await response.json().catch(() => null);
+        throw new Error(response.status === 413 ? "Your profile images are too large to sync. Use Upload to crop and resize them." : response.status === 429 ? "Too many saves. Wait a moment and try again." : response.status === 503 ? "Profile sync is unavailable right now. Your changes are saved on this device." : `Couldn't sync your profile (${response.status}). ${String(details?.error || "Try again shortly.").slice(0, 160)}`);
     }
     const result = await response.json();
     if (!saved.id && result?.id) localStorage.setItem(LS_SHARE, JSON.stringify({ id: result.id, editToken: result.editToken }));
@@ -687,7 +704,7 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                         try { const avatarUrl = IconUtils?.getUserAvatarURL?.(targetUser, false, 512); if (avatarUrl) newData.avatar = avatarUrl; } catch { }
                         if (profile.banner ?? targetUser.banner) { const bid = profile.banner ?? targetUser.banner; newData.banner = `https://cdn.discordapp.com/banners/${user.id}/${bid}.${bid.startsWith("a_") ? "gif" : "png"}?size=512`; }
                         try { newData.createdAt = new Date(Number(BigInt(user.id) >> 22n) + 1420070400000).toISOString().slice(0, 10); } catch { }
-                        if (targetUser.avatarDecorationData?.asset) newData.decorationAsset = targetUser.avatarDecorationData.asset;
+                        if (targetUser.avatarDecorationData?.asset) { newData.decorationAsset = targetUser.avatarDecorationData.asset; newData.decorationSkuId = targetUser.avatarDecorationData.skuId; }
                         const myId = AuthenticationStore?.getId?.();
                         if (myId) { allAccountsData[myId] = newData; allAccountsEnabled[myId] = true; }
                         storedData = newData; isEnabled = true; saveDataSync(newData, true); saveAllDataSync();
@@ -828,7 +845,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                 if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
                 await publishSharedProfile();
             }
-        } catch (err) { console.error("[ProfileSpoofer] save error:", err); setSaveError("Couldn't save your profile. Try again."); setSaving(false); return; }
+        } catch (err) { console.error("[ProfileSpoofer] save error:", err); suppressOwnPullUntil = 0; setSaveError(err instanceof Error ? err.message : "Couldn't save your profile. Try again."); setSaving(false); return; }
         setSaving(false); rootProps.onClose();
     }
 
@@ -896,10 +913,10 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <div className="cp-section-label">Avatar decoration</div>
             <input className="cp-input cp-decoration-search" aria-label="Search decorations" placeholder="Search decorations" value={decorationSearch} onChange={e => { setDecorationSearch(e.target.value); setDecorationLimit(24); }} />
             <div className="cp-decoration-grid">
-                <button onClick={() => set("decorationAsset", undefined)} className={`cp-badge ${!data.decorationAsset ? "cp-badge-on" : ""}`} style={{ minWidth: 60 }}>None</button>
+                <button onClick={() => { set("decorationAsset", undefined); set("decorationSkuId", undefined); }} className={`cp-badge ${!data.decorationAsset ? "cp-badge-on" : ""}`} style={{ minWidth: 60 }}>None</button>
                 {decorations.slice(0, decorationLimit).map(dec => (
-                    <button key={dec.id} onClick={() => set("decorationAsset", data.decorationAsset === dec.id ? undefined : dec.id)} className={`cp-badge cp-decoration ${data.decorationAsset === dec.id ? "cp-badge-on" : ""}`} title={dec.label} aria-pressed={data.decorationAsset === dec.id}>
-                        <img loading="lazy" src={getDecorationUrl(dec.id)} alt="" />
+                    <button key={dec.id} onClick={() => { set("decorationAsset", data.decorationAsset === dec.id ? undefined : dec.id); set("decorationSkuId", data.decorationAsset === dec.id ? undefined : dec.skuId); }} className={`cp-badge cp-decoration ${data.decorationAsset === dec.id ? "cp-badge-on" : ""}`} title={dec.label} aria-pressed={data.decorationAsset === dec.id}>
+                        <img loading="lazy" src={dec.url} alt="" onError={e => { e.currentTarget.style.visibility = "hidden"; e.currentTarget.parentElement?.setAttribute("title", `${dec.label} — image unavailable`); }} />
                         <span>{dec.label}</span>
                     </button>
                 ))}
@@ -969,7 +986,7 @@ export default definePlugin({
         clone.getTag = () => (storedData.username || realUsername) + "#0000";
         clone.getGlobalName = () => isEnabled ? fakeGlobal : realGlobalName;
         if (storedData.createdAt) { const fakeCreatedAt = new Date(storedData.createdAt + "T12:00:00Z"); Object.defineProperty(clone, "createdAt", { get: () => fakeCreatedAt, configurable: true, enumerable: true }); }
-        if (storedData.decorationAsset) { clone.avatarDecoration = null; clone.avatarDecorationData = { asset: storedData.decorationAsset, skuId: storedData.decorationAsset }; }
+        if (storedData.decorationAsset) { clone.avatarDecoration = null; clone.avatarDecorationData = nativeDecoration(storedData); }
         const wantedFlags = storedData.badgeFlags != null ? storedData.badgeFlags : 0;
         if (shouldReplaceBadges(storedData)) {
             clone.publicFlags = wantedFlags; clone.flags = wantedFlags;
@@ -1010,7 +1027,7 @@ export default definePlugin({
         clone.getTag = () => fakeUsername + "#0000";
         clone.getGlobalName = () => fakeGlobal;
         
-        if (shared.decorationAsset) { clone.avatarDecoration = null; clone.avatarDecorationData = { asset: shared.decorationAsset, skuId: shared.decorationAsset }; }
+        if (shared.decorationAsset) { clone.avatarDecoration = null; clone.avatarDecorationData = nativeDecoration(shared); }
         const wantedFlags = shared.badgeFlags != null ? shared.badgeFlags : 0;
         if (shouldReplaceBadges(shared)) {
             clone.publicFlags = wantedFlags; clone.flags = wantedFlags;
@@ -1035,7 +1052,7 @@ export default definePlugin({
                 merged.getBannerURL = () => storedData.banner;
             }
             if (storedData.signupDate) { try { merged.joinedAt = new Date(storedData.signupDate + "T12:00:00Z"); } catch { } }
-            if (storedData.decorationAsset) { merged.avatarDecoration = null; merged.avatarDecorationData = { asset: storedData.decorationAsset, skuId: storedData.decorationAsset }; }
+            if (storedData.decorationAsset) { merged.avatarDecoration = null; merged.avatarDecorationData = nativeDecoration(storedData); }
             if (storedData.nitro && storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
             applyNativeProfileMetadata(merged, storedData);
             merged.badges = [];
