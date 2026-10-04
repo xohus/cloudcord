@@ -1355,6 +1355,17 @@
   });
 
   // src/core/vendetta/storage.ts
+  var storage_exports = {};
+  __export(storage_exports, {
+    awaitStorage: () => awaitStorage,
+    createFileBackend: () => createFileBackend,
+    createMMKVBackend: () => createMMKVBackend,
+    createProxy: () => createProxy,
+    createStorage: () => createStorage,
+    purgeStorage: () => purgeStorage,
+    useProxy: () => useProxy,
+    wrapSync: () => wrapSync
+  });
   function createProxy(target = {}) {
     var emitter = new Emitter();
     var childrens = /* @__PURE__ */ new WeakMap();
@@ -2064,8 +2075,8 @@
   });
 
   // src/lib/api/storage/index.ts
-  var storage_exports = {};
-  __export(storage_exports, {
+  var storage_exports2 = {};
+  __export(storage_exports2, {
     awaitStorage: () => awaitStorage2,
     createStorage: () => createStorage2,
     createStorageAndCallback: () => createStorageAndCallback,
@@ -4623,14 +4634,6 @@
       CONFIG_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/config";
       START_URL = "https://cloudcord.xohus.lol/api/cloudcord/onboarding/start";
       initialized = false;
-    }
-  });
-
-  // src/assets/icons/fakeprofile.png
-  var fakeprofile_default;
-  var init_fakeprofile = __esm({
-    "src/assets/icons/fakeprofile.png"() {
-      fakeprofile_default = "data:image/png;base64,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";
     }
   });
 
@@ -8985,7 +8988,7 @@
     patcher: () => patcher_exports,
     react: () => react_exports,
     settings: () => settings_exports,
-    storage: () => storage_exports
+    storage: () => storage_exports2
   });
   var init_api = __esm({
     "src/lib/api/index.ts"() {
@@ -9543,7 +9546,8 @@
       children: [
         "profile",
         "badges",
-        "custom"
+        "custom",
+        "others"
       ].map((tab) => /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
         accessibilityRole: "tab",
         accessibilityLabel: tab === "custom" ? "custom badges beta" : tab,
@@ -9591,20 +9595,201 @@
     }
   });
 
+  // src/core/ui/settings/components/LocalProfiles.tsx
+  var LocalProfiles_exports = {};
+  __export(LocalProfiles_exports, {
+    default: () => LocalProfiles
+  });
+  function LocalProfiles({ badges, refresh }) {
+    var [id, setId] = (0, import_react4.useState)("");
+    var [draft, setDraft] = (0, import_react4.useState)({});
+    var state2 = settings;
+    var load = (value) => {
+      setId(value);
+      setDraft({
+        ...state2.cloudcordLocalProfiles?.[value] || {}
+      });
+    };
+    var save = () => {
+      if (!/^\d{15,22}$/.test(id))
+        return import_react_native17.Alert.alert("User ID needed", "Paste the Discord user ID.");
+      for (var field of [
+        "avatar",
+        "banner"
+      ]) {
+        if (draft[field] && !/^https:\/\//i.test(draft[field]))
+          return import_react_native17.Alert.alert("Image link needed", "Use an HTTPS image link.");
+      }
+      state2.cloudcordLocalProfiles = {
+        ...state2.cloudcordLocalProfiles || {},
+        [id]: {
+          ...draft,
+          __localOnly: true
+        }
+      };
+      refresh();
+      import_react_native17.Alert.alert("Saved on this device", "Reopen their profile to see your changes. Nobody else sees these edits.");
+    };
+    var remove = () => import_react_native17.Alert.alert("Restore this profile?", "Only your local changes will be removed.", [
+      {
+        text: "Cancel",
+        style: "cancel"
+      },
+      {
+        text: "Restore",
+        onPress: () => {
+          var next = {
+            ...state2.cloudcordLocalProfiles || {}
+          };
+          delete next[id];
+          state2.cloudcordLocalProfiles = next;
+          setDraft({});
+          refresh();
+        }
+      }
+    ]);
+    var input = (label, key, multiline = false) => /* @__PURE__ */ jsxs(import_react_native17.View, {
+      style: {
+        gap: 6
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native17.Text, {
+          style: {
+            color: "#cbd3e7",
+            fontSize: 13
+          },
+          children: label
+        }),
+        /* @__PURE__ */ jsx(import_react_native17.TextInput, {
+          accessibilityLabel: label,
+          value: draft[key] ?? "",
+          onChangeText: (value) => setDraft({
+            ...draft,
+            [key]: value
+          }),
+          multiline,
+          autoCapitalize: "none",
+          maxLength: key === "bio" ? 500 : 2048,
+          style: {
+            color: "#fff",
+            padding: 14,
+            borderRadius: 16,
+            backgroundColor: "rgba(15,19,32,0.55)",
+            minHeight: multiline ? 90 : 48
+          }
+        })
+      ]
+    });
+    return /* @__PURE__ */ jsxs(import_react_native17.View, {
+      style: {
+        gap: 14,
+        padding: 16
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native17.Text, {
+          style: {
+            color: "#fff",
+            fontSize: 18,
+            fontWeight: "600"
+          },
+          children: "Other profiles"
+        }),
+        /* @__PURE__ */ jsx(import_react_native17.Text, {
+          style: {
+            color: "#b8c0d8"
+          },
+          children: "Only on this device. This does not change their Discord account or shared profile."
+        }),
+        /* @__PURE__ */ jsx(import_react_native17.TextInput, {
+          accessibilityLabel: "Discord user ID",
+          placeholder: "Discord user ID",
+          placeholderTextColor: "#9faac4",
+          keyboardType: "number-pad",
+          value: id,
+          onChangeText: load,
+          style: {
+            color: "#fff",
+            padding: 14,
+            borderRadius: 16,
+            backgroundColor: "rgba(15,19,32,0.55)"
+          }
+        }),
+        input("Display name", "displayName"),
+        input("Username", "username"),
+        input("Profile picture link", "avatar"),
+        input("Banner link", "banner"),
+        input("Bio", "bio", true),
+        input("Pronouns", "pronouns"),
+        /* @__PURE__ */ jsx(import_react_native17.Text, {
+          style: {
+            color: "#cbd3e7"
+          },
+          children: "Badges \xB7 local preview"
+        }),
+        badges.map(([key, label, flag, , customId]) => {
+          var selected = flag ? Boolean((draft.badgeFlags || 0) & flag) : (draft.customBadgeIds || []).includes(customId || key);
+          return /* @__PURE__ */ jsx(GlassButton, {
+            muted: !selected,
+            label: (selected ? "\u2713 " : "") + label,
+            onPress: () => {
+              if (flag)
+                setDraft({
+                  ...draft,
+                  badgeFlags: (draft.badgeFlags || 0) ^ flag
+                });
+              else {
+                var name = customId || key, list = draft.customBadgeIds || [];
+                setDraft({
+                  ...draft,
+                  customBadgeIds: selected ? list.filter((item) => item !== name) : [
+                    ...list,
+                    name
+                  ]
+                });
+              }
+            }
+          }, key);
+        }),
+        /* @__PURE__ */ jsx(GlassButton, {
+          label: "Save locally",
+          onPress: save
+        }),
+        /* @__PURE__ */ jsx(GlassButton, {
+          label: "Restore original",
+          muted: true,
+          onPress: remove
+        })
+      ]
+    });
+  }
+  var import_react4, import_react_native17;
+  var init_LocalProfiles = __esm({
+    "src/core/ui/settings/components/LocalProfiles.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      import_react4 = __toESM(require_react());
+      import_react_native17 = __toESM(require_react_native());
+      init_settings();
+      init_FakeProfileGlass();
+    }
+  });
+
   // src/core/ui/settings/components/CustomBadgeBeta.tsx
   var CustomBadgeBeta_exports = {};
   __export(CustomBadgeBeta_exports, {
     default: () => CustomBadgeBeta
   });
   function CustomBadgeBeta() {
-    var [name, setName] = (0, import_react4.useState)("");
-    var [png, setPng] = (0, import_react4.useState)("");
-    var [message, setMessage] = (0, import_react4.useState)("beta \u2014 AI-approved badges go live, then admins can keep or remove them.");
-    var [busy, setBusy] = (0, import_react4.useState)(false);
-    var [state2, setState] = (0, import_react4.useState)(null);
-    var [verified, setVerified] = (0, import_react4.useState)(Boolean(settings.customBadgeDeviceToken));
-    var polling = (0, import_react4.useRef)(false);
-    (0, import_react4.useEffect)(() => {
+    var [name, setName] = (0, import_react5.useState)("");
+    var [png, setPng] = (0, import_react5.useState)("");
+    var [message, setMessage] = (0, import_react5.useState)("beta \u2014 approved badges appear on your profile.");
+    var [busy, setBusy] = (0, import_react5.useState)(false);
+    var [state2, setState] = (0, import_react5.useState)(null);
+    var [verified, setVerified] = (0, import_react5.useState)(Boolean(settings.customBadgeDeviceToken));
+    var polling = (0, import_react5.useRef)(false);
+    (0, import_react5.useEffect)(() => {
       if (!state2)
         return;
       var alive = true;
@@ -9646,20 +9831,26 @@
     }, [
       state2
     ]);
-    var verify = () => import_react_native17.Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. your name and PNG are sent to OpenAI for safety checks. AI-approved badges publish immediately, then CloudCord admins review and can remove them.", [
+    var verify = () => import_react_native18.Alert.alert("Custom badges", "Sign in with Discord to add badges to your profile. Uploads are checked automatically and may be removed by the team. See our terms for review and privacy details.", [
       {
         text: "cancel",
         style: "cancel"
       },
       {
         text: "view terms",
-        onPress: () => import_react_native17.Linking.openURL(`${API}/tos`)
+        onPress: () => import_react_native18.Linking.openURL(`${API}/tos`)
+      },
+      {
+        text: "privacy",
+        onPress: () => import_react_native18.Linking.openURL(`${API}/privacy`)
       },
       {
         text: "accept & verify",
         onPress: () => _async_to_generator(function* () {
           try {
             var config = yield (yield fetch(`${API}/api/cloudcord/onboarding/config`)).json();
+            if (!config.enabled || config.oauth2Off)
+              throw new Error("Sign-in is unavailable right now. Try again later.");
             var r = yield fetch(`${API}/api/cloudcord/onboarding/start`, {
               method: "POST",
               headers: {
@@ -9674,7 +9865,7 @@
             if (!r.ok || !result.state || !result.authorizeUrl)
               throw new Error(result.error || "verification unavailable");
             setState(result.state);
-            yield import_react_native17.Linking.openURL(result.authorizeUrl);
+            yield import_react_native18.Linking.openURL(result.authorizeUrl);
           } catch (e) {
             setMessage(e.message || "verification unavailable");
           }
@@ -9701,7 +9892,7 @@
         if (data.length > 7e5)
           throw new Error("PNG must be under 512 KB");
         setPng(data);
-        setMessage("PNG selected \u2014 ready for the AI safety check");
+        setMessage("PNG selected \u2014 ready to upload");
       } catch (e) {
         setMessage(e.message || "could not read PNG");
       }
@@ -9739,20 +9930,20 @@
       onPress: action,
       disabled
     });
-    return /* @__PURE__ */ jsxs(import_react_native17.View, {
+    return /* @__PURE__ */ jsxs(import_react_native18.View, {
       style: {
         gap: 14,
         padding: 2
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native17.Text, {
+        /* @__PURE__ */ jsx(import_react_native18.Text, {
           style: {
             color: "white",
             fontWeight: "bold"
           },
           children: "custom badges \xB7 beta"
         }),
-        /* @__PURE__ */ jsx(import_react_native17.Text, {
+        /* @__PURE__ */ jsx(import_react_native18.Text, {
           style: {
             color: "#b5bac1"
           },
@@ -9760,7 +9951,7 @@
         }),
         !verified ? button(state2 ? "waiting for verification\u2026" : "verify Discord", verify, Boolean(state2)) : /* @__PURE__ */ jsxs(Fragment, {
           children: [
-            /* @__PURE__ */ jsx(import_react_native17.TextInput, {
+            /* @__PURE__ */ jsx(import_react_native18.TextInput, {
               accessibilityLabel: "Custom badge name",
               value: name,
               onChangeText: setName,
@@ -9777,7 +9968,7 @@
                 borderRadius: 16
               }
             }),
-            png ? /* @__PURE__ */ jsx(import_react_native17.Image, {
+            png ? /* @__PURE__ */ jsx(import_react_native18.Image, {
               source: {
                 uri: `data:image/png;base64,${png}`
               },
@@ -9787,10 +9978,10 @@
               }
             }) : null,
             button("choose PNG", pick, busy),
-            button(busy ? "checking with AI\u2026" : "submit badge", submit, busy || !png || !name.trim())
+            button(busy ? "uploading\u2026" : "Add badge", submit, busy || !png || !name.trim())
           ]
         }),
-        /* @__PURE__ */ jsx(import_react_native17.Text, {
+        /* @__PURE__ */ jsx(import_react_native18.Text, {
           accessibilityLiveRegion: "polite",
           style: {
             color: "#b5bac1"
@@ -9800,7 +9991,7 @@
       ]
     });
   }
-  var import_react4, import_react_native17, API;
+  var import_react5, import_react_native18, API;
   var init_CustomBadgeBeta = __esm({
     "src/core/ui/settings/components/CustomBadgeBeta.tsx"() {
       "use strict";
@@ -9808,8 +9999,8 @@
       init_promiseAllSettled();
       init_async_to_generator();
       init_jsxRuntime();
-      import_react4 = __toESM(require_react());
-      import_react_native17 = __toESM(require_react_native());
+      import_react5 = __toESM(require_react());
+      import_react_native18 = __toESM(require_react_native());
       init_FakeProfileGlass();
       init_settings();
       init_metro();
@@ -9837,6 +10028,33 @@
   }
   function ProfileTabs2(props) {
     var Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).ProfileTabs;
+    return /* @__PURE__ */ jsx(Component, {
+      ...props
+    });
+  }
+  function ProfileGlyph() {
+    var icon;
+    try {
+      icon = (init_assets(), __toCommonJS(assets_exports)).findAssetId("UserIcon");
+    } catch (e) {
+    }
+    return icon ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+      source: icon,
+      style: {
+        width: 30,
+        height: 30,
+        tintColor: "#bdc8ff"
+      }
+    }) : /* @__PURE__ */ jsx(Text, {
+      style: {
+        color: "#bdc8ff",
+        fontSize: 24
+      },
+      children: "\u25CE"
+    });
+  }
+  function LocalProfiles2(props) {
+    var Component = (init_LocalProfiles(), __toCommonJS(LocalProfiles_exports)).default;
     return /* @__PURE__ */ jsx(Component, {
       ...props
     });
@@ -9884,7 +10102,7 @@
     return _async_to_generator(function* () {
       if (globalThis.__CLOUDCORD_LOADER__?.loaderName !== "RealCord")
         return;
-      var reader = import_react_native18.NativeModules.FileReaderModule ?? import_react_native18.NativeModules.RCTFileReaderModule;
+      var reader = import_react_native19.NativeModules.FileReaderModule ?? import_react_native19.NativeModules.RCTFileReaderModule;
       if (typeof reader?.readAsDataURL !== "function")
         return;
       try {
@@ -9997,7 +10215,7 @@
     return Number(data?.badgeFlags || 0) !== 0 || remoteNitroEnabled(data) || Number(data?.boostMonths ?? -1) >= 0 || Number(data?.giftLevel ?? -1) >= 0 || custom.length > 0;
   }
   function shouldReplaceSharedBadges(data) {
-    return remoteReplaceBadges(data) && remoteHasFakeBadges(data);
+    return data?.__localBadges === true || remoteReplaceBadges(data) && remoteHasFakeBadges(data);
   }
   function shareableMedia(key) {
     return _async_to_generator(function* () {
@@ -10222,6 +10440,17 @@
       }
     }).catch(() => {
     }).finally(() => sharedRequests.delete(id));
+  }
+  function getProfileOverride(id) {
+    var local = settings.cloudcordLocalProfiles?.[id];
+    var shared = sharedProfiles.get(id);
+    if (!local)
+      return shared;
+    return {
+      ...shared || {},
+      ...local,
+      __localBadges: Object.prototype.hasOwnProperty.call(local, "badgeFlags") || Object.prototype.hasOwnProperty.call(local, "customBadgeIds")
+    };
   }
   function refreshSharedProfiles() {
     for (var id of sharedProfiles.keys())
@@ -10595,7 +10824,7 @@
       });
     } catch (error) {
       diagnostics.last = error?.message || "Could not open gifting badges";
-      import_react_native18.Alert.alert("Gifting Badge", "Discord's native gifting badge overlay is unavailable in this Discord version.");
+      import_react_native19.Alert.alert("Gifting Badge", "Discord's native gifting badge overlay is unavailable in this Discord version.");
     }
   }
   function selectedBadgeObjects(existing) {
@@ -10757,7 +10986,7 @@
     if (!isCurrentUser(userId)) {
       var id = String(userId || "");
       requestSharedProfile(id);
-      var shared = sharedProfiles.get(id);
+      var shared = getProfileOverride(id);
       return shared && Object.keys(shared).length ? decorateSharedProfile(original, id, shared) : original;
     }
     if (!preview.enabled)
@@ -10799,7 +11028,7 @@
         var id = String(user?.userId || user?.id || user?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || "");
         if (!isCurrentUser(id)) {
           requestSharedProfile(id);
-          var data = sharedProfiles.get(id);
+          var data = getProfileOverride(id);
           var staffBadge = cloudCordStaffBadge(id);
           if (!data && !staffBadge)
             return;
@@ -10943,7 +11172,7 @@
             return;
           if (!isCurrentUser(id)) {
             requestSharedProfile(id);
-            var data = sharedProfiles.get(id);
+            var data = getProfileOverride(id);
             if (!data?.avatar)
               return;
             props.source = {
@@ -10989,7 +11218,7 @@
             return;
           if (!isCurrentUser(id)) {
             requestSharedProfile(id);
-            var data = sharedProfiles.get(id);
+            var data = getProfileOverride(id);
             if (!data?.banner)
               return;
             props.source = {
@@ -11080,7 +11309,7 @@
             return;
           }
           requestSharedProfile(id);
-          var data = sharedProfiles.get(id);
+          var data = getProfileOverride(id);
           if (!data || !Object.keys(data).length)
             return;
           applyIdentity(props, id, data);
@@ -11122,7 +11351,7 @@
       if (isCurrentUser(id))
         return decorateProfileResult(result, id);
       requestSharedProfile(id);
-      var shared = sharedProfiles.get(id);
+      var shared = getProfileOverride(id);
       return shared && Object.keys(shared).length ? decorateSharedProfile(result, id, shared) : result;
     });
     try {
@@ -11142,7 +11371,7 @@
         if (isCurrentUser(id))
           return preview.enabled ? cloneObject(result, "profile") : result;
         requestSharedProfile(id);
-        var shared = sharedProfiles.get(id);
+        var shared = getProfileOverride(id);
         return shared && Object.keys(shared).length ? decorateSharedProfile(result, id, shared) : result;
       });
       diagnostics.patches += 1;
@@ -11269,7 +11498,7 @@
           height: Number(asset.height)
         };
       return yield new Promise((resolve, reject) => {
-        import_react_native18.Image.getSize(uri, (width, height) => resolve({
+        import_react_native19.Image.getSize(uri, (width, height) => resolve({
           width,
           height
         }), reject);
@@ -11442,7 +11671,7 @@
     });
   }
   function ToggleRow({ label, subLabel, value, onPress, accent = false }) {
-    return /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
+    return /* @__PURE__ */ jsxs(import_react_native19.Pressable, {
       accessibilityRole: "switch",
       accessibilityState: {
         checked: value
@@ -11461,7 +11690,7 @@
         opacity: pressed ? 0.85 : 1
       }),
       children: [
-        /* @__PURE__ */ jsxs(import_react_native18.View, {
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
           style: {
             flex: 1,
             minWidth: 0,
@@ -11485,7 +11714,7 @@
             }) : null
           ]
         }),
-        /* @__PURE__ */ jsx(import_react_native18.View, {
+        /* @__PURE__ */ jsx(import_react_native19.View, {
           style: {
             width: 48,
             height: 28,
@@ -11494,7 +11723,7 @@
             alignItems: value ? "flex-end" : "flex-start",
             backgroundColor: value ? "#6575ef" : "#484d60"
           },
-          children: /* @__PURE__ */ jsx(import_react_native18.View, {
+          children: /* @__PURE__ */ jsx(import_react_native19.View, {
             style: {
               width: 22,
               height: 22,
@@ -11507,7 +11736,7 @@
     });
   }
   function DurationSelect({ label, value, onPress }) {
-    return /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
+    return /* @__PURE__ */ jsxs(import_react_native19.Pressable, {
       accessibilityRole: "button",
       accessibilityLabel: `${label}: ${value}`,
       onPress,
@@ -11522,7 +11751,7 @@
         backgroundColor: pressed ? "rgba(101,117,239,0.18)" : "rgba(255,255,255,0.045)"
       }),
       children: [
-        /* @__PURE__ */ jsxs(import_react_native18.View, {
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
           style: {
             flex: 1,
             minWidth: 0,
@@ -11546,7 +11775,7 @@
             })
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native18.View, {
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
           style: {
             maxWidth: "48%",
             flexDirection: "row",
@@ -11633,7 +11862,7 @@
     };
   }
   function ColorPickerRow({ label, value, onSelect, onOpen }) {
-    return /* @__PURE__ */ jsxs(import_react_native18.View, {
+    return /* @__PURE__ */ jsxs(import_react_native19.View, {
       style: {
         gap: 8
       },
@@ -11643,13 +11872,13 @@
           color: "text-normal",
           children: label
         }),
-        /* @__PURE__ */ jsx(import_react_native18.View, {
+        /* @__PURE__ */ jsx(import_react_native19.View, {
           style: {
             flexDirection: "row",
             flexWrap: "wrap",
             gap: 9
           },
-          children: PROFILE_COLORS.map((color2) => /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+          children: PROFILE_COLORS.map((color2) => /* @__PURE__ */ jsx(import_react_native19.Pressable, {
             accessibilityRole: "button",
             accessibilityState: {
               selected: value.toUpperCase() === color2
@@ -11672,7 +11901,7 @@
           muted: true,
           onPress: onOpen
         }),
-        /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+        /* @__PURE__ */ jsx(import_react_native19.TextInput, {
           value,
           placeholder: "#5865F2",
           placeholderTextColor: "#777",
@@ -11691,15 +11920,15 @@
   }
   function CustomColorPicker({ title, initialColor, onApply }) {
     var initial = hexToHsv(initialColor);
-    var [hue, setHue] = (0, import_react5.useState)(initial.hue);
-    var [saturation, setSaturation] = (0, import_react5.useState)(initial.saturation);
-    var [brightness, setBrightness] = (0, import_react5.useState)(initial.brightness);
-    var [color2, setColor] = (0, import_react5.useState)(hsvToHex(initial.hue, initial.saturation, initial.brightness));
-    var [squareSize, setSquareSize] = (0, import_react5.useState)({
+    var [hue, setHue] = (0, import_react6.useState)(initial.hue);
+    var [saturation, setSaturation] = (0, import_react6.useState)(initial.saturation);
+    var [brightness, setBrightness] = (0, import_react6.useState)(initial.brightness);
+    var [color2, setColor] = (0, import_react6.useState)(hsvToHex(initial.hue, initial.saturation, initial.brightness));
+    var [squareSize, setSquareSize] = (0, import_react6.useState)({
       width: 1,
       height: 1
     });
-    var [hueWidth, setHueWidth] = (0, import_react5.useState)(1);
+    var [hueWidth, setHueWidth] = (0, import_react6.useState)(1);
     var validColor = colorNumber(color2) != null ? color2 : "#5865F2";
     var syncHsv = (nextHue, nextSaturation, nextBrightness) => {
       setHue(nextHue);
@@ -11719,7 +11948,7 @@
       }
     };
     var hueColor = hsvToHex(hue, 100, 100);
-    return /* @__PURE__ */ jsxs(import_react_native18.ScrollView, {
+    return /* @__PURE__ */ jsxs(import_react_native19.ScrollView, {
       contentContainerStyle: {
         padding: 16,
         paddingBottom: 100,
@@ -11732,7 +11961,7 @@
           color: "text-normal",
           children: title
         }),
-        /* @__PURE__ */ jsx(import_react_native18.View, {
+        /* @__PURE__ */ jsx(import_react_native19.View, {
           style: {
             height: 96,
             borderRadius: 16,
@@ -11752,7 +11981,7 @@
             children: validColor.toUpperCase()
           })
         }),
-        /* @__PURE__ */ jsxs(import_react_native18.View, {
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
           onLayout: (event) => setSquareSize(event.nativeEvent.layout),
           onStartShouldSetResponder: () => true,
           onMoveShouldSetResponder: () => true,
@@ -11809,7 +12038,7 @@
                 left: 0
               }
             }) : null,
-            /* @__PURE__ */ jsx(import_react_native18.View, {
+            /* @__PURE__ */ jsx(import_react_native19.View, {
               pointerEvents: "none",
               style: {
                 position: "absolute",
@@ -11827,7 +12056,7 @@
             })
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native18.View, {
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
           onLayout: (event) => setHueWidth(event.nativeEvent.layout.width),
           onStartShouldSetResponder: () => true,
           onMoveShouldSetResponder: () => true,
@@ -11864,13 +12093,13 @@
                 bottom: 0,
                 left: 0
               }
-            }) : /* @__PURE__ */ jsx(import_react_native18.View, {
+            }) : /* @__PURE__ */ jsx(import_react_native19.View, {
               style: {
                 flex: 1,
                 backgroundColor: hueColor
               }
             }),
-            /* @__PURE__ */ jsx(import_react_native18.View, {
+            /* @__PURE__ */ jsx(import_react_native19.View, {
               pointerEvents: "none",
               style: {
                 position: "absolute",
@@ -11886,7 +12115,7 @@
             })
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native18.View, {
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
           style: {
             gap: 8
           },
@@ -11896,7 +12125,7 @@
               color: "text-normal",
               children: "Exact hex color"
             }),
-            /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+            /* @__PURE__ */ jsx(import_react_native19.TextInput, {
               value: color2,
               placeholder: "#5865F2",
               placeholderTextColor: "#777",
@@ -11921,9 +12150,9 @@
     });
   }
   function DecorationGallery({ onSelect }) {
-    var [items, setItems] = (0, import_react5.useState)([]);
-    var [loading, setLoading] = (0, import_react5.useState)(true);
-    (0, import_react5.useEffect)(() => {
+    var [items, setItems] = (0, import_react6.useState)([]);
+    var [loading, setLoading] = (0, import_react6.useState)(true);
+    (0, import_react6.useEffect)(() => {
       var active = true;
       void findDecorationCatalog().then((result) => {
         if (active) {
@@ -11942,18 +12171,18 @@
         clearTimeout(timer);
       };
     }, []);
-    return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
       contentContainerStyle: {
         padding: 12,
         paddingBottom: 100
       },
-      children: items.length ? /* @__PURE__ */ jsx(import_react_native18.View, {
+      children: items.length ? /* @__PURE__ */ jsx(import_react_native19.View, {
         style: {
           flexDirection: "row",
           flexWrap: "wrap",
           gap: 10
         },
-        children: items.map((item) => /* @__PURE__ */ jsxs(import_react_native18.Pressable, {
+        children: items.map((item) => /* @__PURE__ */ jsxs(import_react_native19.Pressable, {
           onPress: () => onSelect(item),
           style: ({ pressed }) => ({
             width: "31%",
@@ -11966,7 +12195,7 @@
             opacity: pressed ? 0.65 : 1
           }),
           children: [
-            /* @__PURE__ */ jsx(import_react_native18.Image, {
+            /* @__PURE__ */ jsx(import_react_native19.Image, {
               source: {
                 uri: item.uri
               },
@@ -11986,7 +12215,7 @@
             })
           ]
         }, `${item.asset}:${item.skuId}`))
-      }) : /* @__PURE__ */ jsxs(import_react_native18.View, {
+      }) : /* @__PURE__ */ jsxs(import_react_native19.View, {
         style: {
           padding: 24,
           gap: 8,
@@ -12011,12 +12240,12 @@
     });
   }
   function FakeProfile() {
-    var [activeTab, setActiveTab] = (0, import_react5.useState)("profile");
-    var [showDetails, setShowDetails] = (0, import_react5.useState)(false);
+    var [activeTab, setActiveTab] = (0, import_react6.useState)("profile");
+    var [showDetails, setShowDetails] = (0, import_react6.useState)(false);
     useProxy(settings);
-    var [, redraw] = (0, import_react5.useReducer)((value) => value + 1, 0);
+    var [, redraw] = (0, import_react6.useReducer)((value) => value + 1, 0);
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react5.useEffect)(() => {
+    (0, import_react6.useEffect)(() => {
       fakeProfileEditorOpen = true;
       initializeFakeProfile();
       redraw();
@@ -12039,7 +12268,7 @@
       } catch (error) {
         diagnostics.last = error?.message || "Could not open the picker.";
         redraw();
-        import_react_native18.Alert.alert("FakeProfile", diagnostics.last);
+        import_react_native19.Alert.alert("FakeProfile", diagnostics.last);
       }
     })();
     var clearMedia = (field) => {
@@ -12121,7 +12350,7 @@
     };
     var MediaEditor = ({ label, field, banner: banner2 = false }) => {
       var value = preview[field];
-      return /* @__PURE__ */ jsxs(import_react_native18.View, {
+      return /* @__PURE__ */ jsxs(import_react_native19.View, {
         style: {
           width: "100%",
           gap: 9,
@@ -12142,7 +12371,7 @@
             },
             children: banner2 ? "Automatically fitted to 600 x 240" : "Automatically fitted to a square"
           }),
-          /* @__PURE__ */ jsxs(import_react_native18.View, {
+          /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: {
               width: "100%",
               gap: 8
@@ -12159,7 +12388,7 @@
               })
             ]
           }),
-          value?.uri && /* @__PURE__ */ jsxs(import_react_native18.View, {
+          value?.uri && /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: {
               width: "100%",
               borderRadius: 12,
@@ -12167,7 +12396,7 @@
               backgroundColor: "#1f2023"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native18.View, {
+              /* @__PURE__ */ jsx(import_react_native19.View, {
                 style: banner2 ? {
                   width: "100%",
                   aspectRatio: 2.5,
@@ -12180,7 +12409,7 @@
                   alignSelf: "center",
                   marginVertical: 12
                 },
-                children: /* @__PURE__ */ jsx(import_react_native18.Image, {
+                children: /* @__PURE__ */ jsx(import_react_native19.Image, {
                   source: {
                     uri: value.uri
                   },
@@ -12191,7 +12420,7 @@
                   }
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native18.View, {
+              /* @__PURE__ */ jsxs(import_react_native19.View, {
                 style: {
                   flexDirection: "row",
                   alignItems: "center",
@@ -12208,7 +12437,7 @@
                     },
                     children: value.name
                   }),
-                  /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+                  /* @__PURE__ */ jsx(import_react_native19.Pressable, {
                     onPress: () => clearMedia(field),
                     style: {
                       paddingHorizontal: 10,
@@ -12233,7 +12462,7 @@
     };
     var avatar = mediaUri("avatarMedia");
     var banner = mediaUri("bannerMedia");
-    return /* @__PURE__ */ jsx(import_react_native18.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
       style: {
         flex: 1,
         width: "100%",
@@ -12250,13 +12479,13 @@
       keyboardShouldPersistTaps: "handled",
       nestedScrollEnabled: true,
       showsVerticalScrollIndicator: false,
-      children: /* @__PURE__ */ jsxs(import_react_native18.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native19.View, {
         style: {
           width: "100%",
           gap: 16
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native18.View, {
+          /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: {
               width: "100%",
               flexDirection: "row",
@@ -12264,7 +12493,7 @@
               gap: 12
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native18.View, {
+              /* @__PURE__ */ jsx(import_react_native19.View, {
                 style: {
                   width: 52,
                   height: 52,
@@ -12275,18 +12504,9 @@
                   alignItems: "center",
                   justifyContent: "center"
                 },
-                children: /* @__PURE__ */ jsx(import_react_native18.Image, {
-                  source: {
-                    uri: fakeprofile_default
-                  },
-                  style: {
-                    width: 34,
-                    height: 34,
-                    resizeMode: "contain"
-                  }
-                })
+                children: /* @__PURE__ */ jsx(ProfileGlyph, {})
               }),
-              /* @__PURE__ */ jsxs(import_react_native18.View, {
+              /* @__PURE__ */ jsxs(import_react_native19.View, {
                 style: {
                   flex: 1,
                   minWidth: 0
@@ -12295,7 +12515,7 @@
                   /* @__PURE__ */ jsx(Text, {
                     variant: "heading-lg/semibold",
                     color: "text-normal",
-                    children: "FakeProfile"
+                    children: "Profile"
                   }),
                   /* @__PURE__ */ jsx(Text, {
                     variant: "text-sm/medium",
@@ -12310,13 +12530,13 @@
           }),
           /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native18.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
               style: {
                 borderRadius: 14,
                 overflow: "hidden"
               },
               children: [
-                banner ? /* @__PURE__ */ jsx(import_react_native18.Image, {
+                banner ? /* @__PURE__ */ jsx(import_react_native19.Image, {
                   source: {
                     uri: banner
                   },
@@ -12325,19 +12545,19 @@
                     width: "100%",
                     height: 118
                   }
-                }) : /* @__PURE__ */ jsx(import_react_native18.View, {
+                }) : /* @__PURE__ */ jsx(import_react_native19.View, {
                   style: {
                     height: 118,
                     backgroundColor: preview.profileColorsEnabled ? preview.primaryColor || "#5865f2" : "#5865f2"
                   }
                 }),
-                /* @__PURE__ */ jsxs(import_react_native18.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     paddingHorizontal: 16,
                     paddingBottom: 16
                   },
                   children: [
-                    /* @__PURE__ */ jsxs(import_react_native18.View, {
+                    /* @__PURE__ */ jsxs(import_react_native19.View, {
                       style: {
                         width: 94,
                         height: 94,
@@ -12346,7 +12566,7 @@
                         justifyContent: "center"
                       },
                       children: [
-                        avatar ? /* @__PURE__ */ jsx(import_react_native18.Image, {
+                        avatar ? /* @__PURE__ */ jsx(import_react_native19.Image, {
                           source: {
                             uri: avatar
                           },
@@ -12357,7 +12577,7 @@
                             borderWidth: 5,
                             borderColor: "#1f2023"
                           }
-                        }) : /* @__PURE__ */ jsx(import_react_native18.View, {
+                        }) : /* @__PURE__ */ jsx(import_react_native19.View, {
                           style: {
                             width: 82,
                             height: 82,
@@ -12367,7 +12587,7 @@
                             backgroundColor: "#777"
                           }
                         }),
-                        preview.avatarDecoration ? /* @__PURE__ */ jsx(import_react_native18.Image, {
+                        preview.avatarDecoration ? /* @__PURE__ */ jsx(import_react_native19.Image, {
                           pointerEvents: "none",
                           source: {
                             uri: preview.avatarDecoration
@@ -12396,7 +12616,7 @@
                         preview.username || "preview"
                       ]
                     }),
-                    /* @__PURE__ */ jsx(import_react_native18.View, {
+                    /* @__PURE__ */ jsx(import_react_native19.View, {
                       style: {
                         alignSelf: "flex-start",
                         paddingHorizontal: 10,
@@ -12422,9 +12642,19 @@
             selected: activeTab,
             onSelect: setActiveTab
           }),
+          activeTab === "others" ? /* @__PURE__ */ jsx(Card2, {
+            children: /* @__PURE__ */ jsx(LocalProfiles2, {
+              badges: BADGES,
+              refresh: () => {
+                clearCache();
+                refreshPreview();
+                redraw();
+              }
+            })
+          }) : null,
           activeTab === "custom" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsx(import_react_native18.View, {
+            children: /* @__PURE__ */ jsx(import_react_native19.View, {
               style: {
                 padding: 16
               },
@@ -12433,7 +12663,7 @@
           }) : null,
           activeTab === "profile" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native18.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
               style: {
                 padding: 14,
                 gap: 14
@@ -12446,7 +12676,7 @@
                   accent: true,
                   onPress: () => update("enabled", !preview.enabled, true)
                 }),
-                /* @__PURE__ */ jsxs(import_react_native18.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -12456,7 +12686,7 @@
                       color: "text-normal",
                       children: "Display name"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                       defaultValue: preview.displayName,
                       placeholder: "Preview Name",
                       placeholderTextColor: "#777",
@@ -12470,7 +12700,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native18.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -12480,7 +12710,7 @@
                       color: "text-normal",
                       children: "Username"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                       defaultValue: preview.username,
                       placeholder: "preview",
                       placeholderTextColor: "#777",
@@ -12496,7 +12726,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native18.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -12506,7 +12736,7 @@
                       color: "text-normal",
                       children: "about you"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                       defaultValue: preview.bio,
                       placeholder: "My description...",
                       placeholderTextColor: "#777",
@@ -12523,7 +12753,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native18.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -12533,7 +12763,7 @@
                       color: "text-normal",
                       children: "Pronouns"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                       defaultValue: preview.pronouns,
                       placeholder: "he/him",
                       placeholderTextColor: "#777",
@@ -12547,7 +12777,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native18.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -12557,7 +12787,7 @@
                       color: "text-normal",
                       children: "Account creation date"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                       defaultValue: preview.createdAt,
                       placeholder: "2010-06-29",
                       placeholderTextColor: "#777",
@@ -12573,7 +12803,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native18.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -12583,7 +12813,7 @@
                       color: "text-normal",
                       children: "Joined since date"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                       defaultValue: preview.signupDate,
                       placeholder: "2010-06-29",
                       placeholderTextColor: "#777",
@@ -12633,7 +12863,7 @@
                     })
                   })
                 }),
-                /* @__PURE__ */ jsxs(import_react_native18.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -12643,7 +12873,7 @@
                       color: "text-normal",
                       children: "Avatar decoration URL"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                       value: preview.avatarDecoration,
                       placeholder: "https://...",
                       placeholderTextColor: "#777",
@@ -12741,10 +12971,10 @@
                     try {
                       yield publishSharedProfile();
                       diagnostics.last = "This profile is now active on all devices";
-                      import_react_native18.Alert.alert("FakeProfile", "This profile is now active on all of your CloudCord devices.");
+                      import_react_native19.Alert.alert("FakeProfile", "This profile is now active on all of your CloudCord devices.");
                     } catch (error) {
                       diagnostics.last = error?.message || "Could not sync this profile";
-                      import_react_native18.Alert.alert("FakeProfile", diagnostics.last);
+                      import_react_native19.Alert.alert("FakeProfile", diagnostics.last);
                     }
                     redraw();
                   })())()
@@ -12754,7 +12984,7 @@
           }) : null,
           activeTab === "badges" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native18.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
               style: {
                 padding: 14,
                 gap: 10
@@ -12769,7 +12999,7 @@
                 }),
                 /* @__PURE__ */ jsx(ToggleRow, {
                   label: "Replace real badges",
-                  subLabel: "Selected fake badges replace your real Discord badges for CloudCord users",
+                  subLabel: "Selected badges replace your real badges for CloudCord users",
                   value: preview.replaceBadges,
                   onPress: () => update("replaceBadges", !preview.replaceBadges, true)
                 }),
@@ -12781,7 +13011,7 @@
                     [id]: !preview.selectedBadges?.[id]
                   }, true)
                 }, id)),
-                preview.selectedBadges?.oldname ? /* @__PURE__ */ jsxs(import_react_native18.View, {
+                preview.selectedBadges?.oldname ? /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8,
                     marginTop: 4
@@ -12792,7 +13022,7 @@
                       color: "text-normal",
                       children: "Previous username displayed in tooltip"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+                    /* @__PURE__ */ jsx(import_react_native19.TextInput, {
                       defaultValue: preview.oldName,
                       placeholder: "OldUser#0000",
                       placeholderTextColor: "#777",
@@ -12818,7 +13048,7 @@
           }),
           showDetails ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native18.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
               style: {
                 padding: 14,
                 gap: 5
@@ -12884,7 +13114,7 @@
       })
     });
   }
-  var import_react5, import_react_native18, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react6, import_react_native19, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12892,7 +13122,6 @@
       init_promiseAllSettled();
       init_async_to_generator();
       init_jsxRuntime();
-      init_fakeprofile();
       init_cloudcord_decorations();
       init_storage();
       init_patcher();
@@ -12902,8 +13131,8 @@
       init_metro();
       init_common();
       init_components();
-      import_react5 = __toESM(require_react());
-      import_react_native18 = __toESM(require_react_native());
+      import_react6 = __toESM(require_react());
+      import_react_native19 = __toESM(require_react_native());
       BADGES = [
         [
           "staff",
@@ -13323,7 +13552,7 @@
         children: /* @__PURE__ */ jsxs(SafeAreaView, {
           style: styles.container,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native19.View, {
+            /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
                 gap: 4
               },
@@ -13351,7 +13580,7 @@
                 })
               ]
             }),
-            /* @__PURE__ */ jsxs(import_react_native19.ScrollView, {
+            /* @__PURE__ */ jsxs(import_react_native20.ScrollView, {
               fadingEdgeLength: 64,
               contentContainerStyle: {
                 gap: 12
@@ -13394,7 +13623,7 @@
       })
     });
   }
-  var import_react_native19, useStyles2;
+  var import_react_native20, useStyles2;
   var init_ErrorBoundaryScreen = __esm({
     "src/core/ui/reporter/components/ErrorBoundaryScreen.tsx"() {
       "use strict";
@@ -13409,7 +13638,7 @@
       init_styles();
       init_common();
       init_components();
-      import_react_native19 = __toESM(require_react_native());
+      import_react_native20 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
       useStyles2 = createStyles({
@@ -14182,10 +14411,10 @@
       ...savedOrder.filter((key) => TAB_KEYS.includes(key)),
       ...TAB_KEYS.filter((key) => !savedOrder.includes(key))
     ];
-    var [movingKey, setMovingKey] = (0, import_react6.useState)(null);
-    var [versions, setVersions] = (0, import_react6.useState)([]);
-    (0, import_react6.useEffect)(() => initializeDiagnosticsCapture(), []);
-    (0, import_react6.useEffect)(() => {
+    var [movingKey, setMovingKey] = (0, import_react7.useState)(null);
+    var [versions, setVersions] = (0, import_react7.useState)([]);
+    (0, import_react7.useEffect)(() => initializeDiagnosticsCapture(), []);
+    (0, import_react7.useEffect)(() => {
       fetch("https://api.github.com/repos/xohus/cloudcord/commits?path=dist/cc.js&per_page=10").then((response) => response.ok ? response.json() : []).then((items) => setVersions(items.slice(0, 10).map((item) => ({
         sha: String(item.sha),
         date: String(item.commit?.committer?.date ?? ""),
@@ -14243,7 +14472,7 @@
         showToast(`Could not copy module report: ${String(error?.message || error).slice(0, 100)}`, findAssetId("Small"));
       }
     };
-    return /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
       style: {
         flex: 1
       },
@@ -14319,7 +14548,7 @@
                 onValueChange: (value) => loaderConfig.customLoadUrl.enabled = value
               }),
               loaderConfig.customLoadUrl.enabled && /* @__PURE__ */ jsx(TableRow, {
-                label: /* @__PURE__ */ jsxs(import_react_native20.View, {
+                label: /* @__PURE__ */ jsxs(import_react_native21.View, {
                   style: {
                     width: "100%",
                     gap: 10
@@ -14375,11 +14604,11 @@
                   ]
                 })
               }),
-              order.map((key) => /* @__PURE__ */ jsx(import_react_native20.Pressable, {
+              order.map((key) => /* @__PURE__ */ jsx(import_react_native21.Pressable, {
                 delayLongPress: 350,
                 onLongPress: () => setMovingKey(key),
                 onPress: () => movingKey && placeBefore(key),
-                children: /* @__PURE__ */ jsx(import_react_native20.View, {
+                children: /* @__PURE__ */ jsx(import_react_native21.View, {
                   style: movingKey === key ? {
                     borderWidth: 1,
                     borderColor: "#5865f2",
@@ -14412,7 +14641,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, requestEvents, uiEvents, runtimeErrors, lastUiEvent, fetchWrapped, uiCaptureInstalled, errorCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
+  var import_react7, import_react_native21, requestEvents, uiEvents, runtimeErrors, lastUiEvent, fetchWrapped, uiCaptureInstalled, errorCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
   var init_Diagnostics = __esm({
     "src/core/ui/settings/pages/Diagnostics/index.tsx"() {
       "use strict";
@@ -14431,8 +14660,8 @@
       init_components();
       init_modules2();
       init_toasts();
-      import_react6 = __toESM(require_react());
-      import_react_native20 = __toESM(require_react_native());
+      import_react7 = __toESM(require_react());
+      import_react_native21 = __toESM(require_react_native());
       requestEvents = [];
       uiEvents = [];
       runtimeErrors = [];
@@ -14587,7 +14816,7 @@
         version: debugInfo.device.manufacturer,
         icon: "WrenchIcon"
       },
-      ...import_react_native21.Platform.OS !== "ios" ? [
+      ...import_react_native22.Platform.OS !== "ios" ? [
         {
           label: Strings.BRAND,
           version: debugInfo.device.brand,
@@ -14600,9 +14829,9 @@
         icon: "MobilePhoneIcon"
       },
       // this is renamed now on android but i cant be bothered to find it
-      ...import_react_native21.Platform.OS !== "android" ? [
+      ...import_react_native22.Platform.OS !== "android" ? [
         {
-          label: import_react_native21.Platform.select({
+          label: import_react_native22.Platform.select({
             android: Strings.CODENAME,
             ios: Strings.MODELID
           }),
@@ -14611,7 +14840,7 @@
         }
       ] : []
     ];
-    return /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native22.ScrollView, {
       style: {
         flex: 1
       },
@@ -14645,7 +14874,7 @@
       })
     });
   }
-  var import_react_native21;
+  var import_react_native22;
   var init_About = __esm({
     "src/core/ui/settings/pages/General/About.tsx"() {
       "use strict";
@@ -14659,7 +14888,7 @@
       init_debug();
       init_settings();
       init_components();
-      import_react_native21 = __toESM(require_react_native());
+      import_react_native22 = __toESM(require_react_native());
     }
   });
 
@@ -14681,6 +14910,134 @@
     }
   });
 
+  // src/core/ui/settings/pages/Recovery/index.tsx
+  var Recovery_exports = {};
+  __export(Recovery_exports, {
+    default: () => Recovery
+  });
+  function Recovery() {
+    var [status, setStatus] = (0, import_react8.useState)("Your account and shared profiles are never deleted here.");
+    var [busy, setBusy] = (0, import_react8.useState)(false);
+    var run = (task) => _async_to_generator(function* () {
+      if (busy)
+        return;
+      setBusy(true);
+      try {
+        yield task();
+        setStatus("Done. Reopen Discord to apply changes.");
+      } catch (error) {
+        setStatus(error?.message || "Could not complete this action.");
+      } finally {
+        setBusy(false);
+      }
+    })();
+    return /* @__PURE__ */ jsx(import_react_native23.ScrollView, {
+      contentContainerStyle: {
+        padding: 16,
+        paddingBottom: 48
+      },
+      children: /* @__PURE__ */ jsx(GlassCard, {
+        children: /* @__PURE__ */ jsxs(import_react_native23.View, {
+          style: {
+            padding: 16,
+            gap: 14
+          },
+          children: [
+            /* @__PURE__ */ jsx(import_react_native23.Text, {
+              style: {
+                color: "#fff",
+                fontSize: 22,
+                fontWeight: "600"
+              },
+              children: "Recovery Studio"
+            }),
+            /* @__PURE__ */ jsx(import_react_native23.Text, {
+              style: {
+                color: "#b8c0d8"
+              },
+              children: status
+            }),
+            /* @__PURE__ */ jsx(GlassButton, {
+              disabled: busy,
+              label: "Download latest runtime",
+              onPress: () => run(() => BundleUpdaterManager.download())
+            }),
+            /* @__PURE__ */ jsx(GlassButton, {
+              disabled: busy,
+              label: "Update & restart",
+              onPress: () => run(() => BundleUpdaterManager.reload())
+            }),
+            /* @__PURE__ */ jsx(GlassButton, {
+              muted: true,
+              disabled: busy,
+              label: isSafeMode() ? "Enable add-ons again" : "Start without add-ons",
+              onPress: () => {
+                toggleSafeMode2({
+                  to: !isSafeMode(),
+                  reload: false
+                });
+                setStatus("Safe mode changed. Reopen Discord to apply it.");
+              }
+            }),
+            /* @__PURE__ */ jsx(GlassButton, {
+              muted: true,
+              label: "Reset tab layout",
+              onPress: () => import_react_native23.Alert.alert("Reset tab layout?", "Show the normal CloudCord tabs again.", [
+                {
+                  text: "Cancel",
+                  style: "cancel"
+                },
+                {
+                  text: "Reset",
+                  onPress: () => {
+                    settings.cloudcordTabOrder = [];
+                    settings.cloudcordHiddenTabs = [];
+                    settings.cloudcordSectionHidden = false;
+                    setStatus("Layout reset. Reopen Discord.");
+                  }
+                }
+              ])
+            }),
+            /* @__PURE__ */ jsx(GlassButton, {
+              muted: true,
+              label: "Clear local profile edits",
+              onPress: () => import_react_native23.Alert.alert("Clear local edits?", "Restores other users' profiles on this device. Your own profile and shared data stay untouched.", [
+                {
+                  text: "Cancel",
+                  style: "cancel"
+                },
+                {
+                  text: "Clear",
+                  style: "destructive",
+                  onPress: () => {
+                    settings.cloudcordLocalProfiles = {};
+                    setStatus("Local edits cleared. Reopen any open profiles.");
+                  }
+                }
+              ])
+            })
+          ]
+        })
+      })
+    });
+  }
+  var import_react8, import_react_native23;
+  var init_Recovery = __esm({
+    "src/core/ui/settings/pages/Recovery/index.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_jsxRuntime();
+      import_react8 = __toESM(require_react());
+      import_react_native23 = __toESM(require_react_native());
+      init_settings();
+      init_modules();
+      init_safeMode();
+      init_FakeProfileGlass();
+    }
+  });
+
   // src/core/ui/settings/pages/General/index.tsx
   var General_exports = {};
   __export(General_exports, {
@@ -14690,7 +15047,7 @@
     useProxy(settings);
     var debugInfo = getDebugInfo();
     var navigation2 = NavigationNative.useNavigation();
-    return /* @__PURE__ */ jsx(import_react_native22.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native24.ScrollView, {
       style: {
         flex: 1
       },
@@ -14749,7 +15106,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("GlobeIcon") || findAssetId("CircleInformationIcon-primary")
                 }),
-                onPress: () => import_react_native22.Linking.openURL("https://getcloudcord.com")
+                onPress: () => import_react_native24.Linking.openURL("https://getcloudcord.com")
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
@@ -14757,13 +15114,31 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("img_account_sync_github_white")
                 }),
-                onPress: () => import_react_native22.Linking.openURL(GITHUB)
+                onPress: () => import_react_native24.Linking.openURL(GITHUB)
               })
             ]
           }),
           /* @__PURE__ */ jsxs(TableRowGroup, {
             title: Strings.ACTIONS,
             children: [
+              /* @__PURE__ */ jsx(TableSwitchRow, {
+                label: "Auto-update",
+                subLabel: "Download runtime updates in the background. Apply them next time Discord opens.",
+                value: settings.cloudcordAutoUpdate !== false,
+                onValueChange: (value) => settings.cloudcordAutoUpdate = value
+              }),
+              /* @__PURE__ */ jsx(TableRow, {
+                arrow: true,
+                label: "Recovery Studio",
+                subLabel: "Runtime updates, safe mode, and local resets",
+                onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                  title: "Recovery Studio",
+                  render: () => {
+                    var Recovery2 = (init_Recovery(), __toCommonJS(Recovery_exports)).default;
+                    return /* @__PURE__ */ jsx(Recovery2, {});
+                  }
+                })
+              }),
               /* @__PURE__ */ jsx(TableSwitchRow, {
                 label: "Diagnostics",
                 subLabel: "Show CloudCord diagnostics and version controls",
@@ -14846,7 +15221,7 @@
       })
     });
   }
-  var import_react_native22;
+  var import_react_native24;
   var init_General = __esm({
     "src/core/ui/settings/pages/General/index.tsx"() {
       "use strict";
@@ -14866,7 +15241,7 @@
       init_constants();
       init_common();
       init_components();
-      import_react_native22 = __toESM(require_react_native());
+      import_react_native24 = __toESM(require_react_native());
     }
   });
 
@@ -14886,7 +15261,7 @@
         ])
       ];
     };
-    return /* @__PURE__ */ jsx(import_react_native23.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native25.ScrollView, {
       style: {
         flex: 1
       },
@@ -14930,7 +15305,7 @@
       })
     });
   }
-  var import_react_native23, tabs;
+  var import_react_native25, tabs;
   var init_Customization = __esm({
     "src/core/ui/settings/pages/Customization/index.tsx"() {
       "use strict";
@@ -14942,7 +15317,7 @@
       init_modules();
       init_settings();
       init_components();
-      import_react_native23 = __toESM(require_react_native());
+      import_react_native25 = __toESM(require_react_native());
       tabs = [
         [
           "BOTCORD",
@@ -14950,7 +15325,7 @@
         ],
         [
           "FAKE_PROFILE",
-          "Fakeprofile"
+          "Profile"
         ],
         [
           "STORE_CLOUD",
@@ -15104,8 +15479,8 @@
     })();
   }
   function useBotCordState() {
-    var [value, setValue] = import_react7.default.useState(() => snapshot());
-    import_react7.default.useEffect(() => {
+    var [value, setValue] = import_react9.default.useState(() => snapshot());
+    import_react9.default.useEffect(() => {
       var active = true;
       var update = () => active && setValue(snapshot());
       listeners.add(update);
@@ -15320,7 +15695,7 @@
       return response.json();
     })();
   }
-  var import_react7, FILE_PATH, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners;
+  var import_react9, FILE_PATH, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners;
   var init_botcord = __esm({
     "src/lib/api/botcord.ts"() {
       "use strict";
@@ -15329,7 +15704,7 @@
       init_async_to_generator();
       init_type_of();
       init_modules();
-      import_react7 = __toESM(require_react());
+      import_react9 = __toESM(require_react());
       FILE_PATH = "botcord/accounts.json";
       MAX_FILE_BYTES = 256 * 1024;
       MAX_ACCOUNTS = 50;
@@ -15369,7 +15744,7 @@
     var uri = avatarUrl(user, 128);
     var colors = getNativeColors();
     if (uri)
-      return /* @__PURE__ */ jsx(import_react_native24.Image, {
+      return /* @__PURE__ */ jsx(import_react_native26.Image, {
         source: {
           uri
         },
@@ -15380,7 +15755,7 @@
         }
       });
     var label = displayName(user).trim().slice(0, 2).toUpperCase() || "?";
-    return /* @__PURE__ */ jsx(import_react_native24.View, {
+    return /* @__PURE__ */ jsx(import_react_native26.View, {
       style: {
         width: size,
         height: size,
@@ -15403,17 +15778,17 @@
       minute: "2-digit"
     }) : "";
     var reactionCount = message.reactions?.reduce((sum, reaction) => sum + (reaction.count || 0), 0) || 0;
-    return /* @__PURE__ */ jsxs(import_react_native24.View, {
+    return /* @__PURE__ */ jsxs(import_react_native26.View, {
       style: styles.row,
       children: [
         /* @__PURE__ */ jsx(ApiAvatar, {
           user: author,
           size: 40
         }),
-        /* @__PURE__ */ jsxs(import_react_native24.View, {
+        /* @__PURE__ */ jsxs(import_react_native26.View, {
           style: styles.messageBody,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native24.View, {
+            /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: styles.nameLine,
               children: [
                 /* @__PURE__ */ jsx(Text, {
@@ -15437,7 +15812,7 @@
               variant: "text-md/normal",
               children: message.content
             }),
-            !!message.attachments?.length && /* @__PURE__ */ jsx(import_react_native24.View, {
+            !!message.attachments?.length && /* @__PURE__ */ jsx(import_react_native26.View, {
               style: {
                 marginTop: 6,
                 gap: 6
@@ -15446,7 +15821,7 @@
                 var uri = attachment.url || attachment.proxy_url;
                 var type = String(attachment.content_type || "");
                 var isImage = type.startsWith("image/") || /\.(png|jpe?g|gif|webp)(?:$|\?)/i.test(String(uri || attachment.filename || ""));
-                return isImage && uri ? /* @__PURE__ */ jsx(import_react_native24.Image, {
+                return isImage && uri ? /* @__PURE__ */ jsx(import_react_native26.Image, {
                   source: {
                     uri
                   },
@@ -15489,7 +15864,7 @@
   }
   function AccountSheet({ accounts, active, onMain }) {
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native24.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native26.View, {
         style: {
           paddingHorizontal: 12,
           paddingBottom: 20
@@ -15544,21 +15919,21 @@
     var navigation2 = NavigationNative.useNavigation();
     var state2 = useBotCordState();
     var active = accounts.find((a) => a.id === activeId) ?? accounts[0] ?? null;
-    var [guilds, setGuilds] = (0, import_react8.useState)([]);
-    var [channels2, setChannels] = (0, import_react8.useState)([]);
-    var [guild, setGuild] = (0, import_react8.useState)(null);
-    var [channel, setChannel] = (0, import_react8.useState)(null);
-    var [messages, setMessages] = (0, import_react8.useState)([]);
-    var [composer, setComposer] = (0, import_react8.useState)("");
-    var [selectedImage, setSelectedImage] = (0, import_react8.useState)(null);
-    var [loading, setLoading] = (0, import_react8.useState)(false);
-    var [error, setError] = (0, import_react8.useState)(null);
-    var [screen, setScreen] = (0, import_react8.useState)("messages");
-    var [members, setMembers] = (0, import_react8.useState)([]);
-    var [memberSearch, setMemberSearch] = (0, import_react8.useState)("");
-    var [memberStatus, setMemberStatus] = (0, import_react8.useState)("");
-    var listRef = (0, import_react8.useRef)(null);
-    (0, import_react8.useEffect)(() => {
+    var [guilds, setGuilds] = (0, import_react10.useState)([]);
+    var [channels2, setChannels] = (0, import_react10.useState)([]);
+    var [guild, setGuild] = (0, import_react10.useState)(null);
+    var [channel, setChannel] = (0, import_react10.useState)(null);
+    var [messages, setMessages] = (0, import_react10.useState)([]);
+    var [composer, setComposer] = (0, import_react10.useState)("");
+    var [selectedImage, setSelectedImage] = (0, import_react10.useState)(null);
+    var [loading, setLoading] = (0, import_react10.useState)(false);
+    var [error, setError] = (0, import_react10.useState)(null);
+    var [screen, setScreen] = (0, import_react10.useState)("messages");
+    var [members, setMembers] = (0, import_react10.useState)([]);
+    var [memberSearch, setMemberSearch] = (0, import_react10.useState)("");
+    var [memberStatus, setMemberStatus] = (0, import_react10.useState)("");
+    var listRef = (0, import_react10.useRef)(null);
+    (0, import_react10.useEffect)(() => {
       if (!active)
         return;
       setLoading(true);
@@ -15575,7 +15950,7 @@
     }, [
       active?.id
     ]);
-    (0, import_react8.useEffect)(() => {
+    (0, import_react10.useEffect)(() => {
       if (!active || !channel?.id)
         return;
       var disposed = false;
@@ -15847,15 +16222,15 @@
     };
     if (channel) {
       var dmUser = channel.recipients?.[0];
-      return /* @__PURE__ */ jsxs(import_react_native24.KeyboardAvoidingView, {
+      return /* @__PURE__ */ jsxs(import_react_native26.KeyboardAvoidingView, {
         style: styles.root,
-        behavior: import_react_native24.Platform.OS === "ios" ? "padding" : void 0,
+        behavior: import_react_native26.Platform.OS === "ios" ? "padding" : void 0,
         keyboardVerticalOffset: 0,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native24.View, {
+          /* @__PURE__ */ jsxs(import_react_native26.View, {
             style: styles.header,
             children: [
-              /* @__PURE__ */ jsx(import_react_native24.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Back",
                 onPress: returnFromChat,
@@ -15871,7 +16246,7 @@
                   opacity: pressed ? 0.7 : 1,
                   zIndex: 20
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native24.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 15,
@@ -15884,7 +16259,7 @@
                 user: dmUser,
                 size: 32
               }) : null,
-              /* @__PURE__ */ jsxs(import_react_native24.View, {
+              /* @__PURE__ */ jsxs(import_react_native26.View, {
                 style: {
                   flex: 1
                 },
@@ -15911,7 +16286,7 @@
               })
             ]
           }),
-          error ? /* @__PURE__ */ jsx(import_react_native24.View, {
+          error ? /* @__PURE__ */ jsx(import_react_native26.View, {
             style: {
               paddingHorizontal: 12,
               paddingVertical: 8
@@ -15931,7 +16306,7 @@
             },
             children: "Loading"
           }) : null,
-          /* @__PURE__ */ jsx(import_react_native24.FlatList, {
+          /* @__PURE__ */ jsx(import_react_native26.FlatList, {
             ref: listRef,
             style: {
               flex: 1
@@ -15944,13 +16319,13 @@
             contentContainerStyle: {
               paddingVertical: 6
             },
-            keyboardDismissMode: import_react_native24.Platform.OS === "ios" ? "interactive" : "on-drag",
+            keyboardDismissMode: import_react_native26.Platform.OS === "ios" ? "interactive" : "on-drag",
             keyboardShouldPersistTaps: "handled",
             onContentSizeChange: () => listRef.current?.scrollToEnd?.({
               animated: false
             })
           }),
-          selectedImage ? /* @__PURE__ */ jsxs(import_react_native24.View, {
+          selectedImage ? /* @__PURE__ */ jsxs(import_react_native26.View, {
             style: {
               height: 72,
               paddingHorizontal: 10,
@@ -15961,7 +16336,7 @@
               backgroundColor: tokens.colors.BACKGROUND_PRIMARY
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native24.Image, {
+              /* @__PURE__ */ jsx(import_react_native26.Image, {
                 source: {
                   uri: selectedImage.uri
                 },
@@ -15972,7 +16347,7 @@
                   backgroundColor: tokens.colors.BACKGROUND_SECONDARY
                 }
               }),
-              /* @__PURE__ */ jsx(import_react_native24.Text, {
+              /* @__PURE__ */ jsx(import_react_native26.Text, {
                 numberOfLines: 1,
                 style: {
                   flex: 1,
@@ -15981,7 +16356,7 @@
                 },
                 children: selectedImage.name
               }),
-              /* @__PURE__ */ jsx(import_react_native24.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 onPress: () => setSelectedImage(null),
                 hitSlop: 8,
                 style: ({ pressed }) => ({
@@ -15993,7 +16368,7 @@
                   backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native24.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 13,
@@ -16004,10 +16379,10 @@
               })
             ]
           }) : null,
-          /* @__PURE__ */ jsxs(import_react_native24.View, {
+          /* @__PURE__ */ jsxs(import_react_native26.View, {
             style: styles.composer,
             children: [
-              /* @__PURE__ */ jsx(import_react_native24.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Add photo",
                 onPress: pickImage,
@@ -16022,7 +16397,7 @@
                   backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native24.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 13,
@@ -16031,7 +16406,7 @@
                   children: "Photo"
                 })
               }),
-              /* @__PURE__ */ jsx(import_react_native24.TextInput, {
+              /* @__PURE__ */ jsx(import_react_native26.TextInput, {
                 value: composer,
                 placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
                 placeholderTextColor: nativeColors.muted,
@@ -16056,7 +16431,7 @@
                   fontSize: 16
                 }
               }),
-              /* @__PURE__ */ jsx(import_react_native24.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Send message",
                 disabled: !composer.trim() && !selectedImage,
@@ -16072,7 +16447,7 @@
                   opacity: !composer.trim() && !selectedImage ? 0.45 : pressed ? 0.72 : 1,
                   backgroundColor: nativeColors.brand
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native24.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.inverse,
                     fontSize: 13,
@@ -16086,13 +16461,13 @@
         ]
       });
     }
-    return /* @__PURE__ */ jsxs(import_react_native24.View, {
+    return /* @__PURE__ */ jsxs(import_react_native26.View, {
       style: styles.root,
       children: [
-        /* @__PURE__ */ jsxs(import_react_native24.View, {
+        /* @__PURE__ */ jsxs(import_react_native26.View, {
           style: styles.header,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native24.View, {
+            /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: {
                 flex: 1
               },
@@ -16110,7 +16485,7 @@
                 })
               ]
             }),
-            screen === "members" ? /* @__PURE__ */ jsx(import_react_native24.Pressable, {
+            screen === "members" ? /* @__PURE__ */ jsx(import_react_native26.Pressable, {
               accessibilityRole: "button",
               accessibilityLabel: "Back",
               onPress: openMessages,
@@ -16121,7 +16496,7 @@
                 justifyContent: "center",
                 opacity: pressed ? 0.65 : 1
               }),
-              children: /* @__PURE__ */ jsx(import_react_native24.Text, {
+              children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                 style: {
                   color: nativeColors.text,
                   fontSize: 16,
@@ -16144,7 +16519,7 @@
             })
           ]
         }),
-        error ? /* @__PURE__ */ jsx(import_react_native24.View, {
+        error ? /* @__PURE__ */ jsx(import_react_native26.View, {
           style: {
             paddingHorizontal: 12,
             paddingVertical: 8
@@ -16164,10 +16539,10 @@
           },
           children: "Loading"
         }) : null,
-        /* @__PURE__ */ jsxs(import_react_native24.View, {
+        /* @__PURE__ */ jsxs(import_react_native26.View, {
           style: styles.navigator,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native24.View, {
+            /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: styles.guildRail,
               children: [
                 /* @__PURE__ */ jsx(PressableScale, {
@@ -16180,7 +16555,7 @@
                     onPress: openMessages
                   })
                 }),
-                /* @__PURE__ */ jsx(import_react_native24.FlatList, {
+                /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                   data: guilds,
                   keyExtractor: (g2) => g2.id,
                   showsVerticalScrollIndicator: false,
@@ -16189,12 +16564,12 @@
                     return /* @__PURE__ */ jsx(PressableScale, {
                       onPress: () => openGuild(item),
                       style: styles.guildButton,
-                      children: uri ? /* @__PURE__ */ jsx(import_react_native24.Image, {
+                      children: uri ? /* @__PURE__ */ jsx(import_react_native26.Image, {
                         source: {
                           uri
                         },
                         style: styles.guildImage
-                      }) : /* @__PURE__ */ jsx(import_react_native24.View, {
+                      }) : /* @__PURE__ */ jsx(import_react_native26.View, {
                         style: styles.guildImage,
                         children: /* @__PURE__ */ jsx(Text, {
                           variant: "text-sm/semibold",
@@ -16206,11 +16581,11 @@
                 })
               ]
             }),
-            /* @__PURE__ */ jsx(import_react_native24.View, {
+            /* @__PURE__ */ jsx(import_react_native26.View, {
               style: styles.sidebar,
               children: screen === "messages" ? /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native24.View, {
+                  /* @__PURE__ */ jsxs(import_react_native26.View, {
                     style: styles.sidebarHeader,
                     children: [
                       /* @__PURE__ */ jsx(Text, {
@@ -16228,7 +16603,7 @@
                       })
                     ]
                   }),
-                  /* @__PURE__ */ jsx(import_react_native24.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                     data: recentDMs,
                     keyExtractor: (dm) => dm.channelId,
                     renderItem: ({ item }) => /* @__PURE__ */ jsxs(PressableScale, {
@@ -16239,7 +16614,7 @@
                           user: item.recipient,
                           size: 36
                         }),
-                        /* @__PURE__ */ jsxs(import_react_native24.View, {
+                        /* @__PURE__ */ jsxs(import_react_native26.View, {
                           style: {
                             flex: 1
                           },
@@ -16258,7 +16633,7 @@
                         })
                       ]
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native24.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native26.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -16270,7 +16645,7 @@
                 ]
               }) : screen === "members" ? /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native24.View, {
+                  /* @__PURE__ */ jsxs(import_react_native26.View, {
                     style: styles.sidebarHeader,
                     children: [
                       /* @__PURE__ */ jsx(Button, {
@@ -16279,7 +16654,7 @@
                         text: "Back",
                         onPress: openMessages
                       }),
-                      /* @__PURE__ */ jsxs(import_react_native24.View, {
+                      /* @__PURE__ */ jsxs(import_react_native26.View, {
                         style: {
                           flex: 1
                         },
@@ -16297,7 +16672,7 @@
                       })
                     ]
                   }),
-                  /* @__PURE__ */ jsx(import_react_native24.View, {
+                  /* @__PURE__ */ jsx(import_react_native26.View, {
                     style: styles.search,
                     children: /* @__PURE__ */ jsx(TextInput, {
                       size: "md",
@@ -16306,7 +16681,7 @@
                       onChange: (value) => setMemberSearch(typeof value === "string" ? value : value?.nativeEvent?.text ?? "")
                     })
                   }),
-                  /* @__PURE__ */ jsx(import_react_native24.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                     data: filteredMembers,
                     keyExtractor: (member, i) => member.user?.id || String(i),
                     keyboardShouldPersistTaps: "handled",
@@ -16322,7 +16697,7 @@
                           user: item.user,
                           size: 36
                         }),
-                        /* @__PURE__ */ jsxs(import_react_native24.View, {
+                        /* @__PURE__ */ jsxs(import_react_native26.View, {
                           style: {
                             flex: 1
                           },
@@ -16346,7 +16721,7 @@
                         })
                       ]
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native24.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native26.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -16358,7 +16733,7 @@
                 ]
               }) : /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsx(import_react_native24.View, {
+                  /* @__PURE__ */ jsx(import_react_native26.View, {
                     style: styles.sidebarHeader,
                     children: /* @__PURE__ */ jsx(Text, {
                       variant: "heading-md/semibold",
@@ -16366,7 +16741,7 @@
                       children: guild?.name
                     })
                   }),
-                  /* @__PURE__ */ jsx(import_react_native24.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                     data: [
                       ...textChannels(null),
                       ...categories.flatMap((cat) => [
@@ -16392,7 +16767,7 @@
                         children: item.name
                       })
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native24.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native26.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -16411,12 +16786,12 @@
   }
   function BotCord() {
     var state2 = useBotCordState();
-    var [token, setToken] = (0, import_react8.useState)("");
-    var [adding, setAdding] = (0, import_react8.useState)(false);
-    var [error, setError] = (0, import_react8.useState)(null);
-    var [opened, setOpened] = (0, import_react8.useState)(false);
+    var [token, setToken] = (0, import_react10.useState)("");
+    var [adding, setAdding] = (0, import_react10.useState)(false);
+    var [error, setError] = (0, import_react10.useState)(null);
+    var [opened, setOpened] = (0, import_react10.useState)(false);
     var accounts = state2.accounts;
-    var active = (0, import_react8.useMemo)(() => accounts.find((a) => a.id === state2.activeAccountId) ?? accounts[0] ?? null, [
+    var active = (0, import_react10.useMemo)(() => accounts.find((a) => a.id === state2.activeAccountId) ?? accounts[0] ?? null, [
       accounts,
       state2.activeAccountId
     ]);
@@ -16426,7 +16801,7 @@
         activeId: active.id,
         onExit: () => setOpened(false)
       });
-    return /* @__PURE__ */ jsx(import_react_native24.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native26.ScrollView, {
       style: {
         flex: 1
       },
@@ -16440,7 +16815,7 @@
         },
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native24.View, {
+          /* @__PURE__ */ jsxs(import_react_native26.View, {
             children: [
               /* @__PURE__ */ jsx(Text, {
                 variant: "heading-xl/bold",
@@ -16484,7 +16859,7 @@
           /* @__PURE__ */ jsx(TableRowGroup, {
             title: "Add Bot Account",
             children: /* @__PURE__ */ jsx(TableRow, {
-              label: /* @__PURE__ */ jsxs(import_react_native24.View, {
+              label: /* @__PURE__ */ jsxs(import_react_native26.View, {
                 style: {
                   width: "100%",
                   gap: 10
@@ -16532,7 +16907,7 @@
       })
     });
   }
-  var import_react8, import_react_native24, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
+  var import_react10, import_react_native26, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -16548,8 +16923,8 @@
       init_metro();
       init_common();
       init_components();
-      import_react8 = __toESM(require_react());
-      import_react_native24 = __toESM(require_react_native());
+      import_react10 = __toESM(require_react());
+      import_react_native26 = __toESM(require_react_native());
       useStyles3 = createStyles({
         root: {
           flex: 1,
@@ -16662,11 +17037,11 @@
   // src/core/ui/settings/components/ScaledPluginSettings.tsx
   function ScaledPluginSettings({ component: Component }) {
     if (typeof Component !== "function") {
-      return /* @__PURE__ */ jsx(import_react_native25.View, {
+      return /* @__PURE__ */ jsx(import_react_native27.View, {
         style: {
           padding: 16
         },
-        children: /* @__PURE__ */ jsx(import_react_native25.Text, {
+        children: /* @__PURE__ */ jsx(import_react_native27.Text, {
           style: {
             color: "#ffffff"
           },
@@ -16674,7 +17049,7 @@
         })
       });
     }
-    return /* @__PURE__ */ jsx(import_react_native25.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native27.ScrollView, {
       style: {
         flex: 1
       },
@@ -16683,7 +17058,7 @@
         paddingHorizontal: 12
       },
       showsVerticalScrollIndicator: true,
-      children: /* @__PURE__ */ jsx(import_react_native25.View, {
+      children: /* @__PURE__ */ jsx(import_react_native27.View, {
         style: {
           width: "100%",
           paddingRight: 24,
@@ -16693,14 +17068,14 @@
       })
     });
   }
-  var import_react_native25;
+  var import_react_native27;
   var init_ScaledPluginSettings = __esm({
     "src/core/ui/settings/components/ScaledPluginSettings.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      import_react_native25 = __toESM(require_react_native());
+      import_react_native27 = __toESM(require_react_native());
     }
   });
 
@@ -16711,8 +17086,8 @@
   });
   function StoreCloud() {
     useProxy(VdPluginManager.plugins);
-    var [busy, setBusy] = (0, import_react9.useState)(false);
-    var [refresh, setRefresh] = (0, import_react9.useState)(0);
+    var [busy, setBusy] = (0, import_react11.useState)(false);
+    var [refresh, setRefresh] = (0, import_react11.useState)(0);
     var plugin = VdPluginManager.plugins[PLUGIN_URL];
     var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
     function installOrStart() {
@@ -16784,7 +17159,7 @@
         component: SettingsComponent
       }, `storecloud-settings-${refresh}`);
     }
-    return /* @__PURE__ */ jsx(import_react_native26.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native28.ScrollView, {
       style: {
         flex: 1
       },
@@ -16801,7 +17176,7 @@
           /* @__PURE__ */ jsxs(TableRowGroup, {
             title: "CloudSync",
             children: [
-              /* @__PURE__ */ jsxs(import_react_native26.View, {
+              /* @__PURE__ */ jsxs(import_react_native28.View, {
                 style: {
                   paddingHorizontal: 12,
                   paddingBottom: 12
@@ -16852,7 +17227,7 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsx(import_react_native26.View, {
+            children: /* @__PURE__ */ jsx(import_react_native28.View, {
               style: {
                 padding: 12
               },
@@ -16867,7 +17242,7 @@
       })
     });
   }
-  var import_react9, import_react_native26, PLUGIN_URL, STORECLOUD_ICON;
+  var import_react11, import_react_native28, PLUGIN_URL, STORECLOUD_ICON;
   var init_StoreCloud = __esm({
     "src/core/ui/settings/pages/StoreCloud/index.tsx"() {
       "use strict";
@@ -16881,8 +17256,8 @@
       init_assets();
       init_toasts();
       init_components();
-      import_react9 = __toESM(require_react());
-      import_react_native26 = __toESM(require_react_native());
+      import_react11 = __toESM(require_react());
+      import_react_native28 = __toESM(require_react_native());
       PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
       STORECLOUD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
     }
@@ -17722,9 +18097,9 @@
 
   // src/core/ui/components/AddonPage.tsx
   function InputAlert2(props) {
-    var [value, setValue] = (0, import_react10.useState)("");
-    var [error, setError] = (0, import_react10.useState)("");
-    var [isFetching, setIsFetching] = (0, import_react10.useState)(false);
+    var [value, setValue] = (0, import_react12.useState)("");
+    var [error, setError] = (0, import_react12.useState)("");
+    var [isFetching, setIsFetching] = (0, import_react12.useState)(false);
     function onConfirmWrapper() {
       setIsFetching(true);
       props.fetchFn(value).then(() => dismissAlert("AddonInputAlert")).catch((e) => e instanceof Error ? setError(e.message) : String(e)).finally(() => setIsFetching(false));
@@ -17751,7 +18126,7 @@
             state: error ? "error" : void 0,
             errorMessage: error || void 0
           }),
-          /* @__PURE__ */ jsx(import_react_native27.ScrollView, {
+          /* @__PURE__ */ jsx(import_react_native29.ScrollView, {
             horizontal: true,
             showsHorizontalScrollIndicator: false,
             style: {
@@ -17786,11 +18161,11 @@
     });
   }
   function AddonPage({ CardComponent, ...props }) {
-    var [search, setSearch] = (0, import_react10.useState)("");
+    var [search, setSearch] = (0, import_react12.useState)("");
     var [sortFn, setSortFn] = React.useState(() => null);
     var { bottom: bottomInset } = useSafeAreaInsets();
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react10.useEffect)(() => {
+    (0, import_react12.useEffect)(() => {
       if (props.OptionsActionSheetComponent) {
         navigation2.setOptions({
           headerRight: () => /* @__PURE__ */ jsx(IconButton, {
@@ -17804,7 +18179,7 @@
     }, [
       navigation2
     ]);
-    var results = (0, import_react10.useMemo)(() => {
+    var results = (0, import_react12.useMemo)(() => {
       var values = props.items;
       if (props.resolveItem)
         values = values.map(props.resolveItem).filter(isNotNil);
@@ -17820,7 +18195,7 @@
       sortFn,
       search
     ]);
-    var onInstallPress = (0, import_react10.useCallback)(() => {
+    var onInstallPress = (0, import_react12.useCallback)(() => {
       if (!props.installAction)
         return () => {
         };
@@ -17835,7 +18210,7 @@
       }
     }, []);
     if (results.length === 0 && !search) {
-      return /* @__PURE__ */ jsxs(import_react_native27.View, {
+      return /* @__PURE__ */ jsxs(import_react_native29.View, {
         style: {
           gap: 32,
           flexGrow: 1,
@@ -17843,13 +18218,13 @@
           alignItems: "center"
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native27.View, {
+          /* @__PURE__ */ jsxs(import_react_native29.View, {
             style: {
               gap: 8,
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native27.Image, {
+              /* @__PURE__ */ jsx(import_react_native29.Image, {
                 source: findAssetId("empty_quick_switcher")
               }),
               /* @__PURE__ */ jsx(Text, {
@@ -17868,12 +18243,12 @@
         ]
       });
     }
-    var headerElement = /* @__PURE__ */ jsxs(import_react_native27.View, {
+    var headerElement = /* @__PURE__ */ jsxs(import_react_native29.View, {
       style: {
         paddingBottom: 8
       },
       children: [
-        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native27.View, {
+        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native29.View, {
           style: {
             marginBottom: 10
           },
@@ -17885,7 +18260,7 @@
             props.safeModeHint?.footer
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native27.View, {
+        /* @__PURE__ */ jsxs(import_react_native29.View, {
           style: {
             flexDirection: "row",
             gap: 8
@@ -17926,14 +18301,14 @@
           extraData: search,
           estimatedItemSize: 136,
           ListHeaderComponent: headerElement,
-          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native27.View, {
+          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native29.View, {
             style: {
               gap: 12,
               padding: 12,
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native27.Image, {
+              /* @__PURE__ */ jsx(import_react_native29.Image, {
                 source: findAssetId("devices_not_found")
               }),
               /* @__PURE__ */ jsx(Text, {
@@ -17948,7 +18323,7 @@
             paddingHorizontal: 12,
             paddingBottom: 90
           },
-          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native27.View, {
+          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native29.View, {
             style: {
               height: 8
             }
@@ -17967,7 +18342,7 @@
       ]
     });
   }
-  var import_fuzzysort, import_react10, import_react_native27, showSimpleActionSheet2, hideActionSheet;
+  var import_fuzzysort, import_react12, import_react_native29, showSimpleActionSheet2, hideActionSheet;
   var init_AddonPage = __esm({
     "src/core/ui/components/AddonPage.tsx"() {
       "use strict";
@@ -17986,8 +18361,8 @@
       init_components2();
       init_dist();
       import_fuzzysort = __toESM(require_fuzzysort());
-      import_react10 = __toESM(require_react());
-      import_react_native27 = __toESM(require_react_native());
+      import_react12 = __toESM(require_react());
+      import_react_native29 = __toESM(require_react_native());
       ({ showSimpleActionSheet: showSimpleActionSheet2, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
     }
   });
@@ -18042,14 +18417,14 @@
       variant: "heading-lg/semibold",
       children: highlightedNode.length ? highlightedNode : plugin.name
     });
-    return /* @__PURE__ */ jsxs(import_react_native28.View, {
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         flexDirection: "row",
         alignItems: "center",
         gap: 6
       },
       children: [
-        icon && /* @__PURE__ */ jsx(import_react_native28.Image, {
+        icon && /* @__PURE__ */ jsx(import_react_native30.Image, {
           style: styles.smallIcon,
           source: icon
         }),
@@ -18070,7 +18445,7 @@
     }, i));
     var badges = plugin.getBadges();
     var authorText = highlightedNode.length > 0 ? highlightedNode : plugin.authors.map((a) => a.name).join(", ");
-    return /* @__PURE__ */ jsxs(import_react_native28.View, {
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -18086,9 +18461,9 @@
             authorText
           ]
         }),
-        badges.length > 0 && /* @__PURE__ */ jsx(import_react_native28.View, {
+        badges.length > 0 && /* @__PURE__ */ jsx(import_react_native30.View, {
           style: styles.badgesContainer,
-          children: badges.map((b3, i) => /* @__PURE__ */ jsx(import_react_native28.Image, {
+          children: badges.map((b3, i) => /* @__PURE__ */ jsx(import_react_native30.Image, {
             source: b3.source,
             style: styles.badgeIcon
           }, i))
@@ -18111,8 +18486,8 @@
   }
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
-    var [toggling, setToggling] = (0, import_react11.useState)(false);
-    var cardContextValue = (0, import_react11.useMemo)(() => ({
+    var [toggling, setToggling] = (0, import_react13.useState)(false);
+    var cardContextValue = (0, import_react13.useMemo)(() => ({
       plugin,
       result
     }), [
@@ -18126,13 +18501,13 @@
         children: /* @__PURE__ */ jsxs(Stack, {
           spacing: 16,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native28.View, {
+            /* @__PURE__ */ jsxs(import_react_native30.View, {
               style: {
                 flexDirection: "row",
                 justifyContent: "space-between"
               },
               children: [
-                /* @__PURE__ */ jsxs(import_react_native28.View, {
+                /* @__PURE__ */ jsxs(import_react_native30.View, {
                   style: {
                     flexShrink: 1
                   },
@@ -18141,13 +18516,13 @@
                     /* @__PURE__ */ jsx(Authors, {})
                   ]
                 }),
-                /* @__PURE__ */ jsx(import_react_native28.View, {
+                /* @__PURE__ */ jsx(import_react_native30.View, {
                   children: /* @__PURE__ */ jsxs(Stack, {
                     spacing: 12,
                     direction: "horizontal",
                     children: [
                       /* @__PURE__ */ jsx(Actions, {}),
-                      /* @__PURE__ */ jsx(import_react_native28.View, {
+                      /* @__PURE__ */ jsx(import_react_native30.View, {
                         style: core ? {
                           opacity: 0.5
                         } : void 0,
@@ -18179,7 +18554,7 @@
       })
     });
   }
-  var import_chroma_js3, import_react11, import_react_native28, CardContext, useCardContext, Actions;
+  var import_chroma_js3, import_react13, import_react_native30, CardContext, useCardContext, Actions;
   var init_PluginCard = __esm({
     "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"() {
       "use strict";
@@ -18194,15 +18569,15 @@
       init_components();
       init_sheets();
       import_chroma_js3 = __toESM(require_chroma_js());
-      import_react11 = __toESM(require_react());
-      import_react_native28 = __toESM(require_react_native());
+      import_react13 = __toESM(require_react());
+      import_react_native30 = __toESM(require_react_native());
       init_plugins4();
-      CardContext = /* @__PURE__ */ (0, import_react11.createContext)(null);
-      useCardContext = () => (0, import_react11.useContext)(CardContext);
+      CardContext = /* @__PURE__ */ (0, import_react13.createContext)(null);
+      useCardContext = () => (0, import_react13.useContext)(CardContext);
       Actions = () => {
         var { plugin } = useCardContext();
         var navigation2 = NavigationNative.useNavigation();
-        return /* @__PURE__ */ jsxs(import_react_native28.View, {
+        return /* @__PURE__ */ jsxs(import_react_native30.View, {
           style: {
             flexDirection: "row",
             gap: 6
@@ -18270,23 +18645,23 @@
         _loop2(author);
       authorTextNode.pop();
     }
-    return /* @__PURE__ */ jsxs(import_react_native29.View, {
+    return /* @__PURE__ */ jsxs(import_react_native31.View, {
       style: {
         gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native29.View, {
+        /* @__PURE__ */ jsx(import_react_native31.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
             children: plugin.name
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native29.View, {
+        /* @__PURE__ */ jsx(import_react_native31.View, {
           style: {
             flexDirection: "row",
             flexShrink: 1
           },
-          children: authors?.length && /* @__PURE__ */ jsxs(import_react_native29.View, {
+          children: authors?.length && /* @__PURE__ */ jsxs(import_react_native31.View, {
             style: {
               flexDirection: "row",
               gap: 8,
@@ -18316,7 +18691,7 @@
       ]
     });
   }
-  var import_react_native29, showUserProfileActionSheet, maybeFetchUser;
+  var import_react_native31, showUserProfileActionSheet, maybeFetchUser;
   var init_TitleComponent = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/TitleComponent.tsx"() {
       "use strict";
@@ -18328,7 +18703,7 @@
       init_common();
       init_components();
       init_stores();
-      import_react_native29 = __toESM(require_react_native());
+      import_react_native31 = __toESM(require_react_native());
       showUserProfileActionSheet = findByNameLazy("showUserProfileActionSheet");
       ({ getUser: maybeFetchUser } = lazyDestructure(() => findByProps("getUser", "fetchProfile")));
     }
@@ -18351,7 +18726,7 @@
   }
   function PluginInfoActionSheet({ plugin, navigation: navigation2 }) {
     plugin.usePluginState();
-    var [loading, setLoading] = (0, import_react12.useState)(false);
+    var [loading, setLoading] = (0, import_react14.useState)(false);
     var isVendettaPlugin = plugin.id.includes("/");
     var isCorePlugin2 = plugin.id.startsWith("bunny.") || plugin.id.startsWith("vendetta.");
     var copyPluginUrl = () => {
@@ -18447,13 +18822,13 @@
       });
     };
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native30.ScrollView, {
+      children: /* @__PURE__ */ jsxs(import_react_native32.ScrollView, {
         contentContainerStyle: {
           gap: 12,
           marginBottom: 12
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native30.View, {
+          /* @__PURE__ */ jsx(import_react_native32.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
@@ -18466,7 +18841,7 @@
               plugin
             })
           }),
-          /* @__PURE__ */ jsxs(import_react_native30.View, {
+          /* @__PURE__ */ jsxs(import_react_native32.View, {
             style: {
               flexDirection: "row",
               justifyContent: "center",
@@ -18538,7 +18913,7 @@
       })
     });
   }
-  var import_react12, import_react_native30;
+  var import_react14, import_react_native32;
   var init_PluginInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx"() {
       "use strict";
@@ -18555,8 +18930,8 @@
       init_storage();
       init_storage2();
       init_assets();
-      import_react12 = __toESM(require_react());
-      import_react_native30 = __toESM(require_react_native());
+      import_react14 = __toESM(require_react());
+      import_react_native32 = __toESM(require_react_native());
       init_TitleComponent();
       init_ScaledPluginSettings();
     }
@@ -18710,14 +19085,14 @@
         var unproxiedPlugins = Object.values(VdPluginManager.plugins).filter((p) => !p.id.startsWith(VD_PROXY_PREFIX) && !p.id.startsWith(BUNNY_PROXY_PREFIX));
         if (!unproxiedPlugins.length)
           return null;
-        return /* @__PURE__ */ jsx(import_react_native31.View, {
+        return /* @__PURE__ */ jsx(import_react_native33.View, {
           style: {
             marginVertical: 12,
             marginHorizontal: 10
           },
           children: /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native31.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native33.View, {
               style: {
                 flex: 1,
                 justifyContent: "center",
@@ -18725,7 +19100,7 @@
                 flexDirection: "row"
               },
               children: [
-                /* @__PURE__ */ jsxs(import_react_native31.View, {
+                /* @__PURE__ */ jsxs(import_react_native33.View, {
                   style: {
                     gap: 6,
                     flexShrink: 1
@@ -18742,7 +19117,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsx(import_react_native31.View, {
+                /* @__PURE__ */ jsx(import_react_native33.View, {
                   style: {
                     marginLeft: "auto"
                   },
@@ -18762,7 +19137,7 @@
                             contentContainerStyle: {
                               padding: 8
                             },
-                            ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native31.View, {
+                            ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native33.View, {
                               style: {
                                 height: 8
                               }
@@ -18833,7 +19208,7 @@
       }
     });
   }
-  var import_react_native31, openAlert2, AlertModal3, AlertActions2, AlertActionButton3;
+  var import_react_native33, openAlert2, AlertModal3, AlertActions2, AlertActionButton3;
   var init_Plugins = __esm({
     "src/core/ui/settings/pages/Plugins/index.tsx"() {
       "use strict";
@@ -18856,7 +19231,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react_native31 = __toESM(require_react_native());
+      import_react_native33 = __toESM(require_react_native());
       init_bunny();
       init_vendetta();
       ({ openAlert: openAlert2 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -19053,14 +19428,14 @@
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native32.View, {
+          /* @__PURE__ */ jsxs(import_react_native34.View, {
             style: {
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsxs(import_react_native32.View, {
+              /* @__PURE__ */ jsxs(import_react_native34.View, {
                 style: {
                   flexShrink: 1
                 },
@@ -19090,7 +19465,7 @@
                   })
                 ]
               }),
-              /* @__PURE__ */ jsx(import_react_native32.View, {
+              /* @__PURE__ */ jsx(import_react_native34.View, {
                 children: /* @__PURE__ */ jsx(TrailingButtons, {
                   addon,
                   isPluginMode,
@@ -19250,7 +19625,7 @@
       sort
     ]);
     if (error) {
-      return /* @__PURE__ */ jsx(import_react_native32.View, {
+      return /* @__PURE__ */ jsx(import_react_native34.View, {
         style: {
           flex: 1,
           paddingHorizontal: 8,
@@ -19287,24 +19662,24 @@
         })
       });
     }
-    return /* @__PURE__ */ jsxs(import_react_native32.View, {
+    return /* @__PURE__ */ jsxs(import_react_native34.View, {
       style: {
         flex: 1
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native32.View, {
+        /* @__PURE__ */ jsx(import_react_native34.View, {
           style: {
             paddingHorizontal: 10
           },
           children: /* @__PURE__ */ jsxs(Stack, {
             spacing: 12,
             children: [
-              /* @__PURE__ */ jsx(import_react_native32.View, {
+              /* @__PURE__ */ jsx(import_react_native34.View, {
                 style: {
                   flexDirection: "row",
                   paddingTop: 10
                 },
-                children: /* @__PURE__ */ jsxs(import_react_native32.View, {
+                children: /* @__PURE__ */ jsxs(import_react_native34.View, {
                   style: {
                     flex: 1,
                     flexDirection: "row",
@@ -19320,7 +19695,7 @@
                         flex: 1
                       }
                     }),
-                    /* @__PURE__ */ jsx(import_react_native32.View, {
+                    /* @__PURE__ */ jsx(import_react_native34.View, {
                       style: {
                         width: 8
                       }
@@ -19337,7 +19712,7 @@
                   ]
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native32.View, {
+              /* @__PURE__ */ jsxs(import_react_native34.View, {
                 style: {
                   flexDirection: "row",
                   alignItems: "center",
@@ -19353,7 +19728,7 @@
                       flex: 1
                     }
                   }),
-                  /* @__PURE__ */ jsx(import_react_native32.View, {
+                  /* @__PURE__ */ jsx(import_react_native34.View, {
                     style: {
                       flexDirection: "row",
                       alignItems: "center",
@@ -19393,21 +19768,21 @@
             paddingBottom: 90,
             paddingHorizontal: 5
           },
-          ListHeaderComponent: mode === "plugins" ? /* @__PURE__ */ jsx(import_react_native32.View, {
+          ListHeaderComponent: mode === "plugins" ? /* @__PURE__ */ jsx(import_react_native34.View, {
             style: {
               paddingVertical: 6,
               paddingHorizontal: 8
             },
             children: /* @__PURE__ */ jsx(Card, {
               border: "strong",
-              children: /* @__PURE__ */ jsx(import_react_native32.View, {
+              children: /* @__PURE__ */ jsx(import_react_native34.View, {
                 style: {
                   flex: 1,
                   justifyContent: "center",
                   alignItems: "center",
                   flexDirection: "row"
                 },
-                children: /* @__PURE__ */ jsxs(import_react_native32.View, {
+                children: /* @__PURE__ */ jsxs(import_react_native34.View, {
                   style: {
                     gap: 6,
                     flexShrink: 1
@@ -19428,7 +19803,7 @@
             })
           }) : null,
           //@ts-ignore
-          renderItem: ({ item: addon }) => /* @__PURE__ */ jsx(import_react_native32.View, {
+          renderItem: ({ item: addon }) => /* @__PURE__ */ jsx(import_react_native34.View, {
             style: {
               paddingVertical: 6,
               paddingHorizontal: 8
@@ -19445,7 +19820,7 @@
       ]
     });
   }
-  var import_react_native32, showSimpleActionSheet3, hideActionSheet2, PLUGIN_URL2, THEME_URL, Sort;
+  var import_react_native34, showSimpleActionSheet3, hideActionSheet2, PLUGIN_URL2, THEME_URL, Sort;
   var init_PluginBrowser = __esm({
     "src/core/ui/settings/pages/PluginBrowser/index.tsx"() {
       "use strict";
@@ -19454,7 +19829,7 @@
       init_async_to_generator();
       init_jsxRuntime();
       init_common();
-      import_react_native32 = __toESM(require_react_native());
+      import_react_native34 = __toESM(require_react_native());
       init_components();
       init_assets();
       init_safeFetch();
@@ -19492,13 +19867,13 @@
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native33.View, {
+          /* @__PURE__ */ jsxs(import_react_native35.View, {
             style: {
               flexDirection: "row",
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsxs(import_react_native33.View, {
+              /* @__PURE__ */ jsxs(import_react_native35.View, {
                 style: styles.headerLeading,
                 children: [
                   /* @__PURE__ */ jsx(Text, {
@@ -19511,7 +19886,7 @@
                   })
                 ]
               }),
-              /* @__PURE__ */ jsxs(import_react_native33.View, {
+              /* @__PURE__ */ jsxs(import_react_native35.View, {
                 style: [
                   styles.headerTrailing,
                   {
@@ -19519,7 +19894,7 @@
                   }
                 ],
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native33.View, {
+                  /* @__PURE__ */ jsxs(import_react_native35.View, {
                     style: styles.actions,
                     children: [
                       props.overflowActions && /* @__PURE__ */ jsx(IconButton, {
@@ -19556,7 +19931,7 @@
                   props.toggleType && (props.toggleType === "switch" ? /* @__PURE__ */ jsx(FormSwitch, {
                     value: props.toggleValue(),
                     onValueChange: props.onToggleChange
-                  }) : /* @__PURE__ */ jsx(import_react_native33.TouchableOpacity, {
+                  }) : /* @__PURE__ */ jsx(import_react_native35.TouchableOpacity, {
                     onPress: () => {
                       props.onToggleChange?.(!props.toggleValue());
                     },
@@ -19576,7 +19951,7 @@
       })
     });
   }
-  var import_react_native33, hideActionSheet3, showSimpleActionSheet4, useStyles4;
+  var import_react_native35, hideActionSheet3, showSimpleActionSheet4, useStyles4;
   var init_AddonCard = __esm({
     "src/core/ui/components/AddonCard.tsx"() {
       "use strict";
@@ -19589,7 +19964,7 @@
       init_wrappers();
       init_color();
       init_styles();
-      import_react_native33 = __toESM(require_react_native());
+      import_react_native35 = __toESM(require_react_native());
       ({ hideActionSheet: hideActionSheet3 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet4 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       useStyles4 = createStyles({
@@ -19663,23 +20038,23 @@
   }
   function TitleComponent2({ theme }) {
     var { authors } = theme.data;
-    return /* @__PURE__ */ jsxs(import_react_native34.View, {
+    return /* @__PURE__ */ jsxs(import_react_native36.View, {
       style: {
         gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native34.View, {
+        /* @__PURE__ */ jsx(import_react_native36.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
             children: theme.data.name
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native34.View, {
+        /* @__PURE__ */ jsx(import_react_native36.View, {
           style: {
             flexDirection: "row",
             flexShrink: 1
           },
-          children: authors && authors.length > 0 && /* @__PURE__ */ jsx(import_react_native34.TouchableOpacity, {
+          children: authors && authors.length > 0 && /* @__PURE__ */ jsx(import_react_native36.TouchableOpacity, {
             style: {
               flexDirection: "row",
               gap: 8,
@@ -19703,11 +20078,11 @@
     });
   }
   function ThemeInfoActionSheet({ theme, navigation: navigation2 }) {
-    var [themeState, setThemeState] = (0, import_react13.useState)({
+    var [themeState, setThemeState] = (0, import_react15.useState)({
       ...theme
     });
-    var [loading, setLoading] = (0, import_react13.useState)(false);
-    (0, import_react13.useEffect)(() => {
+    var [loading, setLoading] = (0, import_react15.useState)(false);
+    (0, import_react15.useEffect)(() => {
       var interval = setInterval(() => {
         setThemeState({
           ...theme
@@ -19771,13 +20146,13 @@
       }
     };
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native34.ScrollView, {
+      children: /* @__PURE__ */ jsxs(import_react_native36.ScrollView, {
         contentContainerStyle: {
           gap: 12,
           marginBottom: 12
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native34.View, {
+          /* @__PURE__ */ jsx(import_react_native36.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
@@ -19790,7 +20165,7 @@
               theme: themeState
             })
           }),
-          /* @__PURE__ */ jsxs(import_react_native34.View, {
+          /* @__PURE__ */ jsxs(import_react_native36.View, {
             style: {
               flexDirection: "row",
               justifyContent: "center",
@@ -19841,7 +20216,7 @@
       })
     });
   }
-  var import_react13, import_react_native34;
+  var import_react15, import_react_native36;
   var init_ThemeInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Themes/sheets/ThemeInfoActionSheet.tsx"() {
       "use strict";
@@ -19853,8 +20228,8 @@
       init_sheets();
       init_components();
       init_common();
-      import_react13 = __toESM(require_react());
-      import_react_native34 = __toESM(require_react_native());
+      import_react15 = __toESM(require_react());
+      import_react_native36 = __toESM(require_react_native());
       init_toasts();
       init_alerts();
       init_themes();
@@ -19964,7 +20339,7 @@
             /* @__PURE__ */ jsx(BottomSheetTitleHeader, {
               title: "Options"
             }),
-            /* @__PURE__ */ jsxs(import_react_native35.View, {
+            /* @__PURE__ */ jsxs(import_react_native37.View, {
               style: {
                 paddingVertical: 20,
                 gap: 12
@@ -20050,7 +20425,7 @@
       }
     });
   }
-  var import_react_native35;
+  var import_react_native37;
   var init_Themes = __esm({
     "src/core/ui/settings/pages/Themes/index.tsx"() {
       "use strict";
@@ -20068,7 +20443,7 @@
       init_settings();
       init_storage2();
       init_components();
-      import_react_native35 = __toESM(require_react_native());
+      import_react_native37 = __toESM(require_react_native());
     }
   });
 
@@ -20252,9 +20627,9 @@
   function RevengeFontsExtractor({ fonts: fonts2, setName }) {
     var currentTheme = getCurrentTheme().data;
     var themeFonts = currentTheme.fonts;
-    var [fontName, setFontName] = (0, import_react14.useState)(guessFontName(Object.values(themeFonts)));
-    var [error, setError] = (0, import_react14.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native36.View, {
+    var [fontName, setFontName] = (0, import_react16.useState)(guessFontName(Object.values(themeFonts)));
+    var [error, setError] = (0, import_react16.useState)(void 0);
+    return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -20304,10 +20679,10 @@
     });
   }
   function JsonFontImporter({ fonts: fonts2, setName, setSource }) {
-    var [fontLink, setFontLink] = (0, import_react14.useState)("");
-    var [saving, setSaving] = (0, import_react14.useState)(false);
-    var [error, setError] = (0, import_react14.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native36.View, {
+    var [fontLink, setFontLink] = (0, import_react16.useState)("");
+    var [saving, setSaving] = (0, import_react16.useState)(false);
+    var [error, setError] = (0, import_react16.useState)(void 0);
+    return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -20348,9 +20723,9 @@
     });
   }
   function EntryEditorActionSheet(props) {
-    var [familyName, setFamilyName] = (0, import_react14.useState)(props.name);
-    var [fontUrl, setFontUrl] = (0, import_react14.useState)(props.fontEntries[props.name]);
-    return /* @__PURE__ */ jsxs(import_react_native36.View, {
+    var [familyName, setFamilyName] = (0, import_react16.useState)(props.name);
+    var [fontUrl, setFontUrl] = (0, import_react16.useState)(props.fontEntries[props.name]);
+    return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -20404,18 +20779,18 @@
     }), "FontEditorActionSheet");
   }
   function NewEntryRow({ fontName, fontEntry }) {
-    var nameRef = (0, import_react14.useRef)();
-    var urlRef = (0, import_react14.useRef)();
-    var [nameSet, setNameSet] = (0, import_react14.useState)(false);
-    var [error, setError] = (0, import_react14.useState)();
-    return /* @__PURE__ */ jsxs(import_react_native36.View, {
+    var nameRef = (0, import_react16.useRef)();
+    var urlRef = (0, import_react16.useRef)();
+    var [nameSet, setNameSet] = (0, import_react16.useState)(false);
+    var [error, setError] = (0, import_react16.useState)();
+    return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         flexDirection: "row",
         gap: 8,
         justifyContent: "flex-start"
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native36.View, {
+        /* @__PURE__ */ jsx(import_react_native38.View, {
           style: {
             flex: 1
           },
@@ -20469,11 +20844,11 @@
     });
   }
   function FontEditor(props) {
-    var [name, setName] = (0, import_react14.useState)(props.name);
-    var [source, setSource] = (0, import_react14.useState)(props.name && fonts[props.name].source);
-    var [importing, setIsImporting] = (0, import_react14.useState)(false);
-    var [errors, setErrors] = (0, import_react14.useState)();
-    var memoEntry = (0, import_react14.useMemo)(() => {
+    var [name, setName] = (0, import_react16.useState)(props.name);
+    var [source, setSource] = (0, import_react16.useState)(props.name && fonts[props.name].source);
+    var [importing, setIsImporting] = (0, import_react16.useState)(false);
+    var [errors, setErrors] = (0, import_react16.useState)();
+    var memoEntry = (0, import_react16.useMemo)(() => {
       return createProxy(props.name ? {
         ...fonts[props.name].main
       } : {}).proxy;
@@ -20483,7 +20858,7 @@
     var fontEntries = useProxy(memoEntry);
     var navigation2 = NavigationNative.useNavigation();
     var [, forceUpdate] = React.useReducer(() => ({}), 0);
-    return /* @__PURE__ */ jsx(import_react_native36.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native38.ScrollView, {
       style: {
         flex: 1
       },
@@ -20614,7 +20989,7 @@
             color: "text-feedback-critical",
             children: "Some font entries cannot be imported. Please modify the entries and try again."
           }),
-          /* @__PURE__ */ jsx(import_react_native36.View, {
+          /* @__PURE__ */ jsx(import_react_native38.View, {
             style: {
               flexDirection: "row",
               justifyContent: "flex-end",
@@ -20657,7 +21032,7 @@
       })
     });
   }
-  var import_react14, import_react_native36, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
+  var import_react16, import_react_native38, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
   var init_FontEditor = __esm({
     "src/core/ui/settings/pages/Fonts/FontEditor.tsx"() {
       "use strict";
@@ -20676,8 +21051,8 @@
       init_components();
       init_wrappers();
       init_components2();
-      import_react14 = __toESM(require_react());
-      import_react_native36 = __toESM(require_react_native());
+      import_react16 = __toESM(require_react());
+      import_react_native38 = __toESM(require_react_native());
       actionSheet2 = findByPropsLazy("hideActionSheet");
       ({ openAlert: openAlert3 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
       ({ AlertModal: AlertModal4, AlertActionButton: AlertActionButton4 } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
@@ -20692,19 +21067,19 @@
     return /* @__PURE__ */ jsx(Card, {
       children: /* @__PURE__ */ jsx(Stack, {
         spacing: 16,
-        children: /* @__PURE__ */ jsxs(import_react_native37.View, {
+        children: /* @__PURE__ */ jsxs(import_react_native39.View, {
           style: {
             flexDirection: "row",
             alignItems: "center"
           },
           children: [
-            /* @__PURE__ */ jsx(import_react_native37.View, {
+            /* @__PURE__ */ jsx(import_react_native39.View, {
               children: /* @__PURE__ */ jsx(Text, {
                 variant: "heading-lg/semibold",
                 children: font.name
               })
             }),
-            /* @__PURE__ */ jsx(import_react_native37.View, {
+            /* @__PURE__ */ jsx(import_react_native39.View, {
               style: {
                 marginLeft: "auto"
               },
@@ -20750,7 +21125,7 @@
       })
     });
   }
-  var import_react_native37, useToken2;
+  var import_react_native39, useToken2;
   var init_FontCard = __esm({
     "src/core/ui/settings/pages/Fonts/FontCard.tsx"() {
       "use strict";
@@ -20768,7 +21143,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react_native37 = __toESM(require_react_native());
+      import_react_native39 = __toESM(require_react_native());
       init_FontEditor();
       ({ useToken: useToken2 } = lazyDestructure(() => findByProps("useToken")));
     }
@@ -20868,7 +21243,7 @@
       },
       {
         key: "FAKE_PROFILE",
-        title: () => "Fakeprofile",
+        title: () => "Profile",
         icon: safeAsset("UserIcon", "SettingsIcon"),
         render: () => Promise.resolve().then(() => (init_FakeProfile(), FakeProfile_exports))
       },
@@ -20907,7 +21282,13 @@
         usePredicate: () => isFontSupported()
       },
       {
-        key: "BUNNY_DEVELOPER",
+        key: "CLOUDCORD_RECOVERY",
+        title: () => "Recovery Studio",
+        icon: safeAsset("WrenchIcon", "SettingsIcon"),
+        render: () => Promise.resolve().then(() => (init_Recovery(), Recovery_exports))
+      },
+      {
+        key: "CLOUDCORD_DIAGNOSTICS",
         title: () => "Diagnostics",
         icon: safeAsset("WrenchIcon", "SettingsIcon"),
         render: () => Promise.resolve().then(() => (init_Diagnostics(), Diagnostics_exports)),
@@ -20922,7 +21303,8 @@
       "BUNNY_PLUGINS",
       "BUNNY_THEMES",
       "BUNNY_FONTS",
-      "CLOUDCORD_PLUGIN_BROWSER"
+      "CLOUDCORD_PLUGIN_BROWSER",
+      "CLOUDCORD_RECOVERY"
     ];
     var configurableKeys = new Set(defaultOrder.filter((key) => key !== "CLOUDCORD"));
     var configuredOrder = settings.cloudcordTabOrder ?? [];
@@ -21004,7 +21386,7 @@
   });
 
   // src/core/vendetta/api.tsx
-  var import_react15, import_react_native38, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react17, import_react_native40, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -21034,14 +21416,14 @@
       init_styles();
       init_toasts();
       init_dist();
-      import_react15 = __toESM(require_react());
-      import_react_native38 = __toESM(require_react_native());
+      import_react17 = __toESM(require_react());
+      import_react_native40 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
       CompatRow = TableRow ?? Forms.FormRow ?? ReactNative.View;
       CompatSwitchRow = TableSwitchRow ?? Forms.FormSwitchRow ?? CompatRow;
       CompatSection = TableRowGroup ?? Forms.FormSection ?? ReactNative.View;
-      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatRow, {
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -21052,7 +21434,7 @@
       });
       PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow?.Icon ?? (() => null);
       PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow?.Arrow ?? (() => null);
-      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatSwitchRow, {
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatSwitchRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -21060,7 +21442,7 @@
         onValueChange: props.onValueChange,
         disabled: props.disabled
       });
-      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react15.createElement)(CompatSection, {
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatSection, {
         title: props.title,
         ...props
       }, props.children);
@@ -21099,8 +21481,8 @@
                     ...module,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
-                      (0, import_react15.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react15.createElement)(import_react_native38.View, null, children);
+                      (0, import_react17.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
+                      return /* @__PURE__ */ (0, import_react17.createElement)(import_react_native40.View, null, children);
                     }
                   };
                 }
@@ -21287,7 +21669,7 @@
   // src/lib/api/native/legacyRuntimeRefresh.ts
   function invokeLegacyReload() {
     return _async_to_generator(function* () {
-      var reader = import_react_native39.NativeModules.FileReaderModule ?? import_react_native39.NativeModules.RCTFileReaderModule;
+      var reader = import_react_native41.NativeModules.FileReaderModule ?? import_react_native41.NativeModules.RCTFileReaderModule;
       if (typeof reader?.readAsDataURL !== "function")
         return false;
       yield reader.readAsDataURL({
@@ -21324,7 +21706,7 @@
       }
     })();
   }
-  var import_react_native39, CURRENT_RUNTIME_URL;
+  var import_react_native41, CURRENT_RUNTIME_URL;
   var init_legacyRuntimeRefresh = __esm({
     "src/lib/api/native/legacyRuntimeRefresh.ts"() {
       "use strict";
@@ -21333,7 +21715,7 @@
       init_async_to_generator();
       init_storage();
       init_settings();
-      import_react_native39 = __toESM(require_react_native());
+      import_react_native41 = __toESM(require_react_native());
       CURRENT_RUNTIME_URL = "https://getcloudcord.com/api/proxy/raw/dist/cc.js";
     }
   });
@@ -21478,8 +21860,12 @@
       init_lib();
       src_default = () => _async_to_generator(function* () {
         if (globalThis.__CLOUDCORD_ORIGINAL_RAIN__) {
-          var updater = (init_modules(), __toCommonJS(modules_exports)).BundleUpdaterManager;
-          void updater.checkForUpdates().catch((error) => console.warn("CloudCord update check failed", error));
+          var prefs = (init_settings(), __toCommonJS(settings_exports)).settings;
+          void (init_storage(), __toCommonJS(storage_exports)).awaitStorage(prefs).then(() => {
+            if (prefs.cloudcordAutoUpdate === false)
+              return;
+            return (init_modules(), __toCommonJS(modules_exports)).BundleUpdaterManager.checkForUpdates();
+          }).catch((error) => console.warn("CloudCord update check failed", error));
         }
         if (!globalThis.__CLOUDCORD_BRIDGELESS__)
           yield initLegacyRuntimeRefresh();
