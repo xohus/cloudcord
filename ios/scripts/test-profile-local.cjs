@@ -1,0 +1,26 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const esbuild = require(process.env.CLOUDCORD_ESBUILD || 'esbuild');
+const w = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
+const page = w.split("cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'")[1].split('\n          TSX')[0].replace(/^          /gm, '');
+esbuild.transformSync(page, { loader: 'tsx' });
+for (const file of ['components/LocalProfiles.tsx', 'pages/Recovery/index.tsx', 'components/CustomBadgeBeta.tsx']) {
+    esbuild.transformSync(fs.readFileSync('ios/runtime/src/core/ui/settings/' + file, 'utf8'), { loader: 'tsx' });
+}
+const shared = { username: 'original', bio: 'original bio', badgeFlags: 2 };
+const overrides = { '123456789012345': { username: 'local', bio: '', badgeFlags: 0, __localOnly: true } };
+const context = vm.createContext({ settings: { cloudcordLocalProfiles: overrides }, sharedProfiles: new Map([['123456789012345', shared]]) });
+const helper = page.slice(page.indexOf('function getProfileOverride('), page.indexOf('function refreshSharedProfiles('));
+vm.runInContext(esbuild.transformSync(helper, { loader: 'ts' }).code, context);
+const result = context.getProfileOverride('123456789012345');
+assert.equal(result.username, 'local');
+assert.equal(result.bio, '');
+assert.equal(result.badgeFlags, 0);
+assert.equal(result.__localBadges, true);
+assert.equal(shared.username, 'original');
+delete overrides['123456789012345'];
+assert.equal(context.getProfileOverride('123456789012345'), shared);
+const editor = fs.readFileSync('ios/runtime/src/core/ui/settings/components/LocalProfiles.tsx', 'utf8');
+assert.doesNotMatch(editor, /fetch\(|publishSharedProfile|queueSharedPublish/);
+console.log('local overrides preserve original data, support empty bio/zero badges, restore cleanly, and have no publishing path; UI syntax passed');

@@ -87,7 +87,13 @@ export default function initSettings() {
                 usePredicate: () => isFontSupported()
             },
             {
-                key: "BUNNY_DEVELOPER",
+                key: "CLOUDCORD_RECOVERY",
+                title: () => "Recovery Studio",
+                icon: safeAsset("WrenchIcon", "SettingsIcon"),
+                render: () => import("@core/ui/settings/pages/Recovery")
+            },
+            {
+                key: "CLOUDCORD_DIAGNOSTICS",
                 title: () => "Diagnostics",
                 icon: safeAsset("WrenchIcon", "SettingsIcon"),
                 render: () => import("@core/ui/settings/pages/Diagnostics"),
@@ -95,7 +101,7 @@ export default function initSettings() {
             }
         ];
 
-    const defaultOrder = ["CLOUDCORD", "BOTCORD", "FAKE_PROFILE", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_PLUGIN_BROWSER"];
+    const defaultOrder = ["CLOUDCORD", "BOTCORD", "FAKE_PROFILE", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_PLUGIN_BROWSER", "CLOUDCORD_RECOVERY"];
     const configurableKeys = new Set(defaultOrder.filter(key => key !== "CLOUDCORD"));
     const configuredOrder = settings.cloudcordTabOrder ?? [];
     const orderIndex = new Map(configuredOrder.map((key, index) => [key, index]));

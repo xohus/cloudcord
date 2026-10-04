@@ -65,6 +65,17 @@ export default function General() {
                 </TableRowGroup>
                 <TableRowGroup title={Strings.ACTIONS}>
                     <TableSwitchRow
+                        label="Auto-update"
+                        subLabel="Download runtime updates in the background. Apply them next time Discord opens."
+                        value={(settings as any).cloudcordAutoUpdate !== false}
+                        onValueChange={(value: boolean) => (settings as any).cloudcordAutoUpdate = value}
+                    />
+                    <TableRow arrow label="Recovery Studio" subLabel="Runtime updates, safe mode, and local resets"
+                        onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Recovery Studio", render: () => {
+                            const Recovery = require("@core/ui/settings/pages/Recovery").default;
+                            return <Recovery />;
+                        } })} />
+                    <TableSwitchRow
                         label="Diagnostics"
                         subLabel="Show CloudCord diagnostics and version controls"
                         icon={<TableRow.Icon source={findAssetId("WrenchIcon")!} />}

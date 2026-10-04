@@ -7,7 +7,7 @@ import { ScrollView } from "react-native";
 
 const tabs = [
     ["BOTCORD", "Botcord"],
-    ["FAKE_PROFILE", "Fakeprofile"],
+    ["FAKE_PROFILE", "Profile"],
     ["STORE_CLOUD", "Cloudsync"],
     ["BUNNY_PLUGINS", "Plugins"],
     ["BUNNY_THEMES", "Themes"],

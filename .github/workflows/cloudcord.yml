@@ -75,11 +75,13 @@ jobs:
           mkdir -p src/core/ui/settings/components
           cp "../ios/runtime/src/core/ui/settings/components/FakeProfileGlass.tsx" "src/core/ui/settings/components/FakeProfileGlass.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/CustomBadgeBeta.tsx" "src/core/ui/settings/components/CustomBadgeBeta.tsx"
+          cp "../ios/runtime/src/core/ui/settings/components/LocalProfiles.tsx" "src/core/ui/settings/components/LocalProfiles.tsx"
+          mkdir -p src/core/ui/settings/pages/Recovery
+          cp "../ios/runtime/src/core/ui/settings/pages/Recovery/index.tsx" "src/core/ui/settings/pages/Recovery/index.tsx"
           mkdir -p src/core/ui/settings/pages/Themes
           mkdir -p src/core/ui/botcord
           mkdir -p src/core/ui/settings/components
           mkdir -p src/lib/api
-          cp "../ios/assets/fakeprofile-icon.png" "src/assets/icons/fakeprofile.png"
           cp "../ios/runtime/src/core/ui/settings/pages/BotCord/index.tsx" "src/core/ui/settings/pages/BotCord/index.tsx"
           cp "../ios/runtime/src/core/ui/botcord/FloatingSwitcher.tsx" "src/core/ui/botcord/FloatingSwitcher.tsx"
           cp "../ios/runtime/src/core/ui/settings/pages/Diagnostics/index.tsx" "src/core/ui/settings/pages/Diagnostics/index.tsx"
@@ -306,8 +308,13 @@ jobs:
           function Card(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassCard; return <Component {...props} />; }
           function GlassButton(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassButton; return <Component {...props} />; }
           function ProfileTabs(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").ProfileTabs; return <Component {...props} />; }
+          function ProfileGlyph() {
+              let icon: any;
+              try { icon = require("@lib/api/assets").findAssetId("UserIcon"); } catch {}
+              return icon ? <Image source={icon} style={{ width: 30, height: 30, tintColor: "#bdc8ff" }} /> : <Text style={{ color: "#bdc8ff", fontSize: 24 }}>◎</Text>;
+          }
+          function LocalProfiles(props: any) { const Component = require("@core/ui/settings/components/LocalProfiles").default; return <Component {...props} />; }
           function CustomBadgeBeta() { const Component = require("@core/ui/settings/components/CustomBadgeBeta").default; return <Component />; }
-          import FakeProfileIcon from "@assets/icons/fakeprofile.png";
           import bundledDecorationCatalog from "@assets/cloudcord-decorations.json";
           import { awaitStorage, useProxy } from "@core/vendetta/storage";
           import { after, instead } from "@lib/api/patcher";
@@ -623,7 +630,7 @@ jobs:
           }
 
           function shouldReplaceSharedBadges(data: any) {
-              return remoteReplaceBadges(data) && remoteHasFakeBadges(data);
+              return data?.__localBadges === true || remoteReplaceBadges(data) && remoteHasFakeBadges(data);
           }
 
           async function shareableMedia(key: "avatarMedia" | "bannerMedia") {
@@ -812,6 +819,13 @@ jobs:
                   })
                   .catch(() => {})
                   .finally(() => sharedRequests.delete(id));
+          }
+
+          function getProfileOverride(id: string) {
+              const local = (settings as any).cloudcordLocalProfiles?.[id];
+              const shared = sharedProfiles.get(id);
+              if (!local) return shared;
+              return { ...(shared || {}), ...local, __localBadges: Object.prototype.hasOwnProperty.call(local, "badgeFlags") || Object.prototype.hasOwnProperty.call(local, "customBadgeIds") };
           }
 
           function refreshSharedProfiles() {
@@ -1198,7 +1212,7 @@ jobs:
               if (!isCurrentUser(userId)) {
                   const id = String(userId || "");
                   requestSharedProfile(id);
-                  const shared = sharedProfiles.get(id);
+                  const shared = getProfileOverride(id);
                   return shared && Object.keys(shared).length ? decorateSharedProfile(original, id, shared) : original;
               }
               if (!preview.enabled) return original;
@@ -1247,7 +1261,7 @@ jobs:
                       const id = String(user?.userId || user?.id || user?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || "");
                       if (!isCurrentUser(id)) {
                           requestSharedProfile(id);
-                          const data = sharedProfiles.get(id);
+                          const data = getProfileOverride(id);
                           const staffBadge = cloudCordStaffBadge(id);
                           if (!data && !staffBadge) return;
                           const ordered: any[] = [];
@@ -1373,7 +1387,7 @@ jobs:
                           if (!id) return;
                           if (!isCurrentUser(id)) {
                               requestSharedProfile(id);
-                              const data = sharedProfiles.get(id);
+                              const data = getProfileOverride(id);
                               if (!data?.avatar) return;
                               props.source = { uri: data.avatar };
                               props.avatarSource = { uri: data.avatar };
@@ -1406,7 +1420,7 @@ jobs:
                           if (!id) return;
                           if (!isCurrentUser(id)) {
                               requestSharedProfile(id);
-                              const data = sharedProfiles.get(id);
+                              const data = getProfileOverride(id);
                               if (!data?.banner) return;
                               props.source = { uri: data.banner };
                               props.bannerSource = { uri: data.banner };
@@ -1474,7 +1488,7 @@ jobs:
                               return;
                           }
                           requestSharedProfile(id);
-                          const data = sharedProfiles.get(id);
+                          const data = getProfileOverride(id);
                           if (!data || !Object.keys(data).length) return;
                           applyIdentity(props, id, data);
                       });
@@ -1514,7 +1528,7 @@ jobs:
                   const id = String(args?.[0]?.id || args?.[0]?.userId || args?.[0] || "");
                   if (isCurrentUser(id)) return decorateProfileResult(result, id);
                   requestSharedProfile(id);
-                  const shared = sharedProfiles.get(id);
+                  const shared = getProfileOverride(id);
                   return shared && Object.keys(shared).length ? decorateSharedProfile(result, id, shared) : result;
               });
               // Do not wrap getGuildMemberProfile. Discord 331's iPad channel
@@ -1539,7 +1553,7 @@ jobs:
                       const id = profileResultUserId(subject, result);
                       if (isCurrentUser(id)) return preview.enabled ? cloneObject(result, "profile") : result;
                       requestSharedProfile(id);
-                      const shared = sharedProfiles.get(id);
+                      const shared = getProfileOverride(id);
                       return shared && Object.keys(shared).length ? decorateSharedProfile(result, id, shared) : result;
                   });
                   diagnostics.patches += 1;
@@ -2020,9 +2034,9 @@ jobs:
                   <ScrollView style={{ flex: 1, width: "100%", backgroundColor: "#111521" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 20, paddingBottom: 110 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator={false}>
                       <View style={{ width: "100%", gap: 16 }}>
                           <View style={{ width: "100%", flexDirection: "row", alignItems: "center", gap: 12 }}>
-                              <View style={{ width: 52, height: 52, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", backgroundColor: "rgba(101,117,239,0.16)", alignItems: "center", justifyContent: "center" }}><Image source={{ uri: FakeProfileIcon }} style={{ width: 34, height: 34, resizeMode: "contain" }} /></View>
+                              <View style={{ width: 52, height: 52, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", backgroundColor: "rgba(101,117,239,0.16)", alignItems: "center", justifyContent: "center" }}><ProfileGlyph /></View>
                               <View style={{ flex: 1, minWidth: 0 }}>
-                                  <Text variant="heading-lg/semibold" color="text-normal">FakeProfile</Text>
+                                  <Text variant="heading-lg/semibold" color="text-normal">Profile</Text>
                                   <Text variant="text-sm/medium" style={{ color: "#aeb8d2" }}>make it yours. visible to other CloudCord users when synced.</Text>
                               </View>
                           </View>
@@ -2043,6 +2057,7 @@ jobs:
                           </Card>
 
                           <ProfileTabs selected={activeTab} onSelect={setActiveTab} />
+                          {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
                           {activeTab === "profile" ? <Card border="strong">
                               <View style={{ padding: 14, gap: 14 }}>
@@ -2117,7 +2132,7 @@ jobs:
                                   <Text variant="heading-md/semibold" style={{ color: "#bdc8ff" }}>your badges</Text>
                                   <ToggleRow
                                       label="Replace real badges"
-                                      subLabel="Selected fake badges replace your real Discord badges for CloudCord users"
+                                      subLabel="Selected badges replace your real badges for CloudCord users"
                                       value={preview.replaceBadges}
                                       onPress={() => update("replaceBadges", !preview.replaceBadges, true)}
                                   />
@@ -2276,8 +2291,6 @@ jobs:
           if settings_index.exists():
               text = settings_index.read_text(encoding="utf-8", errors="ignore")
 
-              if 'import FakeProfileIcon from "@assets/icons/fakeprofile.png";' not in text:
-                  text = 'import FakeProfileIcon from "@assets/icons/fakeprofile.png";\n' + text
 
               text = text.replace(
                   'icon: { uri: PupuIcon },',
@@ -2306,7 +2319,7 @@ jobs:
 
               fake_profile_item = f'''            {{
                   key: "FAKE_PROFILE",
-                  title: () => "Fakeprofile",
+                  title: () => "Profile",
                   icon: safeAsset("UserIcon", "SettingsIcon"),
                   render: () => import("@core/ui/settings/pages/FakeProfile")
               }},'''

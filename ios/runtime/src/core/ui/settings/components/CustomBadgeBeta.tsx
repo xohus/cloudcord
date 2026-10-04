@@ -8,7 +8,7 @@ const API = "https://getcloudcord.com";
 export default function CustomBadgeBeta() {
     const [name, setName] = useState("");
     const [png, setPng] = useState("");
-    const [message, setMessage] = useState("beta — AI-approved badges go live, then admins can keep or remove them.");
+    const [message, setMessage] = useState("beta — approved badges appear on your profile.");
     const [busy, setBusy] = useState(false);
     const [state, setState] = useState<string | null>(null);
     const [verified, setVerified] = useState(Boolean((settings as any).customBadgeDeviceToken));
@@ -33,12 +33,14 @@ export default function CustomBadgeBeta() {
         }, 3000);
         return () => { alive = false; clearInterval(timer); };
     }, [state]);
-    const verify = () => Alert.alert("custom badges beta", "verify your Discord account and accept the CloudCord terms. your name and PNG are sent to OpenAI for safety checks. AI-approved badges publish immediately, then CloudCord admins review and can remove them.", [
+    const verify = () => Alert.alert("Custom badges", "Sign in with Discord to add badges to your profile. Uploads are checked automatically and may be removed by the team. See our terms for review and privacy details.", [
         { text: "cancel", style: "cancel" },
         { text: "view terms", onPress: () => Linking.openURL(`${API}/tos`) },
+        { text: "privacy", onPress: () => Linking.openURL(`${API}/privacy`) },
         { text: "accept & verify", onPress: async () => {
             try {
                 const config = await (await fetch(`${API}/api/cloudcord/onboarding/config`)).json();
+                if (!config.enabled || config.oauth2Off) throw new Error("Sign-in is unavailable right now. Try again later.");
                 const r = await fetch(`${API}/api/cloudcord/onboarding/start`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accepted: true, termsVersion: config.termsVersion }) });
                 const result = await r.json();
                 if (!r.ok || !result.state || !result.authorizeUrl) throw new Error(result.error || "verification unavailable");
@@ -57,7 +59,7 @@ export default function CustomBadgeBeta() {
             if (!files?.readFile) throw new Error("PNG reader unavailable on this Discord build");
             const data = await files.readFile((asset.fileCopyUri || asset.uri).replace(/^file:\/\//, ""), "base64");
             if (data.length > 700000) throw new Error("PNG must be under 512 KB");
-            setPng(data); setMessage("PNG selected — ready for the AI safety check");
+            setPng(data); setMessage("PNG selected — ready to upload");
         } catch (e: any) { setMessage(e.message || "could not read PNG"); }
     };
     const submit = async () => {
@@ -79,7 +81,7 @@ export default function CustomBadgeBeta() {
             <TextInput accessibilityLabel="Custom badge name" value={name} onChangeText={setName} maxLength={40} placeholder="badge name" placeholderTextColor="#9faac4" style={{ color: "white", minHeight: 50, padding: 14, backgroundColor: "rgba(15,19,32,0.55)", borderWidth: 1, borderColor: "rgba(190,202,255,0.16)", borderRadius: 16 }} />
             {png ? <Image source={{ uri: `data:image/png;base64,${png}` }} style={{ width: 48, height: 48 }} /> : null}
             {button("choose PNG", pick, busy)}
-            {button(busy ? "checking with AI…" : "submit badge", submit, busy || !png || !name.trim())}
+            {button(busy ? "uploading…" : "Add badge", submit, busy || !png || !name.trim())}
         </>}
         <Text accessibilityLiveRegion="polite" style={{ color: "#b5bac1" }}>{message}</Text>
     </View>;
