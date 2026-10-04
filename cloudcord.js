@@ -9264,6 +9264,13 @@
   }
   function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }) {
     var [draft, setDraft] = (0, import_react3.useState)(defaultValue ?? "");
+    var change = (event) => {
+      var next = typeof event === "string" ? event : event?.nativeEvent?.text ?? event?.text ?? event?.value;
+      if (typeof next !== "string")
+        return;
+      setDraft(next);
+      onChangeText?.(next);
+    };
     return /* @__PURE__ */ jsx(import_react_native15.View, {
       style: {
         borderRadius: 12,
@@ -9274,11 +9281,8 @@
         ...props,
         size: "lg",
         value: value ?? draft,
-        onChange: (event) => {
-          var next = typeof event === "string" ? event : event?.nativeEvent?.text ?? "";
-          setDraft(next);
-          onChangeText?.(next);
-        }
+        onChange: change,
+        onChangeText: change
       })
     });
   }
@@ -9831,6 +9835,21 @@
       var saved = rootSettings.fakeProfileShare || {};
       var path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
       var profileSnapshot = yield ownSharedProfile();
+      var latestResponse = yield fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`, {
+        cache: "no-store"
+      });
+      if (latestResponse.ok) {
+        var latest = yield latestResponse.json();
+        profileSnapshot.syncRevision = Math.max(Date.now(), Number(profileSnapshot.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
+        preview.syncRevision = profileSnapshot.syncRevision;
+        rootSettings.fakeProfile = {
+          ...preview,
+          selectedBadges: {
+            ...preview.selectedBadges || {}
+          }
+        };
+        preview = rootSettings.fakeProfile;
+      }
       var clearSnapshot = {
         ...rootSettings.fakeProfileMediaCleared || {}
       };
@@ -9859,8 +9878,7 @@
           return;
         }
         if (response.status === 409) {
-          yield pullOwnSharedProfile();
-          return;
+          throw new Error("Your shared profile changed. Try saving again.");
         }
         if (saved.id && (response.status === 401 || response.status === 404)) {
           delete rootSettings.fakeProfileShare;
@@ -10744,7 +10762,7 @@
     return args.some((value) => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
   }
   function renderedUserId(props) {
-    return props?.userId || props?.user?.id || props?.userProfile?.userId || props?.userProfile?.user?.id || props?.guildMemberProfile?.userId || props?.guildMemberProfile?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
+    return props?.userId || props?.profileUserId || props?.user?.userId || props?.user?.id || props?.userProfile?.userId || props?.userProfile?.user?.id || props?.guildMemberProfile?.userId || props?.guildMemberProfile?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
   }
   function connectMediaRenderer() {
     var avatarComponents = [
@@ -10856,7 +10874,11 @@
       "UserProfileName",
       "ProfileUsername",
       "UserTagAndPronouns",
-      "UserTag"
+      "UserTag",
+      "UserProfileUsername",
+      "UserProfileDisplayName",
+      "ProfileHeaderUserInfo",
+      "UserProfileHeaderInfo"
     ];
     var applyIdentity = (props, id, data) => {
       if (!props || !data)
@@ -11431,7 +11453,16 @@
       };
     }, []);
     var update = (key, value, refresh = false) => {
-      preview[key] = value;
+      rootSettings.fakeProfile = {
+        ...preview,
+        [key]: value,
+        syncRevision: Date.now(),
+        selectedBadges: {
+          ...preview.selectedBadges || {}
+        }
+      };
+      preview = rootSettings.fakeProfile;
+      queueSharedPublish();
       clearCache();
       if (refresh)
         refreshPreview();
