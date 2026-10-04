@@ -9427,20 +9427,34 @@
   }
   function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }) {
     var [draft, setDraft] = (0, import_react4.useState)(defaultValue ?? "");
-    return /* @__PURE__ */ jsx(TextInput, {
-      ...props,
-      size: "lg",
-      value: value ?? draft,
-      onChange: (event) => {
-        var next = typeof event === "string" ? event : event?.nativeEvent?.text ?? "";
-        setDraft(next);
-        onChangeText?.(next);
-      }
+    return /* @__PURE__ */ jsx(import_react_native16.View, {
+      style: {
+        borderRadius: 12,
+        overflow: "hidden",
+        width: "100%"
+      },
+      children: /* @__PURE__ */ jsx(TextInput, {
+        ...props,
+        size: "lg",
+        value: value ?? draft,
+        onChange: (event) => {
+          var next = typeof event === "string" ? event : event?.nativeEvent?.text ?? "";
+          setDraft(next);
+          onChangeText?.(next);
+        }
+      })
     });
   }
   function GlassCard({ children }) {
-    return /* @__PURE__ */ jsx(TableRowGroup, {
-      children
+    return /* @__PURE__ */ jsx(import_react_native16.View, {
+      style: {
+        borderRadius: 16,
+        overflow: "hidden",
+        width: "100%"
+      },
+      children: /* @__PURE__ */ jsx(Card, {
+        children
+      })
     });
   }
   function GlassButton({ label, onPress, muted = false, disabled = false }) {
@@ -11561,344 +11575,68 @@
       onPress
     });
   }
-  function hsvToHex(hue, saturation, brightness) {
-    var s = saturation / 100;
-    var v2 = brightness / 100;
-    var chroma4 = v2 * s;
-    var x2 = chroma4 * (1 - Math.abs(hue / 60 % 2 - 1));
-    var match = v2 - chroma4;
-    var [r, g2, b3] = hue < 60 ? [
-      chroma4,
-      x2,
-      0
-    ] : hue < 120 ? [
-      x2,
-      chroma4,
-      0
-    ] : hue < 180 ? [
-      0,
-      chroma4,
-      x2
-    ] : hue < 240 ? [
-      0,
-      x2,
-      chroma4
-    ] : hue < 300 ? [
-      x2,
-      0,
-      chroma4
-    ] : [
-      chroma4,
-      0,
-      x2
-    ];
-    return `#${[
-      r,
-      g2,
-      b3
-    ].map((channel) => Math.round((channel + match) * 255).toString(16).padStart(2, "0")).join("").toUpperCase()}`;
-  }
-  function hexToHsv(value) {
-    var number = colorNumber(value) ?? 5793266;
-    var r = (number >> 16 & 255) / 255;
-    var g2 = (number >> 8 & 255) / 255;
-    var b3 = (number & 255) / 255;
-    var max = Math.max(r, g2, b3), min = Math.min(r, g2, b3), delta = max - min;
-    var hue = 0;
-    if (delta)
-      hue = max === r ? 60 * ((g2 - b3) / delta % 6) : max === g2 ? 60 * ((b3 - r) / delta + 2) : 60 * ((r - g2) / delta + 4);
-    if (hue < 0)
-      hue += 360;
-    return {
-      hue,
-      saturation: max ? delta / max * 100 : 0,
-      brightness: max * 100
-    };
-  }
-  function ColorPickerRow({ label, value, onSelect, onOpen }) {
-    return /* @__PURE__ */ jsxs(import_react_native19.View, {
-      style: {
-        gap: 8
-      },
-      children: [
-        /* @__PURE__ */ jsx(Text, {
-          variant: "text-sm/bold",
-          color: "text-normal",
-          children: label
-        }),
-        /* @__PURE__ */ jsx(import_react_native19.View, {
-          style: {
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 9
-          },
-          children: PROFILE_COLORS.map((color2) => /* @__PURE__ */ jsx(import_react_native19.Pressable, {
-            accessibilityRole: "button",
-            accessibilityState: {
-              selected: value.toUpperCase() === color2
-            },
-            accessibilityLabel: `${label} ${color2}`,
-            onPress: () => onSelect(color2),
-            style: ({ pressed }) => ({
-              width: 44,
-              height: 44,
-              borderRadius: 22,
-              backgroundColor: color2,
-              borderWidth: value.toUpperCase() === color2 ? 3 : 1,
-              borderColor: value.toUpperCase() === color2 ? "#ffffff" : "rgba(255,255,255,0.25)",
-              opacity: pressed ? 0.65 : 1
-            })
-          }, color2))
-        }),
-        /* @__PURE__ */ jsx(ActionButton, {
-          label: "Open custom color picker",
-          muted: true,
-          onPress: onOpen
-        }),
-        /* @__PURE__ */ jsx(TextInput3, {
-          value,
-          placeholder: "#5865F2",
-          placeholderTextColor: "#777",
-          autoCapitalize: "characters",
-          autoCorrect: false,
-          onChangeText: onSelect,
-          style: {
-            color: "#fff",
-            backgroundColor: value || "#1e1f22",
-            borderRadius: 9,
-            padding: 12
-          }
-        })
-      ]
+  function ColorPickerRow({ label, value, onOpen }) {
+    return /* @__PURE__ */ jsx(TableRow, {
+      arrow: true,
+      label,
+      subLabel: "Choose a preset or enter an exact hex color",
+      trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
+        text: value.toUpperCase()
+      }),
+      onPress: onOpen
     });
   }
   function CustomColorPicker({ title, initialColor, onApply }) {
-    var initial = hexToHsv(initialColor);
-    var [hue, setHue] = (0, import_react7.useState)(initial.hue);
-    var [saturation, setSaturation] = (0, import_react7.useState)(initial.saturation);
-    var [brightness, setBrightness] = (0, import_react7.useState)(initial.brightness);
-    var [color2, setColor] = (0, import_react7.useState)(hsvToHex(initial.hue, initial.saturation, initial.brightness));
-    var [squareSize, setSquareSize] = (0, import_react7.useState)({
-      width: 1,
-      height: 1
-    });
-    var [hueWidth, setHueWidth] = (0, import_react7.useState)(1);
-    var validColor = colorNumber(color2) != null ? color2 : "#5865F2";
-    var syncHsv = (nextHue, nextSaturation, nextBrightness) => {
-      setHue(nextHue);
-      setSaturation(nextSaturation);
-      setBrightness(nextBrightness);
-      setColor(hsvToHex(nextHue, nextSaturation, nextBrightness));
-    };
-    var pickSquare = (event) => syncHsv(hue, Math.max(0, Math.min(100, event.nativeEvent.locationX / squareSize.width * 100)), Math.max(0, Math.min(100, 100 - event.nativeEvent.locationY / squareSize.height * 100)));
-    var pickHue = (event) => syncHsv(Math.max(0, Math.min(359, event.nativeEvent.locationX / hueWidth * 360)), saturation, brightness);
-    var changeHex = (next) => {
-      setColor(next);
-      if (colorNumber(next) != null) {
-        var hsv = hexToHsv(next);
-        setHue(hsv.hue);
-        setSaturation(hsv.saturation);
-        setBrightness(hsv.brightness);
-      }
-    };
-    var hueColor = hsvToHex(hue, 100, 100);
+    var [color2, setColor] = (0, import_react7.useState)(initialColor);
     return /* @__PURE__ */ jsxs(import_react_native19.ScrollView, {
       contentContainerStyle: {
-        padding: 16,
-        paddingBottom: 100,
-        gap: 16
+        padding: 12,
+        paddingBottom: 48,
+        gap: 24
       },
       keyboardShouldPersistTaps: "handled",
       children: [
-        /* @__PURE__ */ jsx(Text, {
-          variant: "heading-lg/semibold",
-          color: "text-normal",
-          children: title
-        }),
-        /* @__PURE__ */ jsx(import_react_native19.View, {
-          style: {
-            height: 96,
-            borderRadius: 16,
-            backgroundColor: validColor,
-            borderWidth: 2,
-            borderColor: "rgba(255,255,255,0.35)",
-            alignItems: "center",
-            justifyContent: "center"
-          },
-          children: /* @__PURE__ */ jsx(Text, {
-            variant: "heading-md/bold",
+        /* @__PURE__ */ jsx(Card2, {
+          children: /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: {
-              color: "#ffffff",
-              textShadowColor: "#000000",
-              textShadowRadius: 4
+              padding: 16,
+              gap: 12
             },
-            children: validColor.toUpperCase()
+            children: [
+              /* @__PURE__ */ jsx(Text, {
+                variant: "heading-md/semibold",
+                children: title
+              }),
+              /* @__PURE__ */ jsx(TextInput3, {
+                accessibilityLabel: "Exact hex color",
+                value: color2,
+                placeholder: "#5865F2",
+                autoCapitalize: "characters",
+                autoCorrect: false,
+                maxLength: 7,
+                onChangeText: setColor
+              }),
+              /* @__PURE__ */ jsx(Button, {
+                text: "Apply color",
+                variant: "secondary",
+                disabled: colorNumber(color2) == null,
+                onPress: () => onApply(color2.toUpperCase())
+              })
+            ]
           })
         }),
-        /* @__PURE__ */ jsxs(import_react_native19.View, {
-          onLayout: (event) => setSquareSize(event.nativeEvent.layout),
-          onStartShouldSetResponder: () => true,
-          onMoveShouldSetResponder: () => true,
-          onResponderGrant: pickSquare,
-          onResponderMove: pickSquare,
-          style: {
-            width: "100%",
-            aspectRatio: 1,
-            maxHeight: 360,
-            borderRadius: 12,
-            overflow: "hidden",
-            backgroundColor: hueColor
-          },
-          children: [
-            LinearGradient ? /* @__PURE__ */ jsx(LinearGradient, {
-              colors: [
-                "#FFFFFF",
-                hueColor
-              ],
-              start: {
-                x: 0,
-                y: 0
-              },
-              end: {
-                x: 1,
-                y: 0
-              },
-              style: {
-                position: "absolute",
-                top: 0,
-                right: 0,
-                bottom: 0,
-                left: 0
-              }
-            }) : null,
-            LinearGradient ? /* @__PURE__ */ jsx(LinearGradient, {
-              colors: [
-                "transparent",
-                "#000000"
-              ],
-              start: {
-                x: 0,
-                y: 0
-              },
-              end: {
-                x: 0,
-                y: 1
-              },
-              style: {
-                position: "absolute",
-                top: 0,
-                right: 0,
-                bottom: 0,
-                left: 0
-              }
-            }) : null,
-            /* @__PURE__ */ jsx(import_react_native19.View, {
-              pointerEvents: "none",
-              style: {
-                position: "absolute",
-                left: `${saturation}%`,
-                top: `${100 - brightness}%`,
-                width: 22,
-                height: 22,
-                marginLeft: -11,
-                marginTop: -11,
-                borderRadius: 11,
-                borderWidth: 3,
-                borderColor: "#FFFFFF",
-                backgroundColor: "transparent"
-              }
-            })
-          ]
-        }),
-        /* @__PURE__ */ jsxs(import_react_native19.View, {
-          onLayout: (event) => setHueWidth(event.nativeEvent.layout.width),
-          onStartShouldSetResponder: () => true,
-          onMoveShouldSetResponder: () => true,
-          onResponderGrant: pickHue,
-          onResponderMove: pickHue,
-          style: {
-            height: 42,
-            borderRadius: 10,
-            overflow: "hidden"
-          },
-          children: [
-            LinearGradient ? /* @__PURE__ */ jsx(LinearGradient, {
-              colors: [
-                "#FF0000",
-                "#FFFF00",
-                "#00FF00",
-                "#00FFFF",
-                "#0000FF",
-                "#FF00FF",
-                "#FF0000"
-              ],
-              start: {
-                x: 0,
-                y: 0
-              },
-              end: {
-                x: 1,
-                y: 0
-              },
-              style: {
-                position: "absolute",
-                top: 0,
-                right: 0,
-                bottom: 0,
-                left: 0
-              }
-            }) : /* @__PURE__ */ jsx(import_react_native19.View, {
-              style: {
-                flex: 1,
-                backgroundColor: hueColor
-              }
+        /* @__PURE__ */ jsx(TableRadioGroup, {
+          title: "Presets",
+          value: color2.toUpperCase(),
+          onChange: setColor,
+          hasIcons: true,
+          children: PROFILE_COLORS.map((preset) => /* @__PURE__ */ jsx(TableRadioRow, {
+            label: preset,
+            icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+              source: (init_assets(), __toCommonJS(assets_exports)).findAssetId("PaintPaletteIcon") || (init_assets(), __toCommonJS(assets_exports)).findAssetId("SettingsIcon")
             }),
-            /* @__PURE__ */ jsx(import_react_native19.View, {
-              pointerEvents: "none",
-              style: {
-                position: "absolute",
-                left: `${hue / 3.6}%`,
-                top: 0,
-                bottom: 0,
-                width: 6,
-                marginLeft: -3,
-                borderWidth: 2,
-                borderColor: "#FFFFFF",
-                borderRadius: 3
-              }
-            })
-          ]
-        }),
-        /* @__PURE__ */ jsxs(import_react_native19.View, {
-          style: {
-            gap: 8
-          },
-          children: [
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-sm/bold",
-              color: "text-normal",
-              children: "Exact hex color"
-            }),
-            /* @__PURE__ */ jsx(TextInput3, {
-              value: color2,
-              placeholder: "#5865F2",
-              placeholderTextColor: "#777",
-              autoCapitalize: "characters",
-              autoCorrect: false,
-              maxLength: 7,
-              onChangeText: changeHex,
-              style: {
-                color: "#fff",
-                backgroundColor: "#1e1f22",
-                borderRadius: 9,
-                padding: 12
-              }
-            })
-          ]
-        }),
-        /* @__PURE__ */ jsx(ActionButton, {
-          label: "Apply color",
-          onPress: () => colorNumber(color2) != null && onApply(color2.toUpperCase())
+            value: preset
+          }, preset))
         })
       ]
     });
@@ -11925,71 +11663,33 @@
         clearTimeout(timer);
       };
     }, []);
-    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native19.FlatList, {
+      data: items,
+      keyExtractor: (item) => `${item.asset}:${item.skuId}`,
+      initialNumToRender: 12,
+      maxToRenderPerBatch: 12,
+      windowSize: 5,
       contentContainerStyle: {
         padding: 12,
-        paddingBottom: 100
+        paddingBottom: 48
       },
-      children: items.length ? /* @__PURE__ */ jsx(import_react_native19.View, {
+      renderItem: ({ item }) => /* @__PURE__ */ jsx(TableRow, {
+        arrow: true,
+        label: item.label,
+        icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+          source: {
+            uri: item.uri
+          }
+        }),
+        onPress: () => onSelect(item)
+      }),
+      ListEmptyComponent: /* @__PURE__ */ jsx(Text, {
+        variant: "text-sm/medium",
+        color: "text-muted",
         style: {
-          flexDirection: "row",
-          flexWrap: "wrap",
-          gap: 10
+          padding: 16
         },
-        children: items.map((item) => /* @__PURE__ */ jsxs(import_react_native19.Pressable, {
-          onPress: () => onSelect(item),
-          style: ({ pressed }) => ({
-            width: "31%",
-            minWidth: 96,
-            padding: 8,
-            borderRadius: 12,
-            alignItems: "center",
-            gap: 6,
-            backgroundColor: "rgba(255,255,255,0.05)",
-            opacity: pressed ? 0.65 : 1
-          }),
-          children: [
-            /* @__PURE__ */ jsx(import_react_native19.Image, {
-              source: {
-                uri: item.uri
-              },
-              style: {
-                width: 78,
-                height: 78
-              }
-            }),
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-xs/medium",
-              color: "text-normal",
-              numberOfLines: 2,
-              style: {
-                textAlign: "center"
-              },
-              children: item.label
-            })
-          ]
-        }, `${item.asset}:${item.skuId}`))
-      }) : /* @__PURE__ */ jsxs(import_react_native19.View, {
-        style: {
-          padding: 24,
-          gap: 8,
-          alignItems: "center"
-        },
-        children: [
-          /* @__PURE__ */ jsx(Text, {
-            variant: "heading-md/semibold",
-            color: "text-normal",
-            children: loading ? "Loading decorations..." : "No decorations loaded"
-          }),
-          !loading ? /* @__PURE__ */ jsx(Text, {
-            variant: "text-sm/medium",
-            color: "text-muted",
-            style: {
-              textAlign: "center"
-            },
-            children: "Open Discord's Shop once, then return here to refresh its decoration catalog."
-          }) : null
-        ]
+        children: loading ? "Loading decorations\u2026" : "No decorations loaded. Open Discord's Shop, then try again."
       })
     });
   }
@@ -12187,21 +11887,11 @@
                     },
                     children: value.name
                   }),
-                  /* @__PURE__ */ jsx(import_react_native19.Pressable, {
-                    onPress: () => clearMedia(field),
-                    style: {
-                      paddingHorizontal: 10,
-                      paddingVertical: 6,
-                      borderRadius: 7,
-                      backgroundColor: "#4a2024"
-                    },
-                    children: /* @__PURE__ */ jsx(Text, {
-                      variant: "text-xs/bold",
-                      style: {
-                        color: "#ff7b84"
-                      },
-                      children: "Clear"
-                    })
+                  /* @__PURE__ */ jsx(Button, {
+                    size: "sm",
+                    variant: "secondary",
+                    text: "Clear",
+                    onPress: () => clearMedia(field)
                   })
                 ]
               })
