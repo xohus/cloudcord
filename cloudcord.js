@@ -241,22 +241,62 @@
   // src/lib/api/native/runtimeUpdates.ts
   var runtimeUpdates_exports = {};
   __export(runtimeUpdates_exports, {
-    createRainUpdater: () => createRainUpdater
+    createRainUpdater: () => createRainUpdater,
+    startAutoUpdates: () => startAutoUpdates
   });
+  function startAutoUpdates(prefs, updater) {
+    var stopped = false, checking = false;
+    var check = () => _async_to_generator(function* () {
+      if (stopped || checking || prefs.cloudcordAutoUpdate === false)
+        return;
+      checking = true;
+      prefs.cloudcordUpdateStatus = "Checking for updates\u2026";
+      try {
+        if (typeof updater?.checkForUpdates !== "function")
+          throw new Error("This loader cannot check for updates.");
+        yield updater.checkForUpdates();
+        if (!stopped)
+          prefs.cloudcordUpdateStatus = "Latest runtime saved. Reopen Discord to apply it.";
+      } catch (error) {
+        if (!stopped)
+          prefs.cloudcordUpdateStatus = "Update failed: " + (error?.message || "connection unavailable") + ". Retrying automatically.";
+      } finally {
+        checking = false;
+      }
+    })();
+    void check();
+    var retry = setTimeout(() => void check(), 45e3);
+    var interval = setInterval(() => void check(), 5 * 60 * 1e3);
+    return () => {
+      stopped = true;
+      clearTimeout(retry);
+      clearInterval(interval);
+    };
+  }
   function createRainUpdater(files) {
     var download = () => pending ??= (() => _async_to_generator(function* () {
-      var response = yield fetch(URL2 + "?t=" + Date.now(), {
-        headers: {
-          "X-CC-Client": "1"
-        },
-        cache: "no-store"
-      });
+      var timeout;
+      var response = yield Promise.race([
+        fetch(URL2 + "?t=" + Date.now(), {
+          headers: {
+            "X-CC-Client": "1"
+          },
+          cache: "no-store"
+        }),
+        new Promise((_2, reject) => {
+          timeout = setTimeout(() => reject(new Error("download timed out")), 2e4);
+        })
+      ]).finally(() => clearTimeout(timeout));
       if (!response.ok)
         throw new Error("runtime download failed (" + response.status + ")");
       var code = yield response.text();
       if (code.length < 1e4 || !code.includes("CloudCord"))
         throw new Error("invalid runtime response");
-      yield files.writeFile("documents", "rain/bundle.js", code, "utf8");
+      if (typeof files?.writeFile !== "function")
+        throw new Error("runtime file writer unavailable");
+      var path = yield files.writeFile("documents", "rain/bundle.js", code, "utf8");
+      if (path && typeof files.readFile === "function" && (yield files.readFile(path, "utf8")) !== code)
+        throw new Error("saved runtime did not match download");
     })())().finally(() => {
       pending = void 0;
     });
@@ -14287,9 +14327,13 @@
             children: [
               /* @__PURE__ */ jsx(TableSwitchRow, {
                 label: "Auto-update",
-                subLabel: "Download runtime updates in the background. Apply them next time Discord opens.",
+                subLabel: "Check every five minutes. Saved updates apply after Discord restarts.",
                 value: settings.cloudcordAutoUpdate !== false,
                 onValueChange: (value) => settings.cloudcordAutoUpdate = value
+              }),
+              /* @__PURE__ */ jsx(TableRow, {
+                label: "Update status",
+                subLabel: settings.cloudcordUpdateStatus || "Waiting for the next update check"
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
@@ -21101,9 +21145,8 @@
         if (globalThis.__CLOUDCORD_ORIGINAL_RAIN__) {
           var prefs = (init_settings(), __toCommonJS(settings_exports)).settings;
           void (init_storage(), __toCommonJS(storage_exports)).awaitStorage(prefs).then(() => {
-            if (prefs.cloudcordAutoUpdate === false)
-              return;
-            return (init_modules(), __toCommonJS(modules_exports)).BundleUpdaterManager.checkForUpdates();
+            var updater = (init_modules(), __toCommonJS(modules_exports)).BundleUpdaterManager;
+            unload.push((init_runtimeUpdates(), __toCommonJS(runtimeUpdates_exports)).startAutoUpdates(prefs, updater));
           }).catch((error) => console.warn("CloudCord update check failed", error));
         }
         if (!globalThis.__CLOUDCORD_BRIDGELESS__)
