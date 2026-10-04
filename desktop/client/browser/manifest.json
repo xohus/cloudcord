@@ -2,18 +2,19 @@
     "manifest_version": 3,
     "minimum_chrome_version": "111",
     "name": "CloudCord Web",
-    "description": "The other cutest Discord mod now in your browser",
+    "description": "Your Discord, your way.",
     "author": "CloudCord",
     "homepage_url": "https://github.com/xohus/cloudcord",
     "icons": {
-        "128": "icon.png"
+        "16": "icon-16.png", "32": "icon-32.png", "48": "icon-48.png", "128": "icon.png"
     },
     "host_permissions": [
         "*://*.discord.com/*",
-        "https://raw.githubusercontent.com/*"
+        "https://raw.githubusercontent.com/*",
+        "https://getcloudcord.com/*"
     ],
     "permissions": [
-        "declarativeNetRequest"
+        "declarativeNetRequest", "alarms", "storage"
     ],
     "content_scripts": [
         {
@@ -59,6 +60,7 @@
             }
         ]
     },
+    "action": { "default_title": "CloudCord", "default_icon": { "16": "icon-16.png", "32": "icon-32.png" } },
     "background": {
         "service_worker": "service-worker.js"
     },

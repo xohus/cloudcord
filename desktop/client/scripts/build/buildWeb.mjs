@@ -23,6 +23,7 @@ import { readFileSync } from "fs";
 import { appendFile, mkdir, readdir, readFile, rm, writeFile } from "fs/promises";
 import path, { join } from "path";
 import Zip from "zip-local";
+import { gitHash } from "./common.mjs";
 
 import { BUILD_TIMESTAMP, commonOpts, globPlugins, IS_DEV, IS_REPORTER, IS_COMPANION_TEST, IS_STANDALONE, VERSION, commonRendererPlugins, buildOrWatchAll, stringifyValues, IS_ANTI_CRASH_TEST } from "./common.mjs";
 
@@ -164,8 +165,10 @@ async function buildExtension(target, files) {
             if (f.startsWith("manifest")) {
                 const json = JSON.parse(content.toString("utf-8"));
                 json.version = VERSION;
+                if (json.manifest_version === 3) json.version_name = `${VERSION} ${gitHash}`;
                 content = Buffer.from(new TextEncoder().encode(JSON.stringify(json)));
             }
+            if (f === "update-check.js") content = Buffer.from(content.toString().replace("__CLOUDCORD_BUILD_HASH__", gitHash));
 
             return [
                 f.startsWith("manifest") ? "manifest.json" : f,
@@ -194,8 +197,8 @@ const appendCssRuntime = readFile("dist/CloudCord.user.css", "utf-8").then(conte
 if (!process.argv.includes("--skip-extension")) {
     await Promise.all([
         appendCssRuntime,
-        buildExtension("chromium-unpacked", ["modifyResponseHeaders.json", "content.js", "manifest.json", "icon.png", "service-worker.js"]),
-        buildExtension("firefox-unpacked", ["background.js", "content.js", "manifestv2.json", "icon.png"]),
+        buildExtension("chromium-unpacked", ["modifyResponseHeaders.json", "content.js", "manifest.json", "icon.png", "icon-16.png", "icon-32.png", "icon-48.png", "service-worker.js", "update-check.js"]),
+        buildExtension("firefox-unpacked", ["background.js", "content.js", "manifestv2.json", "icon.png", "icon-16.png", "icon-32.png", "icon-48.png", "update-check.js"]),
     ]);
 
     await Promise.all([
