@@ -7473,14 +7473,14 @@
   });
 
   // src/lib/ui/components/Summary.tsx
-  function Summary({ label, icon, noPadding = false, noAnimation = false, children }) {
+  function Summary({ label, icon: icon2, noPadding = false, noAnimation = false, children }) {
     var [hidden, setHidden] = React.useState(true);
     return /* @__PURE__ */ jsxs(Fragment, {
       children: [
         /* @__PURE__ */ jsx(TableRow, {
           label,
-          icon: icon && /* @__PURE__ */ jsx(TableRow.Icon, {
-            source: findAssetId(icon)
+          icon: icon2 && /* @__PURE__ */ jsx(TableRow.Icon, {
+            source: findAssetId(icon2)
           }),
           trailing: /* @__PURE__ */ jsx(LegacyFormRow.Arrow, {
             style: {
@@ -9394,6 +9394,37 @@
     GlassCard: () => GlassCard,
     ProfileTabs: () => ProfileTabs
   });
+  function tabIcon(tab) {
+    var names = {
+      profile: [
+        "UserIcon"
+      ],
+      badges: [
+        "StarIcon"
+      ],
+      custom: [
+        "ImageIcon",
+        "StarIcon"
+      ],
+      others: [
+        "PeopleIcon",
+        "UserIcon"
+      ]
+    }[tab];
+    for (var name of [
+      ...names,
+      "SettingsIcon"
+    ]) {
+      try {
+        var id = findAssetId(name);
+        if (id)
+          return /* @__PURE__ */ jsx(TableRow.Icon, {
+            source: id
+          });
+      } catch (e) {
+      }
+    }
+  }
   function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }) {
     var [draft, setDraft] = (0, import_react4.useState)(defaultValue ?? "");
     return /* @__PURE__ */ jsx(TextInput, {
@@ -9417,7 +9448,7 @@
       text: label,
       onPress,
       disabled,
-      variant: muted ? "secondary" : "primary"
+      variant: "secondary"
     });
   }
   function ProfileTabs({ selected, onSelect }) {
@@ -9435,6 +9466,13 @@
             custom: "Custom badges \xB7 beta",
             others: "Other profiles"
           }[tab],
+          subLabel: {
+            profile: "Name, pictures, bio and profile appearance",
+            badges: "Choose which badges appear on your profile",
+            custom: "Upload a badge name and PNG",
+            others: "Changes visible only on this device"
+          }[tab],
+          icon: tabIcon(tab),
           trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
             text: selected === tab ? "Selected" : ""
           }),
@@ -9453,6 +9491,7 @@
       import_react4 = __toESM(require_react());
       import_react_native16 = __toESM(require_react_native());
       init_components();
+      init_assets();
     }
   });
 
@@ -9882,27 +9921,6 @@
     var Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).DiscordInput;
     return /* @__PURE__ */ jsx(Component, {
       ...props
-    });
-  }
-  function ProfileGlyph() {
-    var icon;
-    try {
-      icon = (init_assets(), __toCommonJS(assets_exports)).findAssetId("UserIcon");
-    } catch (e) {
-    }
-    return icon ? /* @__PURE__ */ jsx(import_react_native19.Image, {
-      source: icon,
-      style: {
-        width: 30,
-        height: 30,
-        tintColor: "#f2f3f5"
-      }
-    }) : /* @__PURE__ */ jsx(Text, {
-      style: {
-        color: "#f2f3f5",
-        fontSize: 24
-      },
-      children: "\u25CE"
     });
   }
   function LocalProfiles2(props) {
@@ -10630,13 +10648,13 @@
       return "";
     return BOOST_ICON_BY_MONTHS.get(months) || milestoneIcon(months, BOOST_ICONS);
   }
-  function addRenderedBadge(result, id, description, icon, size) {
-    if (!icon || result.some((item) => item?.id === id))
+  function addRenderedBadge(result, id, description, icon2, size) {
+    if (!icon2 || result.some((item) => item?.id === id))
       return;
     badgeRenderProps.set(id, {
       id,
       source: {
-        uri: icon
+        uri: icon2
       },
       label: description,
       ...size ? {
@@ -10652,10 +10670,10 @@
       id,
       description,
       label: description,
-      icon,
-      iconSrc: icon,
+      icon: icon2,
+      iconSrc: icon2,
       source: {
-        uri: icon
+        uri: icon2
       }
     });
   }
@@ -10680,7 +10698,7 @@
     }
   }
   function selectedBadgeObjects(existing) {
-    var _loop2 = function(id2, description2, icon22) {
+    var _loop2 = function(id2, description2, icon23) {
       if (!preview.selectedBadges?.[id2])
         return "continue";
       var badgeId = `fakeprofile-${id2}`;
@@ -10690,23 +10708,23 @@
           id: badgeId,
           description: label,
           icon: " _",
-          iconSrc: icon22,
+          iconSrc: icon23,
           source: {
-            uri: icon22
+            uri: icon23
           }
         });
       }
     };
     var result = [];
     if (preview.nitroEnabled) {
-      var icon = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
+      var icon2 = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
       result.push({
         id: nitroBadgeId(preview.nitroMonths),
         description: nitroSubscriberLabel(preview.nitroMonths),
         icon: " _",
-        iconSrc: icon,
+        iconSrc: icon2,
         source: {
-          uri: icon
+          uri: icon2
         }
       });
     }
@@ -10722,8 +10740,8 @@
         }
       });
     }
-    for (var [id, description, , icon2] of BADGES)
-      _loop2(id, description, icon2);
+    for (var [id, description, , icon22] of BADGES)
+      _loop2(id, description, icon22);
     if (!shouldReplaceLocalBadges() && Array.isArray(existing)) {
       var _loop1 = function(badge2) {
         if (!badge2 || result.some((item) => item?.id && item.id === badge2?.id))
@@ -10907,11 +10925,11 @@
             if (gift)
               addRenderedBadge(ordered, "cloudcord-shared-gifting", `${gift.name} \xB7 Gifted ${gift.count}x`, gift.icon);
             var customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
-            for (var [id1, description, flag, icon, customId] of BADGES) {
+            for (var [id1, description, flag, icon2, customId] of BADGES) {
               var selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
               var label = id1 === "oldname" && data.oldName ? `Originally Known As: ${data.oldName}` : description;
               if (selected)
-                addRenderedBadge(ordered, `cloudcord-shared-${customId || id1}`, label, icon);
+                addRenderedBadge(ordered, `cloudcord-shared-${customId || id1}`, label, icon2);
             }
           }
           var existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter((item) => {
@@ -12084,7 +12102,7 @@
         redraw();
       }
     };
-    var MediaEditor = ({ label, field, banner: banner2 = false }) => {
+    var MediaEditor = ({ label, field, banner = false }) => {
       var value = preview[field];
       return /* @__PURE__ */ jsxs(import_react_native19.View, {
         style: {
@@ -12095,17 +12113,13 @@
         children: [
           /* @__PURE__ */ jsx(Text, {
             variant: "heading-sm/semibold",
-            style: {
-              color: "#50fa9b"
-            },
+            color: "text-normal",
             children: label
           }),
           /* @__PURE__ */ jsx(Text, {
             variant: "text-xs/medium",
-            style: {
-              color: "#78e7ff"
-            },
-            children: banner2 ? "Automatically fitted to 600 x 240" : "Automatically fitted to a square"
+            color: "text-normal",
+            children: banner ? "Automatically fitted to 600 x 240" : "Automatically fitted to a square"
           }),
           /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: {
@@ -12133,7 +12147,7 @@
             },
             children: [
               /* @__PURE__ */ jsx(import_react_native19.View, {
-                style: banner2 ? {
+                style: banner ? {
                   width: "100%",
                   aspectRatio: 2.5,
                   overflow: "hidden"
@@ -12196,182 +12210,49 @@
         ]
       });
     };
-    var avatar = mediaUri("avatarMedia");
-    var banner = mediaUri("bannerMedia");
+    var openPreview = () => {
+      try {
+        var userId = currentUserId || realCurrentUser?.id;
+        if (!userId)
+          throw new Error("Your Discord account is still loading.");
+        refreshPreview();
+        var showProfile = findByNameLazy("showUserProfileActionSheet");
+        showProfile({
+          userId
+        });
+      } catch (error) {
+        import_react_native19.Alert.alert("Couldn't open preview", error?.message || "Try opening your profile from Discord.");
+      }
+    };
     return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
       style: {
         flex: 1,
-        width: "100%",
-        backgroundColor: "#111521"
+        width: "100%"
       },
       contentContainerStyle: {
         width: "100%",
         maxWidth: 640,
         alignSelf: "center",
-        paddingHorizontal: 16,
-        paddingTop: 20,
-        paddingBottom: 110
+        paddingHorizontal: 12,
+        paddingTop: 24,
+        paddingBottom: 48
       },
       keyboardShouldPersistTaps: "handled",
-      nestedScrollEnabled: true,
-      showsVerticalScrollIndicator: false,
       children: /* @__PURE__ */ jsxs(import_react_native19.View, {
         style: {
           width: "100%",
-          gap: 16
+          gap: 24
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native19.View, {
-            style: {
-              width: "100%",
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 12
-            },
-            children: [
-              /* @__PURE__ */ jsx(import_react_native19.View, {
-                style: {
-                  width: 52,
-                  height: 52,
-                  borderRadius: 18,
-                  borderWidth: 1,
-                  borderColor: "rgba(255,255,255,0.18)",
-                  backgroundColor: "rgba(88,101,242,0.15)",
-                  alignItems: "center",
-                  justifyContent: "center"
-                },
-                children: /* @__PURE__ */ jsx(ProfileGlyph, {})
-              }),
-              /* @__PURE__ */ jsxs(import_react_native19.View, {
-                style: {
-                  flex: 1,
-                  minWidth: 0
-                },
-                children: [
-                  /* @__PURE__ */ jsx(Text, {
-                    variant: "heading-lg/semibold",
-                    color: "text-normal",
-                    children: "Profile"
-                  }),
-                  /* @__PURE__ */ jsx(Text, {
-                    variant: "text-sm/medium",
-                    style: {
-                      color: "#aeb8d2"
-                    },
-                    children: "make it yours. visible to other CloudCord users when synced."
-                  })
-                ]
-              })
-            ]
-          }),
           /* @__PURE__ */ jsx(Card2, {
-            border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
-              style: {
-                borderRadius: 14,
-                overflow: "hidden"
-              },
-              children: [
-                banner ? /* @__PURE__ */ jsx(import_react_native19.Image, {
-                  source: {
-                    uri: banner
-                  },
-                  resizeMode: "cover",
-                  style: {
-                    width: "100%",
-                    height: 118
-                  }
-                }) : /* @__PURE__ */ jsx(import_react_native19.View, {
-                  style: {
-                    height: 118,
-                    backgroundColor: preview.profileColorsEnabled ? preview.primaryColor || "#5865f2" : "#5865f2"
-                  }
-                }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    paddingHorizontal: 16,
-                    paddingBottom: 16
-                  },
-                  children: [
-                    /* @__PURE__ */ jsxs(import_react_native19.View, {
-                      style: {
-                        width: 94,
-                        height: 94,
-                        marginTop: -47,
-                        alignItems: "center",
-                        justifyContent: "center"
-                      },
-                      children: [
-                        avatar ? /* @__PURE__ */ jsx(import_react_native19.Image, {
-                          source: {
-                            uri: avatar
-                          },
-                          style: {
-                            width: 82,
-                            height: 82,
-                            borderRadius: 41,
-                            borderWidth: 5,
-                            borderColor: "#1e1f22"
-                          }
-                        }) : /* @__PURE__ */ jsx(import_react_native19.View, {
-                          style: {
-                            width: 82,
-                            height: 82,
-                            borderRadius: 41,
-                            borderWidth: 5,
-                            borderColor: "#1e1f22",
-                            backgroundColor: "#777"
-                          }
-                        }),
-                        preview.avatarDecoration ? /* @__PURE__ */ jsx(import_react_native19.Image, {
-                          pointerEvents: "none",
-                          source: {
-                            uri: preview.avatarDecoration
-                          },
-                          style: {
-                            position: "absolute",
-                            width: 94,
-                            height: 94
-                          }
-                        }) : null
-                      ]
-                    }),
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "heading-md/semibold",
-                      color: "text-normal",
-                      style: {
-                        marginTop: 10
-                      },
-                      children: preview.displayName || "Preview Name"
-                    }),
-                    /* @__PURE__ */ jsxs(Text, {
-                      variant: "text-sm/medium",
-                      color: "text-muted",
-                      children: [
-                        "@",
-                        preview.username || "preview"
-                      ]
-                    }),
-                    /* @__PURE__ */ jsx(import_react_native19.View, {
-                      style: {
-                        alignSelf: "flex-start",
-                        paddingHorizontal: 10,
-                        paddingVertical: 5,
-                        borderRadius: 20,
-                        backgroundColor: "rgba(88,101,242,0.15)",
-                        marginTop: 8
-                      },
-                      children: /* @__PURE__ */ jsx(Text, {
-                        variant: "text-xs/bold",
-                        style: {
-                          color: "#f2f3f5"
-                        },
-                        children: preview.enabled ? "preview on" : "preview off"
-                      })
-                    })
-                  ]
-                })
-              ]
+            children: /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: "Preview my profile",
+              subLabel: preview.enabled ? "Open your actual Discord profile with your current edits" : "Preview is off. Enable it below to see your edits.",
+              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: (init_assets(), __toCommonJS(assets_exports)).findAssetId("UserIcon")
+              }),
+              onPress: openPreview
             })
           }),
           /* @__PURE__ */ jsx(ProfileTabs2, {
@@ -12728,9 +12609,7 @@
               children: [
                 /* @__PURE__ */ jsx(Text, {
                   variant: "heading-md/semibold",
-                  style: {
-                    color: "#f2f3f5"
-                  },
+                  color: "text-normal",
                   children: "your badges"
                 }),
                 /* @__PURE__ */ jsx(ToggleRow, {
@@ -14599,14 +14478,14 @@
   });
 
   // src/core/ui/settings/pages/General/Version.tsx
-  function Version({ label, version, icon }) {
+  function Version({ label, version, icon: icon2 }) {
     return /* @__PURE__ */ jsx(TableRow, {
       label,
       trailing: /* @__PURE__ */ jsx(TableRowTrailingText, {
         text: version
       }),
       icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-        source: typeof icon === "string" ? findAssetId(icon) : icon
+        source: typeof icon2 === "string" ? findAssetId(icon2) : icon2
       }),
       onPress: () => {
         clipboard.setString(`${label} - ${version}`);
@@ -18142,7 +18021,7 @@
       },
       children: m2
     }, i));
-    var icon = plugin.icon && findAssetId(plugin.icon);
+    var icon2 = plugin.icon && findAssetId(plugin.icon);
     var textNode = /* @__PURE__ */ jsx(Text, {
       numberOfLines: 1,
       variant: "heading-lg/semibold",
@@ -18155,9 +18034,9 @@
         gap: 6
       },
       children: [
-        icon && /* @__PURE__ */ jsx(import_react_native30.Image, {
+        icon2 && /* @__PURE__ */ jsx(import_react_native30.Image, {
           style: styles.smallIcon,
-          source: icon
+          source: icon2
         }),
         textNode
       ]
@@ -19650,12 +19529,12 @@
                         variant: "secondary",
                         icon: findAssetId("CircleInformationIcon-primary")
                       }),
-                      props.actions?.map(({ icon, onPress, disabled }) => /* @__PURE__ */ jsx(IconButton, {
+                      props.actions?.map(({ icon: icon2, onPress, disabled }) => /* @__PURE__ */ jsx(IconButton, {
                         onPress,
                         disabled,
                         size: "sm",
                         variant: "secondary",
-                        icon: findAssetId(icon)
+                        icon: findAssetId(icon2)
                       }))
                     ]
                   }),
@@ -20937,6 +20816,19 @@
   __export(Addons_exports, {
     default: () => Addons
   });
+  function icon(...names) {
+    for (var name of names) {
+      try {
+        var id = findAssetId(name);
+        if (id)
+          return /* @__PURE__ */ jsx(TableRow.Icon, {
+            source: id
+          });
+      } catch (e) {
+      }
+    }
+    return void 0;
+  }
   function Addons() {
     var navigation2 = NavigationNative.useNavigation();
     var open = (title, load) => navigation2.push("PUPU_CUSTOM_PAGE", {
@@ -20962,27 +20854,36 @@
             /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
               label: "Installed plugins",
+              subLabel: "Manage and configure your plugins",
+              icon: icon("PuzzlePieceIcon", "AppsIcon", "SettingsIcon"),
               onPress: () => open("Plugins", () => (init_Plugins(), __toCommonJS(Plugins_exports)))
             }),
             /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
               label: "Discover plugins",
+              subLabel: "Browse and install new plugins",
+              icon: icon("ChannelListMagnifyingGlassIcon", "SearchIcon", "SettingsIcon"),
               onPress: () => open("Discover plugins", () => (init_PluginBrowser(), __toCommonJS(PluginBrowser_exports)))
             }),
             isThemeSupported() && /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
               label: "Themes",
+              subLabel: "Manage your Discord themes",
+              icon: icon("PaintPaletteIcon", "ThemeIcon", "SettingsIcon"),
               onPress: () => open("Themes", () => (init_Themes(), __toCommonJS(Themes_exports)))
             }),
             isFontSupported() && /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
               label: "Fonts",
+              subLabel: "Choose and manage fonts",
+              icon: icon("LettersIcon", "TextIcon", "SettingsIcon"),
               onPress: () => open("Fonts", () => (init_Fonts(), __toCommonJS(Fonts_exports)))
             }),
             /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
               label: "Cloudsync",
-              subLabel: "Back up and sync",
+              subLabel: "Back up and sync your settings",
+              icon: icon("CloudIcon", "SyncIcon", "SettingsIcon"),
               onPress: () => open("Cloudsync", () => (init_StoreCloud(), __toCommonJS(StoreCloud_exports)))
             })
           ]
@@ -21001,6 +20902,7 @@
       init_common();
       init_components();
       init_loader();
+      init_assets();
     }
   });
 
