@@ -9998,6 +9998,8 @@
       sharedProfileFetchedAt.set(id, Date.now());
       if (!changed || !profile || typeof profile !== "object")
         return;
+      for (var refresh of identityRefreshers)
+        refresh();
       try {
         safeStore("UserStore")?.emitChange?.();
       } catch (e) {
@@ -10864,6 +10866,48 @@
       }
     }
   }
+  function replaceIdentityText(node, original, data, depth = 0) {
+    if (depth > 20 || node == null)
+      return node;
+    if (typeof node === "string") {
+      if (data.username && (node === original.username || node === `@${original.username}`))
+        return node.startsWith("@") ? `@${data.username}` : String(data.username);
+      var name = data.globalName || data.displayName;
+      if (name && node === (original.globalName || original.displayName))
+        return String(name);
+      return node;
+    }
+    if (Array.isArray(node))
+      return node.map((child) => replaceIdentityText(child, original, data, depth + 1));
+    if (!/* @__PURE__ */ (0, import_react5.isValidElement)(node) || !node.props?.children)
+      return node;
+    return /* @__PURE__ */ (0, import_react5.cloneElement)(node, {
+      children: replaceIdentityText(node.props.children, original, data, depth + 1)
+    });
+  }
+  function identityRenderer(Component) {
+    if (identityRenderers.has(Component))
+      return identityRenderers.get(Component);
+    function CloudCordIdentity(props) {
+      var [, refresh] = (0, import_react5.useReducer)((value) => value + 1, 0);
+      (0, import_react5.useEffect)(() => {
+        var update = () => refresh();
+        identityRefreshers.add(update);
+        return () => {
+          identityRefreshers.delete(update);
+        };
+      }, []);
+      var id = String(renderedUserId(props) || "");
+      if (id && !isCurrentUser(id))
+        requestSharedProfile(id);
+      var tree = Component(props);
+      var original = id ? safeStore("UserStore")?.getUser?.(id) : null;
+      var data = id ? getProfileOverride(id) : null;
+      return original && data ? replaceIdentityText(tree, original, data) : tree;
+    }
+    identityRenderers.set(Component, CloudCordIdentity);
+    return CloudCordIdentity;
+  }
   function connectIdentityRenderer() {
     var identityComponents = [
       "ProfileHeader",
@@ -10926,9 +10970,14 @@
           }
           requestSharedProfile(id);
           var data = getProfileOverride(id);
-          if (!data || !Object.keys(data).length)
-            return;
-          applyIdentity(props, id, data);
+          if (data && Object.keys(data).length)
+            applyIdentity(props, id, data);
+          if (typeof _component === "function" && !_component.prototype?.isReactComponent) {
+            return {
+              ...rendered,
+              type: identityRenderer(_component)
+            };
+          }
         });
         diagnostics.patches += 1;
       } catch (e) {
@@ -12186,7 +12235,7 @@
       })
     });
   }
-  var import_react5, import_react_native18, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, PROFILE_COLORS;
+  var import_react5, import_react_native18, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, identityRefreshers, identityRenderers, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12582,6 +12631,8 @@
       publishedBadges = [];
       publishedBadgeRequest = false;
       publishedBadgeFetchedAt = 0;
+      identityRefreshers = /* @__PURE__ */ new Set();
+      identityRenderers = /* @__PURE__ */ new WeakMap();
       PROFILE_COLORS = [
         "#5865F2",
         "#4752C4",
