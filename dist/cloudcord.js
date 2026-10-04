@@ -10090,12 +10090,24 @@
     }
     return cloned;
   }
-  function decorateSharedProfile(original, userId, data) {
+  function decorateSharedProfile(original, userId, data, depth = 0) {
     if (!original || typeof original !== "object" || !data)
       return original;
     var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
     if (cloned.user)
       setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
+    if (depth < 3) {
+      for (var key of [
+        "userProfile",
+        "displayProfile",
+        "guildMemberProfile",
+        "profile"
+      ]) {
+        var nested = original[key];
+        if (nested && nested !== original && typeof nested === "object")
+          setOwnValue(cloned, key, decorateSharedProfile(nested, userId, data, depth + 1));
+      }
+    }
     if (data.username)
       setOwnValue(cloned, "username", data.username);
     if (data.globalName || data.displayName) {
