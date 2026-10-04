@@ -77,7 +77,13 @@ function CloudCordDiagnostics() {
         <Heading tag="h2">Diagnostics</Heading>
         <Paragraph>Updates, backups and client troubleshooting.</Paragraph>
         <Flex style={{ gap: 12, flexWrap: "wrap", marginBottom: 20 }}>
-            <Button disabled={!UpdaterTab} onClick={() => { if (UpdaterTab) openSettingsTabModal(UpdaterTab); }}>Updates</Button>
+            <Button onClick={async () => {
+                if (UpdaterTab) { openSettingsTabModal(UpdaterTab); return; }
+                const result = await VencordNative.updater.getUpdates();
+                if (!result.ok) { alert("Could not check browser updates. Try again shortly."); return; }
+                if (!result.value.length) { alert("Your browser build is up to date."); return; }
+                if (confirm("A new CloudCord browser build is available. Open downloads? Replace your extension files and reload it, or update through your userscript manager.")) window.open("https://getcloudcord.com/#download", "_blank", "noopener,noreferrer");
+            }}>Updates</Button>
             <Button onClick={() => openSettingsTabModal(BackupAndRestoreTab)}>Backup & Restore</Button>
             <Button onClick={() => openSettingsTabModal(CustomizationTab)}>Customization</Button>
         </Flex>
