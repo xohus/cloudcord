@@ -19,7 +19,7 @@ vm.runInContext(esbuild.transformSync(helpers, { loader: 'ts' }).code, context);
     assert.equal(context.uploadedUserBadges('123').length, 0); assert.equal(redraws, 2);
     assert.match(source, /if \(!isEnabled\) return published/);
     const stub = fs.readFileSync('browser/VencordNativeStub.ts', 'utf8');
-    assert.match(stub, /releases\/tags\/new_beta_t_desktop/);
+    assert.match(stub, /getcloudcord\.com\/api\/browser\/release/);
     assert.doesNotMatch(stub, /getUpdates: async \(\) => \(\{ ok: true, value: \[\] \}\)/);
     assert.match(fs.readFileSync('browser/userscript.meta.js', 'utf8'), /@updateURL/);
     console.log('desktop/browser sync passed: account match, no suffix, disabled preview, removal, throttling and update wiring; syntax passed');

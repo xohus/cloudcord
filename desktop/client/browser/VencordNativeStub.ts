@@ -115,11 +115,11 @@ window.VencordNative = {
         getRepo: async () => ({ ok: true, value: "https://github.com/xohus/cloudcord" }),
         getUpdates: async () => {
             try {
-                const response = await fetch("https://api.github.com/repos/xohus/cloudcord/releases/tags/new_beta_t_desktop", { cache: "no-store" });
+                const response = await fetch("https://getcloudcord.com/api/browser/release", { cache: "no-store" });
                 if (!response.ok) throw new Error(`Could not check browser releases (${response.status})`);
                 const release = await response.json();
-                const hash = String(release.name || "").match(/\b[a-f0-9]{40}\b/)?.[0];
-                if (!hash) throw new Error("The browser release has no build identifier");
+                const hash = String(release.hash || "");
+                if (!/^[a-f0-9]{40}$/.test(hash)) throw new Error("The browser release has no build identifier");
                 return { ok: true as const, value: hash.startsWith(gitHash) ? [] : [{ hash, author: "cloudcord", message: "A browser build is available. Replace your extension files and reload, or update through your userscript manager." }] };
             } catch (error) { return { ok: false as const, error: { message: String(error) } }; }
         },
