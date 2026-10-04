@@ -689,6 +689,14 @@ jobs:
               const saved = rootSettings.fakeProfileShare || {};
               const path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
               const profileSnapshot = await ownSharedProfile();
+              const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`, { cache: "no-store" });
+              if (latestResponse.ok) {
+                  const latest = await latestResponse.json() as any;
+                  profileSnapshot.syncRevision = Math.max(Date.now(), Number(profileSnapshot.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
+                  preview.syncRevision = profileSnapshot.syncRevision;
+                  rootSettings.fakeProfile = { ...preview, selectedBadges: { ...(preview.selectedBadges || {}) } };
+                  preview = rootSettings.fakeProfile as PreviewSettings;
+              }
               const clearSnapshot = { ...(rootSettings.fakeProfileMediaCleared || {}) };
               const response = await fetch(`${SHARED_PROFILE_API}${path}`, {
                   method: saved.id ? "PUT" : "POST",
@@ -709,8 +717,7 @@ jobs:
                       return;
                   }
                   if (response.status === 409) {
-                      await pullOwnSharedProfile();
-                      return;
+                      throw new Error("Your shared profile changed. Try saving again.");
                   }
                   if (saved.id && (response.status === 401 || response.status === 404)) {
                       delete rootSettings.fakeProfileShare;
@@ -1395,6 +1402,8 @@ jobs:
 
           function renderedUserId(props: any) {
               return props?.userId
+                  || props?.profileUserId
+                  || props?.user?.userId
                   || props?.user?.id
                   || props?.userProfile?.userId
                   || props?.userProfile?.user?.id
@@ -1483,7 +1492,8 @@ jobs:
               const identityComponents = [
                   "ProfileHeader", "UserProfileHeader", "ProfileHeaderUsername",
                   "ProfileHeaderName", "ProfileDisplayName", "UserProfileName",
-                  "ProfileUsername", "UserTagAndPronouns", "UserTag"
+                  "ProfileUsername", "UserTagAndPronouns", "UserTag",
+                  "UserProfileUsername", "UserProfileDisplayName", "ProfileHeaderUserInfo", "UserProfileHeaderInfo"
               ];
               const applyIdentity = (props: any, id: string, data: any) => {
                   if (!props || !data) return;
@@ -1882,7 +1892,9 @@ jobs:
               }, []);
 
               const update = (key: keyof PreviewSettings, value: any, refresh = false) => {
-                  (preview as any)[key] = value;
+                  rootSettings.fakeProfile = { ...preview, [key]: value, syncRevision: Date.now(), selectedBadges: { ...(preview.selectedBadges || {}) } };
+                  preview = rootSettings.fakeProfile as PreviewSettings;
+                  queueSharedPublish();
                   clearCache();
                   if (refresh) refreshPreview();
                   suppressOwnPullUntil = Date.now() + 15_000;

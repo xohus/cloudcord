@@ -14,10 +14,12 @@ function tabIcon(tab: ProfileTab) {
 
 export function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }: any) {
     const [draft, setDraft] = useState(defaultValue ?? "");
-    return <View style={{ borderRadius: 12, overflow: "hidden", width: "100%" }}><TextInput {...props} size="lg" value={value ?? draft} onChange={(event: any) => {
-        const next = typeof event === "string" ? event : event?.nativeEvent?.text ?? "";
+    const change = (event: any) => {
+        const next = typeof event === "string" ? event : event?.nativeEvent?.text ?? event?.text ?? event?.value;
+        if (typeof next !== "string") return;
         setDraft(next); onChangeText?.(next);
-    }} /></View>;
+    };
+    return <View style={{ borderRadius: 12, overflow: "hidden", width: "100%" }}><TextInput {...props} size="lg" value={value ?? draft} onChange={change} onChangeText={change} /></View>;
 }
 
 // Compatibility names for existing callers; rendering uses Discord components.
