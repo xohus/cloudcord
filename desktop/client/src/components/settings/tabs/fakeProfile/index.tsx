@@ -20,7 +20,7 @@ function FakeProfileTabComponent() {
     return (
         <SettingsTab>
             <Paragraph className={Margins.bottom16}>
-                Customize your local and cloud profile appearance including Nitro badges, profile banners, custom badges, avatar decorations, and account creation dates.
+                Edit your profile, badges and avatar decorations.
             </Paragraph>
 
             <Card style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", alignItems: "flex-start" }}>
@@ -41,12 +41,10 @@ function FakeProfileTabComponent() {
                     Open Profile Editor
                 </Button>
             </Card>
-            <Button onClick={() => window.open("https://getcloudcord.com/upload", "_blank", "noopener,noreferrer")}>Upload</Button>
-            <Paragraph>Choose a badge name and image, or crop your profile picture and banner. Published badges refresh automatically when you return to Discord.</Paragraph>
 
             <Divider className={Margins.top16 + " " + Margins.bottom16} />
 
-            <Heading tag="h2" className={Margins.bottom16}>Profile Sync & Badges</Heading>
+            <Heading tag="h2" className={Margins.bottom16}>Profile Sync</Heading>
             <Paragraph style={{ opacity: 0.8 }}>
                 Shared profile changes are visible to other CloudCord users, not unmodified Discord. Local edits stay on your device.
             </Paragraph>

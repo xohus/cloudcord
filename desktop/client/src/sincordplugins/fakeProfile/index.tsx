@@ -8,6 +8,7 @@
  */
 
 import "./style.css";
+import decorationCatalog from "./decorations.json";
 
 import { ProfileBadge } from "@api/Badges";
 import { addContextMenuPatch, NavContextMenuPatchCallback, removeContextMenuPatch } from "@api/ContextMenu";
@@ -188,24 +189,15 @@ function nativeNitroBadgeId(level: number): string {
     return months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
 }
 
-const AVATAR_DECORATIONS = [
-    { id: "1144307957425778779", label: "Hearts" }, { id: "1144308196723408958", label: "Hearts Animated" },
-    { id: "1212569433839636530", label: "Lofi Cafe" }, { id: "1481387347642810480", label: "Winter" },
-    { id: "1343751617362661526", label: "Magic Orb" }, { id: "1373015260465987705", label: "Dragon" },
-    { id: "1333866045303423026", label: "Ghost" }, { id: "1144308439720394944", label: "Sakura Drift" },
-    { id: "1432550258126229565", label: "Neon" }, { id: "1462116613632426014", label: "Cyber City" },
-    { id: "1462116613682757888", label: "Retro" }, { id: "1144307629225672846", label: "Fire" },
-    { id: "1341506443718688768", label: "Void" }, { id: "1447654090640330763", label: "Celestial" },
-    { id: "1483857762890022923", label: "Snowy" }, { id: "1479561706672885811", label: "Ice" },
-    { id: "1212569856189407352", label: "Cozy" }, { id: "1485784028710830242", label: "New Year" },
-    { id: "1341506444150702080", label: "Abyss" }, { id: "1232071712695386162", label: "Spring" },
-    { id: "1220514048068812901", label: "Summer" }, { id: "1427463138634109026", label: "Autumn" },
-    { id: "1341506443865489408", label: "Darkness" },
-];
-
 function getDecorationUrl(assetId: string, animated = false): string {
+    if (/^a?_[a-f0-9]+$/.test(assetId) || /^[a-f0-9]{32}$/.test(assetId)) return `https://cdn.discordapp.com/avatar-decoration-presets/${assetId}.png?size=160&passthrough=true`;
     return `https://cdn.discordapp.com/media/v1/collectibles-shop/${assetId}/${animated ? "animated" : "static"}`;
 }
+
+const ALL_DECORATIONS = Array.from(new Map(decorationCatalog.filter(item => item.category === "decorations").map(item => {
+    const asset = item.url.match(/avatar-decoration-presets\/([^/.]+)\.png/)?.[1];
+    return [asset, { id: asset || "", label: item.label } ] as const;
+})).values()).filter(item => item.id);
 
 function sharedDecorationAsset(value: unknown): string {
     const raw = String(value || "");
@@ -772,7 +764,7 @@ function BadgePicker({ selected, onChange, nitroType, onNitroType, giftLevel, on
         <div className="cp-section-label" style={{ marginTop: 8 }}>Gifting Badge</div>
         <div className="cp-badges">
             <BadgeBtn label="None" active={giftLevel === -1} onClick={() => onGiftLevel(-1)} />
-            {GIFT_LEVELS.map((level, index) => <BadgeBtn key={level.id} label={`${level.name} — Gifted ${level.count}x`} icon={level.icon} active={giftLevel === index} onClick={() => onGiftLevel(index)} />)}
+            {GIFT_LEVELS.map((level, index) => <BadgeBtn key={level.id} label={level.name} icon={level.icon} active={giftLevel === index} onClick={() => onGiftLevel(index)} />)}
         </div>
         {hasOldName && <div className="cp-field" style={{ marginTop: 6 }}><div className="cp-section-label">Previous username displayed in tooltip</div><input className="cp-input" value={oldName} placeholder="OldUser#0000" onChange={e => onOldName(e.target.value)} /></div>}
         <div className="cp-section-label" style={{ marginTop: 8 }}>Server Booster Badge</div>
@@ -789,6 +781,9 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     const [selectedAccountId, setSelectedAccountId] = React.useState(myId);
     const [data, setData] = React.useState<CustomProfileData>(() => ({ ...(allAccountsData[myId] || storedData || {}) }));
     const [saving, setSaving] = React.useState(false);
+    const [decorationLimit, setDecorationLimit] = React.useState(24);
+    const [decorationSearch, setDecorationSearch] = React.useState("");
+    const decorations = ALL_DECORATIONS.filter(item => item.label.toLowerCase().includes(decorationSearch.toLowerCase()));
     const nitroLevel = data.nitroLevel ?? -1;
     const boostLevel = data.boostMonths ?? -1;
     const giftLevel = data.giftLevel ?? -1;
@@ -868,11 +863,6 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         </ModalHeader>
 
         <ModalContent className="cp-content">
-            <div className="cp-field">
-                <div className="cp-section-label">Custom Badges and Pictures</div>
-                <Button onClick={() => window.open("https://getcloudcord.com/upload", "_blank", "noopener,noreferrer")}>Upload</Button>
-                <div className="cp-toggle-sub">Add or remove your badges, crop a profile picture or banner, then return here. Approved badges refresh automatically.</div>
-            </div>
             <Field label="Username" value={data.username ?? ""} placeholder="my_username" onChange={v => set("username", v)} />
             <Field label="Display Name" value={data.globalName ?? ""} placeholder="My Name" onChange={v => set("globalName", v)} />
             <ImageUpload label="Profile Picture" value={data.avatar ?? ""} onChange={v => set("avatar", v)} />
@@ -882,7 +872,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <Field label="Bio" value={data.bio ?? ""} placeholder="My description..." onChange={v => set("bio", v)} />
             <Field label="Pronouns" value={data.pronouns ?? ""} placeholder="he/him" onChange={v => set("pronouns", v)} />
             <div className="cp-field">
-                <div className="cp-section-label">Profile color (Nitro — gradient possible)</div>
+                <div className="cp-section-label">Profile Colors</div>
                 <div className="cp-color-row" style={{ marginBottom: 6 }}>
                     <span style={{ fontSize: 11, color: "var(--text-muted)", marginRight: 6 }}>Color 1</span>
                     <input type="color" value={accentHex || "#5865f2"} className="cp-color-swatch" onChange={e => { const n = parseInt(e.target.value.replace("#", ""), 16); if (!isNaN(n)) set("accentColor", n); }} />
@@ -903,15 +893,23 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
             <div className="cp-divider" />
             <div className="cp-section-label">Avatar decoration</div>
-            <div className="cp-badges" style={{ flexWrap: "wrap", gap: 6 }}>
+            <input className="cp-input cp-decoration-search" aria-label="Search decorations" placeholder="Search decorations" value={decorationSearch} onChange={e => { setDecorationSearch(e.target.value); setDecorationLimit(24); }} />
+            <div className="cp-decoration-grid">
                 <button onClick={() => set("decorationAsset", undefined)} className={`cp-badge ${!data.decorationAsset ? "cp-badge-on" : ""}`} style={{ minWidth: 60 }}>None</button>
-                {AVATAR_DECORATIONS.map(dec => (
-                    <button key={dec.id} onClick={() => set("decorationAsset", data.decorationAsset === dec.id ? undefined : dec.id)} className={`cp-badge ${data.decorationAsset === dec.id ? "cp-badge-on" : ""}`} title={dec.label} style={{ padding: 3, lineHeight: 0, width: 52, height: 52, borderRadius: 6 }}>
-                        <img src={getDecorationUrl(dec.id)} alt={dec.label} style={{ width: 46, height: 46, objectFit: "contain", display: "block" }} />
+                {decorations.slice(0, decorationLimit).map(dec => (
+                    <button key={dec.id} onClick={() => set("decorationAsset", data.decorationAsset === dec.id ? undefined : dec.id)} className={`cp-badge cp-decoration ${data.decorationAsset === dec.id ? "cp-badge-on" : ""}`} title={dec.label} aria-pressed={data.decorationAsset === dec.id}>
+                        <img loading="lazy" src={getDecorationUrl(dec.id)} alt="" />
+                        <span>{dec.label}</span>
                     </button>
                 ))}
             </div>
-            <div className="cp-hint">Visual and local modifications only — persistent between restarts.</div>
+            {!decorations.length && <div className="cp-hint">No matching decorations.</div>}
+            {decorationLimit < decorations.length && <Button onClick={() => setDecorationLimit(limit => limit + 24)}>Load More</Button>}
+            <div className="cp-upload-section">
+                <div className="cp-section-label">Custom Badges and Pictures</div>
+                <p>Add a badge, profile picture or banner.</p>
+                <Button onClick={() => window.open("https://getcloudcord.com/upload", "_blank", "noopener,noreferrer")}>Upload</Button>
+            </div>
         </ModalContent>
 
         <ModalFooter className="cp-footer">
@@ -1126,7 +1124,7 @@ fakeObfuscatedEmail(real: string | null) {
             });
             if (gl >= 0 && gl < GIFT_LEVELS.length) {
                 const gift = GIFT_LEVELS[gl];
-                badges.push({ id: "sp_gifting", description: `${gift.name} · Gifted ${gift.count}x`, iconSrc: gift.icon, position: 0, props: { style } });
+                badges.push({ id: "sp_gifting", description: gift.name, iconSrc: gift.icon, position: 0, props: { style } });
             }
             if (hasBoostFake) {
                 const boostSince = monthsAgo(BOOST_LEVEL_MONTHS[bm] ?? 1);
