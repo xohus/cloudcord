@@ -252,6 +252,25 @@ const sharedProfileFetchedAt = new Map<string, number>();
 const sharedRequests = new Set<string>();
 let publishTimer: ReturnType<typeof setTimeout> | null = null;
 let sharedSyncTimer: ReturnType<typeof setInterval> | null = null;
+let uploadedBadges: { id: string; userId: string; name: string; icon: string; }[] = [];
+let badgeFetchPending = false;
+let badgeFetchedAt = 0;
+async function refreshUploadedBadges(force = false) {
+    if (badgeFetchPending || (!force && Date.now() - badgeFetchedAt < 5000)) return;
+    badgeFetchPending = true; badgeFetchedAt = Date.now();
+    try {
+        const response = await fetch("https://getcloudcord.com/v1/custom-badges", { cache: "no-store" });
+        if (!response.ok) return;
+        const payload = await response.json();
+        if (!Array.isArray(payload?.badges)) return;
+        const next = payload.badges.filter((badge: any) => typeof badge?.id === "string" && typeof badge?.userId === "string" && typeof badge?.name === "string" && typeof badge?.icon === "string" && badge.icon.startsWith("https://getcloudcord.com/v1/custom-badges/"));
+        if (JSON.stringify(next) !== JSON.stringify(uploadedBadges)) { uploadedBadges = next; forceAccountPanelRerender(); }
+    } catch {} finally { badgeFetchPending = false; }
+}
+function uploadedUserBadges(userId: string): ProfileBadge[] {
+    return uploadedBadges.filter(badge => badge.userId === userId).map(badge => ({ id: `cloudcord-custom-${badge.id}`, description: badge.name, iconSrc: badge.icon, position: 0 }));
+}
+function refreshBadgesOnFocus() { void refreshUploadedBadges(true); }
 let profileEditorOpen = false;
 let suppressOwnPullUntil = 0;
 
@@ -849,6 +868,11 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         </ModalHeader>
 
         <ModalContent className="cp-content">
+            <div className="cp-field">
+                <div className="cp-section-label">Custom Badges and Pictures</div>
+                <Button onClick={() => window.open("https://getcloudcord.com/upload", "_blank", "noopener,noreferrer")}>Upload</Button>
+                <div className="cp-toggle-sub">Add or remove your badges, crop a profile picture or banner, then return here. Approved badges refresh automatically.</div>
+            </div>
             <Field label="Username" value={data.username ?? ""} placeholder="my_username" onChange={v => set("username", v)} />
             <Field label="Display Name" value={data.globalName ?? ""} placeholder="My Name" onChange={v => set("globalName", v)} />
             <ImageUpload label="Profile Picture" value={data.avatar ?? ""} onChange={v => set("avatar", v)} />
@@ -1041,10 +1065,12 @@ fakeObfuscatedEmail(real: string | null) {
 
     userProfileBadges: [{
         getBadges({ userId }: { userId: string; guildId: string; }) {
+            void refreshUploadedBadges();
+            const published = uploadedUserBadges(userId);
             const userIsMe = isMe(userId);
             let profileData: CustomProfileData | undefined;
             if (userIsMe) {
-                if (!isEnabled) return [];
+                if (!isEnabled) return published;
                 profileData = storedData;
             } else {
                 // Keep checking the shared profile after its short cache window. Previously
@@ -1052,7 +1078,7 @@ fakeObfuscatedEmail(real: string | null) {
                 // changes made on mobile could never appear until Discord restarted.
                 requestSharedProfile(userId);
                 profileData = sharedProfiles.get(userId);
-                if (!profileData) return [];
+                if (!profileData) return published;
             }
 
             // Suppress real Discord badges by zeroing publicFlags on the live user object
@@ -1109,7 +1135,7 @@ fakeObfuscatedEmail(real: string | null) {
             if (profileData.customBadgeIds?.includes("oldname")) { const desc = profileData.oldName ? `Originally Known As: ${profileData.oldName}` : "Originally Known As"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
             if (profileData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a Quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
             if (profileData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs — Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
-            return badges.sort((a, b) => {
+            return [...badges, ...published].sort((a, b) => {
                 const normalizedA = a.id.startsWith("premium_tenure_") || a.id === "premium" ? "sp_nitro" : a.id;
                 const normalizedB = b.id.startsWith("premium_tenure_") || b.id === "premium" ? "sp_nitro" : b.id;
                 const ai = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedA);
@@ -1214,14 +1240,18 @@ fakeObfuscatedEmail(real: string | null) {
         // Pull the canonical snapshot before publishing. Publishing first made a
         // stale desktop installation overwrite changes made on mobile.
         await pullOwnSharedProfile();
+        void refreshUploadedBadges(true);
+        window.addEventListener("focus", refreshBadgesOnFocus);
         if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => {
             void pullOwnSharedProfile();
             refreshVisibleSharedProfiles();
+            if (!document.hidden) void refreshUploadedBadges();
         }, 5000);
         if (isEnabled) forceAccountPanelRerender();
     },
 
     stop() {
+        window.removeEventListener("focus", refreshBadgesOnFocus);
         removeHeaderBarButton("profile-spoofer-btn"); removeContextMenuPatch("user-context", userContextMenuPatch);
         FluxDispatcher.unsubscribe("CONNECTION_OPEN", onAccountSwitch); stopDomObserver();
         if (sharedSyncTimer) { clearInterval(sharedSyncTimer); sharedSyncTimer = null; }

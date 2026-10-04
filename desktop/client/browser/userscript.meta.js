@@ -5,6 +5,8 @@
 // @author          CloudCord (https://github.com/xohus/cloudcord)
 // @namespace       https://github.com/xohus/cloudcord
 // @supportURL      https://github.com/xohus/cloudcord
+// @updateURL       https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/CloudCord.user.js
+// @downloadURL     https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/CloudCord.user.js
 // @icon            https://raw.githubusercontent.com/xohus/cloudcord/refs/heads/main/browser/icon.png
 // @license         GPL-3.0
 // @match           *://*.discord.com/*

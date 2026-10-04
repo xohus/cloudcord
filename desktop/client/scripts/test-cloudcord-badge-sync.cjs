@@ -1,0 +1,26 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const esbuild = require(process.env.CLOUDCORD_ESBUILD || 'esbuild');
+const source = fs.readFileSync('src/sincordplugins/fakeProfile/index.tsx', 'utf8');
+esbuild.transformSync(source, { loader: 'tsx' });
+esbuild.transformSync(fs.readFileSync('browser/VencordNativeStub.ts', 'utf8'), { loader: 'ts' });
+const helpers = source.slice(source.indexOf('let uploadedBadges:'), source.indexOf('let profileEditorOpen'));
+let calls = 0, redraws = 0;
+let badges = [{ id: 'one', userId: '123', name: 'My badge', icon: 'https://getcloudcord.com/v1/custom-badges/one.png' }];
+const context = vm.createContext({ Date, JSON, forceAccountPanelRerender: () => redraws++, fetch: async () => { calls++; return { ok: true, json: async () => ({ badges }) }; } });
+vm.runInContext(esbuild.transformSync(helpers, { loader: 'ts' }).code, context);
+(async () => {
+    await context.refreshUploadedBadges(true);
+    assert.equal(context.uploadedUserBadges('123')[0].description, 'My badge');
+    assert.equal(context.uploadedUserBadges('456').length, 0);
+    await context.refreshUploadedBadges(); assert.equal(calls, 1);
+    badges = []; await context.refreshUploadedBadges(true);
+    assert.equal(context.uploadedUserBadges('123').length, 0); assert.equal(redraws, 2);
+    assert.match(source, /if \(!isEnabled\) return published/);
+    const stub = fs.readFileSync('browser/VencordNativeStub.ts', 'utf8');
+    assert.match(stub, /releases\/tags\/new_beta_t_desktop/);
+    assert.doesNotMatch(stub, /getUpdates: async \(\) => \(\{ ok: true, value: \[\] \}\)/);
+    assert.match(fs.readFileSync('browser/userscript.meta.js', 'utf8'), /@updateURL/);
+    console.log('desktop/browser sync passed: account match, no suffix, disabled preview, removal, throttling and update wiring; syntax passed');
+})().catch(error => { console.error(error); process.exitCode = 1; });

@@ -23,6 +23,7 @@
 // Only import pure modules that don't import other parts of Vencord.
 import monacoHtmlLocal from "file://monacoWin.html?minify";
 import * as DataStore from "@api/DataStore";
+import gitHash from "~git-hash";
 import type { Settings } from "@api/Settings";
 import { debounce } from "@shared/debounce";
 import { localStorage } from "@utils/localStorage";
@@ -112,8 +113,20 @@ window.VencordNative = {
 
     updater: {
         getRepo: async () => ({ ok: true, value: "https://github.com/xohus/cloudcord" }),
-        getUpdates: async () => ({ ok: true, value: [] }),
-        update: async () => ({ ok: true, value: false }),
+        getUpdates: async () => {
+            try {
+                const response = await fetch("https://api.github.com/repos/xohus/cloudcord/releases/tags/new_beta_t_desktop", { cache: "no-store" });
+                if (!response.ok) throw new Error(`Could not check browser releases (${response.status})`);
+                const release = await response.json();
+                const hash = String(release.name || "").match(/\b[a-f0-9]{40}\b/)?.[0];
+                if (!hash) throw new Error("The browser release has no build identifier");
+                return { ok: true as const, value: hash.startsWith(gitHash) ? [] : [{ hash, author: "cloudcord", message: "A browser build is available. Replace your extension files and reload, or update through your userscript manager." }] };
+            } catch (error) { return { ok: false as const, error: { message: String(error) } }; }
+        },
+        update: async () => {
+            window.open("https://getcloudcord.com/#download", "_blank", "noopener,noreferrer");
+            return { ok: false as const, error: { message: "Replace the extracted extension files, reload the extension, then reload Discord. Userscripts can update through their manager." } };
+        },
         rebuild: async () => ({ ok: true, value: true }),
     },
 
