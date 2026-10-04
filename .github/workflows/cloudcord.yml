@@ -327,7 +327,7 @@ jobs:
           import { findByNameLazy, findByProps, findByStoreName } from "@metro";
           import { FluxDispatcher, NavigationNative } from "@metro/common";
           import { Text, TableRow, TableRadioGroup, TableRadioRow, Button } from "@metro/common/components";
-          import { useEffect, useReducer, useState } from "react";
+          import { cloneElement, isValidElement, useEffect, useReducer, useState } from "react";
           import { Alert, AppState, FlatList, Image, NativeModules, Pressable, ScrollView, View } from "react-native";
 
           type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
@@ -824,6 +824,7 @@ jobs:
                       sharedProfiles.set(id, next);
                       sharedProfileFetchedAt.set(id, Date.now());
                       if (!changed || !profile || typeof profile !== "object") return;
+                      for (const refresh of identityRefreshers) refresh();
                       try { safeStore("UserStore")?.emitChange?.(); } catch {}
                       try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
                   })
@@ -1485,6 +1486,40 @@ jobs:
 
           }
 
+          const identityRefreshers = new Set<() => void>();
+          const identityRenderers = new WeakMap<Function, Function>();
+
+          function replaceIdentityText(node: any, original: any, data: any, depth = 0): any {
+              if (depth > 20 || node == null) return node;
+              if (typeof node === "string") {
+                  if (data.username && (node === original.username || node === `@${original.username}`)) return node.startsWith("@") ? `@${data.username}` : String(data.username);
+                  const name = data.globalName || data.displayName;
+                  if (name && node === (original.globalName || original.displayName)) return String(name);
+                  return node;
+              }
+              if (Array.isArray(node)) return node.map(child => replaceIdentityText(child, original, data, depth + 1));
+              if (!isValidElement(node) || !node.props?.children) return node;
+              return cloneElement(node, { children: replaceIdentityText(node.props.children, original, data, depth + 1) });
+          }
+
+          function identityRenderer(Component: any) {
+              if (identityRenderers.has(Component)) return identityRenderers.get(Component);
+              // Wrap only named profile presentation functions, never UserStore
+              // results or Discord's addUser cache objects.
+              function CloudCordIdentity(props: any) {
+                  const [, refresh] = useReducer(value => value + 1, 0);
+                  useEffect(() => { const update = () => refresh(); identityRefreshers.add(update); return () => { identityRefreshers.delete(update); }; }, []);
+                  const id = String(renderedUserId(props) || "");
+                  if (id && !isCurrentUser(id)) requestSharedProfile(id);
+                  const tree = Component(props);
+                  const original = id ? safeStore("UserStore")?.getUser?.(id) : null;
+                  const data = id ? getProfileOverride(id) : null;
+                  return original && data ? replaceIdentityText(tree, original, data) : tree;
+              }
+              identityRenderers.set(Component, CloudCordIdentity);
+              return CloudCordIdentity;
+          }
+
           function connectIdentityRenderer() {
               // Keep shared identity overrides at the profile UI boundary.
               // Discord's internal addUser cache requires the original object
@@ -1530,8 +1565,10 @@ jobs:
                           }
                           requestSharedProfile(id);
                           const data = getProfileOverride(id);
-                          if (!data || !Object.keys(data).length) return;
-                          applyIdentity(props, id, data);
+                          if (data && Object.keys(data).length) applyIdentity(props, id, data);
+                          if (typeof _component === "function" && !_component.prototype?.isReactComponent) {
+                              return { ...rendered, type: identityRenderer(_component) };
+                          }
                       });
                       diagnostics.patches += 1;
                   } catch {}
