@@ -326,9 +326,9 @@ jobs:
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByNameLazy, findByProps, findByStoreName } from "@metro";
           import { FluxDispatcher, NavigationNative } from "@metro/common";
-          import { Text, TableRow } from "@metro/common/components";
+          import { Text, TableRow, TableRadioGroup, TableRadioRow, Button } from "@metro/common/components";
           import { useEffect, useReducer, useState } from "react";
-          import { Alert, Image, NativeModules, Pressable, ScrollView, View } from "react-native";
+          import { Alert, FlatList, Image, NativeModules, Pressable, ScrollView, View } from "react-native";
 
           type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
           type PreviewSettings = {
@@ -1796,66 +1796,24 @@ jobs:
               return { hue, saturation: max ? delta / max * 100 : 0, brightness: max * 100 };
           }
 
-          function ColorPickerRow({ label, value, onSelect, onOpen }: { label: string; value: string; onSelect: (color: string) => void; onOpen: () => void }) {
-              return (
-                  <View style={{ gap: 8 }}>
-                      <Text variant="text-sm/bold" color="text-normal">{label}</Text>
-                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 9 }}>
-                          {PROFILE_COLORS.map(color => (
-                              <Pressable key={color} accessibilityRole="button" accessibilityState={{ selected: value.toUpperCase() === color }} accessibilityLabel={`${label} ${color}`} onPress={() => onSelect(color)} style={({ pressed }) => ({ width: 44, height: 44, borderRadius: 22, backgroundColor: color, borderWidth: value.toUpperCase() === color ? 3 : 1, borderColor: value.toUpperCase() === color ? "#ffffff" : "rgba(255,255,255,0.25)", opacity: pressed ? 0.65 : 1 })} />
-                          ))}
-                      </View>
-                      <ActionButton label="Open custom color picker" muted onPress={onOpen} />
-                      <TextInput value={value} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} onChangeText={onSelect} style={{ color: "#fff", backgroundColor: value || "#1e1f22", borderRadius: 9, padding: 12 }} />
-                  </View>
-              );
+          function ColorPickerRow({ label, value, onOpen }: { label: string; value: string; onSelect: (color: string) => void; onOpen: () => void }) {
+              return <TableRow arrow label={label} subLabel="Choose a preset or enter an exact hex color" trailing={<TableRow.TrailingText text={value.toUpperCase()} />} onPress={onOpen} />;
           }
 
           function CustomColorPicker({ title, initialColor, onApply }: { title: string; initialColor: string; onApply: (color: string) => void }) {
-              const initial = hexToHsv(initialColor);
-              const [hue, setHue] = useState(initial.hue);
-              const [saturation, setSaturation] = useState(initial.saturation);
-              const [brightness, setBrightness] = useState(initial.brightness);
-              const [color, setColor] = useState(hsvToHex(initial.hue, initial.saturation, initial.brightness));
-              const [squareSize, setSquareSize] = useState({ width: 1, height: 1 });
-              const [hueWidth, setHueWidth] = useState(1);
-              const validColor = colorNumber(color) != null ? color : "#5865F2";
-              const syncHsv = (nextHue: number, nextSaturation: number, nextBrightness: number) => {
-                  setHue(nextHue); setSaturation(nextSaturation); setBrightness(nextBrightness);
-                  setColor(hsvToHex(nextHue, nextSaturation, nextBrightness));
-              };
-              const pickSquare = (event: any) => syncHsv(hue, Math.max(0, Math.min(100, event.nativeEvent.locationX / squareSize.width * 100)), Math.max(0, Math.min(100, 100 - event.nativeEvent.locationY / squareSize.height * 100)));
-              const pickHue = (event: any) => syncHsv(Math.max(0, Math.min(359, event.nativeEvent.locationX / hueWidth * 360)), saturation, brightness);
-              const changeHex = (next: string) => {
-                  setColor(next);
-                  if (colorNumber(next) != null) {
-                      const hsv = hexToHsv(next);
-                      setHue(hsv.hue); setSaturation(hsv.saturation); setBrightness(hsv.brightness);
-                  }
-              };
-              const hueColor = hsvToHex(hue, 100, 100);
-              return (
-                  <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100, gap: 16 }} keyboardShouldPersistTaps="handled">
-                      <Text variant="heading-lg/semibold" color="text-normal">{title}</Text>
-                      <View style={{ height: 96, borderRadius: 16, backgroundColor: validColor, borderWidth: 2, borderColor: "rgba(255,255,255,0.35)", alignItems: "center", justifyContent: "center" }}>
-                          <Text variant="heading-md/bold" style={{ color: "#ffffff", textShadowColor: "#000000", textShadowRadius: 4 }}>{validColor.toUpperCase()}</Text>
-                      </View>
-                      <View onLayout={event => setSquareSize(event.nativeEvent.layout)} onStartShouldSetResponder={() => true} onMoveShouldSetResponder={() => true} onResponderGrant={pickSquare} onResponderMove={pickSquare} style={{ width: "100%", aspectRatio: 1, maxHeight: 360, borderRadius: 12, overflow: "hidden", backgroundColor: hueColor }}>
-                          {LinearGradient ? <LinearGradient colors={["#FFFFFF", hueColor]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }} /> : null}
-                          {LinearGradient ? <LinearGradient colors={["transparent", "#000000"]} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }} /> : null}
-                          <View pointerEvents="none" style={{ position: "absolute", left: `${saturation}%`, top: `${100 - brightness}%`, width: 22, height: 22, marginLeft: -11, marginTop: -11, borderRadius: 11, borderWidth: 3, borderColor: "#FFFFFF", backgroundColor: "transparent" }} />
-                      </View>
-                      <View onLayout={event => setHueWidth(event.nativeEvent.layout.width)} onStartShouldSetResponder={() => true} onMoveShouldSetResponder={() => true} onResponderGrant={pickHue} onResponderMove={pickHue} style={{ height: 42, borderRadius: 10, overflow: "hidden" }}>
-                          {LinearGradient ? <LinearGradient colors={["#FF0000", "#FFFF00", "#00FF00", "#00FFFF", "#0000FF", "#FF00FF", "#FF0000"]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }} /> : <View style={{ flex: 1, backgroundColor: hueColor }} />}
-                          <View pointerEvents="none" style={{ position: "absolute", left: `${hue / 3.6}%`, top: 0, bottom: 0, width: 6, marginLeft: -3, borderWidth: 2, borderColor: "#FFFFFF", borderRadius: 3 }} />
-                      </View>
-                      <View style={{ gap: 8 }}>
-                          <Text variant="text-sm/bold" color="text-normal">Exact hex color</Text>
-                          <TextInput value={color} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} maxLength={7} onChangeText={changeHex} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                      </View>
-                      <ActionButton label="Apply color" onPress={() => colorNumber(color) != null && onApply(color.toUpperCase())} />
-                  </ScrollView>
-              );
+              const [color, setColor] = useState(initialColor);
+              return <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 48, gap: 24 }} keyboardShouldPersistTaps="handled">
+                  <Card><View style={{ padding: 16, gap: 12 }}>
+                      <Text variant="heading-md/semibold">{title}</Text>
+                      <TextInput accessibilityLabel="Exact hex color" value={color} placeholder="#5865F2" autoCapitalize="characters" autoCorrect={false} maxLength={7} onChangeText={setColor} />
+                      <Button text="Apply color" variant="secondary" disabled={colorNumber(color) == null} onPress={() => onApply(color.toUpperCase())} />
+                  </View></Card>
+                  <TableRadioGroup title="Presets" value={color.toUpperCase()} onChange={setColor} hasIcons>
+                      {PROFILE_COLORS.map(preset => <TableRadioRow key={preset} label={preset}
+                          icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("PaintPaletteIcon") || require("@lib/api/assets").findAssetId("SettingsIcon")} />}
+                          value={preset} />)}
+                  </TableRadioGroup>
+              </ScrollView>;
           }
 
           function DecorationGallery({ onSelect }: { onSelect: (item: { asset: string; skuId: string; uri: string }) => void }) {
@@ -1867,25 +1825,15 @@ jobs:
                   const timer = setTimeout(() => void findDecorationCatalog().then(result => { if (active) { setItems(result); setLoading(false); } }), 1200);
                   return () => { active = false; clearTimeout(timer); };
               }, []);
-              return (
-                  <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 100 }}>
-                      {items.length ? (
-                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                              {items.map(item => (
-                                  <Pressable key={`${item.asset}:${item.skuId}`} onPress={() => onSelect(item)} style={({ pressed }) => ({ width: "31%", minWidth: 96, padding: 8, borderRadius: 12, alignItems: "center", gap: 6, backgroundColor: "rgba(255,255,255,0.05)", opacity: pressed ? 0.65 : 1 })}>
-                                      <Image source={{ uri: item.uri }} style={{ width: 78, height: 78 }} />
-                                      <Text variant="text-xs/medium" color="text-normal" numberOfLines={2} style={{ textAlign: "center" }}>{item.label}</Text>
-                                  </Pressable>
-                              ))}
-                          </View>
-                      ) : (
-                          <View style={{ padding: 24, gap: 8, alignItems: "center" }}>
-                              <Text variant="heading-md/semibold" color="text-normal">{loading ? "Loading decorations..." : "No decorations loaded"}</Text>
-                              {!loading ? <Text variant="text-sm/medium" color="text-muted" style={{ textAlign: "center" }}>Open Discord's Shop once, then return here to refresh its decoration catalog.</Text> : null}
-                          </View>
-                      )}
-                  </ScrollView>
-              );
+              return <FlatList data={items} keyExtractor={item => `${item.asset}:${item.skuId}`}
+                  initialNumToRender={12} maxToRenderPerBatch={12} windowSize={5}
+                  contentContainerStyle={{ padding: 12, paddingBottom: 48 }}
+                  renderItem={({ item }) => <TableRow arrow label={item.label}
+                      icon={<TableRow.Icon source={{ uri: item.uri }} />}
+                      onPress={() => onSelect(item)} />}
+                  ListEmptyComponent={<Text variant="text-sm/medium" color="text-muted" style={{ padding: 16 }}>
+                      {loading ? "Loading decorations…" : "No decorations loaded. Open Discord's Shop, then try again."}
+                  </Text>} />;
           }
 
           export default function FakeProfile() {
@@ -2002,9 +1950,7 @@ jobs:
                                   </View>
                                   <View style={{ flexDirection: "row", alignItems: "center", padding: 10, gap: 8 }}>
                                       <Text variant="text-xs/medium" color="text-muted" numberOfLines={1} style={{ flex: 1 }}>{value.name}</Text>
-                                      <Pressable onPress={() => clearMedia(field)} style={{ paddingHorizontal: 10, paddingVertical: 6, borderRadius: 7, backgroundColor: "#4a2024" }}>
-                                          <Text variant="text-xs/bold" style={{ color: "#ff7b84" }}>Clear</Text>
-                                      </Pressable>
+                                      <Button size="sm" variant="secondary" text="Clear" onPress={() => clearMedia(field)} />
                                   </View>
                               </View>
                           )}

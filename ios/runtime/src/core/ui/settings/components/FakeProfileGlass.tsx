@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { useState } from "react";
 import { View } from "react-native";
-import { Button, TableRow, TableRowGroup, TextInput } from "@metro/common/components";
+import { Button, Card, TableRow, TableRowGroup, TextInput } from "@metro/common/components";
 import { findAssetId } from "@lib/api/assets";
 
 function tabIcon(tab: ProfileTab) {
@@ -13,15 +13,15 @@ function tabIcon(tab: ProfileTab) {
 
 export function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }: any) {
     const [draft, setDraft] = useState(defaultValue ?? "");
-    return <TextInput {...props} size="lg" value={value ?? draft} onChange={(event: any) => {
+    return <View style={{ borderRadius: 12, overflow: "hidden", width: "100%" }}><TextInput {...props} size="lg" value={value ?? draft} onChange={(event: any) => {
         const next = typeof event === "string" ? event : event?.nativeEvent?.text ?? "";
         setDraft(next); onChangeText?.(next);
-    }} />;
+    }} /></View>;
 }
 
 // Compatibility names for existing callers; rendering uses Discord components.
 export function GlassCard({ children }: { children: ReactNode; border?: string }) {
-    return <TableRowGroup>{children}</TableRowGroup>;
+    return <View style={{ borderRadius: 16, overflow: "hidden", width: "100%" }}><Card>{children}</Card></View>;
 }
 export function GlassButton({ label, onPress, muted = false, disabled = false }: { label: string; onPress: () => void; muted?: boolean; disabled?: boolean }) {
     return <Button text={label} onPress={onPress} disabled={disabled} variant="secondary" />;
