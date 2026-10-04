@@ -14740,16 +14740,26 @@
               })
             ]
           }),
-          /* @__PURE__ */ jsx(TableRowGroup, {
+          /* @__PURE__ */ jsxs(TableRowGroup, {
             title: Strings.LINKS,
-            children: /* @__PURE__ */ jsx(TableRow, {
-              arrow: true,
-              label: Strings.GITHUB,
-              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                source: findAssetId("img_account_sync_github_white")
+            children: [
+              /* @__PURE__ */ jsx(TableRow, {
+                arrow: true,
+                label: "Website",
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: findAssetId("GlobeIcon") || findAssetId("CircleInformationIcon-primary")
+                }),
+                onPress: () => import_react_native22.Linking.openURL("https://getcloudcord.com")
               }),
-              onPress: () => import_react_native22.Linking.openURL(GITHUB)
-            })
+              /* @__PURE__ */ jsx(TableRow, {
+                arrow: true,
+                label: Strings.GITHUB,
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: findAssetId("img_account_sync_github_white")
+                }),
+                onPress: () => import_react_native22.Linking.openURL(GITHUB)
+              })
+            ]
           }),
           /* @__PURE__ */ jsxs(TableRowGroup, {
             title: Strings.ACTIONS,
