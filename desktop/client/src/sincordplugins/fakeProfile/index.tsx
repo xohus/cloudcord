@@ -195,7 +195,7 @@ function getDecorationUrl(assetId: string, animated = false): string {
 
 const ALL_DECORATIONS = Array.from(new Map(decorationCatalog.filter(item => item.category === "decorations").map(item => {
     const asset = item.url.match(/avatar-decoration-presets\/([^/.]+)\.png/)?.[1];
-    return [asset, { id: asset || "", label: item.label } ] as const;
+    return [asset, { id: asset || "", label: item.label || "Avatar Decoration" } ] as const;
 })).values()).filter(item => item.id);
 
 function sharedDecorationAsset(value: unknown): string {
