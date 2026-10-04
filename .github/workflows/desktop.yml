@@ -1,4 +1,7 @@
 name: CloudCord Desktop
+concurrency:
+  group: cloudcord-desktop-release
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
