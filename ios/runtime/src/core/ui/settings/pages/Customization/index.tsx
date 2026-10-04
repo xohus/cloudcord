@@ -20,7 +20,7 @@ export default function Customization() {
             : [...new Set([...hidden, key])];
     };
 
-    return <ScrollView style={{ flex: 1, backgroundColor: "#313338" }} contentContainerStyle={{ paddingBottom: 48 }}>
+    return <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 48 }}>
         <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
             <TableRowGroup title="Settings visibility">
                 <TableSwitchRow

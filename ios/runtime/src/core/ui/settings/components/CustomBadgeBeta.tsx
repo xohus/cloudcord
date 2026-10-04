@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, Image, Linking, Text, TextInput, View } from "react-native";
-import { GlassButton } from "./FakeProfileGlass";
+import { Alert, Image, Linking, View } from "react-native";
+import { Text } from "@metro/common/components";
+import { GlassButton, DiscordInput as TextInput } from "./FakeProfileGlass";
 import { settings } from "@lib/api/settings";
 import { findByProps } from "@metro";
 
@@ -41,10 +42,10 @@ export default function CustomBadgeBeta() {
             try {
                 const config = await (await fetch(`${API}/api/cloudcord/onboarding/config`)).json();
                 if (!config.enabled || config.oauth2Off) throw new Error("Sign-in is unavailable right now. Try again later.");
-                const r = await fetch(`${API}/api/cloudcord/onboarding/start`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accepted: true, termsVersion: config.termsVersion }) });
+                const r = await fetch(`${API}/api/cloudcord/onboarding/start`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accepted: true, termsVersion: config.termsVersion, returnToClient: true }) });
                 const result = await r.json();
                 if (!r.ok || !result.state || !result.authorizeUrl) throw new Error(result.error || "verification unavailable");
-                setState(result.state); await Linking.openURL(result.authorizeUrl);
+                setState(result.state); await Linking.openURL(`${API}/badges/verify?client=1&state=${encodeURIComponent(result.state)}`);
             } catch (e: any) { setMessage(e.message || "verification unavailable"); }
         } }
     ]);
@@ -75,14 +76,14 @@ export default function CustomBadgeBeta() {
     };
     const button = (label: string, action: () => void, disabled = false) => <GlassButton label={label} onPress={action} disabled={disabled} />;
     return <View style={{ gap: 14, padding: 2 }}>
-        <Text style={{ color: "white", fontWeight: "bold" }}>custom badges · beta</Text>
-        <Text style={{ color: "#b5bac1" }}>no staff/verified impersonation, unsafe content, links or personal information. custom badges do not prove staff status.</Text>
+        <Text style={{ fontWeight: "bold" }}>custom badges · beta</Text>
+        <Text>no staff/verified impersonation, unsafe content, links or personal information. custom badges do not prove staff status.</Text>
         {!verified ? button(state ? "waiting for verification…" : "verify Discord", verify, Boolean(state)) : <>
-            <TextInput accessibilityLabel="Custom badge name" value={name} onChangeText={setName} maxLength={40} placeholder="badge name" placeholderTextColor="#9faac4" style={{ color: "white", minHeight: 50, padding: 14, backgroundColor: "#1e1f22", borderWidth: 1, borderColor: "#1e1f22", borderRadius: 16 }} />
+            <TextInput accessibilityLabel="Custom badge name" value={name} onChangeText={setName} maxLength={40} placeholder="badge name" placeholderTextColor="#9faac4" style={{ minHeight: 50, padding: 14, backgroundColor: "#1e1f22", borderWidth: 1, borderColor: "#1e1f22", borderRadius: 16 }} />
             {png ? <Image source={{ uri: `data:image/png;base64,${png}` }} style={{ width: 48, height: 48 }} /> : null}
             {button("choose PNG", pick, busy)}
             {button(busy ? "uploading…" : "Add badge", submit, busy || !png || !name.trim())}
         </>}
-        <Text accessibilityLiveRegion="polite" style={{ color: "#b5bac1" }}>{message}</Text>
+        <Text accessibilityLiveRegion="polite">{message}</Text>
     </View>;
 }

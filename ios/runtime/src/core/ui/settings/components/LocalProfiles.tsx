@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Alert, Text, TextInput, View } from "react-native";
+import { Alert, View } from "react-native";
+import { Text } from "@metro/common/components";
 import { settings } from "@lib/api/settings";
-import { GlassButton } from "./FakeProfileGlass";
+import { GlassButton, DiscordInput as TextInput } from "./FakeProfileGlass";
 
 export default function LocalProfiles({ badges, refresh }: { badges: any[]; refresh: () => void }) {
     const [id, setId] = useState("");
@@ -28,19 +29,19 @@ export default function LocalProfiles({ badges, refresh }: { badges: any[]; refr
         } }
     ]);
     const input = (label: string, key: string, multiline = false) => <View style={{ gap: 6 }}>
-        <Text style={{ color: "#cbd3e7", fontSize: 13 }}>{label}</Text>
+        <Text style={{ fontSize: 13 }}>{label}</Text>
         <TextInput accessibilityLabel={label} value={draft[key] ?? ""} onChangeText={value => setDraft({ ...draft, [key]: value })}
             multiline={multiline} autoCapitalize="none" maxLength={key === "bio" ? 500 : 2048}
-            style={{ color: "#fff", padding: 14, borderRadius: 16, backgroundColor: "#1e1f22", minHeight: multiline ? 90 : 48 }} />
+            style={{ padding: 14, borderRadius: 16, backgroundColor: "#1e1f22", minHeight: multiline ? 90 : 48 }} />
     </View>;
     return <View style={{ gap: 14, padding: 16 }}>
-        <Text style={{ color: "#fff", fontSize: 18, fontWeight: "600" }}>Other profiles</Text>
-        <Text style={{ color: "#b5bac1" }}>Only on this device. This does not change their Discord account or shared profile.</Text>
+        <Text style={{ fontSize: 18, fontWeight: "600" }}>Other profiles</Text>
+        <Text>Only on this device. This does not change their Discord account or shared profile.</Text>
         <TextInput accessibilityLabel="Discord user ID" placeholder="Discord user ID" placeholderTextColor="#9faac4" keyboardType="number-pad" value={id} onChangeText={load}
-            style={{ color: "#fff", padding: 14, borderRadius: 16, backgroundColor: "#1e1f22" }} />
+            style={{ padding: 14, borderRadius: 16, backgroundColor: "#1e1f22" }} />
         {input("Display name", "displayName")}{input("Username", "username")}
         {input("Profile picture link", "avatar")}{input("Banner link", "banner")}{input("Bio", "bio", true)}{input("Pronouns", "pronouns")}
-        <Text style={{ color: "#cbd3e7" }}>Badges · local preview</Text>
+        <Text>Badges · local preview</Text>
         {badges.map(([key, label, flag, , customId]) => {
             const selected = flag ? Boolean((draft.badgeFlags || 0) & flag) : (draft.customBadgeIds || []).includes(customId || key);
             return <GlassButton key={key} muted={!selected} label={(selected ? "✓ " : "") + label} onPress={() => {

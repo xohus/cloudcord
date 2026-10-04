@@ -310,6 +310,7 @@ jobs:
           function Card(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassCard; return <Component {...props} />; }
           function GlassButton(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassButton; return <Component {...props} />; }
           function ProfileTabs(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").ProfileTabs; return <Component {...props} />; }
+          function TextInput(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").DiscordInput; return <Component {...props} />; }
           function ProfileGlyph() {
               let icon: any;
               try { icon = require("@lib/api/assets").findAssetId("UserIcon"); } catch {}
@@ -327,7 +328,7 @@ jobs:
           import { FluxDispatcher, NavigationNative } from "@metro/common";
           import { Text } from "@metro/common/components";
           import { useEffect, useReducer, useState } from "react";
-          import { Alert, Image, NativeModules, Pressable, ScrollView, TextInput, View } from "react-native";
+          import { Alert, Image, NativeModules, Pressable, ScrollView, View } from "react-native";
 
           type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
           type PreviewSettings = {
@@ -1756,33 +1757,15 @@ jobs:
               return <GlassButton label={label} onPress={onPress} muted={muted} />;
           }
 
-          function ToggleRow({ label, subLabel, value, onPress, accent = false }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {
-              return (
-                  <Pressable accessibilityRole="switch" accessibilityState={{ checked: value }} accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 13, borderRadius: 16, backgroundColor: pressed ? "rgba(88,101,242,0.15)" : "rgba(255,255,255,0.045)", opacity: pressed ? 0.85 : 1 })}>
-                      <View style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
-                          <Text variant="text-sm/bold" style={{ color: accent ? "#f2f3f5" : "#f0f3f6" }}>{label}</Text>
-                          {subLabel ? <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>{subLabel}</Text> : null}
-                      </View>
-                      <View style={{ width: 48, height: 28, borderRadius: 14, padding: 3, alignItems: value ? "flex-end" : "flex-start", backgroundColor: value ? "#5865f2" : "#4e5058" }}>
-                          <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff" }} />
-                      </View>
-                  </Pressable>
-              );
+          function ToggleRow({ label, subLabel, value, onPress }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {
+              const { TableSwitchRow } = require("@metro/common/components");
+              return <TableSwitchRow label={label} subLabel={subLabel} value={value} onValueChange={onPress} />;
           }
 
           function DurationSelect({ label, value, onPress }: { label: string; value: number; onPress: () => void }) {
-              return (
-                  <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 13, borderRadius: 16, backgroundColor: pressed ? "rgba(88,101,242,0.15)" : "rgba(255,255,255,0.045)" })}>
-                      <View style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-                          <Text variant="text-sm/bold" style={{ color: "#f2f3f5" }}>{label}</Text>
-                          <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>Profile appearance</Text>
-                      </View>
-                      <View style={{ maxWidth: "48%", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: "#243c46" }}>
-                          <Text variant="text-xs/bold" style={{ color: "#78e7ff" }} numberOfLines={1}>{label === "Gifting badge" ? (GIFT_LEVELS[value]?.name || "None") : label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value)}</Text>
-                          <Text variant="text-sm/bold" style={{ color: "#f2f3f5" }}>›</Text>
-                      </View>
-                  </Pressable>
-              );
+              const { TableRow } = require("@metro/common/components");
+              const selected = label === "Gifting badge" ? (GIFT_LEVELS[value]?.name || "None") : label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value);
+              return <TableRow arrow label={label} trailing={<TableRow.TrailingText text={selected || "None"} />} onPress={onPress} />;
           }
 
           const PROFILE_COLORS = [
@@ -2058,10 +2041,6 @@ jobs:
                               </View>
                           </Card>
 
-                          <GlassButton muted label="Cloudsync · back up & sync" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", {
-                              title: "Cloudsync",
-                              render: () => { const Sync = require("@core/ui/settings/pages/StoreCloud").default; return <Sync />; }
-                          })} />
                           <ProfileTabs selected={activeTab} onSelect={setActiveTab} />
                           {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}

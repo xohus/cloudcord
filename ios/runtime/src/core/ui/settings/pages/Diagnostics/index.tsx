@@ -236,7 +236,7 @@ export default function Diagnostics() {
         }
     };
 
-    return <ScrollView style={{ flex: 1, backgroundColor: "#313338" }} contentContainerStyle={{ paddingBottom: 48 }}>
+    return <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 48 }}>
         <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
             {(() => { const Recovery = require("@core/ui/settings/pages/Recovery").default; return <Recovery embedded />; })()}
             <TableRowGroup title="Runtime diagnostics">

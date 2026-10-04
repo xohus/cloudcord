@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, View } from "react-native";
+import { Text } from "@metro/common/components";
 import { settings } from "@lib/api/settings";
 import { BundleUpdaterManager } from "@lib/api/native/modules";
 import { isSafeMode, toggleSafeMode } from "@core/debug/safeMode";
@@ -17,7 +18,7 @@ export default function Recovery({ embedded = false }: { embedded?: boolean }) {
     const controls =
         <GlassCard><View style={{ padding: 16, gap: 14 }}>
             <Text style={{ color: "#fff", fontSize: 22, fontWeight: "600" }}>Recovery</Text>
-            <Text style={{ color: "#b5bac1" }}>{status}</Text>
+            <Text>{status}</Text>
             <GlassButton disabled={busy} label="Download latest runtime" onPress={() => run(() => BundleUpdaterManager.download())} />
             <GlassButton disabled={busy} label="Update & restart" onPress={() => run(() => BundleUpdaterManager.reload())} />
             <GlassButton muted disabled={busy} label={isSafeMode() ? "Enable add-ons again" : "Start without add-ons"} onPress={() => {

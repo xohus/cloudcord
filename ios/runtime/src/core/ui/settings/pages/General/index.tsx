@@ -8,7 +8,7 @@ import { getDebugInfo } from "@lib/api/debug";
 import { BundleUpdaterManager } from "@lib/api/native/modules";
 import { settings } from "@lib/api/settings";
 import { openAlert } from "@lib/ui/alerts";
-import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";
+import { GITHUB } from "@lib/utils/constants";
 import { NavigationNative } from "@metro/common";
 import { AlertActionButton, AlertActions, AlertModal, Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import { Linking, ScrollView } from "react-native";
@@ -20,7 +20,7 @@ export default function General() {
     const navigation = NavigationNative.useNavigation();
 
     return (
-        <ScrollView style={{ flex: 1, backgroundColor: "#313338" }} contentContainerStyle={{ paddingBottom: 38 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
             <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
                 <TableRowGroup title={Strings.INFO}>
                     <TableRow
@@ -48,7 +48,7 @@ export default function General() {
                         arrow={true}
                         label={Strings.DISCORD_SERVER}
                         icon={<TableRow.Icon source={findAssetId("Discord")!} />}
-                        onPress={() => Linking.openURL(DISCORD_SERVER)}
+                        onPress={() => Linking.openURL("https://discord.gg/EBEZJ84zBT")}
                     />
                     <TableRow
                         arrow={true}
