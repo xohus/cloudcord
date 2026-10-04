@@ -1759,7 +1759,7 @@ jobs:
 
           function ToggleRow({ label, subLabel, value, onPress }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {
               const { TableSwitchRow } = require("@metro/common/components");
-              return <TableSwitchRow label={label} subLabel={subLabel} value={value} onValueChange={onPress} />;
+              return <View style={{ borderRadius: 16, overflow: "hidden" }}><TableSwitchRow label={label} subLabel={subLabel} value={value} onValueChange={onPress} /></View>;
           }
 
           function DurationSelect({ label, value, onPress }: { label: string; value: number; onPress: () => void }) {
@@ -1938,10 +1938,10 @@ jobs:
                   return (
                       <View style={{ width: "100%", gap: 9, marginBottom: 16 }}>
                           <Text variant="heading-sm/semibold" color="text-normal">{label}</Text>
-                          <Text variant="text-xs/medium" color="text-muted">Upload on the website using the same Discord account, then refresh here.</Text>
+                          <Text variant="text-xs/medium" color="text-muted">Choose your file, then refresh here to load it.</Text>
                           <View style={{ width: "100%", gap: 8 }}>
-                              <ActionButton label={banner ? "Upload banner on website" : "Upload profile picture on website"} onPress={() => {
-                                  void require("react-native").Linking.openURL("https://getcloudcord.com/badges/verify").catch(() => Alert.alert("Couldn't open website", "Open getcloudcord.com/badges/verify in your browser."));
+                              <ActionButton label="Upload" onPress={() => {
+                                  void require("react-native").Linking.openURL("https://getcloudcord.com/upload").catch(() => Alert.alert("Couldn't open uploads", "Open getcloudcord.com/upload in your browser."));
                               }} />
                               <ActionButton label="Refresh from website" muted onPress={() => void (async () => {
                                   try {

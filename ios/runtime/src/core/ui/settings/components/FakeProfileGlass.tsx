@@ -3,6 +3,7 @@ import { useState } from "react";
 import { View } from "react-native";
 import { Button, Card, TableRow, TableRowGroup, TextInput } from "@metro/common/components";
 import { findAssetId } from "@lib/api/assets";
+import { tokens } from "@metro/common";
 
 function tabIcon(tab: ProfileTab) {
     const names = { profile: ["UserIcon"], badges: ["StarIcon"], custom: ["ImageIcon", "StarIcon"], others: ["PeopleIcon", "UserIcon"] }[tab];
@@ -29,11 +30,10 @@ export function GlassButton({ label, onPress, muted = false, disabled = false }:
 export type ProfileTab = "profile" | "badges" | "custom" | "others";
 export function ProfileTabs({ selected, onSelect }: { selected: ProfileTab; onSelect: (tab: ProfileTab) => void }) {
     return <View><TableRowGroup>
-        {(["profile", "badges", "custom", "others"] as ProfileTab[]).map(tab => <TableRow key={tab}
+        {(["profile", "badges", "custom", "others"] as ProfileTab[]).map(tab => <View key={tab} style={{ borderRadius: 12, overflow: "hidden", borderWidth: 2, borderColor: selected === tab ? tokens.colors.TEXT_NORMAL : "transparent", backgroundColor: selected === tab ? tokens.colors.BACKGROUND_MODIFIER_SELECTED : "transparent" }}><TableRow
             label={{ profile: "My profile", badges: "Badges", custom: "Custom badges · beta", others: "Other profiles" }[tab]}
             subLabel={{ profile: "Name, pictures, bio and profile appearance", badges: "Choose which badges appear on your profile", custom: "Upload a badge name and PNG", others: "Changes visible only on this device" }[tab]}
             icon={tabIcon(tab)}
-            trailing={<TableRow.TrailingText text={selected === tab ? "Selected" : ""} />}
-            onPress={() => onSelect(tab)} />)}
+            onPress={() => onSelect(tab)} /></View>)}
     </TableRowGroup></View>;
 }
