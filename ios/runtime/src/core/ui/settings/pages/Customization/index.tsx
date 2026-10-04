@@ -6,13 +6,13 @@ import { Button, Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/c
 import { ScrollView } from "react-native";
 
 const tabs = [
-    ["FAKE_PROFILE", "FakeProfile"],
-    ["STORE_CLOUD", "Cloud sync"],
-    ["BOTCORD", "Bot accounts"],
-    ["BUNNY_PLUGINS", "Installed plugins"],
-    ["CLOUDCORD_PLUGIN_BROWSER", "Discover"],
+    ["BOTCORD", "Botcord"],
+    ["FAKE_PROFILE", "Fakeprofile"],
+    ["STORE_CLOUD", "Cloudsync"],
+    ["BUNNY_PLUGINS", "Plugins"],
     ["BUNNY_THEMES", "Themes"],
     ["BUNNY_FONTS", "Fonts"],
+    ["CLOUDCORD_PLUGIN_BROWSER", "Discover plugins"],
 ] as const;
 
 export default function Customization() {

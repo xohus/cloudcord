@@ -2289,21 +2289,21 @@ jobs:
 
               store_cloud_item = f'''            {{
                   key: "STORE_CLOUD",
-                  title: () => "Cloud sync",
+                  title: () => "Cloudsync",
                   icon: {{ uri: "{CLOUDCORD_ICON}" }},
                   render: () => import("@core/ui/settings/pages/StoreCloud")
               }},'''
 
               botcord_item = f'''            {{
                   key: "BOTCORD",
-                  title: () => "Bot accounts",
+                  title: () => "Botcord",
                   icon: findAssetId("RobotIcon") || findAssetId("AppsIcon"),
                   render: () => import("@core/ui/settings/pages/BotCord")
               }},'''
 
               fake_profile_item = f'''            {{
                   key: "FAKE_PROFILE",
-                  title: () => "FakeProfile",
+                  title: () => "Fakeprofile",
                   icon: safeAsset("UserIcon", "SettingsIcon"),
                   render: () => import("@core/ui/settings/pages/FakeProfile")
               }},'''

@@ -31,7 +31,7 @@ export default function initSettings() {
     const coreItem: RowConfig = {
                 key: "CLOUDCORD",
                 title: () => "Overview",
-                icon: { uri: PupuIcon },
+                icon: safeAsset("CircleInformationIcon-primary", "CircleInformationIcon", "InfoIcon"),
                 render: () => import("@core/ui/settings/pages/General"),
                 useTrailing: () => `(${version})`
             };
@@ -50,25 +50,25 @@ export default function initSettings() {
             coreItem,
             {
                 key: "STORE_CLOUD",
-                title: () => "Cloud sync",
+                title: () => "Cloudsync",
                 icon: { uri: PupuIcon },
                 render: () => import("@core/ui/settings/pages/StoreCloud")
             },
             {
                 key: "BOTCORD",
-                title: () => "Bot accounts",
+                title: () => "Botcord",
                 icon: safeAsset("RobotIcon", "AppsIcon"),
                 render: () => import("@core/ui/settings/pages/BotCord")
             },
             {
                 key: "BUNNY_PLUGINS",
-                title: () => "Installed plugins",
+                title: () => "Plugins",
                 icon: safeAsset("AppsIcon"),
                 render: () => import("@core/ui/settings/pages/Plugins")
             },
             {
                 key: "CLOUDCORD_PLUGIN_BROWSER",
-                title: () => "Discover",
+                title: () => "Discover plugins",
                 icon: safeAsset("ChannelListMagnifyingGlassIcon", "SearchIcon", "AppsIcon"),
                 render: () => import("@core/ui/settings/pages/PluginBrowser")
             },
@@ -95,7 +95,7 @@ export default function initSettings() {
             }
         ];
 
-    const defaultOrder = ["CLOUDCORD", "FAKE_PROFILE", "STORE_CLOUD", "BOTCORD", "BUNNY_PLUGINS", "CLOUDCORD_PLUGIN_BROWSER", "BUNNY_THEMES", "BUNNY_FONTS"];
+    const defaultOrder = ["CLOUDCORD", "BOTCORD", "FAKE_PROFILE", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_PLUGIN_BROWSER"];
     const configurableKeys = new Set(defaultOrder.filter(key => key !== "CLOUDCORD"));
     const configuredOrder = settings.cloudcordTabOrder ?? [];
     const orderIndex = new Map(configuredOrder.map((key, index) => [key, index]));
