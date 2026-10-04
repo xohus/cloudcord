@@ -9473,24 +9473,30 @@
           "badges",
           "custom",
           "others"
-        ].map((tab) => /* @__PURE__ */ jsx(TableRow, {
-          label: {
-            profile: "My profile",
-            badges: "Badges",
-            custom: "Custom badges \xB7 beta",
-            others: "Other profiles"
-          }[tab],
-          subLabel: {
-            profile: "Name, pictures, bio and profile appearance",
-            badges: "Choose which badges appear on your profile",
-            custom: "Upload a badge name and PNG",
-            others: "Changes visible only on this device"
-          }[tab],
-          icon: tabIcon(tab),
-          trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
-            text: selected === tab ? "Selected" : ""
-          }),
-          onPress: () => onSelect(tab)
+        ].map((tab) => /* @__PURE__ */ jsx(import_react_native16.View, {
+          style: {
+            borderRadius: 12,
+            overflow: "hidden",
+            borderWidth: 2,
+            borderColor: selected === tab ? tokens.colors.TEXT_NORMAL : "transparent",
+            backgroundColor: selected === tab ? tokens.colors.BACKGROUND_MODIFIER_SELECTED : "transparent"
+          },
+          children: /* @__PURE__ */ jsx(TableRow, {
+            label: {
+              profile: "My profile",
+              badges: "Badges",
+              custom: "Custom badges \xB7 beta",
+              others: "Other profiles"
+            }[tab],
+            subLabel: {
+              profile: "Name, pictures, bio and profile appearance",
+              badges: "Choose which badges appear on your profile",
+              custom: "Upload a badge name and PNG",
+              others: "Changes visible only on this device"
+            }[tab],
+            icon: tabIcon(tab),
+            onPress: () => onSelect(tab)
+          })
         }, tab))
       })
     });
@@ -9506,6 +9512,7 @@
       import_react_native16 = __toESM(require_react_native());
       init_components();
       init_assets();
+      init_common();
     }
   });
 
@@ -9689,9 +9696,9 @@
   function CustomBadgeBeta() {
     var open = () => _async_to_generator(function* () {
       try {
-        yield import_react_native18.Linking.openURL("https://getcloudcord.com/badges/verify");
+        yield import_react_native18.Linking.openURL("https://getcloudcord.com/upload");
       } catch (e) {
-        import_react_native18.Alert.alert("Couldn't open website", "Open getcloudcord.com/badges/verify in your browser.");
+        import_react_native18.Alert.alert("Couldn't open uploads", "Open getcloudcord.com/upload in your browser.");
       }
     })();
     return /* @__PURE__ */ jsxs(import_react_native18.View, {
@@ -9709,7 +9716,7 @@
           children: "Choose your badge name and PNG on the website. Sign in with the same Discord account. Approved badges appear in CloudCord."
         }),
         /* @__PURE__ */ jsx(Button, {
-          text: "Upload on website",
+          text: "Upload",
           variant: "secondary",
           onPress: open
         })
@@ -11378,11 +11385,17 @@
   }
   function ToggleRow({ label, subLabel, value, onPress }) {
     var { TableSwitchRow: TableSwitchRow2 } = (init_components(), __toCommonJS(components_exports));
-    return /* @__PURE__ */ jsx(TableSwitchRow2, {
-      label,
-      subLabel,
-      value,
-      onValueChange: onPress
+    return /* @__PURE__ */ jsx(import_react_native19.View, {
+      style: {
+        borderRadius: 16,
+        overflow: "hidden"
+      },
+      children: /* @__PURE__ */ jsx(TableSwitchRow2, {
+        label,
+        subLabel,
+        value,
+        onValueChange: onPress
+      })
     });
   }
   function DurationSelect({ label, value, onPress }) {
@@ -11641,7 +11654,7 @@
           /* @__PURE__ */ jsx(Text, {
             variant: "text-xs/medium",
             color: "text-muted",
-            children: "Upload on the website using the same Discord account, then refresh here."
+            children: "Choose your file, then refresh here to load it."
           }),
           /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: {
@@ -11650,9 +11663,9 @@
             },
             children: [
               /* @__PURE__ */ jsx(ActionButton, {
-                label: banner ? "Upload banner on website" : "Upload profile picture on website",
+                label: "Upload",
                 onPress: () => {
-                  void require_react_native().Linking.openURL("https://getcloudcord.com/badges/verify").catch(() => import_react_native19.Alert.alert("Couldn't open website", "Open getcloudcord.com/badges/verify in your browser."));
+                  void require_react_native().Linking.openURL("https://getcloudcord.com/upload").catch(() => import_react_native19.Alert.alert("Couldn't open uploads", "Open getcloudcord.com/upload in your browser."));
                 }
               }),
               /* @__PURE__ */ jsx(ActionButton, {
