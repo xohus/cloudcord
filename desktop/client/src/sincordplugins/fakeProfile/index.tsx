@@ -952,6 +952,13 @@ export default definePlugin({
     dependencies: ["HeaderBarAPI", "ContextMenuAPI"],
 
     patches: [
+        {
+            find: "getAvatarDecorationURL:",
+            replacement: {
+                match: /(?<=function \i\((\i)\){)(?=.{0,20}let{avatarDecoration)/,
+                replace: "const ccDecorationUrl=$self.patchDecorationUrl($1);if(ccDecorationUrl)return ccDecorationUrl;"
+            }
+        },
         { find: ':"SHOULD_LOAD");', replacement: { match: /\i(?:\?)?.getPreviewBanner\(\i,\i,\i\)(?=.{0,100}"COMPLETE")/, replace: "$self.patchBannerUrl(arguments[0])||$&" } },
         { find: ".WIDGETS_RTC_UPSELL_COACHMARK)", replacement: { match: /currentUser:(\i)(?=.{0,200}voiceDb)/, replace: "currentUser:$self.fakeCurrentUser($1)" } },
         { find: "DISPLAY_NAME", noWarn: true, replacement: { match: /(?<=currentUser:\i,user:)(\i)/, replace: "$self.fakeCurrentUser($1)" } },
@@ -986,7 +993,7 @@ export default definePlugin({
         clone.getTag = () => (storedData.username || realUsername) + "#0000";
         clone.getGlobalName = () => isEnabled ? fakeGlobal : realGlobalName;
         if (storedData.createdAt) { const fakeCreatedAt = new Date(storedData.createdAt + "T12:00:00Z"); Object.defineProperty(clone, "createdAt", { get: () => fakeCreatedAt, configurable: true, enumerable: true }); }
-        if (storedData.decorationAsset) { clone.avatarDecoration = null; clone.avatarDecorationData = nativeDecoration(storedData); }
+        if (storedData.decorationAsset) { clone.avatarDecoration = nativeDecoration(storedData); clone.avatarDecorationData = clone.avatarDecoration; }
         const wantedFlags = storedData.badgeFlags != null ? storedData.badgeFlags : 0;
         if (shouldReplaceBadges(storedData)) {
             clone.publicFlags = wantedFlags; clone.flags = wantedFlags;
@@ -1027,7 +1034,7 @@ export default definePlugin({
         clone.getTag = () => fakeUsername + "#0000";
         clone.getGlobalName = () => fakeGlobal;
         
-        if (shared.decorationAsset) { clone.avatarDecoration = null; clone.avatarDecorationData = nativeDecoration(shared); }
+        if (shared.decorationAsset) { clone.avatarDecoration = nativeDecoration(shared); clone.avatarDecorationData = clone.avatarDecoration; }
         const wantedFlags = shared.badgeFlags != null ? shared.badgeFlags : 0;
         if (shouldReplaceBadges(shared)) {
             clone.publicFlags = wantedFlags; clone.flags = wantedFlags;
@@ -1052,7 +1059,7 @@ export default definePlugin({
                 merged.getBannerURL = () => storedData.banner;
             }
             if (storedData.signupDate) { try { merged.joinedAt = new Date(storedData.signupDate + "T12:00:00Z"); } catch { } }
-            if (storedData.decorationAsset) { merged.avatarDecoration = null; merged.avatarDecorationData = nativeDecoration(storedData); }
+            if (storedData.decorationAsset) { merged.avatarDecoration = nativeDecoration(storedData); merged.avatarDecorationData = merged.avatarDecoration; }
             if (storedData.nitro && storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
             applyNativeProfileMetadata(merged, storedData);
             merged.badges = [];
@@ -1071,6 +1078,12 @@ fakeObfuscatedEmail(real: string | null) {
         const fake = storedData.phone;
         return fake.length < 4 ? fake : "***-***-" + fake.slice(-4);
     },
+    patchDecorationUrl(input: any) {
+        const asset = sharedDecorationAsset(input?.avatarDecoration?.asset || input?.avatarDecorationData?.asset);
+        const item = ALL_DECORATIONS.find(decoration => decoration.id === asset);
+        return item?.url;
+    },
+
     patchBannerUrl({ displayProfile }: any) {
         if (!isEnabled || !storedData.nitro || !storedData.banner) return null;
         try { return isMe(displayProfile?.userId) ? storedData.banner : null; } catch { return null; }
