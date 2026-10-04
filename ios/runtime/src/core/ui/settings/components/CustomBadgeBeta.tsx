@@ -78,7 +78,7 @@ export default function CustomBadgeBeta() {
         <Text style={{ color: "white", fontWeight: "bold" }}>custom badges · beta</Text>
         <Text style={{ color: "#b5bac1" }}>no staff/verified impersonation, unsafe content, links or personal information. custom badges do not prove staff status.</Text>
         {!verified ? button(state ? "waiting for verification…" : "verify Discord", verify, Boolean(state)) : <>
-            <TextInput accessibilityLabel="Custom badge name" value={name} onChangeText={setName} maxLength={40} placeholder="badge name" placeholderTextColor="#9faac4" style={{ color: "white", minHeight: 50, padding: 14, backgroundColor: "rgba(15,19,32,0.55)", borderWidth: 1, borderColor: "rgba(190,202,255,0.16)", borderRadius: 16 }} />
+            <TextInput accessibilityLabel="Custom badge name" value={name} onChangeText={setName} maxLength={40} placeholder="badge name" placeholderTextColor="#9faac4" style={{ color: "white", minHeight: 50, padding: 14, backgroundColor: "#1e1f22", borderWidth: 1, borderColor: "#1e1f22", borderRadius: 16 }} />
             {png ? <Image source={{ uri: `data:image/png;base64,${png}` }} style={{ width: 48, height: 48 }} /> : null}
             {button("choose PNG", pick, busy)}
             {button(busy ? "uploading…" : "Add badge", submit, busy || !png || !name.trim())}

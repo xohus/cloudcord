@@ -8,11 +8,7 @@ import { ScrollView } from "react-native";
 const tabs = [
     ["BOTCORD", "Botcord"],
     ["FAKE_PROFILE", "Profile"],
-    ["STORE_CLOUD", "Cloudsync"],
-    ["BUNNY_PLUGINS", "Plugins"],
-    ["BUNNY_THEMES", "Themes"],
-    ["BUNNY_FONTS", "Fonts"],
-    ["CLOUDCORD_PLUGIN_BROWSER", "Discover plugins"],
+    ["BUNNY_PLUGINS", "Add-ons"],
 ] as const;
 
 export default function Customization() {
@@ -24,7 +20,7 @@ export default function Customization() {
             : [...new Set([...hidden, key])];
     };
 
-    return <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 48 }}>
+    return <ScrollView style={{ flex: 1, backgroundColor: "#313338" }} contentContainerStyle={{ paddingBottom: 48 }}>
         <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
             <TableRowGroup title="Settings visibility">
                 <TableSwitchRow

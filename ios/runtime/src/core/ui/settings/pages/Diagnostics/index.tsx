@@ -163,9 +163,9 @@ function enableSanitizedRequestCapture() {
     };
 }
 
-const TAB_KEYS = ["STORE_CLOUD", "BOTCORD", "BUNNY_PLUGINS", "CLOUDCORD_PLUGIN_BROWSER", "BUNNY_THEMES", "BUNNY_FONTS"] as const;
+const TAB_KEYS = ["BOTCORD", "FAKE_PROFILE", "BUNNY_PLUGINS"] as const;
 const TAB_LABELS: Record<string, string> = {
-    BOTCORD: "BotCord", STORE_CLOUD: "CloudSync", BUNNY_PLUGINS: "Plugins",
+    BOTCORD: "Botcord", FAKE_PROFILE: "Profile", STORE_CLOUD: "Cloudsync", BUNNY_PLUGINS: "Add-ons",
     CLOUDCORD_PLUGIN_BROWSER: "Plugin Browser", BUNNY_THEMES: "Themes", BUNNY_FONTS: "Fonts",
 };
 
@@ -236,8 +236,9 @@ export default function Diagnostics() {
         }
     };
 
-    return <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 48 }}>
+    return <ScrollView style={{ flex: 1, backgroundColor: "#313338" }} contentContainerStyle={{ paddingBottom: 48 }}>
         <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
+            {(() => { const Recovery = require("@core/ui/settings/pages/Recovery").default; return <Recovery embedded />; })()}
             <TableRowGroup title="Runtime diagnostics">
                 <TableSwitchRow
                     label="Intercept CloudCord events"

@@ -20,7 +20,7 @@ export default function General() {
     const navigation = NavigationNative.useNavigation();
 
     return (
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 38 }}>
+        <ScrollView style={{ flex: 1, backgroundColor: "#313338" }} contentContainerStyle={{ paddingBottom: 38 }}>
             <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
                 <TableRowGroup title={Strings.INFO}>
                     <TableRow
@@ -70,14 +70,14 @@ export default function General() {
                         value={(settings as any).cloudcordAutoUpdate !== false}
                         onValueChange={(value: boolean) => (settings as any).cloudcordAutoUpdate = value}
                     />
-                    <TableRow arrow label="Recovery Studio" subLabel="Runtime updates, safe mode, and local resets"
-                        onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Recovery Studio", render: () => {
-                            const Recovery = require("@core/ui/settings/pages/Recovery").default;
-                            return <Recovery />;
+                    <TableRow arrow label="Diagnostics" subLabel="Updates, safe mode, troubleshooting, and local resets"
+                        onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Diagnostics", render: () => {
+                            const Diagnostics = require("@core/ui/settings/pages/Diagnostics").default;
+                            return <Diagnostics />;
                         } })} />
                     <TableSwitchRow
-                        label="Diagnostics"
-                        subLabel="Show CloudCord diagnostics and version controls"
+                        label="Capture diagnostic events"
+                        subLabel="Keep troubleshooting details while you use CloudCord"
                         icon={<TableRow.Icon source={findAssetId("WrenchIcon")!} />}
                         value={settings.cloudcordDiagnosticsEnabled === true}
                         onValueChange={(value: boolean) => settings.cloudcordDiagnosticsEnabled = value}

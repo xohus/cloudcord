@@ -5,7 +5,7 @@ const esbuild = require(process.env.CLOUDCORD_ESBUILD || 'esbuild');
 const w = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
 const page = w.split("cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'")[1].split('\n          TSX')[0].replace(/^          /gm, '');
 esbuild.transformSync(page, { loader: 'tsx' });
-for (const file of ['components/LocalProfiles.tsx', 'pages/Recovery/index.tsx', 'components/CustomBadgeBeta.tsx']) {
+for (const file of ['components/LocalProfiles.tsx', 'pages/Recovery/index.tsx', 'components/CustomBadgeBeta.tsx', 'components/FakeProfileGlass.tsx', 'pages/Addons/index.tsx', 'pages/Diagnostics/index.tsx', 'pages/General/index.tsx', 'pages/Customization/index.tsx', 'pages/BotCord/index.tsx', 'index.ts']) {
     esbuild.transformSync(fs.readFileSync('ios/runtime/src/core/ui/settings/' + file, 'utf8'), { loader: 'tsx' });
 }
 const shared = { username: 'original', bio: 'original bio', badgeFlags: 2 };

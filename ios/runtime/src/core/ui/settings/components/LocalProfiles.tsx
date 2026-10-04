@@ -31,13 +31,13 @@ export default function LocalProfiles({ badges, refresh }: { badges: any[]; refr
         <Text style={{ color: "#cbd3e7", fontSize: 13 }}>{label}</Text>
         <TextInput accessibilityLabel={label} value={draft[key] ?? ""} onChangeText={value => setDraft({ ...draft, [key]: value })}
             multiline={multiline} autoCapitalize="none" maxLength={key === "bio" ? 500 : 2048}
-            style={{ color: "#fff", padding: 14, borderRadius: 16, backgroundColor: "rgba(15,19,32,0.55)", minHeight: multiline ? 90 : 48 }} />
+            style={{ color: "#fff", padding: 14, borderRadius: 16, backgroundColor: "#1e1f22", minHeight: multiline ? 90 : 48 }} />
     </View>;
     return <View style={{ gap: 14, padding: 16 }}>
         <Text style={{ color: "#fff", fontSize: 18, fontWeight: "600" }}>Other profiles</Text>
-        <Text style={{ color: "#b8c0d8" }}>Only on this device. This does not change their Discord account or shared profile.</Text>
+        <Text style={{ color: "#b5bac1" }}>Only on this device. This does not change their Discord account or shared profile.</Text>
         <TextInput accessibilityLabel="Discord user ID" placeholder="Discord user ID" placeholderTextColor="#9faac4" keyboardType="number-pad" value={id} onChangeText={load}
-            style={{ color: "#fff", padding: 14, borderRadius: 16, backgroundColor: "rgba(15,19,32,0.55)" }} />
+            style={{ color: "#fff", padding: 14, borderRadius: 16, backgroundColor: "#1e1f22" }} />
         {input("Display name", "displayName")}{input("Username", "username")}
         {input("Profile picture link", "avatar")}{input("Banner link", "banner")}{input("Bio", "bio", true)}{input("Pronouns", "pronouns")}
         <Text style={{ color: "#cbd3e7" }}>Badges · local preview</Text>

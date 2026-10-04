@@ -26,7 +26,7 @@ export default function initSettings() {
     // Discord 344 may still be restoring its account and navigation requests
     // when CloudCord registers settings. Diagnostics can be enabled explicitly
     // after startup; never wrap global fetch/JSX during bridgeless restoration.
-    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__)
+    if (settings.cloudcordDiagnosticsEnabled === true)
         void import("@core/ui/settings/pages/Diagnostics").then(module => module.initializeDiagnosticsCapture()).catch(() => {});
     const coreItem: RowConfig = {
                 key: "CLOUDCORD",
@@ -62,9 +62,9 @@ export default function initSettings() {
             },
             {
                 key: "BUNNY_PLUGINS",
-                title: () => "Plugins",
+                title: () => "Add-ons",
                 icon: safeAsset("AppsIcon"),
-                render: () => import("@core/ui/settings/pages/Plugins")
+                render: () => import("@core/ui/settings/pages/Addons")
             },
             {
                 key: "CLOUDCORD_PLUGIN_BROWSER",
@@ -87,25 +87,20 @@ export default function initSettings() {
                 usePredicate: () => isFontSupported()
             },
             {
-                key: "CLOUDCORD_RECOVERY",
-                title: () => "Recovery Studio",
-                icon: safeAsset("WrenchIcon", "SettingsIcon"),
-                render: () => import("@core/ui/settings/pages/Recovery")
-            },
-            {
                 key: "CLOUDCORD_DIAGNOSTICS",
                 title: () => "Diagnostics",
                 icon: safeAsset("WrenchIcon", "SettingsIcon"),
                 render: () => import("@core/ui/settings/pages/Diagnostics"),
-                usePredicate: () => settings.cloudcordDiagnosticsEnabled ?? false
+                usePredicate: () => true
             }
         ];
 
-    const defaultOrder = ["CLOUDCORD", "BOTCORD", "FAKE_PROFILE", "STORE_CLOUD", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_PLUGIN_BROWSER", "CLOUDCORD_RECOVERY"];
+    const defaultOrder = ["CLOUDCORD", "BOTCORD", "FAKE_PROFILE", "BUNNY_PLUGINS", "CLOUDCORD_DIAGNOSTICS"];
     const configurableKeys = new Set(defaultOrder.filter(key => key !== "CLOUDCORD"));
     const configuredOrder = settings.cloudcordTabOrder ?? [];
     const orderIndex = new Map(configuredOrder.map((key, index) => [key, index]));
     const items = [...baseItems, hiddenControlsItem]
+        .filter(row => !["STORE_CLOUD", "CLOUDCORD_PLUGIN_BROWSER", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_RECOVERY"].includes(row.key))
         .map(row => {
             if (row.nativeSection) return row;
             const originalPredicate = row.usePredicate;

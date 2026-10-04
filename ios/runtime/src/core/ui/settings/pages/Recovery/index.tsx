@@ -5,7 +5,7 @@ import { BundleUpdaterManager } from "@lib/api/native/modules";
 import { isSafeMode, toggleSafeMode } from "@core/debug/safeMode";
 import { GlassButton, GlassCard } from "@core/ui/settings/components/FakeProfileGlass";
 
-export default function Recovery() {
+export default function Recovery({ embedded = false }: { embedded?: boolean }) {
     const [status, setStatus] = useState("Your account and shared profiles are never deleted here.");
     const [busy, setBusy] = useState(false);
     const run = async (task: () => any) => {
@@ -14,10 +14,10 @@ export default function Recovery() {
         catch (error: any) { setStatus(error?.message || "Could not complete this action."); }
         finally { setBusy(false); }
     };
-    return <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>
+    const controls =
         <GlassCard><View style={{ padding: 16, gap: 14 }}>
-            <Text style={{ color: "#fff", fontSize: 22, fontWeight: "600" }}>Recovery Studio</Text>
-            <Text style={{ color: "#b8c0d8" }}>{status}</Text>
+            <Text style={{ color: "#fff", fontSize: 22, fontWeight: "600" }}>Recovery</Text>
+            <Text style={{ color: "#b5bac1" }}>{status}</Text>
             <GlassButton disabled={busy} label="Download latest runtime" onPress={() => run(() => BundleUpdaterManager.download())} />
             <GlassButton disabled={busy} label="Update & restart" onPress={() => run(() => BundleUpdaterManager.reload())} />
             <GlassButton muted disabled={busy} label={isSafeMode() ? "Enable add-ons again" : "Start without add-ons"} onPress={() => {
@@ -35,6 +35,6 @@ export default function Recovery() {
                     (settings as any).cloudcordLocalProfiles = {}; setStatus("Local edits cleared. Reopen any open profiles.");
                 } }
             ])} />
-        </View></GlassCard>
-    </ScrollView>;
+        </View></GlassCard>;
+    return embedded ? controls : <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 48 }}>{controls}</ScrollView>;
 }

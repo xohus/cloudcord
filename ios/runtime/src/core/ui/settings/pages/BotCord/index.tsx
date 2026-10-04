@@ -21,16 +21,16 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Image, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text as NativeText, TextInput as NativeTextInput, View } from "react-native";
 
 const useStyles = createStyles({
-    root: { flex: 1, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
-    header: { minHeight: 56, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
-    navigator: { flex: 1, flexDirection: "row", backgroundColor: tokens.colors.BACKGROUND_SECONDARY },
-    guildRail: { width: 72, backgroundColor: tokens.colors.BACKGROUND_TERTIARY, paddingVertical: 8 },
-    sidebar: { flex: 1, backgroundColor: tokens.colors.BACKGROUND_SECONDARY },
+    root: { flex: 1, backgroundColor: "#313338" },
+    header: { minHeight: 56, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#313338" },
+    navigator: { flex: 1, flexDirection: "row", backgroundColor: "#2b2d31" },
+    guildRail: { width: 72, backgroundColor: "#1e1f22", paddingVertical: 8 },
+    sidebar: { flex: 1, backgroundColor: "#2b2d31" },
     sidebarHeader: { minHeight: 54, paddingHorizontal: 12, flexDirection: "row", alignItems: "center", gap: 8 },
     row: { flexDirection: "row", gap: 10, paddingHorizontal: 12, paddingVertical: 7 },
     messageBody: { flex: 1 },
     nameLine: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" },
-    composer: { height: 60, width: "100%", paddingHorizontal: 10, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0, backgroundColor: tokens.colors.BACKGROUND_PRIMARY },
+    composer: { height: 60, width: "100%", paddingHorizontal: 10, paddingVertical: 8, flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 0, backgroundColor: "#313338" },
     category: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 4 },
     channelRow: { paddingHorizontal: 12, paddingVertical: 10 },
     guildButton: { width: 72, height: 56, alignItems: "center", justifyContent: "center" },
@@ -99,7 +99,7 @@ function MessageRow({ message }: { message: any }) {
                     const type = String(attachment.content_type || "");
                     const isImage = type.startsWith("image/") || /\.(png|jpe?g|gif|webp)(?:$|\?)/i.test(String(uri || attachment.filename || ""));
                     return isImage && uri
-                        ? <Image key={attachment.id || `${attachment.filename}-${index}`} source={{ uri }} resizeMode="cover" style={{ width: 260, height: 180, maxWidth: "100%", borderRadius: 8, backgroundColor: tokens.colors.BACKGROUND_SECONDARY }} />
+                        ? <Image key={attachment.id || `${attachment.filename}-${index}`} source={{ uri }} resizeMode="cover" style={{ width: 260, height: 180, maxWidth: "100%", borderRadius: 8, backgroundColor: "#2b2d31" }} />
                         : <Text key={attachment.id || `${attachment.filename}-${index}`} variant="text-sm/normal" color="text-link">{attachment.filename || "Attachment"}</Text>;
                 })}
             </View>}
@@ -394,8 +394,8 @@ function BotClient({ accounts, activeId, onExit }: { accounts: any[]; activeId: 
                 keyboardShouldPersistTaps="handled"
                 onContentSizeChange={() => listRef.current?.scrollToEnd?.({ animated: false })}
             />
-            {selectedImage ? <View style={{ height: 72, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: tokens.colors.BACKGROUND_PRIMARY }}>
-                <Image source={{ uri: selectedImage.uri }} style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: tokens.colors.BACKGROUND_SECONDARY }} />
+            {selectedImage ? <View style={{ height: 72, paddingHorizontal: 10, paddingVertical: 6, flexDirection: "row", alignItems: "center", gap: 10, backgroundColor: "#313338" }}>
+                <Image source={{ uri: selectedImage.uri }} style={{ width: 56, height: 56, borderRadius: 8, backgroundColor: "#2b2d31" }} />
                 <NativeText numberOfLines={1} style={{ flex: 1, color: nativeColors.text, fontSize: 14 }}>{selectedImage.name}</NativeText>
                 <Pressable onPress={() => setSelectedImage(null)} hitSlop={8} style={({ pressed }) => ({ height: 34, paddingHorizontal: 12, borderRadius: 17, alignItems: "center", justifyContent: "center", backgroundColor: nativeColors.selected, opacity: pressed ? 0.7 : 1 })}>
                     <NativeText style={{ color: nativeColors.text, fontSize: 13, fontWeight: "600" }}>Remove</NativeText>

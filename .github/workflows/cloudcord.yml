@@ -76,6 +76,8 @@ jobs:
           cp "../ios/runtime/src/core/ui/settings/components/FakeProfileGlass.tsx" "src/core/ui/settings/components/FakeProfileGlass.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/CustomBadgeBeta.tsx" "src/core/ui/settings/components/CustomBadgeBeta.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/LocalProfiles.tsx" "src/core/ui/settings/components/LocalProfiles.tsx"
+          mkdir -p src/core/ui/settings/pages/Addons
+          cp "../ios/runtime/src/core/ui/settings/pages/Addons/index.tsx" "src/core/ui/settings/pages/Addons/index.tsx"
           mkdir -p src/core/ui/settings/pages/Recovery
           cp "../ios/runtime/src/core/ui/settings/pages/Recovery/index.tsx" "src/core/ui/settings/pages/Recovery/index.tsx"
           mkdir -p src/core/ui/settings/pages/Themes
@@ -311,7 +313,7 @@ jobs:
           function ProfileGlyph() {
               let icon: any;
               try { icon = require("@lib/api/assets").findAssetId("UserIcon"); } catch {}
-              return icon ? <Image source={icon} style={{ width: 30, height: 30, tintColor: "#bdc8ff" }} /> : <Text style={{ color: "#bdc8ff", fontSize: 24 }}>◎</Text>;
+              return icon ? <Image source={icon} style={{ width: 30, height: 30, tintColor: "#f2f3f5" }} /> : <Text style={{ color: "#f2f3f5", fontSize: 24 }}>◎</Text>;
           }
           function LocalProfiles(props: any) { const Component = require("@core/ui/settings/components/LocalProfiles").default; return <Component {...props} />; }
           function CustomBadgeBeta() { const Component = require("@core/ui/settings/components/CustomBadgeBeta").default; return <Component />; }
@@ -1756,12 +1758,12 @@ jobs:
 
           function ToggleRow({ label, subLabel, value, onPress, accent = false }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {
               return (
-                  <Pressable accessibilityRole="switch" accessibilityState={{ checked: value }} accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 13, borderRadius: 16, backgroundColor: pressed ? "rgba(101,117,239,0.18)" : "rgba(255,255,255,0.045)", opacity: pressed ? 0.85 : 1 })}>
+                  <Pressable accessibilityRole="switch" accessibilityState={{ checked: value }} accessibilityLabel={label} onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 13, borderRadius: 16, backgroundColor: pressed ? "rgba(88,101,242,0.15)" : "rgba(255,255,255,0.045)", opacity: pressed ? 0.85 : 1 })}>
                       <View style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
-                          <Text variant="text-sm/bold" style={{ color: accent ? "#bdc8ff" : "#f0f3f6" }}>{label}</Text>
+                          <Text variant="text-sm/bold" style={{ color: accent ? "#f2f3f5" : "#f0f3f6" }}>{label}</Text>
                           {subLabel ? <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>{subLabel}</Text> : null}
                       </View>
-                      <View style={{ width: 48, height: 28, borderRadius: 14, padding: 3, alignItems: value ? "flex-end" : "flex-start", backgroundColor: value ? "#6575ef" : "#484d60" }}>
+                      <View style={{ width: 48, height: 28, borderRadius: 14, padding: 3, alignItems: value ? "flex-end" : "flex-start", backgroundColor: value ? "#5865f2" : "#4e5058" }}>
                           <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff" }} />
                       </View>
                   </Pressable>
@@ -1770,14 +1772,14 @@ jobs:
 
           function DurationSelect({ label, value, onPress }: { label: string; value: number; onPress: () => void }) {
               return (
-                  <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 13, borderRadius: 16, backgroundColor: pressed ? "rgba(101,117,239,0.18)" : "rgba(255,255,255,0.045)" })}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value}`} onPress={onPress} style={({ pressed }) => ({ width: "100%", minHeight: 64, flexDirection: "row", alignItems: "center", paddingHorizontal: 14, paddingVertical: 13, borderRadius: 16, backgroundColor: pressed ? "rgba(88,101,242,0.15)" : "rgba(255,255,255,0.045)" })}>
                       <View style={{ flex: 1, minWidth: 0, paddingRight: 12 }}>
-                          <Text variant="text-sm/bold" style={{ color: "#bdc8ff" }}>{label}</Text>
+                          <Text variant="text-sm/bold" style={{ color: "#f2f3f5" }}>{label}</Text>
                           <Text variant="text-xs/medium" color="text-muted" style={{ marginTop: 3 }}>Profile appearance</Text>
                       </View>
                       <View style={{ maxWidth: "48%", flexDirection: "row", alignItems: "center", gap: 7, paddingHorizontal: 10, paddingVertical: 7, borderRadius: 9, backgroundColor: "#243c46" }}>
                           <Text variant="text-xs/bold" style={{ color: "#78e7ff" }} numberOfLines={1}>{label === "Gifting badge" ? (GIFT_LEVELS[value]?.name || "None") : label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value)}</Text>
-                          <Text variant="text-sm/bold" style={{ color: "#bdc8ff" }}>›</Text>
+                          <Text variant="text-sm/bold" style={{ color: "#f2f3f5" }}>›</Text>
                       </View>
                   </Pressable>
               );
@@ -1821,7 +1823,7 @@ jobs:
                           ))}
                       </View>
                       <ActionButton label="Open custom color picker" muted onPress={onOpen} />
-                      <TextInput value={value} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} onChangeText={onSelect} style={{ color: "#fff", backgroundColor: value || "#1f2023", borderRadius: 9, padding: 12 }} />
+                      <TextInput value={value} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} onChangeText={onSelect} style={{ color: "#fff", backgroundColor: value || "#1e1f22", borderRadius: 9, padding: 12 }} />
                   </View>
               );
           }
@@ -1866,7 +1868,7 @@ jobs:
                       </View>
                       <View style={{ gap: 8 }}>
                           <Text variant="text-sm/bold" color="text-normal">Exact hex color</Text>
-                          <TextInput value={color} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} maxLength={7} onChangeText={changeHex} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                          <TextInput value={color} placeholder="#5865F2" placeholderTextColor="#777" autoCapitalize="characters" autoCorrect={false} maxLength={7} onChangeText={changeHex} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
                       </View>
                       <ActionButton label="Apply color" onPress={() => colorNumber(color) != null && onApply(color.toUpperCase())} />
                   </ScrollView>
@@ -2011,7 +2013,7 @@ jobs:
                               <ActionButton label="Choose file or GIF" muted onPress={() => void choose(field, "file")} />
                           </View>
                           {value?.uri && (
-                              <View style={{ width: "100%", borderRadius: 12, overflow: "hidden", backgroundColor: "#1f2023" }}>
+                              <View style={{ width: "100%", borderRadius: 12, overflow: "hidden", backgroundColor: "#1e1f22" }}>
                                   <View style={banner ? { width: "100%", aspectRatio: 2.5, overflow: "hidden" } : { width: 104, height: 104, borderRadius: 52, overflow: "hidden", alignSelf: "center", marginVertical: 12 }}>
                                       <Image source={{ uri: value.uri }} resizeMode="cover" style={{ width: "100%", height: "100%" }} />
                                   </View>
@@ -2034,7 +2036,7 @@ jobs:
                   <ScrollView style={{ flex: 1, width: "100%", backgroundColor: "#111521" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 20, paddingBottom: 110 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator={false}>
                       <View style={{ width: "100%", gap: 16 }}>
                           <View style={{ width: "100%", flexDirection: "row", alignItems: "center", gap: 12 }}>
-                              <View style={{ width: 52, height: 52, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", backgroundColor: "rgba(101,117,239,0.16)", alignItems: "center", justifyContent: "center" }}><ProfileGlyph /></View>
+                              <View style={{ width: 52, height: 52, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", backgroundColor: "rgba(88,101,242,0.15)", alignItems: "center", justifyContent: "center" }}><ProfileGlyph /></View>
                               <View style={{ flex: 1, minWidth: 0 }}>
                                   <Text variant="heading-lg/semibold" color="text-normal">Profile</Text>
                                   <Text variant="text-sm/medium" style={{ color: "#aeb8d2" }}>make it yours. visible to other CloudCord users when synced.</Text>
@@ -2046,16 +2048,20 @@ jobs:
                                   {banner ? <Image source={{ uri: banner }} resizeMode="cover" style={{ width: "100%", height: 118 }} /> : <View style={{ height: 118, backgroundColor: preview.profileColorsEnabled ? (preview.primaryColor || "#5865f2") : "#5865f2" }} />}
                                   <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
                                       <View style={{ width: 94, height: 94, marginTop: -47, alignItems: "center", justifyContent: "center" }}>
-                                          {avatar ? <Image source={{ uri: avatar }} style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: "#1f2023" }} /> : <View style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: "#1f2023", backgroundColor: "#777" }} />}
+                                          {avatar ? <Image source={{ uri: avatar }} style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: "#1e1f22" }} /> : <View style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: "#1e1f22", backgroundColor: "#777" }} />}
                                           {preview.avatarDecoration ? <Image pointerEvents="none" source={{ uri: preview.avatarDecoration }} style={{ position: "absolute", width: 94, height: 94 }} /> : null}
                                       </View>
                                       <Text variant="heading-md/semibold" color="text-normal" style={{ marginTop: 10 }}>{preview.displayName || "Preview Name"}</Text>
                                       <Text variant="text-sm/medium" color="text-muted">@{preview.username || "preview"}</Text>
-                                      <View style={{ alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: "rgba(101,117,239,0.18)", marginTop: 8 }}><Text variant="text-xs/bold" style={{ color: "#bdc8ff" }}>{preview.enabled ? "preview on" : "preview off"}</Text></View>
+                                      <View style={{ alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: "rgba(88,101,242,0.15)", marginTop: 8 }}><Text variant="text-xs/bold" style={{ color: "#f2f3f5" }}>{preview.enabled ? "preview on" : "preview off"}</Text></View>
                                   </View>
                               </View>
                           </Card>
 
+                          <GlassButton muted label="Cloudsync · back up & sync" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", {
+                              title: "Cloudsync",
+                              render: () => { const Sync = require("@core/ui/settings/pages/StoreCloud").default; return <Sync />; }
+                          })} />
                           <ProfileTabs selected={activeTab} onSelect={setActiveTab} />
                           {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
@@ -2070,27 +2076,27 @@ jobs:
                                   />
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Display name</Text>
-                                      <TextInput defaultValue={preview.displayName} placeholder="Preview Name" placeholderTextColor="#777" onChangeText={value => update("displayName", value)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                      <TextInput defaultValue={preview.displayName} placeholder="Preview Name" placeholderTextColor="#777" onChangeText={value => update("displayName", value)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Username</Text>
-                                      <TextInput defaultValue={preview.username} placeholder="preview" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                      <TextInput defaultValue={preview.username} placeholder="preview" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">about you</Text>
-                                      <TextInput defaultValue={preview.bio} placeholder="My description..." placeholderTextColor="#777" multiline onChangeText={value => update("bio", value, true)} style={{ minHeight: 88, color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12, textAlignVertical: "top" }} />
+                                      <TextInput defaultValue={preview.bio} placeholder="My description..." placeholderTextColor="#777" multiline onChangeText={value => update("bio", value, true)} style={{ minHeight: 88, color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12, textAlignVertical: "top" }} />
                                   </View>
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Pronouns</Text>
-                                      <TextInput defaultValue={preview.pronouns} placeholder="he/him" placeholderTextColor="#777" onChangeText={value => update("pronouns", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                      <TextInput defaultValue={preview.pronouns} placeholder="he/him" placeholderTextColor="#777" onChangeText={value => update("pronouns", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Account creation date</Text>
-                                      <TextInput defaultValue={preview.createdAt} placeholder="2010-06-29" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("createdAt", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                      <TextInput defaultValue={preview.createdAt} placeholder="2010-06-29" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("createdAt", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Joined since date</Text>
-                                      <TextInput defaultValue={preview.signupDate} placeholder="2010-06-29" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("signupDate", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                      <TextInput defaultValue={preview.signupDate} placeholder="2010-06-29" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("signupDate", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   <ToggleRow label="Simulate Nitro" subLabel="Enables the Nitro badge, banner, and profile colors" value={preview.nitroEnabled} onPress={() => update("nitroEnabled", !preview.nitroEnabled, true)} />
                                   {preview.nitroEnabled ? <DurationSelect label="Nitro badge" value={preview.nitroMonths} onPress={() => chooseDuration("nitroMonths", "Choose Nitro badge", NITRO_DURATIONS)} /> : null}
@@ -2099,7 +2105,7 @@ jobs:
                                   <ActionButton label="Browse Discord decorations" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Avatar Decorations", render: () => <DecorationGallery onSelect={item => { update("avatarDecoration", item.uri, true); update("avatarDecorationSku", item.skuId, true); navigation.goBack(); }} /> })} />
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Avatar decoration URL</Text>
-                                      <TextInput value={preview.avatarDecoration} placeholder="https://..." placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("avatarDecoration", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                      <TextInput value={preview.avatarDecoration} placeholder="https://..." placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("avatarDecoration", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   {preview.avatarDecoration ? <ActionButton label="Clear decoration" muted onPress={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} /> : null}
                                   <ToggleRow label="Use custom profile colors" subLabel="Turn off to use Discord's normal profile colors" value={preview.profileColorsEnabled} onPress={() => update("profileColorsEnabled", !preview.profileColorsEnabled, true)} />
@@ -2129,7 +2135,7 @@ jobs:
                           </Card> : null}
                           {activeTab === "badges" ? <Card border="strong">
                               <View style={{ padding: 14, gap: 10 }}>
-                                  <Text variant="heading-md/semibold" style={{ color: "#bdc8ff" }}>your badges</Text>
+                                  <Text variant="heading-md/semibold" style={{ color: "#f2f3f5" }}>your badges</Text>
                                   <ToggleRow
                                       label="Replace real badges"
                                       subLabel="Selected badges replace your real badges for CloudCord users"
@@ -2146,7 +2152,7 @@ jobs:
                                   ))}
                                   {preview.selectedBadges?.oldname ? <View style={{ gap: 8, marginTop: 4 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Previous username displayed in tooltip</Text>
-                                      <TextInput defaultValue={preview.oldName} placeholder="OldUser#0000" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("oldName", value, true)} style={{ color: "#fff", backgroundColor: "#1f2023", borderRadius: 9, padding: 12 }} />
+                                      <TextInput defaultValue={preview.oldName} placeholder="OldUser#0000" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("oldName", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
                                   </View> : null}
                               </View>
                           </Card> : null}
