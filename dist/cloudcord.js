@@ -9389,209 +9389,70 @@
   // src/core/ui/settings/components/FakeProfileGlass.tsx
   var FakeProfileGlass_exports = {};
   __export(FakeProfileGlass_exports, {
+    DiscordInput: () => DiscordInput,
     GlassButton: () => GlassButton,
     GlassCard: () => GlassCard,
     ProfileTabs: () => ProfileTabs
   });
-  function ProfileTabIcon({ tab, color: color2 }) {
-    var icon;
-    for (var name of tab === "profile" ? [
-      "UserIcon"
-    ] : tab === "badges" ? [
-      "StarIcon"
-    ] : [
-      "PaintPaletteIcon",
-      "SparklesIcon"
-    ]) {
-      try {
-        icon = findAssetId(name);
-      } catch (e) {
+  function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }) {
+    var [draft, setDraft] = (0, import_react4.useState)(defaultValue ?? "");
+    return /* @__PURE__ */ jsx(TextInput, {
+      ...props,
+      size: "lg",
+      value: value ?? draft,
+      onChange: (event) => {
+        var next = typeof event === "string" ? event : event?.nativeEvent?.text ?? "";
+        setDraft(next);
+        onChangeText?.(next);
       }
-      if (icon)
-        break;
-    }
-    return icon ? /* @__PURE__ */ jsx(import_react_native16.Image, {
-      accessible: false,
-      source: icon,
-      style: {
-        width: 18,
-        height: 18,
-        tintColor: color2
-      }
-    }) : /* @__PURE__ */ jsx(import_react_native16.Text, {
-      accessible: false,
-      style: {
-        color: color2,
-        fontSize: 17
-      },
-      children: tab === "profile" ? "\u25C9" : tab === "badges" ? "\u2726" : "\u2727"
     });
   }
   function GlassCard({ children }) {
-    var opaque = false;
-    return /* @__PURE__ */ jsxs(import_react_native16.View, {
-      style: {
-        borderRadius: 16,
-        overflow: "hidden",
-        borderWidth: 1,
-        borderColor: "#1e1f22",
-        backgroundColor: opaque ? "#232428" : "#232428",
-        shadowColor: "#000",
-        shadowOffset: {
-          width: 0,
-          height: 6
-        },
-        shadowOpacity: 0.05,
-        shadowRadius: 14
-      },
-      children: [
-        /* @__PURE__ */ jsx(import_react_native16.View, {
-          pointerEvents: "none",
-          style: {
-            position: "absolute",
-            top: 0,
-            left: 18,
-            right: 18,
-            height: 1,
-            backgroundColor: "rgba(255,255,255,0.24)"
-          }
-        }),
-        children
-      ]
+    return /* @__PURE__ */ jsx(TableRowGroup, {
+      children
     });
   }
   function GlassButton({ label, onPress, muted = false, disabled = false }) {
-    return /* @__PURE__ */ jsx(import_react_native16.Pressable, {
-      accessibilityRole: "button",
-      accessibilityLabel: label,
-      accessibilityState: {
-        disabled
-      },
-      disabled,
+    return /* @__PURE__ */ jsx(Button, {
+      text: label,
       onPress,
-      style: ({ pressed }) => ({
-        width: "100%",
-        minHeight: 44,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        borderRadius: 24,
-        overflow: "hidden",
-        borderWidth: 1,
-        borderColor: muted ? "rgba(190,202,255,0.24)" : "rgba(255,255,255,0.30)",
-        alignItems: "center",
-        justifyContent: "center",
-        backgroundColor: disabled ? "#2b2d31" : muted ? "#2b2d31" : pressed ? "#4752c4" : "#5865f2",
-        opacity: disabled ? 0.6 : 1
-      }),
-      children: ({ pressed }) => /* @__PURE__ */ jsxs(Fragment, {
-        children: [
-          /* @__PURE__ */ jsx(import_react_native16.View, {
-            pointerEvents: "none",
-            style: {
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "48%",
-              backgroundColor: pressed ? "rgba(255,255,255,0.04)" : "rgba(255,255,255,0.10)"
-            }
-          }),
-          /* @__PURE__ */ jsx(import_react_native16.View, {
-            pointerEvents: "none",
-            style: {
-              position: "absolute",
-              top: 1,
-              left: 14,
-              right: 14,
-              height: 1,
-              backgroundColor: "rgba(255,255,255,0.35)"
-            }
-          }),
-          /* @__PURE__ */ jsx(import_react_native16.View, {
-            pointerEvents: "none",
-            style: {
-              position: "absolute",
-              bottom: 1,
-              left: 12,
-              right: 12,
-              height: 1,
-              backgroundColor: "rgba(0,0,0,0.16)"
-            }
-          }),
-          /* @__PURE__ */ jsx(import_react_native16.Text, {
-            style: {
-              color: muted ? "#f2f3f5" : "#fff",
-              textAlign: "center",
-              fontSize: 14,
-              fontWeight: "600"
-            },
-            children: label
-          })
-        ]
-      })
+      disabled,
+      variant: muted ? "secondary" : "primary"
     });
   }
   function ProfileTabs({ selected, onSelect }) {
     return /* @__PURE__ */ jsx(import_react_native16.View, {
-      accessibilityRole: "tablist",
-      style: {
-        flexDirection: "row",
-        gap: 6,
-        padding: 5,
-        borderRadius: 20,
-        backgroundColor: "rgba(255,255,255,0.05)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.1)"
-      },
-      children: [
-        "profile",
-        "badges",
-        "custom",
-        "others"
-      ].map((tab) => /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
-        accessibilityRole: "tab",
-        accessibilityLabel: tab === "custom" ? "custom badges beta" : tab,
-        accessibilityState: {
-          selected: selected === tab
-        },
-        onPress: () => onSelect(tab),
-        style: ({ pressed }) => ({
-          flex: 1,
-          minHeight: 52,
-          alignItems: "center",
-          justifyContent: "center",
-          borderRadius: 15,
-          paddingHorizontal: 4,
-          gap: 3,
-          backgroundColor: selected === tab ? "#5865f2" : pressed ? "rgba(255,255,255,0.10)" : "transparent"
-        }),
+      children: /* @__PURE__ */ jsx(TableRowGroup, {
         children: [
-          /* @__PURE__ */ jsx(ProfileTabIcon, {
-            tab,
-            color: selected === tab ? "#fff" : "#b5bac1"
+          "profile",
+          "badges",
+          "custom",
+          "others"
+        ].map((tab) => /* @__PURE__ */ jsx(TableRow, {
+          label: {
+            profile: "My profile",
+            badges: "Badges",
+            custom: "Custom badges \xB7 beta",
+            others: "Other profiles"
+          }[tab],
+          trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
+            text: selected === tab ? "Selected" : ""
           }),
-          /* @__PURE__ */ jsx(import_react_native16.Text, {
-            allowFontScaling: true,
-            style: {
-              fontSize: 12,
-              fontWeight: "600",
-              color: selected === tab ? "#fff" : "#b5bac1"
-            },
-            children: tab === "custom" ? "custom \xB7 beta" : tab
-          })
-        ]
-      }, tab))
+          onPress: () => onSelect(tab)
+        }, tab))
+      })
     });
   }
-  var import_react_native16;
+  var import_react4, import_react_native16;
   var init_FakeProfileGlass = __esm({
     "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
+      import_react4 = __toESM(require_react());
       import_react_native16 = __toESM(require_react_native());
-      init_assets();
+      init_components();
     }
   });
 
@@ -9601,8 +9462,8 @@
     default: () => LocalProfiles
   });
   function LocalProfiles({ badges, refresh }) {
-    var [id, setId] = (0, import_react4.useState)("");
-    var [draft, setDraft] = (0, import_react4.useState)({});
+    var [id, setId] = (0, import_react5.useState)("");
+    var [draft, setDraft] = (0, import_react5.useState)({});
     var state2 = settings;
     var load = (value) => {
       setId(value);
@@ -9653,14 +9514,13 @@
         gap: 6
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native17.Text, {
+        /* @__PURE__ */ jsx(Text, {
           style: {
-            color: "#cbd3e7",
             fontSize: 13
           },
           children: label
         }),
-        /* @__PURE__ */ jsx(import_react_native17.TextInput, {
+        /* @__PURE__ */ jsx(DiscordInput, {
           accessibilityLabel: label,
           value: draft[key] ?? "",
           onChangeText: (value) => setDraft({
@@ -9671,7 +9531,6 @@
           autoCapitalize: "none",
           maxLength: key === "bio" ? 500 : 2048,
           style: {
-            color: "#fff",
             padding: 14,
             borderRadius: 16,
             backgroundColor: "#1e1f22",
@@ -9686,21 +9545,17 @@
         padding: 16
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native17.Text, {
+        /* @__PURE__ */ jsx(Text, {
           style: {
-            color: "#fff",
             fontSize: 18,
             fontWeight: "600"
           },
           children: "Other profiles"
         }),
-        /* @__PURE__ */ jsx(import_react_native17.Text, {
-          style: {
-            color: "#b5bac1"
-          },
+        /* @__PURE__ */ jsx(Text, {
           children: "Only on this device. This does not change their Discord account or shared profile."
         }),
-        /* @__PURE__ */ jsx(import_react_native17.TextInput, {
+        /* @__PURE__ */ jsx(DiscordInput, {
           accessibilityLabel: "Discord user ID",
           placeholder: "Discord user ID",
           placeholderTextColor: "#9faac4",
@@ -9708,7 +9563,6 @@
           value: id,
           onChangeText: load,
           style: {
-            color: "#fff",
             padding: 14,
             borderRadius: 16,
             backgroundColor: "#1e1f22"
@@ -9720,10 +9574,7 @@
         input("Banner link", "banner"),
         input("Bio", "bio", true),
         input("Pronouns", "pronouns"),
-        /* @__PURE__ */ jsx(import_react_native17.Text, {
-          style: {
-            color: "#cbd3e7"
-          },
+        /* @__PURE__ */ jsx(Text, {
           children: "Badges \xB7 local preview"
         }),
         badges.map(([key, label, flag, , customId]) => {
@@ -9762,15 +9613,16 @@
       ]
     });
   }
-  var import_react4, import_react_native17;
+  var import_react5, import_react_native17;
   var init_LocalProfiles = __esm({
     "src/core/ui/settings/components/LocalProfiles.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      import_react4 = __toESM(require_react());
+      import_react5 = __toESM(require_react());
       import_react_native17 = __toESM(require_react_native());
+      init_components();
       init_settings();
       init_FakeProfileGlass();
     }
@@ -9782,14 +9634,14 @@
     default: () => CustomBadgeBeta
   });
   function CustomBadgeBeta() {
-    var [name, setName] = (0, import_react5.useState)("");
-    var [png, setPng] = (0, import_react5.useState)("");
-    var [message, setMessage] = (0, import_react5.useState)("beta \u2014 approved badges appear on your profile.");
-    var [busy, setBusy] = (0, import_react5.useState)(false);
-    var [state2, setState] = (0, import_react5.useState)(null);
-    var [verified, setVerified] = (0, import_react5.useState)(Boolean(settings.customBadgeDeviceToken));
-    var polling = (0, import_react5.useRef)(false);
-    (0, import_react5.useEffect)(() => {
+    var [name, setName] = (0, import_react6.useState)("");
+    var [png, setPng] = (0, import_react6.useState)("");
+    var [message, setMessage] = (0, import_react6.useState)("beta \u2014 approved badges appear on your profile.");
+    var [busy, setBusy] = (0, import_react6.useState)(false);
+    var [state2, setState] = (0, import_react6.useState)(null);
+    var [verified, setVerified] = (0, import_react6.useState)(Boolean(settings.customBadgeDeviceToken));
+    var polling = (0, import_react6.useRef)(false);
+    (0, import_react6.useEffect)(() => {
       if (!state2)
         return;
       var alive = true;
@@ -9858,14 +9710,15 @@
               },
               body: JSON.stringify({
                 accepted: true,
-                termsVersion: config.termsVersion
+                termsVersion: config.termsVersion,
+                returnToClient: true
               })
             });
             var result = yield r.json();
             if (!r.ok || !result.state || !result.authorizeUrl)
               throw new Error(result.error || "verification unavailable");
             setState(result.state);
-            yield import_react_native18.Linking.openURL(result.authorizeUrl);
+            yield import_react_native18.Linking.openURL(`${API}/badges/verify?client=1&state=${encodeURIComponent(result.state)}`);
           } catch (e) {
             setMessage(e.message || "verification unavailable");
           }
@@ -9936,22 +9789,18 @@
         padding: 2
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native18.Text, {
+        /* @__PURE__ */ jsx(Text, {
           style: {
-            color: "white",
             fontWeight: "bold"
           },
           children: "custom badges \xB7 beta"
         }),
-        /* @__PURE__ */ jsx(import_react_native18.Text, {
-          style: {
-            color: "#b5bac1"
-          },
+        /* @__PURE__ */ jsx(Text, {
           children: "no staff/verified impersonation, unsafe content, links or personal information. custom badges do not prove staff status."
         }),
         !verified ? button(state2 ? "waiting for verification\u2026" : "verify Discord", verify, Boolean(state2)) : /* @__PURE__ */ jsxs(Fragment, {
           children: [
-            /* @__PURE__ */ jsx(import_react_native18.TextInput, {
+            /* @__PURE__ */ jsx(DiscordInput, {
               accessibilityLabel: "Custom badge name",
               value: name,
               onChangeText: setName,
@@ -9959,7 +9808,6 @@
               placeholder: "badge name",
               placeholderTextColor: "#9faac4",
               style: {
-                color: "white",
                 minHeight: 50,
                 padding: 14,
                 backgroundColor: "#1e1f22",
@@ -9981,17 +9829,14 @@
             button(busy ? "uploading\u2026" : "Add badge", submit, busy || !png || !name.trim())
           ]
         }),
-        /* @__PURE__ */ jsx(import_react_native18.Text, {
+        /* @__PURE__ */ jsx(Text, {
           accessibilityLiveRegion: "polite",
-          style: {
-            color: "#b5bac1"
-          },
           children: message
         })
       ]
     });
   }
-  var import_react5, import_react_native18, API;
+  var import_react6, import_react_native18, API;
   var init_CustomBadgeBeta = __esm({
     "src/core/ui/settings/components/CustomBadgeBeta.tsx"() {
       "use strict";
@@ -9999,241 +9844,13 @@
       init_promiseAllSettled();
       init_async_to_generator();
       init_jsxRuntime();
-      import_react5 = __toESM(require_react());
+      import_react6 = __toESM(require_react());
       import_react_native18 = __toESM(require_react_native());
+      init_components();
       init_FakeProfileGlass();
       init_settings();
       init_metro();
       API = "https://getcloudcord.com";
-    }
-  });
-
-  // src/core/ui/settings/components/ScaledPluginSettings.tsx
-  function ScaledPluginSettings({ component: Component }) {
-    if (typeof Component !== "function") {
-      return /* @__PURE__ */ jsx(import_react_native19.View, {
-        style: {
-          padding: 16
-        },
-        children: /* @__PURE__ */ jsx(import_react_native19.Text, {
-          style: {
-            color: "#ffffff"
-          },
-          children: "This plugin does not provide a mobile-compatible settings component."
-        })
-      });
-    }
-    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
-      style: {
-        flex: 1
-      },
-      contentContainerStyle: {
-        paddingBottom: 90,
-        paddingHorizontal: 12
-      },
-      showsVerticalScrollIndicator: true,
-      children: /* @__PURE__ */ jsx(import_react_native19.View, {
-        style: {
-          width: "100%",
-          paddingRight: 24,
-          overflow: "visible"
-        },
-        children: /* @__PURE__ */ jsx(Component, {})
-      })
-    });
-  }
-  var import_react_native19;
-  var init_ScaledPluginSettings = __esm({
-    "src/core/ui/settings/components/ScaledPluginSettings.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_jsxRuntime();
-      import_react_native19 = __toESM(require_react_native());
-    }
-  });
-
-  // src/core/ui/settings/pages/StoreCloud/index.tsx
-  var StoreCloud_exports = {};
-  __export(StoreCloud_exports, {
-    default: () => StoreCloud
-  });
-  function StoreCloud() {
-    useProxy(VdPluginManager.plugins);
-    var [busy, setBusy] = (0, import_react6.useState)(false);
-    var [refresh, setRefresh] = (0, import_react6.useState)(0);
-    var plugin = VdPluginManager.plugins[PLUGIN_URL];
-    var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
-    function installOrStart() {
-      return _async_to_generator(function* () {
-        if (busy)
-          return;
-        setBusy(true);
-        try {
-          if (!VdPluginManager.plugins[PLUGIN_URL]) {
-            yield VdPluginManager.installPlugin(PLUGIN_URL, true);
-            showToast("StoreCloud installed", findAssetId("Check"));
-          } else if (!VdPluginManager.plugins[PLUGIN_URL].enabled) {
-            yield VdPluginManager.startPlugin(PLUGIN_URL);
-            showToast("StoreCloud started", findAssetId("Check"));
-          } else {
-            showToast("StoreCloud is already enabled", findAssetId("Check"));
-          }
-          setRefresh((x2) => x2 + 1);
-        } catch (error) {
-          console.error("[CloudCord] StoreCloud install/start failed", error);
-          showToast(error?.message ?? "StoreCloud failed");
-        } finally {
-          setBusy(false);
-        }
-      })();
-    }
-    function refetchPlugin() {
-      return _async_to_generator(function* () {
-        if (busy)
-          return;
-        setBusy(true);
-        try {
-          if (VdPluginManager.plugins[PLUGIN_URL]?.enabled) {
-            VdPluginManager.stopPlugin(PLUGIN_URL, false);
-          }
-          yield VdPluginManager.fetchPlugin(PLUGIN_URL);
-          yield VdPluginManager.startPlugin(PLUGIN_URL);
-          showToast("StoreCloud refreshed", findAssetId("Check"));
-          setRefresh((x2) => x2 + 1);
-        } catch (error) {
-          console.error("[CloudCord] StoreCloud refresh failed", error);
-          showToast(error?.message ?? "StoreCloud refresh failed");
-        } finally {
-          setBusy(false);
-        }
-      })();
-    }
-    function removePlugin() {
-      return _async_to_generator(function* () {
-        if (busy)
-          return;
-        setBusy(true);
-        try {
-          if (VdPluginManager.plugins[PLUGIN_URL]) {
-            yield VdPluginManager.removePlugin(PLUGIN_URL);
-          }
-          showToast("StoreCloud removed");
-          setRefresh((x2) => x2 + 1);
-        } catch (error) {
-          console.error("[CloudCord] StoreCloud remove failed", error);
-          showToast(error?.message ?? "StoreCloud remove failed");
-        } finally {
-          setBusy(false);
-        }
-      })();
-    }
-    if (SettingsComponent) {
-      return /* @__PURE__ */ jsx(ScaledPluginSettings, {
-        component: SettingsComponent
-      }, `storecloud-settings-${refresh}`);
-    }
-    return /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
-      style: {
-        flex: 1
-      },
-      contentContainerStyle: {
-        paddingBottom: 38
-      },
-      children: /* @__PURE__ */ jsxs(Stack, {
-        style: {
-          paddingVertical: 24,
-          paddingHorizontal: 12
-        },
-        spacing: 24,
-        children: [
-          /* @__PURE__ */ jsxs(TableRowGroup, {
-            title: "CloudSync",
-            children: [
-              /* @__PURE__ */ jsxs(import_react_native20.View, {
-                style: {
-                  paddingHorizontal: 12,
-                  paddingBottom: 12
-                },
-                children: [
-                  /* @__PURE__ */ jsx(Text, {
-                    variant: "heading-md/semibold",
-                    color: "text-normal",
-                    children: "CloudSync"
-                  }),
-                  /* @__PURE__ */ jsx(Text, {
-                    variant: "text-sm/medium",
-                    color: "text-muted",
-                    children: "Connect StoreCloud to sync supported settings and manage cloud backups on this device."
-                  })
-                ]
-              }),
-              /* @__PURE__ */ jsx(TableRow, {
-                arrow: true,
-                label: plugin ? "Start StoreCloud" : "Enable StoreCloud",
-                subLabel: busy ? "Please wait..." : "Loads the StoreCloud sync engine",
-                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                  source: {
-                    uri: STORECLOUD_ICON
-                  }
-                }),
-                onPress: installOrStart
-              }),
-              plugin && /* @__PURE__ */ jsx(TableRow, {
-                arrow: true,
-                label: "Refresh StoreCloud",
-                subLabel: "Refreshes the StoreCloud sync engine",
-                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                  source: findAssetId("RetryIcon")
-                }),
-                onPress: refetchPlugin
-              }),
-              plugin && /* @__PURE__ */ jsx(TableRow, {
-                arrow: true,
-                label: "Disable StoreCloud",
-                subLabel: "Removes the StoreCloud sync engine",
-                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                  source: findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")
-                }),
-                onPress: removePlugin
-              })
-            ]
-          }),
-          /* @__PURE__ */ jsx(Card, {
-            border: "strong",
-            children: /* @__PURE__ */ jsx(import_react_native20.View, {
-              style: {
-                padding: 12
-              },
-              children: /* @__PURE__ */ jsx(Text, {
-                variant: "text-sm/medium",
-                color: "text-muted",
-                children: "StoreCloud uses the existing mobile sync engine for OAuth, settings synchronization, backups, and files."
-              })
-            })
-          })
-        ]
-      })
-    });
-  }
-  var import_react6, import_react_native20, PLUGIN_URL, STORECLOUD_ICON;
-  var init_StoreCloud = __esm({
-    "src/core/ui/settings/pages/StoreCloud/index.tsx"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_async_to_generator();
-      init_jsxRuntime();
-      init_plugins();
-      init_storage();
-      init_ScaledPluginSettings();
-      init_assets();
-      init_toasts();
-      init_components();
-      import_react6 = __toESM(require_react());
-      import_react_native20 = __toESM(require_react_native());
-      PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
-      STORECLOUD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
     }
   });
 
@@ -10261,13 +9878,19 @@
       ...props
     });
   }
+  function TextInput3(props) {
+    var Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).DiscordInput;
+    return /* @__PURE__ */ jsx(Component, {
+      ...props
+    });
+  }
   function ProfileGlyph() {
     var icon;
     try {
       icon = (init_assets(), __toCommonJS(assets_exports)).findAssetId("UserIcon");
     } catch (e) {
     }
-    return icon ? /* @__PURE__ */ jsx(import_react_native21.Image, {
+    return icon ? /* @__PURE__ */ jsx(import_react_native19.Image, {
       source: icon,
       style: {
         width: 30,
@@ -10331,7 +9954,7 @@
     return _async_to_generator(function* () {
       if (globalThis.__CLOUDCORD_LOADER__?.loaderName !== "RealCord")
         return;
-      var reader = import_react_native21.NativeModules.FileReaderModule ?? import_react_native21.NativeModules.RCTFileReaderModule;
+      var reader = import_react_native19.NativeModules.FileReaderModule ?? import_react_native19.NativeModules.RCTFileReaderModule;
       if (typeof reader?.readAsDataURL !== "function")
         return;
       try {
@@ -11053,7 +10676,7 @@
       });
     } catch (error) {
       diagnostics.last = error?.message || "Could not open gifting badges";
-      import_react_native21.Alert.alert("Gifting Badge", "Discord's native gifting badge overlay is unavailable in this Discord version.");
+      import_react_native19.Alert.alert("Gifting Badge", "Discord's native gifting badge overlay is unavailable in this Discord version.");
     }
   }
   function selectedBadgeObjects(existing) {
@@ -11727,7 +11350,7 @@
           height: Number(asset.height)
         };
       return yield new Promise((resolve, reject) => {
-        import_react_native21.Image.getSize(uri, (width, height) => resolve({
+        import_react_native19.Image.getSize(uri, (width, height) => resolve({
           width,
           height
         }), reject);
@@ -11899,141 +11522,25 @@
       muted
     });
   }
-  function ToggleRow({ label, subLabel, value, onPress, accent = false }) {
-    return /* @__PURE__ */ jsxs(import_react_native21.Pressable, {
-      accessibilityRole: "switch",
-      accessibilityState: {
-        checked: value
-      },
-      accessibilityLabel: label,
-      onPress,
-      style: ({ pressed }) => ({
-        width: "100%",
-        minHeight: 64,
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 14,
-        paddingVertical: 13,
-        borderRadius: 16,
-        backgroundColor: pressed ? "rgba(88,101,242,0.15)" : "rgba(255,255,255,0.045)",
-        opacity: pressed ? 0.85 : 1
-      }),
-      children: [
-        /* @__PURE__ */ jsxs(import_react_native21.View, {
-          style: {
-            flex: 1,
-            minWidth: 0,
-            paddingRight: 10
-          },
-          children: [
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-sm/bold",
-              style: {
-                color: accent ? "#f2f3f5" : "#f0f3f6"
-              },
-              children: label
-            }),
-            subLabel ? /* @__PURE__ */ jsx(Text, {
-              variant: "text-xs/medium",
-              color: "text-muted",
-              style: {
-                marginTop: 3
-              },
-              children: subLabel
-            }) : null
-          ]
-        }),
-        /* @__PURE__ */ jsx(import_react_native21.View, {
-          style: {
-            width: 48,
-            height: 28,
-            borderRadius: 14,
-            padding: 3,
-            alignItems: value ? "flex-end" : "flex-start",
-            backgroundColor: value ? "#5865f2" : "#4e5058"
-          },
-          children: /* @__PURE__ */ jsx(import_react_native21.View, {
-            style: {
-              width: 22,
-              height: 22,
-              borderRadius: 11,
-              backgroundColor: "#fff"
-            }
-          })
-        })
-      ]
+  function ToggleRow({ label, subLabel, value, onPress }) {
+    var { TableSwitchRow: TableSwitchRow2 } = (init_components(), __toCommonJS(components_exports));
+    return /* @__PURE__ */ jsx(TableSwitchRow2, {
+      label,
+      subLabel,
+      value,
+      onValueChange: onPress
     });
   }
   function DurationSelect({ label, value, onPress }) {
-    return /* @__PURE__ */ jsxs(import_react_native21.Pressable, {
-      accessibilityRole: "button",
-      accessibilityLabel: `${label}: ${value}`,
-      onPress,
-      style: ({ pressed }) => ({
-        width: "100%",
-        minHeight: 64,
-        flexDirection: "row",
-        alignItems: "center",
-        paddingHorizontal: 14,
-        paddingVertical: 13,
-        borderRadius: 16,
-        backgroundColor: pressed ? "rgba(88,101,242,0.15)" : "rgba(255,255,255,0.045)"
+    var { TableRow: TableRow2 } = (init_components(), __toCommonJS(components_exports));
+    var selected = label === "Gifting badge" ? GIFT_LEVELS[value]?.name || "None" : label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value);
+    return /* @__PURE__ */ jsx(TableRow2, {
+      arrow: true,
+      label,
+      trailing: /* @__PURE__ */ jsx(TableRow2.TrailingText, {
+        text: selected || "None"
       }),
-      children: [
-        /* @__PURE__ */ jsxs(import_react_native21.View, {
-          style: {
-            flex: 1,
-            minWidth: 0,
-            paddingRight: 12
-          },
-          children: [
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-sm/bold",
-              style: {
-                color: "#f2f3f5"
-              },
-              children: label
-            }),
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-xs/medium",
-              color: "text-muted",
-              style: {
-                marginTop: 3
-              },
-              children: "Profile appearance"
-            })
-          ]
-        }),
-        /* @__PURE__ */ jsxs(import_react_native21.View, {
-          style: {
-            maxWidth: "48%",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 7,
-            paddingHorizontal: 10,
-            paddingVertical: 7,
-            borderRadius: 9,
-            backgroundColor: "#243c46"
-          },
-          children: [
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-xs/bold",
-              style: {
-                color: "#78e7ff"
-              },
-              numberOfLines: 1,
-              children: label === "Gifting badge" ? GIFT_LEVELS[value]?.name || "None" : label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value)
-            }),
-            /* @__PURE__ */ jsx(Text, {
-              variant: "text-sm/bold",
-              style: {
-                color: "#f2f3f5"
-              },
-              children: "\u203A"
-            })
-          ]
-        })
-      ]
+      onPress
     });
   }
   function hsvToHex(hue, saturation, brightness) {
@@ -12091,7 +11598,7 @@
     };
   }
   function ColorPickerRow({ label, value, onSelect, onOpen }) {
-    return /* @__PURE__ */ jsxs(import_react_native21.View, {
+    return /* @__PURE__ */ jsxs(import_react_native19.View, {
       style: {
         gap: 8
       },
@@ -12101,13 +11608,13 @@
           color: "text-normal",
           children: label
         }),
-        /* @__PURE__ */ jsx(import_react_native21.View, {
+        /* @__PURE__ */ jsx(import_react_native19.View, {
           style: {
             flexDirection: "row",
             flexWrap: "wrap",
             gap: 9
           },
-          children: PROFILE_COLORS.map((color2) => /* @__PURE__ */ jsx(import_react_native21.Pressable, {
+          children: PROFILE_COLORS.map((color2) => /* @__PURE__ */ jsx(import_react_native19.Pressable, {
             accessibilityRole: "button",
             accessibilityState: {
               selected: value.toUpperCase() === color2
@@ -12130,7 +11637,7 @@
           muted: true,
           onPress: onOpen
         }),
-        /* @__PURE__ */ jsx(import_react_native21.TextInput, {
+        /* @__PURE__ */ jsx(TextInput3, {
           value,
           placeholder: "#5865F2",
           placeholderTextColor: "#777",
@@ -12177,7 +11684,7 @@
       }
     };
     var hueColor = hsvToHex(hue, 100, 100);
-    return /* @__PURE__ */ jsxs(import_react_native21.ScrollView, {
+    return /* @__PURE__ */ jsxs(import_react_native19.ScrollView, {
       contentContainerStyle: {
         padding: 16,
         paddingBottom: 100,
@@ -12190,7 +11697,7 @@
           color: "text-normal",
           children: title
         }),
-        /* @__PURE__ */ jsx(import_react_native21.View, {
+        /* @__PURE__ */ jsx(import_react_native19.View, {
           style: {
             height: 96,
             borderRadius: 16,
@@ -12210,7 +11717,7 @@
             children: validColor.toUpperCase()
           })
         }),
-        /* @__PURE__ */ jsxs(import_react_native21.View, {
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
           onLayout: (event) => setSquareSize(event.nativeEvent.layout),
           onStartShouldSetResponder: () => true,
           onMoveShouldSetResponder: () => true,
@@ -12267,7 +11774,7 @@
                 left: 0
               }
             }) : null,
-            /* @__PURE__ */ jsx(import_react_native21.View, {
+            /* @__PURE__ */ jsx(import_react_native19.View, {
               pointerEvents: "none",
               style: {
                 position: "absolute",
@@ -12285,7 +11792,7 @@
             })
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native21.View, {
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
           onLayout: (event) => setHueWidth(event.nativeEvent.layout.width),
           onStartShouldSetResponder: () => true,
           onMoveShouldSetResponder: () => true,
@@ -12322,13 +11829,13 @@
                 bottom: 0,
                 left: 0
               }
-            }) : /* @__PURE__ */ jsx(import_react_native21.View, {
+            }) : /* @__PURE__ */ jsx(import_react_native19.View, {
               style: {
                 flex: 1,
                 backgroundColor: hueColor
               }
             }),
-            /* @__PURE__ */ jsx(import_react_native21.View, {
+            /* @__PURE__ */ jsx(import_react_native19.View, {
               pointerEvents: "none",
               style: {
                 position: "absolute",
@@ -12344,7 +11851,7 @@
             })
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native21.View, {
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
           style: {
             gap: 8
           },
@@ -12354,7 +11861,7 @@
               color: "text-normal",
               children: "Exact hex color"
             }),
-            /* @__PURE__ */ jsx(import_react_native21.TextInput, {
+            /* @__PURE__ */ jsx(TextInput3, {
               value: color2,
               placeholder: "#5865F2",
               placeholderTextColor: "#777",
@@ -12400,18 +11907,18 @@
         clearTimeout(timer);
       };
     }, []);
-    return /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
       contentContainerStyle: {
         padding: 12,
         paddingBottom: 100
       },
-      children: items.length ? /* @__PURE__ */ jsx(import_react_native21.View, {
+      children: items.length ? /* @__PURE__ */ jsx(import_react_native19.View, {
         style: {
           flexDirection: "row",
           flexWrap: "wrap",
           gap: 10
         },
-        children: items.map((item) => /* @__PURE__ */ jsxs(import_react_native21.Pressable, {
+        children: items.map((item) => /* @__PURE__ */ jsxs(import_react_native19.Pressable, {
           onPress: () => onSelect(item),
           style: ({ pressed }) => ({
             width: "31%",
@@ -12424,7 +11931,7 @@
             opacity: pressed ? 0.65 : 1
           }),
           children: [
-            /* @__PURE__ */ jsx(import_react_native21.Image, {
+            /* @__PURE__ */ jsx(import_react_native19.Image, {
               source: {
                 uri: item.uri
               },
@@ -12444,7 +11951,7 @@
             })
           ]
         }, `${item.asset}:${item.skuId}`))
-      }) : /* @__PURE__ */ jsxs(import_react_native21.View, {
+      }) : /* @__PURE__ */ jsxs(import_react_native19.View, {
         style: {
           padding: 24,
           gap: 8,
@@ -12497,7 +12004,7 @@
       } catch (error) {
         diagnostics.last = error?.message || "Could not open the picker.";
         redraw();
-        import_react_native21.Alert.alert("FakeProfile", diagnostics.last);
+        import_react_native19.Alert.alert("FakeProfile", diagnostics.last);
       }
     })();
     var clearMedia = (field) => {
@@ -12579,7 +12086,7 @@
     };
     var MediaEditor = ({ label, field, banner: banner2 = false }) => {
       var value = preview[field];
-      return /* @__PURE__ */ jsxs(import_react_native21.View, {
+      return /* @__PURE__ */ jsxs(import_react_native19.View, {
         style: {
           width: "100%",
           gap: 9,
@@ -12600,7 +12107,7 @@
             },
             children: banner2 ? "Automatically fitted to 600 x 240" : "Automatically fitted to a square"
           }),
-          /* @__PURE__ */ jsxs(import_react_native21.View, {
+          /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: {
               width: "100%",
               gap: 8
@@ -12617,7 +12124,7 @@
               })
             ]
           }),
-          value?.uri && /* @__PURE__ */ jsxs(import_react_native21.View, {
+          value?.uri && /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: {
               width: "100%",
               borderRadius: 12,
@@ -12625,7 +12132,7 @@
               backgroundColor: "#1e1f22"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native21.View, {
+              /* @__PURE__ */ jsx(import_react_native19.View, {
                 style: banner2 ? {
                   width: "100%",
                   aspectRatio: 2.5,
@@ -12638,7 +12145,7 @@
                   alignSelf: "center",
                   marginVertical: 12
                 },
-                children: /* @__PURE__ */ jsx(import_react_native21.Image, {
+                children: /* @__PURE__ */ jsx(import_react_native19.Image, {
                   source: {
                     uri: value.uri
                   },
@@ -12649,7 +12156,7 @@
                   }
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native21.View, {
+              /* @__PURE__ */ jsxs(import_react_native19.View, {
                 style: {
                   flexDirection: "row",
                   alignItems: "center",
@@ -12666,7 +12173,7 @@
                     },
                     children: value.name
                   }),
-                  /* @__PURE__ */ jsx(import_react_native21.Pressable, {
+                  /* @__PURE__ */ jsx(import_react_native19.Pressable, {
                     onPress: () => clearMedia(field),
                     style: {
                       paddingHorizontal: 10,
@@ -12691,7 +12198,7 @@
     };
     var avatar = mediaUri("avatarMedia");
     var banner = mediaUri("bannerMedia");
-    return /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
       style: {
         flex: 1,
         width: "100%",
@@ -12708,13 +12215,13 @@
       keyboardShouldPersistTaps: "handled",
       nestedScrollEnabled: true,
       showsVerticalScrollIndicator: false,
-      children: /* @__PURE__ */ jsxs(import_react_native21.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native19.View, {
         style: {
           width: "100%",
           gap: 16
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native21.View, {
+          /* @__PURE__ */ jsxs(import_react_native19.View, {
             style: {
               width: "100%",
               flexDirection: "row",
@@ -12722,7 +12229,7 @@
               gap: 12
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native21.View, {
+              /* @__PURE__ */ jsx(import_react_native19.View, {
                 style: {
                   width: 52,
                   height: 52,
@@ -12735,7 +12242,7 @@
                 },
                 children: /* @__PURE__ */ jsx(ProfileGlyph, {})
               }),
-              /* @__PURE__ */ jsxs(import_react_native21.View, {
+              /* @__PURE__ */ jsxs(import_react_native19.View, {
                 style: {
                   flex: 1,
                   minWidth: 0
@@ -12759,13 +12266,13 @@
           }),
           /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native21.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
               style: {
                 borderRadius: 14,
                 overflow: "hidden"
               },
               children: [
-                banner ? /* @__PURE__ */ jsx(import_react_native21.Image, {
+                banner ? /* @__PURE__ */ jsx(import_react_native19.Image, {
                   source: {
                     uri: banner
                   },
@@ -12774,19 +12281,19 @@
                     width: "100%",
                     height: 118
                   }
-                }) : /* @__PURE__ */ jsx(import_react_native21.View, {
+                }) : /* @__PURE__ */ jsx(import_react_native19.View, {
                   style: {
                     height: 118,
                     backgroundColor: preview.profileColorsEnabled ? preview.primaryColor || "#5865f2" : "#5865f2"
                   }
                 }),
-                /* @__PURE__ */ jsxs(import_react_native21.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     paddingHorizontal: 16,
                     paddingBottom: 16
                   },
                   children: [
-                    /* @__PURE__ */ jsxs(import_react_native21.View, {
+                    /* @__PURE__ */ jsxs(import_react_native19.View, {
                       style: {
                         width: 94,
                         height: 94,
@@ -12795,7 +12302,7 @@
                         justifyContent: "center"
                       },
                       children: [
-                        avatar ? /* @__PURE__ */ jsx(import_react_native21.Image, {
+                        avatar ? /* @__PURE__ */ jsx(import_react_native19.Image, {
                           source: {
                             uri: avatar
                           },
@@ -12806,7 +12313,7 @@
                             borderWidth: 5,
                             borderColor: "#1e1f22"
                           }
-                        }) : /* @__PURE__ */ jsx(import_react_native21.View, {
+                        }) : /* @__PURE__ */ jsx(import_react_native19.View, {
                           style: {
                             width: 82,
                             height: 82,
@@ -12816,7 +12323,7 @@
                             backgroundColor: "#777"
                           }
                         }),
-                        preview.avatarDecoration ? /* @__PURE__ */ jsx(import_react_native21.Image, {
+                        preview.avatarDecoration ? /* @__PURE__ */ jsx(import_react_native19.Image, {
                           pointerEvents: "none",
                           source: {
                             uri: preview.avatarDecoration
@@ -12845,7 +12352,7 @@
                         preview.username || "preview"
                       ]
                     }),
-                    /* @__PURE__ */ jsx(import_react_native21.View, {
+                    /* @__PURE__ */ jsx(import_react_native19.View, {
                       style: {
                         alignSelf: "flex-start",
                         paddingHorizontal: 10,
@@ -12867,17 +12374,6 @@
               ]
             })
           }),
-          /* @__PURE__ */ jsx(GlassButton2, {
-            muted: true,
-            label: "Cloudsync \xB7 back up & sync",
-            onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-              title: "Cloudsync",
-              render: () => {
-                var Sync = (init_StoreCloud(), __toCommonJS(StoreCloud_exports)).default;
-                return /* @__PURE__ */ jsx(Sync, {});
-              }
-            })
-          }),
           /* @__PURE__ */ jsx(ProfileTabs2, {
             selected: activeTab,
             onSelect: setActiveTab
@@ -12894,7 +12390,7 @@
           }) : null,
           activeTab === "custom" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsx(import_react_native21.View, {
+            children: /* @__PURE__ */ jsx(import_react_native19.View, {
               style: {
                 padding: 16
               },
@@ -12903,7 +12399,7 @@
           }) : null,
           activeTab === "profile" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native21.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
               style: {
                 padding: 14,
                 gap: 14
@@ -12916,7 +12412,7 @@
                   accent: true,
                   onPress: () => update("enabled", !preview.enabled, true)
                 }),
-                /* @__PURE__ */ jsxs(import_react_native21.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -12926,7 +12422,7 @@
                       color: "text-normal",
                       children: "Display name"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native21.TextInput, {
+                    /* @__PURE__ */ jsx(TextInput3, {
                       defaultValue: preview.displayName,
                       placeholder: "Preview Name",
                       placeholderTextColor: "#777",
@@ -12940,7 +12436,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native21.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -12950,7 +12446,7 @@
                       color: "text-normal",
                       children: "Username"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native21.TextInput, {
+                    /* @__PURE__ */ jsx(TextInput3, {
                       defaultValue: preview.username,
                       placeholder: "preview",
                       placeholderTextColor: "#777",
@@ -12966,7 +12462,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native21.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -12976,7 +12472,7 @@
                       color: "text-normal",
                       children: "about you"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native21.TextInput, {
+                    /* @__PURE__ */ jsx(TextInput3, {
                       defaultValue: preview.bio,
                       placeholder: "My description...",
                       placeholderTextColor: "#777",
@@ -12993,7 +12489,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native21.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -13003,7 +12499,7 @@
                       color: "text-normal",
                       children: "Pronouns"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native21.TextInput, {
+                    /* @__PURE__ */ jsx(TextInput3, {
                       defaultValue: preview.pronouns,
                       placeholder: "he/him",
                       placeholderTextColor: "#777",
@@ -13017,7 +12513,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native21.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -13027,7 +12523,7 @@
                       color: "text-normal",
                       children: "Account creation date"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native21.TextInput, {
+                    /* @__PURE__ */ jsx(TextInput3, {
                       defaultValue: preview.createdAt,
                       placeholder: "2010-06-29",
                       placeholderTextColor: "#777",
@@ -13043,7 +12539,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native21.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -13053,7 +12549,7 @@
                       color: "text-normal",
                       children: "Joined since date"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native21.TextInput, {
+                    /* @__PURE__ */ jsx(TextInput3, {
                       defaultValue: preview.signupDate,
                       placeholder: "2010-06-29",
                       placeholderTextColor: "#777",
@@ -13103,7 +12599,7 @@
                     })
                   })
                 }),
-                /* @__PURE__ */ jsxs(import_react_native21.View, {
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8
                   },
@@ -13113,7 +12609,7 @@
                       color: "text-normal",
                       children: "Avatar decoration URL"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native21.TextInput, {
+                    /* @__PURE__ */ jsx(TextInput3, {
                       value: preview.avatarDecoration,
                       placeholder: "https://...",
                       placeholderTextColor: "#777",
@@ -13211,10 +12707,10 @@
                     try {
                       yield publishSharedProfile();
                       diagnostics.last = "This profile is now active on all devices";
-                      import_react_native21.Alert.alert("FakeProfile", "This profile is now active on all of your CloudCord devices.");
+                      import_react_native19.Alert.alert("FakeProfile", "This profile is now active on all of your CloudCord devices.");
                     } catch (error) {
                       diagnostics.last = error?.message || "Could not sync this profile";
-                      import_react_native21.Alert.alert("FakeProfile", diagnostics.last);
+                      import_react_native19.Alert.alert("FakeProfile", diagnostics.last);
                     }
                     redraw();
                   })())()
@@ -13224,7 +12720,7 @@
           }) : null,
           activeTab === "badges" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native21.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
               style: {
                 padding: 14,
                 gap: 10
@@ -13251,7 +12747,7 @@
                     [id]: !preview.selectedBadges?.[id]
                   }, true)
                 }, id)),
-                preview.selectedBadges?.oldname ? /* @__PURE__ */ jsxs(import_react_native21.View, {
+                preview.selectedBadges?.oldname ? /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
                     gap: 8,
                     marginTop: 4
@@ -13262,7 +12758,7 @@
                       color: "text-normal",
                       children: "Previous username displayed in tooltip"
                     }),
-                    /* @__PURE__ */ jsx(import_react_native21.TextInput, {
+                    /* @__PURE__ */ jsx(TextInput3, {
                       defaultValue: preview.oldName,
                       placeholder: "OldUser#0000",
                       placeholderTextColor: "#777",
@@ -13288,7 +12784,7 @@
           }),
           showDetails ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native21.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
               style: {
                 padding: 14,
                 gap: 5
@@ -13354,7 +12850,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
+  var import_react7, import_react_native19, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized2, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -13372,7 +12868,7 @@
       init_common();
       init_components();
       import_react7 = __toESM(require_react());
-      import_react_native21 = __toESM(require_react_native());
+      import_react_native19 = __toESM(require_react_native());
       BADGES = [
         [
           "staff",
@@ -13792,7 +13288,7 @@
         children: /* @__PURE__ */ jsxs(SafeAreaView, {
           style: styles.container,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native22.View, {
+            /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
                 gap: 4
               },
@@ -13820,7 +13316,7 @@
                 })
               ]
             }),
-            /* @__PURE__ */ jsxs(import_react_native22.ScrollView, {
+            /* @__PURE__ */ jsxs(import_react_native20.ScrollView, {
               fadingEdgeLength: 64,
               contentContainerStyle: {
                 gap: 12
@@ -13863,7 +13359,7 @@
       })
     });
   }
-  var import_react_native22, useStyles2;
+  var import_react_native20, useStyles2;
   var init_ErrorBoundaryScreen = __esm({
     "src/core/ui/reporter/components/ErrorBoundaryScreen.tsx"() {
       "use strict";
@@ -13878,7 +13374,7 @@
       init_styles();
       init_common();
       init_components();
-      import_react_native22 = __toESM(require_react_native());
+      import_react_native20 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
       useStyles2 = createStyles({
@@ -14511,13 +14007,13 @@
       }
     })();
     var controls = /* @__PURE__ */ jsx(GlassCard, {
-      children: /* @__PURE__ */ jsxs(import_react_native23.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native21.View, {
         style: {
           padding: 16,
           gap: 14
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native23.Text, {
+          /* @__PURE__ */ jsx(Text, {
             style: {
               color: "#fff",
               fontSize: 22,
@@ -14525,10 +14021,7 @@
             },
             children: "Recovery"
           }),
-          /* @__PURE__ */ jsx(import_react_native23.Text, {
-            style: {
-              color: "#b5bac1"
-            },
+          /* @__PURE__ */ jsx(Text, {
             children: status
           }),
           /* @__PURE__ */ jsx(GlassButton, {
@@ -14556,7 +14049,7 @@
           /* @__PURE__ */ jsx(GlassButton, {
             muted: true,
             label: "Reset tab layout",
-            onPress: () => import_react_native23.Alert.alert("Reset tab layout?", "Show the normal CloudCord tabs again.", [
+            onPress: () => import_react_native21.Alert.alert("Reset tab layout?", "Show the normal CloudCord tabs again.", [
               {
                 text: "Cancel",
                 style: "cancel"
@@ -14575,7 +14068,7 @@
           /* @__PURE__ */ jsx(GlassButton, {
             muted: true,
             label: "Clear local profile edits",
-            onPress: () => import_react_native23.Alert.alert("Clear local edits?", "Restores other users' profiles on this device. Your own profile and shared data stay untouched.", [
+            onPress: () => import_react_native21.Alert.alert("Clear local edits?", "Restores other users' profiles on this device. Your own profile and shared data stay untouched.", [
               {
                 text: "Cancel",
                 style: "cancel"
@@ -14593,7 +14086,7 @@
         ]
       })
     });
-    return embedded ? controls : /* @__PURE__ */ jsx(import_react_native23.ScrollView, {
+    return embedded ? controls : /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
       contentContainerStyle: {
         padding: 16,
         paddingBottom: 48
@@ -14601,7 +14094,7 @@
       children: controls
     });
   }
-  var import_react8, import_react_native23;
+  var import_react8, import_react_native21;
   var init_Recovery = __esm({
     "src/core/ui/settings/pages/Recovery/index.tsx"() {
       "use strict";
@@ -14610,7 +14103,8 @@
       init_async_to_generator();
       init_jsxRuntime();
       import_react8 = __toESM(require_react());
-      import_react_native23 = __toESM(require_react_native());
+      import_react_native21 = __toESM(require_react_native());
+      init_components();
       init_settings();
       init_modules();
       init_safeMode();
@@ -14868,10 +14362,9 @@
         showToast(`Could not copy module report: ${String(error?.message || error).slice(0, 100)}`, findAssetId("Small"));
       }
     };
-    return /* @__PURE__ */ jsx(import_react_native24.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native22.ScrollView, {
       style: {
-        flex: 1,
-        backgroundColor: "#313338"
+        flex: 1
       },
       contentContainerStyle: {
         paddingBottom: 48
@@ -14951,7 +14444,7 @@
                 onValueChange: (value) => loaderConfig.customLoadUrl.enabled = value
               }),
               loaderConfig.customLoadUrl.enabled && /* @__PURE__ */ jsx(TableRow, {
-                label: /* @__PURE__ */ jsxs(import_react_native24.View, {
+                label: /* @__PURE__ */ jsxs(import_react_native22.View, {
                   style: {
                     width: "100%",
                     gap: 10
@@ -15007,11 +14500,11 @@
                   ]
                 })
               }),
-              order.map((key) => /* @__PURE__ */ jsx(import_react_native24.Pressable, {
+              order.map((key) => /* @__PURE__ */ jsx(import_react_native22.Pressable, {
                 delayLongPress: 350,
                 onLongPress: () => setMovingKey(key),
                 onPress: () => movingKey && placeBefore(key),
-                children: /* @__PURE__ */ jsx(import_react_native24.View, {
+                children: /* @__PURE__ */ jsx(import_react_native22.View, {
                   style: movingKey === key ? {
                     borderWidth: 1,
                     borderColor: "#5865f2",
@@ -15044,7 +14537,7 @@
       })
     });
   }
-  var import_react9, import_react_native24, requestEvents, uiEvents, runtimeErrors, lastUiEvent, fetchWrapped, uiCaptureInstalled, errorCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
+  var import_react9, import_react_native22, requestEvents, uiEvents, runtimeErrors, lastUiEvent, fetchWrapped, uiCaptureInstalled, errorCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
   var init_Diagnostics = __esm({
     "src/core/ui/settings/pages/Diagnostics/index.tsx"() {
       "use strict";
@@ -15064,7 +14557,7 @@
       init_modules2();
       init_toasts();
       import_react9 = __toESM(require_react());
-      import_react_native24 = __toESM(require_react_native());
+      import_react_native22 = __toESM(require_react_native());
       requestEvents = [];
       uiEvents = [];
       runtimeErrors = [];
@@ -15190,7 +14683,7 @@
         version: debugInfo.device.manufacturer,
         icon: "WrenchIcon"
       },
-      ...import_react_native25.Platform.OS !== "ios" ? [
+      ...import_react_native23.Platform.OS !== "ios" ? [
         {
           label: Strings.BRAND,
           version: debugInfo.device.brand,
@@ -15203,9 +14696,9 @@
         icon: "MobilePhoneIcon"
       },
       // this is renamed now on android but i cant be bothered to find it
-      ...import_react_native25.Platform.OS !== "android" ? [
+      ...import_react_native23.Platform.OS !== "android" ? [
         {
-          label: import_react_native25.Platform.select({
+          label: import_react_native23.Platform.select({
             android: Strings.CODENAME,
             ios: Strings.MODELID
           }),
@@ -15214,7 +14707,7 @@
         }
       ] : []
     ];
-    return /* @__PURE__ */ jsx(import_react_native25.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native23.ScrollView, {
       style: {
         flex: 1
       },
@@ -15248,7 +14741,7 @@
       })
     });
   }
-  var import_react_native25;
+  var import_react_native23;
   var init_About = __esm({
     "src/core/ui/settings/pages/General/About.tsx"() {
       "use strict";
@@ -15262,7 +14755,7 @@
       init_debug();
       init_settings();
       init_components();
-      import_react_native25 = __toESM(require_react_native());
+      import_react_native23 = __toESM(require_react_native());
     }
   });
 
@@ -15293,10 +14786,9 @@
     useProxy(settings);
     var debugInfo = getDebugInfo();
     var navigation2 = NavigationNative.useNavigation();
-    return /* @__PURE__ */ jsx(import_react_native26.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native24.ScrollView, {
       style: {
-        flex: 1,
-        backgroundColor: "#313338"
+        flex: 1
       },
       contentContainerStyle: {
         paddingBottom: 38
@@ -15349,11 +14841,19 @@
             children: [
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
+                label: Strings.DISCORD_SERVER,
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: findAssetId("Discord")
+                }),
+                onPress: () => import_react_native24.Linking.openURL("https://discord.gg/EBEZJ84zBT")
+              }),
+              /* @__PURE__ */ jsx(TableRow, {
+                arrow: true,
                 label: "Website",
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("GlobeIcon") || findAssetId("CircleInformationIcon-primary")
                 }),
-                onPress: () => import_react_native26.Linking.openURL("https://getcloudcord.com")
+                onPress: () => import_react_native24.Linking.openURL("https://getcloudcord.com")
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
@@ -15361,7 +14861,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("img_account_sync_github_white")
                 }),
-                onPress: () => import_react_native26.Linking.openURL(GITHUB)
+                onPress: () => import_react_native24.Linking.openURL(GITHUB)
               })
             ]
           }),
@@ -15468,7 +14968,7 @@
       })
     });
   }
-  var import_react_native26;
+  var import_react_native24;
   var init_General = __esm({
     "src/core/ui/settings/pages/General/index.tsx"() {
       "use strict";
@@ -15488,7 +14988,7 @@
       init_constants();
       init_common();
       init_components();
-      import_react_native26 = __toESM(require_react_native());
+      import_react_native24 = __toESM(require_react_native());
     }
   });
 
@@ -15508,10 +15008,9 @@
         ])
       ];
     };
-    return /* @__PURE__ */ jsx(import_react_native27.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native25.ScrollView, {
       style: {
-        flex: 1,
-        backgroundColor: "#313338"
+        flex: 1
       },
       contentContainerStyle: {
         paddingBottom: 48
@@ -15553,7 +15052,7 @@
       })
     });
   }
-  var import_react_native27, tabs;
+  var import_react_native25, tabs;
   var init_Customization = __esm({
     "src/core/ui/settings/pages/Customization/index.tsx"() {
       "use strict";
@@ -15565,7 +15064,7 @@
       init_modules();
       init_settings();
       init_components();
-      import_react_native27 = __toESM(require_react_native());
+      import_react_native25 = __toESM(require_react_native());
       tabs = [
         [
           "BOTCORD",
@@ -15976,7 +15475,7 @@
     var uri = avatarUrl(user, 128);
     var colors = getNativeColors();
     if (uri)
-      return /* @__PURE__ */ jsx(import_react_native28.Image, {
+      return /* @__PURE__ */ jsx(import_react_native26.Image, {
         source: {
           uri
         },
@@ -15987,7 +15486,7 @@
         }
       });
     var label = displayName(user).trim().slice(0, 2).toUpperCase() || "?";
-    return /* @__PURE__ */ jsx(import_react_native28.View, {
+    return /* @__PURE__ */ jsx(import_react_native26.View, {
       style: {
         width: size,
         height: size,
@@ -16010,17 +15509,17 @@
       minute: "2-digit"
     }) : "";
     var reactionCount = message.reactions?.reduce((sum, reaction) => sum + (reaction.count || 0), 0) || 0;
-    return /* @__PURE__ */ jsxs(import_react_native28.View, {
+    return /* @__PURE__ */ jsxs(import_react_native26.View, {
       style: styles.row,
       children: [
         /* @__PURE__ */ jsx(ApiAvatar, {
           user: author,
           size: 40
         }),
-        /* @__PURE__ */ jsxs(import_react_native28.View, {
+        /* @__PURE__ */ jsxs(import_react_native26.View, {
           style: styles.messageBody,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native28.View, {
+            /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: styles.nameLine,
               children: [
                 /* @__PURE__ */ jsx(Text, {
@@ -16044,7 +15543,7 @@
               variant: "text-md/normal",
               children: message.content
             }),
-            !!message.attachments?.length && /* @__PURE__ */ jsx(import_react_native28.View, {
+            !!message.attachments?.length && /* @__PURE__ */ jsx(import_react_native26.View, {
               style: {
                 marginTop: 6,
                 gap: 6
@@ -16053,7 +15552,7 @@
                 var uri = attachment.url || attachment.proxy_url;
                 var type = String(attachment.content_type || "");
                 var isImage = type.startsWith("image/") || /\.(png|jpe?g|gif|webp)(?:$|\?)/i.test(String(uri || attachment.filename || ""));
-                return isImage && uri ? /* @__PURE__ */ jsx(import_react_native28.Image, {
+                return isImage && uri ? /* @__PURE__ */ jsx(import_react_native26.Image, {
                   source: {
                     uri
                   },
@@ -16063,7 +15562,7 @@
                     height: 180,
                     maxWidth: "100%",
                     borderRadius: 8,
-                    backgroundColor: "#2b2d31"
+                    backgroundColor: tokens.colors.BACKGROUND_SECONDARY
                   }
                 }, attachment.id || `${attachment.filename}-${index}`) : /* @__PURE__ */ jsx(Text, {
                   variant: "text-sm/normal",
@@ -16096,7 +15595,7 @@
   }
   function AccountSheet({ accounts, active, onMain }) {
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native28.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native26.View, {
         style: {
           paddingHorizontal: 12,
           paddingBottom: 20
@@ -16454,15 +15953,15 @@
     };
     if (channel) {
       var dmUser = channel.recipients?.[0];
-      return /* @__PURE__ */ jsxs(import_react_native28.KeyboardAvoidingView, {
+      return /* @__PURE__ */ jsxs(import_react_native26.KeyboardAvoidingView, {
         style: styles.root,
-        behavior: import_react_native28.Platform.OS === "ios" ? "padding" : void 0,
+        behavior: import_react_native26.Platform.OS === "ios" ? "padding" : void 0,
         keyboardVerticalOffset: 0,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native28.View, {
+          /* @__PURE__ */ jsxs(import_react_native26.View, {
             style: styles.header,
             children: [
-              /* @__PURE__ */ jsx(import_react_native28.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Back",
                 onPress: returnFromChat,
@@ -16478,7 +15977,7 @@
                   opacity: pressed ? 0.7 : 1,
                   zIndex: 20
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native28.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 15,
@@ -16491,7 +15990,7 @@
                 user: dmUser,
                 size: 32
               }) : null,
-              /* @__PURE__ */ jsxs(import_react_native28.View, {
+              /* @__PURE__ */ jsxs(import_react_native26.View, {
                 style: {
                   flex: 1
                 },
@@ -16518,7 +16017,7 @@
               })
             ]
           }),
-          error ? /* @__PURE__ */ jsx(import_react_native28.View, {
+          error ? /* @__PURE__ */ jsx(import_react_native26.View, {
             style: {
               paddingHorizontal: 12,
               paddingVertical: 8
@@ -16538,7 +16037,7 @@
             },
             children: "Loading"
           }) : null,
-          /* @__PURE__ */ jsx(import_react_native28.FlatList, {
+          /* @__PURE__ */ jsx(import_react_native26.FlatList, {
             ref: listRef,
             style: {
               flex: 1
@@ -16551,13 +16050,13 @@
             contentContainerStyle: {
               paddingVertical: 6
             },
-            keyboardDismissMode: import_react_native28.Platform.OS === "ios" ? "interactive" : "on-drag",
+            keyboardDismissMode: import_react_native26.Platform.OS === "ios" ? "interactive" : "on-drag",
             keyboardShouldPersistTaps: "handled",
             onContentSizeChange: () => listRef.current?.scrollToEnd?.({
               animated: false
             })
           }),
-          selectedImage ? /* @__PURE__ */ jsxs(import_react_native28.View, {
+          selectedImage ? /* @__PURE__ */ jsxs(import_react_native26.View, {
             style: {
               height: 72,
               paddingHorizontal: 10,
@@ -16565,10 +16064,10 @@
               flexDirection: "row",
               alignItems: "center",
               gap: 10,
-              backgroundColor: "#313338"
+              backgroundColor: tokens.colors.BACKGROUND_PRIMARY
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native28.Image, {
+              /* @__PURE__ */ jsx(import_react_native26.Image, {
                 source: {
                   uri: selectedImage.uri
                 },
@@ -16576,10 +16075,10 @@
                   width: 56,
                   height: 56,
                   borderRadius: 8,
-                  backgroundColor: "#2b2d31"
+                  backgroundColor: tokens.colors.BACKGROUND_SECONDARY
                 }
               }),
-              /* @__PURE__ */ jsx(import_react_native28.Text, {
+              /* @__PURE__ */ jsx(import_react_native26.Text, {
                 numberOfLines: 1,
                 style: {
                   flex: 1,
@@ -16588,7 +16087,7 @@
                 },
                 children: selectedImage.name
               }),
-              /* @__PURE__ */ jsx(import_react_native28.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 onPress: () => setSelectedImage(null),
                 hitSlop: 8,
                 style: ({ pressed }) => ({
@@ -16600,7 +16099,7 @@
                   backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native28.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 13,
@@ -16611,10 +16110,10 @@
               })
             ]
           }) : null,
-          /* @__PURE__ */ jsxs(import_react_native28.View, {
+          /* @__PURE__ */ jsxs(import_react_native26.View, {
             style: styles.composer,
             children: [
-              /* @__PURE__ */ jsx(import_react_native28.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Add photo",
                 onPress: pickImage,
@@ -16629,7 +16128,7 @@
                   backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native28.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 13,
@@ -16638,7 +16137,7 @@
                   children: "Photo"
                 })
               }),
-              /* @__PURE__ */ jsx(import_react_native28.TextInput, {
+              /* @__PURE__ */ jsx(import_react_native26.TextInput, {
                 value: composer,
                 placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
                 placeholderTextColor: nativeColors.muted,
@@ -16663,7 +16162,7 @@
                   fontSize: 16
                 }
               }),
-              /* @__PURE__ */ jsx(import_react_native28.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Send message",
                 disabled: !composer.trim() && !selectedImage,
@@ -16679,7 +16178,7 @@
                   opacity: !composer.trim() && !selectedImage ? 0.45 : pressed ? 0.72 : 1,
                   backgroundColor: nativeColors.brand
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native28.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.inverse,
                     fontSize: 13,
@@ -16693,13 +16192,13 @@
         ]
       });
     }
-    return /* @__PURE__ */ jsxs(import_react_native28.View, {
+    return /* @__PURE__ */ jsxs(import_react_native26.View, {
       style: styles.root,
       children: [
-        /* @__PURE__ */ jsxs(import_react_native28.View, {
+        /* @__PURE__ */ jsxs(import_react_native26.View, {
           style: styles.header,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native28.View, {
+            /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: {
                 flex: 1
               },
@@ -16717,7 +16216,7 @@
                 })
               ]
             }),
-            screen === "members" ? /* @__PURE__ */ jsx(import_react_native28.Pressable, {
+            screen === "members" ? /* @__PURE__ */ jsx(import_react_native26.Pressable, {
               accessibilityRole: "button",
               accessibilityLabel: "Back",
               onPress: openMessages,
@@ -16728,7 +16227,7 @@
                 justifyContent: "center",
                 opacity: pressed ? 0.65 : 1
               }),
-              children: /* @__PURE__ */ jsx(import_react_native28.Text, {
+              children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                 style: {
                   color: nativeColors.text,
                   fontSize: 16,
@@ -16751,7 +16250,7 @@
             })
           ]
         }),
-        error ? /* @__PURE__ */ jsx(import_react_native28.View, {
+        error ? /* @__PURE__ */ jsx(import_react_native26.View, {
           style: {
             paddingHorizontal: 12,
             paddingVertical: 8
@@ -16771,10 +16270,10 @@
           },
           children: "Loading"
         }) : null,
-        /* @__PURE__ */ jsxs(import_react_native28.View, {
+        /* @__PURE__ */ jsxs(import_react_native26.View, {
           style: styles.navigator,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native28.View, {
+            /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: styles.guildRail,
               children: [
                 /* @__PURE__ */ jsx(PressableScale, {
@@ -16787,7 +16286,7 @@
                     onPress: openMessages
                   })
                 }),
-                /* @__PURE__ */ jsx(import_react_native28.FlatList, {
+                /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                   data: guilds,
                   keyExtractor: (g2) => g2.id,
                   showsVerticalScrollIndicator: false,
@@ -16796,12 +16295,12 @@
                     return /* @__PURE__ */ jsx(PressableScale, {
                       onPress: () => openGuild(item),
                       style: styles.guildButton,
-                      children: uri ? /* @__PURE__ */ jsx(import_react_native28.Image, {
+                      children: uri ? /* @__PURE__ */ jsx(import_react_native26.Image, {
                         source: {
                           uri
                         },
                         style: styles.guildImage
-                      }) : /* @__PURE__ */ jsx(import_react_native28.View, {
+                      }) : /* @__PURE__ */ jsx(import_react_native26.View, {
                         style: styles.guildImage,
                         children: /* @__PURE__ */ jsx(Text, {
                           variant: "text-sm/semibold",
@@ -16813,11 +16312,11 @@
                 })
               ]
             }),
-            /* @__PURE__ */ jsx(import_react_native28.View, {
+            /* @__PURE__ */ jsx(import_react_native26.View, {
               style: styles.sidebar,
               children: screen === "messages" ? /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native28.View, {
+                  /* @__PURE__ */ jsxs(import_react_native26.View, {
                     style: styles.sidebarHeader,
                     children: [
                       /* @__PURE__ */ jsx(Text, {
@@ -16835,7 +16334,7 @@
                       })
                     ]
                   }),
-                  /* @__PURE__ */ jsx(import_react_native28.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                     data: recentDMs,
                     keyExtractor: (dm) => dm.channelId,
                     renderItem: ({ item }) => /* @__PURE__ */ jsxs(PressableScale, {
@@ -16846,7 +16345,7 @@
                           user: item.recipient,
                           size: 36
                         }),
-                        /* @__PURE__ */ jsxs(import_react_native28.View, {
+                        /* @__PURE__ */ jsxs(import_react_native26.View, {
                           style: {
                             flex: 1
                           },
@@ -16865,7 +16364,7 @@
                         })
                       ]
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native28.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native26.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -16877,7 +16376,7 @@
                 ]
               }) : screen === "members" ? /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native28.View, {
+                  /* @__PURE__ */ jsxs(import_react_native26.View, {
                     style: styles.sidebarHeader,
                     children: [
                       /* @__PURE__ */ jsx(Button, {
@@ -16886,7 +16385,7 @@
                         text: "Back",
                         onPress: openMessages
                       }),
-                      /* @__PURE__ */ jsxs(import_react_native28.View, {
+                      /* @__PURE__ */ jsxs(import_react_native26.View, {
                         style: {
                           flex: 1
                         },
@@ -16904,7 +16403,7 @@
                       })
                     ]
                   }),
-                  /* @__PURE__ */ jsx(import_react_native28.View, {
+                  /* @__PURE__ */ jsx(import_react_native26.View, {
                     style: styles.search,
                     children: /* @__PURE__ */ jsx(TextInput, {
                       size: "md",
@@ -16913,7 +16412,7 @@
                       onChange: (value) => setMemberSearch(typeof value === "string" ? value : value?.nativeEvent?.text ?? "")
                     })
                   }),
-                  /* @__PURE__ */ jsx(import_react_native28.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                     data: filteredMembers,
                     keyExtractor: (member, i) => member.user?.id || String(i),
                     keyboardShouldPersistTaps: "handled",
@@ -16929,7 +16428,7 @@
                           user: item.user,
                           size: 36
                         }),
-                        /* @__PURE__ */ jsxs(import_react_native28.View, {
+                        /* @__PURE__ */ jsxs(import_react_native26.View, {
                           style: {
                             flex: 1
                           },
@@ -16953,7 +16452,7 @@
                         })
                       ]
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native28.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native26.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -16965,7 +16464,7 @@
                 ]
               }) : /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsx(import_react_native28.View, {
+                  /* @__PURE__ */ jsx(import_react_native26.View, {
                     style: styles.sidebarHeader,
                     children: /* @__PURE__ */ jsx(Text, {
                       variant: "heading-md/semibold",
@@ -16973,7 +16472,7 @@
                       children: guild?.name
                     })
                   }),
-                  /* @__PURE__ */ jsx(import_react_native28.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                     data: [
                       ...textChannels(null),
                       ...categories.flatMap((cat) => [
@@ -16999,7 +16498,7 @@
                         children: item.name
                       })
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native28.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native26.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -17033,7 +16532,7 @@
         activeId: active.id,
         onExit: () => setOpened(false)
       });
-    return /* @__PURE__ */ jsx(import_react_native28.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native26.ScrollView, {
       style: {
         flex: 1
       },
@@ -17047,7 +16546,7 @@
         },
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native28.View, {
+          /* @__PURE__ */ jsxs(import_react_native26.View, {
             children: [
               /* @__PURE__ */ jsx(Text, {
                 variant: "heading-xl/bold",
@@ -17091,7 +16590,7 @@
           /* @__PURE__ */ jsx(TableRowGroup, {
             title: "Add Bot Account",
             children: /* @__PURE__ */ jsx(TableRow, {
-              label: /* @__PURE__ */ jsxs(import_react_native28.View, {
+              label: /* @__PURE__ */ jsxs(import_react_native26.View, {
                 style: {
                   width: "100%",
                   gap: 10
@@ -17139,7 +16638,7 @@
       })
     });
   }
-  var import_react11, import_react_native28, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
+  var import_react11, import_react_native26, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -17156,11 +16655,11 @@
       init_common();
       init_components();
       import_react11 = __toESM(require_react());
-      import_react_native28 = __toESM(require_react_native());
+      import_react_native26 = __toESM(require_react_native());
       useStyles3 = createStyles({
         root: {
           flex: 1,
-          backgroundColor: "#313338"
+          backgroundColor: tokens.colors.BACKGROUND_PRIMARY
         },
         header: {
           minHeight: 56,
@@ -17168,12 +16667,12 @@
           flexDirection: "row",
           alignItems: "center",
           gap: 8,
-          backgroundColor: "#313338"
+          backgroundColor: tokens.colors.BACKGROUND_PRIMARY
         },
         navigator: {
           flex: 1,
           flexDirection: "row",
-          backgroundColor: "#2b2d31"
+          backgroundColor: tokens.colors.BACKGROUND_SECONDARY
         },
         guildRail: {
           width: 72,
@@ -17182,7 +16681,7 @@
         },
         sidebar: {
           flex: 1,
-          backgroundColor: "#2b2d31"
+          backgroundColor: tokens.colors.BACKGROUND_SECONDARY
         },
         sidebarHeader: {
           minHeight: 54,
@@ -17215,7 +16714,7 @@
           alignItems: "center",
           gap: 8,
           flexShrink: 0,
-          backgroundColor: "#313338"
+          backgroundColor: tokens.colors.BACKGROUND_PRIMARY
         },
         category: {
           paddingHorizontal: 12,
@@ -17263,6 +16762,235 @@
         brand: nativeColor(tokens.colors.BRAND_500, "#5865f2"),
         inverse: nativeColor(tokens.colors.WHITE_500, "#ffffff")
       });
+    }
+  });
+
+  // src/core/ui/settings/components/ScaledPluginSettings.tsx
+  function ScaledPluginSettings({ component: Component }) {
+    if (typeof Component !== "function") {
+      return /* @__PURE__ */ jsx(import_react_native27.View, {
+        style: {
+          padding: 16
+        },
+        children: /* @__PURE__ */ jsx(import_react_native27.Text, {
+          style: {
+            color: "#ffffff"
+          },
+          children: "This plugin does not provide a mobile-compatible settings component."
+        })
+      });
+    }
+    return /* @__PURE__ */ jsx(import_react_native27.ScrollView, {
+      style: {
+        flex: 1
+      },
+      contentContainerStyle: {
+        paddingBottom: 90,
+        paddingHorizontal: 12
+      },
+      showsVerticalScrollIndicator: true,
+      children: /* @__PURE__ */ jsx(import_react_native27.View, {
+        style: {
+          width: "100%",
+          paddingRight: 24,
+          overflow: "visible"
+        },
+        children: /* @__PURE__ */ jsx(Component, {})
+      })
+    });
+  }
+  var import_react_native27;
+  var init_ScaledPluginSettings = __esm({
+    "src/core/ui/settings/components/ScaledPluginSettings.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      import_react_native27 = __toESM(require_react_native());
+    }
+  });
+
+  // src/core/ui/settings/pages/StoreCloud/index.tsx
+  var StoreCloud_exports = {};
+  __export(StoreCloud_exports, {
+    default: () => StoreCloud
+  });
+  function StoreCloud() {
+    useProxy(VdPluginManager.plugins);
+    var [busy, setBusy] = (0, import_react12.useState)(false);
+    var [refresh, setRefresh] = (0, import_react12.useState)(0);
+    var plugin = VdPluginManager.plugins[PLUGIN_URL];
+    var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
+    function installOrStart() {
+      return _async_to_generator(function* () {
+        if (busy)
+          return;
+        setBusy(true);
+        try {
+          if (!VdPluginManager.plugins[PLUGIN_URL]) {
+            yield VdPluginManager.installPlugin(PLUGIN_URL, true);
+            showToast("StoreCloud installed", findAssetId("Check"));
+          } else if (!VdPluginManager.plugins[PLUGIN_URL].enabled) {
+            yield VdPluginManager.startPlugin(PLUGIN_URL);
+            showToast("StoreCloud started", findAssetId("Check"));
+          } else {
+            showToast("StoreCloud is already enabled", findAssetId("Check"));
+          }
+          setRefresh((x2) => x2 + 1);
+        } catch (error) {
+          console.error("[CloudCord] StoreCloud install/start failed", error);
+          showToast(error?.message ?? "StoreCloud failed");
+        } finally {
+          setBusy(false);
+        }
+      })();
+    }
+    function refetchPlugin() {
+      return _async_to_generator(function* () {
+        if (busy)
+          return;
+        setBusy(true);
+        try {
+          if (VdPluginManager.plugins[PLUGIN_URL]?.enabled) {
+            VdPluginManager.stopPlugin(PLUGIN_URL, false);
+          }
+          yield VdPluginManager.fetchPlugin(PLUGIN_URL);
+          yield VdPluginManager.startPlugin(PLUGIN_URL);
+          showToast("StoreCloud refreshed", findAssetId("Check"));
+          setRefresh((x2) => x2 + 1);
+        } catch (error) {
+          console.error("[CloudCord] StoreCloud refresh failed", error);
+          showToast(error?.message ?? "StoreCloud refresh failed");
+        } finally {
+          setBusy(false);
+        }
+      })();
+    }
+    function removePlugin() {
+      return _async_to_generator(function* () {
+        if (busy)
+          return;
+        setBusy(true);
+        try {
+          if (VdPluginManager.plugins[PLUGIN_URL]) {
+            yield VdPluginManager.removePlugin(PLUGIN_URL);
+          }
+          showToast("StoreCloud removed");
+          setRefresh((x2) => x2 + 1);
+        } catch (error) {
+          console.error("[CloudCord] StoreCloud remove failed", error);
+          showToast(error?.message ?? "StoreCloud remove failed");
+        } finally {
+          setBusy(false);
+        }
+      })();
+    }
+    if (SettingsComponent) {
+      return /* @__PURE__ */ jsx(ScaledPluginSettings, {
+        component: SettingsComponent
+      }, `storecloud-settings-${refresh}`);
+    }
+    return /* @__PURE__ */ jsx(import_react_native28.ScrollView, {
+      style: {
+        flex: 1
+      },
+      contentContainerStyle: {
+        paddingBottom: 38
+      },
+      children: /* @__PURE__ */ jsxs(Stack, {
+        style: {
+          paddingVertical: 24,
+          paddingHorizontal: 12
+        },
+        spacing: 24,
+        children: [
+          /* @__PURE__ */ jsxs(TableRowGroup, {
+            title: "CloudSync",
+            children: [
+              /* @__PURE__ */ jsxs(import_react_native28.View, {
+                style: {
+                  paddingHorizontal: 12,
+                  paddingBottom: 12
+                },
+                children: [
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "heading-md/semibold",
+                    color: "text-normal",
+                    children: "CloudSync"
+                  }),
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "text-sm/medium",
+                    color: "text-muted",
+                    children: "Connect StoreCloud to sync supported settings and manage cloud backups on this device."
+                  })
+                ]
+              }),
+              /* @__PURE__ */ jsx(TableRow, {
+                arrow: true,
+                label: plugin ? "Start StoreCloud" : "Enable StoreCloud",
+                subLabel: busy ? "Please wait..." : "Loads the StoreCloud sync engine",
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: {
+                    uri: STORECLOUD_ICON
+                  }
+                }),
+                onPress: installOrStart
+              }),
+              plugin && /* @__PURE__ */ jsx(TableRow, {
+                arrow: true,
+                label: "Refresh StoreCloud",
+                subLabel: "Refreshes the StoreCloud sync engine",
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: findAssetId("RetryIcon")
+                }),
+                onPress: refetchPlugin
+              }),
+              plugin && /* @__PURE__ */ jsx(TableRow, {
+                arrow: true,
+                label: "Disable StoreCloud",
+                subLabel: "Removes the StoreCloud sync engine",
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: findAssetId("TrashIcon") ?? findAssetId("CircleXIcon-primary")
+                }),
+                onPress: removePlugin
+              })
+            ]
+          }),
+          /* @__PURE__ */ jsx(Card, {
+            border: "strong",
+            children: /* @__PURE__ */ jsx(import_react_native28.View, {
+              style: {
+                padding: 12
+              },
+              children: /* @__PURE__ */ jsx(Text, {
+                variant: "text-sm/medium",
+                color: "text-muted",
+                children: "StoreCloud uses the existing mobile sync engine for OAuth, settings synchronization, backups, and files."
+              })
+            })
+          })
+        ]
+      })
+    });
+  }
+  var import_react12, import_react_native28, PLUGIN_URL, STORECLOUD_ICON;
+  var init_StoreCloud = __esm({
+    "src/core/ui/settings/pages/StoreCloud/index.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_jsxRuntime();
+      init_plugins();
+      init_storage();
+      init_ScaledPluginSettings();
+      init_assets();
+      init_toasts();
+      init_components();
+      import_react12 = __toESM(require_react());
+      import_react_native28 = __toESM(require_react_native());
+      PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
+      STORECLOUD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
     }
   });
 
@@ -18100,9 +17828,9 @@
 
   // src/core/ui/components/AddonPage.tsx
   function InputAlert2(props) {
-    var [value, setValue] = (0, import_react12.useState)("");
-    var [error, setError] = (0, import_react12.useState)("");
-    var [isFetching, setIsFetching] = (0, import_react12.useState)(false);
+    var [value, setValue] = (0, import_react13.useState)("");
+    var [error, setError] = (0, import_react13.useState)("");
+    var [isFetching, setIsFetching] = (0, import_react13.useState)(false);
     function onConfirmWrapper() {
       setIsFetching(true);
       props.fetchFn(value).then(() => dismissAlert("AddonInputAlert")).catch((e) => e instanceof Error ? setError(e.message) : String(e)).finally(() => setIsFetching(false));
@@ -18164,11 +17892,11 @@
     });
   }
   function AddonPage({ CardComponent, ...props }) {
-    var [search, setSearch] = (0, import_react12.useState)("");
+    var [search, setSearch] = (0, import_react13.useState)("");
     var [sortFn, setSortFn] = React.useState(() => null);
     var { bottom: bottomInset } = useSafeAreaInsets();
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react12.useEffect)(() => {
+    (0, import_react13.useEffect)(() => {
       if (props.OptionsActionSheetComponent) {
         navigation2.setOptions({
           headerRight: () => /* @__PURE__ */ jsx(IconButton, {
@@ -18182,7 +17910,7 @@
     }, [
       navigation2
     ]);
-    var results = (0, import_react12.useMemo)(() => {
+    var results = (0, import_react13.useMemo)(() => {
       var values = props.items;
       if (props.resolveItem)
         values = values.map(props.resolveItem).filter(isNotNil);
@@ -18198,7 +17926,7 @@
       sortFn,
       search
     ]);
-    var onInstallPress = (0, import_react12.useCallback)(() => {
+    var onInstallPress = (0, import_react13.useCallback)(() => {
       if (!props.installAction)
         return () => {
         };
@@ -18345,7 +18073,7 @@
       ]
     });
   }
-  var import_fuzzysort, import_react12, import_react_native29, showSimpleActionSheet2, hideActionSheet;
+  var import_fuzzysort, import_react13, import_react_native29, showSimpleActionSheet2, hideActionSheet;
   var init_AddonPage = __esm({
     "src/core/ui/components/AddonPage.tsx"() {
       "use strict";
@@ -18364,7 +18092,7 @@
       init_components2();
       init_dist();
       import_fuzzysort = __toESM(require_fuzzysort());
-      import_react12 = __toESM(require_react());
+      import_react13 = __toESM(require_react());
       import_react_native29 = __toESM(require_react_native());
       ({ showSimpleActionSheet: showSimpleActionSheet2, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
     }
@@ -18489,8 +18217,8 @@
   }
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
-    var [toggling, setToggling] = (0, import_react13.useState)(false);
-    var cardContextValue = (0, import_react13.useMemo)(() => ({
+    var [toggling, setToggling] = (0, import_react14.useState)(false);
+    var cardContextValue = (0, import_react14.useMemo)(() => ({
       plugin,
       result
     }), [
@@ -18557,7 +18285,7 @@
       })
     });
   }
-  var import_chroma_js3, import_react13, import_react_native30, CardContext, useCardContext, Actions;
+  var import_chroma_js3, import_react14, import_react_native30, CardContext, useCardContext, Actions;
   var init_PluginCard = __esm({
     "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"() {
       "use strict";
@@ -18572,11 +18300,11 @@
       init_components();
       init_sheets();
       import_chroma_js3 = __toESM(require_chroma_js());
-      import_react13 = __toESM(require_react());
+      import_react14 = __toESM(require_react());
       import_react_native30 = __toESM(require_react_native());
       init_plugins4();
-      CardContext = /* @__PURE__ */ (0, import_react13.createContext)(null);
-      useCardContext = () => (0, import_react13.useContext)(CardContext);
+      CardContext = /* @__PURE__ */ (0, import_react14.createContext)(null);
+      useCardContext = () => (0, import_react14.useContext)(CardContext);
       Actions = () => {
         var { plugin } = useCardContext();
         var navigation2 = NavigationNative.useNavigation();
@@ -18729,7 +18457,7 @@
   }
   function PluginInfoActionSheet({ plugin, navigation: navigation2 }) {
     plugin.usePluginState();
-    var [loading, setLoading] = (0, import_react14.useState)(false);
+    var [loading, setLoading] = (0, import_react15.useState)(false);
     var isVendettaPlugin = plugin.id.includes("/");
     var isCorePlugin2 = plugin.id.startsWith("bunny.") || plugin.id.startsWith("vendetta.");
     var copyPluginUrl = () => {
@@ -18916,7 +18644,7 @@
       })
     });
   }
-  var import_react14, import_react_native32;
+  var import_react15, import_react_native32;
   var init_PluginInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx"() {
       "use strict";
@@ -18933,7 +18661,7 @@
       init_storage();
       init_storage2();
       init_assets();
-      import_react14 = __toESM(require_react());
+      import_react15 = __toESM(require_react());
       import_react_native32 = __toESM(require_react_native());
       init_TitleComponent();
       init_ScaledPluginSettings();
@@ -20081,11 +19809,11 @@
     });
   }
   function ThemeInfoActionSheet({ theme, navigation: navigation2 }) {
-    var [themeState, setThemeState] = (0, import_react15.useState)({
+    var [themeState, setThemeState] = (0, import_react16.useState)({
       ...theme
     });
-    var [loading, setLoading] = (0, import_react15.useState)(false);
-    (0, import_react15.useEffect)(() => {
+    var [loading, setLoading] = (0, import_react16.useState)(false);
+    (0, import_react16.useEffect)(() => {
       var interval = setInterval(() => {
         setThemeState({
           ...theme
@@ -20219,7 +19947,7 @@
       })
     });
   }
-  var import_react15, import_react_native36;
+  var import_react16, import_react_native36;
   var init_ThemeInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Themes/sheets/ThemeInfoActionSheet.tsx"() {
       "use strict";
@@ -20231,7 +19959,7 @@
       init_sheets();
       init_components();
       init_common();
-      import_react15 = __toESM(require_react());
+      import_react16 = __toESM(require_react());
       import_react_native36 = __toESM(require_react_native());
       init_toasts();
       init_alerts();
@@ -20630,8 +20358,8 @@
   function RevengeFontsExtractor({ fonts: fonts2, setName }) {
     var currentTheme = getCurrentTheme().data;
     var themeFonts = currentTheme.fonts;
-    var [fontName, setFontName] = (0, import_react16.useState)(guessFontName(Object.values(themeFonts)));
-    var [error, setError] = (0, import_react16.useState)(void 0);
+    var [fontName, setFontName] = (0, import_react17.useState)(guessFontName(Object.values(themeFonts)));
+    var [error, setError] = (0, import_react17.useState)(void 0);
     return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         padding: 8,
@@ -20682,9 +20410,9 @@
     });
   }
   function JsonFontImporter({ fonts: fonts2, setName, setSource }) {
-    var [fontLink, setFontLink] = (0, import_react16.useState)("");
-    var [saving, setSaving] = (0, import_react16.useState)(false);
-    var [error, setError] = (0, import_react16.useState)(void 0);
+    var [fontLink, setFontLink] = (0, import_react17.useState)("");
+    var [saving, setSaving] = (0, import_react17.useState)(false);
+    var [error, setError] = (0, import_react17.useState)(void 0);
     return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         padding: 8,
@@ -20726,8 +20454,8 @@
     });
   }
   function EntryEditorActionSheet(props) {
-    var [familyName, setFamilyName] = (0, import_react16.useState)(props.name);
-    var [fontUrl, setFontUrl] = (0, import_react16.useState)(props.fontEntries[props.name]);
+    var [familyName, setFamilyName] = (0, import_react17.useState)(props.name);
+    var [fontUrl, setFontUrl] = (0, import_react17.useState)(props.fontEntries[props.name]);
     return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         padding: 8,
@@ -20782,10 +20510,10 @@
     }), "FontEditorActionSheet");
   }
   function NewEntryRow({ fontName, fontEntry }) {
-    var nameRef = (0, import_react16.useRef)();
-    var urlRef = (0, import_react16.useRef)();
-    var [nameSet, setNameSet] = (0, import_react16.useState)(false);
-    var [error, setError] = (0, import_react16.useState)();
+    var nameRef = (0, import_react17.useRef)();
+    var urlRef = (0, import_react17.useRef)();
+    var [nameSet, setNameSet] = (0, import_react17.useState)(false);
+    var [error, setError] = (0, import_react17.useState)();
     return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         flexDirection: "row",
@@ -20847,11 +20575,11 @@
     });
   }
   function FontEditor(props) {
-    var [name, setName] = (0, import_react16.useState)(props.name);
-    var [source, setSource] = (0, import_react16.useState)(props.name && fonts[props.name].source);
-    var [importing, setIsImporting] = (0, import_react16.useState)(false);
-    var [errors, setErrors] = (0, import_react16.useState)();
-    var memoEntry = (0, import_react16.useMemo)(() => {
+    var [name, setName] = (0, import_react17.useState)(props.name);
+    var [source, setSource] = (0, import_react17.useState)(props.name && fonts[props.name].source);
+    var [importing, setIsImporting] = (0, import_react17.useState)(false);
+    var [errors, setErrors] = (0, import_react17.useState)();
+    var memoEntry = (0, import_react17.useMemo)(() => {
       return createProxy(props.name ? {
         ...fonts[props.name].main
       } : {}).proxy;
@@ -21035,7 +20763,7 @@
       })
     });
   }
-  var import_react16, import_react_native38, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
+  var import_react17, import_react_native38, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
   var init_FontEditor = __esm({
     "src/core/ui/settings/pages/Fonts/FontEditor.tsx"() {
       "use strict";
@@ -21054,7 +20782,7 @@
       init_components();
       init_wrappers();
       init_components2();
-      import_react16 = __toESM(require_react());
+      import_react17 = __toESM(require_react());
       import_react_native38 = __toESM(require_react_native());
       actionSheet2 = findByPropsLazy("hideActionSheet");
       ({ openAlert: openAlert3 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -21219,51 +20947,43 @@
       }
     });
     return /* @__PURE__ */ jsx(import_react_native40.ScrollView, {
-      style: {
-        backgroundColor: "#313338"
-      },
       contentContainerStyle: {
-        padding: 16,
-        paddingBottom: 48
+        paddingBottom: 38
       },
-      children: /* @__PURE__ */ jsx(GlassCard, {
-        children: /* @__PURE__ */ jsxs(import_react_native40.View, {
-          style: {
-            padding: 20,
-            gap: 14
-          },
+      children: /* @__PURE__ */ jsx(Stack, {
+        style: {
+          paddingVertical: 24,
+          paddingHorizontal: 12
+        },
+        spacing: 24,
+        children: /* @__PURE__ */ jsxs(TableRowGroup, {
+          title: "Add-ons",
           children: [
-            /* @__PURE__ */ jsx(import_react_native40.Text, {
-              style: {
-                color: "#f2f3f5",
-                fontSize: 22,
-                fontWeight: "600"
-              },
-              children: "Add-ons"
-            }),
-            /* @__PURE__ */ jsx(import_react_native40.Text, {
-              style: {
-                color: "#b5bac1"
-              },
-              children: "Manage what you use, or find something new."
-            }),
-            /* @__PURE__ */ jsx(GlassButton, {
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
               label: "Installed plugins",
               onPress: () => open("Plugins", () => (init_Plugins(), __toCommonJS(Plugins_exports)))
             }),
-            /* @__PURE__ */ jsx(GlassButton, {
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
               label: "Discover plugins",
               onPress: () => open("Discover plugins", () => (init_PluginBrowser(), __toCommonJS(PluginBrowser_exports)))
             }),
-            isThemeSupported() && /* @__PURE__ */ jsx(GlassButton, {
-              muted: true,
+            isThemeSupported() && /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
               label: "Themes",
               onPress: () => open("Themes", () => (init_Themes(), __toCommonJS(Themes_exports)))
             }),
-            isFontSupported() && /* @__PURE__ */ jsx(GlassButton, {
-              muted: true,
+            isFontSupported() && /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
               label: "Fonts",
               onPress: () => open("Fonts", () => (init_Fonts(), __toCommonJS(Fonts_exports)))
+            }),
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: "Cloudsync",
+              subLabel: "Back up and sync",
+              onPress: () => open("Cloudsync", () => (init_StoreCloud(), __toCommonJS(StoreCloud_exports)))
             })
           ]
         })
@@ -21279,8 +20999,8 @@
       init_jsxRuntime();
       import_react_native40 = __toESM(require_react_native());
       init_common();
+      init_components();
       init_loader();
-      init_FakeProfileGlass();
     }
   });
 
@@ -21465,7 +21185,7 @@
   });
 
   // src/core/vendetta/api.tsx
-  var import_react17, import_react_native41, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react18, import_react_native41, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -21495,14 +21215,14 @@
       init_styles();
       init_toasts();
       init_dist();
-      import_react17 = __toESM(require_react());
+      import_react18 = __toESM(require_react());
       import_react_native41 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
       CompatRow = TableRow ?? Forms.FormRow ?? ReactNative.View;
       CompatSwitchRow = TableSwitchRow ?? Forms.FormSwitchRow ?? CompatRow;
       CompatSection = TableRowGroup ?? Forms.FormSection ?? ReactNative.View;
-      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatRow, {
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react18.createElement)(CompatRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -21513,7 +21233,7 @@
       });
       PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow?.Icon ?? (() => null);
       PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow?.Arrow ?? (() => null);
-      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatSwitchRow, {
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react18.createElement)(CompatSwitchRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -21521,7 +21241,7 @@
         onValueChange: props.onValueChange,
         disabled: props.disabled
       });
-      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatSection, {
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react18.createElement)(CompatSection, {
         title: props.title,
         ...props
       }, props.children);
@@ -21560,8 +21280,8 @@
                     ...module,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
-                      (0, import_react17.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react17.createElement)(import_react_native41.View, null, children);
+                      (0, import_react18.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
+                      return /* @__PURE__ */ (0, import_react18.createElement)(import_react_native41.View, null, children);
                     }
                   };
                 }
