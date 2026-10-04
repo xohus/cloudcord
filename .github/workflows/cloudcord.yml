@@ -889,10 +889,18 @@ jobs:
               return cloned;
           }
 
-          function decorateSharedProfile(original: any, userId: string, data: any) {
+          function decorateSharedProfile(original: any, userId: string, data: any, depth = 0) {
               if (!original || typeof original !== "object" || !data) return original;
               const cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
               if (cloned.user) setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
+              // Mobile profile hooks return nested snapshots. Updating only the
+              // outer fields leaves the actual header's userProfile.user real.
+              if (depth < 3) {
+                  for (const key of ["userProfile", "displayProfile", "guildMemberProfile", "profile"]) {
+                      const nested = original[key];
+                      if (nested && nested !== original && typeof nested === "object") setOwnValue(cloned, key, decorateSharedProfile(nested, userId, data, depth + 1));
+                  }
+              }
               if (data.username) setOwnValue(cloned, "username", data.username);
               if (data.globalName || data.displayName) {
                   const displayName = data.globalName || data.displayName;
