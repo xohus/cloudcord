@@ -326,7 +326,7 @@ jobs:
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByNameLazy, findByProps, findByStoreName } from "@metro";
           import { FluxDispatcher, NavigationNative } from "@metro/common";
-          import { Text } from "@metro/common/components";
+          import { Text, TableRow } from "@metro/common/components";
           import { useEffect, useReducer, useState } from "react";
           import { Alert, Image, NativeModules, Pressable, ScrollView, View } from "react-native";
 
@@ -1989,8 +1989,8 @@ jobs:
                   const value = preview[field];
                   return (
                       <View style={{ width: "100%", gap: 9, marginBottom: 16 }}>
-                          <Text variant="heading-sm/semibold" style={{ color: "#50fa9b" }}>{label}</Text>
-                          <Text variant="text-xs/medium" style={{ color: "#78e7ff" }}>{banner ? "Automatically fitted to 600 x 240" : "Automatically fitted to a square"}</Text>
+                          <Text variant="heading-sm/semibold" color="text-normal">{label}</Text>
+                          <Text variant="text-xs/medium" color="text-normal">{banner ? "Automatically fitted to 600 x 240" : "Automatically fitted to a square"}</Text>
                           <View style={{ width: "100%", gap: 8 }}>
                               <ActionButton label="Choose picture" onPress={() => void choose(field, "photo")} />
                               <ActionButton label="Choose file or GIF" muted onPress={() => void choose(field, "file")} />
@@ -2012,35 +2012,26 @@ jobs:
                   );
               };
 
-              const avatar = mediaUri("avatarMedia");
-              const banner = mediaUri("bannerMedia");
+              const openPreview = () => {
+                  try {
+                      const userId = currentUserId || realCurrentUser?.id;
+                      if (!userId) throw new Error("Your Discord account is still loading.");
+                      refreshPreview();
+                      const showProfile = findByNameLazy("showUserProfileActionSheet");
+                      showProfile({ userId });
+                  } catch (error: any) {
+                      Alert.alert("Couldn't open preview", error?.message || "Try opening your profile from Discord.");
+                  }
+              };
 
               return (
-                  <ScrollView style={{ flex: 1, width: "100%", backgroundColor: "#111521" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 16, paddingTop: 20, paddingBottom: 110 }} keyboardShouldPersistTaps="handled" nestedScrollEnabled showsVerticalScrollIndicator={false}>
-                      <View style={{ width: "100%", gap: 16 }}>
-                          <View style={{ width: "100%", flexDirection: "row", alignItems: "center", gap: 12 }}>
-                              <View style={{ width: 52, height: 52, borderRadius: 18, borderWidth: 1, borderColor: "rgba(255,255,255,0.18)", backgroundColor: "rgba(88,101,242,0.15)", alignItems: "center", justifyContent: "center" }}><ProfileGlyph /></View>
-                              <View style={{ flex: 1, minWidth: 0 }}>
-                                  <Text variant="heading-lg/semibold" color="text-normal">Profile</Text>
-                                  <Text variant="text-sm/medium" style={{ color: "#aeb8d2" }}>make it yours. visible to other CloudCord users when synced.</Text>
-                              </View>
-                          </View>
-
-                          <Card border="strong">
-                                  <View style={{ borderRadius: 14, overflow: "hidden" }}>
-                                  {banner ? <Image source={{ uri: banner }} resizeMode="cover" style={{ width: "100%", height: 118 }} /> : <View style={{ height: 118, backgroundColor: preview.profileColorsEnabled ? (preview.primaryColor || "#5865f2") : "#5865f2" }} />}
-                                  <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
-                                      <View style={{ width: 94, height: 94, marginTop: -47, alignItems: "center", justifyContent: "center" }}>
-                                          {avatar ? <Image source={{ uri: avatar }} style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: "#1e1f22" }} /> : <View style={{ width: 82, height: 82, borderRadius: 41, borderWidth: 5, borderColor: "#1e1f22", backgroundColor: "#777" }} />}
-                                          {preview.avatarDecoration ? <Image pointerEvents="none" source={{ uri: preview.avatarDecoration }} style={{ position: "absolute", width: 94, height: 94 }} /> : null}
-                                      </View>
-                                      <Text variant="heading-md/semibold" color="text-normal" style={{ marginTop: 10 }}>{preview.displayName || "Preview Name"}</Text>
-                                      <Text variant="text-sm/medium" color="text-muted">@{preview.username || "preview"}</Text>
-                                      <View style={{ alignSelf: "flex-start", paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: "rgba(88,101,242,0.15)", marginTop: 8 }}><Text variant="text-xs/bold" style={{ color: "#f2f3f5" }}>{preview.enabled ? "preview on" : "preview off"}</Text></View>
-                                  </View>
-                              </View>
+                  <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 12, paddingTop: 24, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
+                      <View style={{ width: "100%", gap: 24 }}>
+                          <Card>
+                              <TableRow arrow label="Preview my profile" subLabel={preview.enabled ? "Open your actual Discord profile with your current edits" : "Preview is off. Enable it below to see your edits."}
+                                  icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("UserIcon")} />}
+                                  onPress={openPreview} />
                           </Card>
-
                           <ProfileTabs selected={activeTab} onSelect={setActiveTab} />
                           {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
@@ -2114,7 +2105,7 @@ jobs:
                           </Card> : null}
                           {activeTab === "badges" ? <Card border="strong">
                               <View style={{ padding: 14, gap: 10 }}>
-                                  <Text variant="heading-md/semibold" style={{ color: "#f2f3f5" }}>your badges</Text>
+                                  <Text variant="heading-md/semibold" color="text-normal">your badges</Text>
                                   <ToggleRow
                                       label="Replace real badges"
                                       subLabel="Selected badges replace your real badges for CloudCord users"
