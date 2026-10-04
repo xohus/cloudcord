@@ -328,7 +328,7 @@ jobs:
           import { FluxDispatcher, NavigationNative } from "@metro/common";
           import { Text, TableRow, TableRadioGroup, TableRadioRow, Button } from "@metro/common/components";
           import { useEffect, useReducer, useState } from "react";
-          import { Alert, FlatList, Image, NativeModules, Pressable, ScrollView, View } from "react-native";
+          import { Alert, AppState, FlatList, Image, NativeModules, Pressable, ScrollView, View } from "react-native";
 
           type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
           type PreviewSettings = {
@@ -1257,16 +1257,44 @@ jobs:
               }
           }
 
+          let publishedBadges: { id: string; userId: string; name: string; icon: string }[] = [];
+          let publishedBadgeRequest = false;
+          let publishedBadgeFetchedAt = 0;
+          async function refreshPublishedBadges(force = false) {
+              if (publishedBadgeRequest || (!force && Date.now() - publishedBadgeFetchedAt < 5000)) return;
+              publishedBadgeRequest = true;
+              publishedBadgeFetchedAt = Date.now();
+              try {
+                  const response = await fetch("https://getcloudcord.com/v1/custom-badges", { cache: "no-store" });
+                  if (!response.ok) return;
+                  const payload = await response.json();
+                  if (!Array.isArray(payload?.badges)) return;
+                  const next = payload.badges.filter((badge: any) => typeof badge?.id === "string" && typeof badge?.userId === "string" && typeof badge?.name === "string" && typeof badge?.icon === "string" && badge.icon.startsWith("https://getcloudcord.com/v1/custom-badges/"));
+                  if (JSON.stringify(next) !== JSON.stringify(publishedBadges)) {
+                      publishedBadges = next;
+                      try { safeStore("UserStore")?.emitChange?.(); } catch {}
+                      try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
+                  }
+              } catch {} finally { publishedBadgeRequest = false; }
+          }
+          function appendPublishedBadges(result: any[], userId: string) {
+              const next = [...result];
+              for (const badge of publishedBadges) {
+                  if (badge.userId === userId) addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
+              }
+              return next;
+          }
           function connectBadgeRenderer() {
               try {
                   after("default", useBadgesModule as any, ([user], result) => {
                       if (!Array.isArray(result)) return result;
                       const id = String(user?.userId || user?.id || user?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || "");
+                      void refreshPublishedBadges();
                       if (!isCurrentUser(id)) {
                           requestSharedProfile(id);
                           const data = getProfileOverride(id);
                           const staffBadge = cloudCordStaffBadge(id);
-                          if (!data && !staffBadge) return;
+                          if (!data && !staffBadge) return appendPublishedBadges(result, id);
                           const ordered: any[] = [];
                           if (staffBadge) addRenderedBadge(ordered, staffBadge.id, staffBadge.label, CLOUDCORD_BADGE_ICON);
                           if (data) {
@@ -1287,16 +1315,16 @@ jobs:
                               const badgeId = String(item?.id || "");
                               return !badgeId.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeId === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
                           });
-                          return [...ordered, ...existing];
+                          return appendPublishedBadges([...ordered, ...existing], id);
                       }
 
                       const staffBadge = cloudCordStaffBadge(id);
                       if (!preview.enabled) {
-                          if (!staffBadge) return;
+                          if (!staffBadge) return appendPublishedBadges(result, id);
                           const existing = result.filter(item => !String(item?.id || "").startsWith("cloudcord-"));
                           const ordered: any[] = [];
                           addRenderedBadge(ordered, staffBadge.id, staffBadge.label, CLOUDCORD_BADGE_ICON);
-                          return [...ordered, ...existing];
+                          return appendPublishedBadges([...ordered, ...existing], id);
                       }
 
                       const existing = shouldReplaceLocalBadges() ? [] : result.filter(item => {
@@ -1325,7 +1353,7 @@ jobs:
                           const label = badgeId === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description;
                           addRenderedBadge(ordered, id, label, icon);
                       }
-                      return [...ordered, ...existing];
+                      return appendPublishedBadges([...ordered, ...existing], id);
                   });
                   diagnostics.patches += 1;
               } catch (error: any) {
@@ -1640,9 +1668,12 @@ jobs:
                       }
                       ensurePatches();
                       await pullOwnSharedProfile();
+                      void refreshPublishedBadges(true);
+                      AppState.addEventListener("change", state => { if (state === "active") void refreshPublishedBadges(true); });
                       if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => {
                           void pullOwnSharedProfile();
                           refreshSharedProfiles();
+                          if (AppState.currentState === "active") void refreshPublishedBadges();
                       }, 5000);
                       if (preview.enabled) { refreshPreview(); queueSharedPublish(); }
                   } catch (error: any) {

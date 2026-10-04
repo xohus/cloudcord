@@ -1,0 +1,23 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const esbuild = require(process.env.CLOUDCORD_ESBUILD || 'esbuild');
+const workflow = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
+const helper = workflow.slice(workflow.indexOf('          let publishedBadges:'), workflow.indexOf('          function connectBadgeRenderer()')).replace(/^          /gm, '');
+let rows = [{ id: 'badge-1', userId: '123', name: 'My Badge', icon: 'https://getcloudcord.com/v1/custom-badges/badge-1.png' }];
+let calls = 0, changes = 0;
+const context = vm.createContext({ Date, JSON, fetch: async () => { calls++; return { ok: true, json: async () => ({ badges: rows }) }; }, safeStore: () => ({ emitChange: () => changes++ }), addRenderedBadge: (result, id, description, icon) => result.push({ id, description, icon }) });
+vm.runInContext(esbuild.transformSync(helper, { loader: 'ts' }).code, context);
+(async () => {
+    await context.refreshPublishedBadges(true);
+    assert.equal(context.appendPublishedBadges([], '123').length, 1);
+    assert.equal(context.appendPublishedBadges([], '456').length, 0);
+    assert.equal(changes, 2);
+    await context.refreshPublishedBadges();
+    assert.equal(calls, 1);
+    rows = [];
+    await context.refreshPublishedBadges(true);
+    assert.equal(context.appendPublishedBadges([], '123').length, 0);
+    assert.equal(changes, 4);
+    console.log('published badges: account matching, refresh throttling, removal, and profile re-render passed');
+})().catch(error => { console.error(error); process.exitCode = 1; });
