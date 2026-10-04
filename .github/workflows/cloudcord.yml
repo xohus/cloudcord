@@ -1938,10 +1938,19 @@ jobs:
                   return (
                       <View style={{ width: "100%", gap: 9, marginBottom: 16 }}>
                           <Text variant="heading-sm/semibold" color="text-normal">{label}</Text>
-                          <Text variant="text-xs/medium" color="text-normal">{banner ? "Automatically fitted to 600 x 240" : "Automatically fitted to a square"}</Text>
+                          <Text variant="text-xs/medium" color="text-muted">Upload on the website using the same Discord account, then refresh here.</Text>
                           <View style={{ width: "100%", gap: 8 }}>
-                              <ActionButton label="Choose picture" onPress={() => void choose(field, "photo")} />
-                              <ActionButton label="Choose file or GIF" muted onPress={() => void choose(field, "file")} />
+                              <ActionButton label={banner ? "Upload banner on website" : "Upload profile picture on website"} onPress={() => {
+                                  void require("react-native").Linking.openURL("https://getcloudcord.com/badges/verify").catch(() => Alert.alert("Couldn't open website", "Open getcloudcord.com/badges/verify in your browser."));
+                              }} />
+                              <ActionButton label="Refresh from website" muted onPress={() => void (async () => {
+                                  try {
+                                      suppressOwnPullUntil = 0;
+                                      (pullOwnSharedProfile as any).lastAttempt = 0;
+                                      await pullOwnSharedProfile();
+                                      clearCache(); refreshPreview(); redraw();
+                                  } catch (error: any) { Alert.alert("Couldn't refresh", error?.message || "Try again later."); }
+                              })()} />
                           </View>
                           {value?.uri && (
                               <View style={{ width: "100%", borderRadius: 12, overflow: "hidden", backgroundColor: "#1e1f22" }}>
