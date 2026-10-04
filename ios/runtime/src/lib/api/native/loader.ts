@@ -112,9 +112,10 @@ export function getVendettaLoaderIdentity(): VendettaLoaderIdentity | null {
 getVendettaLoaderIdentity();
 
 export function getLoaderName() {
-    if (isCloudCordLoader()) return cloudCordLoaderIdentity.loaderName ?? "CloudCord";
-    if (isPyonLoader()) return pyonLoaderIdentity.loaderName;
-    if (isVendettaLoader()) return vendettaLoaderIdentity.name;
+    const label = (value: unknown) => /kettu|rain(?:cord|tweak)?|vencord|sincord|vendetta|bunny|pyon/i.test(String(value || "")) ? "CloudCord" : String(value || "CloudCord");
+    if (isCloudCordLoader()) return label(cloudCordLoaderIdentity.loaderName);
+    if (isPyonLoader()) return label(pyonLoaderIdentity.loaderName);
+    if (isVendettaLoader()) return label(vendettaLoaderIdentity.name);
     return "Unknown";
 }
 

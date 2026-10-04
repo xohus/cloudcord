@@ -2202,6 +2202,8 @@ jobs:
           CLOUDCORD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
 
           replacements = {
+              "KettuExposed": "CloudCord",
+              "Kettu Exposed": "CloudCord",
               "KettuTweak": "CloudCord",
               "Kettu Enhancements": "CloudCord Enhancements",
               "Kettu": "CloudCord",
@@ -2267,6 +2269,22 @@ jobs:
               text = text.replace('"URL_PLACEHOLDER": "https://github.com/BypassHub-EX/cloudcord"', f'"URL_PLACEHOLDER": "{GITHUB_URL}"')
 
               strings.write_text(text, encoding="utf-8")
+
+          # Branding is presentation-only: never rename native bridge methods,
+          # loader paths, module names or upstream attribution documents.
+          import json
+          brand_names = re.compile(r"KettuExposed|KettuTweak|RainTweak|Raincord|Kettu|Sincord|Vencord", re.I)
+          def brand_strings(value):
+              if isinstance(value, str):
+                  return brand_names.sub("CloudCord", value)
+              if isinstance(value, dict):
+                  return {key: brand_strings(item) for key, item in value.items()}
+              if isinstance(value, list):
+                  return [brand_strings(item) for item in value]
+              return value
+          for translations in Path("src/core/i18n").rglob("*.json"):
+              data = json.loads(translations.read_text(encoding="utf-8"))
+              translations.write_text(json.dumps(brand_strings(data), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
           general = Path("src/core/ui/settings/pages/General/index.tsx")
           if general.exists():

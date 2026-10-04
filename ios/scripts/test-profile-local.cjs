@@ -57,5 +57,7 @@ assert.equal(shared.username, 'original');
 delete overrides['123456789012345'];
 assert.equal(context.getProfileOverride('123456789012345'), shared);
 const editor = fs.readFileSync('ios/runtime/src/core/ui/settings/components/LocalProfiles.tsx', 'utf8');
+assert.doesNotMatch(fs.readFileSync('ios/runtime/src/core/ui/settings/pages/Diagnostics/index.tsx', 'utf8'), /<Recovery embedded/);
+assert.match(w, /brand_strings\(data\)/);
 assert.doesNotMatch(editor, /fetch\(|publishSharedProfile|queueSharedPublish/);
 console.log('local overrides preserve original data, support empty bio/zero badges, restore cleanly, and have no publishing path; UI syntax passed');
