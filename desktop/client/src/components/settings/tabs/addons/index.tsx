@@ -24,7 +24,7 @@ function Addons() {
         {rows.filter(row => row.name === "Plugins" ? visibility.showPluginsTab !== false : row.name === "Themes" ? visibility.showThemesTab !== false : row.name === "Cloudsync" ? visibility.showCloudSyncTab !== false : true).map(({ name, description, Icon, Tab }) => <div key={name} style={{ display: "flex", gap: 16, alignItems: "center", padding: "16px 0", borderBottom: "1px solid var(--background-modifier-accent)" }}>
             <Icon width={24} height={24} />
             <div style={{ flex: 1, minWidth: 0 }}><Heading tag="h3">{name}</Heading><Paragraph>{description}</Paragraph></div>
-            <Button onClick={() => openSettingsTabModal(Tab)}>Open</Button>
+            <Button disabled={!Tab} onClick={() => { if (Tab) openSettingsTabModal(Tab); }}>Open</Button>
         </div>)}
         <Paragraph>Font packs from the mobile client are not supported here. Use a compatible desktop or browser theme instead.</Paragraph>
     </SettingsTab>;
