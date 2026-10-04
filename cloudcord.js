@@ -14935,24 +14935,20 @@
       import_react_native23 = __toESM(require_react_native());
       tabs = [
         [
+          "BOTCORD",
+          "Botcord"
+        ],
+        [
           "FAKE_PROFILE",
-          "FakeProfile"
+          "Fakeprofile"
         ],
         [
           "STORE_CLOUD",
-          "Cloud sync"
-        ],
-        [
-          "BOTCORD",
-          "Bot accounts"
+          "Cloudsync"
         ],
         [
           "BUNNY_PLUGINS",
-          "Installed plugins"
-        ],
-        [
-          "CLOUDCORD_PLUGIN_BROWSER",
-          "Discover"
+          "Plugins"
         ],
         [
           "BUNNY_THEMES",
@@ -14961,6 +14957,10 @@
         [
           "BUNNY_FONTS",
           "Fonts"
+        ],
+        [
+          "CLOUDCORD_PLUGIN_BROWSER",
+          "Discover plugins"
         ]
       ];
     }
@@ -20835,9 +20835,7 @@
     var coreItem = {
       key: "CLOUDCORD",
       title: () => "Overview",
-      icon: {
-        uri: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
-      },
+      icon: safeAsset("CircleInformationIcon-primary", "CircleInformationIcon", "InfoIcon"),
       render: () => Promise.resolve().then(() => (init_General(), General_exports)),
       useTrailing: () => `(${"v1.4.3"})`
     };
@@ -20854,19 +20852,19 @@
       coreItem,
       {
         key: "BOTCORD",
-        title: () => "Bot accounts",
+        title: () => "Botcord",
         icon: safeAsset("RobotIcon", "AppsIcon"),
         render: () => Promise.resolve().then(() => (init_BotCord(), BotCord_exports))
       },
       {
         key: "FAKE_PROFILE",
-        title: () => "FakeProfile",
+        title: () => "Fakeprofile",
         icon: safeAsset("UserIcon", "SettingsIcon"),
         render: () => Promise.resolve().then(() => (init_FakeProfile(), FakeProfile_exports))
       },
       {
         key: "STORE_CLOUD",
-        title: () => "Cloud sync",
+        title: () => "Cloudsync",
         icon: {
           uri: "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
         },
@@ -20874,13 +20872,13 @@
       },
       {
         key: "BUNNY_PLUGINS",
-        title: () => "Installed plugins",
+        title: () => "Plugins",
         icon: safeAsset("AppsIcon"),
         render: () => Promise.resolve().then(() => (init_Plugins(), Plugins_exports))
       },
       {
         key: "CLOUDCORD_PLUGIN_BROWSER",
-        title: () => "Discover",
+        title: () => "Discover plugins",
         icon: safeAsset("ChannelListMagnifyingGlassIcon", "SearchIcon", "AppsIcon"),
         render: () => Promise.resolve().then(() => (init_PluginBrowser(), PluginBrowser_exports))
       },
@@ -20908,13 +20906,13 @@
     ];
     var defaultOrder = [
       "CLOUDCORD",
+      "BOTCORD",
       "FAKE_PROFILE",
       "STORE_CLOUD",
-      "BOTCORD",
       "BUNNY_PLUGINS",
-      "CLOUDCORD_PLUGIN_BROWSER",
       "BUNNY_THEMES",
-      "BUNNY_FONTS"
+      "BUNNY_FONTS",
+      "CLOUDCORD_PLUGIN_BROWSER"
     ];
     var configurableKeys = new Set(defaultOrder.filter((key) => key !== "CLOUDCORD"));
     var configuredOrder = settings.cloudcordTabOrder ?? [];
