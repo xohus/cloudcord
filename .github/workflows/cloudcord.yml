@@ -2185,6 +2185,9 @@ jobs:
           for path in Path(".").rglob("*"):
               if not path.is_file() or path.suffix not in exts:
                   continue
+              # Preserve upstream license and attribution documents verbatim.
+              if any(word in path.name.upper() for word in ("LICENSE", "LICENCE", "COPYING", "NOTICE", "AUTHORS")):
+                  continue
 
               text = path.read_text(encoding="utf-8", errors="ignore")
               original = text

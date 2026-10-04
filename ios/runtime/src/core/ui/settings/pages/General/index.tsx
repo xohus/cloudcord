@@ -8,11 +8,10 @@ import { getDebugInfo } from "@lib/api/debug";
 import { BundleUpdaterManager } from "@lib/api/native/modules";
 import { settings } from "@lib/api/settings";
 import { openAlert } from "@lib/ui/alerts";
-import { DISCORD_SERVER, GITHUB, CODEBERG } from "@lib/utils/constants";
+import { DISCORD_SERVER, GITHUB } from "@lib/utils/constants";
 import { NavigationNative } from "@metro/common";
 import { AlertActionButton, AlertActions, AlertModal, Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import { Linking, ScrollView } from "react-native";
-import CodebergIcon from "@assets/icons/codeberg-logo_icon_white.png";
 
 export default function General() {
     useProxy(settings);
@@ -53,9 +52,9 @@ export default function General() {
                     />
                     <TableRow
                         arrow={true}
-                        label={Strings.CODEBERG}
-                        icon={<TableRow.Icon source={{ uri: CodebergIcon}} />}
-                        onPress={() => Linking.openURL(CODEBERG)}
+                        label="Website"
+                        icon={<TableRow.Icon source={findAssetId("GlobeIcon") || findAssetId("CircleInformationIcon-primary")} />}
+                        onPress={() => Linking.openURL("https://getcloudcord.com")}
                     />
                     <TableRow
                         arrow={true}

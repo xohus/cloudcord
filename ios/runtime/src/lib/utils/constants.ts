@@ -1,6 +1,6 @@
 export const DISCORD_SERVER = "https://discord.gg/6cN7wKa8gp";
-export const CODEBERG = "https://codeberg.org/cocobo1/CloudCord";
-export const GITHUB = "https://github.com/C0C0B01/CloudCord";
+export const CODEBERG = "";
+export const GITHUB = "https://github.com/xohus/cloudcord";
 export const HTTP_REGEX = /^https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&/=]*)$/;
 export const HTTP_REGEX_MULTI = /https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_+.~#?&//=]*)/g;
 
