@@ -76,19 +76,51 @@ const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
 };
 const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 
-function OfficialCloudBadge(badge: ProfileBadge & BadgeUserArgs) {
+function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
     const label = badge.description || "CloudCord Staff";
     const profile: any = UserProfileStore?.getUserProfile(badge.userId);
     const profileColors: number[] = (profile?.themeColors ?? profile?.theme_colors ?? []).filter((color: unknown) => typeof color === "number");
     const brightness = profileColors.length ? profileColors.reduce((sum, color) => sum + ((color >> 16) & 255) * 0.299 + ((color >> 8) & 255) * 0.587 + (color & 255) * 0.114, 0) / profileColors.length : null;
     const icon = React.createElement("img", {
-        src: CLOUDCORD_BADGE_ICON + "?v=staff2", alt: label, title: label, width: 20, height: 20,
+        src: CLOUDCORD_BADGE_ICON + "?v=staff3", alt: label, width: 20, height: 20,
         role: "button", tabIndex: 0,
         onClick: () => showStaffRole(label),
         onKeyDown: (event: React.KeyboardEvent) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); showStaffRole(label); } },
         style: { objectFit: "contain", filter: "invert(1)", background: "transparent", border: "none", boxShadow: "none", cursor: "pointer" },
         ref: (image: HTMLImageElement | null) => {
             if (!image) return;
+            const update = () => {
+            if (!image.isConnected) return;
+            // Use Discord's own readable profile foreground. A gradient's
+            // average is not the color behind the badge, and account popouts
+            // can inherit stale colors while their portal is being mounted.
+            let foregroundNode = image.parentElement;
+            while (foregroundNode) {
+                const style = getComputedStyle(foregroundNode);
+                const username = foregroundNode.querySelector<HTMLElement>('[class*="userTagUsername"], [class*="username"]');
+                if (username) {
+                    const rgb = getComputedStyle(username).color.match(/[\d.]+/g)?.map(Number);
+                    if (rgb && rgb.length >= 3 && (rgb.length < 4 || rgb[3] > 0.5)) {
+                        image.style.filter = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 > 180 ? "invert(1)" : "none";
+                        return;
+                    }
+                }
+                const text = style.getPropertyValue("--text-normal").trim();
+                if (text) {
+                    const probe = document.createElement("span");
+                    probe.style.color = "var(--text-normal)";
+                    probe.style.display = "none";
+                    foregroundNode.appendChild(probe);
+                    const rgb = getComputedStyle(probe).color.match(/[\d.]+/g)?.map(Number);
+                    probe.remove();
+                    if (rgb && rgb.length >= 3 && (rgb.length < 4 || rgb[3] > 0.5)) {
+                        const lightText = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 > 180;
+                        image.style.filter = lightText ? "invert(1)" : "none";
+                        return;
+                    }
+                }
+                foregroundNode = foregroundNode.parentElement;
+            }
             // The visible surface wins over cached profile theme colors.
             // Discord can render a light profile while the store still holds
             // its previous/dark colors (especially in the account popout).
@@ -116,9 +148,18 @@ function OfficialCloudBadge(badge: ProfileBadge & BadgeUserArgs) {
                 node = node.parentElement;
             }
             if (brightness !== null) image.style.filter = brightness > 220 ? "none" : "invert(1)";
+            };
+            update();
+            // Refs may fire before a portal's final inherited theme is applied.
+            requestAnimationFrame(() => { update(); requestAnimationFrame(update); });
+            image.onload = update;
         }
     });
-    return React.createElement(TooltipContainer, { text: label, children: icon });
+    return icon;
+}
+
+function OfficialCloudBadge(badge: ProfileBadge & BadgeUserArgs) {
+    return React.createElement(TooltipContainer, { text: badge.description || "CloudCord Staff", children: createOfficialCloudBadgeIcon(badge) });
 }
 
 function showStaffRole(label: string) {
@@ -176,7 +217,7 @@ export function _getBadges(args: BadgeUserArgs) {
             description: `CloudCord ${staffRole}`,
             // Keep Discord's native image path usable if its component renderer changes.
             iconSrc: CLOUDCORD_BADGE_ICON,
-            props: { title: `CloudCord ${staffRole}`, style: { objectFit: "contain", filter: "invert(1)", background: "transparent", border: "none", boxShadow: "none" } },
+            props: createOfficialCloudBadgeIcon({ ...args, id: `cloudcord-official-${staffRole.toLowerCase()}`, description: `CloudCord ${staffRole}` }).props,
             onClick: () => showStaffRole(`CloudCord ${staffRole}`),
             component: OfficialCloudBadge,
             key: `CloudCord ${staffRole}`,
