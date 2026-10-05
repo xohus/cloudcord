@@ -151,6 +151,9 @@ export function _getBadges(args: BadgeUserArgs) {
             ...args,
             id: `cloudcord-official-${staffRole.toLowerCase()}`,
             description: `CloudCord ${staffRole}`,
+            // Keep Discord's native image path usable if its component renderer changes.
+            iconSrc: CLOUDCORD_BADGE_ICON,
+            props: { style: { objectFit: "contain", filter: "invert(1)" } },
             component: OfficialCloudBadge,
             key: `CloudCord ${staffRole}`,
             position: BadgePosition.START

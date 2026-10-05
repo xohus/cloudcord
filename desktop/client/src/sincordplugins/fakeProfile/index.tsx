@@ -1079,7 +1079,8 @@ fakeObfuscatedEmail(real: string | null) {
         return fake.length < 4 ? fake : "***-***-" + fake.slice(-4);
     },
     patchDecorationUrl(input: any) {
-        const asset = sharedDecorationAsset(input?.avatarDecoration?.asset || input?.avatarDecorationData?.asset);
+        const user = input?.user ?? input;
+        const asset = sharedDecorationAsset(input?.avatarDecoration?.asset || input?.avatarDecorationData?.asset || user?.avatarDecoration?.asset || user?.avatarDecorationData?.asset);
         const item = ALL_DECORATIONS.find(decoration => decoration.id === asset);
         return item?.url;
     },
@@ -1091,6 +1092,7 @@ fakeObfuscatedEmail(real: string | null) {
 
     toolboxActions: { "Open Profile Spoofer"() { openModal(props => <CustomProfileModal rootProps={props} />); } },
     _origGetUserAvatarURL: null as any,
+    _origGetAvatarDecorationURL: null as any,
     _origExtractTimestamp: null as any,
 
     userProfileBadges: [{
@@ -1176,6 +1178,14 @@ fakeObfuscatedEmail(real: string | null) {
     } as ProfileBadge] as ProfileBadge[],
 
     async start() {
+        // Also hook the public resolver: a source-text patch alone can miss
+        // Discord's newer/minified resolver layout.
+        const resolver: any = IconUtils;
+        if (typeof resolver?.getAvatarDecorationURL === "function" && !this._origGetAvatarDecorationURL) {
+            this._origGetAvatarDecorationURL = resolver.getAvatarDecorationURL;
+            const original = resolver.getAvatarDecorationURL;
+            resolver.getAvatarDecorationURL = (input: any, ...args: any[]) => this.patchDecorationUrl(input) || original.call(resolver, input, ...args);
+        }
         addHeaderBarButton("profile-spoofer-btn", () => <CustomProfileButton />, 10);
         addContextMenuPatch("user-context", userContextMenuPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
@@ -1287,6 +1297,7 @@ fakeObfuscatedEmail(real: string | null) {
         if (sharedSyncTimer) { clearInterval(sharedSyncTimer); sharedSyncTimer = null; }
         if (this._origExtractTimestamp && SnowflakeUtils) { (SnowflakeUtils as any).extractTimestamp = this._origExtractTimestamp; this._origExtractTimestamp = null; }
         if (this._origGetUserAvatarURL && IconUtils) { (IconUtils as any).getUserAvatarURL = this._origGetUserAvatarURL; this._origGetUserAvatarURL = null; _avatarPatchApplied = false; }
+        if (this._origGetAvatarDecorationURL && IconUtils) { (IconUtils as any).getAvatarDecorationURL = this._origGetAvatarDecorationURL; this._origGetAvatarDecorationURL = null; }
     },
 
     settingsAboutComponent() { return <Button onClick={() => openModal(props => <CustomProfileModal rootProps={props} />)}>Open Profile Editor</Button>; },
