@@ -89,10 +89,9 @@ function OfficialCloudBadge(badge: ProfileBadge & BadgeUserArgs) {
         style: { objectFit: "contain", filter: "invert(1)", background: "transparent", border: "none", boxShadow: "none", cursor: "pointer" },
         ref: (image: HTMLImageElement | null) => {
             if (!image) return;
-            if (brightness !== null) {
-                image.style.filter = brightness > 220 ? "none" : "invert(1)";
-                return;
-            }
+            // The visible surface wins over cached profile theme colors.
+            // Discord can render a light profile while the store still holds
+            // its previous/dark colors (especially in the account popout).
             let node = image.parentElement;
             while (node) {
                 const style = getComputedStyle(node);
@@ -106,16 +105,17 @@ function OfficialCloudBadge(badge: ProfileBadge & BadgeUserArgs) {
                 if (stops.length) {
                     const brightness = stops.reduce((sum, rgb) => sum + rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114, 0) / stops.length;
                     image.style.filter = brightness > 220 ? "none" : "invert(1)";
-                    break;
+                    return;
                 }
                 const color = parseColor(style.backgroundColor);
                 if (color) {
                     const light = color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114 > 220;
                     image.style.filter = light ? "none" : "invert(1)";
-                    break;
+                    return;
                 }
                 node = node.parentElement;
             }
+            if (brightness !== null) image.style.filter = brightness > 220 ? "none" : "invert(1)";
         }
     });
     return React.createElement(TooltipContainer, { text: label, children: icon });
