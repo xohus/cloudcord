@@ -1101,6 +1101,19 @@ jobs:
               result.push({ id, description, label: description, icon, iconSrc: icon, source: { uri: icon } });
           }
 
+          function addOfficialBadge(result: any[], badge: any, user: any, data: any) {
+              const native = user?.displayProfile ?? user?.profile ?? safeStore("UserProfileStore")?.getUserProfile?.(user?.userId || user?.id);
+              const colors = data?.profileColorsEnabled ? [data.primaryColor, data.accentColor] : native?.themeColors ?? [native?.primaryColor ?? native?.accentColor];
+              const values = colors.filter((value: any) => value != null).map((value: any) => typeof value === "string" ? parseInt(value.replace("#", ""), 16) : Number(value)).filter(Number.isFinite);
+              const light = values.length ? values.reduce((sum: number, value: number) => sum + ((value >> 16) & 255) * 0.299 + ((value >> 8) & 255) * 0.587 + (value & 255) * 0.114, 0) / values.length > 165 : safeStore("ThemeStore")?.theme === "light";
+              const tintColor = light ? "#000000" : "#ffffff";
+              addRenderedBadge(result, badge.id, badge.label, CLOUDCORD_BADGE_ICON);
+              const props = badgeRenderProps.get(badge.id);
+              if (props) { props.tintColor = tintColor; props.style = { ...props.style, tintColor, resizeMode: "contain" }; }
+              const row = result.find(item => item.id === badge.id);
+              if (row) { row.tintColor = tintColor; row.style = { tintColor }; }
+          }
+
           function showGiftingBadgeOverlay(selectedLabel?: string) {
               try {
                   const index = Math.max(0, GIFT_LEVELS.findIndex(gift => selectedLabel?.startsWith(gift.name)));
@@ -1312,7 +1325,7 @@ jobs:
                           const staffBadge = cloudCordStaffBadge(id);
                           if (!data && !staffBadge) return appendPublishedBadges(result, id);
                           const ordered: any[] = [];
-                          if (staffBadge) addRenderedBadge(ordered, staffBadge.id, staffBadge.label, CLOUDCORD_BADGE_ICON);
+                          if (staffBadge) addOfficialBadge(ordered, staffBadge, user, data);
                           if (data) {
                               const nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
                               const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
@@ -1339,7 +1352,7 @@ jobs:
                           if (!staffBadge) return appendPublishedBadges(result, id);
                           const existing = result.filter(item => !String(item?.id || "").startsWith("cloudcord-"));
                           const ordered: any[] = [];
-                          addRenderedBadge(ordered, staffBadge.id, staffBadge.label, CLOUDCORD_BADGE_ICON);
+                          addOfficialBadge(ordered, staffBadge, user, null);
                           return appendPublishedBadges([...ordered, ...existing], id);
                       }
 
@@ -1348,7 +1361,7 @@ jobs:
                           return !badgeId.startsWith("cloudcord-") && !badgeId.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeId === nitroBadgeId(preview.nitroMonths));
                       });
                       const ordered: any[] = [];
-                      if (staffBadge) addRenderedBadge(ordered, staffBadge.id, staffBadge.label, CLOUDCORD_BADGE_ICON);
+                      if (staffBadge) addOfficialBadge(ordered, staffBadge, user, preview);
                       if (preview.nitroEnabled) addRenderedBadge(
                           ordered,
                           nitroBadgeId(preview.nitroMonths),

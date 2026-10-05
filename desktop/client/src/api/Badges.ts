@@ -19,6 +19,7 @@
 import ErrorBoundary from "@components/ErrorBoundary";
 import globalBadges from "@sincordplugins/globalBadges";
 import BadgeAPIPlugin from "@plugins/_api/badges";
+import { React } from "@webpack/common";
 import { ComponentType, HTMLProps } from "react";
 
 import { isPluginEnabled } from "./PluginManager";
@@ -66,6 +67,33 @@ const CLOUDCORD_OWNER_ID = "463515440606609419";
 const CLOUDCORD_CO_OWNER_ID = "1497588725788442637";
 const CLOUDCORD_MANAGER_ID = "1540350369232850995";
 const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+
+function OfficialCloudBadge() {
+    return React.createElement("img", {
+        src: CLOUDCORD_BADGE_ICON, alt: "", width: 20, height: 20,
+        style: { objectFit: "contain", filter: "invert(1)" },
+        ref: (image: HTMLImageElement | null) => {
+            if (!image) return;
+            let node = image.parentElement;
+            while (node) {
+                const style = getComputedStyle(node);
+                const stops = [...style.backgroundImage.matchAll(/rgba?\(([^)]+)\)/g)].map(match => match[1].split(",").map(Number));
+                if (stops.length) {
+                    const brightness = stops.reduce((sum, rgb) => sum + rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114, 0) / stops.length;
+                    image.style.filter = brightness > 165 ? "none" : "invert(1)";
+                    break;
+                }
+                const color = style.backgroundColor.match(/[\d.]+/g);
+                if (color && (color.length < 4 || Number(color[3]) > 0.5)) {
+                    const light = Number(color[0]) * 0.299 + Number(color[1]) * 0.587 + Number(color[2]) * 0.114 > 165;
+                    image.style.filter = light ? "none" : "invert(1)";
+                    break;
+                }
+                node = node.parentElement;
+            }
+        }
+    });
+}
 
 /**
  * Register a new badge with the Badges API
@@ -115,7 +143,8 @@ export function _getBadges(args: BadgeUserArgs) {
             ...args,
             id: "cloudcord-official-owner",
             description: "CloudCord Owner",
-            iconSrc: CLOUDCORD_BADGE_ICON,
+            component: OfficialCloudBadge,
+            key: "CloudCord Owner",
             position: BadgePosition.START
         });
     } else if (args.userId === CLOUDCORD_CO_OWNER_ID) {
@@ -123,7 +152,8 @@ export function _getBadges(args: BadgeUserArgs) {
             ...args,
             id: "cloudcord-official-co-owner",
             description: "CloudCord Co-Owner",
-            iconSrc: CLOUDCORD_BADGE_ICON,
+            component: OfficialCloudBadge,
+            key: "CloudCord Co-Owner",
             position: BadgePosition.START
         });
     } else if (args.userId === CLOUDCORD_MANAGER_ID) {
@@ -131,7 +161,8 @@ export function _getBadges(args: BadgeUserArgs) {
             ...args,
             id: "cloudcord-manager",
             description: "CloudCord Manager",
-            iconSrc: CLOUDCORD_BADGE_ICON,
+            component: OfficialCloudBadge,
+            key: "CloudCord Manager",
             position: BadgePosition.START
         });
     }
