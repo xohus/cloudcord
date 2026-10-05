@@ -9619,22 +9619,11 @@
     return /* @__PURE__ */ jsx(Component, {});
   }
   function cloudCordStaffBadge(userId) {
-    if (userId === CLOUDCORD_OWNER_ID)
-      return {
-        id: "cloudcord-owner",
-        label: "CloudCord Owner"
-      };
-    if (userId === CLOUDCORD_CO_OWNER_ID)
-      return {
-        id: "cloudcord-co-owner",
-        label: "CloudCord Co-Owner"
-      };
-    if (userId === CLOUDCORD_MANAGER_ID)
-      return {
-        id: "cloudcord-manager",
-        label: "CloudCord Manager"
-      };
-    return null;
+    var role = CLOUDCORD_STAFF_ROLES[userId];
+    return role ? {
+      id: `cloudcord-official-${role.toLowerCase()}`,
+      label: `CloudCord ${role}`
+    } : null;
   }
   function nitroBadgeId(months) {
     return months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
@@ -12277,7 +12266,7 @@
       })
     });
   }
-  var import_react5, import_react_native18, BADGES, GIFT_LEVELS, CLOUDCORD_OWNER_ID, CLOUDCORD_CO_OWNER_ID, CLOUDCORD_MANAGER_ID, CLOUDCORD_BADGE_ICON, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, identityRefreshers, identityRenderers, PROFILE_COLORS;
+  var import_react5, import_react_native18, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, identityRefreshers, identityRenderers, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12423,10 +12412,17 @@
           icon: "https://cdn.discordapp.com/badge-icons/7fe346cfc5da1340087d8759a9e7a395.png"
         }
       ];
-      CLOUDCORD_OWNER_ID = "463515440606609419";
-      CLOUDCORD_CO_OWNER_ID = "1497588725788442637";
-      CLOUDCORD_MANAGER_ID = "1540350369232850995";
       CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+      CLOUDCORD_STAFF_ROLES = {
+        "1457121276748365989": "Administrator",
+        "1497588725788442637": "Management",
+        "1453130879537905734": "Management",
+        "1191456523763859558": "Moderator",
+        "1417880742502994042": "Management",
+        "553936745058664458": "Moderator",
+        "463515440606609419": "Founder",
+        "1121228881425354832": "Management"
+      };
       useBadgesModule2 = findByNameLazy("useBadges", false);
       useUserProfileModule = findByNameLazy("useUserProfile", false);
       useDisplayProfileModule = findByNameLazy("useDisplayProfile", false);
