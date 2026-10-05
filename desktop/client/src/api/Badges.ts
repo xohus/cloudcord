@@ -17,9 +17,10 @@
 */
 
 import ErrorBoundary from "@components/ErrorBoundary";
+import { TooltipContainer } from "@components/TooltipContainer";
 import globalBadges from "@sincordplugins/globalBadges";
 import BadgeAPIPlugin from "@plugins/_api/badges";
-import { React } from "@webpack/common";
+import { React, Toasts } from "@webpack/common";
 import { ComponentType, HTMLProps } from "react";
 
 import { isPluginEnabled } from "./PluginManager";
@@ -75,10 +76,14 @@ const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
 };
 const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 
-function OfficialCloudBadge() {
-    return React.createElement("img", {
-        src: CLOUDCORD_BADGE_ICON, alt: "", width: 20, height: 20,
-        style: { objectFit: "contain", filter: "invert(1)" },
+function OfficialCloudBadge(badge: ProfileBadge & BadgeUserArgs) {
+    const label = badge.description || "CloudCord Staff";
+    const icon = React.createElement("img", {
+        src: CLOUDCORD_BADGE_ICON + "?v=staff2", alt: label, title: label, width: 20, height: 20,
+        role: "button", tabIndex: 0,
+        onClick: () => showStaffRole(label),
+        onKeyDown: (event: React.KeyboardEvent) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); showStaffRole(label); } },
+        style: { objectFit: "contain", filter: "invert(1)", background: "transparent", border: "none", boxShadow: "none", cursor: "pointer" },
         ref: (image: HTMLImageElement | null) => {
             if (!image) return;
             let node = image.parentElement;
@@ -100,6 +105,11 @@ function OfficialCloudBadge() {
             }
         }
     });
+    return React.createElement(TooltipContainer, { text: label, children: icon });
+}
+
+function showStaffRole(label: string) {
+    Toasts.show({ id: Toasts.genId(), message: label, type: Toasts.Type.MESSAGE });
 }
 
 /**
@@ -153,7 +163,8 @@ export function _getBadges(args: BadgeUserArgs) {
             description: `CloudCord ${staffRole}`,
             // Keep Discord's native image path usable if its component renderer changes.
             iconSrc: CLOUDCORD_BADGE_ICON,
-            props: { style: { objectFit: "contain", filter: "invert(1)" } },
+            props: { title: `CloudCord ${staffRole}`, style: { objectFit: "contain", filter: "invert(1)", background: "transparent", border: "none", boxShadow: "none" } },
+            onClick: () => showStaffRole(`CloudCord ${staffRole}`),
             component: OfficialCloudBadge,
             key: `CloudCord ${staffRole}`,
             position: BadgePosition.START
