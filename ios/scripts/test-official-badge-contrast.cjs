@@ -6,7 +6,8 @@ const helper = source.slice(source.indexOf('          function addOfficialBadge(
 const rows = new Map();
 const context = { badgeRenderProps: rows, CLOUDCORD_BADGE_ICON: 'logo.png', safeStore: () => ({ theme: 'dark' }), addRenderedBadge: (result, id) => { result.push({ id }); rows.set(id, {}); } };
 vm.createContext(context);
-vm.runInContext(helper, context);
+const esbuild = require(process.env.CLOUDCORD_ESBUILD || 'esbuild');
+vm.runInContext(esbuild.transformSync(helper, { loader: 'ts' }).code, context);
 for (const [color, expected] of [[0xffffff, '#000000'], [0, '#ffffff'], [0xeeeeee, '#000000'], [0x222222, '#ffffff']]) {
     const result = [];
     context.addOfficialBadge(result, { id: 'official', label: 'CloudCord' }, {}, { profileColorsEnabled: true, primaryColor: color, accentColor: color });
