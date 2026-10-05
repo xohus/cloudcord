@@ -63,9 +63,16 @@ export interface ProfileBadge {
 
 const Badges = new Set<ProfileBadge>();
 
-const CLOUDCORD_OWNER_ID = "463515440606609419";
-const CLOUDCORD_CO_OWNER_ID = "1497588725788442637";
-const CLOUDCORD_MANAGER_ID = "1540350369232850995";
+const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
+    "1457121276748365989": "Administrator",
+    "1497588725788442637": "Management",
+    "1453130879537905734": "Management",
+    "1191456523763859558": "Moderator",
+    "1417880742502994042": "Management",
+    "553936745058664458": "Moderator",
+    "463515440606609419": "Founder",
+    "1121228881425354832": "Management"
+};
 const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 
 function OfficialCloudBadge() {
@@ -138,31 +145,14 @@ export function _getBadges(args: BadgeUserArgs) {
         }
     }
 
-    if (args.userId === CLOUDCORD_OWNER_ID) {
+    const staffRole = CLOUDCORD_STAFF_ROLES[args.userId];
+    if (staffRole) {
         badges.unshift({
             ...args,
-            id: "cloudcord-official-owner",
-            description: "CloudCord Owner",
+            id: `cloudcord-official-${staffRole.toLowerCase()}`,
+            description: `CloudCord ${staffRole}`,
             component: OfficialCloudBadge,
-            key: "CloudCord Owner",
-            position: BadgePosition.START
-        });
-    } else if (args.userId === CLOUDCORD_CO_OWNER_ID) {
-        badges.unshift({
-            ...args,
-            id: "cloudcord-official-co-owner",
-            description: "CloudCord Co-Owner",
-            component: OfficialCloudBadge,
-            key: "CloudCord Co-Owner",
-            position: BadgePosition.START
-        });
-    } else if (args.userId === CLOUDCORD_MANAGER_ID) {
-        badges.unshift({
-            ...args,
-            id: "cloudcord-manager",
-            description: "CloudCord Manager",
-            component: OfficialCloudBadge,
-            key: "CloudCord Manager",
+            key: `CloudCord ${staffRole}`,
             position: BadgePosition.START
         });
     }
