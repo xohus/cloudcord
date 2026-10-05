@@ -10399,7 +10399,7 @@
       native?.primaryColor ?? native?.accentColor
     ];
     var values = colors.filter((value) => value != null).map((value) => typeof value === "string" ? parseInt(value.replace("#", ""), 16) : Number(value)).filter(Number.isFinite);
-    var light = values.length ? values.reduce((sum, value) => sum + (value >> 16 & 255) * 0.299 + (value >> 8 & 255) * 0.587 + (value & 255) * 0.114, 0) / values.length > 165 : safeStore("ThemeStore")?.theme === "light";
+    var light = values.length ? values.reduce((sum, value) => sum + (value >> 16 & 255) * 0.299 + (value >> 8 & 255) * 0.587 + (value & 255) * 0.114, 0) / values.length > 220 : safeStore("ThemeStore")?.theme === "light";
     var tintColor = light ? "#000000" : "#ffffff";
     addRenderedBadge(result, badge.id, badge.label, CLOUDCORD_BADGE_ICON);
     var props = badgeRenderProps.get(badge.id);
