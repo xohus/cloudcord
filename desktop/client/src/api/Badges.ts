@@ -80,12 +80,12 @@ function OfficialCloudBadge() {
                 const stops = [...style.backgroundImage.matchAll(/rgba?\(([^)]+)\)/g)].map(match => match[1].split(",").map(Number));
                 if (stops.length) {
                     const brightness = stops.reduce((sum, rgb) => sum + rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114, 0) / stops.length;
-                    image.style.filter = brightness > 165 ? "none" : "invert(1)";
+                    image.style.filter = brightness > 220 ? "none" : "invert(1)";
                     break;
                 }
                 const color = style.backgroundColor.match(/[\d.]+/g);
                 if (color && (color.length < 4 || Number(color[3]) > 0.5)) {
-                    const light = Number(color[0]) * 0.299 + Number(color[1]) * 0.587 + Number(color[2]) * 0.114 > 165;
+                    const light = Number(color[0]) * 0.299 + Number(color[1]) * 0.587 + Number(color[2]) * 0.114 > 220;
                     image.style.filter = light ? "none" : "invert(1)";
                     break;
                 }

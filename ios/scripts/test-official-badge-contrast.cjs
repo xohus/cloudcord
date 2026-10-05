@@ -8,7 +8,7 @@ const context = { badgeRenderProps: rows, CLOUDCORD_BADGE_ICON: 'logo.png', safe
 vm.createContext(context);
 const esbuild = require(process.env.CLOUDCORD_ESBUILD || 'esbuild');
 vm.runInContext(esbuild.transformSync(helper, { loader: 'ts' }).code, context);
-for (const [color, expected] of [[0xffffff, '#000000'], [0, '#ffffff'], [0xeeeeee, '#000000'], [0x222222, '#ffffff']]) {
+for (const [color, expected] of [[0xffffff, '#000000'], [0, '#ffffff'], [0xeeeeee, '#000000'], [0x222222, '#ffffff'], [0xaaaaaa, '#ffffff'], [0xcccccc, '#ffffff'], [0xdcdcdc, '#ffffff']]) {
     const result = [];
     context.addOfficialBadge(result, { id: 'official', label: 'CloudCord' }, {}, { profileColorsEnabled: true, primaryColor: color, accentColor: color });
     assert.equal(result[0].tintColor, expected);
