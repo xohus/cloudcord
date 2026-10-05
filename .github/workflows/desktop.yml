@@ -80,6 +80,10 @@ jobs:
         working-directory: desktop/client
         run: node scripts/test-staff-badge-surface.cjs
 
+      - name: Check runtime user plugin installation
+        working-directory: desktop/client
+        run: node scripts/test-runtime-userplugins.cjs
+
       - name: Typecheck
         working-directory: desktop/client
         shell: bash

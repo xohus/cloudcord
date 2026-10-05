@@ -43,6 +43,7 @@ import { JSX } from "react";
 import Plugins, { ExcludedPlugins, PluginMeta } from "~plugins";
 
 import { PluginCard } from "./PluginCard";
+import { openLinkInstaller } from "@sincordplugins/userpluginInstaller/components/openLinkInstaller";
 import { openWarningModal } from "./PluginModal";
 import { StockPluginsCard, UserPluginsCard } from "./PluginStatCards";
 import { UIElementsButton } from "./UIElements";
@@ -97,7 +98,7 @@ function ReloadRequiredCard({ required, enabledPlugins, openWarningModal, resetC
                 <Button
                     variant="secondary"
                     size="small"
-                    onClick={() => Vencord.Plugins.plugins.UserpluginInstaller?.toolboxActions?.["Add Plugin from Link"]?.()}
+                    onClick={openLinkInstaller}
                 >
                     Add Plugin from Link
                 </Button>

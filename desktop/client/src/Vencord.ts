@@ -46,6 +46,7 @@ import { areLocalSettingsDirty, getCloudSettings, getCloudSyncDirection, markLoc
 import { relaunch } from "./utils/native";
 import { checkForUpdates, isOutdated as getIsOutdated, update, UpdateLogger } from "./utils/updater";
 import { onceReady } from "./webpack";
+import { loadRuntimePlugins } from "@sincordplugins/userpluginInstaller/runtime";
 import { patches } from "./webpack/patchWebpack";
 
 if (IS_REPORTER) {
@@ -205,6 +206,7 @@ function initTrayIpc() {
 async function init() {
     await onceReady;
     startAllPlugins(StartAt.WebpackReady);
+    void loadRuntimePlugins().catch(error => console.error("CloudCord could not restore user plugins", error));
 
     syncSettings();
     initTrayIpc();

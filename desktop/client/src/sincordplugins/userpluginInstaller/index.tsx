@@ -44,7 +44,7 @@ export const settings = definePluginSettings({
     },
     setGitPath: {
         type: OptionType.COMPONENT,
-        component: () => <Button onClick={() => {
+        component: () => IS_WEB ? null : <Button onClick={() => {
             Native.openGitPathModal();
         }} variant="secondary">
             Set Git path
@@ -91,6 +91,7 @@ export default definePlugin({
         }
     },
     async start() {
+        if (IS_WEB) return;
         if (!VencordNative.pluginHelpers.UserpluginInstaller) return void Alerts.show({
             title: "UserpluginInstaller not fully loaded",
             body: "You need to restart to allow the native to be loaded :)",

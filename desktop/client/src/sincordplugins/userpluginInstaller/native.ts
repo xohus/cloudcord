@@ -220,10 +220,19 @@ export function initPluginInstall(_, link: string, source: string, owner: string
 }
 
 async function build(): Promise<any> {
-    await run("pnpm", ["install", "--frozen-lockfile"], customClientRoot);
-    await run("pnpm", ["build"], customClientRoot);
+    let useNpm = false;
+    try { await run("pnpm", ["--version"], customClientRoot); }
+    catch {
+        try { await run("npm", ["--version"], customClientRoot); useNpm = true; }
+        catch { throw new Error("Node.js is required to build source plugins. Install Node.js 22 or newer, then fully quit and reopen Discord. You do not need to install pnpm separately."); }
+    }
+    const pnpm = (args: string[]) => useNpm
+        ? run("npm", ["exec", "--yes", "--package=pnpm@11.0.9", "--", "pnpm", ...args], customClientRoot)
+        : run("pnpm", args, customClientRoot);
+    await pnpm(["install", "--frozen-lockfile"]);
+    await pnpm(["build"]);
     const outputAsar = join(customClientRoot, "dist", "cloudcord-custom.asar");
-    await run("pnpm", ["exec", "asar", "pack", "dist/desktop", outputAsar], customClientRoot);
+    await pnpm(["exec", "asar", "pack", "dist/desktop", outputAsar]);
     if (!__dirname.endsWith(".asar")) {
         throw new Error("Custom ASAR replacement is only available from an installed CloudCord archive");
     }
