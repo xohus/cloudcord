@@ -20,7 +20,7 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { TooltipContainer } from "@components/TooltipContainer";
 import globalBadges from "@sincordplugins/globalBadges";
 import BadgeAPIPlugin from "@plugins/_api/badges";
-import { React, Toasts } from "@webpack/common";
+import { React, Toasts, UserProfileStore } from "@webpack/common";
 import { ComponentType, HTMLProps } from "react";
 
 import { isPluginEnabled } from "./PluginManager";
@@ -78,6 +78,9 @@ const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/
 
 function OfficialCloudBadge(badge: ProfileBadge & BadgeUserArgs) {
     const label = badge.description || "CloudCord Staff";
+    const profile: any = UserProfileStore?.getUserProfile(badge.userId);
+    const profileColors: number[] = (profile?.themeColors ?? profile?.theme_colors ?? []).filter((color: unknown) => typeof color === "number");
+    const brightness = profileColors.length ? profileColors.reduce((sum, color) => sum + ((color >> 16) & 255) * 0.299 + ((color >> 8) & 255) * 0.587 + (color & 255) * 0.114, 0) / profileColors.length : null;
     const icon = React.createElement("img", {
         src: CLOUDCORD_BADGE_ICON + "?v=staff2", alt: label, title: label, width: 20, height: 20,
         role: "button", tabIndex: 0,
@@ -86,18 +89,28 @@ function OfficialCloudBadge(badge: ProfileBadge & BadgeUserArgs) {
         style: { objectFit: "contain", filter: "invert(1)", background: "transparent", border: "none", boxShadow: "none", cursor: "pointer" },
         ref: (image: HTMLImageElement | null) => {
             if (!image) return;
+            if (brightness !== null) {
+                image.style.filter = brightness > 220 ? "none" : "invert(1)";
+                return;
+            }
             let node = image.parentElement;
             while (node) {
                 const style = getComputedStyle(node);
-                const stops = [...style.backgroundImage.matchAll(/rgba?\(([^)]+)\)/g)].map(match => match[1].split(",").map(Number));
+                const parseColor = (value: string) => {
+                    const parts = value.match(/[\d.]+/g)?.map(Number);
+                    return parts && parts.length >= 3 && (parts.length < 4 || parts[3] > 0.5) ? parts : null;
+                };
+                // Discord uses space-separated rgb() and transparent gradient
+                // overlays; neither should be mistaken for a dark surface.
+                const stops = [...style.backgroundImage.matchAll(/rgba?\(([^)]+)\)/g)].map(match => parseColor(match[1])).filter((color): color is number[] => color !== null);
                 if (stops.length) {
                     const brightness = stops.reduce((sum, rgb) => sum + rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114, 0) / stops.length;
                     image.style.filter = brightness > 220 ? "none" : "invert(1)";
                     break;
                 }
-                const color = style.backgroundColor.match(/[\d.]+/g);
-                if (color && (color.length < 4 || Number(color[3]) > 0.5)) {
-                    const light = Number(color[0]) * 0.299 + Number(color[1]) * 0.587 + Number(color[2]) * 0.114 > 220;
+                const color = parseColor(style.backgroundColor);
+                if (color) {
+                    const light = color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114 > 220;
                     image.style.filter = light ? "none" : "invert(1)";
                     break;
                 }
