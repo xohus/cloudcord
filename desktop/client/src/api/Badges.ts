@@ -77,6 +77,26 @@ const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
 const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 
 function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
+    const parseColor = (value: string): number[] | null => {
+        if (!value || value === "transparent") return null;
+        // CSS Color 4 uses normalized channels (color(srgb ...)) or Lab
+        // coordinates, not 0..255 RGB. Let Chromium convert those spaces.
+        if (!/^rgba?\(/i.test(value)) {
+            if (!CSS.supports("color", value)) return null;
+            const canvas = document.createElement("canvas");
+            canvas.width = canvas.height = 1;
+            const context = canvas.getContext("2d", { willReadFrequently: true });
+            if (!context) return null;
+            context.fillStyle = value;
+            context.fillRect(0, 0, 1, 1);
+            const [r, g, b, a] = context.getImageData(0, 0, 1, 1).data;
+            return a > 127 ? [r, g, b, a / 255] : null;
+        }
+        const channels = value.match(/[\d.]+%?/g);
+        if (!channels || channels.length < 3) return null;
+        const rgb = channels.map((channel, index) => parseFloat(channel) * (channel.endsWith("%") ? (index < 3 ? 2.55 : 0.01) : 1));
+        return rgb.length < 4 || rgb[3] > 0.5 ? rgb : null;
+    };
     const label = badge.description || "CloudCord Staff";
     const profile: any = UserProfileStore?.getUserProfile(badge.userId);
     const profileColors: number[] = (profile?.themeColors ?? profile?.theme_colors ?? []).filter((color: unknown) => typeof color === "number");
@@ -99,7 +119,7 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
                 const style = getComputedStyle(foregroundNode);
                 const username = foregroundNode.querySelector<HTMLElement>('[class*="userTagUsername"], [class*="username"]');
                 if (username) {
-                    const rgb = getComputedStyle(username).color.match(/[\d.]+/g)?.map(Number);
+                    const rgb = parseColor(getComputedStyle(username).color);
                     if (rgb && rgb.length >= 3 && (rgb.length < 4 || rgb[3] > 0.5)) {
                         image.style.filter = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 > 180 ? "invert(1)" : "none";
                         return;
@@ -111,7 +131,7 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
                     probe.style.color = "var(--text-normal)";
                     probe.style.display = "none";
                     foregroundNode.appendChild(probe);
-                    const rgb = getComputedStyle(probe).color.match(/[\d.]+/g)?.map(Number);
+                    const rgb = parseColor(getComputedStyle(probe).color);
                     probe.remove();
                     if (rgb && rgb.length >= 3 && (rgb.length < 4 || rgb[3] > 0.5)) {
                         const lightText = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 > 180;
@@ -127,13 +147,9 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             let node = image.parentElement;
             while (node) {
                 const style = getComputedStyle(node);
-                const parseColor = (value: string) => {
-                    const parts = value.match(/[\d.]+/g)?.map(Number);
-                    return parts && parts.length >= 3 && (parts.length < 4 || parts[3] > 0.5) ? parts : null;
-                };
                 // Discord uses space-separated rgb() and transparent gradient
                 // overlays; neither should be mistaken for a dark surface.
-                const stops = [...style.backgroundImage.matchAll(/rgba?\(([^)]+)\)/g)].map(match => parseColor(match[1])).filter((color): color is number[] => color !== null);
+                const stops = [...style.backgroundImage.matchAll(/(?:rgba?|color|oklab|oklch|lab|lch)\([^)]*\)/g)].map(match => parseColor(match[0])).filter((color): color is number[] => color !== null);
                 if (stops.length) {
                     const brightness = stops.reduce((sum, rgb) => sum + rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114, 0) / stops.length;
                     image.style.filter = brightness > 220 ? "none" : "invert(1)";
