@@ -115,7 +115,7 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             // An active custom profile overrides Discord's original text/theme.
             // Read the same per-user data that FakeProfile actually renders.
             const profilePlugin = Plugins.ProfileSpoofer as { started?: boolean; getActiveProfileColors?(userId: string): number[] | null; } | undefined;
-            const editedColors: number[] | null = profilePlugin?.started ? profilePlugin.getActiveProfileColors?.(badge.userId) : null;
+            const editedColors: number[] | null = profilePlugin?.started ? (profilePlugin.getActiveProfileColors?.(badge.userId) ?? null) : null;
             if (editedColors?.length) {
                 const editedBrightness = editedColors.reduce((sum, color) => sum + ((color >> 16) & 255) * 0.299 + ((color >> 8) & 255) * 0.587 + (color & 255) * 0.114, 0) / editedColors.length;
                 image.style.filter = editedBrightness > 220 ? "none" : "invert(1)";
