@@ -20,8 +20,8 @@ import { fetchBuffer, fetchJson } from "@main/utils/http";
 import { IpcEvents } from "@shared/IpcEvents";
 import { VENCORD_USER_AGENT } from "@shared/vencordUserAgent";
 import { createHash } from "crypto";
-import { ipcMain } from "electron";
-import { copyFileSync, existsSync, renameSync, unlinkSync, writeFileSync } from "original-fs";
+import { app, ipcMain } from "electron";
+import { copyFileSync, existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from "original-fs";
 
 import gitHash from "~git-hash";
 import gitRemote from "~git-remote";
@@ -55,7 +55,7 @@ async function calculateGitChanges() {
 }
 
 async function fetchUpdates() {
-    const data = await githubGet<any>("/releases/latest");
+    const data = await githubGet<any>("/releases/tags/new_beta_t_desktop");
 
     const hash = data.name?.slice(data.name.lastIndexOf(" ") + 1);
     if (hash === gitHash)
@@ -106,6 +106,11 @@ async function applyUpdates() {
     if (!asarPath.toLowerCase().endsWith(".asar"))
         throw new Error(`Refusing to update unexpected runtime path: ${asarPath}`);
 
+    if (createHash("sha256").update(readFileSync(asarPath)).digest("hex") === actualHash) {
+        PendingUpdate = null;
+        return false;
+    }
+
     const newPath = `${asarPath}.new`;
     const backupPath = `${asarPath}.backup`;
     writeFileSync(newPath, data, { flush: true });
@@ -130,3 +135,25 @@ ipcMain.handle(IpcEvents.GET_REPO, serializeErrors(() => `https://github.com/${g
 ipcMain.handle(IpcEvents.GET_UPDATES, serializeErrors(calculateGitChanges));
 ipcMain.handle(IpcEvents.UPDATE, serializeErrors(fetchUpdates));
 ipcMain.handle(IpcEvents.BUILD, serializeErrors(applyUpdates));
+
+// Renderer reloads do not reload Electron's cached main-process modules.
+// Check each load, verify the published archive, then restart only if it changed.
+let reloadUpdateRunning = false;
+app.on("browser-window-created", (_event, window) => {
+    window.webContents.on("did-finish-load", async () => {
+        if (reloadUpdateRunning || window.isDestroyed()) return;
+        const url = window.webContents.getURL();
+        if (!/^https:\/\/(?:canary\.|ptb\.)?discord\.com\//.test(url)) return;
+        reloadUpdateRunning = true;
+        try {
+            if (await fetchUpdates() && await applyUpdates()) {
+                app.relaunch();
+                app.quit();
+            }
+        } catch (error) {
+            console.warn("[CloudCord] Runtime update unavailable; keeping current version", error);
+        } finally {
+            reloadUpdateRunning = false;
+        }
+    });
+});

@@ -121,6 +121,18 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
                 image.style.filter = editedBrightness > 220 ? "none" : "invert(1)";
                 return;
             }
+            // Prefer the rendered surface near the badge, not globally inherited
+            // text variables (the account popout can have muted/light text).
+            let surface = image.parentElement;
+            while (surface) {
+                const style = getComputedStyle(surface);
+                const background = parseColor(style.backgroundColor);
+                if (background && (background.length < 4 || background[3] >= 0.9) && (!style.backgroundImage || style.backgroundImage === "none")) {
+                    image.style.filter = background[0] * 0.299 + background[1] * 0.587 + background[2] * 0.114 > 180 ? "none" : "invert(1)";
+                    return;
+                }
+                surface = surface.parentElement;
+            }
             // Use Discord's own readable profile foreground. A gradient's
             // average is not the color behind the badge, and account popouts
             // can inherit stale colors while their portal is being mounted.
