@@ -10415,7 +10415,18 @@
       native?.primaryColor ?? native?.primary_color ?? native?.accentColor ?? native?.accent_color
     ];
     var values = colors.filter((value) => value != null).map((value) => typeof value === "string" ? parseInt(value.replace("#", ""), 16) : Number(value)).filter(Number.isFinite);
-    var light = values.length ? values.reduce((sum, value) => sum + (value >> 16 & 255) * 0.299 + (value >> 8 & 255) * 0.587 + (value & 255) * 0.114, 0) / values.length > 220 : safeStore("ThemeStore")?.theme === "light";
+    var luminance = values.length ? values.reduce((sum, value) => {
+      var channels2 = [
+        value >> 16 & 255,
+        value >> 8 & 255,
+        value & 255
+      ].map((channel) => {
+        var c2 = channel / 255;
+        return c2 <= 0.04045 ? c2 / 12.92 : ((c2 + 0.055) / 1.055) ** 2.4;
+      });
+      return sum + channels2[0] * 0.2126 + channels2[1] * 0.7152 + channels2[2] * 0.0722;
+    }, 0) / values.length : null;
+    var light = luminance !== null ? (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) : safeStore("ThemeStore")?.theme === "light";
     var tintColor = light ? "#000000" : "#ffffff";
     var renderId = `${badge.id}:${user?.userId || user?.id || user?.user?.id || "self"}:${light ? "light" : "dark"}`;
     addRenderedBadge(result, renderId, badge.label, CLOUDCORD_BADGE_ICON);
@@ -10697,7 +10708,7 @@
       after("default", useBadgesModule2, ([user], result) => {
         if (!Array.isArray(result))
           return result;
-        var id = String(user?.userId || user?.id || user?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || "");
+        var id = String(typeof user === "string" ? user : user?.userId || user?.id || user?.user?.id || user?.userProfile?.userId || user?.userProfile?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || user?.displayProfile?.user?.id || "");
         void refreshPublishedBadges();
         if (!isCurrentUser(id)) {
           requestSharedProfile(id);
@@ -10795,6 +10806,22 @@
             return;
           var props = badgeRenderProps.get(rendered.props.id);
           if (props) {
+            if (String(props.id || "").startsWith("cloudcord-official-")) {
+              return /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+                accessibilityRole: "button",
+                accessibilityLabel: String(props.label),
+                onPress: () => import_react_native18.Alert.alert(String(props.label)),
+                children: /* @__PURE__ */ jsx(import_react_native18.Image, {
+                  source: props.source,
+                  resizeMode: "contain",
+                  style: {
+                    width: 20,
+                    height: 20,
+                    tintColor: props.tintColor
+                  }
+                })
+              });
+            }
             Object.assign(rendered.props, props);
             if (String(props.id || "").includes("gifting")) {
               rendered.props.onPress = () => showGiftingBadgeOverlay(String(props.label || ""));
