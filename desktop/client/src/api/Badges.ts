@@ -78,6 +78,17 @@ const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
 const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 
 function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
+    // Choose the higher contrast of true black/white for every RGB hue.
+    const useBlack = (colors: number[][]) => {
+        const luminance = colors.reduce((total, rgb) => {
+            const linear = rgb.slice(0, 3).map(value => {
+                const channel = Math.max(0, Math.min(255, value)) / 255;
+                return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+            });
+            return total + linear[0] * 0.2126 + linear[1] * 0.7152 + linear[2] * 0.0722;
+        }, 0) / colors.length;
+        return (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05);
+    };
     const parseColor = (value: string): number[] | null => {
         if (!value || value === "transparent") return null;
         // CSS Color 4 uses normalized channels (color(srgb ...)) or Lab
@@ -112,13 +123,17 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             if (!image) return;
             const update = () => {
             if (!image.isConnected) return;
+            const apply = (black: boolean) => {
+                const filter = black ? "brightness(0)" : "brightness(0) invert(1)";
+                if (image.style.setProperty) image.style.setProperty("filter", filter, "important");
+                else image.style.filter = filter;
+            };
             // An active custom profile overrides Discord's original text/theme.
             // Read the same per-user data that FakeProfile actually renders.
             const profilePlugin = Plugins.ProfileSpoofer as { started?: boolean; getActiveProfileColors?(userId: string): number[] | null; } | undefined;
             const editedColors: number[] | null = profilePlugin?.started ? (profilePlugin.getActiveProfileColors?.(badge.userId) ?? null) : null;
             if (editedColors?.length) {
-                const editedBrightness = editedColors.reduce((sum, color) => sum + ((color >> 16) & 255) * 0.299 + ((color >> 8) & 255) * 0.587 + (color & 255) * 0.114, 0) / editedColors.length;
-                image.style.filter = editedBrightness > 220 ? "none" : "invert(1)";
+                apply(useBlack(editedColors.map(color => [(color >> 16) & 255, (color >> 8) & 255, color & 255])));
                 return;
             }
             // Prefer the rendered surface near the badge, not globally inherited
@@ -128,7 +143,7 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
                 const style = getComputedStyle(surface);
                 const background = parseColor(style.backgroundColor);
                 if (background && (background.length < 4 || background[3] >= 0.9) && (!style.backgroundImage || style.backgroundImage === "none")) {
-                    image.style.filter = background[0] * 0.299 + background[1] * 0.587 + background[2] * 0.114 > 180 ? "none" : "invert(1)";
+                    apply(useBlack([background]));
                     return;
                 }
                 surface = surface.parentElement;
@@ -143,7 +158,7 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
                 if (username) {
                     const rgb = parseColor(getComputedStyle(username).color);
                     if (rgb && rgb.length >= 3 && (rgb.length < 4 || rgb[3] > 0.5)) {
-                        image.style.filter = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 > 180 ? "invert(1)" : "none";
+                        apply(!useBlack([rgb]));
                         return;
                     }
                 }
@@ -157,7 +172,7 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
                     probe.remove();
                     if (rgb && rgb.length >= 3 && (rgb.length < 4 || rgb[3] > 0.5)) {
                         const lightText = rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114 > 180;
-                        image.style.filter = lightText ? "invert(1)" : "none";
+                        apply(!lightText);
                         return;
                     }
                 }
@@ -173,19 +188,17 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
                 // overlays; neither should be mistaken for a dark surface.
                 const stops = [...style.backgroundImage.matchAll(/(?:rgba?|color|oklab|oklch|lab|lch)\([^)]*\)/g)].map(match => parseColor(match[0])).filter((color): color is number[] => color !== null);
                 if (stops.length) {
-                    const brightness = stops.reduce((sum, rgb) => sum + rgb[0] * 0.299 + rgb[1] * 0.587 + rgb[2] * 0.114, 0) / stops.length;
-                    image.style.filter = brightness > 220 ? "none" : "invert(1)";
+                    apply(useBlack(stops));
                     return;
                 }
                 const color = parseColor(style.backgroundColor);
                 if (color) {
-                    const light = color[0] * 0.299 + color[1] * 0.587 + color[2] * 0.114 > 220;
-                    image.style.filter = light ? "none" : "invert(1)";
+                    apply(useBlack([color]));
                     return;
                 }
                 node = node.parentElement;
             }
-            if (brightness !== null) image.style.filter = brightness > 220 ? "none" : "invert(1)";
+            if (brightness !== null) apply(useBlack(profileColors.map(color => [(color >> 16) & 255, (color >> 8) & 255, color & 255])));
             };
             update();
             // Refs may fire before a portal's final inherited theme is applied.

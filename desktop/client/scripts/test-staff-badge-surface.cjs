@@ -33,14 +33,14 @@ function check(surface, stored, expected, foreground = '', edited = null, active
     assert.equal(image.style.filter, undefined, 'do not read a detached portal');
     image.isConnected = true;
     while (frames.length) frames.shift()();
-    assert.equal(image.style.filter, expected);
+    assert.equal(image.style.filter, expected === 'none' ? 'brightness(0)' : 'brightness(0) invert(1)');
     assert.equal(result.props.text, 'CloudCord Founder');
 }
 check('rgb(245, 245, 245)', [0, 0], 'none');
 check('rgb(245 245 245)', [0, 0], 'none');
 check('rgb(30, 30, 30)', [0xffffff, 0xffffff], 'invert(1)');
-check('rgb(170, 170, 170)', [0xffffff], 'invert(1)');
-check('rgb(170, 170, 170)', [0], 'invert(1)', 'rgb(20, 20, 20)');
+check('rgb(170, 170, 170)', [0xffffff], 'none');
+check('rgb(170, 170, 170)', [0], 'none', 'rgb(20, 20, 20)');
 check('rgb(245, 245, 245)', [0xffffff], 'none', 'rgb(240, 240, 240)');
 check('rgb(30, 30, 30)', [0], 'invert(1)', 'color(srgb 0.9 0.9 0.9)');
 check('rgb(245, 245, 245)', [0xffffff], 'none', 'color(srgb 0.08 0.08 0.08)');
@@ -50,3 +50,15 @@ check('rgb(245, 245, 245)', [0xffffff], 'invert(1)', 'rgb(20, 20, 20)', [0x20202
 check('rgb(30, 30, 30)', [0], 'none', 'rgb(240, 240, 240)', [0xffffff, 0xf5f5f5]);
 check('rgb(245, 245, 245)', [0xffffff], 'none', 'rgb(20, 20, 20)', [0x202024], false);
 console.log('mounted profile foreground controls badge contrast; detached portals and surface fallback tested; Founder tooltip preserved');
+let count = 0;
+for (const hue of [[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,0,255],[0,255,255],[255,128,0],[128,0,255],[255,255,255]]) {
+    for (const level of [0, .15, .3, .45, .6, .75, .9, 1]) {
+        const rgb = hue.map(channel => Math.round(channel * level));
+        const linear = rgb.map(channel => { const c = channel / 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; });
+        const luminance = linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722;
+        const black = (luminance + .05) / .05 >= 1.05 / (luminance + .05);
+        check(`rgb(${rgb.join(',')})`, [0xffffff], black ? 'none' : 'invert(1)');
+        count++;
+    }
+}
+console.log(`${count} hue/brightness combinations choose the higher-contrast badge`);
