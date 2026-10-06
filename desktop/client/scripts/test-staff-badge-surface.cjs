@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const esbuild = require(process.env.CLOUDCORD_ESBUILD || 'esbuild');
 const source = fs.readFileSync('src/api/Badges.ts', 'utf8');
 const helper = source.slice(source.indexOf('function createOfficialCloudBadgeIcon('), source.indexOf('function showStaffRole('));
-function check(surface, stored, expected, foreground = '', edited = null, active = true) {
+function check(surface, stored, expected, foreground = '', edited = null, active = true, gradient = 'none') {
     const frames = [];
     let observerCallback;
     let disconnected = false;
@@ -35,7 +35,7 @@ function check(surface, stored, expected, foreground = '', edited = null, active
     vm.createContext(context);
     vm.runInContext(esbuild.transformSync(helper + '\nthis.makeBadge = OfficialCloudBadge;', { loader: 'ts' }).code, context);
     const result = context.makeBadge({ userId: 'founder', description: 'CloudCord Founder' });
-    const image = { isConnected: false, style: {}, parentElement: { querySelector: () => null, appendChild() {}, style: { getPropertyValue: () => foreground, backgroundColor: surface, backgroundImage: 'none' }, parentElement: null } };
+    const image = { isConnected: false, style: {}, parentElement: { querySelector: () => null, appendChild() {}, style: { getPropertyValue: () => foreground, backgroundColor: surface, backgroundImage: gradient }, parentElement: null } };
     result.props.children.props.ref(image);
     assert.equal(image.style.filter, undefined, 'do not read a detached portal');
     image.isConnected = true;
@@ -43,6 +43,7 @@ function check(surface, stored, expected, foreground = '', edited = null, active
     assert.equal(image.style.filter, expected === 'none' ? 'brightness(0)' : 'brightness(0) invert(1)');
     assert.equal(result.props.text, 'CloudCord Founder');
     if (!edited || !active) {
+        image.parentElement.style.backgroundImage = 'none';
         image.parentElement.style.backgroundColor = 'rgb(255,255,255)';
         observerCallback();
         assert.equal(image.style.filter, 'brightness(0)', 'late light theme must turn badge black');
@@ -95,3 +96,6 @@ for (let r = 0; r <= 255; r += 17) for (let g = 0; g <= 255; g += 17) for (let b
     ranges++;
 }
 console.log(`${ranges} RGB range samples satisfy higher contrast and minimum 4.5:1`);
+check('transparent', [0], 'none', 'rgb(255,255,255)', null, true, 'linear-gradient(rgb(255,255,255), rgb(220,220,220))');
+check('transparent', [0xffffff], 'invert(1)', 'rgb(0,0,0)', null, true, 'linear-gradient(rgb(10,10,10), rgb(40,40,40))');
+check('transparent', [0], 'none', '', null, true, 'linear-gradient(rgb(255,255,255), rgb(0,0,0))');

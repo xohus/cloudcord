@@ -49,3 +49,14 @@ for (const pair of [[0xffffff, 0], [0xff0000, 0x0000ff], [0x111111, 0x333333], [
     assert.equal(result[0].tintColor, (l+.05)/.05 >= 1.05/(l+.05) ? '#000000' : '#ffffff');
 }
 assert.match(source, /<Image source=\{props.source\} resizeMode="contain" style=\{\{ width: 20, height: 20, tintColor: props.tintColor \}\}/);
+let samples = 0;
+for (let r=0;r<=255;r+=17) for (let g=0;g<=255;g+=17) for (let b=0;b<=255;b+=17) {
+    const color=(r<<16)|(g<<8)|b;
+    const channels=[r,g,b].map(v=>{const c=v/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4;});
+    const l=channels[0]*.2126+channels[1]*.7152+channels[2]*.0722;
+    const result=[];
+    context.addOfficialBadge(result,{id:'official'}, {}, {profileColorsEnabled:true,primaryColor:color,accentColor:color});
+    assert.equal(result[0].tintColor,(l+.05)/.05>=1.05/(l+.05)?'#000000':'#ffffff');
+    samples++;
+}
+console.log(`${samples} mobile RGB samples and mixed gradients passed`);

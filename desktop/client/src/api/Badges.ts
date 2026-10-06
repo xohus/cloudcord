@@ -144,6 +144,11 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             let surface = image.parentElement;
             while (surface) {
                 const style = getComputedStyle(surface);
+                const gradientColors = [...(style.backgroundImage || "").matchAll(/(?:rgba?|color|oklab|oklch|lab|lch)\([^)]*\)/g)].map(match => parseColor(match[0])).filter((color): color is number[] => color !== null);
+                if (gradientColors.length) {
+                    apply(useBlack(gradientColors));
+                    return;
+                }
                 const background = parseColor(style.backgroundColor);
                 if (background && (background.length < 4 || background[3] >= 0.9) && (!style.backgroundImage || style.backgroundImage === "none")) {
                     apply(useBlack([background]));
