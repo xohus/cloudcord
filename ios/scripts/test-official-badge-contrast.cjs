@@ -17,6 +17,16 @@ for (const [color, expected] of [[0xffffff, '#000000'], [0, '#ffffff'], [0xeeeee
 const native = [];
 context.addOfficialBadge(native, { id: 'official' }, { profile: { themeColors: [0xffffff, 0xffffff] } }, null);
 assert.equal(native[0].tintColor, '#000000');
+for (const user of [
+    { displayProfile: {}, profile: { themeColors: [0xffffff, 0xffffff] } },
+    { userProfile: { theme_colors: [0xffffff, 0xffffff] } },
+    { primaryColor: 0xffffff },
+    { guildMemberProfile: { primary_color: 0xffffff } }
+]) {
+    const result = [];
+    context.addOfficialBadge(result, { id: 'official' }, user, null);
+    assert.equal(result[0].tintColor, '#000000');
+}
 const darkUser = [];
 context.addOfficialBadge(darkUser, { id: 'official' }, { id: 'dark-user' }, { profileColorsEnabled: true, primaryColor: '#222222', accentColor: '#222222' });
 const lightUser = [];
