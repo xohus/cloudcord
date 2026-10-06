@@ -1045,6 +1045,15 @@ export default definePlugin({
         return clone;
     },
 
+    getActiveProfileColors(userId: string): number[] | null {
+        const mine = isMe(userId);
+        if (mine && (!isEnabled || !storedData.nitro)) return null;
+        const data = mine ? storedData : sharedProfiles.get(userId);
+        if (data?.accentColor == null) return null;
+        const colors = [data.accentColor, data.accentColor2 ?? data.accentColor];
+        return colors.every(color => Number.isFinite(color) && color >= 0 && color <= 0xffffff) ? colors : null;
+    },
+
     hookUserProfile(profile: any) {
         if (!profile || !isEnabled) return profile;
         try {

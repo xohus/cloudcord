@@ -22,6 +22,7 @@ import globalBadges from "@sincordplugins/globalBadges";
 import BadgeAPIPlugin from "@plugins/_api/badges";
 import { React, Toasts, UserProfileStore } from "@webpack/common";
 import { ComponentType, HTMLProps } from "react";
+import Plugins from "~plugins";
 
 import { isPluginEnabled } from "./PluginManager";
 
@@ -111,6 +112,15 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             if (!image) return;
             const update = () => {
             if (!image.isConnected) return;
+            // An active custom profile overrides Discord's original text/theme.
+            // Read the same per-user data that FakeProfile actually renders.
+            const profilePlugin = Plugins.ProfileSpoofer;
+            const editedColors: number[] | null = profilePlugin?.started ? profilePlugin.getActiveProfileColors?.(badge.userId) : null;
+            if (editedColors?.length) {
+                const editedBrightness = editedColors.reduce((sum, color) => sum + ((color >> 16) & 255) * 0.299 + ((color >> 8) & 255) * 0.587 + (color & 255) * 0.114, 0) / editedColors.length;
+                image.style.filter = editedBrightness > 220 ? "none" : "invert(1)";
+                return;
+            }
             // Use Discord's own readable profile foreground. A gradient's
             // average is not the color behind the badge, and account popouts
             // can inherit stale colors while their portal is being mounted.
