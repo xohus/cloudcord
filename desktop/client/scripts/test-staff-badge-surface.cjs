@@ -62,3 +62,19 @@ for (const hue of [[255,0,0],[0,255,0],[0,0,255],[255,255,0],[255,0,255],[0,255,
     }
 }
 console.log(`${count} hue/brightness combinations choose the higher-contrast badge`);
+const contrastSource = helper.slice(helper.indexOf('const useBlack ='), helper.indexOf('const parseColor ='));
+const contrastContext = vm.createContext({});
+vm.runInContext(esbuild.transformSync(contrastSource + '\nthis.selectBlack = useBlack;', { loader: 'ts' }).code, contrastContext);
+let ranges = 0;
+for (let r = 0; r <= 255; r += 17) for (let g = 0; g <= 255; g += 17) for (let b = 0; b <= 255; b += 17) {
+    const rgb = [r, g, b];
+    const linear = rgb.map(channel => { const c = channel / 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; });
+    const luminance = linear[0] * .2126 + linear[1] * .7152 + linear[2] * .0722;
+    const blackRatio = (luminance + .05) / .05;
+    const whiteRatio = 1.05 / (luminance + .05);
+    const chosenBlack = contrastContext.selectBlack([rgb]);
+    assert.equal(chosenBlack, blackRatio >= whiteRatio, `wrong contrast at ${rgb}`);
+    assert.ok((chosenBlack ? blackRatio : whiteRatio) >= 4.5, `insufficient contrast at ${rgb}`);
+    ranges++;
+}
+console.log(`${ranges} RGB range samples satisfy higher contrast and minimum 4.5:1`);
