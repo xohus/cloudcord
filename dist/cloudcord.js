@@ -10380,12 +10380,23 @@
     });
   }
   function addOfficialBadge(result, badge, user, data) {
-    var native = user?.displayProfile ?? user?.profile ?? safeStore("UserProfileStore")?.getUserProfile?.(user?.userId || user?.id);
+    var candidates = [
+      user?.displayProfile,
+      user?.guildMemberProfile,
+      user?.userProfile,
+      user?.profile,
+      user,
+      safeStore("UserProfileStore")?.getUserProfile?.(user?.userId || user?.id)
+    ];
+    var native = candidates.find((profile) => {
+      var colors2 = profile?.themeColors ?? profile?.theme_colors;
+      return Array.isArray(colors2) && colors2.some((value) => value != null) || profile?.primaryColor != null || profile?.primary_color != null || profile?.accentColor != null || profile?.accent_color != null;
+    });
     var colors = data?.profileColorsEnabled ? [
       data.primaryColor,
       data.accentColor
-    ] : native?.themeColors ?? [
-      native?.primaryColor ?? native?.accentColor
+    ] : native?.themeColors ?? native?.theme_colors ?? [
+      native?.primaryColor ?? native?.primary_color ?? native?.accentColor ?? native?.accent_color
     ];
     var values = colors.filter((value) => value != null).map((value) => typeof value === "string" ? parseInt(value.replace("#", ""), 16) : Number(value)).filter(Number.isFinite);
     var light = values.length ? values.reduce((sum, value) => sum + (value >> 16 & 255) * 0.299 + (value >> 8 & 255) * 0.587 + (value & 255) * 0.114, 0) / values.length > 220 : safeStore("ThemeStore")?.theme === "light";
