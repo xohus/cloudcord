@@ -10390,8 +10390,9 @@
     var values = colors.filter((value) => value != null).map((value) => typeof value === "string" ? parseInt(value.replace("#", ""), 16) : Number(value)).filter(Number.isFinite);
     var light = values.length ? values.reduce((sum, value) => sum + (value >> 16 & 255) * 0.299 + (value >> 8 & 255) * 0.587 + (value & 255) * 0.114, 0) / values.length > 220 : safeStore("ThemeStore")?.theme === "light";
     var tintColor = light ? "#000000" : "#ffffff";
-    addRenderedBadge(result, badge.id, badge.label, CLOUDCORD_BADGE_ICON);
-    var props = badgeRenderProps.get(badge.id);
+    var renderId = `${badge.id}:${user?.userId || user?.id || user?.user?.id || "self"}:${light ? "light" : "dark"}`;
+    addRenderedBadge(result, renderId, badge.label, CLOUDCORD_BADGE_ICON);
+    var props = badgeRenderProps.get(renderId);
     if (props) {
       props.tintColor = tintColor;
       props.style = {
@@ -10400,7 +10401,7 @@
         resizeMode: "contain"
       };
     }
-    var row = result.find((item) => item.id === badge.id);
+    var row = result.find((item) => item.id === renderId);
     if (row) {
       row.tintColor = tintColor;
       row.style = {
