@@ -8,7 +8,7 @@ const context = { badgeRenderProps: rows, CLOUDCORD_BADGE_ICON: 'logo.png', safe
 vm.createContext(context);
 const esbuild = require(process.env.CLOUDCORD_ESBUILD || 'esbuild');
 vm.runInContext(esbuild.transformSync(helper, { loader: 'ts' }).code, context);
-for (const [color, expected] of [[0xffffff, '#000000'], [0, '#ffffff'], [0xeeeeee, '#000000'], [0x222222, '#ffffff'], [0xaaaaaa, '#ffffff'], [0xcccccc, '#ffffff'], [0xdcdcdc, '#ffffff']]) {
+for (const [color, expected] of [[0xffffff, '#000000'], [0, '#ffffff'], [0xeeeeee, '#000000'], [0x222222, '#ffffff'], [0xaaaaaa, '#000000'], [0xcccccc, '#000000'], [0xdcdcdc, '#000000']]) {
     const result = [];
     context.addOfficialBadge(result, { id: 'official', label: 'CloudCord' }, {}, { profileColorsEnabled: true, primaryColor: color, accentColor: color });
     assert.equal(result[0].tintColor, expected);
@@ -39,3 +39,13 @@ context.addOfficialBadge(changedUser, { id: 'official' }, { id: 'light-user' }, 
 assert.notEqual(changedUser[0].id, lightUser[0].id);
 assert.equal(rows.get(changedUser[0].id).tintColor, '#ffffff');
 console.log('official badge contrast: light, dark, zero-valued colors and native profile fallback passed');
+for (const pair of [[0xffffff, 0], [0xff0000, 0x0000ff], [0x111111, 0x333333], [0xdddddd, 0xffffff]]) {
+    const result = [];
+    context.addOfficialBadge(result, { id: 'official' }, {}, { profileColorsEnabled: true, primaryColor: pair[0], accentColor: pair[1] });
+    const l = pair.map(color => {
+        const c = [(color >> 16) & 255, (color >> 8) & 255, color & 255].map(v => { const n = v / 255; return n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4; });
+        return c[0] * .2126 + c[1] * .7152 + c[2] * .0722;
+    }).reduce((a,b) => a+b) / 2;
+    assert.equal(result[0].tintColor, (l+.05)/.05 >= 1.05/(l+.05) ? '#000000' : '#ffffff');
+}
+assert.match(source, /<Image source=\{props.source\} resizeMode="contain" style=\{\{ width: 20, height: 20, tintColor: props.tintColor \}\}/);

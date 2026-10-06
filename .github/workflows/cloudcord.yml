@@ -1130,8 +1130,15 @@ jobs:
               });
               const colors = data?.profileColorsEnabled ? [data.primaryColor, data.accentColor] : native?.themeColors ?? native?.theme_colors ?? [native?.primaryColor ?? native?.primary_color ?? native?.accentColor ?? native?.accent_color];
               const values = colors.filter((value: any) => value != null).map((value: any) => typeof value === "string" ? parseInt(value.replace("#", ""), 16) : Number(value)).filter(Number.isFinite);
-              // Gray profiles keep the white mark; only near-white surfaces use black.
-              const light = values.length ? values.reduce((sum: number, value: number) => sum + ((value >> 16) & 255) * 0.299 + ((value >> 8) & 255) * 0.587 + (value & 255) * 0.114, 0) / values.length > 220 : safeStore("ThemeStore")?.theme === "light";
+              // Match desktop: combine both gradient endpoints in linear light.
+              const luminance = values.length ? values.reduce((sum: number, value: number) => {
+                  const channels = [(value >> 16) & 255, (value >> 8) & 255, value & 255].map(channel => {
+                      const c = channel / 255;
+                      return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+                  });
+                  return sum + channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+              }, 0) / values.length : null;
+              const light = luminance !== null ? (luminance + 0.05) / 0.05 >= 1.05 / (luminance + 0.05) : safeStore("ThemeStore")?.theme === "light";
               const tintColor = light ? "#000000" : "#ffffff";
               // Render keys must not share tint across users or cached light/dark views.
               const renderId = `${badge.id}:${user?.userId || user?.id || user?.user?.id || "self"}:${light ? "light" : "dark"}`;
@@ -1345,7 +1352,7 @@ jobs:
               try {
                   after("default", useBadgesModule as any, ([user], result) => {
                       if (!Array.isArray(result)) return result;
-                      const id = String(user?.userId || user?.id || user?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || "");
+                      const id = String(typeof user === "string" ? user : user?.userId || user?.id || user?.user?.id || user?.userProfile?.userId || user?.userProfile?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || user?.displayProfile?.user?.id || "");
                       void refreshPublishedBadges();
                       if (!isCurrentUser(id)) {
                           requestSharedProfile(id);
@@ -1423,6 +1430,12 @@ jobs:
                           if (!rendered?.props) return;
                           const props = badgeRenderProps.get(rendered.props.id);
                           if (props) {
+                              // The native badge wrapper does not consistently
+                              // forward tintColor to its inner image. Render the
+                              // official mark with an explicit RN Image tint.
+                              if (String(props.id || "").startsWith("cloudcord-official-")) {
+                                  return <Pressable accessibilityRole="button" accessibilityLabel={String(props.label)} onPress={() => Alert.alert(String(props.label))}><Image source={props.source} resizeMode="contain" style={{ width: 20, height: 20, tintColor: props.tintColor }} /></Pressable>;
+                              }
                               Object.assign(rendered.props, props);
                               if (String(props.id || "").includes("gifting")) {
                                   rendered.props.onPress = () => showGiftingBadgeOverlay(String(props.label || ""));
