@@ -10084,6 +10084,7 @@
     if (!original || typeof original !== "object" || !data)
       return original;
     var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+    applyAvatarDecoration(cloned, data);
     if (cloned.user)
       setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
     if (depth < 3) {
@@ -10247,6 +10248,21 @@
     if (/^(?:https?:|data:)/i.test(raw))
       return raw;
     return `https://cdn.discordapp.com/avatar-decoration-presets/${encodeURIComponent(raw)}.png?size=160&passthrough=true`;
+  }
+  function applyAvatarDecoration(target, data) {
+    if (!target || !data?.avatarDecoration)
+      return;
+    var asset = decorationAsset(data.avatarDecoration);
+    if (!asset)
+      return;
+    var skuId = data.avatarDecorationSku || "cloudcord-decoration";
+    var decoration = {
+      asset,
+      skuId,
+      sku_id: skuId
+    };
+    setOwnValue(target, "avatarDecorationData", decoration);
+    setOwnValue(target, "avatar_decoration_data", decoration);
   }
   function findDecorationCatalog() {
     return _async_to_generator(function* () {
@@ -10830,6 +10846,9 @@
           if (!isCurrentUser(id)) {
             requestSharedProfile(id);
             var data = getProfileOverride(id);
+            applyAvatarDecoration(props, data);
+            if (props.user && data?.avatarDecoration)
+              props.user = cloneSharedUser(props.user, data);
             if (!data?.avatar)
               return;
             props.source = {
@@ -10847,6 +10866,13 @@
             return;
           }
           var uri = mediaUri("avatarMedia");
+          if (preview.enabled) {
+            applyAvatarDecoration(props, preview);
+            if (props.user && preview.avatarDecoration) {
+              props.user = cloneObject(props.user, "user");
+              applyAvatarDecoration(props.user, preview);
+            }
+          }
           if (!preview.enabled || !uri)
             return;
           props.source = {
