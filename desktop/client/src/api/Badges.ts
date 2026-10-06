@@ -113,6 +113,7 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
     const profile: any = UserProfileStore?.getUserProfile(badge.userId);
     const profileColors: number[] = (profile?.themeColors ?? profile?.theme_colors ?? []).filter((color: unknown) => typeof color === "number");
     const brightness = profileColors.length ? profileColors.reduce((sum, color) => sum + ((color >> 16) & 255) * 0.299 + ((color >> 8) & 255) * 0.587 + (color & 255) * 0.114, 0) / profileColors.length : null;
+    let themeObserver: MutationObserver | null = null;
     const icon = React.createElement("img", {
         src: CLOUDCORD_BADGE_ICON + "?v=staff3", alt: label, width: 20, height: 20,
         role: "button", tabIndex: 0,
@@ -120,6 +121,8 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
         onKeyDown: (event: React.KeyboardEvent) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); showStaffRole(label); } },
         style: { objectFit: "contain", filter: "invert(1)", background: "transparent", border: "none", boxShadow: "none", cursor: "pointer" },
         ref: (image: HTMLImageElement | null) => {
+            themeObserver?.disconnect();
+            themeObserver = null;
             if (!image) return;
             const update = () => {
             if (!image.isConnected) return;
@@ -204,6 +207,17 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             // Refs may fire before a portal's final inherited theme is applied.
             requestAnimationFrame(() => { update(); requestAnimationFrame(update); });
             image.onload = update;
+            // Profile themes can arrive after the first frames, or change while
+            // the popout stays open. Watch inherited theme attributes, not the
+            // image's own filter, to avoid an observer feedback loop.
+            if (typeof MutationObserver !== "undefined") {
+                themeObserver = new MutationObserver(update);
+                let ancestor = image.parentElement;
+                while (ancestor) {
+                    themeObserver.observe(ancestor, { attributes: true, attributeFilter: ["class", "style", "data-theme"] });
+                    ancestor = ancestor.parentElement;
+                }
+            }
         }
     });
     return icon;

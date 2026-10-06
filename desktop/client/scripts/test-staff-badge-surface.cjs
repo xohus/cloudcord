@@ -6,6 +6,8 @@ const source = fs.readFileSync('src/api/Badges.ts', 'utf8');
 const helper = source.slice(source.indexOf('function createOfficialCloudBadgeIcon('), source.indexOf('function showStaffRole('));
 function check(surface, stored, expected, foreground = '', edited = null, active = true) {
     const frames = [];
+    let observerCallback;
+    let disconnected = false;
     const context = {
         UserProfileStore: { getUserProfile: () => ({ themeColors: stored }) },
         Plugins: { ProfileSpoofer: { started: active, getActiveProfileColors: () => edited } },
@@ -24,6 +26,11 @@ function check(surface, stored, expected, foreground = '', edited = null, active
             }
         } : ({ probe: true, style: {}, remove() {} }) },
         requestAnimationFrame: callback => frames.push(callback)
+        , MutationObserver: class {
+            constructor(callback) { observerCallback = callback; }
+            observe() {}
+            disconnect() { disconnected = true; }
+        }
     };
     vm.createContext(context);
     vm.runInContext(esbuild.transformSync(helper + '\nthis.makeBadge = OfficialCloudBadge;', { loader: 'ts' }).code, context);
@@ -35,6 +42,16 @@ function check(surface, stored, expected, foreground = '', edited = null, active
     while (frames.length) frames.shift()();
     assert.equal(image.style.filter, expected === 'none' ? 'brightness(0)' : 'brightness(0) invert(1)');
     assert.equal(result.props.text, 'CloudCord Founder');
+    if (!edited || !active) {
+        image.parentElement.style.backgroundColor = 'rgb(255,255,255)';
+        observerCallback();
+        assert.equal(image.style.filter, 'brightness(0)', 'late light theme must turn badge black');
+        image.parentElement.style.backgroundColor = 'rgb(0,0,0)';
+        observerCallback();
+        assert.equal(image.style.filter, 'brightness(0) invert(1)', 'late dark theme must turn badge white');
+    }
+    result.props.children.props.ref(null);
+    assert.equal(disconnected, true, 'unmount must remove theme observers');
 }
 check('rgb(245, 245, 245)', [0, 0], 'none');
 check('rgb(245 245 245)', [0, 0], 'none');
