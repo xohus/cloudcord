@@ -900,6 +900,7 @@ jobs:
           function decorateSharedProfile(original: any, userId: string, data: any, depth = 0) {
               if (!original || typeof original !== "object" || !data) return original;
               const cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+              applyAvatarDecoration(cloned, data);
               if (cloned.user) setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
               // Mobile profile hooks return nested snapshots. Updating only the
               // outer fields leaves the actual header's userProfile.user real.
@@ -1038,6 +1039,16 @@ jobs:
               const raw = String(asset || "");
               if (/^(?:https?:|data:)/i.test(raw)) return raw;
               return `https://cdn.discordapp.com/avatar-decoration-presets/${encodeURIComponent(raw)}.png?size=160&passthrough=true`;
+          }
+
+          function applyAvatarDecoration(target: any, data: any) {
+              if (!target || !data?.avatarDecoration) return;
+              const asset = decorationAsset(data.avatarDecoration);
+              if (!asset) return;
+              const skuId = data.avatarDecorationSku || "cloudcord-decoration";
+              const decoration = { asset, skuId, sku_id: skuId };
+              setOwnValue(target, "avatarDecorationData", decoration);
+              setOwnValue(target, "avatar_decoration_data", decoration);
           }
 
           async function findDecorationCatalog() {
@@ -1467,6 +1478,8 @@ jobs:
                           if (!isCurrentUser(id)) {
                               requestSharedProfile(id);
                               const data = getProfileOverride(id);
+                              applyAvatarDecoration(props, data);
+                              if (props.user && data?.avatarDecoration) props.user = cloneSharedUser(props.user, data);
                               if (!data?.avatar) return;
                               props.source = { uri: data.avatar };
                               props.avatarSource = { uri: data.avatar };
@@ -1478,6 +1491,13 @@ jobs:
                               return;
                           }
                           const uri = mediaUri("avatarMedia");
+                          if (preview.enabled) {
+                              applyAvatarDecoration(props, preview);
+                              if (props.user && preview.avatarDecoration) {
+                                  props.user = cloneObject(props.user, "user");
+                                  applyAvatarDecoration(props.user, preview);
+                              }
+                          }
                           if (!preview.enabled || !uri) return;
                           props.source = { uri };
                           props.avatarSource = { uri };

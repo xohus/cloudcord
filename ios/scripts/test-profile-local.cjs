@@ -31,6 +31,16 @@ const desktopPayload = JSON.parse(JSON.stringify(serializerContext.toSharedProfi
 const mobileHelper = page.slice(page.indexOf('function decorateSharedProfile('), page.indexOf('function clearCache('));
 const mobileContext = vm.createContext({ setOwnValue: (obj, key, value) => { obj[key] = value; }, cloneSharedUser: (user, data) => ({ ...user, username: data.username, globalName: data.globalName }), shouldReplaceSharedBadges: () => false, remoteNitroEnabled: () => false, profileDate: () => null });
 vm.runInContext(esbuild.transformSync(mobileHelper, { loader: 'ts' }).code, mobileContext);
+const decorationHelper = page.slice(page.indexOf('function decorationAsset('), page.indexOf('async function findDecorationCatalog('));
+mobileContext.URL = URL;
+vm.runInContext(esbuild.transformSync(decorationHelper, { loader: 'ts' }).code, mobileContext);
+const decorationOnly = { avatarDecoration: 'https://cdn.discordapp.com/avatar-decoration-presets/a_test.png?size=160', avatarDecorationSku: '123' };
+const decorated = mobileContext.decorateSharedProfile({ userProfile: {}, displayProfile: {} }, '123', decorationOnly);
+assert.equal(decorated.userProfile.avatarDecorationData.asset, 'a_test');
+assert.equal(decorated.displayProfile.avatar_decoration_data.sku_id, '123');
+const avatarProps = {};
+mobileContext.applyAvatarDecoration(avatarProps, decorationOnly);
+assert.equal(avatarProps.avatarDecorationData.asset, 'a_test');
 const realUser = Object.freeze({ id: '123456789012345', username: 'real_name' });
 const mobileSnapshot = { userProfile: { user: realUser }, displayProfile: { user: realUser } };
 const syncedMobile = mobileContext.decorateSharedProfile(mobileSnapshot, realUser.id, desktopPayload);
