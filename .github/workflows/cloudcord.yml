@@ -1116,10 +1116,12 @@ jobs:
               // Gray profiles keep the white mark; only near-white surfaces use black.
               const light = values.length ? values.reduce((sum: number, value: number) => sum + ((value >> 16) & 255) * 0.299 + ((value >> 8) & 255) * 0.587 + (value & 255) * 0.114, 0) / values.length > 220 : safeStore("ThemeStore")?.theme === "light";
               const tintColor = light ? "#000000" : "#ffffff";
-              addRenderedBadge(result, badge.id, badge.label, CLOUDCORD_BADGE_ICON);
-              const props = badgeRenderProps.get(badge.id);
+              // Render keys must not share tint across users or cached light/dark views.
+              const renderId = `${badge.id}:${user?.userId || user?.id || user?.user?.id || "self"}:${light ? "light" : "dark"}`;
+              addRenderedBadge(result, renderId, badge.label, CLOUDCORD_BADGE_ICON);
+              const props = badgeRenderProps.get(renderId);
               if (props) { props.tintColor = tintColor; props.style = { ...props.style, tintColor, resizeMode: "contain" }; }
-              const row = result.find(item => item.id === badge.id);
+              const row = result.find(item => item.id === renderId);
               if (row) { row.tintColor = tintColor; row.style = { tintColor }; }
           }
 

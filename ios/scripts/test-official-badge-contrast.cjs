@@ -12,9 +12,20 @@ for (const [color, expected] of [[0xffffff, '#000000'], [0, '#ffffff'], [0xeeeee
     const result = [];
     context.addOfficialBadge(result, { id: 'official', label: 'CloudCord' }, {}, { profileColorsEnabled: true, primaryColor: color, accentColor: color });
     assert.equal(result[0].tintColor, expected);
-    assert.equal(rows.get('official').style.tintColor, expected);
+    assert.equal(rows.get(result[0].id).style.tintColor, expected);
 }
 const native = [];
 context.addOfficialBadge(native, { id: 'official' }, { profile: { themeColors: [0xffffff, 0xffffff] } }, null);
 assert.equal(native[0].tintColor, '#000000');
+const darkUser = [];
+context.addOfficialBadge(darkUser, { id: 'official' }, { id: 'dark-user' }, { profileColorsEnabled: true, primaryColor: '#222222', accentColor: '#222222' });
+const lightUser = [];
+context.addOfficialBadge(lightUser, { id: 'official' }, { id: 'light-user' }, { profileColorsEnabled: true, primaryColor: '#ffffff', accentColor: '#ffffff' });
+assert.notEqual(darkUser[0].id, lightUser[0].id);
+assert.equal(rows.get(darkUser[0].id).tintColor, '#ffffff');
+assert.equal(rows.get(lightUser[0].id).tintColor, '#000000');
+const changedUser = [];
+context.addOfficialBadge(changedUser, { id: 'official' }, { id: 'light-user' }, { profileColorsEnabled: true, primaryColor: '#111111', accentColor: '#111111' });
+assert.notEqual(changedUser[0].id, lightUser[0].id);
+assert.equal(rows.get(changedUser[0].id).tintColor, '#ffffff');
 console.log('official badge contrast: light, dark, zero-valued colors and native profile fallback passed');
