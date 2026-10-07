@@ -23,9 +23,10 @@ const BOTCORD_AVAILABLE = IS_WEB;
 const normalizeBotToken = (value: string) => value.replace(/^Bot\s+/i, "").trim();
 
 function controlDiscordWindow(action: "minimize" | "maximize" | "close") {
-    const discordAction = DiscordNative?.window?.[action];
+    const nativeWindow = typeof DiscordNative === "undefined" ? undefined : DiscordNative.window;
+    const discordAction = nativeWindow?.[action];
     if (typeof discordAction === "function") {
-        discordAction.call(DiscordNative.window);
+        discordAction.call(nativeWindow);
         return;
     }
 

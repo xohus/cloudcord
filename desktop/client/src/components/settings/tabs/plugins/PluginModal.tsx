@@ -86,6 +86,7 @@ function PluginTags({ tags }: { tags: PluginTag[]; }) {
 }
 
 export default function PluginModal({ plugin, onRestartNeeded, onClose, transitionState }: PluginModalProps) {
+    const pluginAuthors = useMemo(() => Array.isArray(plugin.authors) ? plugin.authors.filter(author => author && typeof author === "object") : [], [plugin.authors]);
     const pluginSettings = useSettings([`plugins.${plugin.name}.*`]).plugins[plugin.name];
     const hasSettings = hasAnyVisibleSettings(plugin);
 
@@ -95,7 +96,7 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
 
     useEffect(() => {
         (async () => {
-            for (const [index, user] of plugin.authors.slice(0, 6).entries()) {
+            for (const [index, user] of pluginAuthors.slice(0, 6).entries()) {
                 try {
                     const author = user.id
                         ? await UserUtils.getUser(String(user.id))
@@ -108,7 +109,7 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
                 }
             }
         })();
-    }, [plugin.authors]);
+    }, [pluginAuthors]);
 
     function handleResetClick() {
         openWarningModal(plugin, onRestartNeeded);
@@ -156,7 +157,7 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
     }
 
     function renderMoreUsers(_label: string) {
-        const remainingAuthors = plugin.authors.slice(6);
+        const remainingAuthors = pluginAuthors.slice(6);
 
         return (
             <Tooltip text={remainingAuthors.map(u => u.name).join(", ")}>
@@ -190,7 +191,7 @@ export default function PluginModal({ plugin, onRestartNeeded, onClose, transiti
                 <div className={cl("info")}>
                     <div>
                         <Paragraph size="md">{plugin.description}</Paragraph>
-                        {!!plugin.tags?.length && <PluginTags tags={plugin.tags} />}
+                        {Array.isArray(plugin.tags) && !!plugin.tags.length && <PluginTags tags={plugin.tags} />}
                     </div>
                 </div>
             }
