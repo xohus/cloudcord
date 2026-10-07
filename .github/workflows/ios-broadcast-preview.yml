@@ -8,7 +8,9 @@ on:
       - ios/rain-original/**
       - ios/scripts/package-cloudcord-ipa.py
 permissions:
-  contents: read
+  # GitHub requires write access to read assets on a draft release. This job
+  # only downloads the existing base and uploads a test artifact.
+  contents: write
 jobs:
   package:
     runs-on: macos-15

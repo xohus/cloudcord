@@ -57,9 +57,32 @@ codesign --force --sign - "$APP_DIR"
 codesign --verify --strict --verbose=2 "$APP_DIR"
 file "$APP_DIR/Contents/MacOS/CloudCordSetup"
 # Exercise Finder/LaunchServices rather than only compiling the executable.
+LAUNCH_LOG="$PACKAGE_DIR/launch.log"
+otool -L "$APP_DIR/Contents/MacOS/CloudCordSetup"
+# Capture native startup errors before testing LaunchServices. A successful
+# compile/signature check alone does not establish that the GUI can run.
+"$APP_DIR/Contents/MacOS/CloudCordSetup" >"$LAUNCH_LOG" 2>&1 &
+LAUNCH_PID=$!
+sleep 5
+if ! kill -0 "$LAUNCH_PID" 2>/dev/null; then
+    cat "$LAUNCH_LOG"
+    wait "$LAUNCH_PID"
+    echo "Installer exited before its launch check completed."
+    exit 1
+fi
+kill "$LAUNCH_PID"
+wait "$LAUNCH_PID" || true
 open -n "$APP_DIR"
 sleep 5
-pgrep -f "$APP_DIR/Contents/MacOS/CloudCordSetup" >/dev/null
+# Match the executable name, not a regex containing the bundle path (which
+# contains spaces and may differ from the argv exposed by LaunchServices).
+if ! pgrep -x CloudCordSetup >/dev/null; then
+    cat "$LAUNCH_LOG"
+    ps -axo pid,comm,args
+    find "$HOME/Library/Logs/DiagnosticReports" -maxdepth 1 -name 'CloudCordSetup*' -type f -exec cat {} \; 2>/dev/null || true
+    echo "LaunchServices did not leave a running installer."
+    exit 1
+fi
 # A local preview is not notarized. Do not disable Gatekeeper or rewrite
 # Discord's signature here; distribution signing is a separate release gate.
 ditto -c -k --sequesterRsrc --keepParent "$PACKAGE_DIR" "dist/CloudCord-mac-$ARCH-preview.zip"
