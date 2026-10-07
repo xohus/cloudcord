@@ -15,6 +15,7 @@ import (
 	"os"
 	path "path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -84,6 +85,16 @@ func GetGithubRelease(url, fallbackUrl string) (*GithubRelease, error) {
 
 func InitGithubDownloader() {
 	GithubDoneChan = make(chan bool, 1)
+	// Finder launches the native executable directly. Discover packaged resources
+	// without depending on a shell launcher or inherited environment variables.
+	if runtime.GOOS == "darwin" && os.Getenv("CLOUDCORD_BUNDLED_RUNTIME") == "" {
+		if executable, err := os.Executable(); err == nil {
+			bundled := path.Join(path.Dir(executable), "..", "Resources", "cloudcord.asar")
+			if stat, err := os.Stat(bundled); err == nil && stat.Mode().IsRegular() {
+				_ = os.Setenv("CLOUDCORD_BUNDLED_RUNTIME", bundled)
+			}
+		}
+	}
 	if bundled := os.Getenv("CLOUDCORD_BUNDLED_RUNTIME"); bundled != "" {
 		stat, err := os.Stat(bundled)
 		if err != nil {

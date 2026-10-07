@@ -16,17 +16,15 @@ vm.runInNewContext(match[1].replace(/^import .*;\r?\n/gm, ""), {
     process: { argv: ["node", "-", contents + "/Info.plist"] }
 });
 const plist = written.get(contents + "/Info.plist");
-const launcher = written.get(contents + "/MacOS/CloudCordSetup");
 assert(plist.data.includes("<key>CFBundleExecutable</key><string>CloudCordSetup</string>"));
-assert.equal(launcher.options.mode, 0o755);
-assert(launcher.data.includes('export CLOUDCORD_BUNDLED_RUNTIME="$APP_CONTENTS/Resources/cloudcord.asar"'));
-assert(launcher.data.includes('exec "$APP_CONTENTS/MacOS/CloudCordSetup-bin" "$@"'));
-assert(source.includes('"$APP_DIR/Contents/MacOS/CloudCordSetup-bin"'));
+assert(source.includes('cp "dist/CloudCordSetup-darwin-$ARCH" "$APP_DIR/Contents/MacOS/CloudCordSetup"'));
+assert(source.includes('codesign --verify --strict'));
+assert(source.includes('open -n "$APP_DIR"'));
 assert(source.includes('"$APP_DIR/Contents/Resources/cloudcord.asar"'));
 assert(source.includes("pnpm buildStandalone"));
 assert(source.includes("go test -tags cli ./..."));
 const bash = process.platform === "win32" ? "C:/Program Files/Git/bin/bash.exe" : "bash";
-for (const script of [source, launcher.data]) {
+for (const script of [source]) {
     const result = spawnSync(bash, ["-n"], { input: script, encoding: "utf8" });
     if (result.error) throw result.error;
     assert.equal(result.status, 0, result.stderr);
