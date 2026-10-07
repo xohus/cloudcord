@@ -41,12 +41,16 @@ writeFileSync(process.argv[2], `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>com.cloudcord.setup.preview</string>
+<key>CFBundleDisplayName</key><string>CloudCord Setup</string>
+<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
 <key>CFBundleName</key><string>CloudCord Setup</string>
 <key>CFBundleExecutable</key><string>CloudCordSetup</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>0.1.0</string>
 <key>CFBundleVersion</key><string>1</string>
 <key>NSHighResolutionCapable</key><true/>
+<key>CFBundleSupportedPlatforms</key><array><string>MacOSX</string></array>
+<key>LSApplicationCategoryType</key><string>public.app-category.utilities</string>
 </dict></plist>
 `);
 NODE
@@ -70,6 +74,11 @@ if ! kill -0 "$LAUNCH_PID" 2>/dev/null; then
     echo "Installer exited before its launch check completed."
     exit 1
 fi
+# Stop the tested instance so the disk-image launch cannot accidentally pass
+# by finding the process that was started from the build directory.
+for TEST_PID in $(pgrep -x CloudCordSetup); do
+    kill "$TEST_PID"
+done
 kill "$LAUNCH_PID"
 wait "$LAUNCH_PID" || true
 open -n "$APP_DIR"
@@ -90,7 +99,29 @@ DMG_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/cloudcord-dmg.XXXXXX")"
 ditto "$APP_DIR" "$DMG_STAGE/CloudCord Setup.app"
 ln -s /Applications "$DMG_STAGE/Applications"
 hdiutil create -volname "CloudCord Setup" -srcfolder "$DMG_STAGE" \
-    -format UDZO -ov "dist/CloudCord-mac-$ARCH-preview.dmg"
+    -fs HFS+ -format UDZO -ov "dist/CloudCord-mac-$ARCH-preview.dmg"
 hdiutil verify "dist/CloudCord-mac-$ARCH-preview.dmg"
+
+# Test the delivered image, including the normal drag-to-Applications copy,
+# instead of treating the pre-packaging executable as sufficient evidence.
+DMG_MOUNT="$(mktemp -d "${TMPDIR:-/tmp}/cloudcord-mount.XXXXXX")"
+DMG_COPY="$(mktemp -d "${TMPDIR:-/tmp}/cloudcord-install-check.XXXXXX")"
+hdiutil attach -readonly -nobrowse -mountpoint "$DMG_MOUNT" "dist/CloudCord-mac-$ARCH-preview.dmg"
+ditto "$DMG_MOUNT/CloudCord Setup.app" "$DMG_COPY/CloudCord Setup.app"
+codesign --verify --strict --verbose=2 "$DMG_COPY/CloudCord Setup.app"
+test -x "$DMG_COPY/CloudCord Setup.app/Contents/MacOS/CloudCordSetup"
+cmp "$APP_DIR/Contents/Resources/cloudcord.asar" "$DMG_COPY/CloudCord Setup.app/Contents/Resources/cloudcord.asar"
+open -n "$DMG_COPY/CloudCord Setup.app"
+sleep 5
+if ! pgrep -x CloudCordSetup >/dev/null; then
+    echo "The app copied from the finished disk image did not stay running."
+    hdiutil detach "$DMG_MOUNT"
+    exit 1
+fi
+for TEST_PID in $(pgrep -x CloudCordSetup); do
+    kill "$TEST_PID"
+done
+hdiutil detach "$DMG_MOUNT"
+echo "Finished DMG copy, signature, resource and Finder launch checks passed."
 echo "Local preview: dist/CloudCord-mac-$ARCH-preview.zip"
 echo "Disk image: dist/CloudCord-mac-$ARCH-preview.dmg"

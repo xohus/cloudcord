@@ -20,6 +20,11 @@ assert(plist.data.includes("<key>CFBundleExecutable</key><string>CloudCordSetup<
 assert(source.includes('cp "dist/CloudCordSetup-darwin-$ARCH" "$APP_DIR/Contents/MacOS/CloudCordSetup"'));
 assert(source.includes('codesign --verify --strict'));
 assert(source.includes('open -n "$APP_DIR"'));
+assert(source.includes('-fs HFS+'));
+assert(source.includes('hdiutil attach -readonly'));
+assert(source.includes('open -n "$DMG_COPY/CloudCord Setup.app"'));
+assert(source.includes('codesign --verify --strict --verbose=2 "$DMG_COPY/CloudCord Setup.app"'));
+assert(plist.data.includes('<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>'));
 assert(source.includes('"$APP_DIR/Contents/Resources/cloudcord.asar"'));
 assert(source.includes("pnpm buildStandalone"));
 assert(source.includes("go test -tags cli ./..."));
