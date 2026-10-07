@@ -1,0 +1,46 @@
+name: iOS Broadcast Preview
+on:
+  workflow_dispatch:
+  push:
+    branches: [xohus/mac-preview]
+    paths:
+      - .github/workflows/ios-broadcast-preview.yml
+      - ios/rain-original/**
+      - ios/scripts/package-cloudcord-ipa.py
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test compatibility resolver
+        run: |
+          node ios/scripts/test-original-rain.cjs
+          node ios/scripts/test-screen-sharing-storage.cjs
+          clang -fobjc-arc -framework Foundation ios/scripts/test-shared-container.m -o "$RUNNER_TEMP/shared-container-test"
+          "$RUNNER_TEMP/shared-container-test"
+      - name: Install signing tools
+        run: brew install ldid
+      - name: Download existing user-supplied base
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download ios-base-344 --repo xohus/cloudcord --pattern Discord-344.1-base.ipa --output Discord-344.1-base.ipa
+      - name: Compile adapter and package test IPA
+        run: |
+          xcrun --sdk iphoneos clang -arch arm64 -fobjc-arc -dynamiclib \
+            -miphoneos-version-min=14.0 -framework Foundation \
+            -install_name @executable_path/Frameworks/CloudCordBootstrap.dylib \
+            ios/rain-original/CloudCordBootstrap.m -o CloudCordBootstrap.dylib
+          python3 ios/scripts/package-cloudcord-ipa.py \
+            --discord-ipa Discord-344.1-base.ipa --discord-version 344.1 \
+            --rain-loader ios/rain-original/RainTweak.dylib.b64 \
+            --rain-bootstrap CloudCordBootstrap.dylib --runtime-js dist/cc.js \
+            --output CloudCord-344.1-broadcast-preview.ipa
+          python3 ios/scripts/verify-original-rain-ipa.py CloudCord-344.1-broadcast-preview.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CloudCord-344.1-Broadcast-Preview
+          path: CloudCord-344.1-broadcast-preview.ipa
+          if-no-files-found: error
+          retention-days: 7
