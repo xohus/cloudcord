@@ -16,6 +16,10 @@ function host(helper) {
     return context;
 }
 const contexts = [host(desktopHelper), host(mobileHelper)];
+for (const context of contexts) {
+    assert.equal(context.badgeLayoutKey({ id: 'cloudcord-official-founder:463515440606609419:light' }), 'cloudcord-official-founder');
+    assert.equal(context.applyBadgeLayout([{ id: 'cloudcord-official-founder:owner:dark' }], { hiddenBadgeIds: ['cloudcord-official-founder'] }).length, 0);
+}
 const badgeSets = [
     ['sp_staff', 'premium_tenure_72_month_v2', 'sp_boost', 'sp_account_age_10', 'cloudcord-official-manager', 'cloudcord-custom-abc'],
     ['fakeprofile-staff', 'premium_tenure_72_month_v2', 'fakeprofile-boost', 'fakeprofile-account_age_10', 'cloudcord-official-manager', 'cloudcord-custom-abc'],
@@ -89,4 +93,32 @@ for (const source of [desktop, mobile]) {
     assert.ok(source.includes('label: tier.name'));
 }
 esbuild.transformSync(mobile, { loader: 'tsx' });
+// The profile-store path must honor layout too, not only useBadges.
+const profileHost = host(mobileHelper);
+Object.assign(profileHost, {
+    preview: { nitroEnabled: false, boostMonths: 0, selectedBadges: {}, hiddenBadgeIds: ['staff'], badgeOrder: ['boost', 'nitro'] },
+    BADGES: [], shouldReplaceLocalBadges: () => false
+});
+vm.runInContext(esbuild.transformSync(mobile.slice(mobile.indexOf('function selectedBadgeObjects('), mobile.indexOf('function cloneObject(')), { loader: 'ts' }).code, profileHost);
+const nativeRows = [{ id: 'premium' }, { id: 'staff' }, { id: 'premium_guild_subscriber' }];
+assert.deepEqual(result(profileHost.selectedBadgeObjects(nativeRows)).map(row => row.id), ['premium_guild_subscriber', 'premium']);
+assert.equal(profileHost.selectedBadgeObjects(nativeRows, true).length, 3);
+assert.ok(!mobile.includes('label="Move Left"'));
+assert.match(mobile, /accessibilityLabel=\{direction === -1 \? "Move badge up"/);
+// Desktop publish must work in Discord's isolated renderer without localStorage.
+(async () => {
+    const saved = new Map();
+    const publishHost = vm.createContext({
+        activeUserId: () => 'owner', isEnabled: true, storedData: {}, allAccountsData: {},
+        SHARED_PROFILE_API: 'https://example.test', LS_SHARE: 'share',
+        saveDataSync() {}, saveAllDataSync() {}, toSharedProfile: data => data,
+        DataStore: { get: async key => saved.get(key), set: async (key, value) => saved.set(key, value) },
+        fetch: async (url, options) => options ? ({ ok: true, json: async () => ({ id: 'profile', editToken: 'test-token' }) }) : ({ ok: false })
+    });
+    vm.runInContext(esbuild.transformSync(desktop.slice(desktop.indexOf('async function publishSharedProfile('), desktop.indexOf('function queueSharedPublish(')), { loader: 'ts' }).code, publishHost);
+    await publishHost.publishSharedProfile();
+    assert.equal(saved.get('share').id, 'profile');
+    await publishHost.publishSharedProfile();
+    console.log('PASS: desktop cloud save without localStorage and persisted sync credentials');
+})().catch(error => { console.error(error); process.exitCode = 1; });
 console.log('PASS: native/custom/staff hiding, restoration, ordering, cross-client keys, native getter patch, sync and mobile selection saving');

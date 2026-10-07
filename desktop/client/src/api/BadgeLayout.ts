@@ -1,7 +1,8 @@
 // Stable badge keys keep layout identical across desktop, browser and mobile.
 export function badgeLayoutKey(badge: any): string {
     let id = String(badge?.id || "");
-    if (id.startsWith("cloudcord-official-") || id.startsWith("cloudcord-custom-")) return id;
+    if (id.startsWith("cloudcord-official-")) return id.split(":")[0];
+    if (id.startsWith("cloudcord-custom-")) return id;
     id = id.replace(/^(?:sp_|fakeprofile-|cloudcord-shared-)/, "");
     const aliases: Record<string, string> = {
         bh1: "bug1", bug_hunter_level_1: "bug1", bug_hunter: "bug1",

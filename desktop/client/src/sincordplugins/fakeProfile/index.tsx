@@ -666,7 +666,11 @@ async function publishSharedProfile(): Promise<void> {
         saveDataSync(storedData, true); saveAllDataSync();
     }
     let saved: any = {};
-    try { saved = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { }
+    saved = await DataStore.get(LS_SHARE) || {};
+    if (!saved.id) {
+        try { saved = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { }
+        if (saved.id) await DataStore.set(LS_SHARE, saved);
+    }
     const response = await fetch(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
         method: saved.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json", ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {}) },
@@ -674,12 +678,16 @@ async function publishSharedProfile(): Promise<void> {
     });
     if (!response.ok) {
         if (response.status === 409) throw new Error("Your shared profile changed on another device. Reopen the editor and try again.");
-        if (saved.id && (response.status === 401 || response.status === 404)) { localStorage.removeItem(LS_SHARE); return publishSharedProfile(); }
+        if (saved.id && (response.status === 401 || response.status === 404)) {
+            await DataStore.set(LS_SHARE, {});
+            try { localStorage.removeItem(LS_SHARE); } catch { }
+            return publishSharedProfile();
+        }
         const details = await response.json().catch(() => null);
         throw new Error(response.status === 413 ? "Your profile images are too large to sync. Use Upload to crop and resize them." : response.status === 429 ? "Too many saves. Wait a moment and try again." : response.status === 503 ? "Profile sync is unavailable right now. Your changes are saved on this device." : `Couldn't sync your profile (${response.status}). ${String(details?.error || "Try again shortly.").slice(0, 160)}`);
     }
     const result = await response.json();
-    if (!saved.id && result?.id) localStorage.setItem(LS_SHARE, JSON.stringify({ id: result.id, editToken: result.editToken }));
+    if (!saved.id && result?.id) await DataStore.set(LS_SHARE, { id: result.id, editToken: result.editToken });
 }
 
 function queueSharedPublish() {
