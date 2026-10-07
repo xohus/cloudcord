@@ -8,6 +8,7 @@ on:
   push:
     branches:
       - main
+      - xohus/mac-preview
     paths:
       - ".github/workflows/ios-331.yml"
       - "ios/native-ios/**"
@@ -19,6 +20,9 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check shared broadcast container compatibility
+        run: node ios/scripts/test-screen-sharing-storage.cjs
 
       - name: Install build tools
         run: |
@@ -87,6 +91,7 @@ jobs:
           path: cloudcord0-331.ipa
 
       - name: Replace the public Discord 331 download
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ios-legacy-331
