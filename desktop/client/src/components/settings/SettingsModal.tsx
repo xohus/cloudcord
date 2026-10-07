@@ -1,4 +1,5 @@
 import { FocusLock, React } from "@webpack/common";
+import ErrorBoundary from "@components/ErrorBoundary";
 import type { PropsWithChildren, ReactNode } from "react";
 
 interface SettingsModalProps extends PropsWithChildren {
@@ -29,7 +30,7 @@ export function SettingsModal({ title, subtitle, children, onClose }: SettingsMo
     }
     // Register this dialog as Discord's active focus scope. Without it, the
     // underlying Settings layer can immediately steal focus from our inputs.
-    return <FocusLock containerRef={root}><div style={{ position: "fixed", inset: 0, zIndex: 10000, pointerEvents: "auto", background: "rgba(0,0,0,.65)", display: "grid", placeItems: "center", padding: 16 }}>
+    const dialog = <div style={{ position: "fixed", inset: 0, zIndex: 10000, pointerEvents: "auto", background: "rgba(0,0,0,.65)", display: "grid", placeItems: "center", padding: 16 }}>
         <div ref={root} role="dialog" aria-modal="true" aria-label={typeof title === "string" ? title : "cloudcord settings"} tabIndex={-1} onKeyDown={onKeyDown}
             style={{ pointerEvents: "auto", userSelect: "text", width: "min(960px, 94vw)", maxHeight: "85vh", overflowY: "auto", borderRadius: 16, padding: 24, background: "var(--background-base-low, #202024)", color: "var(--text-normal, #f2f3f5)", boxShadow: "0 20px 70px rgba(0,0,0,.5)" }}>
             <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 16 }}>
@@ -39,5 +40,10 @@ export function SettingsModal({ title, subtitle, children, onClose }: SettingsMo
             {subtitle}
             {children}
         </div>
-    </div></FocusLock>;
+    </div>;
+    // Some Discord versions no longer expose the native focus scope. Keep the
+    // dialog usable with its own keyboard trap instead of failing to open it.
+    return <ErrorBoundary fallback={() => dialog}>
+        <FocusLock containerRef={root}>{dialog}</FocusLock>
+    </ErrorBoundary>;
 }

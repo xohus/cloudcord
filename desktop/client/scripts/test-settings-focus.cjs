@@ -11,13 +11,19 @@ const React = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } })
 };
 const FocusLock = () => {};
-const context = vm.createContext({ React, FocusLock });
+const ErrorBoundary = () => {};
+const context = vm.createContext({ React, FocusLock, ErrorBoundary });
 const code = esbuild.transformSync(source.replace(/^import .*;\r?\n/gm, '').replace('export function SettingsModal', 'function SettingsModal'), { loader: 'tsx', jsxFactory: 'React.createElement' }).code;
 vm.runInContext(code, context);
 const tree = context.SettingsModal({ title: 'Plugins', children: 'input', onClose() {} });
-assert.equal(tree.type, FocusLock);
-assert.equal(tree.props.containerRef, ref);
-const dialog = tree.props.children[0].props.children[0];
+assert.equal(tree.type, ErrorBoundary);
+const scope = tree.props.children[0];
+assert.equal(scope.type, FocusLock);
+assert.equal(scope.props.containerRef, ref);
+assert.equal(tree.props.fallback(), scope.props.children[0], 'missing native focus scope must fall back to the same dialog');
+const commonComponents = fs.readFileSync('src/webpack/common/components.ts', 'utf8');
+assert.match(commonComponents, /waitForComponent<t\.FocusLock>\("FocusLock"[^\n]+\(\{ children \}\) => children\)/, 'production native lookup fallback must preserve dialog children instead of rendering nothing');
+const dialog = scope.props.children[0].props.children[0];
 assert.equal(dialog.props.ref, ref);
 let prevented = false;
 dialog.props.onKeyDown({ key: 'a', preventDefault() { prevented = true; } });
