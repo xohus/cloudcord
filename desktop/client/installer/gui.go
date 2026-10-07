@@ -1,4 +1,4 @@
-//go:build !cli
+//go:build !cli && !darwin
 
 /*
  * CloudCord Desktop Installer
