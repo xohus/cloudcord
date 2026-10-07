@@ -9697,6 +9697,32 @@
     ];
     return order;
   }
+  function defaultBadgeOrder(nativeBadges = []) {
+    var nativeKeys = nativeBadges.filter((badge) => !/^(?:sp_|fakeprofile-|cloudcord-)/.test(String(badge?.id || ""))).map(badgeLayoutKey);
+    return [
+      .../* @__PURE__ */ new Set([
+        ...nativeKeys,
+        "nitro",
+        "gifting",
+        "boost",
+        "staff",
+        "partner",
+        "hypesquad",
+        "bug1",
+        "bravery",
+        "brilliance",
+        "balance",
+        "early",
+        "bug2",
+        "vdev",
+        "mod",
+        "active",
+        "quest",
+        "orbs",
+        "oldname"
+      ])
+    ];
+  }
   function cloudCordStaffBadge(userId) {
     var role = CLOUDCORD_STAFF_ROLES[userId];
     return role ? {
@@ -10829,7 +10855,7 @@
     return applyBadgeLayout([
       ...unique.values()
     ], {
-      badgeOrder: preview.badgeOrder
+      badgeOrder: preview.badgeOrder.length ? preview.badgeOrder : defaultBadgeOrder(native)
     });
   }
   function appendPublishedBadges(result, userId) {
@@ -10840,7 +10866,11 @@
       if (badge.userId === userId)
         addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
     }
-    return applyBadgeLayout(next, isCurrentUser(userId) ? preview.enabled ? preview : null : getProfileOverride(userId));
+    var layout = isCurrentUser(userId) ? preview.enabled ? preview : null : getProfileOverride(userId);
+    return applyBadgeLayout(next, {
+      ...layout,
+      badgeOrder: layout?.badgeOrder?.length ? layout.badgeOrder : defaultBadgeOrder(nativeBadgeRows.get(userId) || [])
+    });
   }
   function connectBadgeRenderer() {
     try {
@@ -10883,7 +10913,7 @@
             addRenderedBadge(ordered, "cloudcord-shared-boost", serverBoostingLabel(boostMonths), boosterIcon(boostMonths));
             var gift = GIFT_LEVELS[Number(data.giftLevel)];
             if (gift)
-              addRenderedBadge(ordered, "cloudcord-shared-gifting", `${gift.name} \xB7 Gifted ${gift.count}x`, gift.icon);
+              addRenderedBadge(ordered, "cloudcord-shared-gifting", gift.name, gift.icon);
             var customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
             for (var [id1, description, flag, icon2, customId] of BADGES) {
               var selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
@@ -10924,7 +10954,7 @@
           addRenderedBadge(ordered2, nitroBadgeId(preview.nitroMonths), nitroSubscriberLabel(preview.nitroMonths), milestoneIcon(preview.nitroMonths, NITRO_ICONS));
         var gift1 = GIFT_LEVELS[preview.giftLevel];
         if (gift1)
-          addRenderedBadge(ordered2, "fakeprofile-gifting", `${gift1.name} \xB7 Gifted ${gift1.count}x`, gift1.icon);
+          addRenderedBadge(ordered2, "fakeprofile-gifting", gift1.name, gift1.icon);
         addRenderedBadge(ordered2, "fakeprofile-boost", serverBoostingLabel(preview.boostMonths), boosterIcon(preview.boostMonths));
         for (var [badgeId, description1, , icon1] of BADGES) {
           if (!preview.selectedBadges?.[badgeId])
@@ -11869,7 +11899,7 @@
               }
             },
             ...GIFT_LEVELS.map((gift, index) => ({
-              label: `${gift.name} \u2014 Gifted ${gift.count}x`,
+              label: gift.name,
               onPress: () => {
                 update("giftLevel", index, true);
                 simpleSheets.hideActionSheet?.(key);
@@ -12875,7 +12905,7 @@
       EXTRA_BADGES = [
         ...EXPERIMENTAL_BADGE_GROUPS.flatMap((group) => group.tiers.map((tier) => ({
           ...tier,
-          label: `${group.label} \u2014 ${tier.name} \xB7 ${tier.milestone}`
+          label: tier.name
         }))),
         ...EVENT_BADGES.map((badge) => ({
           ...badge,
@@ -12891,7 +12921,7 @@
         ],
         [
           "partner",
-          "Partner",
+          "Partnered Server Owner",
           2,
           "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png"
         ],
@@ -12903,7 +12933,7 @@
         ],
         [
           "bug1",
-          "Bug Hunter Lvl 1",
+          "Bug Hunter",
           8,
           "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"
         ],
@@ -12933,13 +12963,13 @@
         ],
         [
           "bug2",
-          "Bug Hunter Lvl 2",
+          "Golden Bug Hunter",
           16384,
           "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"
         ],
         [
           "vdev",
-          "Verified Developer",
+          "Early Verified Bot Developer",
           131072,
           "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"
         ],
