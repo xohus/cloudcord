@@ -9,7 +9,7 @@ import { IpcEvents } from "@shared/IpcEvents";
 import { SettingsStore } from "@shared/SettingsStore";
 import { mergeDefaults } from "@utils/mergeDefaults";
 import { ipcMain } from "electron";
-import { mkdirSync, readFileSync, writeFileSync } from "fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 
 import { NATIVE_SETTINGS_FILE, SETTINGS_DIR, SETTINGS_FILE } from "./utils/constants";
 
@@ -17,10 +17,17 @@ mkdirSync(SETTINGS_DIR, { recursive: true });
 
 function readSettings<T = object>(name: string, file: string): Partial<T> {
     try {
-        return JSON.parse(readFileSync(file, "utf-8"));
+        const parsed = JSON.parse(readFileSync(file, "utf-8"));
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+            throw new Error("Settings must contain a JSON object");
+        return parsed;
     } catch (err: any) {
-        if (err?.code !== "ENOENT")
+        if (err?.code !== "ENOENT") {
             console.error(`Failed to read ${name} settings`, err);
+            // Preserve the original before using defaults; a later save must
+            // not destroy the only copy of a damaged settings file.
+            try { copyFileSync(file, `${file}.invalid-${Date.now()}.bak`); } catch { }
+        }
 
         return {};
     }
