@@ -12,11 +12,20 @@ void cloudcordShowResult(const char *title, const char *message);
 import "C"
 
 import (
+    "errors"
     "fmt"
     "runtime"
     "strings"
     "unsafe"
 )
+
+func InstallLatestBuilds() error {
+    err := installLatestBuilds()
+    if err != nil {
+        macMessage("Could not install runtime", err.Error())
+    }
+    return err
+}
 
 func macMessage(title, message string) {
     cTitle, cMessage := C.CString(title), C.CString(message)
@@ -65,6 +74,7 @@ func main() {
             err = install.unpatch()
         }
         if err != nil {
+            if errors.Is(err, ErrAlreadyReported) { continue }
             macMessage("Could not finish", fmt.Sprintf("%v\n\nQuit Discord and try again. Make sure your account can write to the selected app. Your original Discord archive is kept as a backup during installation.", err))
         } else if action == 0 {
             macMessage("CloudCord installed", "Open Discord to use CloudCord. Run this installer again to reinstall or remove it.")
