@@ -14890,7 +14890,7 @@
                 label: "Update status",
                 subLabel: settings.cloudcordUpdateStatus || "Waiting for the next update check"
               }),
-              /* @__PURE__ */ jsx(TableRow, {
+              settings.cloudcordDiagnosticsEnabled === true && /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
                 label: "Diagnostics",
                 subLabel: "Runtime status and troubleshooting",
@@ -21128,7 +21128,7 @@
         title: () => "Diagnostics",
         icon: safeAsset("WrenchIcon", "SettingsIcon"),
         render: () => Promise.resolve().then(() => (init_Diagnostics(), Diagnostics_exports)),
-        usePredicate: () => true
+        usePredicate: () => useProxy(settings).cloudcordDiagnosticsEnabled === true
       }
     ];
     var defaultOrder = [
