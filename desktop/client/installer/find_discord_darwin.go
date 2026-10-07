@@ -28,7 +28,7 @@ func ParseDiscord(p, branch string) *DiscordInstall {
 		return nil
 	}
 
-	resources := path.Join(p, "/Contents/Resources")
+	resources := path.Join(p, "Contents", "Resources")
 	if !ExistsFile(resources) {
 		return nil
 	}
@@ -57,9 +57,13 @@ func FindDiscords() []any {
 	var discords []any
 	bases := []string{
 		"/Applications",
-		path.Join(os.Getenv("HOME"), "Applications"),
 	}
-	for branch, dirname := range macosNames {
+	if home, err := os.UserHomeDir(); err == nil && home != "" {
+		bases = append(bases, path.Join(home, "Applications"))
+	}
+	// Keep discovery stable across launches rather than relying on map order.
+	for _, branch := range []string{"stable", "ptb", "canary", "dev"} {
+		dirname := macosNames[branch]
 		for _, base := range bases {
 			p := path.Join(base, dirname)
 			if discord := ParseDiscord(p, branch); discord != nil {

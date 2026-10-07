@@ -36,7 +36,7 @@ var interactive = false
 
 func isValidBranch(branch string) bool {
 	switch branch {
-	case "", "stable", "ptb", "canary", "auto":
+	case "", "stable", "ptb", "canary", "dev", "auto":
 		return true
 	default:
 		return false
@@ -64,7 +64,7 @@ func main() {
 	var installOpenAsarFlag = flag.Bool("install-openasar", false, "Install OpenAsar")
 	var uninstallOpenAsarFlag = flag.Bool("uninstall-openasar", false, "Uninstall OpenAsar")
 	var locationFlag = flag.String("location", "", "The location of the Discord install to modify")
-	var branchFlag = flag.String("branch", "", "The branch of Discord to modify [auto|stable|ptb|canary]")
+	var branchFlag = flag.String("branch", "", "The branch of Discord to modify [auto|stable|ptb|canary|dev]")
 	flag.Parse()
 
 	if *helpFlag {
@@ -95,7 +95,7 @@ func main() {
 	}
 
 	if !isValidBranch(*branchFlag) {
-		die("The 'branch' flag must be one of the following: [auto|stable|ptb|canary]")
+		die("The 'branch' flag must be one of the following: [auto|stable|ptb|canary|dev]")
 	}
 
 	if *installFlag || *updateFlag {

@@ -1,0 +1,49 @@
+name: CloudCord Mac Preview
+
+# Preview branch only. No releases or website updates.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - xohus/mac-preview
+    paths:
+      - desktop/**
+      - .github/workflows/mac-preview.yml
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            architecture: arm64
+          - runner: macos-15-intel
+            architecture: x64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.9
+      - uses: actions/setup-go@v5
+        with:
+          go-version: 1.26.2
+          cache-dependency-path: desktop/client/installer/go.sum
+      - name: Install desktop dependencies
+        working-directory: desktop/client
+        run: pnpm install --frozen-lockfile
+      - name: Test and package native Mac preview
+        run: bash desktop/client/scripts/build-mac.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CloudCord-Mac-${{ matrix.architecture }}-Preview
+          path: desktop/client/dist/CloudCord-mac-${{ matrix.architecture }}-preview.zip
+          if-no-files-found: error
+          retention-days: 7

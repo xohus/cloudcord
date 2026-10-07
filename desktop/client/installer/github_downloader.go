@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 type GithubRelease struct {
@@ -36,6 +37,8 @@ var InstalledHash = "None"
 var LatestHash = "Unknown"
 var IsDevInstall bool
 
+var releaseClient = &http.Client{Timeout: 30 * time.Second}
+
 func GetGithubRelease(url, fallbackUrl string) (*GithubRelease, error) {
 	Log.Debug("Fetching", url)
 
@@ -47,7 +50,7 @@ func GetGithubRelease(url, fallbackUrl string) (*GithubRelease, error) {
 
 	req.Header.Set("User-Agent", UserAgent)
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := releaseClient.Do(req)
 	if err != nil {
 		Log.Error("Failed to send Request", err)
 		return nil, err
@@ -59,13 +62,13 @@ func GetGithubRelease(url, fallbackUrl string) (*GithubRelease, error) {
 		isRateLimitedOrBlocked := res.StatusCode == 401 || res.StatusCode == 403 || res.StatusCode == 429
 		triedFallback := url == fallbackUrl
 
-		if isRateLimitedOrBlocked && !triedFallback {
+		if isRateLimitedOrBlocked && fallbackUrl != "" && !triedFallback {
 			Log.Error(fmt.Sprintf("Failed to fetch %s (status code %d). Trying fallback url %s", url, res.StatusCode, fallbackUrl))
 			return GetGithubRelease(fallbackUrl, fallbackUrl)
 		}
 
 		err = errors.New(res.Status)
-		Log.Error(url, "returned Non-OK status", GithubError)
+		Log.Error(url, "returned Non-OK status", err)
 		return nil, err
 	}
 
@@ -81,6 +84,17 @@ func GetGithubRelease(url, fallbackUrl string) (*GithubRelease, error) {
 
 func InitGithubDownloader() {
 	GithubDoneChan = make(chan bool, 1)
+	if bundled := os.Getenv("CLOUDCORD_BUNDLED_RUNTIME"); bundled != "" {
+		stat, err := os.Stat(bundled)
+		if err != nil {
+			GithubError = err
+		} else if !stat.Mode().IsRegular() || stat.Size() == 0 {
+			GithubError = errors.New("Bundled CloudCord runtime is empty or not a file")
+		}
+		LatestHash = "Bundled"
+		GithubDoneChan <- GithubError == nil
+		return
+	}
 
 	IsDevInstall = os.Getenv("CLOUDCORD_DEV_INSTALL") == "1"
 	Log.Debug("Is Dev Install: ", IsDevInstall)
@@ -144,6 +158,9 @@ func InitGithubDownloader() {
 
 func installLatestBuilds() (retErr error) {
 	Log.Debug("Installing latest builds...")
+	if bundled := os.Getenv("CLOUDCORD_BUNDLED_RUNTIME"); bundled != "" {
+		return installBundledRuntime(bundled)
+	}
 
 	if IsDevInstall {
 		Log.Debug("Skipping due to dev install")
@@ -227,3 +244,36 @@ func installLatestBuilds() (retErr error) {
 	return nil
 }
 
+// Keep the installed runtime outside the .app so later runtime updates do not
+// modify the preview application's resources. Never truncate a working runtime
+// before the complete replacement is available.
+func installBundledRuntime(source string) error {
+	data, err := os.ReadFile(source)
+	if err != nil {
+		return err
+	}
+	if len(data) == 0 {
+		return errors.New("Bundled CloudCord runtime is empty")
+	}
+	temporary, err := os.CreateTemp(path.Dir(CloudCordDirectory), "cloudcord-bundled-*.asar")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(temporary.Name())
+	if _, err = temporary.Write(data); err != nil {
+		_ = temporary.Close()
+		return err
+	}
+	if err = temporary.Chmod(0644); err != nil {
+		_ = temporary.Close()
+		return err
+	}
+	if err = temporary.Close(); err != nil {
+		return err
+	}
+	if err = os.Rename(temporary.Name(), CloudCordDirectory); err != nil {
+		return err
+	}
+	InstalledHash = LatestHash
+	return FixOwnership(CloudCordDirectory)
+}

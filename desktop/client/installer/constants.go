@@ -15,8 +15,9 @@ import (
 var IsTestBuildStr = "0"
 var IsTestBuild = false
 
-var ReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/latest"
+var ReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/tags/new_beta_t_desktop"
 var ReleaseUrlFallback = ""
+
 const InstallerReleaseUrl = "https://api.github.com/repos/xohus/cloudcord/releases/latest"
 const InstallerReleaseUrlFallback = ""
 
