@@ -1,0 +1,15 @@
+const fs = require('node:fs');
+const assert = require('node:assert/strict');
+const root = 'android/app/src/main/java/dev/beefers/vendetta/manager/';
+const rest = fs.readFileSync(root + 'network/service/RestService.kt', 'utf8');
+const pager = fs.readFileSync(root + 'network/utils/CommitsPagingSource.kt', 'utf8');
+const http = fs.readFileSync(root + 'network/service/HttpService.kt', 'utf8');
+assert.ok(rest.includes('https://api.github.com/repos/xohus/cloudcord/commits'));
+assert.ok(rest.includes('if (proxy is ApiResponse.Success) return@withContext proxy'));
+assert.ok(rest.includes('requestTimeoutMillis = 10_000'));
+assert.ok(rest.includes('requestTimeoutMillis = 15_000'));
+assert.ok(pager.includes('(params.key ?: 1).coerceAtLeast(1)'));
+assert.ok(pager.includes('prevKey = if (page > 1) page - 1 else null'));
+assert.ok(pager.includes('page.prevKey?.plus(1) ?: page.nextKey?.minus(1)'));
+assert.equal((http.match(/catch \(e: CancellationException\)/g) || []).length, 2);
+console.log('PASS: source guards for bounded fallback, one-based paging and cancellation propagation (not an Android compilation test)');

@@ -85,7 +85,7 @@ class HomeViewModel(
             val intent = context.packageManager.getLaunchIntentForPackage(it.packageName)?.apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            context.startActivity(intent)
+            if (intent != null) context.startActivity(intent)
         }
     }
 

@@ -11,16 +11,16 @@ class CommitsPagingSource(
 
     override fun getRefreshKey(state: PagingState<Int, Commit>): Int? =
         state.anchorPosition?.let {
-            state.closestPageToPosition(it)?.prevKey
+            state.closestPageToPosition(it)?.let { page -> page.prevKey?.plus(1) ?: page.nextKey?.minus(1) }
         }
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Commit> {
-        val page = params.key ?: 0
+        val page = (params.key ?: 1).coerceAtLeast(1)
 
-        return when (val response = repo.getCommits("C0C0B01/CloudCord", page)) {
+        return when (val response = repo.getCommits("xohus/cloudcord", page)) {
             is ApiResponse.Success -> LoadResult.Page(
                 data = response.data,
-                prevKey = if (page > 0) page - 1 else null,
+                prevKey = if (page > 1) page - 1 else null,
                 nextKey = if (response.data.isNotEmpty()) page + 1 else null
             )
 

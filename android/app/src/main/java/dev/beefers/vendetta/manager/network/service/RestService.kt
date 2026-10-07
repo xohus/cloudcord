@@ -10,6 +10,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 import io.ktor.client.request.header
+import io.ktor.client.plugins.timeout
+import dev.beefers.vendetta.manager.network.utils.ApiResponse
 
 class RestService(
     private val httpService: HttpService,
@@ -30,10 +32,20 @@ class RestService(
     }
 
     suspend fun getCommits(repo: String, page: Int = 1) = withContext(Dispatchers.IO) {
-        httpService.request<List<Commit>> {
-            url("https://cloudcord.xohus.lol/api/proxy/commits")
-            parameter("page", page)
+        val proxy = httpService.request<List<Commit>> {
+            url("https://getcloudcord.com/api/proxy/commits")
+            parameter("page", page.coerceAtLeast(1))
             header("X-CC-Client", "1")
+            timeout { requestTimeoutMillis = 10_000 }
+        }
+        if (proxy is ApiResponse.Success) return@withContext proxy
+        httpService.request<List<Commit>> {
+            url("https://api.github.com/repos/xohus/cloudcord/commits")
+            parameter("page", page.coerceAtLeast(1))
+            parameter("per_page", 20)
+            header("Accept", "application/vnd.github+json")
+            header("User-Agent", "CloudCord-Android-Manager")
+            timeout { requestTimeoutMillis = 15_000 }
         }
     }
 

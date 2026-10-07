@@ -9,6 +9,7 @@ import io.ktor.client.request.request
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.isSuccess
 import kotlinx.serialization.json.Json
+import kotlinx.coroutines.CancellationException
 
 class HttpService(
     val json: Json,
@@ -32,12 +33,16 @@ class HttpService(
             } else {
                 body = try {
                     response.bodyAsText()
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Throwable) {
                     null
                 }
 
                 ApiResponse.Error(ApiError(response.status, body))
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             ApiResponse.Failure(ApiFailure(e, body))
         }
