@@ -2,6 +2,7 @@
 #import <Foundation/Foundation.h>
 #import <dlfcn.h>
 #import <CommonCrypto/CommonDigest.h>
+#import "SharedContainer.h"
 
 __attribute__((constructor)) static void connectCloudCordToRain(void) {
     @autoreleasepool {
@@ -33,8 +34,13 @@ __attribute__((constructor)) static void connectCloudCordToRain(void) {
         NSData *json = [NSJSONSerialization dataWithJSONObject:config options:0 error:nil];
         if (![json writeToURL:[rain URLByAppendingPathComponent:@"loader.json"] atomically:YES]) return;
         // Load Rain only after its files are ready, including before its font ctor.
+        Method containerMethod = class_getInstanceMethod(NSFileManager.class,
+            @selector(containerURLForSecurityApplicationGroupIdentifier:));
+        IMP nativeContainerResolver = containerMethod ? method_getImplementation(containerMethod) : NULL;
         NSString *library = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Frameworks/RainTweak.dylib"];
         if (!dlopen(library.fileSystemRepresentation, RTLD_NOW | RTLD_GLOBAL))
             NSLog(@"[CloudCord] RainTweak could not load: %s", dlerror());
+        else
+            cloudcordPreserveSharedContainers(nativeContainerResolver);
     }
 }

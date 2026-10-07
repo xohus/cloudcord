@@ -8,6 +8,8 @@ on:
       - xohus/mac-preview
     paths:
       - desktop/**
+      - ios/rain-original/**
+      - ios/scripts/test-shared-container.m
       - .github/workflows/mac-preview.yml
 
 permissions:
@@ -41,6 +43,14 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Test and package native Mac preview
         run: bash desktop/client/scripts/build-mac.sh
+      - name: Test iOS shared-container compatibility and compile adapter
+        run: |
+          clang -fobjc-arc -framework Foundation ios/scripts/test-shared-container.m -o "$RUNNER_TEMP/shared-container-test"
+          "$RUNNER_TEMP/shared-container-test"
+          xcrun --sdk iphoneos clang -arch arm64 -fobjc-arc -dynamiclib \
+            -miphoneos-version-min=14.0 -framework Foundation \
+            -install_name @executable_path/Frameworks/CloudCordBootstrap.dylib \
+            ios/rain-original/CloudCordBootstrap.m -o "$RUNNER_TEMP/CloudCordBootstrap.dylib"
       - uses: actions/upload-artifact@v4
         with:
           name: CloudCord-Mac-${{ matrix.architecture }}-Preview

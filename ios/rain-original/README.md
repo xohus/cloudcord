@@ -12,6 +12,9 @@ No upstream endorsement is implied.
 
 CloudCordBootstrap only prepares Rain's runtime/config files and loads the
 original library. It contains no React Native, JSI, UIKit, font, or theme hooks.
+After loading Rain, it preserves a real OS-provisioned shared app-group container
+when available instead of Rain's private-folder fallback. This is needed for the
+separate broadcast extension; it cannot grant missing signing capabilities.
 CloudCord identity and filesystem compatibility live in the JavaScript runtime.
 Rain's injector, bridge, themes and fonts are unchanged. IPA signing can change
 signature bytes; packaging verifies the complete original binary before signing.

@@ -19,4 +19,4 @@ for (let i = 0; i < 30; i++) {
   assert.equal(context.__CLOUDCORD_LOADER__.fontPatch, 2);
   assert.equal(context.__PYON_LOADER__, context.__CLOUDCORD_LOADER__);
 }
-console.log('original Rain binary hash verified; file-only adapter; untouched Rain identity across 30 launches');
+console.log('original Rain binary hash verified; adapter loading order and 30 runtime identity fixtures passed (not device launches)');
