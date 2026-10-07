@@ -97,12 +97,24 @@ esbuild.transformSync(mobile, { loader: 'tsx' });
 const profileHost = host(mobileHelper);
 Object.assign(profileHost, {
     preview: { nitroEnabled: false, boostMonths: 0, selectedBadges: {}, hiddenBadgeIds: ['staff'], badgeOrder: ['boost', 'nitro'] },
-    BADGES: [], shouldReplaceLocalBadges: () => false
+    BADGES: [], badgeRenderProps: new Map(), shouldReplaceLocalBadges: () => false
 });
 vm.runInContext(esbuild.transformSync(mobile.slice(mobile.indexOf('function selectedBadgeObjects('), mobile.indexOf('function cloneObject(')), { loader: 'ts' }).code, profileHost);
 const nativeRows = [{ id: 'premium' }, { id: 'staff' }, { id: 'premium_guild_subscriber' }];
 assert.deepEqual(result(profileHost.selectedBadgeObjects(nativeRows)).map(row => row.id), ['premium_guild_subscriber', 'premium']);
 assert.equal(profileHost.selectedBadgeObjects(nativeRows, true).length, 3);
+profileHost.BADGES = [['staff', 'Discord Staff', 1, 'https://example.test/staff.png']];
+profileHost.preview.selectedBadges.staff = true;
+profileHost.preview.hiddenBadgeIds = [];
+const selectedRows = profileHost.selectedBadgeObjects([]);
+assert.equal(selectedRows[0].icon, 'https://example.test/staff.png');
+assert.equal(profileHost.badgeRenderProps.get('fakeprofile-staff').label, 'Discord Staff');
+Object.assign(profileHost, { NITRO_DURATIONS: [], GIFT_LEVELS: [], remoteNitroEnabled: () => false, shouldReplaceSharedBadges: data => data.replaceRealBadges === true,
+    addRenderedBadge: (rows, id, description, icon) => rows.push({ id, description, icon }) });
+const remoteRows = profileHost.sharedBadgeObjects([{ id: 'partner' }], 'other', { badgeFlags: 1, boostMonths: -1, giftLevel: -1, replaceRealBadges: true });
+assert.deepEqual(result(remoteRows).map(row => row.id), ['cloudcord-shared-staff']);
+const retainedRows = profileHost.sharedBadgeObjects([{ id: 'partner' }], 'other', { badgeFlags: 1, boostMonths: -1, giftLevel: -1 });
+assert.deepEqual(result(retainedRows).map(row => row.id), ['cloudcord-shared-staff', 'partner']);
 assert.ok(!mobile.includes('label="Move Left"'));
 assert.match(mobile, /accessibilityLabel=\{direction === -1 \? "Move badge up"/);
 // Desktop publish must work in Discord's isolated renderer without localStorage.

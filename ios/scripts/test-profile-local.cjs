@@ -30,6 +30,8 @@ vm.runInContext(esbuild.transformSync(serializer, { loader: 'ts' }).code, serial
 const desktopPayload = JSON.parse(JSON.stringify(serializerContext.toSharedProfile({ username: 'desktop_name', globalName: 'Desktop Name' })));
 const mobileHelper = page.slice(page.indexOf('function decorateSharedProfile('), page.indexOf('function clearCache('));
 const mobileContext = vm.createContext({ setOwnValue: (obj, key, value) => { obj[key] = value; }, cloneSharedUser: (user, data) => ({ ...user, username: data.username, globalName: data.globalName }), shouldReplaceSharedBadges: () => false, remoteNitroEnabled: () => false, profileDate: () => null });
+Object.assign(mobileContext, { NITRO_DURATIONS: [], GIFT_LEVELS: [], BADGES: [], addRenderedBadge: () => {}, applyBadgeLayout: rows => rows, badgeLayoutKey: badge => badge.id });
+vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function sharedBadgeObjects('), page.indexOf('function cloneObject(')), { loader: 'ts' }).code, mobileContext);
 vm.runInContext(esbuild.transformSync(mobileHelper, { loader: 'ts' }).code, mobileContext);
 const decorationHelper = page.slice(page.indexOf('function decorationAsset('), page.indexOf('async function findDecorationCatalog('));
 mobileContext.URL = URL;

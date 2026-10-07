@@ -1228,8 +1228,8 @@ jobs:
                   setOwnValue(cloned, "publicFlags", sharedFlags);
                   setOwnValue(cloned, "public_flags", sharedFlags);
                   setOwnValue(cloned, "flags", sharedFlags);
-                  setOwnValue(cloned, "badges", []);
-                  setOwnValue(cloned, "profileBadges", []);
+                  setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userIdFromProfile(original), data));
+                  setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userIdFromProfile(original), data));
                   setOwnValue(cloned, "premiumSince", null);
                   setOwnValue(cloned, "premiumGuildSince", null);
                   setOwnValue(cloned, "legacyUsername", null);
@@ -1247,6 +1247,8 @@ jobs:
           function decorateSharedProfile(original: any, userId: string, data: any, depth = 0) {
               if (!original || typeof original !== "object" || !data) return original;
               const cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+              setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userId, data));
+              setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userId, data));
               applyAvatarDecoration(cloned, data);
               if (cloned.user) setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
               // Mobile profile hooks return nested snapshots. Updating only the
@@ -1545,7 +1547,35 @@ jobs:
                       result.push(badge);
                   }
               }
-              return forEditor ? result : applyBadgeLayout(result, { ...preview, badgeOrder: preview.badgeOrder.length ? preview.badgeOrder : defaultBadgeOrder(Array.isArray(existing) ? existing : []) });
+              for (const badge of result) {
+                  if (badge.iconSrc) {
+                      badge.icon = badge.iconSrc;
+                      badgeRenderProps.set(badge.id, { id: badge.id, source: badge.source, label: badge.description });
+                  }
+              }
+              return forEditor ? result : applyBadgeLayout(result, { ...preview, badgeOrder: preview.badgeOrder?.length ? preview.badgeOrder : defaultBadgeOrder(Array.isArray(existing) ? existing : []) });
+          }
+
+          function userIdFromProfile(profile: any): string {
+              return String(profile?.userId || profile?.id || profile?.user?.id || "");
+          }
+
+          function sharedBadgeObjects(existing: any, userId: string, data: any) {
+              const rows: any[] = [];
+              const nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
+              if (remoteNitroEnabled(data)) addRenderedBadge(rows, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
+              if (Number(data.boostMonths) >= 0) {
+                  const months = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
+                  addRenderedBadge(rows, "cloudcord-shared-boost", serverBoostingLabel(months), boosterIcon(months));
+              }
+              const gift = GIFT_LEVELS[Number(data.giftLevel)];
+              if (gift) addRenderedBadge(rows, "cloudcord-shared-gifting", gift.name, gift.icon);
+              const ids = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
+              for (const [id, description, flag, icon, customId] of BADGES) {
+                  if (customId ? ids.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0) addRenderedBadge(rows, `cloudcord-shared-${customId || id}`, description, icon);
+              }
+              if (!shouldReplaceSharedBadges(data) && Array.isArray(existing)) rows.push(...existing.filter(badge => !rows.some(row => badgeLayoutKey(row) === badgeLayoutKey(badge))));
+              return applyBadgeLayout(rows, data);
           }
 
           function cloneObject(original: any, kind: "user" | "profile") {
