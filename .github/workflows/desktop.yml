@@ -97,6 +97,7 @@ jobs:
           node scripts/test-settings-focus.cjs
           node scripts/test-plugin-text-inputs.cjs
           node scripts/test-settings-load.cjs
+          node scripts/test-settings-storage.cjs
 
       - name: Typecheck
         working-directory: desktop/client

@@ -11,6 +11,7 @@ import CustomizationTab from "../customization";
 import { gitHashShort } from "@shared/vencordUserAgent";
 import { copyWithToast } from "@utils/discord";
 import { Margins } from "@utils/margins";
+import { localStorage } from "@utils/localStorage";
 import { React, useState } from "@webpack/common";
 
 type Capture = { id: number; feature: string; method: string; target: string; queryKeys: string[]; status: number; ok: boolean; durationMs: number; at: string; error?: string; };
@@ -62,7 +63,7 @@ function CloudCordDiagnostics() {
     const [, refresh] = useState(0);
     const toggle = () => {
         const next = !enabled;
-        localStorage.setItem(CAPTURE_KEY, next ? "1" : "0");
+        try { localStorage.setItem(CAPTURE_KEY, next ? "1" : "0"); } catch { return; }
         setEnabled(next);
     };
     const copy = () => copyWithToast(JSON.stringify({

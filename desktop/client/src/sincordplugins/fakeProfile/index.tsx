@@ -15,6 +15,7 @@ import { applyBadgeLayout, badgeLayoutKey, defaultBadgeOrder, moveBadgeOrder } f
 import { addContextMenuPatch, NavContextMenuPatchCallback, removeContextMenuPatch } from "@api/ContextMenu";
 import { addHeaderBarButton, HeaderBarButton, removeHeaderBarButton } from "@api/HeaderBar";
 import { DataStore } from "@api/index";
+import { localStorage } from "@utils/localStorage";
 import { ModalContent as _ModalContent, ModalFooter as _ModalFooter, ModalHeader as _ModalHeader, ModalRoot as _ModalRoot, openModal } from "@utils/modal";
 
 const ModalRoot = _ModalRoot as any;

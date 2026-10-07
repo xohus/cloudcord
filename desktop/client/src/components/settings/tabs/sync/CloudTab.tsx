@@ -18,7 +18,7 @@
 
 import { useSettings } from "@api/Settings";
 import { authorizeCloud, deauthorizeCloud } from "@api/SettingsSync/cloudSetup";
-import { deleteCloudSettings, eraseAllCloudData, getCloudSettings, putCloudSettings } from "@api/SettingsSync/cloudSync";
+import { deleteCloudSettings, eraseAllCloudData, getCloudSettings, getCloudSyncDirection, putCloudSettings, setCloudSyncDirection } from "@api/SettingsSync/cloudSync";
 import { Button } from "@components/Button";
 import { Divider } from "@components/Divider";
 import { Flex } from "@components/Flex";
@@ -64,7 +64,7 @@ function ProviderLabel({ label, value }: { label: string; value: string; }) {
     );
 }
 
-const syncDirectionOptions = [
+const syncDirectionOptions: Array<{ label: string; value: "both" | "push" | "pull" | "manual"; }> = [
     { label: "Two-way sync (changes go both directions)", value: "both" },
     { label: "This device is the source (upload only)", value: "push" },
     { label: "The cloud is the source (download only)", value: "pull" },
@@ -178,9 +178,9 @@ function CloudTab() {
 
             <Select
                 options={syncDirectionOptions}
-                isSelected={v => v === (localStorage.Vencord_cloudSyncDirection ?? "both")}
+                isSelected={v => v === getCloudSyncDirection()}
                 select={v => {
-                    localStorage.Vencord_cloudSyncDirection = v;
+                    setCloudSyncDirection(v);
                     forceUpdate();
                 }}
                 serialize={v => v}
