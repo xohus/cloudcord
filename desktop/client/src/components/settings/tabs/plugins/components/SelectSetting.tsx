@@ -29,13 +29,13 @@ export function SelectSetting({ setting, pluginSettings, definedSettings, onChan
     const [error, setError] = useState<string | null>(null);
 
     function handleChange(newValue: any) {
-        const isValid = setting.isValid?.call(definedSettings, newValue) ?? true;
-
         setState(newValue);
-        setError(resolveError(isValid));
-
-        if (isValid === true) {
-            onChange(newValue);
+        try {
+            const isValid = setting.isValid?.call(definedSettings, newValue) ?? true;
+            setError(resolveError(isValid));
+            if (isValid === true) onChange(newValue);
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "This value could not be saved.");
         }
     }
 

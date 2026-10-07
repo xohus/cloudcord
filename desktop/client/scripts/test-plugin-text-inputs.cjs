@@ -6,7 +6,7 @@ function mount(name, setting) {
     let count = 0;
     const states = [], saved = [];
     const React = { createElement: (type, props, ...children) => ({ type, props: { ...props, children } }) };
-    const context = vm.createContext({ Error, React, TextInput: 'input', TextArea: 'textarea', SettingsSection: 'section',
+    const context = vm.createContext({ Error, React, Switch: 'switch', Select: 'select', Slider: 'slider', TextInput: 'input', TextArea: 'textarea', SettingsSection: 'section',
         OptionType: { NUMBER: 1, BIGINT: 2 }, isSettingDisabled: () => false, resolveError: value => value === true ? null : String(value),
         useState: initial => { const index = count++; states[index] = initial; return [initial, value => { states[index] = value; }]; } });
     const source = fs.readFileSync(`src/components/settings/tabs/plugins/components/${name}.tsx`, 'utf8').replace(/^import .*;\r?\n/gm, '').replace('export function ', 'function ');
@@ -28,4 +28,10 @@ assert.doesNotThrow(() => text.input.props.onChange('typing works'));
 assert.equal(text.states[0], 'typing works');
 assert.equal(text.states[1], 'Invalid draft');
 assert.equal(text.saved.length, 0);
+for (const [name, prop, value] of [['BooleanSetting', 'onChange', true], ['SelectSetting', 'select', 'value'], ['SliderSetting', 'onValueChange', 5]]) {
+    const setting = mount(name, { markers: [0, 10], options: [{ value: 'value' }], isValid() { throw new Error('Invalid draft'); } });
+    assert.doesNotThrow(() => setting.input.props[prop](value));
+    assert.equal(setting.saved.length, 0);
+    assert.equal(setting.states.at(-1), 'Invalid draft');
+}
 console.log('PASS: actual plugin input handlers preserve drafts, reject invalid values and contain validator errors');

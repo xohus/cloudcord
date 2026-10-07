@@ -28,12 +28,12 @@ export function SliderSetting({ setting, pluginSettings, definedSettings, id, on
     const [error, setError] = useState<string | null>(null);
 
     function handleChange(newValue: number): void {
-        const isValid = setting.isValid?.call(definedSettings, newValue) ?? true;
-
-        setError(resolveError(isValid));
-
-        if (isValid === true) {
-            onChange(newValue);
+        try {
+            const isValid = setting.isValid?.call(definedSettings, newValue) ?? true;
+            setError(resolveError(isValid));
+            if (isValid === true) onChange(newValue);
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "This value could not be saved.");
         }
     }
 
