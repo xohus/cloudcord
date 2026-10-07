@@ -19,6 +19,7 @@
 import "./fixDiscordBadgePadding.css";
 
 import { _getBadges, BadgePosition, BadgeUserArgs, ProfileBadge } from "@api/Badges";
+import { applyBadgeLayout } from "@api/BadgeLayout";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { openContributorModal } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
@@ -170,6 +171,13 @@ export default definePlugin({
                 match: /getBadges\(\)\{.{0,100}?return\[/,
                 replace: "$&...$self.getBadges(this),"
             }
+        },
+        {
+            find: "getLegacyUsername(){",
+            replacement: {
+                match: /getBadges\(\)\{/,
+                replace: "getBadges(){return $self.applyBadgeLayout(this,this.cloudcordUnorderedBadges())}cloudcordUnorderedBadges(){"
+            }
         }
     ],
 
@@ -213,6 +221,18 @@ export default definePlugin({
         } catch (e) {
             new Logger("BadgeAPI#getBadges").error(e);
             return [];
+        }
+    },
+
+    applyBadgeLayout(profile: { userId: string; }, badges: ProfileBadge[]) {
+        try {
+            const plugin = Plugins.ProfileSpoofer as typeof Plugins.ProfileSpoofer & {
+                getBadgeLayout?(userId: string): { hiddenBadgeIds?: string[]; badgeOrder?: string[] } | null | undefined;
+            };
+            return plugin?.started ? applyBadgeLayout(badges, plugin.getBadgeLayout?.(profile.userId)) : badges;
+        } catch (error) {
+            new Logger("BadgeAPI#applyBadgeLayout").error(error);
+            return badges;
         }
     },
 

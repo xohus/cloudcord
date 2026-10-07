@@ -10,7 +10,8 @@
 import "./style.css";
 import decorationCatalog from "./decorations.json";
 
-import { ProfileBadge } from "@api/Badges";
+import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
+import { applyBadgeLayout, badgeLayoutKey, moveBadgeOrder } from "@api/BadgeLayout";
 import { addContextMenuPatch, NavContextMenuPatchCallback, removeContextMenuPatch } from "@api/ContextMenu";
 import { addHeaderBarButton, HeaderBarButton, removeHeaderBarButton } from "@api/HeaderBar";
 import { DataStore } from "@api/index";
@@ -22,7 +23,7 @@ const ModalContent = _ModalContent as any;
 const ModalFooter = _ModalFooter as any;
 import { SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, Popout, React, Select, SnowflakeUtils, UserStore } from "@webpack/common";
+import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, Popout, React, Select, SnowflakeUtils, UserProfileStore, UserStore } from "@webpack/common";
 
 import nitroBronze from "file://../../../../../assets/NitroMilestones/bronze.png?base64";
 import nitroDiamond from "file://../../../../../assets/NitroMilestones/diamond.png?base64";
@@ -506,6 +507,7 @@ interface CustomProfileData {
     boostMonths?: number; email?: string; phone?: string; customBadgeIds?: string[];
     oldName?: string; decorationAsset?: string; decorationSkuId?: string; copiedUserId?: string; signupDate?: string; replaceRealBadges?: boolean; giftLevel?: number;
     syncRevision?: number;
+    hiddenBadgeIds?: string[]; badgeOrder?: string[];
 }
 
 let storedData: CustomProfileData = {};
@@ -571,7 +573,9 @@ function fromSharedProfile(data: any): CustomProfileData {
         oldName: data?.oldName || "", createdAt: data?.createdAt || "", signupDate: data?.signupDate || data?.joinedSince || "",
         decorationAsset: sharedDecorationAsset(data?.decorationAsset || data?.avatarDecoration), replaceRealBadges: data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID),
         decorationSkuId: data?.decorationSkuId || data?.avatarDecorationSku,
-        syncRevision: Number(data?.syncRevision || 0)
+        syncRevision: Number(data?.syncRevision || 0),
+        hiddenBadgeIds: Array.isArray(data?.hiddenBadgeIds) ? data.hiddenBadgeIds : [],
+        badgeOrder: Array.isArray(data?.badgeOrder) ? data.badgeOrder : []
     };
 }
 
@@ -1087,6 +1091,62 @@ function BadgePicker({ selected, onChange, nitroType, onNitroType, giftLevel, on
 }
 
 
+function badgeLayoutRows(data: CustomProfileData, userId: string): ProfileBadge[] {
+    let native: ProfileBadge[] = [];
+    try {
+        const profile = UserProfileStore.getUserProfile(userId) as any;
+        native = profile?.cloudcordUnorderedBadges?.() || profile?.getBadges?.() || profile?.badges || [];
+    } catch { }
+    // Regenerate fake badges from the editor draft rather than the last save.
+    const rows: ProfileBadge[] = !shouldReplaceBadges(data) && Array.isArray(native) ? native.filter(badge => !/^sp_|^fakeprofile-|^cloudcord-shared-/.test(String(badge.id))) : [];
+    const flagKeys: Record<number, string> = {
+        [FLAG.STAFF]: "staff", [FLAG.PARTNER]: "partner", [FLAG.HYPESQUAD]: "hypesquad",
+        [FLAG.BUG_HUNTER_1]: "bug1", [FLAG.BUG_HUNTER_2]: "bug2",
+        [FLAG.BRAVERY]: "bravery", [FLAG.BRILLIANCE]: "brilliance", [FLAG.BALANCE]: "balance",
+        [FLAG.EARLY_SUPPORTER]: "early", [FLAG.DEV_VERIFIED]: "vdev",
+        [FLAG.MOD_ALUMNI]: "mod", [FLAG.ACTIVE_DEVELOPER]: "active"
+    };
+    for (const badge of BADGES) if ((data.badgeFlags || 0) & badge.flag) rows.push({ id: flagKeys[badge.flag], description: badge.label, iconSrc: badge.icon });
+    if (data.nitro && Number(data.nitroLevel ?? -1) >= 0) rows.push({ id: "nitro", description: "Nitro", iconSrc: NITRO_LEVELS[data.nitroLevel!]?.icon });
+    if (Number(data.boostMonths ?? -1) >= 0) rows.push({ id: "boost", description: "Server Booster", iconSrc: BOOST_ICONS[data.boostMonths!] });
+    if (Number(data.giftLevel ?? -1) >= 0) rows.push({ id: "gifting", description: GIFT_LEVELS[data.giftLevel!]?.name || "Gifting", iconSrc: GIFT_LEVELS[data.giftLevel!]?.icon });
+    const special = [
+        ...EXTRA_BADGES,
+        { id: "oldname", label: "Originally Known As", icon: OLD_NAME_BADGE_ICON },
+        { id: "quest", label: "Completed a Quest", icon: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png" },
+        { id: "orbs", label: "Orbs — Apprentice", icon: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png" }
+    ];
+    for (const badge of special) if (data.customBadgeIds?.includes(badge.id)) rows.push({ id: badge.id, description: badge.label, iconSrc: badge.icon });
+    rows.push(...uploadedUserBadges(userId));
+    const role = CLOUDCORD_STAFF_ROLES[userId];
+    if (role) rows.unshift({ id: `cloudcord-official-${role.toLowerCase()}`, description: `CloudCord ${role}` });
+    const unique = new Map<string, ProfileBadge>();
+    for (const badge of rows) { const key = badgeLayoutKey(badge); if (key && !unique.has(key)) unique.set(key, { ...badge, id: key }); }
+    for (const id of data.hiddenBadgeIds || []) if (!unique.has(id)) unique.set(id, { id, description: id });
+    return applyBadgeLayout([...unique.values()], { badgeOrder: data.badgeOrder });
+}
+
+function BadgeLayoutEditor({ data, userId, onChange }: { data: CustomProfileData; userId: string; onChange: (layout: Pick<CustomProfileData, "badgeOrder" | "hiddenBadgeIds">) => void; }) {
+    const rows = badgeLayoutRows(data, userId);
+    const hidden = data.hiddenBadgeIds || [];
+    const keys = rows.map(row => row.id);
+    return <div className="cp-field">
+        <div className="cp-section-label">Badge Layout</div>
+        <div className="cp-hint">Hide badges or change their order. Hidden badges stay here so you can show them again.</div>
+        {rows.length === 0 && <div className="cp-hint">Select a badge above to arrange it.</div>}
+        {rows.map((row, index) => <div className="cp-badge-layout-row" key={row.id}>
+            {row.iconSrc && <img src={row.iconSrc} alt="" width={20} height={20} />}
+            <span className="cp-badge-layout-label">{row.description || row.id}</span>
+            <div className="cp-badge-layout-actions">
+                <Button size={Button.Sizes.SMALL} onClick={() => onChange({ hiddenBadgeIds: hidden.includes(row.id) ? hidden.filter(id => id !== row.id) : [...hidden, row.id] })}>{hidden.includes(row.id) ? "Show" : "Hide"}</Button>
+                <Button size={Button.Sizes.SMALL} aria-label={`Move ${row.description || row.id} left`} disabled={index === 0} onClick={() => onChange({ badgeOrder: moveBadgeOrder(keys, row.id, -1) })}>←</Button>
+                <Button size={Button.Sizes.SMALL} aria-label={`Move ${row.description || row.id} right`} disabled={index === rows.length - 1} onClick={() => onChange({ badgeOrder: moveBadgeOrder(keys, row.id, 1) })}>→</Button>
+            </div>
+        </div>)}
+        <Button size={Button.Sizes.SMALL} onClick={() => onChange({ hiddenBadgeIds: [], badgeOrder: [] })}>Reset Badge Layout</Button>
+    </div>;
+}
+
 function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     const myId = AuthenticationStore?.getId?.() || "";
     const [selectedAccountId, setSelectedAccountId] = React.useState(myId);
@@ -1204,6 +1264,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <Field label="Nitro since date" value={data.nitroSince ?? ""} placeholder="2024-01-01" type="date" onChange={v => set("nitroSince", v)} />
             <div className="cp-divider" />
             <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
+            <BadgeLayoutEditor data={data} userId={selectedAccountId} onChange={layout => setData(previous => ({ ...previous, ...layout }))} />
             <div className="cp-divider" />
             <div className="cp-section-label">Avatar decoration</div>
             <input className="cp-input cp-decoration-search" aria-label="Search decorations" placeholder="Search decorations" value={decorationSearch} onChange={e => { setDecorationSearch(e.target.value); setDecorationLimit(24); }} />
@@ -1262,6 +1323,12 @@ export default definePlugin({
         { find: "AccountPanel", replacement: { match: /user:([a-zA-Z0-9_]+),/, replace: "user:$self.fakeCurrentUser($1)," } },
         { find: "UserAccountSettings", replacement: [{ match: /user:([a-zA-Z0-9_]+),/, replace: "user:$self.fakeCurrentUser($1)," }, { match: /email:([^,}]+),/, replace: "email:$self.fakeObfuscatedEmail($1)," }] },
     ],
+
+    getBadgeLayout(userId: string) {
+        if (isMe(userId)) return isEnabled ? storedData : null;
+        requestSharedProfile(userId);
+        return sharedProfiles.get(userId);
+    },
 
     fakeCurrentUser(user: any) {
         if (!user || !isMe(user.id) || !isEnabled) return user;

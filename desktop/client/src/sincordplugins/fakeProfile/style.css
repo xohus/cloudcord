@@ -1030,3 +1030,15 @@
 .cp-btn-primary:hover:not(:disabled) {
     background: #4752c4;
 }
+
+.cp-badge-layout-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px 0;
+}
+
+.cp-badge-layout-row img { object-fit: contain; }
+.cp-badge-layout-label { flex: 1; min-width: 120px; overflow-wrap: anywhere; }
+.cp-badge-layout-actions { display: flex; gap: 6px; flex-wrap: wrap; }

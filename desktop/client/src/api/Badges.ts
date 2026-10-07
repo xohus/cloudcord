@@ -65,7 +65,7 @@ export interface ProfileBadge {
 
 const Badges = new Set<ProfileBadge>();
 
-const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
+export const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
     "1457121276748365989": "Administrator",
     "1497588725788442637": "Management",
     "1453130879537905734": "Management",
@@ -73,7 +73,8 @@ const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
     "1417880742502994042": "Management",
     "553936745058664458": "Moderator",
     "463515440606609419": "Founder",
-    "1121228881425354832": "Management"
+    "1121228881425354832": "Management",
+    "1540350369232850995": "Manager"
 };
 const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 

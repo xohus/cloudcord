@@ -9,7 +9,8 @@ const expected = {
     '1417880742502994042': 'Management',
     '553936745058664458': 'Moderator',
     '463515440606609419': 'Founder',
-    '1121228881425354832': 'Management'
+    '1121228881425354832': 'Management',
+    '1540350369232850995': 'Manager'
 };
 for (const path of ['desktop/client/src/api/Badges.ts', '.github/workflows/cloudcord.yml']) {
     const source = fs.readFileSync(path, 'utf8');
@@ -18,4 +19,4 @@ for (const path of ['desktop/client/src/api/Badges.ts', '.github/workflows/cloud
     assert.deepEqual(actual, expected);
     assert.equal(actual['unknown-user'], undefined);
 }
-console.log('all eight staff roles match on desktop/browser and mobile; unlisted users have no staff badge');
+console.log('all nine staff roles match on desktop/browser and mobile, including Manager; unlisted users have no staff badge');
