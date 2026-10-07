@@ -6,6 +6,7 @@
 
     <string name="msg_cleared_cache">Cache cleared successfully</string>
     <string name="msg_load_fail">Failed to load commits</string>
+    <string name="msg_target_unavailable">Unsupported target. Choose Stable or a valid Discord version in Settings.</string>
     <string name="msg_coming_soon">Coming soon</string>
     <string name="msg_invalid_version">Invalid Discord version</string>
     <string name="msg_seven_left">7 more taps</string>

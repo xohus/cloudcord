@@ -111,6 +111,9 @@ jobs:
           cp "$module_apk" android/app/src/main/assets/cloudcord-module.apk
           test -s android/app/src/main/assets/cloudcord-module.apk
 
+      - name: Check Android network regression guards
+        run: node android/scripts/test-network-regressions.cjs
+
       - name: Build CloudCord Manager
         run: |
           set -euo pipefail

@@ -22,8 +22,6 @@ import { React, TextInput, useState } from "@webpack/common";
 
 import { resolveError, SettingProps, SettingsSection } from "./Common";
 
-const MAX_SAFE_NUMBER = BigInt(Number.MAX_SAFE_INTEGER);
-
 export function NumberSetting({ setting, pluginSettings, definedSettings, id, onChange }: SettingProps<PluginSettingNumberDef | PluginSettingBigIntDef>) {
     function serialize(value: any) {
         if (setting.type === OptionType.BIGINT) return BigInt(value);
@@ -34,18 +32,18 @@ export function NumberSetting({ setting, pluginSettings, definedSettings, id, on
     const [error, setError] = useState<string | null>(null);
 
     function handleChange(newValue: any) {
-        const isValid = setting.isValid?.call(definedSettings, newValue) ?? true;
-
-        setError(resolveError(isValid));
-
-        if (isValid === true) {
-            onChange(serialize(newValue));
-        }
-
-        if (setting.type === OptionType.NUMBER && BigInt(newValue) >= MAX_SAFE_NUMBER) {
-            setState(`${Number.MAX_SAFE_INTEGER}`);
-        } else {
-            setState(newValue);
+        const draft = String(newValue);
+        setState(draft);
+        if (!draft.trim() || draft === "-" || draft === "+") { setError(null); return; }
+        try {
+            const parsed = serialize(draft);
+            if (typeof parsed === "number" && !Number.isFinite(parsed)) { setError("Enter a valid number."); return; }
+            if (typeof parsed === "number" && Math.abs(parsed) > Number.MAX_SAFE_INTEGER) { setError("Number exceeds the supported range."); return; }
+            const isValid = setting.isValid?.call(definedSettings, draft) ?? true;
+            setError(resolveError(isValid));
+            if (isValid === true) onChange(parsed);
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "Enter a valid number.");
         }
     }
 

@@ -64,7 +64,7 @@ class HomeScreen : Screen {
         val prefs: PreferenceManager = koinInject()
         val viewModel: HomeViewModel = koinScreenModel()
 
-        val currentVersion = remember {
+        val currentVersion = remember(viewModel.installManager.current?.longVersionCode) {
             DiscordVersion.fromVersionCode(viewModel.installManager.current?.longVersionCode.toString())
         }
 
@@ -112,14 +112,16 @@ class HomeScreen : Screen {
                     prefs = prefs,
                     latestVersion = latestVersion,
                     currentVersion = currentVersion,
+                    targetLoaded = viewModel.discordVersions != null,
                     onInstall = {
-                        navigator.navigate(InstallerScreen(latestVersion!!))
+                        latestVersion?.let { navigator.navigate(InstallerScreen(it)) }
                     }
                 )
 
                 StatusSection(
                     currentVersion = currentVersion,
                     latestVersion = latestVersion,
+                    targetLoaded = viewModel.discordVersions != null,
                     targetLabel = if (prefs.discordVersion.isNotBlank()) R.string.version_target else R.string.version_latest
                 )
 
@@ -156,6 +158,7 @@ class HomeScreen : Screen {
         prefs: PreferenceManager,
         latestVersion: DiscordVersion?,
         currentVersion: DiscordVersion?,
+        targetLoaded: Boolean,
         onInstall: () -> Unit
     ) {
         ElevatedCard(
@@ -199,7 +202,7 @@ class HomeScreen : Screen {
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     val label = when {
-                        latestVersion == null -> R.string.msg_loading
+                        latestVersion == null -> if (targetLoaded) R.string.msg_target_unavailable else R.string.msg_loading
                         currentVersion == null -> R.string.action_install_cloudcord
                         currentVersion == latestVersion -> R.string.action_reinstall_cloudcord
                         latestVersion > currentVersion -> R.string.action_update_cloudcord
@@ -223,6 +226,7 @@ class HomeScreen : Screen {
     private fun StatusSection(
         currentVersion: DiscordVersion?,
         latestVersion: DiscordVersion?,
+        targetLoaded: Boolean,
         targetLabel: Int
     ) {
         ElevatedCard(
@@ -248,7 +252,7 @@ class HomeScreen : Screen {
                     )
                     VersionTile(
                         label = stringResource(targetLabel, ""),
-                        value = latestVersion?.toString() ?: stringResource(R.string.msg_loading),
+                        value = latestVersion?.toString() ?: stringResource(if (targetLoaded) R.string.msg_target_unavailable else R.string.msg_loading),
                         modifier = Modifier.weight(1f)
                     )
                 }

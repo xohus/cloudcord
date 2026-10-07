@@ -91,6 +91,12 @@ jobs:
         working-directory: desktop/client
         run: node scripts/test-runtime-userplugins.cjs
 
+      - name: Check settings focus and plugin input handling
+        working-directory: desktop/client
+        run: |
+          node scripts/test-settings-focus.cjs
+          node scripts/test-plugin-text-inputs.cjs
+
       - name: Typecheck
         working-directory: desktop/client
         shell: bash

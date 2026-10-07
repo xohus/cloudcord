@@ -23,17 +23,17 @@ import { React, TextArea, TextInput, useState } from "@webpack/common";
 import { resolveError, SettingProps, SettingsSection } from "./Common";
 
 export function TextSetting({ setting, pluginSettings, definedSettings, id, onChange }: SettingProps<PluginSettingStringDef>) {
-    const [state, setState] = useState(pluginSettings[id] ?? setting.default ?? null);
+    const [state, setState] = useState(pluginSettings[id] ?? setting.default ?? "");
     const [error, setError] = useState<string | null>(null);
 
     function handleChange(newValue: string) {
-        const isValid = setting.isValid?.call(definedSettings, newValue) ?? true;
-
         setState(newValue);
-        setError(resolveError(isValid));
-
-        if (isValid === true) {
-            onChange(newValue);
+        try {
+            const isValid = setting.isValid?.call(definedSettings, newValue) ?? true;
+            setError(resolveError(isValid));
+            if (isValid === true) onChange(newValue);
+        } catch (error) {
+            setError(error instanceof Error ? error.message : "This value could not be saved.");
         }
     }
 

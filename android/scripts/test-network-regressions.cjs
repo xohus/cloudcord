@@ -12,4 +12,8 @@ assert.ok(pager.includes('(params.key ?: 1).coerceAtLeast(1)'));
 assert.ok(pager.includes('prevKey = if (page > 1) page - 1 else null'));
 assert.ok(pager.includes('page.prevKey?.plus(1) ?: page.nextKey?.minus(1)'));
 assert.equal((http.match(/catch \(e: CancellationException\)/g) || []).length, 2);
+const home = fs.readFileSync(root + 'ui/screen/home/HomeScreen.kt', 'utf8');
+assert.ok(home.includes('latestVersion?.let { navigator.navigate(InstallerScreen(it)) }'));
+assert.ok(home.includes('if (targetLoaded) R.string.msg_target_unavailable'));
+assert.ok(!home.includes('latestVersion!!'));
 console.log('PASS: source guards for bounded fallback, one-based paging and cancellation propagation (not an Android compilation test)');
