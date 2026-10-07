@@ -11670,6 +11670,41 @@
         redraw();
       }
     };
+    var chooseExperimentalBadge = (group) => {
+      var key = `FakeProfileBadge_${group.id}`;
+      var selectTier = (id) => {
+        var selected = {
+          ...preview.selectedBadges
+        };
+        for (var tier of group.tiers)
+          delete selected[tier.id];
+        if (id)
+          selected[id] = true;
+        update("selectedBadges", selected, true);
+        simpleSheets.hideActionSheet?.(key);
+      };
+      try {
+        simpleSheets.showSimpleActionSheet({
+          key,
+          header: {
+            title: group.label,
+            onClose: () => simpleSheets.hideActionSheet?.(key)
+          },
+          options: [
+            {
+              label: "None",
+              onPress: () => selectTier("")
+            },
+            ...group.tiers.map((tier) => ({
+              label: `${tier.name} \xB7 ${tier.milestone}`,
+              onPress: () => selectTier(tier.id)
+            }))
+          ]
+        });
+      } catch (error) {
+        import_react_native18.Alert.alert("Couldn't open badges", error?.message || "Try opening the editor again.");
+      }
+    };
     var chooseGiftBadge = () => {
       var key = "FakeProfileGiftBadge";
       try {
@@ -12220,7 +12255,7 @@
                   value: preview.replaceBadges,
                   onPress: () => update("replaceBadges", !preview.replaceBadges, true)
                 }),
-                BADGES.map(([id, label]) => /* @__PURE__ */ jsx(ToggleRow, {
+                BADGES.filter(([id]) => !EXPERIMENTAL_BADGE_GROUPS.some((group) => group.tiers.some((tier) => tier.id === id))).map(([id, label]) => /* @__PURE__ */ jsx(ToggleRow, {
                   label,
                   value: !!preview.selectedBadges?.[id],
                   onPress: () => update("selectedBadges", {
@@ -12228,6 +12263,11 @@
                     [id]: !preview.selectedBadges?.[id]
                   }, true)
                 }, id)),
+                EXPERIMENTAL_BADGE_GROUPS.map((group) => /* @__PURE__ */ jsx(ActionButton, {
+                  label: `${group.label}: ${group.tiers.find((tier) => preview.selectedBadges?.[tier.id])?.name || "None"}`,
+                  muted: true,
+                  onPress: () => chooseExperimentalBadge(group)
+                }, group.id)),
                 preview.selectedBadges?.oldname ? /* @__PURE__ */ jsxs(import_react_native18.View, {
                   style: {
                     gap: 8,
@@ -12331,7 +12371,7 @@
       })
     });
   }
-  var import_react5, import_react_native18, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, identityRefreshers, identityRenderers, PROFILE_COLORS;
+  var import_react5, import_react_native18, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, identityRefreshers, identityRenderers, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12350,6 +12390,294 @@
       init_components();
       import_react5 = __toESM(require_react());
       import_react_native18 = __toESM(require_react_native());
+      EXPERIMENTAL_BADGE_GROUPS = [
+        {
+          "id": "account_age",
+          "label": "Account Age",
+          "tiers": [
+            {
+              "id": "account_age_1",
+              "name": "Seed",
+              "milestone": "1 years",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/account_age_seed.png"
+            },
+            {
+              "id": "account_age_2",
+              "name": "Sprout",
+              "milestone": "2 years",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/account_age_sprout.png"
+            },
+            {
+              "id": "account_age_3",
+              "name": "Bud",
+              "milestone": "3 years",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/account_age_bud.png"
+            },
+            {
+              "id": "account_age_4",
+              "name": "Sapling",
+              "milestone": "4 years",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/account_age_sapling.png"
+            },
+            {
+              "id": "account_age_5",
+              "name": "Blossom",
+              "milestone": "5 years",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/account_age_blossom.png"
+            },
+            {
+              "id": "account_age_6",
+              "name": "Redwood",
+              "milestone": "6 years",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/account_age_redwood.png"
+            },
+            {
+              "id": "account_age_7",
+              "name": "Sequoia",
+              "milestone": "7 years",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/account_age_sequoia.png"
+            },
+            {
+              "id": "account_age_8",
+              "name": "Bristlecone",
+              "milestone": "8 years",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/account_age_bristlecone.png"
+            },
+            {
+              "id": "account_age_9",
+              "name": "Stromatolite",
+              "milestone": "9 years",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/account_age_stromatolite.png"
+            },
+            {
+              "id": "account_age_10",
+              "name": "Primordial",
+              "milestone": "10+ years",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/account_age_primordial.png"
+            }
+          ]
+        },
+        {
+          "id": "streaming",
+          "label": "Streaming",
+          "tiers": [
+            {
+              "id": "streaming_1",
+              "name": "Newcomer",
+              "milestone": "1 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/streaming_newcomer.png"
+            },
+            {
+              "id": "streaming_2",
+              "name": "Fledgling",
+              "milestone": "5 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/streaming_fledgling.png"
+            },
+            {
+              "id": "streaming_3",
+              "name": "Breakout",
+              "milestone": "20 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/streaming_breakout.png"
+            },
+            {
+              "id": "streaming_4",
+              "name": "Standout",
+              "milestone": "75 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/streaming_standout.png"
+            },
+            {
+              "id": "streaming_5",
+              "name": "Trendsetter",
+              "milestone": "150 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/streaming_trendsetter.png"
+            },
+            {
+              "id": "streaming_6",
+              "name": "Headliner",
+              "milestone": "300 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/streaming_headliner.png"
+            },
+            {
+              "id": "streaming_7",
+              "name": "Star",
+              "milestone": "500 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/streaming_star.png"
+            },
+            {
+              "id": "streaming_8",
+              "name": "Sensation",
+              "milestone": "1000 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/streaming_sensation.png"
+            },
+            {
+              "id": "streaming_9",
+              "name": "Visionary",
+              "milestone": "2000 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/streaming_visionary.png"
+            },
+            {
+              "id": "streaming_10",
+              "name": "Phenomenon",
+              "milestone": "5000+ hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/streaming_phenomenon.png"
+            }
+          ]
+        },
+        {
+          "id": "game_time",
+          "label": "Game Time",
+          "tiers": [
+            {
+              "id": "game_time_1",
+              "name": "Casual",
+              "milestone": "1 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_time_casual.png"
+            },
+            {
+              "id": "game_time_2",
+              "name": "Recreational",
+              "milestone": "5 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_time_recreational.png"
+            },
+            {
+              "id": "game_time_3",
+              "name": "Dedicated",
+              "milestone": "20 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_time_dedicated.png"
+            },
+            {
+              "id": "game_time_4",
+              "name": "Committed",
+              "milestone": "75 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_time_committed.png"
+            },
+            {
+              "id": "game_time_5",
+              "name": "Serious",
+              "milestone": "150 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_time_serious.png"
+            },
+            {
+              "id": "game_time_6",
+              "name": "Devoted",
+              "milestone": "300 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_time_devoted.png"
+            },
+            {
+              "id": "game_time_7",
+              "name": "Seasoned",
+              "milestone": "500 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_time_seasoned.png"
+            },
+            {
+              "id": "game_time_8",
+              "name": "Ironclad",
+              "milestone": "1000 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_time_ironclad.png"
+            },
+            {
+              "id": "game_time_9",
+              "name": "Unshakeable",
+              "milestone": "2000 hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_time_unshakeable.png"
+            },
+            {
+              "id": "game_time_10",
+              "name": "Eternal",
+              "milestone": "5000+ hours",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_time_eternal.png"
+            }
+          ]
+        },
+        {
+          "id": "game_variety",
+          "label": "Game Variety",
+          "tiers": [
+            {
+              "id": "game_variety_1",
+              "name": "Sampler",
+              "milestone": "2 games",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_variety_sampler.png"
+            },
+            {
+              "id": "game_variety_2",
+              "name": "Dabbler",
+              "milestone": "5 games",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_variety_dabbler.png"
+            },
+            {
+              "id": "game_variety_3",
+              "name": "Enthusiast",
+              "milestone": "10 games",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_variety_enthusiast.png"
+            },
+            {
+              "id": "game_variety_4",
+              "name": "Ranger",
+              "milestone": "15 games",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_variety_ranger.png"
+            },
+            {
+              "id": "game_variety_5",
+              "name": "Explorer",
+              "milestone": "20 games",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_variety_explorer.png"
+            },
+            {
+              "id": "game_variety_6",
+              "name": "Adventurer",
+              "milestone": "30 games",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_variety_adventurer.png"
+            },
+            {
+              "id": "game_variety_7",
+              "name": "Voyager",
+              "milestone": "40 games",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_variety_voyager.png"
+            },
+            {
+              "id": "game_variety_8",
+              "name": "Maverick",
+              "milestone": "60 games",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_variety_maverick.png"
+            },
+            {
+              "id": "game_variety_9",
+              "name": "Polymath",
+              "milestone": "80 games",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_variety_polymath.png"
+            },
+            {
+              "id": "game_variety_10",
+              "name": "Universalist",
+              "milestone": "100+ games",
+              "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/game_variety_universalist.png"
+            }
+          ]
+        }
+      ];
+      EVENT_BADGES = [
+        {
+          "id": "last_meadow",
+          "name": "Last Meadow Online",
+          "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/last_meadow.png"
+        },
+        {
+          "id": "clown",
+          "name": "A Clown, for a Limited Time",
+          "icon": "https://raw.githubusercontent.com/dev-hoehle/discord-badges/b97b49091bb08175ae56a11bf4f4a42d52d12380/png/lootboxes.png"
+        }
+      ];
+      EXTRA_BADGES = [
+        ...EXPERIMENTAL_BADGE_GROUPS.flatMap((group) => group.tiers.map((tier) => ({
+          ...tier,
+          label: `${group.label} \u2014 ${tier.name} \xB7 ${tier.milestone}`
+        }))),
+        ...EVENT_BADGES.map((badge) => ({
+          ...badge,
+          label: badge.name
+        }))
+      ];
       BADGES = [
         [
           "staff",
@@ -12443,7 +12771,14 @@
           0,
           "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png",
           "orbs"
-        ]
+        ],
+        ...EXTRA_BADGES.map((badge) => [
+          badge.id,
+          badge.label,
+          0,
+          badge.icon,
+          badge.id
+        ])
       ];
       GIFT_LEVELS = [
         {
