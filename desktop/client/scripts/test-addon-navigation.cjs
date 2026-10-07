@@ -17,6 +17,21 @@ for (const [index, page] of ['plugins', 'themes', 'sync'].entries()) {
 }
 const desktop = fs.readFileSync('src/plugins/_core/settings.tsx', 'utf8');
 assert.match(desktop, /settings\.store\.diagnosticsMode === true && buildEntry\(\{\s*key: "cloudcord_diagnostics"/);
+const layoutSource = desktop.slice(desktop.indexOf('    buildLayout(originalLayoutBuilder:'), desktop.indexOf('    addControlsToDeveloperPage(layout:'));
+const layoutState = { showCloudCordSection: true, showSectionHeading: true, settingsLocation: 'top' };
+const layoutContext = vm.createContext({ settings: { store: layoutState }, LayoutTypes: { SECTION: 1 }, isTruthy: Boolean,
+    VencordTab: 'overview', BotCordTab: 'bot', FakeProfileTab: 'profile', AddonsTab: 'addons', CloudCordDiagnosticsTab: 'diagnostics',
+    InfoIcon: 'icon', RobotIcon: 'icon', UserIcon: 'icon', PluginsIcon: 'icon', MainSettingsIcon: 'icon' });
+vm.runInContext(esbuild.transformSync(`globalThis.builder = { ${layoutSource} };`, { loader: 'ts' }).code, layoutContext);
+layoutContext.builder.buildEntry = options => options;
+layoutContext.builder.addControlsToDeveloperPage = () => {};
+for (const enabled of [undefined, false, true, false]) {
+    layoutState.diagnosticsMode = enabled;
+    const layout = layoutContext.builder.buildLayout({ key: '$Root', buildLayout: () => [{ key: 'user_section' }] });
+    const entries = layout.find(node => node.key === 'cloudcord_section').buildLayout();
+    assert.equal(entries.some(node => node.key === 'cloudcord_diagnostics'), enabled === true);
+    assert.ok(entries.some(node => node.key === 'cloudcord_cloud_sync' && node.Component === 'addons'));
+}
 const mobile = fs.readFileSync('../../ios/runtime/src/core/ui/settings/index.ts', 'utf8');
 assert.match(mobile, /usePredicate: \(\) => useProxy\(settings\)\.cloudcordDiagnosticsEnabled === true/);
-console.log('PASS: all three addon navigation handlers open and return; Diagnostics visibility source guards');
+console.log('PASS: all three addon navigation handlers open and return; actual desktop sidebar follows Diagnostics off/on/off');
