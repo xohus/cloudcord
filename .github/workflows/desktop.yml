@@ -80,6 +80,10 @@ jobs:
         working-directory: desktop/client
         run: node scripts/test-staff-badge-surface.cjs
 
+      - name: Check cross-platform badge catalog and tier selection
+        # Reuse desktop's esbuild to compile the generated mobile editor too.
+        run: node ios/scripts/test-extra-badges.cjs
+
       - name: Check runtime user plugin installation
         working-directory: desktop/client
         run: node scripts/test-runtime-userplugins.cjs
