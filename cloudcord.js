@@ -10186,8 +10186,8 @@
       setOwnValue(cloned, "publicFlags", sharedFlags);
       setOwnValue(cloned, "public_flags", sharedFlags);
       setOwnValue(cloned, "flags", sharedFlags);
-      setOwnValue(cloned, "badges", []);
-      setOwnValue(cloned, "profileBadges", []);
+      setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userIdFromProfile(original), data));
+      setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userIdFromProfile(original), data));
       setOwnValue(cloned, "premiumSince", null);
       setOwnValue(cloned, "premiumGuildSince", null);
       setOwnValue(cloned, "legacyUsername", null);
@@ -10205,6 +10205,8 @@
     if (!original || typeof original !== "object" || !data)
       return original;
     var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+    setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userId, data));
+    setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userId, data));
     applyAvatarDecoration(cloned, data);
     if (cloned.user)
       setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
@@ -10642,10 +10644,54 @@
       for (var badge of existing)
         _loop1(badge);
     }
+    for (var badge1 of result) {
+      if (badge1.iconSrc) {
+        badge1.icon = badge1.iconSrc;
+        badgeRenderProps.set(badge1.id, {
+          id: badge1.id,
+          source: badge1.source,
+          label: badge1.description
+        });
+      }
+    }
     return forEditor ? result : applyBadgeLayout(result, {
       ...preview,
-      badgeOrder: preview.badgeOrder.length ? preview.badgeOrder : defaultBadgeOrder(Array.isArray(existing) ? existing : [])
+      badgeOrder: preview.badgeOrder?.length ? preview.badgeOrder : defaultBadgeOrder(Array.isArray(existing) ? existing : [])
     });
+  }
+  function userIdFromProfile(profile) {
+    return String(profile?.userId || profile?.id || profile?.user?.id || "");
+  }
+  function sharedBadgeObjects(existing, userId, data) {
+    var rows = [];
+    var nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
+    if (remoteNitroEnabled(data))
+      addRenderedBadge(rows, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
+    if (Number(data.boostMonths) >= 0) {
+      var months = [
+        1,
+        2,
+        3,
+        6,
+        9,
+        12,
+        15,
+        18,
+        24
+      ][Number(data.boostMonths)] || 0;
+      addRenderedBadge(rows, "cloudcord-shared-boost", serverBoostingLabel(months), boosterIcon(months));
+    }
+    var gift = GIFT_LEVELS[Number(data.giftLevel)];
+    if (gift)
+      addRenderedBadge(rows, "cloudcord-shared-gifting", gift.name, gift.icon);
+    var ids = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
+    for (var [id, description, flag, icon2, customId] of BADGES) {
+      if (customId ? ids.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0)
+        addRenderedBadge(rows, `cloudcord-shared-${customId || id}`, description, icon2);
+    }
+    if (!shouldReplaceSharedBadges(data) && Array.isArray(existing))
+      rows.push(...existing.filter((badge) => !rows.some((row) => badgeLayoutKey(row) === badgeLayoutKey(badge))));
+    return applyBadgeLayout(rows, data);
   }
   function cloneObject(original, kind) {
     if (!original || !preview.enabled)
