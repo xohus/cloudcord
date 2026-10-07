@@ -9618,6 +9618,85 @@
     var Component = (init_CustomBadgeBeta(), __toCommonJS(CustomBadgeBeta_exports)).default;
     return /* @__PURE__ */ jsx(Component, {});
   }
+  function badgeLayoutKey(badge) {
+    var id = String(badge?.id || "");
+    if (id.startsWith("cloudcord-official-") || id.startsWith("cloudcord-custom-"))
+      return id;
+    id = id.replace(/^(?:sp_|fakeprofile-|cloudcord-shared-)/, "");
+    var aliases = {
+      bh1: "bug1",
+      bug_hunter_level_1: "bug1",
+      bug_hunter: "bug1",
+      bh2: "bug2",
+      bug_hunter_level_2: "bug2",
+      golden_bug_hunter: "bug2",
+      dev: "vdev",
+      verified_developer: "vdev",
+      verified_bot_developer: "vdev",
+      early_verified_developer: "vdev",
+      activedev: "active",
+      active_developer: "active",
+      mod: "mod",
+      certified_moderator: "mod",
+      moderator_programs_alumni: "mod",
+      partner: "partner",
+      partnered_server_owner: "partner",
+      discord_staff: "staff",
+      hypesquad_house_1: "bravery",
+      hypesquad_online_house_1: "bravery",
+      hypesquad_house_2: "brilliance",
+      hypesquad_online_house_2: "brilliance",
+      hypesquad_house_3: "balance",
+      hypesquad_online_house_3: "balance",
+      early: "early",
+      early_supporter: "early",
+      premium_early_supporter: "early",
+      legacy_username: "oldname",
+      originally_known_as: "oldname",
+      quest_completed: "quest",
+      completed_a_quest: "quest",
+      orbs_apprentice: "orbs"
+    };
+    if (aliases[id])
+      return aliases[id];
+    if (/^(?:premium_tenure_|nitro)/.test(id) || id === "premium")
+      return "nitro";
+    if (/^(?:premium_guild_subscriber|guild_booster|boost)/.test(id))
+      return "boost";
+    if (/^(?:gifting|premium_gifting)/.test(id))
+      return "gifting";
+    return id;
+  }
+  function applyBadgeLayout(badges, layout) {
+    if (!layout)
+      return badges;
+    var hidden = new Set(Array.isArray(layout.hiddenBadgeIds) ? layout.hiddenBadgeIds.filter((id) => typeof id === "string") : []);
+    var order = Array.isArray(layout.badgeOrder) ? layout.badgeOrder.filter((id) => typeof id === "string") : [];
+    var rank = /* @__PURE__ */ new Map();
+    order.forEach((id, index) => {
+      if (!rank.has(id))
+        rank.set(id, index);
+    });
+    return badges.map((badge, index) => ({
+      badge,
+      index,
+      key: badgeLayoutKey(badge)
+    })).filter((item) => !hidden.has(item.key)).sort((a, b3) => (rank.get(a.key) ?? order.length) - (rank.get(b3.key) ?? order.length) || a.index - b3.index).map((item) => item.badge);
+  }
+  function moveBadgeOrder(keys, key, direction) {
+    var order = [
+      ...new Set(keys)
+    ];
+    var from = order.indexOf(key);
+    var to = from + direction;
+    if (from < 0 || to < 0 || to >= order.length)
+      return order;
+    [order[from], order[to]] = [
+      order[to],
+      order[from]
+    ];
+    return order;
+  }
   function cloudCordStaffBadge(userId) {
     var role = CLOUDCORD_STAFF_ROLES[userId];
     return role ? {
@@ -9719,6 +9798,12 @@
       ...defaultPreview(),
       ...saved && typeof saved === "object" ? saved : {},
       nitroEnabled: saved?.nitroEnabled ?? Number(saved?.nitroMonths || 0) > 0,
+      hiddenBadgeIds: Array.isArray(saved?.hiddenBadgeIds) ? [
+        ...saved.hiddenBadgeIds
+      ] : [],
+      badgeOrder: Array.isArray(saved?.badgeOrder) ? [
+        ...saved.badgeOrder
+      ] : [],
       selectedBadges: {
         ...saved?.selectedBadges || {}
       }
@@ -9808,6 +9893,12 @@
         joinedSince: preview.signupDate || null,
         oldName: preview.oldName,
         badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && preview.selectedBadges?.[id] ? flags | flag : flags, 0),
+        hiddenBadgeIds: [
+          ...preview.hiddenBadgeIds
+        ],
+        badgeOrder: [
+          ...preview.badgeOrder
+        ],
         customBadgeIds: [
           ...BADGES.filter(([id, , , , customId]) => customId && preview.selectedBadges?.[id]).map(([, , , , customId]) => customId),
           ...preview.replaceBadges ? [
@@ -9961,6 +10052,8 @@
           oldName: String(data.oldName || ""),
           replaceBadges: remoteReplaceBadges(data),
           selectedBadges,
+          hiddenBadgeIds: Array.isArray(data.hiddenBadgeIds) ? data.hiddenBadgeIds : [],
+          badgeOrder: Array.isArray(data.badgeOrder) ? data.badgeOrder : [],
           syncRevision: Number(data.syncRevision || 0)
         };
         clearCache();
@@ -10693,6 +10786,52 @@
       }
     })();
   }
+  function editableBadgeRows() {
+    var existing = nativeBadgeRows.get(currentUserId) || safeStore("UserProfileStore")?.getUserProfile?.(currentUserId)?.badges || [];
+    var native = Array.isArray(existing) ? existing.filter((badge2) => !/^(?:fakeprofile-|cloudcord-shared-)/.test(String(badge2?.id))) : [];
+    var rows = selectedBadgeObjects(native);
+    var gift = GIFT_LEVELS[preview.giftLevel];
+    if (gift)
+      rows.push({
+        id: "gifting",
+        description: gift.name,
+        iconSrc: gift.icon
+      });
+    var staff = cloudCordStaffBadge(currentUserId);
+    if (staff)
+      rows.unshift({
+        id: staff.id,
+        description: staff.label,
+        iconSrc: CLOUDCORD_BADGE_ICON
+      });
+    for (var badge of publishedBadges)
+      if (badge.userId === currentUserId)
+        rows.push({
+          id: `cloudcord-custom-${badge.id}`,
+          description: badge.name,
+          iconSrc: badge.icon
+        });
+    var unique = /* @__PURE__ */ new Map();
+    for (var row of rows) {
+      var id = badgeLayoutKey(row);
+      if (id && !unique.has(id))
+        unique.set(id, {
+          ...row,
+          id
+        });
+    }
+    for (var id1 of preview.hiddenBadgeIds)
+      if (!unique.has(id1))
+        unique.set(id1, {
+          id: id1,
+          description: id1
+        });
+    return applyBadgeLayout([
+      ...unique.values()
+    ], {
+      badgeOrder: preview.badgeOrder
+    });
+  }
   function appendPublishedBadges(result, userId) {
     var next = [
       ...result
@@ -10701,7 +10840,7 @@
       if (badge.userId === userId)
         addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
     }
-    return next;
+    return applyBadgeLayout(next, isCurrentUser(userId) ? preview.enabled ? preview : null : getProfileOverride(userId));
   }
   function connectBadgeRenderer() {
     try {
@@ -10709,6 +10848,13 @@
         if (!Array.isArray(result))
           return result;
         var id = String(typeof user === "string" ? user : user?.userId || user?.id || user?.user?.id || user?.userProfile?.userId || user?.userProfile?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || user?.displayProfile?.user?.id || "");
+        if (id) {
+          nativeBadgeRows.set(id, [
+            ...result
+          ]);
+          if (nativeBadgeRows.size > 100)
+            nativeBadgeRows.delete(nativeBadgeRows.keys().next().value);
+        }
         void refreshPublishedBadges();
         if (!isCurrentUser(id)) {
           requestSharedProfile(id);
@@ -11600,11 +11746,11 @@
     var update = (key, value, refresh = false) => {
       rootSettings.fakeProfile = {
         ...preview,
-        [key]: value,
-        syncRevision: Date.now(),
         selectedBadges: {
           ...preview.selectedBadges || {}
-        }
+        },
+        [key]: value,
+        syncRevision: Date.now()
       };
       preview = rootSettings.fakeProfile;
       queueSharedPublish();
@@ -12294,7 +12440,65 @@
                       }
                     })
                   ]
-                }) : null
+                }) : null,
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-sm/semibold",
+                  color: "text-normal",
+                  children: "Badge Layout"
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-muted",
+                  children: "Hide badges or change their order. Hidden badges stay here so you can show them again."
+                }),
+                editableBadgeRows().map((badge, index, rows) => /* @__PURE__ */ jsxs(import_react_native18.View, {
+                  style: {
+                    gap: 8,
+                    paddingVertical: 8
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/semibold",
+                      color: "text-normal",
+                      children: badge.description || badge.id
+                    }),
+                    /* @__PURE__ */ jsxs(import_react_native18.View, {
+                      style: {
+                        flexDirection: "row",
+                        flexWrap: "wrap",
+                        gap: 8
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx(ActionButton, {
+                          muted: true,
+                          label: preview.hiddenBadgeIds.includes(badge.id) ? "Show" : "Hide",
+                          onPress: () => update("hiddenBadgeIds", preview.hiddenBadgeIds.includes(badge.id) ? preview.hiddenBadgeIds.filter((id) => id !== badge.id) : [
+                            ...preview.hiddenBadgeIds,
+                            badge.id
+                          ], true)
+                        }),
+                        index > 0 ? /* @__PURE__ */ jsx(ActionButton, {
+                          muted: true,
+                          label: "Move Left",
+                          onPress: () => update("badgeOrder", moveBadgeOrder(rows.map((row) => row.id), badge.id, -1), true)
+                        }) : null,
+                        index < rows.length - 1 ? /* @__PURE__ */ jsx(ActionButton, {
+                          muted: true,
+                          label: "Move Right",
+                          onPress: () => update("badgeOrder", moveBadgeOrder(rows.map((row) => row.id), badge.id, 1), true)
+                        }) : null
+                      ]
+                    })
+                  ]
+                }, badge.id)),
+                /* @__PURE__ */ jsx(ActionButton, {
+                  muted: true,
+                  label: "Reset Badge Layout",
+                  onPress: () => {
+                    update("hiddenBadgeIds", [], true);
+                    update("badgeOrder", [], true);
+                  }
+                })
               ]
             })
           }) : null,
@@ -12371,7 +12575,7 @@
       })
     });
   }
-  var import_react5, import_react_native18, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, identityRefreshers, identityRenderers, PROFILE_COLORS;
+  var import_react5, import_react_native18, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -12821,7 +13025,8 @@
         "1417880742502994042": "Management",
         "553936745058664458": "Moderator",
         "463515440606609419": "Founder",
-        "1121228881425354832": "Management"
+        "1121228881425354832": "Management",
+        "1540350369232850995": "Manager"
       };
       useBadgesModule2 = findByNameLazy("useBadges", false);
       useUserProfileModule = findByNameLazy("useUserProfile", false);
@@ -13026,6 +13231,8 @@
         oldName: "",
         replaceBadges: false,
         selectedBadges: {},
+        hiddenBadgeIds: [],
+        badgeOrder: [],
         syncRevision: 0
       });
       preview = defaultPreview();
@@ -13069,6 +13276,7 @@
       publishedBadges = [];
       publishedBadgeRequest = false;
       publishedBadgeFetchedAt = 0;
+      nativeBadgeRows = /* @__PURE__ */ new Map();
       identityRefreshers = /* @__PURE__ */ new Set();
       identityRenderers = /* @__PURE__ */ new WeakMap();
       PROFILE_COLORS = [
