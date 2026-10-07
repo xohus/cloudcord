@@ -58,4 +58,11 @@ plutil -lint "$APP_DIR/Contents/Info.plist"
 # A local preview is not notarized. Do not disable Gatekeeper or rewrite
 # Discord's signature here; distribution signing is a separate release gate.
 ditto -c -k --sequesterRsrc --keepParent "$PACKAGE_DIR" "dist/CloudCord-mac-$ARCH-preview.zip"
+DMG_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/cloudcord-dmg.XXXXXX")"
+ditto "$APP_DIR" "$DMG_STAGE/CloudCord Setup.app"
+ln -s /Applications "$DMG_STAGE/Applications"
+hdiutil create -volname "CloudCord Setup" -srcfolder "$DMG_STAGE" \
+    -format UDZO -ov "dist/CloudCord-mac-$ARCH-preview.dmg"
+hdiutil verify "dist/CloudCord-mac-$ARCH-preview.dmg"
 echo "Local preview: dist/CloudCord-mac-$ARCH-preview.zip"
+echo "Disk image: dist/CloudCord-mac-$ARCH-preview.dmg"

@@ -54,6 +54,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: CloudCord-Mac-${{ matrix.architecture }}-Preview
-          path: desktop/client/dist/CloudCord-mac-${{ matrix.architecture }}-preview.zip
+          path: |
+            desktop/client/dist/CloudCord-mac-${{ matrix.architecture }}-preview.zip
+            desktop/client/dist/CloudCord-mac-${{ matrix.architecture }}-preview.dmg
           if-no-files-found: error
           retention-days: 7
