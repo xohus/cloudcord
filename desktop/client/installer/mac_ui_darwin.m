@@ -24,6 +24,8 @@ int cloudcordChooseAction(const char *choices, int *selection) {
         alert.accessoryView = picker;
         NSModalResponse response = [alert runModal];
         *selection = (int)picker.indexOfSelectedItem;
+        [picker release];
+        [alert release];
         if (response == NSAlertFirstButtonReturn) return 0;
         if (response == NSAlertSecondButtonReturn) return 1;
         return -1;
@@ -50,5 +52,6 @@ void cloudcordShowResult(const char *title, const char *message) {
         alert.informativeText = [NSString stringWithUTF8String:message];
         [alert addButtonWithTitle:@"OK"];
         [alert runModal];
+        [alert release];
     }
 }

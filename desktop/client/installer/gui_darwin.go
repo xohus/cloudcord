@@ -25,9 +25,12 @@ func macMessage(title, message string) {
     C.cloudcordShowResult(cTitle, cMessage)
 }
 
-func main() {
-    // AppKit must stay on the process's main thread. No OpenGL is required.
+func init() {
+    // Lock during initialization so AppKit runs on the original main thread.
     runtime.LockOSThread()
+}
+
+func main() {
     InitGithubDownloader()
     for {
         candidates := FindDiscords()
