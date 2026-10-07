@@ -34,4 +34,18 @@ for (const enabled of [undefined, false, true, false]) {
 }
 const mobile = fs.readFileSync('../../ios/runtime/src/core/ui/settings/index.ts', 'utf8');
 assert.match(mobile, /usePredicate: \(\) => useProxy\(settings\)\.cloudcordDiagnosticsEnabled === true/);
-console.log('PASS: all three addon navigation handlers open and return; actual desktop sidebar follows Diagnostics off/on/off');
+const mobileState = {}, sections = [];
+const mobileContext = vm.createContext({ settings: mobileState, PupuIcon: 'icon', Strings: { THEMES: 'Themes', FONTS: 'Fonts' }, version: 'test',
+    findAssetId: () => 1, isThemeSupported: () => true, isFontSupported: () => true, useProxy: value => value, registerSection: section => sections.push(section) });
+const mobileSource = mobile.replace(/^import .*;\r?\n/gm, '').replace('export { PupuIcon };', '').replace('export default function initSettings', 'function initSettings');
+vm.runInContext(esbuild.transformSync(mobileSource, { loader: 'ts' }).code, mobileContext);
+mobileContext.initSettings();
+const diagnosticRow = sections.find(section => section.name === 'CloudCord').items.find(row => row.key === 'CLOUDCORD_DIAGNOSTICS');
+for (const enabled of [undefined, false, true, false]) {
+    mobileState.cloudcordDiagnosticsEnabled = enabled;
+    assert.equal(diagnosticRow.usePredicate(), enabled === true);
+}
+mobileState.cloudcordDiagnosticsEnabled = true;
+mobileState.cloudcordSectionHidden = true;
+assert.equal(diagnosticRow.usePredicate(), false);
+console.log('PASS: addon navigation opens and returns; actual desktop and mobile Diagnostics visibility follows off/on/off');
