@@ -9620,7 +9620,9 @@
   }
   function badgeLayoutKey(badge) {
     var id = String(badge?.id || "");
-    if (id.startsWith("cloudcord-official-") || id.startsWith("cloudcord-custom-"))
+    if (id.startsWith("cloudcord-official-"))
+      return id.split(":")[0];
+    if (id.startsWith("cloudcord-custom-"))
       return id;
     id = id.replace(/^(?:sp_|fakeprofile-|cloudcord-shared-)/, "");
     var aliases = {
@@ -10586,7 +10588,7 @@
       import_react_native18.Alert.alert("Gifting Badge", "Discord's native gifting badge overlay is unavailable in this Discord version.");
     }
   }
-  function selectedBadgeObjects(existing) {
+  function selectedBadgeObjects(existing, forEditor = false) {
     var _loop2 = function(id2, description2, icon23) {
       if (!preview.selectedBadges?.[id2])
         return "continue";
@@ -10640,7 +10642,10 @@
       for (var badge of existing)
         _loop1(badge);
     }
-    return result;
+    return forEditor ? result : applyBadgeLayout(result, {
+      ...preview,
+      badgeOrder: preview.badgeOrder.length ? preview.badgeOrder : defaultBadgeOrder(Array.isArray(existing) ? existing : [])
+    });
   }
   function cloneObject(original, kind) {
     if (!original || !preview.enabled)
@@ -10815,7 +10820,7 @@
   function editableBadgeRows() {
     var existing = nativeBadgeRows.get(currentUserId) || safeStore("UserProfileStore")?.getUserProfile?.(currentUserId)?.badges || [];
     var native = Array.isArray(existing) ? existing.filter((badge2) => !/^(?:fakeprofile-|cloudcord-shared-)/.test(String(badge2?.id))) : [];
-    var rows = selectedBadgeObjects(native);
+    var rows = selectedBadgeObjects(native, true);
     var gift = GIFT_LEVELS[preview.giftLevel];
     if (gift)
       rows.push({
@@ -12479,46 +12484,74 @@
                 /* @__PURE__ */ jsx(Text, {
                   variant: "text-sm/medium",
                   color: "text-muted",
-                  children: "Hide badges or change their order. Hidden badges stay here so you can show them again."
+                  children: "Top to bottom is the order on your profile. Use the arrows to reorder."
                 }),
                 editableBadgeRows().map((badge, index, rows) => /* @__PURE__ */ jsxs(import_react_native18.View, {
                   style: {
+                    flexDirection: "row",
+                    alignItems: "center",
                     gap: 8,
-                    paddingVertical: 8
+                    paddingVertical: 6
                   },
                   children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/semibold",
-                      color: "text-normal",
-                      children: badge.description || badge.id
-                    }),
-                    /* @__PURE__ */ jsxs(import_react_native18.View, {
-                      style: {
-                        flexDirection: "row",
-                        flexWrap: "wrap",
-                        gap: 8
+                    /* @__PURE__ */ jsx(import_react_native18.Image, {
+                      source: badge.source || {
+                        uri: badge.iconSrc || (/^[a-f0-9]{32}$/i.test(badge.icon || "") ? `https://cdn.discordapp.com/badge-icons/${badge.icon}.png` : badge.icon)
                       },
-                      children: [
-                        /* @__PURE__ */ jsx(ActionButton, {
-                          muted: true,
-                          label: preview.hiddenBadgeIds.includes(badge.id) ? "Show" : "Hide",
-                          onPress: () => update("hiddenBadgeIds", preview.hiddenBadgeIds.includes(badge.id) ? preview.hiddenBadgeIds.filter((id) => id !== badge.id) : [
-                            ...preview.hiddenBadgeIds,
-                            badge.id
-                          ], true)
-                        }),
-                        index > 0 ? /* @__PURE__ */ jsx(ActionButton, {
-                          muted: true,
-                          label: "Move Left",
-                          onPress: () => update("badgeOrder", moveBadgeOrder(rows.map((row) => row.id), badge.id, -1), true)
-                        }) : null,
-                        index < rows.length - 1 ? /* @__PURE__ */ jsx(ActionButton, {
-                          muted: true,
-                          label: "Move Right",
-                          onPress: () => update("badgeOrder", moveBadgeOrder(rows.map((row) => row.id), badge.id, 1), true)
-                        }) : null
-                      ]
-                    })
+                      style: {
+                        width: 22,
+                        height: 22,
+                        opacity: preview.hiddenBadgeIds.includes(badge.id) ? 0.4 : 1,
+                        ...badge.id.startsWith("cloudcord-official-") ? {
+                          tintColor: safeStore("ThemeStore")?.theme === "light" ? "#000000" : "#ffffff"
+                        } : {}
+                      },
+                      resizeMode: "contain"
+                    }),
+                    /* @__PURE__ */ jsx(import_react_native18.View, {
+                      style: {
+                        flex: 1
+                      },
+                      children: /* @__PURE__ */ jsx(Text, {
+                        variant: "text-sm/semibold",
+                        color: "text-normal",
+                        children: badge.description || badge.id
+                      })
+                    }),
+                    /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+                      accessibilityRole: "button",
+                      accessibilityLabel: preview.hiddenBadgeIds.includes(badge.id) ? "Show badge" : "Hide badge",
+                      onPress: () => update("hiddenBadgeIds", preview.hiddenBadgeIds.includes(badge.id) ? preview.hiddenBadgeIds.filter((id) => id !== badge.id) : [
+                        ...preview.hiddenBadgeIds,
+                        badge.id
+                      ], true),
+                      style: {
+                        padding: 8
+                      },
+                      children: /* @__PURE__ */ jsx(Text, {
+                        variant: "text-sm/medium",
+                        color: "text-normal",
+                        children: preview.hiddenBadgeIds.includes(badge.id) ? "Show" : "Hide"
+                      })
+                    }),
+                    [
+                      -1,
+                      1
+                    ].map((direction) => /* @__PURE__ */ jsx(import_react_native18.Pressable, {
+                      accessibilityRole: "button",
+                      accessibilityLabel: direction === -1 ? "Move badge up" : "Move badge down",
+                      disabled: direction === -1 ? index === 0 : index === rows.length - 1,
+                      onPress: () => update("badgeOrder", moveBadgeOrder(editableBadgeRows().map((row) => row.id), badge.id, direction), true),
+                      style: {
+                        padding: 8,
+                        opacity: (direction === -1 ? index === 0 : index === rows.length - 1) ? 0.3 : 1
+                      },
+                      children: /* @__PURE__ */ jsx(Text, {
+                        variant: "heading-md/semibold",
+                        color: "text-normal",
+                        children: direction === -1 ? "\u2191" : "\u2193"
+                      })
+                    }, direction))
                   ]
                 }, badge.id)),
                 /* @__PURE__ */ jsx(ActionButton, {
