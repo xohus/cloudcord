@@ -91,7 +91,7 @@ export default function initSettings() {
                 title: () => "Diagnostics",
                 icon: safeAsset("WrenchIcon", "SettingsIcon"),
                 render: () => import("@core/ui/settings/pages/Diagnostics"),
-                usePredicate: () => true
+                usePredicate: () => useProxy(settings).cloudcordDiagnosticsEnabled === true
             }
         ];
 

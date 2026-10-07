@@ -71,11 +71,11 @@ export default function General() {
                         onValueChange={(value: boolean) => (settings as any).cloudcordAutoUpdate = value}
                     />
                     <TableRow label="Update status" subLabel={(settings as any).cloudcordUpdateStatus || "Waiting for the next update check"} />
-                    <TableRow arrow label="Diagnostics" subLabel="Runtime status and troubleshooting"
+                    {settings.cloudcordDiagnosticsEnabled === true && <TableRow arrow label="Diagnostics" subLabel="Runtime status and troubleshooting"
                         onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Diagnostics", render: () => {
                             const Diagnostics = require("@core/ui/settings/pages/Diagnostics").default;
                             return <Diagnostics />;
-                        } })} />
+                        } })} />}
                     <TableSwitchRow
                         label="Capture diagnostic events"
                         subLabel="Keep troubleshooting details while you use CloudCord"

@@ -247,7 +247,7 @@ export default definePlugin({
                 Component: AddonsTab,
                 Icon: PluginsIcon
             }),
-            buildEntry({
+            settings.store.diagnosticsMode === true && buildEntry({
                 key: "cloudcord_diagnostics",
                 title: "Diagnostics",
                 panelTitle: "CloudCord Diagnostics",
