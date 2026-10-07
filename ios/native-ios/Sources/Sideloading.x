@@ -128,11 +128,18 @@ static BOOL isDiscord344OrNewer(void)
 %hook NSFileManager
 - (NSURL *)containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier
 {
+    // BroadcastUpload runs in another process. When the signer provisioned a
+    // real shared group, both processes must use that container, not the app's
+    // private Documents directory.
+    NSURL *nativeContainer = %orig;
+    if (nativeContainer)
+        return nativeContainer;
+
     // Discord 344 stores authenticated account, guild and navigation state in
     // its real App Group containers. The legacy Documents/AppGroup redirect
     // makes the signed-in user appear empty on the bridgeless client.
     if (isDiscord344OrNewer())
-        return %orig;
+        return nativeContainer;
 
     BunnyLog(@"containerURLForSecurityApplicationGroupIdentifier called! %@",
              groupIdentifier ?: @"nil");
