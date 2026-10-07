@@ -7,7 +7,8 @@ const mobile = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/inde
 const desktop = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/index.tsx', 'utf8');
 const api = fs.readFileSync('desktop/client/src/plugins/_api/badges/index.tsx', 'utf8');
 const desktopHelper = fs.readFileSync('desktop/client/src/api/BadgeLayout.ts', 'utf8').replace(/export /g, '');
-const mobileHelper = mobile.slice(mobile.indexOf('function badgeLayoutKey('), mobile.indexOf('const CLOUDCORD_BADGE_ICON'));
+const mobileHelper = mobile.slice(mobile.indexOf('function badgeLayoutKey('), mobile.indexOf('const CLOUDCORD_BADGE_ICON'))
+    + mobile.slice(mobile.indexOf('function defaultBadgeOrder('), mobile.indexOf('const CLOUDCORD_STAFF_ROLES'));
 const result = value => JSON.parse(JSON.stringify(value));
 function host(helper) {
     const context = vm.createContext({});
@@ -35,6 +36,12 @@ for (const context of contexts) {
     assert.deepEqual(result(context.moveBadgeOrder(['staff', 'nitro'], 'staff', -1)), ['staff', 'nitro']);
     assert.deepEqual(result(context.moveBadgeOrder(['staff', 'nitro'], 'nitro', 1)), ['staff', 'nitro']);
     assert.deepEqual(result(context.moveBadgeOrder(['staff', 'nitro'], 'missing', 1)), ['staff', 'nitro']);
+    const realOrder = context.defaultBadgeOrder([{ id: 'premium' }, { id: 'premium_guild_subscriber' }, { id: 'staff' }]);
+    assert.deepEqual(result(realOrder.slice(0, 3)), ['nitro', 'boost', 'staff']);
+    const discordStaffFirst = context.defaultBadgeOrder([{ id: 'staff' }, { id: 'premium' }]);
+    assert.deepEqual(result(discordStaffFirst.slice(0, 2)), ['staff', 'nitro']);
+    const defaultRows = context.applyBadgeLayout([{ id: 'cloudcord-official-founder' }, { id: 'sp_staff' }, { id: 'premium' }], { badgeOrder: context.defaultBadgeOrder([]) });
+    assert.deepEqual(result(defaultRows.map(context.badgeLayoutKey)), ['nitro', 'staff', 'cloudcord-official-founder']);
 }
 // Verify the desktop patch transforms the whole native+custom badge list, not
 // just badges returned by CloudCord. The original getter stays available.
@@ -71,5 +78,15 @@ assert.deepEqual(result(payload.badgeOrder), ['boost', 'staff']);
 assert.match(mobile, /hiddenBadgeIds: \[\.\.\.preview\.hiddenBadgeIds\]/);
 assert.match(mobile, /badgeOrder: \[\.\.\.preview\.badgeOrder\]/);
 assert.match(mobile, /return applyBadgeLayout\(next,/);
+const css = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/style.css', 'utf8');
+assert.match(css, /\.cp-badge-layout-label\s*\{\s*color: var\(--text-normal/);
+assert.match(css, /\.cp-badges\s*\{[^}]*margin-bottom: 10px;/);
+assert.match(css, /\.cp-section-label\s*\{[^}]*margin-top: 14px;/);
+for (const source of [desktop, mobile]) {
+    assert.ok(source.includes('Golden Bug Hunter'));
+    assert.ok(!source.includes('Bug Hunter Lvl 1'));
+    assert.ok(!source.includes('Bug Hunter Level 2'));
+    assert.ok(source.includes('label: tier.name'));
+}
 esbuild.transformSync(mobile, { loader: 'tsx' });
 console.log('PASS: native/custom/staff hiding, restoration, ordering, cross-client keys, native getter patch, sync and mobile selection saving');

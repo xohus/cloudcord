@@ -43,3 +43,9 @@ export function moveBadgeOrder(keys: string[], key: string, direction: -1 | 1): 
     [order[from], order[to]] = [order[to], order[from]];
     return order;
 }
+
+export function defaultBadgeOrder(nativeBadges: any[] = []): string[] {
+    const nativeKeys = nativeBadges.filter(badge => !/^(?:sp_|fakeprofile-|cloudcord-)/.test(String(badge?.id || ""))).map(badgeLayoutKey);
+    return [...new Set([...nativeKeys, "nitro", "gifting", "boost", "staff", "partner", "hypesquad",
+        "bug1", "bravery", "brilliance", "balance", "early", "bug2", "vdev", "mod", "active", "quest", "orbs", "oldname"])];
+}

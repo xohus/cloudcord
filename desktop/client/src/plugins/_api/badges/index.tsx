@@ -19,7 +19,7 @@
 import "./fixDiscordBadgePadding.css";
 
 import { _getBadges, BadgePosition, BadgeUserArgs, ProfileBadge } from "@api/Badges";
-import { applyBadgeLayout } from "@api/BadgeLayout";
+import { applyBadgeLayout, defaultBadgeOrder } from "@api/BadgeLayout";
 import ErrorBoundary from "@components/ErrorBoundary";
 import { openContributorModal } from "@components/settings/tabs";
 import { Devs } from "@utils/constants";
@@ -229,7 +229,8 @@ export default definePlugin({
             const plugin = Plugins.ProfileSpoofer as typeof Plugins.ProfileSpoofer & {
                 getBadgeLayout?(userId: string): { hiddenBadgeIds?: string[]; badgeOrder?: string[] } | null | undefined;
             };
-            return plugin?.started ? applyBadgeLayout(badges, plugin.getBadgeLayout?.(profile.userId)) : badges;
+            const layout = plugin?.started ? plugin.getBadgeLayout?.(profile.userId) : null;
+            return applyBadgeLayout(badges, { ...layout, badgeOrder: layout?.badgeOrder?.length ? layout.badgeOrder : defaultBadgeOrder(badges) });
         } catch (error) {
             new Logger("BadgeAPI#applyBadgeLayout").error(error);
             return badges;

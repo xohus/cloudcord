@@ -11,7 +11,7 @@ import "./style.css";
 import decorationCatalog from "./decorations.json";
 
 import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
-import { applyBadgeLayout, badgeLayoutKey, moveBadgeOrder } from "@api/BadgeLayout";
+import { applyBadgeLayout, badgeLayoutKey, defaultBadgeOrder, moveBadgeOrder } from "@api/BadgeLayout";
 import { addContextMenuPatch, NavContextMenuPatchCallback, removeContextMenuPatch } from "@api/ContextMenu";
 import { addHeaderBarButton, HeaderBarButton, removeHeaderBarButton } from "@api/HeaderBar";
 import { DataStore } from "@api/index";
@@ -57,12 +57,12 @@ const BADGES = [
     { label: "Discord Staff", flag: FLAG.STAFF, icon: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png" },
     { label: "Partnered Server Owner", flag: FLAG.PARTNER, icon: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png" },
     { label: "HypeSquad Events", flag: FLAG.HYPESQUAD, icon: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png" },
-    { label: "Bug Hunter Level 1", flag: FLAG.BUG_HUNTER_1, icon: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png" },
+    { label: "Bug Hunter", flag: FLAG.BUG_HUNTER_1, icon: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png" },
     { label: "HypeSquad Bravery", flag: FLAG.BRAVERY, icon: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png" },
     { label: "HypeSquad Brilliance", flag: FLAG.BRILLIANCE, icon: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png" },
     { label: "HypeSquad Balance", flag: FLAG.BALANCE, icon: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png" },
     { label: "Early Supporter", flag: FLAG.EARLY_SUPPORTER, icon: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png" },
-    { label: "Bug Hunter Level 2", flag: FLAG.BUG_HUNTER_2, icon: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png" },
+    { label: "Golden Bug Hunter", flag: FLAG.BUG_HUNTER_2, icon: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png" },
     { label: "Moderator Programs Alumni", flag: FLAG.MOD_ALUMNI, icon: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png" },
     { label: "Early Verified Bot Developer", flag: FLAG.DEV_VERIFIED, icon: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png" },
     { label: "Active Developer", flag: FLAG.ACTIVE_DEVELOPER, icon: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png" },
@@ -348,7 +348,7 @@ const EVENT_BADGES = [
     }
 ];
 const EXTRA_BADGES = [
-    ...EXPERIMENTAL_BADGE_GROUPS.flatMap(group => group.tiers.map(tier => ({ ...tier, label: `${group.label} — ${tier.name} · ${tier.milestone}` }))),
+    ...EXPERIMENTAL_BADGE_GROUPS.flatMap(group => group.tiers.map(tier => ({ ...tier, label: tier.name }))),
     ...EVENT_BADGES.map(badge => ({ ...badge, label: badge.name }))
 ];
 const GIFT_LEVELS = [
@@ -372,7 +372,7 @@ const NITRO_LEVELS = [
     { label: "Ruby", name: "Ruby", icon: "https://cdn.discordapp.com/badge-icons/cd5e2cfd9d7f27a8cdcd3e8a8d5dc9f4.png", art: pngDataUrl(nitroRuby), light: "#ff91bd", dark: "#c01958" },
     { label: "Opal", name: "Opal", icon: "https://cdn.discordapp.com/badge-icons/5b154df19c53dce2af92c9b61e6be5e2.png", art: pngDataUrl(nitroOpal), light: "#c8f7ff", dark: "#675cff" },
 ];
-const BOOST_LABELS = ["1-month milestone", "2-month milestone", "3-month milestone", "6-month milestone", "9-month milestone", "1-year milestone", "15-month milestone", "18-month milestone", "2-year milestone"];
+const BOOST_LABELS = ["1 month", "2 months", "3 months", "6 months", "9 months", "1 year", "15 months", "18 months", "2 years"];
 const BOOST_ICONS = [
     "https://cdn.discordapp.com/badge-icons/51040c70d4f20a921ad6674ff86fc95c.png",
     "https://cdn.discordapp.com/badge-icons/0e4080d1d333bc7ad29ef6528b6f2fb7.png",
@@ -1123,7 +1123,7 @@ function badgeLayoutRows(data: CustomProfileData, userId: string): ProfileBadge[
     const unique = new Map<string, ProfileBadge>();
     for (const badge of rows) { const key = badgeLayoutKey(badge); if (key && !unique.has(key)) unique.set(key, { ...badge, id: key }); }
     for (const id of data.hiddenBadgeIds || []) if (!unique.has(id)) unique.set(id, { id, description: id });
-    return applyBadgeLayout([...unique.values()], { badgeOrder: data.badgeOrder });
+    return applyBadgeLayout([...unique.values()], { badgeOrder: data.badgeOrder?.length ? data.badgeOrder : defaultBadgeOrder(native) });
 }
 
 function BadgeLayoutEditor({ data, userId, onChange }: { data: CustomProfileData; userId: string; onChange: (layout: Pick<CustomProfileData, "badgeOrder" | "hiddenBadgeIds">) => void; }) {
@@ -1509,12 +1509,12 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.STAFF) badges.push({ id: "sp_staff", description: "Discord Staff", iconSrc: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png", position: 0, props: { style } });
             if (f & FLAG.PARTNER) badges.push({ id: "sp_partner", description: "Partnered Server Owner", iconSrc: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png", position: 0, props: { style } });
             if (f & FLAG.HYPESQUAD) badges.push({ id: "sp_hypesquad", description: "HypeSquad Events", iconSrc: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png", position: 0, props: { style } });
-            if (f & FLAG.BUG_HUNTER_1) badges.push({ id: "sp_bh1", description: "Bug Hunter Level 1", iconSrc: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png", position: 0, props: { style } });
+            if (f & FLAG.BUG_HUNTER_1) badges.push({ id: "sp_bh1", description: "Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png", position: 0, props: { style } });
             if (f & FLAG.BRAVERY) badges.push({ id: "sp_bravery", description: "HypeSquad Bravery", iconSrc: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png", position: 0, props: { style } });
             if (f & FLAG.BRILLIANCE) badges.push({ id: "sp_brilliance", description: "HypeSquad Brilliance", iconSrc: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png", position: 0, props: { style } });
             if (f & FLAG.BALANCE) badges.push({ id: "sp_balance", description: "HypeSquad Balance", iconSrc: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png", position: 0, props: { style } });
             if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", position: 0, props: { style } });
-            if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Bug Hunter Level 2", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
+            if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Golden Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
             if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Early Verified Bot Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });

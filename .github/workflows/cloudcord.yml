@@ -638,20 +638,20 @@ jobs:
               }
           ];
           const EXTRA_BADGES = [
-              ...EXPERIMENTAL_BADGE_GROUPS.flatMap(group => group.tiers.map(tier => ({ ...tier, label: `${group.label} — ${tier.name} · ${tier.milestone}` }))),
+              ...EXPERIMENTAL_BADGE_GROUPS.flatMap(group => group.tiers.map(tier => ({ ...tier, label: tier.name }))),
               ...EVENT_BADGES.map(badge => ({ ...badge, label: badge.name }))
           ];
           const BADGES: Array<[string, string, number, string, string?]> = [
               ["staff", "Discord Staff", 1, "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png"],
-              ["partner", "Partner", 2, "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png"],
+              ["partner", "Partnered Server Owner", 2, "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png"],
               ["hypesquad", "HypeSquad Events", 4, "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png"],
-              ["bug1", "Bug Hunter Lvl 1", 8, "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"],
+              ["bug1", "Bug Hunter", 8, "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png"],
               ["bravery", "HypeSquad Bravery", 64, "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png"],
               ["brilliance", "HypeSquad Brilliance", 128, "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png"],
               ["balance", "HypeSquad Balance", 256, "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png"],
               ["early", "Early Supporter", 512, "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"],
-              ["bug2", "Bug Hunter Lvl 2", 16384, "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"],
-              ["vdev", "Verified Developer", 131072, "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"],
+              ["bug2", "Golden Bug Hunter", 16384, "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png"],
+              ["vdev", "Early Verified Bot Developer", 131072, "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png"],
               ["mod", "Moderator Programs Alumni", 262144, "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png"],
               ["active", "Active Developer", 4194304, "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png"],
               ["oldname", "Originally Known As", 0, "https://cdn.discordapp.com/badge-icons/6de6d34650760ba5551a79732e98ed60.png", "oldname"],
@@ -717,6 +717,12 @@ jobs:
               return order;
           }
           const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
+
+          function defaultBadgeOrder(nativeBadges: any[] = []): string[] {
+              const nativeKeys = nativeBadges.filter(badge => !/^(?:sp_|fakeprofile-|cloudcord-)/.test(String(badge?.id || ""))).map(badgeLayoutKey);
+              return [...new Set([...nativeKeys, "nitro", "gifting", "boost", "staff", "partner", "hypesquad",
+                  "bug1", "bravery", "brilliance", "balance", "early", "bug2", "vdev", "mod", "active", "quest", "orbs", "oldname"])];
+          }
           const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
               "1457121276748365989": "Administrator",
               "1497588725788442637": "Management",
@@ -1694,7 +1700,7 @@ jobs:
               const unique = new Map<string, any>();
               for (const row of rows) { const id = badgeLayoutKey(row); if (id && !unique.has(id)) unique.set(id, { ...row, id }); }
               for (const id of preview.hiddenBadgeIds) if (!unique.has(id)) unique.set(id, { id, description: id });
-              return applyBadgeLayout([...unique.values()], { badgeOrder: preview.badgeOrder });
+              return applyBadgeLayout([...unique.values()], { badgeOrder: preview.badgeOrder.length ? preview.badgeOrder : defaultBadgeOrder(native) });
           }
 
           function appendPublishedBadges(result: any[], userId: string) {
@@ -1702,7 +1708,8 @@ jobs:
               for (const badge of publishedBadges) {
                   if (badge.userId === userId) addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
               }
-              return applyBadgeLayout(next, isCurrentUser(userId) ? (preview.enabled ? preview : null) : getProfileOverride(userId));
+              const layout = isCurrentUser(userId) ? (preview.enabled ? preview : null) : getProfileOverride(userId);
+              return applyBadgeLayout(next, { ...layout, badgeOrder: layout?.badgeOrder?.length ? layout.badgeOrder : defaultBadgeOrder(nativeBadgeRows.get(userId) || []) });
           }
           function connectBadgeRenderer() {
               try {
@@ -1727,7 +1734,7 @@ jobs:
                               if (remoteNitroEnabled(data)) addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
                               addRenderedBadge(ordered, "cloudcord-shared-boost", serverBoostingLabel(boostMonths), boosterIcon(boostMonths));
                               const gift = GIFT_LEVELS[Number(data.giftLevel)];
-                              if (gift) addRenderedBadge(ordered, "cloudcord-shared-gifting", `${gift.name} · Gifted ${gift.count}x`, gift.icon);
+                              if (gift) addRenderedBadge(ordered, "cloudcord-shared-gifting", gift.name, gift.icon);
                               const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
                               for (const [id, description, flag, icon, customId] of BADGES) {
                                   const selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
@@ -1764,7 +1771,7 @@ jobs:
                           milestoneIcon(preview.nitroMonths, NITRO_ICONS)
                       );
                       const gift = GIFT_LEVELS[preview.giftLevel];
-                      if (gift) addRenderedBadge(ordered, "fakeprofile-gifting", `${gift.name} · Gifted ${gift.count}x`, gift.icon);
+                      if (gift) addRenderedBadge(ordered, "fakeprofile-gifting", gift.name, gift.icon);
                       addRenderedBadge(
                           ordered,
                           "fakeprofile-boost",
@@ -2456,7 +2463,7 @@ jobs:
                           options: [
                               { label: "None", onPress: () => { update("giftLevel", -1, true); simpleSheets.hideActionSheet?.(key); } },
                               ...GIFT_LEVELS.map((gift, index) => ({
-                                  label: `${gift.name} — Gifted ${gift.count}x`,
+                                  label: gift.name,
                                   onPress: () => { update("giftLevel", index, true); simpleSheets.hideActionSheet?.(key); }
                               }))
                           ]
