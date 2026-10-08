@@ -10231,9 +10231,17 @@
   function cloneSharedUser(original, data) {
     if (!original || typeof original !== "object" || !data)
       return original;
-    var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
-    for (var [key, value] of Object.entries(nativeProfileAppearance(data)))
-      setOwnValue(cloned, key, value);
+    var cloned = Object.create(Object.getPrototypeOf(original) || Object.prototype);
+    for (var key of Reflect.ownKeys(original)) {
+      var descriptor = Object.getOwnPropertyDescriptor(original, key);
+      if (descriptor)
+        Object.defineProperty(cloned, key, {
+          ...descriptor,
+          configurable: true
+        });
+    }
+    for (var [key1, value] of Object.entries(nativeProfileAppearance(data)))
+      setOwnValue(cloned, key1, value);
     if (data.username) {
       var username = String(data.username);
       setOwnValue(cloned, "username", username);
@@ -10279,7 +10287,6 @@
       var sharedFlags = Number(data.badgeFlags || 0);
       setOwnValue(cloned, "publicFlags", sharedFlags);
       setOwnValue(cloned, "public_flags", sharedFlags);
-      setOwnValue(cloned, "flags", sharedFlags);
       setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userIdFromProfile(original), data));
       setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userIdFromProfile(original), data));
       setOwnValue(cloned, "premiumSince", null);
@@ -10351,7 +10358,6 @@
       var sharedFlags = Number(data.badgeFlags || 0);
       setOwnValue(cloned, "publicFlags", sharedFlags);
       setOwnValue(cloned, "public_flags", sharedFlags);
-      setOwnValue(cloned, "flags", sharedFlags);
     }
     if (data.bio != null)
       setOwnValue(cloned, "bio", data.bio);
@@ -10847,10 +10853,8 @@
       setOwnValue(cloned, "memberSince", joinedAt);
     }
     setOwnValue(cloned, "publicFlags", flags);
-    setOwnValue(cloned, "flags", flags);
     setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
     setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
-    setOwnValue(cloned, "hasFlag", (flag2) => !!(flags & flag2));
     setOwnValue(cloned, "avatarDecorationData", preview.avatarDecoration ? {
       asset: decorationAsset(preview.avatarDecoration),
       skuId: preview.avatarDecorationSku || "cloudcord-decoration"
@@ -13445,7 +13449,6 @@
         "globalName",
         "displayName",
         "publicFlags",
-        "flags",
         "badges",
         "profileBadges",
         "avatarURL",
@@ -13456,7 +13459,6 @@
         "bannerUrl",
         "getBannerURL",
         "getPreviewBanner",
-        "hasFlag",
         "premiumType",
         "premiumSince",
         "premiumGuildSince",
