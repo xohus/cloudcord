@@ -331,7 +331,7 @@ jobs:
           import { findByNameLazy, findByProps, findByStoreName } from "@metro";
           import { FluxDispatcher, NavigationNative } from "@metro/common";
           import { Text, TableRow, TableRadioGroup, TableRadioRow, Button } from "@metro/common/components";
-          import { cloneElement, isValidElement, useEffect, useReducer, useState } from "react";
+          import { Component, cloneElement, isValidElement, useEffect, useReducer, useState } from "react";
           import { Alert, AppState, FlatList, Image, NativeModules, Pressable, ScrollView, View } from "react-native";
 
           type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
@@ -1198,6 +1198,7 @@ jobs:
                       for (const refresh of identityRefreshers) refresh();
                       try { safeStore("UserStore")?.emitChange?.(); } catch {}
                       try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
+                      try { safeStore("MessageStore")?.emitChange?.(); } catch {}
                   })
                   .catch(() => {})
                   .finally(() => sharedRequests.delete(id));
@@ -1887,6 +1888,8 @@ jobs:
               return props?.userId
                   || props?.user_id
                   || props?.profileUserId
+                  || props?.message?.author?.id
+                  || props?.author?.id
                   || props?.user?.userId
                   || props?.user?.id
                   || props?.userProfile?.userId
@@ -2097,9 +2100,36 @@ jobs:
               }
           }
 
+          function decorateMessageAuthor(result: any, args: any[]) {
+              if (!result || typeof result !== "object" || Array.isArray(result)) return result;
+              const user = result.user || result.author;
+              const id = String(user?.id || (result.username ? result.id : "") || args.find(value => value?.author?.id)?.author?.id || args.find(value => value?.id && value?.username)?.id || "");
+              if (!id) return result;
+              if (!isCurrentUser(id)) requestSharedProfile(id);
+              const data = isCurrentUser(id) ? (preview.enabled ? ownSharedProfile() : null) : getProfileOverride(id);
+              if (!data) return result;
+              if (result.id === id && result.username) return cloneSharedUser(result, data);
+              const cloned = { ...result, ...nativeProfileAppearance(data) };
+              if (result.user) cloned.user = cloneSharedUser(result.user, data);
+              if (result.author) cloned.author = cloneSharedUser(result.author, data);
+              const name = data.globalName || data.displayName || data.username;
+              if (name) for (const key of ["nick", "nickname", "name", "displayName"]) {
+                  if (key in result) cloned[key] = name;
+              }
+              return cloned;
+          }
+
           function ensurePatches() {
               if (initialized) return;
               initialized = true;
+
+              const messageAuthors = findByProps("getMessageAuthor", "getUserAuthor") as any;
+              for (const method of ["default", "useNullableMessageAuthor", "getMessageAuthor", "useUserNickAndColor", "useNullableUserAuthor", "getUserAuthor"]) {
+                  addPatch(method, messageAuthors, (args, original) => {
+                      const result = original(...args);
+                      return decorateMessageAuthor(result, args);
+                  });
+              }
 
               const userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
               diagnostics.userStore = !!userStore;
@@ -2212,6 +2242,7 @@ jobs:
 
           function refreshPreview() {
               clearCache();
+              try { safeStore("MessageStore")?.emitChange?.(); } catch {}
               try { safeStore("UserStore")?.emitChange?.(); } catch {}
               try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
               setTimeout(() => {
@@ -2351,6 +2382,25 @@ jobs:
               const asset = result?.assets?.[0];
               if (asset) await saveMedia(key, asset);
               return !!asset;
+          }
+
+          class NamePreviewBoundary extends Component<any, { failed: boolean }> {
+              state = { failed: false };
+              static getDerivedStateFromError() { return { failed: true }; }
+              render() { return this.state.failed ? <Text color="text-muted">Username preview isn't available in this Discord version.</Text> : this.props.children; }
+          }
+
+          function NameStylePreview() {
+              const NativeName = (findByProps("AVERAGE_FONT_WIDTH_RATIO") as any)?.default;
+              const name = preview.displayName || preview.username || realCurrentUser?.globalName || realCurrentUser?.username || "Your name";
+              const styles = preview.displayNameStyles || null;
+              return <View style={{ padding: 16, borderRadius: 12, gap: 8 }}>
+                  <Text variant="text-xs/bold" color="text-muted">PREVIEW</Text>
+                  <NamePreviewBoundary key={JSON.stringify(styles)}>
+                      {NativeName ? <NativeName username={name} text={name} displayNameStyles={styles} fontId={styles?.fontId} effectId={styles?.effectId} colors={styles?.colors} style={{ fontSize: 24 }} /> : <Text variant="heading-lg/bold" color="text-normal">{name}</Text>}
+                  </NamePreviewBoundary>
+                  <Text variant="text-xs/normal" color="text-muted">Shown in profiles and message author names.</Text>
+              </View>;
           }
 
           function ActionButton({ label, onPress, muted = false }: { label: string; onPress: () => void; muted?: boolean }) {
@@ -2642,9 +2692,14 @@ jobs:
                                   </View>
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Username Style</Text>
-                                      <ActionButton label="Choose Font" onPress={() => chooseNameStyle("fontId")} />
-                                      <ActionButton label="Choose Effect" onPress={() => chooseNameStyle("effectId")} />
-                                      {[0, 1, 2].map(index => <TextInput key={`name-color-${index}`} defaultValue={`#${(preview.displayNameStyles?.colors[index] ?? 0xffffff).toString(16).padStart(6, "0")}`} placeholder={`Color ${index + 1} (#RRGGBB)`} autoCapitalize="none" autoCorrect={false} onChangeText={value => { if (!/^#?[0-9a-f]{6}$/i.test(value)) return; const style = preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] }; const colors = [0, 1, 2].map(i => style.colors[i] ?? style.colors[0] ?? 0xffffff); colors[index] = parseInt(value.replace("#", ""), 16); update("displayNameStyles", { ...style, colors }, true); }} />)}
+                                      <NameStylePreview />
+                                      <TableRow arrow label="Font" trailing={<TableRow.TrailingText text={appearanceOptions((findByProps("DisplayNameFont", "DisplayNameEffect") as any)?.DisplayNameFont).find(option => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"} />} onPress={() => chooseNameStyle("fontId")} />
+                                      <TableRow arrow label="Effect" trailing={<TableRow.TrailingText text={appearanceOptions((findByProps("DisplayNameFont", "DisplayNameEffect") as any)?.DisplayNameEffect).find(option => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"} />} onPress={() => chooseNameStyle("effectId")} />
+                                      {[0, 1, 2].map(index => {
+                                          const value = `#${(preview.displayNameStyles?.colors[index] ?? 0xffffff).toString(16).padStart(6, "0")}`;
+                                          const apply = (color: string) => { const style = preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] }; const colors = [0, 1, 2].map(i => style.colors[i] ?? style.colors[0] ?? 0xffffff); colors[index] = parseInt(color.replace("#", ""), 16); update("displayNameStyles", { ...style, colors }, true); navigation.goBack(); };
+                                          return <ColorPickerRow key={`name-color-${index}`} label={`Color ${index + 1}`} value={value} onSelect={apply} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: `Username Color ${index + 1}`, render: () => <CustomColorPicker title={`Username Color ${index + 1}`} initialColor={value} onApply={apply} /> })} />;
+                                      })}
                                       <ActionButton label="Reset Username Style" onPress={() => update("displayNameStyles", null, true)} />
                                       <Text variant="text-sm/bold" color="text-normal">Server Tag</Text>
                                       <TextInput defaultValue={preview.serverTag?.tag || ""} placeholder="Tag (1–4 characters)" maxLength={4} onChangeText={value => update("serverTag", { ...(preview.serverTag || { guildId: "", badge: "" }), tag: value }, true)} />
