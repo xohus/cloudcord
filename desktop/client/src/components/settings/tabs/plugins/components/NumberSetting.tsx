@@ -32,7 +32,7 @@ export function NumberSetting({ setting, pluginSettings, definedSettings, id, on
     const [error, setError] = useState<string | null>(null);
 
     function handleChange(newValue: any) {
-        const draft = String(newValue);
+        const draft = String(typeof newValue === "object" && newValue !== null ? newValue.currentTarget?.value ?? newValue.target?.value ?? "" : newValue);
         setState(draft);
         if (!draft.trim() || draft === "-" || draft === "+") { setError(null); return; }
         try {
@@ -50,13 +50,13 @@ export function NumberSetting({ setting, pluginSettings, definedSettings, id, on
     return (
         <SettingsSection name={id} description={setting.description} error={error}>
             <TextInput
+                {...setting.componentProps}
                 type="number"
                 pattern="-?[0-9]+"
                 placeholder={setting.placeholder ?? "Enter a number"}
                 value={state}
                 onChange={handleChange}
                 disabled={isSettingDisabled(definedSettings, setting)}
-                {...setting.componentProps}
             />
         </SettingsSection>
     );
