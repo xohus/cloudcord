@@ -11,6 +11,14 @@ export function pluginIdentityModule(module: any): any {
     if (typeof module.getUser !== "function" || typeof module.getCurrentUser !== "function") return module;
     if (storeViews.has(module)) return storeViews.get(module);
     const view = Object.create(module);
+    // Flux store methods may use private state; keep their receiver native.
+    for (let owner = module; owner && owner !== Object.prototype; owner = Object.getPrototypeOf(owner)) {
+        for (const key of Reflect.ownKeys(owner)) {
+            if (key === "constructor" || Object.prototype.hasOwnProperty.call(view, key)) continue;
+            const descriptor = Object.getOwnPropertyDescriptor(owner, key);
+            if (typeof descriptor?.value === "function") Object.defineProperty(view, key, { configurable: true, writable: true, value: descriptor.value.bind(module) });
+        }
+    }
     for (const key of ["getUser", "getCurrentUser", "getUsers"]) {
         if (typeof module[key] !== "function") continue;
         Object.defineProperty(view, key, { configurable: true, writable: true, value: (...args: any[]) => {

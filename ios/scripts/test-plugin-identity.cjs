@@ -17,6 +17,13 @@ assert.equal(pluginMetro.common.UserStore.getUsers()['123'].username, 'custom');
 assert.equal(pluginMetro.findAll()[0].getCurrentUser().username, 'custom');
 assert.equal(metro.findByProps().getUser().username, 'real');
 assert.equal(nativeUser.flags.has(), true);
+class PrivateStore {
+    #user = nativeUser;
+    getUser() { return this.#user; }
+    getCurrentUser() { return this.#user; }
+    getNativeId() { return this.#user.id; }
+}
+assert.equal(api.pluginIdentityModule(new PrivateStore()).getNativeId(), '123');
 assert.equal(pluginMetro.findByProps(), pluginMetro.findByStoreName());
 username = 'new_custom';
 assert.equal(pluginMetro.common.UserStore.getUser().username, 'new_custom');
