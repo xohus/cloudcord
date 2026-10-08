@@ -6056,6 +6056,82 @@
     }
   });
 
+  // src/lib/api/profileAppearance.ts
+  function appearanceOptions(values) {
+    if (!values || typeof values !== "object")
+      return [];
+    return Object.entries(values).filter(([, value]) => Number.isInteger(value) && Number(value) >= 0).map(([key, value]) => ({
+      value: Number(value),
+      label: key.replace(/_/g, " ").toLowerCase().replace(/\b\w/g, (char) => char.toUpperCase())
+    })).filter((option, index, all) => all.findIndex((other) => other.value === option.value) === index).sort((a, b3) => a.value - b3.value);
+  }
+  function normalizeProfileAppearance(data) {
+    var result = {};
+    if (data?.displayNameStyles === null)
+      result.displayNameStyles = null;
+    else if (data?.displayNameStyles && typeof data.displayNameStyles === "object") {
+      var style = data.displayNameStyles;
+      var fontId = style.fontId ?? style.font_id;
+      var effectId = style.effectId ?? style.effect_id;
+      var colors = Array.isArray(style.colors) ? style.colors : [];
+      if (Number.isInteger(fontId) && fontId >= 0 && Number.isInteger(effectId) && effectId >= 0 && colors.length <= 3 && colors.every((color2) => Number.isInteger(color2) && color2 >= 0 && color2 <= 16777215)) {
+        result.displayNameStyles = {
+          fontId,
+          effectId,
+          colors: [
+            ...colors
+          ]
+        };
+      }
+    }
+    if (data?.serverTag === null)
+      result.serverTag = null;
+    else if (data?.serverTag && typeof data.serverTag === "object") {
+      var { tag, guildId, badge } = data.serverTag;
+      if (typeof tag === "string" && Array.from(tag.trim()).length >= 1 && Array.from(tag.trim()).length <= 4 && typeof guildId === "string" && /^\d{15,22}$/.test(guildId) && typeof badge === "string" && (badge === "" || /^[a-f0-9]{32}$/.test(badge))) {
+        result.serverTag = {
+          tag: tag.trim(),
+          guildId,
+          badge
+        };
+      }
+    }
+    return result;
+  }
+  function nativeProfileAppearance(data) {
+    var appearance = normalizeProfileAppearance(data);
+    var result = {};
+    if (appearance.displayNameStyles !== void 0) {
+      var style = appearance.displayNameStyles;
+      result.displayNameStyles = style ? {
+        ...style,
+        font_id: style.fontId,
+        effect_id: style.effectId
+      } : null;
+      result.display_name_styles = result.displayNameStyles;
+    }
+    if (appearance.serverTag !== void 0) {
+      var tag = appearance.serverTag;
+      result.primaryGuild = tag ? {
+        identityEnabled: true,
+        identityGuildId: tag.guildId,
+        tag: tag.tag,
+        badge: tag.badge || null,
+        identity_enabled: true,
+        identity_guild_id: tag.guildId
+      } : null;
+      result.primary_guild = result.primaryGuild;
+    }
+    return result;
+  }
+  var init_profileAppearance = __esm({
+    "src/lib/api/profileAppearance.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+    }
+  });
+
   // src/core/i18n/default.json
   var default_default;
   var init_default = __esm({
@@ -9919,6 +9995,7 @@
         avatarDecoration: preview.avatarDecoration || null,
         avatarDecorationSku: preview.avatarDecorationSku || null,
         profileColorsEnabled: preview.profileColorsEnabled,
+        ...normalizeProfileAppearance(preview),
         primaryColor: preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null,
         accentColor: preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null,
         bio: preview.bio,
@@ -10065,6 +10142,7 @@
           enabled: true,
           username: data.username || preview.username,
           displayName: data.globalName || data.displayName || preview.displayName,
+          ...normalizeProfileAppearance(data),
           avatarMedia: mediaClearPending("avatarMedia") ? null : data.avatar ? {
             uri: data.avatar
           } : null,
@@ -10154,6 +10232,8 @@
     if (!original || typeof original !== "object" || !data)
       return original;
     var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+    for (var [key, value] of Object.entries(nativeProfileAppearance(data)))
+      setOwnValue(cloned, key, value);
     if (data.username) {
       var username = String(data.username);
       setOwnValue(cloned, "username", username);
@@ -10219,21 +10299,23 @@
     if (!original || typeof original !== "object" || !data)
       return original;
     var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+    for (var [key, value] of Object.entries(nativeProfileAppearance(data)))
+      setOwnValue(cloned, key, value);
     setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userId, data));
     setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userId, data));
     applyAvatarDecoration(cloned, data);
     if (cloned.user)
       setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
     if (depth < 3) {
-      for (var key of [
+      for (var key1 of [
         "userProfile",
         "displayProfile",
         "guildMemberProfile",
         "profile"
       ]) {
-        var nested = original[key];
+        var nested = original[key1];
         if (nested && nested !== original && typeof nested === "object")
-          setOwnValue(cloned, key, decorateSharedProfile(nested, userId, data, depth + 1));
+          setOwnValue(cloned, key1, decorateSharedProfile(nested, userId, data, depth + 1));
       }
     }
     if (data.username)
@@ -10738,6 +10820,8 @@
       }
     }
     var displayName2 = preview.displayName || original.globalName || original.global_name || original.displayName || original.username;
+    for (var [key1, value] of Object.entries(nativeProfileAppearance(preview)))
+      setOwnValue(cloned, key1, value);
     var username = preview.username || original.username;
     var avatar = mediaUri("avatarMedia");
     var banner = mediaUri("bannerMedia");
@@ -11247,6 +11331,7 @@
         ...props
       };
       if (data) {
+        Object.assign(currentProps, nativeProfileAppearance(data));
         if (props.user)
           currentProps.user = cloneSharedUser(props.user, data);
         for (var key of [
@@ -11299,6 +11384,7 @@
     var applyIdentity = (props, id, data) => {
       if (!props || !data)
         return;
+      Object.assign(props, nativeProfileAppearance(data));
       var username = String(data.username || "");
       var displayName2 = String(data.globalName || data.displayName || "");
       if (props.user)
@@ -11335,6 +11421,7 @@
           if (isCurrentUser(id)) {
             if (!preview.enabled)
               return;
+            Object.assign(props, nativeProfileAppearance(preview));
             if (props.user)
               props.user = cloneObject(props.user, "user");
             props.username = preview.username || props.username;
@@ -11949,6 +12036,39 @@
         redraw();
       }
     };
+    var chooseNameStyle = (field) => {
+      var enums = findByProps("DisplayNameFont", "DisplayNameEffect");
+      var options = appearanceOptions(enums?.[field === "fontId" ? "DisplayNameFont" : "DisplayNameEffect"]);
+      var key = `CloudCordNameStyle_${field}`;
+      if (!options.length) {
+        diagnostics.last = "Discord's username styles aren't available in this version";
+        redraw();
+        return;
+      }
+      simpleSheets.showSimpleActionSheet({
+        key,
+        header: {
+          title: field === "fontId" ? "Username font" : "Username effect",
+          onClose: () => simpleSheets.hideActionSheet?.(key)
+        },
+        options: options.map((option) => ({
+          label: option.label,
+          onPress: () => {
+            update("displayNameStyles", {
+              ...preview.displayNameStyles || {
+                fontId: 0,
+                effectId: 0,
+                colors: [
+                  16777215
+                ]
+              },
+              [field]: option.value
+            }, true);
+            simpleSheets.hideActionSheet?.(key);
+          }
+        }))
+      });
+    };
     var chooseExperimentalBadge = (group) => {
       var key = `FakeProfileBadge_${group.id}`;
       var selectTier = (id) => {
@@ -12267,7 +12387,106 @@
                     /* @__PURE__ */ jsx(Text, {
                       variant: "text-sm/bold",
                       color: "text-normal",
-                      children: "about you"
+                      children: "Username Style"
+                    }),
+                    /* @__PURE__ */ jsx(ActionButton, {
+                      label: "Choose Font",
+                      onPress: () => chooseNameStyle("fontId")
+                    }),
+                    /* @__PURE__ */ jsx(ActionButton, {
+                      label: "Choose Effect",
+                      onPress: () => chooseNameStyle("effectId")
+                    }),
+                    [
+                      0,
+                      1,
+                      2
+                    ].map((index) => /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: `#${(preview.displayNameStyles?.colors[index] ?? 16777215).toString(16).padStart(6, "0")}`,
+                      placeholder: `Color ${index + 1} (#RRGGBB)`,
+                      autoCapitalize: "none",
+                      autoCorrect: false,
+                      onChangeText: (value) => {
+                        if (!/^#?[0-9a-f]{6}$/i.test(value))
+                          return;
+                        var style = preview.displayNameStyles || {
+                          fontId: 0,
+                          effectId: 0,
+                          colors: [
+                            16777215
+                          ]
+                        };
+                        var colors = [
+                          0,
+                          1,
+                          2
+                        ].map((i) => style.colors[i] ?? style.colors[0] ?? 16777215);
+                        colors[index] = parseInt(value.replace("#", ""), 16);
+                        update("displayNameStyles", {
+                          ...style,
+                          colors
+                        }, true);
+                      }
+                    }, `name-color-${index}`)),
+                    /* @__PURE__ */ jsx(ActionButton, {
+                      label: "Reset Username Style",
+                      onPress: () => update("displayNameStyles", null, true)
+                    }),
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "Server Tag"
+                    }),
+                    /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: preview.serverTag?.tag || "",
+                      placeholder: "Tag (1\u20134 characters)",
+                      maxLength: 4,
+                      onChangeText: (value) => update("serverTag", {
+                        ...preview.serverTag || {
+                          guildId: "",
+                          badge: ""
+                        },
+                        tag: value
+                      }, true)
+                    }),
+                    /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: preview.serverTag?.guildId || "",
+                      placeholder: "Server ID",
+                      keyboardType: "number-pad",
+                      onChangeText: (value) => update("serverTag", {
+                        ...preview.serverTag || {
+                          tag: "",
+                          badge: ""
+                        },
+                        guildId: value.trim()
+                      }, true)
+                    }),
+                    /* @__PURE__ */ jsx(ActionButton, {
+                      label: "Copy Current Discord Tag",
+                      onPress: () => {
+                        var user = safeStore("UserStore")?.getCurrentUser?.();
+                        var tag = user?.primaryGuild || user?.primary_guild;
+                        if (tag?.tag)
+                          update("serverTag", {
+                            tag: tag.tag,
+                            guildId: tag.identityGuildId || tag.identity_guild_id,
+                            badge: tag.badge || ""
+                          }, true);
+                      }
+                    }),
+                    /* @__PURE__ */ jsx(ActionButton, {
+                      label: "Reset Server Tag",
+                      onPress: () => update("serverTag", null, true)
+                    }),
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/normal",
+                      color: "text-muted",
+                      children: "Appearance only. Your server membership stays unchanged."
+                    }),
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "About You"
                     }),
                     /* @__PURE__ */ jsx(TextInput3, {
                       defaultValue: preview.bio,
@@ -12772,6 +12991,7 @@
       init_storage();
       init_patcher();
       init_jsx();
+      init_profileAppearance();
       init_settings();
       init_plugins4();
       init_metro();
