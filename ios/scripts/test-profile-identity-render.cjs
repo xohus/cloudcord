@@ -12,10 +12,12 @@ const context = vm.createContext({
     renderedUserId: props => props.user.id, isCurrentUser: () => false,
     requestSharedProfile: () => {}, safeStore: () => ({ getUser: () => user }),
     getProfileOverride: () => synced,
-    cloneSharedUser: (original, data) => ({ ...original, username: data.username || original.username }),
+    setOwnValue: (object, key, value) => { object[key] = value; },
+    shouldReplaceSharedBadges: () => false, remoteNitroEnabled: () => false,
     decorateSharedProfile: (original, id, data) => ({ ...original, username: data.username }),
     replaceIdentityText: tree => tree,
 });
+vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function cloneSharedUser('), page.indexOf('function decorateSharedProfile(')), { loader: 'ts' }).code, context);
 vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function identityRenderer('), page.indexOf('function connectIdentityRenderer(')), { loader: 'ts' }).code, context);
 const render = context.identityRenderer(props => props.user.username);
 const props = Object.freeze({ user });
@@ -25,4 +27,7 @@ assert.equal(render(props), 'second');
 synced = {};
 assert.equal(render(props), 'original');
 assert.equal(user.username, 'original');
+synced = { username: 'third', globalName: 'Synced Display' };
+const renderFields = context.identityRenderer(props => [props.user.username, props.user.global_name, props.global_name]);
+assert.deepEqual(Array.from(renderFields(props)), ['third', 'Synced Display', 'Synced Display']);
 console.log('PASS: mounted identity renders latest synced name and restores original after removal without mutating user records.');
