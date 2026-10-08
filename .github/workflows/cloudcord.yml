@@ -757,8 +757,8 @@ jobs:
           const openGiftingBadgeInfoActionSheet = findByNameLazy("openGiftingBadgeInfoActionSheet", false) as any;
           const LinearGradient = (findByProps("LinearGradient") as any)?.LinearGradient as any;
           const overriddenKeys = new Set([
-              "username", "globalName", "displayName", "publicFlags", "flags", "badges", "profileBadges",
-              "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "getPreviewBanner", "hasFlag",
+              "username", "globalName", "displayName", "publicFlags", "badges", "profileBadges",
+              "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "getPreviewBanner",
               "premiumType", "premiumSince", "premiumGuildSince", "avatarDecorationData", "primaryColor", "accentColor", "themeColors", "bio", "pronouns", "createdAt", "joinedAt", "memberSince", "user", "userProfile", "guildMemberProfile", "displayProfile", "profile"
           ]);
 
@@ -1216,7 +1216,11 @@ jobs:
 
           function cloneSharedUser(original: any, data: any) {
               if (!original || typeof original !== "object" || !data) return original;
-              const cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+              const cloned = Object.create(Object.getPrototypeOf(original) || Object.prototype);
+              for (const key of Reflect.ownKeys(original)) {
+                  const descriptor = Object.getOwnPropertyDescriptor(original, key);
+                  if (descriptor) Object.defineProperty(cloned, key, { ...descriptor, configurable: true });
+              }
               for (const [key, value] of Object.entries(nativeProfileAppearance(data))) setOwnValue(cloned, key, value);
               if (data.username) {
                   const username = String(data.username);
@@ -1245,7 +1249,6 @@ jobs:
                   const sharedFlags = Number(data.badgeFlags || 0);
                   setOwnValue(cloned, "publicFlags", sharedFlags);
                   setOwnValue(cloned, "public_flags", sharedFlags);
-                  setOwnValue(cloned, "flags", sharedFlags);
                   setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userIdFromProfile(original), data));
                   setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userIdFromProfile(original), data));
                   setOwnValue(cloned, "premiumSince", null);
@@ -1310,7 +1313,6 @@ jobs:
                   const sharedFlags = Number(data.badgeFlags || 0);
                   setOwnValue(cloned, "publicFlags", sharedFlags);
                   setOwnValue(cloned, "public_flags", sharedFlags);
-                  setOwnValue(cloned, "flags", sharedFlags);
               }
               if (data.bio != null) setOwnValue(cloned, "bio", data.bio);
               if (data.pronouns != null) setOwnValue(cloned, "pronouns", data.pronouns);
@@ -1641,10 +1643,8 @@ jobs:
               if (createdAt) setOwnValue(cloned, "createdAt", createdAt);
               if (joinedAt) { setOwnValue(cloned, "joinedAt", joinedAt); setOwnValue(cloned, "memberSince", joinedAt); }
               setOwnValue(cloned, "publicFlags", flags);
-              setOwnValue(cloned, "flags", flags);
               setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
               setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
-              setOwnValue(cloned, "hasFlag", (flag: number) => !!(flags & flag));
               setOwnValue(cloned, "avatarDecorationData", preview.avatarDecoration ? { asset: decorationAsset(preview.avatarDecoration), skuId: preview.avatarDecorationSku || "cloudcord-decoration" } : null);
               if (primaryColor != null) setOwnValue(cloned, "primaryColor", primaryColor);
               if (accentColor != null) setOwnValue(cloned, "accentColor", accentColor);
