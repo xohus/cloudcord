@@ -13444,6 +13444,7 @@
         identityData: false,
         last: "Ready"
       };
+      globalThis.__CLOUDCORD_PROFILE_DIAGNOSTICS__ = diagnostics;
       initialized = false;
       currentUserId = null;
       realCurrentUser = null;
@@ -14402,6 +14403,16 @@
         loader: debug.bunny.loader,
         diagnosticsCapture: settings.cloudcordDiagnosticsCapture === true,
         runtimeUrl: loaderConfig.customLoadUrl.enabled ? loaderConfig.customLoadUrl.url : "stable",
+        profileIdentity: (() => {
+          var state2 = globalThis.__CLOUDCORD_PROFILE_DIAGNOSTICS__;
+          return state2 ? {
+            renders: Number(state2.identityMatches || 0),
+            userId: String(state2.identityUser || "None"),
+            syncedNamesAvailable: state2.identityData === true,
+            userStoreConnected: state2.userStore === true,
+            profileStoreConnected: state2.profileStore === true
+          } : null;
+        })(),
         tabOrder: order,
         hiddenTabs: hidden,
         recentRequests: requestEvents.slice(-50),
