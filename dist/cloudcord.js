@@ -11232,9 +11232,37 @@
       var id = String(renderedUserId(props) || "");
       if (id && !isCurrentUser(id))
         requestSharedProfile(id);
-      var tree = Component(props);
       var original = id ? safeStore("UserStore")?.getUser?.(id) : null;
       var data = id ? getProfileOverride(id) : null;
+      var currentProps = {
+        ...props
+      };
+      if (data) {
+        if (props.user)
+          currentProps.user = cloneSharedUser(props.user, data);
+        for (var key of [
+          "profile",
+          "userProfile",
+          "displayProfile",
+          "guildMemberProfile"
+        ]) {
+          if (props[key])
+            currentProps[key] = decorateSharedProfile(props[key], id, data);
+        }
+        if (data.username) {
+          currentProps.username = data.username;
+          currentProps.userName = data.username;
+          currentProps.tag = `@${data.username}`;
+        }
+        var name = data.globalName || data.displayName;
+        if (name) {
+          currentProps.displayName = name;
+          currentProps.globalName = name;
+          currentProps.global_name = name;
+          currentProps.name = name;
+        }
+      }
+      var tree = Component(currentProps);
       return original && data ? replaceIdentityText(tree, original, data) : tree;
     }
     identityRenderers.set(Component, CloudCordIdentity);
@@ -11304,14 +11332,14 @@
           }
           requestSharedProfile(id);
           var data = getProfileOverride(id);
-          if (data && Object.keys(data).length)
-            applyIdentity(props, id, data);
           if (typeof _component === "function" && !_component.prototype?.isReactComponent) {
             return {
               ...rendered,
               type: identityRenderer(_component)
             };
           }
+          if (data && Object.keys(data).length)
+            applyIdentity(props, id, data);
         });
         diagnostics.patches += 1;
       } catch (e) {
