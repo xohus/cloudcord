@@ -2033,6 +2033,7 @@ jobs:
                   "ProfileHeader", "UserProfileHeader", "ProfileHeaderUsername",
                   "ProfileHeaderName", "ProfileDisplayName", "UserProfileName",
                   "ProfileUsername", "UserTagAndPronouns", "UserTag",
+                  "UserProfilePrimaryInfo", "DiscordTag", "UsernameWithEffects",
                   "UserProfileUsername", "UserProfileDisplayName", "ProfileHeaderUserInfo", "UserProfileHeaderInfo"
               ];
               const applyIdentity = (props: any, id: string, data: any) => {

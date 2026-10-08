@@ -10,6 +10,7 @@ const update = page.slice(page.indexOf('const update = (key:'), page.indexOf('co
 assert.match(update, /rootSettings\.fakeProfile =/);
 assert.match(update, /queueSharedPublish\(\)/);
 assert.match(page, /"UserProfileUsername", "UserProfileDisplayName"/);
+assert.match(page, /"UserProfilePrimaryInfo", "DiscordTag", "UsernameWithEffects"/);
 assert.match(page, /profileSnapshot\.syncRevision = Math\.max/);
 const textHelper = page.slice(page.indexOf('function replaceIdentityText('), page.indexOf('function identityRenderer('));
 const identityContext = vm.createContext({ isValidElement: node => !!node?.props, cloneElement: (node, props) => ({ ...node, props: { ...node.props, ...props } }) });
