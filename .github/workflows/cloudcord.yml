@@ -1168,7 +1168,11 @@ jobs:
               if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || (!force && sharedProfiles.has(id) && Date.now() - fetchedAt < 5000)) return;
               sharedRequests.add(id);
               void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, { cache: "no-store" })
-                  .then(response => response.ok ? response.json() : null)
+                  .then(response => {
+                      if (response.ok) return response.json();
+                      if (response.status === 404) return null;
+                      throw new Error(`Shared profile unavailable (${response.status})`);
+                  })
                   .then(payload => {
                       const profile = payload?.profile ?? payload;
                       // Cache a missing profile too. Profile surfaces can render several
@@ -1178,7 +1182,7 @@ jobs:
                       const changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
                       sharedProfiles.set(id, next);
                       sharedProfileFetchedAt.set(id, Date.now());
-                      if (!changed || !profile || typeof profile !== "object") return;
+                      if (!changed) return;
                       for (const refresh of identityRefreshers) refresh();
                       try { safeStore("UserStore")?.emitChange?.(); } catch {}
                       try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
@@ -1211,6 +1215,7 @@ jobs:
               if (data.globalName || data.displayName) {
                   const displayName = String(data.globalName || data.displayName);
                   setOwnValue(cloned, "globalName", displayName);
+                  setOwnValue(cloned, "global_name", displayName);
                   setOwnValue(cloned, "displayName", displayName);
                   setOwnValue(cloned, "name", displayName);
                   setOwnValue(cloned, "getGlobalName", () => displayName);
@@ -1263,6 +1268,7 @@ jobs:
               if (data.globalName || data.displayName) {
                   const displayName = data.globalName || data.displayName;
                   setOwnValue(cloned, "globalName", displayName);
+                  setOwnValue(cloned, "global_name", displayName);
                   setOwnValue(cloned, "displayName", displayName);
                   setOwnValue(cloned, "name", displayName);
               }
@@ -1671,9 +1677,9 @@ jobs:
 
           function profileResultUserId(subject: any, result: any) {
               return String(
-                  (typeof subject === "string" ? subject : subject?.userId || subject?.id || subject?.user?.id)
+                  (typeof subject === "string" ? subject : subject?.userId || subject?.user_id || subject?.id || subject?.user?.id)
                   || result?.userId || result?.id || result?.user?.id
-                  || result?.userProfile?.userId || result?.userProfile?.user?.id
+                  || result?.userProfile?.userId || result?.userProfile?.user_id || result?.userProfile?.user?.id
                   || result?.guildMemberProfile?.userId || result?.guildMemberProfile?.user?.id
                   || result?.displayProfile?.userId || result?.displayProfile?.user?.id
                   || result?.profile?.userId || result?.profile?.user?.id
@@ -1863,14 +1869,17 @@ jobs:
 
           function renderedUserId(props: any) {
               return props?.userId
+                  || props?.user_id
                   || props?.profileUserId
                   || props?.user?.userId
                   || props?.user?.id
                   || props?.userProfile?.userId
+                  || props?.userProfile?.user_id
                   || props?.userProfile?.user?.id
                   || props?.guildMemberProfile?.userId
                   || props?.guildMemberProfile?.user?.id
                   || props?.displayProfile?.userId
+                  || props?.displayProfile?.user_id
                   || props?.displayProfile?.user?.id
                   || props?.profile?.userId
                   || props?.profile?.user?.id;
@@ -1963,7 +1972,7 @@ jobs:
               if (typeof node === "string") {
                   if (data.username && (node === original.username || node === `@${original.username}`)) return node.startsWith("@") ? `@${data.username}` : String(data.username);
                   const name = data.globalName || data.displayName;
-                  if (name && node === (original.globalName || original.displayName)) return String(name);
+                  if (name && node === (original.globalName || original.global_name || original.displayName)) return String(name);
                   return node;
               }
               if (Array.isArray(node)) return node.map(child => replaceIdentityText(child, original, data, depth + 1));

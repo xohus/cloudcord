@@ -22,6 +22,15 @@ assert.equal(replaced.props.children[1].props.children, 'Custom Name');
 assert.equal(replaced.props.children[2], 'Unrelated text');
 assert.equal(originalTree.props.children[0], '@realuser');
 assert.equal(originalIdentity.username, 'realuser');
+const snakeIdentity = identityContext.replaceIdentityText({ props: { children: 'Native Name' } }, { username: 'native', global_name: 'Native Name' }, { globalName: 'Synced Name' });
+assert.equal(snakeIdentity.props.children, 'Synced Name');
+const idHelper = page.slice(page.indexOf('function renderedUserId('), page.indexOf('function connectMediaRenderer('));
+vm.runInContext(esbuild.transformSync(idHelper, { loader: 'ts' }).code, identityContext);
+assert.equal(identityContext.renderedUserId({ user_id: '123456789012345' }), '123456789012345');
+assert.equal(identityContext.renderedUserId({ userProfile: { user_id: '123456789012345' } }), '123456789012345');
+assert.equal(identityContext.renderedUserId({ displayProfile: { user_id: '123456789012345' } }), '123456789012345');
+assert.equal(identityContext.renderedUserId({}), undefined);
+assert(!page.includes('if (!changed || !profile || typeof profile !== "object") return;'), 'Removing a synced profile must refresh identity renderers too');
 // Feed the real desktop serializer's JSON into the mobile nested-profile reader.
 const desktopSource = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/index.tsx', 'utf8');
 const serializer = desktopSource.slice(desktopSource.indexOf('function toSharedProfile('), desktopSource.indexOf('async function publishSharedProfile('));
