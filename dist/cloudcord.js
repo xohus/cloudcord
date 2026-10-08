@@ -10100,14 +10100,20 @@
     sharedRequests.add(id);
     void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, {
       cache: "no-store"
-    }).then((response) => response.ok ? response.json() : null).then((payload) => {
+    }).then((response) => {
+      if (response.ok)
+        return response.json();
+      if (response.status === 404)
+        return null;
+      throw new Error(`Shared profile unavailable (${response.status})`);
+    }).then((payload) => {
       var profile = payload?.profile ?? payload;
       var next = profile && typeof profile === "object" ? profile : {};
       var previous = sharedProfiles.get(id);
       var changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
       sharedProfiles.set(id, next);
       sharedProfileFetchedAt.set(id, Date.now());
-      if (!changed || !profile || typeof profile !== "object")
+      if (!changed)
         return;
       for (var refresh of identityRefreshers)
         refresh();
@@ -10151,6 +10157,7 @@
     if (data.globalName || data.displayName) {
       var displayName2 = String(data.globalName || data.displayName);
       setOwnValue(cloned, "globalName", displayName2);
+      setOwnValue(cloned, "global_name", displayName2);
       setOwnValue(cloned, "displayName", displayName2);
       setOwnValue(cloned, "name", displayName2);
       setOwnValue(cloned, "getGlobalName", () => displayName2);
@@ -10227,6 +10234,7 @@
     if (data.globalName || data.displayName) {
       var displayName2 = data.globalName || data.displayName;
       setOwnValue(cloned, "globalName", displayName2);
+      setOwnValue(cloned, "global_name", displayName2);
       setOwnValue(cloned, "displayName", displayName2);
       setOwnValue(cloned, "name", displayName2);
     }
@@ -10815,7 +10823,7 @@
     return decorated;
   }
   function profileResultUserId(subject, result) {
-    return String((typeof subject === "string" ? subject : subject?.userId || subject?.id || subject?.user?.id) || result?.userId || result?.id || result?.user?.id || result?.userProfile?.userId || result?.userProfile?.user?.id || result?.guildMemberProfile?.userId || result?.guildMemberProfile?.user?.id || result?.displayProfile?.userId || result?.displayProfile?.user?.id || result?.profile?.userId || result?.profile?.user?.id || "");
+    return String((typeof subject === "string" ? subject : subject?.userId || subject?.user_id || subject?.id || subject?.user?.id) || result?.userId || result?.id || result?.user?.id || result?.userProfile?.userId || result?.userProfile?.user_id || result?.userProfile?.user?.id || result?.guildMemberProfile?.userId || result?.guildMemberProfile?.user?.id || result?.displayProfile?.userId || result?.displayProfile?.user?.id || result?.profile?.userId || result?.profile?.user?.id || "");
   }
   function isCurrentUser(id) {
     return !!id && !!currentUserId && id === currentUserId;
@@ -11077,7 +11085,7 @@
     return args.some((value) => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
   }
   function renderedUserId(props) {
-    return props?.userId || props?.profileUserId || props?.user?.userId || props?.user?.id || props?.userProfile?.userId || props?.userProfile?.user?.id || props?.guildMemberProfile?.userId || props?.guildMemberProfile?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
+    return props?.userId || props?.user_id || props?.profileUserId || props?.user?.userId || props?.user?.id || props?.userProfile?.userId || props?.userProfile?.user_id || props?.userProfile?.user?.id || props?.guildMemberProfile?.userId || props?.guildMemberProfile?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user_id || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
   }
   function connectMediaRenderer() {
     var avatarComponents = [
@@ -11196,7 +11204,7 @@
       if (data.username && (node === original.username || node === `@${original.username}`))
         return node.startsWith("@") ? `@${data.username}` : String(data.username);
       var name = data.globalName || data.displayName;
-      if (name && node === (original.globalName || original.displayName))
+      if (name && node === (original.globalName || original.global_name || original.displayName))
         return String(name);
       return node;
     }
