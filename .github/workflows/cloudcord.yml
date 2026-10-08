@@ -96,6 +96,7 @@ jobs:
           cp "../ios/runtime/src/core/ui/settings/index.ts" "src/core/ui/settings/index.ts"
           cp "../ios/runtime/src/core/vendetta/plugins.ts" "src/core/vendetta/plugins.ts"
           cp "../ios/runtime/src/lib/api/settings.ts" "src/lib/api/settings.ts"
+          cp "../ios/runtime/src/lib/api/react/jsx.ts" "src/lib/api/react/jsx.ts"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
           mkdir -p src/lib/api/native
           cp "../ios/runtime/src/lib/api/native/legacyRuntimeRefresh.ts" "src/lib/api/native/legacyRuntimeRefresh.ts"

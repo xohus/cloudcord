@@ -29,11 +29,16 @@ export function patchJsx() {
             return ret
         }
 
-        // The check could be more complex, but this is fine for now to avoid overhead
-        if (typeof Component === "function" && callbacks.has(Component.name)) {
-            const cbs = callbacks.get(Component.name)!;
+        // React.memo profile headers are objects, and production functions can
+        // retain a displayName while their function name is shortened.
+        const component: any = Component;
+        const target = typeof component === "function" ? component
+            : component?.$$typeof === Symbol.for("react.memo") && typeof component.type === "function" ? component.type : null;
+        const name = [component?.displayName, target?.displayName, target?.name].find(value => typeof value === "string" && callbacks.has(value));
+        if (target && name) {
+            const cbs = callbacks.get(name)!;
             for (const cb of cbs) {
-                const _ret = cb(Component, ret);
+                const _ret = cb(target, ret);
                 if (_ret !== undefined) ret = _ret;
             }
             return ret;
