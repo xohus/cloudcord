@@ -928,6 +928,9 @@ jobs:
               profileStore: false,
               avatarResolver: false,
               bannerResolver: false,
+              identityMatches: 0,
+              identityUser: "None",
+              identityData: false,
               last: "Ready"
           };
 
@@ -1993,6 +1996,8 @@ jobs:
                   if (id && !isCurrentUser(id)) requestSharedProfile(id);
                   const original = id ? safeStore("UserStore")?.getUser?.(id) : null;
                   const data = id ? getProfileOverride(id) : null;
+                  diagnostics.identityUser = id || "Missing user ID";
+                  diagnostics.identityData = !!(data?.username || data?.globalName || data?.displayName);
                   const currentProps = { ...props };
                   if (data) {
                       if (props.user) currentProps.user = cloneSharedUser(props.user, data);
@@ -2052,6 +2057,7 @@ jobs:
               for (const component of identityComponents) {
                   try {
                       onJsxCreate(component, (_component, rendered) => {
+                          diagnostics.identityMatches += 1;
                           const props = rendered?.props;
                           const id = String(renderedUserId(props) || props?.user?.id || "");
                           if (!id) return;
@@ -2707,6 +2713,9 @@ jobs:
                                   <Text variant="text-xs/medium" color="text-muted">Preview hooks: {diagnostics.patches}</Text>
                                   <Text variant="text-xs/medium" color="text-muted">User source: {diagnostics.userStore ? "Connected" : "Unavailable"}</Text>
                                   <Text variant="text-xs/medium" color="text-muted">Profile source: {diagnostics.profileStore ? "Connected" : "Unavailable"}</Text>
+                                  <Text variant="text-xs/medium" color="text-muted">Identity renders: {diagnostics.identityMatches}</Text>
+                                  <Text variant="text-xs/medium" color="text-muted">Last identity user: {diagnostics.identityUser}</Text>
+                                  <Text variant="text-xs/medium" color="text-muted">Synced names: {diagnostics.identityData ? "Available" : "Not received"}</Text>
                                   <Text variant="text-xs/medium" color="text-muted">Profile picture resolver: {diagnostics.avatarResolver ? "Connected" : "Unavailable"}</Text>
                                   <Text variant="text-xs/medium" color="text-muted">Banner resolver: {diagnostics.bannerResolver ? "Connected" : "Unavailable"}</Text>
                                   <Text variant="text-xs/medium" color="text-muted">Last action: {diagnostics.last}</Text>

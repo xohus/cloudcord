@@ -7,6 +7,7 @@ const page = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/index.
 const user = Object.freeze({ id: '123456789012345', username: 'original' });
 let synced = { username: 'first' };
 const context = vm.createContext({
+    diagnostics: {},
     identityRenderers: new WeakMap(), identityRefreshers: new Set(),
     useReducer: () => [0, () => {}], useEffect: fn => fn(),
     renderedUserId: props => props.user.id, isCurrentUser: () => false,
@@ -22,10 +23,13 @@ vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function identity
 const render = context.identityRenderer(props => props.user.username);
 const props = Object.freeze({ user });
 assert.equal(render(props), 'first');
+assert.equal(context.diagnostics.identityUser, user.id);
+assert.equal(context.diagnostics.identityData, true);
 synced = { username: 'second' };
 assert.equal(render(props), 'second');
 synced = {};
 assert.equal(render(props), 'original');
+assert.equal(context.diagnostics.identityData, false);
 assert.equal(user.username, 'original');
 synced = { username: 'third', globalName: 'Synced Display' };
 const renderFields = context.identityRenderer(props => [props.user.username, props.user.global_name, props.global_name]);
