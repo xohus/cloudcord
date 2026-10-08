@@ -1990,9 +1990,28 @@ jobs:
                   useEffect(() => { const update = () => refresh(); identityRefreshers.add(update); return () => { identityRefreshers.delete(update); }; }, []);
                   const id = String(renderedUserId(props) || "");
                   if (id && !isCurrentUser(id)) requestSharedProfile(id);
-                  const tree = Component(props);
                   const original = id ? safeStore("UserStore")?.getUser?.(id) : null;
                   const data = id ? getProfileOverride(id) : null;
+                  const currentProps = { ...props };
+                  if (data) {
+                      if (props.user) currentProps.user = cloneSharedUser(props.user, data);
+                      for (const key of ["profile", "userProfile", "displayProfile", "guildMemberProfile"]) {
+                          if (props[key]) currentProps[key] = decorateSharedProfile(props[key], id, data);
+                      }
+                      if (data.username) {
+                          currentProps.username = data.username;
+                          currentProps.userName = data.username;
+                          currentProps.tag = `@${data.username}`;
+                      }
+                      const name = data.globalName || data.displayName;
+                      if (name) {
+                          currentProps.displayName = name;
+                          currentProps.globalName = name;
+                          currentProps.global_name = name;
+                          currentProps.name = name;
+                      }
+                  }
+                  const tree = Component(currentProps);
                   return original && data ? replaceIdentityText(tree, original, data) : tree;
               }
               identityRenderers.set(Component, CloudCordIdentity);
@@ -2046,10 +2065,10 @@ jobs:
                           }
                           requestSharedProfile(id);
                           const data = getProfileOverride(id);
-                          if (data && Object.keys(data).length) applyIdentity(props, id, data);
                           if (typeof _component === "function" && !_component.prototype?.isReactComponent) {
                               return { ...rendered, type: identityRenderer(_component) };
                           }
+                          if (data && Object.keys(data).length) applyIdentity(props, id, data);
                       });
                       diagnostics.patches += 1;
                   } catch {}
