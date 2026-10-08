@@ -1,0 +1,29 @@
+CloudCord
+Your Discord, your way.
+
+INSTALL
+1. Download the Mac build directly in Safari from github.com/xohus/cloudcord.
+   Avoid sending the app or disk image through WhatsApp: that transfer can
+   cause macOS to block execution with an AppSandbox quarantine error.
+2. Extract the downloaded ZIP and open the .dmg inside.
+3. Drag CloudCord onto Applications. Eject the CloudCord disk image.
+4. Quit Discord completely, then open CloudCord from Applications.
+5. Choose your installed Discord app and click Install / Reinstall.
+6. Open Discord. Run CloudCord again if you need to reinstall or uninstall it.
+
+ABOUT THE APPLE WARNING
+This preview has not been notarized by Apple. "Apple could not verify that
+CloudCord is free of malware" means Apple has not verified this build;
+that message alone is not a finding that malware was detected. It also
+does not prove that the app is safe. Download only from our official repo.
+
+If you trust this preview and the Mac's owner agrees, try opening CloudCord,
+then go to System Settings > Privacy & Security > Open Anyway and confirm.
+Do not disable Gatekeeper. If macOS says malware WAS detected, stop.
+
+Apple's guide: https://support.apple.com/102445
+Source and builds: https://github.com/xohus/cloudcord
+Help: https://discord.gg/EBEZJ84zBT (joining is optional)
+
+This installer modifies the selected Discord app and backs up its original
+archive. Profile customizations show in CloudCord, not unmodified Discord.

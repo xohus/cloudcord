@@ -29,11 +29,24 @@ pnpm buildStandalone
 bash "$SCRIPT_DIR/build-installer.sh"
 
 PACKAGE_DIR="$CLIENT_DIR/dist/mac-$ARCH"
-APP_DIR="$PACKAGE_DIR/CloudCord Setup.app"
+APP_DIR="$PACKAGE_DIR/CloudCord.app"
 mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
 cp "dist/CloudCordSetup-darwin-$ARCH" "$APP_DIR/Contents/MacOS/CloudCordSetup"
 cp dist/desktop.asar "$PACKAGE_DIR/cloudcord.asar"
 cp dist/desktop.asar "$APP_DIR/Contents/Resources/cloudcord.asar"
+cp installer/MAC-INSTALL.txt "$PACKAGE_DIR/Read Me First.txt"
+cp installer/MAC-INSTALL.txt "$APP_DIR/Contents/Resources/Read Me First.txt"
+# Generate Apple's icon sizes from the existing square CloudCord favicon.
+# Using the square source preserves the cloud's proportions at every size.
+ICON_WORK="$(mktemp -d "${TMPDIR:-/tmp}/cloudcord-icons.XXXXXX")"
+ICONSET="$ICON_WORK/CloudCord.iconset"
+mkdir -p "$ICONSET"
+for SIZE in 16 32 128 256 512; do
+    sips -z "$SIZE" "$SIZE" "$CLIENT_DIR/../../assets/cloudcord-favicon.png" --out "$ICONSET/icon_${SIZE}x${SIZE}.png" >/dev/null
+    DOUBLE=$((SIZE * 2))
+    sips -z "$DOUBLE" "$DOUBLE" "$CLIENT_DIR/../../assets/cloudcord-favicon.png" --out "$ICONSET/icon_${SIZE}x${SIZE}@2x.png" >/dev/null
+done
+iconutil -c icns "$ICONSET" -o "$APP_DIR/Contents/Resources/CloudCord.icns"
 
 node --input-type=module - "$APP_DIR/Contents/Info.plist" <<'NODE'
 import { writeFileSync } from "node:fs";
@@ -41,9 +54,10 @@ writeFileSync(process.argv[2], `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
 <key>CFBundleIdentifier</key><string>com.cloudcord.setup.preview</string>
-<key>CFBundleDisplayName</key><string>CloudCord Setup</string>
+<key>CFBundleDisplayName</key><string>CloudCord</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
-<key>CFBundleName</key><string>CloudCord Setup</string>
+<key>CFBundleName</key><string>CloudCord</string>
+<key>CFBundleIconFile</key><string>CloudCord.icns</string>
 <key>CFBundleExecutable</key><string>CloudCordSetup</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>0.1.0</string>
@@ -96,9 +110,10 @@ fi
 # Discord's signature here; distribution signing is a separate release gate.
 ditto -c -k --sequesterRsrc --keepParent "$PACKAGE_DIR" "dist/CloudCord-mac-$ARCH-preview.zip"
 DMG_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/cloudcord-dmg.XXXXXX")"
-ditto "$APP_DIR" "$DMG_STAGE/CloudCord Setup.app"
+ditto "$APP_DIR" "$DMG_STAGE/CloudCord.app"
+cp installer/MAC-INSTALL.txt "$DMG_STAGE/Read Me First.txt"
 ln -s /Applications "$DMG_STAGE/Applications"
-hdiutil create -volname "CloudCord Setup" -srcfolder "$DMG_STAGE" \
+hdiutil create -volname "CloudCord" -srcfolder "$DMG_STAGE" \
     -fs HFS+ -format UDZO -ov "dist/CloudCord-mac-$ARCH-preview.dmg"
 hdiutil verify "dist/CloudCord-mac-$ARCH-preview.dmg"
 
@@ -107,11 +122,13 @@ hdiutil verify "dist/CloudCord-mac-$ARCH-preview.dmg"
 DMG_MOUNT="$(mktemp -d "${TMPDIR:-/tmp}/cloudcord-mount.XXXXXX")"
 DMG_COPY="$(mktemp -d "${TMPDIR:-/tmp}/cloudcord-install-check.XXXXXX")"
 hdiutil attach -readonly -nobrowse -mountpoint "$DMG_MOUNT" "dist/CloudCord-mac-$ARCH-preview.dmg"
-ditto "$DMG_MOUNT/CloudCord Setup.app" "$DMG_COPY/CloudCord Setup.app"
-codesign --verify --strict --verbose=2 "$DMG_COPY/CloudCord Setup.app"
-test -x "$DMG_COPY/CloudCord Setup.app/Contents/MacOS/CloudCordSetup"
-cmp "$APP_DIR/Contents/Resources/cloudcord.asar" "$DMG_COPY/CloudCord Setup.app/Contents/Resources/cloudcord.asar"
-open -n "$DMG_COPY/CloudCord Setup.app"
+ditto "$DMG_MOUNT/CloudCord.app" "$DMG_COPY/CloudCord.app"
+codesign --verify --strict --verbose=2 "$DMG_COPY/CloudCord.app"
+test -x "$DMG_COPY/CloudCord.app/Contents/MacOS/CloudCordSetup"
+test -s "$DMG_COPY/CloudCord.app/Contents/Resources/CloudCord.icns"
+cmp installer/MAC-INSTALL.txt "$DMG_MOUNT/Read Me First.txt"
+cmp "$APP_DIR/Contents/Resources/cloudcord.asar" "$DMG_COPY/CloudCord.app/Contents/Resources/cloudcord.asar"
+open -n "$DMG_COPY/CloudCord.app"
 sleep 5
 if ! pgrep -x CloudCordSetup >/dev/null; then
     echo "The app copied from the finished disk image did not stay running."

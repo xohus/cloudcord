@@ -12,12 +12,16 @@ void cloudcordShowResult(const char *title, const char *message);
 import "C"
 
 import (
+    _ "embed"
     "errors"
     "fmt"
     "runtime"
     "strings"
     "unsafe"
 )
+
+//go:embed MAC-INSTALL.txt
+var macInstallGuide string
 
 func InstallLatestBuilds() error {
     err := installLatestBuilds()
@@ -53,6 +57,10 @@ func main() {
         action := int(C.cloudcordChooseAction(cChoices, &selected))
         C.free(unsafe.Pointer(cChoices))
         if action < 0 { return }
+        if action == 2 {
+            macMessage("CloudCord — Installation Guide", macInstallGuide)
+            continue
+        }
         var install *DiscordInstall
         if int(selected) < len(candidates) {
             install = candidates[int(selected)].(*DiscordInstall)

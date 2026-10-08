@@ -14,11 +14,12 @@ int cloudcordChooseAction(const char *choices, int *selection) {
     @autoreleasepool {
         cloudcordActivate();
         NSAlert *alert = [NSAlert new];
-        alert.messageText = @"CloudCord Setup";
+        alert.messageText = @"CloudCord";
         alert.informativeText = @"Quit Discord, choose its installed app, then install CloudCord. Your original Discord files are backed up so you can remove CloudCord later.";
         [alert addButtonWithTitle:@"Install / Reinstall"];
         [alert addButtonWithTitle:@"Uninstall"];
         [alert addButtonWithTitle:@"Close"];
+        [alert addButtonWithTitle:@"Installation Guide"];
         NSPopUpButton *picker = [[NSPopUpButton alloc] initWithFrame:NSMakeRect(0, 0, 440, 32) pullsDown:NO];
         [picker addItemsWithTitles:[[NSString stringWithUTF8String:choices] componentsSeparatedByString:@"\n"]];
         alert.accessoryView = picker;
@@ -28,6 +29,7 @@ int cloudcordChooseAction(const char *choices, int *selection) {
         [alert release];
         if (response == NSAlertFirstButtonReturn) return 0;
         if (response == NSAlertSecondButtonReturn) return 1;
+        if (response == NSAlertThirdButtonReturn + 1) return 2;
         return -1;
     }
 }
