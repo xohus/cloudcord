@@ -6001,26 +6001,26 @@
     onJsxCreate: () => onJsxCreate,
     patchJsx: () => patchJsx
   });
-  function onJsxCreate(Component, callback) {
-    if (!callbacks.has(Component))
-      callbacks.set(Component, []);
-    callbacks.get(Component).push(callback);
+  function onJsxCreate(Component2, callback) {
+    if (!callbacks.has(Component2))
+      callbacks.set(Component2, []);
+    callbacks.get(Component2).push(callback);
   }
-  function deleteJsxCreate(Component, callback) {
-    if (!callbacks.has(Component))
+  function deleteJsxCreate(Component2, callback) {
+    if (!callbacks.has(Component2))
       return;
-    var cbs = callbacks.get(Component);
+    var cbs = callbacks.get(Component2);
     cbs.splice(cbs.indexOf(callback), 1);
     if (cbs.length === 0)
-      callbacks.delete(Component);
+      callbacks.delete(Component2);
   }
   function patchJsx() {
-    var callback = ([Component], ret) => {
+    var callback = ([Component2], ret) => {
       if (typeof ret.type === "undefined") {
         ret.type = "RCTView";
         return ret;
       }
-      var component = Component;
+      var component = Component2;
       var target = typeof component === "function" ? component : component?.$$typeof === Symbol.for("react.memo") && typeof component.type === "function" ? component.type : null;
       var name = [
         component?.displayName,
@@ -9668,38 +9668,38 @@
     initializeFakeProfile: () => initializeFakeProfile
   });
   function Card2(props) {
-    var Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).GlassCard;
-    return /* @__PURE__ */ jsx(Component, {
+    var _$Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).GlassCard;
+    return /* @__PURE__ */ jsx(_$Component, {
       ...props
     });
   }
   function GlassButton2(props) {
-    var Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).GlassButton;
-    return /* @__PURE__ */ jsx(Component, {
+    var _$Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).GlassButton;
+    return /* @__PURE__ */ jsx(_$Component, {
       ...props
     });
   }
   function ProfileTabs2(props) {
-    var Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).ProfileTabs;
-    return /* @__PURE__ */ jsx(Component, {
+    var _$Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).ProfileTabs;
+    return /* @__PURE__ */ jsx(_$Component, {
       ...props
     });
   }
   function TextInput3(props) {
-    var Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).DiscordInput;
-    return /* @__PURE__ */ jsx(Component, {
+    var _$Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).DiscordInput;
+    return /* @__PURE__ */ jsx(_$Component, {
       ...props
     });
   }
   function LocalProfiles2(props) {
-    var Component = (init_LocalProfiles(), __toCommonJS(LocalProfiles_exports)).default;
-    return /* @__PURE__ */ jsx(Component, {
+    var _$Component = (init_LocalProfiles(), __toCommonJS(LocalProfiles_exports)).default;
+    return /* @__PURE__ */ jsx(_$Component, {
       ...props
     });
   }
   function CustomBadgeBeta2() {
-    var Component = (init_CustomBadgeBeta(), __toCommonJS(CustomBadgeBeta_exports)).default;
-    return /* @__PURE__ */ jsx(Component, {});
+    var _$Component = (init_CustomBadgeBeta(), __toCommonJS(CustomBadgeBeta_exports)).default;
+    return /* @__PURE__ */ jsx(_$Component, {});
   }
   function badgeLayoutKey(badge) {
     var id = String(badge?.id || "");
@@ -10208,6 +10208,10 @@
       }
       try {
         safeStore("UserProfileStore")?.emitChange?.();
+      } catch (e) {
+      }
+      try {
+        safeStore("MessageStore")?.emitChange?.();
       } catch (e) {
       }
     }).catch(() => {
@@ -11181,7 +11185,7 @@
     return args.some((value) => value === currentUserId || value?.id === currentUserId || value?.userId === currentUserId || value?.user?.id === currentUserId);
   }
   function renderedUserId(props) {
-    return props?.userId || props?.user_id || props?.profileUserId || props?.user?.userId || props?.user?.id || props?.userProfile?.userId || props?.userProfile?.user_id || props?.userProfile?.user?.id || props?.guildMemberProfile?.userId || props?.guildMemberProfile?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user_id || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
+    return props?.userId || props?.user_id || props?.profileUserId || props?.message?.author?.id || props?.author?.id || props?.user?.userId || props?.user?.id || props?.userProfile?.userId || props?.userProfile?.user_id || props?.userProfile?.user?.id || props?.guildMemberProfile?.userId || props?.guildMemberProfile?.user?.id || props?.displayProfile?.userId || props?.displayProfile?.user_id || props?.displayProfile?.user?.id || props?.profile?.userId || props?.profile?.user?.id;
   }
   function connectMediaRenderer() {
     var avatarComponents = [
@@ -11312,9 +11316,9 @@
       children: replaceIdentityText(node.props.children, original, data, depth + 1)
     });
   }
-  function identityRenderer(Component) {
-    if (identityRenderers.has(Component))
-      return identityRenderers.get(Component);
+  function identityRenderer(Component2) {
+    if (identityRenderers.has(Component2))
+      return identityRenderers.get(Component2);
     function CloudCordIdentity(props) {
       var [, refresh] = (0, import_react5.useReducer)((value) => value + 1, 0);
       (0, import_react5.useEffect)(() => {
@@ -11360,10 +11364,10 @@
           currentProps.name = name;
         }
       }
-      var tree = Component(currentProps);
+      var tree = Component2(currentProps);
       return original && data ? replaceIdentityText(tree, original, data) : tree;
     }
-    identityRenderers.set(Component, CloudCordIdentity);
+    identityRenderers.set(Component2, CloudCordIdentity);
     return CloudCordIdentity;
   }
   function connectIdentityRenderer() {
@@ -11450,10 +11454,59 @@
       }
     }
   }
+  function decorateMessageAuthor(result, args) {
+    if (!result || typeof result !== "object" || Array.isArray(result))
+      return result;
+    var user = result.user || result.author;
+    var id = String(user?.id || (result.username ? result.id : "") || args.find((value) => value?.author?.id)?.author?.id || args.find((value) => value?.id && value?.username)?.id || "");
+    if (!id)
+      return result;
+    if (!isCurrentUser(id))
+      requestSharedProfile(id);
+    var data = isCurrentUser(id) ? preview.enabled ? ownSharedProfile() : null : getProfileOverride(id);
+    if (!data)
+      return result;
+    if (result.id === id && result.username)
+      return cloneSharedUser(result, data);
+    var cloned = {
+      ...result,
+      ...nativeProfileAppearance(data)
+    };
+    if (result.user)
+      cloned.user = cloneSharedUser(result.user, data);
+    if (result.author)
+      cloned.author = cloneSharedUser(result.author, data);
+    var name = data.globalName || data.displayName || data.username;
+    if (name)
+      for (var key of [
+        "nick",
+        "nickname",
+        "name",
+        "displayName"
+      ]) {
+        if (key in result)
+          cloned[key] = name;
+      }
+    return cloned;
+  }
   function ensurePatches() {
     if (initialized)
       return;
     initialized = true;
+    var messageAuthors = findByProps("getMessageAuthor", "getUserAuthor");
+    for (var method of [
+      "default",
+      "useNullableMessageAuthor",
+      "getMessageAuthor",
+      "useUserNickAndColor",
+      "useNullableUserAuthor",
+      "getUserAuthor"
+    ]) {
+      addPatch(method, messageAuthors, (args, original) => {
+        var result = original(...args);
+        return decorateMessageAuthor(result, args);
+      });
+    }
     var userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
     diagnostics.userStore = !!userStore;
     try {
@@ -11514,34 +11567,34 @@
     var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
     diagnostics.avatarResolver = !!avatarResolver;
     diagnostics.bannerResolver = !!bannerResolver;
-    for (var method of [
+    for (var method1 of [
       "getUserAvatarURL",
       "getAvatarURL",
       "getGuildMemberAvatarURL",
       "getGuildMemberAvatarURLSimple"
     ]) {
-      addPatch(method, avatarResolver, (args, original) => {
+      addPatch(method1, avatarResolver, (args, original) => {
         var uri = mediaUri("avatarMedia");
         return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
       });
     }
-    for (var method1 of [
+    for (var method2 of [
       "getUserAvatarSource",
       "getGuildMemberAvatarSource"
     ]) {
-      addPatch(method1, avatarResolver, (args, original) => {
+      addPatch(method2, avatarResolver, (args, original) => {
         var uri = mediaUri("avatarMedia");
         return preview.enabled && uri && requestIsCurrent(args) ? {
           uri
         } : original(...args);
       });
     }
-    for (var method2 of [
+    for (var method3 of [
       "getUserBannerURL",
       "getBannerURL",
       "getGuildMemberBannerURL"
     ]) {
-      addPatch(method2, bannerResolver, (args, original) => {
+      addPatch(method3, bannerResolver, (args, original) => {
         var uri = mediaUri("bannerMedia");
         return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
       });
@@ -11571,6 +11624,10 @@
   }
   function refreshPreview() {
     clearCache();
+    try {
+      safeStore("MessageStore")?.emitChange?.();
+    } catch (e) {
+    }
     try {
       safeStore("UserStore")?.emitChange?.();
     } catch (e) {
@@ -11800,6 +11857,47 @@
         yield saveMedia(key, asset);
       return !!asset;
     })();
+  }
+  function NameStylePreview() {
+    var NativeName = findByProps("AVERAGE_FONT_WIDTH_RATIO")?.default;
+    var name = preview.displayName || preview.username || realCurrentUser?.globalName || realCurrentUser?.username || "Your name";
+    var styles = preview.displayNameStyles || null;
+    return /* @__PURE__ */ jsxs(import_react_native18.View, {
+      style: {
+        padding: 16,
+        borderRadius: 12,
+        gap: 8
+      },
+      children: [
+        /* @__PURE__ */ jsx(Text, {
+          variant: "text-xs/bold",
+          color: "text-muted",
+          children: "PREVIEW"
+        }),
+        /* @__PURE__ */ jsx(NamePreviewBoundary, {
+          children: NativeName ? /* @__PURE__ */ jsx(NativeName, {
+            username: name,
+            text: name,
+            displayNameStyles: styles,
+            fontId: styles?.fontId,
+            effectId: styles?.effectId,
+            colors: styles?.colors,
+            style: {
+              fontSize: 24
+            }
+          }) : /* @__PURE__ */ jsx(Text, {
+            variant: "heading-lg/bold",
+            color: "text-normal",
+            children: name
+          })
+        }, JSON.stringify(styles)),
+        /* @__PURE__ */ jsx(Text, {
+          variant: "text-xs/normal",
+          color: "text-muted",
+          children: "Shown in profiles and message author names."
+        })
+      ]
+    });
   }
   function ActionButton({ label, onPress, muted = false }) {
     return /* @__PURE__ */ jsx(GlassButton2, {
@@ -12393,26 +12491,30 @@
                       color: "text-normal",
                       children: "Username Style"
                     }),
-                    /* @__PURE__ */ jsx(ActionButton, {
-                      label: "Choose Font",
+                    /* @__PURE__ */ jsx(NameStylePreview, {}),
+                    /* @__PURE__ */ jsx(TableRow, {
+                      arrow: true,
+                      label: "Font",
+                      trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
+                        text: appearanceOptions(findByProps("DisplayNameFont", "DisplayNameEffect")?.DisplayNameFont).find((option) => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"
+                      }),
                       onPress: () => chooseNameStyle("fontId")
                     }),
-                    /* @__PURE__ */ jsx(ActionButton, {
-                      label: "Choose Effect",
+                    /* @__PURE__ */ jsx(TableRow, {
+                      arrow: true,
+                      label: "Effect",
+                      trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
+                        text: appearanceOptions(findByProps("DisplayNameFont", "DisplayNameEffect")?.DisplayNameEffect).find((option) => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"
+                      }),
                       onPress: () => chooseNameStyle("effectId")
                     }),
                     [
                       0,
                       1,
                       2
-                    ].map((index) => /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: `#${(preview.displayNameStyles?.colors[index] ?? 16777215).toString(16).padStart(6, "0")}`,
-                      placeholder: `Color ${index + 1} (#RRGGBB)`,
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => {
-                        if (!/^#?[0-9a-f]{6}$/i.test(value))
-                          return;
+                    ].map((index) => {
+                      var value = `#${(preview.displayNameStyles?.colors[index] ?? 16777215).toString(16).padStart(6, "0")}`;
+                      var apply = (color2) => {
                         var style = preview.displayNameStyles || {
                           fontId: 0,
                           effectId: 0,
@@ -12425,13 +12527,27 @@
                           1,
                           2
                         ].map((i) => style.colors[i] ?? style.colors[0] ?? 16777215);
-                        colors[index] = parseInt(value.replace("#", ""), 16);
+                        colors[index] = parseInt(color2.replace("#", ""), 16);
                         update("displayNameStyles", {
                           ...style,
                           colors
                         }, true);
-                      }
-                    }, `name-color-${index}`)),
+                        navigation2.goBack();
+                      };
+                      return /* @__PURE__ */ jsx(ColorPickerRow, {
+                        label: `Color ${index + 1}`,
+                        value,
+                        onSelect: apply,
+                        onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                          title: `Username Color ${index + 1}`,
+                          render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
+                            title: `Username Color ${index + 1}`,
+                            initialColor: value,
+                            onApply: apply
+                          })
+                        })
+                      }, `name-color-${index}`);
+                    }),
                     /* @__PURE__ */ jsx(ActionButton, {
                       label: "Reset Username Style",
                       onPress: () => update("displayNameStyles", null, true)
@@ -12983,13 +13099,18 @@
       })
     });
   }
-  var import_react5, import_react_native18, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, PROFILE_COLORS;
+  var import_react5, import_react_native18, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_async_to_generator();
+      init_call_super();
+      init_class_call_check();
+      init_create_class();
+      init_define_property();
+      init_inherits();
       init_jsxRuntime();
       init_cloudcord_decorations();
       init_storage();
@@ -13690,6 +13811,39 @@
       nativeBadgeRows = /* @__PURE__ */ new Map();
       identityRefreshers = /* @__PURE__ */ new Set();
       identityRenderers = /* @__PURE__ */ new WeakMap();
+      NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
+        "use strict";
+        _inherits(NamePreviewBoundary2, Component2);
+        function NamePreviewBoundary2() {
+          _class_call_check(this, NamePreviewBoundary2);
+          var _this;
+          _this = _call_super(this, NamePreviewBoundary2, arguments), _define_property(_this, "state", {
+            failed: false
+          });
+          return _this;
+        }
+        _create_class(NamePreviewBoundary2, [
+          {
+            key: "render",
+            value: function render() {
+              return this.state.failed ? /* @__PURE__ */ jsx(Text, {
+                color: "text-muted",
+                children: "Username preview isn't available in this Discord version."
+              }) : this.props.children;
+            }
+          }
+        ], [
+          {
+            key: "getDerivedStateFromError",
+            value: function getDerivedStateFromError() {
+              return {
+                failed: true
+              };
+            }
+          }
+        ]);
+        return NamePreviewBoundary2;
+      }(import_react5.Component);
       PROFILE_COLORS = [
         "#5865F2",
         "#4752C4",
@@ -13913,7 +14067,7 @@
     return () => _async_to_generator(function* () {
       if (onPress)
         return void onPress();
-      var Component = yield renderPromise().then((m2) => m2.default);
+      var Component2 = yield renderPromise().then((m2) => m2.default);
       if (typeof screenOptions === "string") {
         screenOptions = {
           title: screenOptions
@@ -13922,7 +14076,7 @@
       navigation2 ??= tabsNavigationRef.getRootNavigationRef();
       navigation2.navigate("PUPU_CUSTOM_PAGE", {
         ...screenOptions,
-        render: () => /* @__PURE__ */ jsx(Component, {
+        render: () => /* @__PURE__ */ jsx(Component2, {
           ...props
         })
       });
@@ -17094,8 +17248,8 @@
   });
 
   // src/core/ui/settings/components/ScaledPluginSettings.tsx
-  function ScaledPluginSettings({ component: Component }) {
-    if (typeof Component !== "function") {
+  function ScaledPluginSettings({ component: Component2 }) {
+    if (typeof Component2 !== "function") {
       return /* @__PURE__ */ jsx(import_react_native25.View, {
         style: {
           padding: 16
@@ -17123,7 +17277,7 @@
           paddingRight: 24,
           overflow: "visible"
         },
-        children: /* @__PURE__ */ jsx(Component, {})
+        children: /* @__PURE__ */ jsx(Component2, {})
       })
     });
   }
@@ -20820,7 +20974,7 @@
       ]
     });
   }
-  function promptActionSheet(Component, fontEntries, props) {
+  function promptActionSheet(Component2, fontEntries, props) {
     actionSheet2.openLazy(Promise.resolve({
       default: () => /* @__PURE__ */ jsx(ErrorBoundary, {
         children: /* @__PURE__ */ jsxs(ActionSheet, {
@@ -20828,7 +20982,7 @@
             /* @__PURE__ */ jsx(BottomSheetTitleHeader, {
               title: "Import Font"
             }),
-            /* @__PURE__ */ jsx(Component, {
+            /* @__PURE__ */ jsx(Component2, {
               fonts: fontEntries,
               ...props
             })
