@@ -5,7 +5,7 @@ INSTALL
 1. Download the Mac build directly in Safari from getcloudcord.com.
    Avoid sending the app or disk image through WhatsApp: that transfer can
    cause macOS to block execution with an AppSandbox quarantine error.
-2. Extract the downloaded ZIP and open the .dmg inside.
+2. Open the downloaded .dmg. If you received a ZIP, extract it first.
 3. Drag CloudCord onto Applications. Eject the CloudCord disk image.
 4. Quit Discord completely, then open CloudCord from Applications.
 5. Choose your installed Discord app and click Install / Reinstall.

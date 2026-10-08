@@ -69,6 +69,7 @@ void cloudcordShowResult(const char *title, const char *message) {
             text.horizontallyResizable = NO;
             text.autoresizingMask = NSViewWidthSizable;
             text.textContainer.widthTracksTextView = YES;
+            text.textContainer.containerSize = NSMakeSize(scroll.contentSize.width, CGFLOAT_MAX);
             text.string = body;
             scroll.documentView = text;
             alert.accessoryView = scroll;
