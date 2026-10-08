@@ -6431,15 +6431,15 @@
     return typeof resolve === "function" ? resolve(user) : user;
   }
   function pluginIdentityModule(module) {
-    var _loop2 = function(key2) {
-      if (typeof module[key2] !== "function")
+    var _loop2 = function(key12) {
+      if (typeof module[key12] !== "function")
         return "continue";
-      Object.defineProperty(view, key2, {
+      Object.defineProperty(view, key12, {
         configurable: true,
         writable: true,
         value: (...args) => {
-          var result = module[key2](...args);
-          if (key2 !== "getUsers" || !result)
+          var result = module[key12](...args);
+          if (key12 !== "getUsers" || !result)
             return present(result);
           return Object.fromEntries(Object.entries(result).map(([id, user]) => [
             id,
@@ -6455,12 +6455,25 @@
     if (storeViews.has(module))
       return storeViews.get(module);
     var view = Object.create(module);
-    for (var key of [
+    for (var owner = module; owner && owner !== Object.prototype; owner = Object.getPrototypeOf(owner)) {
+      for (var key of Reflect.ownKeys(owner)) {
+        if (key === "constructor" || Object.prototype.hasOwnProperty.call(view, key))
+          continue;
+        var descriptor = Object.getOwnPropertyDescriptor(owner, key);
+        if (typeof descriptor?.value === "function")
+          Object.defineProperty(view, key, {
+            configurable: true,
+            writable: true,
+            value: descriptor.value.bind(module)
+          });
+      }
+    }
+    for (var key1 of [
       "getUser",
       "getCurrentUser",
       "getUsers"
     ])
-      _loop2(key);
+      _loop2(key1);
     storeViews.set(module, view);
     return view;
   }
