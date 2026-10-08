@@ -51,7 +51,32 @@ void cloudcordShowResult(const char *title, const char *message) {
     @autoreleasepool {
         NSAlert *alert = [NSAlert new];
         alert.messageText = [NSString stringWithUTF8String:title];
-        alert.informativeText = [NSString stringWithUTF8String:message];
+        NSString *body = [NSString stringWithUTF8String:message];
+        if (body.length > 600) {
+            alert.informativeText = @"Read the guide below. Scroll to see all steps.";
+            NSScrollView *scroll = [[NSScrollView alloc] initWithFrame:NSMakeRect(0, 0, 520, 320)];
+            scroll.hasVerticalScroller = YES;
+            scroll.autohidesScrollers = YES;
+            scroll.borderType = NSBezelBorder;
+            NSTextView *text = [[NSTextView alloc] initWithFrame:scroll.contentView.bounds];
+            text.editable = NO;
+            text.selectable = YES;
+            text.font = [NSFont systemFontOfSize:13];
+            text.textColor = [NSColor textColor];
+            text.backgroundColor = [NSColor textBackgroundColor];
+            text.textContainerInset = NSMakeSize(12, 12);
+            text.verticallyResizable = YES;
+            text.horizontallyResizable = NO;
+            text.autoresizingMask = NSViewWidthSizable;
+            text.textContainer.widthTracksTextView = YES;
+            text.string = body;
+            scroll.documentView = text;
+            alert.accessoryView = scroll;
+            [text release];
+            [scroll release];
+        } else {
+            alert.informativeText = body;
+        }
         [alert addButtonWithTitle:@"OK"];
         [alert runModal];
         [alert release];

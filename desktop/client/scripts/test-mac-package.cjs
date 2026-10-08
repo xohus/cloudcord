@@ -33,6 +33,13 @@ assert(source.includes('cmp installer/MAC-INSTALL.txt "$DMG_MOUNT/Read Me First.
 const guide = fs.readFileSync(path.join(__dirname, '../installer/MAC-INSTALL.txt'), 'utf8');
 assert(guide.includes('does not prove that the app is safe'));
 assert(guide.includes('Do not disable Gatekeeper'));
+assert(guide.includes('https://getcloudcord.com'));
+assert(!guide.includes('github.com'), 'Customer guide must use the CloudCord website');
+const macUI = fs.readFileSync(path.join(__dirname, '../installer/mac_ui_darwin.m'), 'utf8');
+assert(macUI.includes('NSScrollView'));
+assert(macUI.includes('520, 320'), 'Long guide should have a bounded scrollable viewport');
+assert(macUI.includes('text.textContainer.widthTracksTextView = YES'));
+assert(macUI.includes('[NSColor textColor]'));
 assert(plist.data.includes('<key>CFBundleInfoDictionaryVersion</key><string>6.0</string>'));
 assert(source.includes('"$APP_DIR/Contents/Resources/cloudcord.asar"'));
 assert(source.includes("pnpm buildStandalone"));

@@ -2,7 +2,7 @@ CloudCord
 Your Discord, your way.
 
 INSTALL
-1. Download the Mac build directly in Safari from github.com/xohus/cloudcord.
+1. Download the Mac build directly in Safari from getcloudcord.com.
    Avoid sending the app or disk image through WhatsApp: that transfer can
    cause macOS to block execution with an AppSandbox quarantine error.
 2. Extract the downloaded ZIP and open the .dmg inside.
@@ -15,15 +15,23 @@ ABOUT THE APPLE WARNING
 This preview has not been notarized by Apple. "Apple could not verify that
 CloudCord is free of malware" means Apple has not verified this build;
 that message alone is not a finding that malware was detected. It also
-does not prove that the app is safe. Download only from our official repo.
+does not prove that the app is safe. Download only from getcloudcord.com.
 
 If you trust this preview and the Mac's owner agrees, try opening CloudCord,
 then go to System Settings > Privacy & Security > Open Anyway and confirm.
 Do not disable Gatekeeper. If macOS says malware WAS detected, stop.
 
 Apple's guide: https://support.apple.com/102445
-Source and builds: https://github.com/xohus/cloudcord
+Downloads and help: https://getcloudcord.com
 Help: https://discord.gg/EBEZJ84zBT (joining is optional)
 
 This installer modifies the selected Discord app and backs up its original
 archive. Profile customizations show in CloudCord, not unmodified Discord.
+
+SECURITY SCAN
+The earlier Apple Silicon preview with SHA-256
+985eef1f8ad69851b72ea26c2d3fb15b733de83b7f25f32a307183694516e34c
+had 0 detections from 61 scanning engines in the supplied VirusTotal report.
+That result applies only to that exact file, not newer builds. Engines that
+cannot scan the file give no verdict. A clean scan is not a safety guarantee
+or Apple notarization. New builds need their own scan.
