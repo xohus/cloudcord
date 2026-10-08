@@ -9,8 +9,8 @@ import { hasAnyVisibleSettings, isPluginEnabled, pluginRequiresRestart, startDep
 import { Settings } from "@api/Settings";
 import { CogWheel, InfoIcon } from "@components/Icons";
 import { AddonCard } from "@components/settings/AddonCard";
-import { classNameFactory } from "@utils/css";
 import { CLOUDCORD_FAVICON } from "@utils/cloudCordAssets";
+import { classNameFactory } from "@utils/css";
 import { Logger } from "@utils/Logger";
 import { Plugin } from "@utils/types";
 import { React, showToast, Toasts } from "@webpack/common";
@@ -95,7 +95,7 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
     const pluginInfo = [
         {
             condition: isUserPlugin,
-            src: "https://sincord.org/assets/icons/misc/userplugin.png",
+            src: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23949cf7' d='M9 3h6v4h4v6h-4v4H9v-4H5V7h4z'/%3E%3C/svg%3E",
             alt: "User",
             title: "User Plugin"
         }

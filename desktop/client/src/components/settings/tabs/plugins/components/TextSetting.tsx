@@ -26,7 +26,8 @@ export function TextSetting({ setting, pluginSettings, definedSettings, id, onCh
     const [state, setState] = useState(pluginSettings[id] ?? setting.default ?? "");
     const [error, setError] = useState<string | null>(null);
 
-    function handleChange(newValue: string) {
+    function handleChange(value: string | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
+        const newValue = typeof value === "string" ? value : value.currentTarget.value;
         setState(newValue);
         try {
             const isValid = setting.isValid?.call(definedSettings, newValue) ?? true;
@@ -41,19 +42,19 @@ export function TextSetting({ setting, pluginSettings, definedSettings, id, onCh
         <SettingsSection name={id} description={setting.description} error={error}>
             {setting.multiline
                 ? <TextArea
+                    {...setting.componentProps}
                     placeholder={setting.placeholder ?? "Enter a value"}
                     value={state}
                     onChange={handleChange}
                     disabled={isSettingDisabled(definedSettings, setting)}
-                    {...setting.componentProps} />
+                />
                 : <TextInput
+                    {...setting.componentProps}
                     type="text"
                     placeholder={setting.placeholder ?? "Enter a value"}
                     value={state}
                     onChange={handleChange}
-                    maxLength={null}
                     disabled={isSettingDisabled(definedSettings, setting)}
-                    {...setting.componentProps}
                 />
             }
         </SettingsSection>
