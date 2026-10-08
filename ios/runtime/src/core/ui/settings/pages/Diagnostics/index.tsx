@@ -208,6 +208,16 @@ export default function Diagnostics() {
             loader: debug.bunny.loader,
             diagnosticsCapture: settings.cloudcordDiagnosticsCapture === true,
             runtimeUrl: loaderConfig.customLoadUrl.enabled ? loaderConfig.customLoadUrl.url : "stable",
+            profileIdentity: (() => {
+                const state = (globalThis as any).__CLOUDCORD_PROFILE_DIAGNOSTICS__;
+                return state ? {
+                    renders: Number(state.identityMatches || 0),
+                    userId: String(state.identityUser || "None"),
+                    syncedNamesAvailable: state.identityData === true,
+                    userStoreConnected: state.userStore === true,
+                    profileStoreConnected: state.profileStore === true,
+                } : null;
+            })(),
             tabOrder: order,
             hiddenTabs: hidden,
             recentRequests: requestEvents.slice(-50),

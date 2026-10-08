@@ -933,6 +933,7 @@ jobs:
               identityData: false,
               last: "Ready"
           };
+          (globalThis as any).__CLOUDCORD_PROFILE_DIAGNOSTICS__ = diagnostics;
 
           let initialized = false;
           let currentUserId: string | null = null;
