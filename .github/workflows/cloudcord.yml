@@ -1605,7 +1605,7 @@ jobs:
                   catch { return original; }
               }
 
-              const displayName = preview.displayName || original.globalName || original.displayName || original.username;
+              const displayName = preview.displayName || original.globalName || original.global_name || original.displayName || original.username;
               const username = preview.username || original.username;
               const avatar = mediaUri("avatarMedia");
               const banner = mediaUri("bannerMedia");
@@ -1617,6 +1617,7 @@ jobs:
 
               setOwnValue(cloned, "username", username);
               setOwnValue(cloned, "globalName", displayName);
+              setOwnValue(cloned, "global_name", displayName);
               setOwnValue(cloned, "displayName", displayName);
               setOwnValue(cloned, "bio", preview.bio);
               setOwnValue(cloned, "pronouns", preview.pronouns);
@@ -1678,11 +1679,11 @@ jobs:
           function profileResultUserId(subject: any, result: any) {
               return String(
                   (typeof subject === "string" ? subject : subject?.userId || subject?.user_id || subject?.id || subject?.user?.id)
-                  || result?.userId || result?.id || result?.user?.id
+                  || result?.userId || result?.user_id || result?.id || result?.user?.id
                   || result?.userProfile?.userId || result?.userProfile?.user_id || result?.userProfile?.user?.id
-                  || result?.guildMemberProfile?.userId || result?.guildMemberProfile?.user?.id
-                  || result?.displayProfile?.userId || result?.displayProfile?.user?.id
-                  || result?.profile?.userId || result?.profile?.user?.id
+                  || result?.guildMemberProfile?.userId || result?.guildMemberProfile?.user_id || result?.guildMemberProfile?.user?.id
+                  || result?.displayProfile?.userId || result?.displayProfile?.user_id || result?.displayProfile?.user?.id
+                  || result?.profile?.userId || result?.profile?.user_id || result?.profile?.user?.id
                   || ""
               );
           }
@@ -2024,6 +2025,7 @@ jobs:
                   if (displayName) {
                       props.displayName = displayName;
                       props.globalName = displayName;
+                      props.global_name = displayName;
                       props.name = displayName;
                   }
               };
@@ -2039,6 +2041,7 @@ jobs:
                               props.username = preview.username || props.username;
                               props.displayName = preview.displayName || props.displayName;
                               props.globalName = preview.displayName || props.globalName;
+                              props.global_name = preview.displayName || props.global_name;
                               return;
                           }
                           requestSharedProfile(id);

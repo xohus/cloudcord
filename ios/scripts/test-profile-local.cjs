@@ -30,6 +30,12 @@ assert.equal(identityContext.renderedUserId({ user_id: '123456789012345' }), '12
 assert.equal(identityContext.renderedUserId({ userProfile: { user_id: '123456789012345' } }), '123456789012345');
 assert.equal(identityContext.renderedUserId({ displayProfile: { user_id: '123456789012345' } }), '123456789012345');
 assert.equal(identityContext.renderedUserId({}), undefined);
+const resultIdHelper = page.slice(page.indexOf('function profileResultUserId('), page.indexOf('function isCurrentUser('));
+vm.runInContext(esbuild.transformSync(resultIdHelper, { loader: 'ts' }).code, identityContext);
+for (const result of [{ user_id: '123456789012345' }, ...['userProfile', 'displayProfile', 'guildMemberProfile', 'profile'].map(key => ({ [key]: { user_id: '123456789012345' } }))]) {
+    assert.equal(identityContext.profileResultUserId(undefined, result), '123456789012345');
+}
+assert.equal(identityContext.profileResultUserId(undefined, {}), '');
 assert(!page.includes('if (!changed || !profile || typeof profile !== "object") return;'), 'Removing a synced profile must refresh identity renderers too');
 // Feed the real desktop serializer's JSON into the mobile nested-profile reader.
 const desktopSource = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/index.tsx', 'utf8');
