@@ -7,6 +7,7 @@ name: Build CloudCord Runtime
       - main
     paths:
       - "ios/**"
+      - "desktop/client/src/utils/profileAppearance.ts"
       - "cloudcord-favicon.png"
       - "assets/cloudcord-favicon.png"
       - "assets/cloudcord-logo.png"
@@ -96,6 +97,7 @@ jobs:
           cp "../ios/runtime/src/core/ui/settings/index.ts" "src/core/ui/settings/index.ts"
           cp "../ios/runtime/src/core/vendetta/plugins.ts" "src/core/vendetta/plugins.ts"
           cp "../ios/runtime/src/lib/api/settings.ts" "src/lib/api/settings.ts"
+          cp "../desktop/client/src/utils/profileAppearance.ts" "src/lib/api/profileAppearance.ts"
           cp "../ios/runtime/src/lib/api/react/jsx.ts" "src/lib/api/react/jsx.ts"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
           mkdir -p src/lib/api/native
@@ -323,6 +325,7 @@ jobs:
           import { awaitStorage, useProxy } from "@core/vendetta/storage";
           import { after, instead } from "@lib/api/patcher";
           import { onJsxCreate } from "@lib/api/react/jsx";
+          import { appearanceOptions, nativeProfileAppearance, normalizeProfileAppearance } from "@lib/api/profileAppearance";
           import { settings } from "@lib/api/settings";
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByNameLazy, findByProps, findByStoreName } from "@metro";
@@ -333,6 +336,8 @@ jobs:
 
           type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
           type PreviewSettings = {
+              displayNameStyles?: { fontId: number; effectId: number; colors: number[] } | null;
+              serverTag?: { tag: string; guildId: string; badge: string } | null;
               enabled: boolean;
               displayName: string;
               username: string;
@@ -1023,6 +1028,7 @@ jobs:
                   avatarDecoration: preview.avatarDecoration || null,
                   avatarDecorationSku: preview.avatarDecorationSku || null,
                   profileColorsEnabled: preview.profileColorsEnabled,
+                  ...normalizeProfileAppearance(preview),
                   primaryColor: preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null,
                   accentColor: preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null,
                   bio: preview.bio,
@@ -1138,6 +1144,7 @@ jobs:
                       enabled: true,
                       username: data.username || preview.username,
                       displayName: data.globalName || data.displayName || preview.displayName,
+                      ...normalizeProfileAppearance(data),
                       avatarMedia: mediaClearPending("avatarMedia") ? null : data.avatar ? { uri: data.avatar } : null,
                       bannerMedia: mediaClearPending("bannerMedia") ? null : data.banner ? { uri: data.banner } : null,
                       nitroEnabled: remoteNitroEnabled(data),
@@ -1210,6 +1217,7 @@ jobs:
           function cloneSharedUser(original: any, data: any) {
               if (!original || typeof original !== "object" || !data) return original;
               const cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+              for (const [key, value] of Object.entries(nativeProfileAppearance(data))) setOwnValue(cloned, key, value);
               if (data.username) {
                   const username = String(data.username);
                   setOwnValue(cloned, "username", username);
@@ -1257,6 +1265,7 @@ jobs:
           function decorateSharedProfile(original: any, userId: string, data: any, depth = 0) {
               if (!original || typeof original !== "object" || !data) return original;
               const cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+              for (const [key, value] of Object.entries(nativeProfileAppearance(data))) setOwnValue(cloned, key, value);
               setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userId, data));
               setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userId, data));
               applyAvatarDecoration(cloned, data);
@@ -1611,6 +1620,7 @@ jobs:
               }
 
               const displayName = preview.displayName || original.globalName || original.global_name || original.displayName || original.username;
+              for (const [key, value] of Object.entries(nativeProfileAppearance(preview))) setOwnValue(cloned, key, value);
               const username = preview.username || original.username;
               const avatar = mediaUri("avatarMedia");
               const banner = mediaUri("bannerMedia");
@@ -2001,6 +2011,7 @@ jobs:
                   diagnostics.identityData = !!(data?.username || data?.globalName || data?.displayName);
                   const currentProps = { ...props };
                   if (data) {
+                      Object.assign(currentProps, nativeProfileAppearance(data));
                       if (props.user) currentProps.user = cloneSharedUser(props.user, data);
                       for (const key of ["profile", "userProfile", "displayProfile", "guildMemberProfile"]) {
                           if (props[key]) currentProps[key] = decorateSharedProfile(props[key], id, data);
@@ -2038,6 +2049,7 @@ jobs:
               ];
               const applyIdentity = (props: any, id: string, data: any) => {
                   if (!props || !data) return;
+                  Object.assign(props, nativeProfileAppearance(data));
                   const username = String(data.username || "");
                   const displayName = String(data.globalName || data.displayName || "");
                   if (props.user) props.user = cloneSharedUser(props.user, data);
@@ -2065,6 +2077,7 @@ jobs:
                           if (!id) return;
                           if (isCurrentUser(id)) {
                               if (!preview.enabled) return;
+                              Object.assign(props, nativeProfileAppearance(preview));
                               if (props.user) props.user = cloneObject(props.user, "user");
                               props.username = preview.username || props.username;
                               props.displayName = preview.displayName || props.displayName;
@@ -2502,6 +2515,14 @@ jobs:
                   }
               };
 
+              const chooseNameStyle = (field: "fontId" | "effectId") => {
+                  const enums = findByProps("DisplayNameFont", "DisplayNameEffect") as any;
+                  const options = appearanceOptions(enums?.[field === "fontId" ? "DisplayNameFont" : "DisplayNameEffect"]);
+                  const key = `CloudCordNameStyle_${field}`;
+                  if (!options.length) { diagnostics.last = "Discord's username styles aren't available in this version"; redraw(); return; }
+                  simpleSheets.showSimpleActionSheet({ key, header: { title: field === "fontId" ? "Username font" : "Username effect", onClose: () => simpleSheets.hideActionSheet?.(key) }, options: options.map(option => ({ label: option.label, onPress: () => { update("displayNameStyles", { ...(preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] }), [field]: option.value }, true); simpleSheets.hideActionSheet?.(key); } })) });
+              };
+
               const chooseExperimentalBadge = (group: typeof EXPERIMENTAL_BADGE_GROUPS[number]) => {
                   const key = `FakeProfileBadge_${group.id}`;
                   const selectTier = (id: string) => {
@@ -2620,7 +2641,18 @@ jobs:
                                       <TextInput defaultValue={preview.username} placeholder="preview" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
                                   </View>
                                   <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">about you</Text>
+                                      <Text variant="text-sm/bold" color="text-normal">Username Style</Text>
+                                      <ActionButton label="Choose Font" onPress={() => chooseNameStyle("fontId")} />
+                                      <ActionButton label="Choose Effect" onPress={() => chooseNameStyle("effectId")} />
+                                      {[0, 1, 2].map(index => <TextInput key={`name-color-${index}`} defaultValue={`#${(preview.displayNameStyles?.colors[index] ?? 0xffffff).toString(16).padStart(6, "0")}`} placeholder={`Color ${index + 1} (#RRGGBB)`} autoCapitalize="none" autoCorrect={false} onChangeText={value => { if (!/^#?[0-9a-f]{6}$/i.test(value)) return; const style = preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] }; const colors = [0, 1, 2].map(i => style.colors[i] ?? style.colors[0] ?? 0xffffff); colors[index] = parseInt(value.replace("#", ""), 16); update("displayNameStyles", { ...style, colors }, true); }} />)}
+                                      <ActionButton label="Reset Username Style" onPress={() => update("displayNameStyles", null, true)} />
+                                      <Text variant="text-sm/bold" color="text-normal">Server Tag</Text>
+                                      <TextInput defaultValue={preview.serverTag?.tag || ""} placeholder="Tag (1–4 characters)" maxLength={4} onChangeText={value => update("serverTag", { ...(preview.serverTag || { guildId: "", badge: "" }), tag: value }, true)} />
+                                      <TextInput defaultValue={preview.serverTag?.guildId || ""} placeholder="Server ID" keyboardType="number-pad" onChangeText={value => update("serverTag", { ...(preview.serverTag || { tag: "", badge: "" }), guildId: value.trim() }, true)} />
+                                      <ActionButton label="Copy Current Discord Tag" onPress={() => { const user = safeStore("UserStore")?.getCurrentUser?.(); const tag = user?.primaryGuild || user?.primary_guild; if (tag?.tag) update("serverTag", { tag: tag.tag, guildId: tag.identityGuildId || tag.identity_guild_id, badge: tag.badge || "" }, true); }} />
+                                      <ActionButton label="Reset Server Tag" onPress={() => update("serverTag", null, true)} />
+                                      <Text variant="text-xs/normal" color="text-muted">Appearance only. Your server membership stays unchanged.</Text>
+                                      <Text variant="text-sm/bold" color="text-normal">About You</Text>
                                       <TextInput defaultValue={preview.bio} placeholder="My description..." placeholderTextColor="#777" multiline onChangeText={value => update("bio", value, true)} style={{ minHeight: 88, color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12, textAlignVertical: "top" }} />
                                   </View>
                                   <View style={{ gap: 8 }}>

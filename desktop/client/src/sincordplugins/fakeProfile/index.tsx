@@ -9,6 +9,8 @@
 
 import "./style.css";
 import decorationCatalog from "./decorations.json";
+import { appearanceOptions, nativeProfileAppearance, normalizeProfileAppearance, ProfileAppearance } from "@utils/profileAppearance";
+import { findByProps } from "@webpack";
 
 import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
 import { applyBadgeLayout, badgeLayoutKey, defaultBadgeOrder, moveBadgeOrder } from "@api/BadgeLayout";
@@ -501,7 +503,7 @@ function nativeDecoration(data: CustomProfileData) {
     return { asset, ...(skuId ? { skuId } : {}) };
 }
 
-interface CustomProfileData {
+interface CustomProfileData extends ProfileAppearance {
     username?: string; globalName?: string; avatar?: string; banner?: string;
     bio?: string; accentColor?: number; accentColor2?: number; pronouns?: string;
     badgeFlags?: number; createdAt?: string; nitro?: boolean; nitroLevel?: number; nitroSince?: string;
@@ -565,6 +567,7 @@ function activeUserId(): string | null {
 
 function fromSharedProfile(data: any): CustomProfileData {
     return {
+        ...normalizeProfileAppearance(data),
         username: data?.username || "", globalName: data?.globalName || data?.displayName || "",
         avatar: data?.avatar || "", banner: data?.banner || "", bio: data?.bio || "",
         pronouns: data?.pronouns || "", accentColor: data?.primaryColor ?? data?.accentColor,
@@ -602,6 +605,7 @@ function monthsAgo(months: number, explicitDate?: string): Date {
 /** Populate every field name used by Discord's desktop profile/badge pipelines. */
 function applyNativeProfileMetadata(target: any, data: CustomProfileData, includeNested = true): any {
     if (!target) return target;
+    Object.assign(target, nativeProfileAppearance(data));
 
     const flags = Number(data.badgeFlags ?? 0);
     if (shouldReplaceBadges(data)) {
@@ -1187,11 +1191,21 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     React.useEffect(() => { setData({ ...(allAccountsData[selectedAccountId] || {}) }); }, [selectedAccountId]);
 
     function set<K extends keyof CustomProfileData>(key: K, val: CustomProfileData[K]) { setData(d => ({ ...d, [key]: val })); }
+    const appearanceEnums = React.useMemo(() => {
+        try { return findByProps("DisplayNameFont", "DisplayNameEffect") || {}; } catch { return {}; }
+    }, []);
+    const fonts = appearanceOptions(appearanceEnums.DisplayNameFont);
+    const effects = appearanceOptions(appearanceEnums.DisplayNameEffect);
+    const nameStyle = data.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] };
+    const tag = data.serverTag || { tag: "", guildId: "", badge: "" };
 
     async function save(useEverywhere = false) {
         setSaving(true);
         setSaveError("");
         try {
+            const appearance = normalizeProfileAppearance(data);
+            if (data.serverTag && !appearance.serverTag) throw new Error("Enter a 1–4 character tag, a valid server ID, and a valid badge hash or leave the badge empty.");
+            if (data.displayNameStyles && !appearance.displayNameStyles) throw new Error("Choose valid username styles and colors.");
             const savedData = { ...data, ...(useEverywhere ? { syncRevision: Date.now() } : {}) };
             allAccountsData[selectedAccountId] = savedData; allAccountsEnabled[selectedAccountId] = true;
             if (selectedAccountId === myId) {
@@ -1247,6 +1261,29 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         <ModalContent className="cp-content">
             <Field label="Username" value={data.username ?? ""} placeholder="my_username" onChange={v => set("username", v)} />
             <Field label="Display Name" value={data.globalName ?? ""} placeholder="My Name" onChange={v => set("globalName", v)} />
+            <div className="cp-field">
+                <div className="cp-section-label">Username Style</div>
+                <Toggle label="Override username style" checked={data.displayNameStyles != null} onChange={v => set("displayNameStyles", v ? nameStyle : null)} />
+                {data.displayNameStyles != null && <>
+                    {[{ label: "Font", key: "fontId" as const, options: fonts }, { label: "Effect / Animation", key: "effectId" as const, options: effects }].map(row => <div className="cp-field" key={row.key}>
+                        <div className="cp-section-label">{row.label}</div>
+                        <Select options={row.options} isSelected={(value: number) => value === nameStyle[row.key]} select={(value: number) => set("displayNameStyles", { ...nameStyle, [row.key]: value })} serialize={(value: number) => String(value)} />
+                        {!row.options.length && <div className="cp-sublabel">Discord's style options aren't available in this version.</div>}
+                    </div>)}
+                    <div className="cp-color-row">{[0, 1, 2].map(index => <label key={index}>Color {index + 1}<input type="color" className="cp-color-swatch" value={`#${(nameStyle.colors[index] ?? nameStyle.colors[0] ?? 0xffffff).toString(16).padStart(6, "0")}`} onChange={event => { const colors = [0, 1, 2].map(i => nameStyle.colors[i] ?? nameStyle.colors[0] ?? 0xffffff); colors[index] = parseInt(event.target.value.slice(1), 16); set("displayNameStyles", { ...nameStyle, colors }); }} /></label>)}</div>
+                </>}
+            </div>
+            <div className="cp-field">
+                <div className="cp-section-label">Server Tag</div>
+                <Button onClick={() => { const user = UserStore.getUser(selectedAccountId) as any; const current = user?.primaryGuild || user?.primary_guild; if (current?.tag) set("serverTag", { tag: current.tag, guildId: current.identityGuildId || current.identity_guild_id, badge: current.badge || "" }); }}>Copy Current Discord Tag</Button>
+                <Toggle label="Override server tag" checked={data.serverTag != null} onChange={v => set("serverTag", v ? tag : null)} />
+                {data.serverTag != null && <>
+                    <Field label="Tag (1–4 characters)" value={tag.tag} placeholder="CC" onChange={value => set("serverTag", { ...tag, tag: Array.from(value).slice(0, 4).join("") })} />
+                    <Field label="Server ID" value={tag.guildId} placeholder="Discord server ID" onChange={guildId => set("serverTag", { ...tag, guildId })} />
+                    <Field label="Discord Tag Badge Hash (optional)" value={tag.badge} placeholder="32-character badge hash" onChange={badge => set("serverTag", { ...tag, badge })} />
+                    <div className="cp-sublabel">Visible in CloudCord. This doesn't change server membership or permissions.</div>
+                </>}
+            </div>
             <ImageUpload label="Profile Picture" value={data.avatar ?? ""} onChange={v => set("avatar", v)} />
             <Toggle label="Simulate Nitro" sublabel="Enables banner and profile color" checked={data.nitro ?? false} onChange={v => set("nitro", v)} />
             {data.nitro && <ImageUpload label="Banner" value={data.banner ?? ""} onChange={v => set("banner", v)} />}

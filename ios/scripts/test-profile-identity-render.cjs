@@ -18,6 +18,7 @@ const context = vm.createContext({
     decorateSharedProfile: (original, id, data) => ({ ...original, username: data.username }),
     replaceIdentityText: tree => tree,
 });
+Object.assign(context, require('./load-profile-appearance.cjs'));
 vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function cloneSharedUser('), page.indexOf('function decorateSharedProfile(')), { loader: 'ts' }).code, context);
 vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function identityRenderer('), page.indexOf('function connectIdentityRenderer(')), { loader: 'ts' }).code, context);
 const render = context.identityRenderer(props => props.user.username);
