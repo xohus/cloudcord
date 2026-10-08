@@ -11241,6 +11241,8 @@
         requestSharedProfile(id);
       var original = id ? safeStore("UserStore")?.getUser?.(id) : null;
       var data = id ? getProfileOverride(id) : null;
+      diagnostics.identityUser = id || "Missing user ID";
+      diagnostics.identityData = !!(data?.username || data?.globalName || data?.displayName);
       var currentProps = {
         ...props
       };
@@ -11322,6 +11324,7 @@
     for (var component of identityComponents) {
       try {
         onJsxCreate(component, (_component, rendered) => {
+          diagnostics.identityMatches += 1;
           var props = rendered?.props;
           var id = String(renderedUserId(props) || props?.user?.id || "");
           if (!id)
@@ -12703,6 +12706,30 @@
                   variant: "text-xs/medium",
                   color: "text-muted",
                   children: [
+                    "Identity renders: ",
+                    diagnostics.identityMatches
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Last identity user: ",
+                    diagnostics.identityUser
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Synced names: ",
+                    diagnostics.identityData ? "Available" : "Not received"
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
                     "Profile picture resolver: ",
                     diagnostics.avatarResolver ? "Connected" : "Unavailable"
                   ]
@@ -13412,6 +13439,9 @@
         profileStore: false,
         avatarResolver: false,
         bannerResolver: false,
+        identityMatches: 0,
+        identityUser: "None",
+        identityData: false,
         last: "Ready"
       };
       initialized = false;
