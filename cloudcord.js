@@ -6020,10 +6020,17 @@
         ret.type = "RCTView";
         return ret;
       }
-      if (typeof Component === "function" && callbacks.has(Component.name)) {
-        var cbs = callbacks.get(Component.name);
+      var component = Component;
+      var target = typeof component === "function" ? component : component?.$$typeof === Symbol.for("react.memo") && typeof component.type === "function" ? component.type : null;
+      var name = [
+        component?.displayName,
+        target?.displayName,
+        target?.name
+      ].find((value) => typeof value === "string" && callbacks.has(value));
+      if (target && name) {
+        var cbs = callbacks.get(name);
         for (var cb of cbs) {
-          var _ret = cb(Component, ret);
+          var _ret = cb(target, ret);
           if (_ret !== void 0)
             ret = _ret;
         }
