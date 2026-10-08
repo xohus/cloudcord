@@ -6,7 +6,7 @@ const workflow = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
 const page = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'")[1].split('\n          TSX')[0].replace(/^          /gm, '');
 let profile = { username: 'custom_user', globalName: 'Custom Name', displayNameStyles: { fontId: 2, effectId: 1, colors: [0] } };
 let requested;
-const context = vm.createContext({ ...require('./load-profile-appearance.cjs'), isCurrentUser: id => id === 'own', preview: { enabled: true }, ownSharedProfile: () => profile,
+const context = vm.createContext({ ...require('./load-profile-appearance.cjs'), isCurrentUser: id => id === 'own', preview: { enabled: true, username: 'own_custom', displayName: 'Own Custom Name' }, ownSharedProfile: async () => { throw new Error('Rendering must not upload media'); },
     getProfileOverride: () => profile, requestSharedProfile: id => { requested = id; }, cloneSharedUser: (user, data) => ({ ...user, username: data.username }) });
 vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function decorateMessageAuthor('), page.indexOf('function ensurePatches(')), { loader: 'ts' }).code, context);
 const user = Object.freeze({ id: 'foreign', username: 'real' });
@@ -19,7 +19,7 @@ assert.equal(result.colorString, author.colorString);
 assert.equal(author.user.username, 'real');
 assert.equal(requested, 'foreign');
 assert.equal(context.decorateMessageAuthor({ nick: 'Real' }, [{ author: user }]).nick, 'Custom Name');
-assert.equal(context.decorateMessageAuthor({ user: { id: 'own' }, nick: 'Real' }, []).nick, 'Custom Name');
+assert.equal(context.decorateMessageAuthor({ user: { id: 'own' }, nick: 'Real' }, []).nick, 'Own Custom Name');
 profile = null;
 assert.equal(context.decorateMessageAuthor(author, []), author);
 assert.equal(context.decorateMessageAuthor(null, []), null);

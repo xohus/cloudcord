@@ -97,6 +97,8 @@ jobs:
           cp "../ios/runtime/src/core/ui/settings/index.ts" "src/core/ui/settings/index.ts"
           cp "../ios/runtime/src/core/vendetta/plugins.ts" "src/core/vendetta/plugins.ts"
           cp "../ios/runtime/src/lib/api/settings.ts" "src/lib/api/settings.ts"
+          cp "../ios/runtime/src/lib/api/profileIdentity.ts" "src/lib/api/profileIdentity.ts"
+          cp "../ios/runtime/src/lib/addons/plugins/api.ts" "src/lib/addons/plugins/api.ts"
           cp "../desktop/client/src/utils/profileAppearance.ts" "src/lib/api/profileAppearance.ts"
           cp "../ios/runtime/src/lib/api/react/jsx.ts" "src/lib/api/react/jsx.ts"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
@@ -325,7 +327,7 @@ jobs:
           import { awaitStorage, useProxy } from "@core/vendetta/storage";
           import { after, instead } from "@lib/api/patcher";
           import { onJsxCreate } from "@lib/api/react/jsx";
-          import { appearanceOptions, nativeProfileAppearance, normalizeProfileAppearance } from "@lib/api/profileAppearance";
+          import { appearanceOptions, availableServerTags, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, serverTagIconURL } from "@lib/api/profileAppearance";
           import { settings } from "@lib/api/settings";
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByNameLazy, findByProps, findByStoreName } from "@metro";
@@ -2048,6 +2050,7 @@ jobs:
                   "ProfileHeaderName", "ProfileDisplayName", "UserProfileName",
                   "ProfileUsername", "UserTagAndPronouns", "UserTag",
                   "UserProfilePrimaryInfo", "DiscordTag", "UsernameWithEffects",
+                  "GuildTag", "VoiceGuildTag",
                   "UserProfileUsername", "UserProfileDisplayName", "ProfileHeaderUserInfo", "UserProfileHeaderInfo"
               ];
               const applyIdentity = (props: any, id: string, data: any) => {
@@ -2106,7 +2109,7 @@ jobs:
               const id = String(user?.id || (result.username ? result.id : "") || args.find(value => value?.author?.id)?.author?.id || args.find(value => value?.id && value?.username)?.id || "");
               if (!id) return result;
               if (!isCurrentUser(id)) requestSharedProfile(id);
-              const data = isCurrentUser(id) ? (preview.enabled ? ownSharedProfile() : null) : getProfileOverride(id);
+              const data = isCurrentUser(id) ? (preview.enabled ? { ...preview, globalName: preview.displayName } : null) : getProfileOverride(id);
               if (!data) return result;
               if (result.id === id && result.username) return cloneSharedUser(result, data);
               const cloned = { ...result, ...nativeProfileAppearance(data) };
@@ -2122,12 +2125,54 @@ jobs:
           function ensurePatches() {
               if (initialized) return;
               initialized = true;
+              (globalThis as any).__CLOUDCORD_PRESENTATION_USER__ = (user: any) => {
+                  if (!user?.id) return user;
+                  if (isCurrentUser(String(user.id))) return preview.enabled ? cloneObject(user, "user") : user;
+                  requestSharedProfile(String(user.id));
+                  const data = getProfileOverride(String(user.id));
+                  return data ? cloneSharedUser(user, data) : user;
+              };
 
               const messageAuthors = findByProps("getMessageAuthor", "getUserAuthor") as any;
               for (const method of ["default", "useNullableMessageAuthor", "getMessageAuthor", "useUserNickAndColor", "useNullableUserAuthor", "getUserAuthor"]) {
                   addPatch(method, messageAuthors, (args, original) => {
                       const result = original(...args);
                       return decorateMessageAuthor(result, args);
+                  });
+              }
+
+              const nameUtils = findByProps("getName", "getNickname", "useName") as any;
+              for (const method of ["getName", "getNickname", "useName"]) {
+                  addPatch(method, nameUtils, (args, original) => original(...args.map(value => {
+                      if (value?.id && typeof value.username === "string") return (globalThis as any).__CLOUDCORD_PRESENTATION_USER__(value);
+                      if (value?.user?.id) return { ...value, user: (globalThis as any).__CLOUDCORD_PRESENTATION_USER__(value.user) };
+                      return value;
+                  })));
+              }
+
+              const nativeStyleHooks = findByProps("useGuildMemberOrUserPendingDisplayNameStyles") as any;
+              addPatch("useGuildMemberOrUserPendingDisplayNameStyles", nativeStyleHooks, (args, original) => {
+                  const result = original(...args);
+                  const user = args.find(value => value?.id && typeof value.username === "string")
+                      || args.map(value => typeof value === "string" ? safeStore("UserStore")?.getUser?.(value) : value?.user).find(value => value?.id);
+                  if (!user?.id) return result;
+                  const id = String(user.id);
+                  if (!isCurrentUser(id)) requestSharedProfile(id);
+                  const data = isCurrentUser(id) ? (preview.enabled ? preview : null) : getProfileOverride(id);
+                  const styles = nativeProfileAppearance(data).displayNameStyles;
+                  return styles === undefined ? result : styles;
+              });
+
+              const guildTags = findByProps("getUserPrimaryGuild", "useUserPrimaryGuild") as any;
+              for (const method of ["getUserPrimaryGuild", "useUserPrimaryGuild"]) {
+                  addPatch(method, guildTags, (args, original) => {
+                      const result = original(...args);
+                      const id = String(args[0]?.id || args[0]?.userId || (typeof args[0] === "string" ? args[0] : ""));
+                      if (!id) return result;
+                      if (!isCurrentUser(id)) requestSharedProfile(id);
+                      const data = isCurrentUser(id) ? (preview.enabled ? { ...preview, globalName: preview.displayName } : null) : getProfileOverride(id);
+                      const native = nativeProfileAppearance(data);
+                      return native.primaryGuild === undefined ? result : native.primaryGuild;
                   });
               }
 
@@ -2390,10 +2435,30 @@ jobs:
               render() { return this.state.failed ? <Text color="text-muted">Username preview isn't available in this Discord version.</Text> : this.props.children; }
           }
 
-          function NameStylePreview() {
+          function ServerTagPicker({ onSelect }: { onSelect: (tag: { tag: string; guildId: string; badge: string }) => void }) {
+              const [url, setUrl] = useState("");
+              const [error, setError] = useState("");
+              const tags = availableServerTags(safeStore("UserStore")?.getUsers?.());
+              return <ScrollView contentContainerStyle={{ padding: 16, gap: 16 }} keyboardShouldPersistTaps="handled">
+                  <Text color="text-muted">Choose a Discord server-tag icon. This doesn't join the server.</Text>
+                  {tags.map(tag => <TableRow key={`${tag.guildId}:${tag.badge}`} label={safeStore("GuildStore")?.getGuild?.(tag.guildId)?.name || tag.tag} subLabel={tag.tag} icon={<TableRow.Icon source={{ uri: serverTagIconURL(tag) }} />} onPress={() => onSelect(tag)} />)}
+                  {!tags.length && <Text color="text-muted">No server-tag icons loaded yet. Open a profile with a tag, then return here.</Text>}
+                  <TextInput value={url} placeholder="Discord server-tag icon link" autoCapitalize="none" autoCorrect={false} onChangeText={setUrl} />
+                  <Button text="Use Icon" onPress={() => { const icon = parseServerTagIcon(url); if (!icon) { setError("Use a Discord server-tag image link."); return; } onSelect({ ...icon, tag: preview.serverTag?.tag || "TAG" }); }} />
+                  {!!error && <Text color="text-danger">{error}</Text>}
+              </ScrollView>;
+          }
+
+          function nativeNameStyleOptions(field: "fontId" | "effectId") {
+              const enums = findByProps("DisplayNameFont", "DisplayNameEffect") as any;
+              const key = field === "fontId" ? "DISPLAY_NAME_STYLES_FONT_NAMES" : "DISPLAY_NAME_STYLES_EFFECT_NAMES";
+              const labels = (findByProps(key) as any)?.[key];
+              return appearanceOptions(enums?.[field === "fontId" ? "DisplayNameFont" : "DisplayNameEffect"]).map(option => ({ ...option, label: typeof labels?.[option.value] === "string" ? labels[option.value] : option.label }));
+          }
+
+          function NameStylePreview({ styles = preview.displayNameStyles || null }: { styles?: PreviewSettings["displayNameStyles"] }) {
               const NativeName = (findByProps("AVERAGE_FONT_WIDTH_RATIO") as any)?.default;
               const name = preview.displayName || preview.username || realCurrentUser?.globalName || realCurrentUser?.username || "Your name";
-              const styles = preview.displayNameStyles || null;
               return <View style={{ padding: 16, borderRadius: 12, gap: 8 }}>
                   <Text variant="text-xs/bold" color="text-muted">PREVIEW</Text>
                   <NamePreviewBoundary key={JSON.stringify(styles)}>
@@ -2401,6 +2466,21 @@ jobs:
                   </NamePreviewBoundary>
                   <Text variant="text-xs/normal" color="text-muted">Shown in profiles and message author names.</Text>
               </View>;
+          }
+
+          function NameStylePicker({ field, onSelect }: { field: "fontId" | "effectId"; onSelect: (style: NonNullable<PreviewSettings["displayNameStyles"]>) => void }) {
+              const [selected, setSelected] = useState(preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] });
+              const NativeName = (findByProps("AVERAGE_FONT_WIDTH_RATIO") as any)?.default;
+              const name = preview.displayName || preview.username || realCurrentUser?.globalName || realCurrentUser?.username || "Your name";
+              return <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+                  <NameStylePreview styles={selected} />
+                  {nativeNameStyleOptions(field).map(option => {
+                      const style = { ...selected, [field]: option.value };
+                      return <View key={option.value} style={{ borderRadius: 12, borderWidth: selected[field] === option.value ? 2 : 0, borderColor: "#5865f2", overflow: "hidden" }}>
+                          <TableRow label={option.label} onPress={() => { setSelected(style); onSelect(style); }} trailing={NativeName ? <NamePreviewBoundary key={JSON.stringify(style)}><NativeName username={name} text={name} displayNameStyles={style} fontId={style.fontId} effectId={style.effectId} colors={style.colors} /></NamePreviewBoundary> : undefined} />
+                      </View>;
+                  })}
+              </ScrollView>;
           }
 
           function ActionButton({ label, onPress, muted = false }: { label: string; onPress: () => void; muted?: boolean }) {
@@ -2566,11 +2646,9 @@ jobs:
               };
 
               const chooseNameStyle = (field: "fontId" | "effectId") => {
-                  const enums = findByProps("DisplayNameFont", "DisplayNameEffect") as any;
-                  const options = appearanceOptions(enums?.[field === "fontId" ? "DisplayNameFont" : "DisplayNameEffect"]);
-                  const key = `CloudCordNameStyle_${field}`;
+                  const options = nativeNameStyleOptions(field);
                   if (!options.length) { diagnostics.last = "Discord's username styles aren't available in this version"; redraw(); return; }
-                  simpleSheets.showSimpleActionSheet({ key, header: { title: field === "fontId" ? "Username font" : "Username effect", onClose: () => simpleSheets.hideActionSheet?.(key) }, options: options.map(option => ({ label: option.label, onPress: () => { update("displayNameStyles", { ...(preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] }), [field]: option.value }, true); simpleSheets.hideActionSheet?.(key); } })) });
+                  navigation.push("PUPU_CUSTOM_PAGE", { title: field === "fontId" ? "Username Font" : "Username Effect", render: () => <NameStylePicker field={field} onSelect={style => update("displayNameStyles", style, true)} /> });
               };
 
               const chooseExperimentalBadge = (group: typeof EXPERIMENTAL_BADGE_GROUPS[number]) => {
@@ -2693,15 +2771,20 @@ jobs:
                                   <View style={{ gap: 8 }}>
                                       <Text variant="text-sm/bold" color="text-normal">Username Style</Text>
                                       <NameStylePreview />
-                                      <TableRow arrow label="Font" trailing={<TableRow.TrailingText text={appearanceOptions((findByProps("DisplayNameFont", "DisplayNameEffect") as any)?.DisplayNameFont).find(option => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"} />} onPress={() => chooseNameStyle("fontId")} />
-                                      <TableRow arrow label="Effect" trailing={<TableRow.TrailingText text={appearanceOptions((findByProps("DisplayNameFont", "DisplayNameEffect") as any)?.DisplayNameEffect).find(option => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"} />} onPress={() => chooseNameStyle("effectId")} />
-                                      {[0, 1, 2].map(index => {
+                                      <TableRow arrow label="Font" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("fontId").find(option => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"} />} onPress={() => chooseNameStyle("fontId")} />
+                                      <TableRow arrow label="Effect" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("effectId").find(option => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"} />} onPress={() => chooseNameStyle("effectId")} />
+                                      {[0, 1, 2].slice(0, Math.max(1, Math.min(3, Number((findByProps("getEffectColorCount") as any)?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map(index => {
                                           const value = `#${(preview.displayNameStyles?.colors[index] ?? 0xffffff).toString(16).padStart(6, "0")}`;
                                           const apply = (color: string) => { const style = preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] }; const colors = [0, 1, 2].map(i => style.colors[i] ?? style.colors[0] ?? 0xffffff); colors[index] = parseInt(color.replace("#", ""), 16); update("displayNameStyles", { ...style, colors }, true); navigation.goBack(); };
                                           return <ColorPickerRow key={`name-color-${index}`} label={`Color ${index + 1}`} value={value} onSelect={apply} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: `Username Color ${index + 1}`, render: () => <CustomColorPicker title={`Username Color ${index + 1}`} initialColor={value} onApply={apply} /> })} />;
                                       })}
                                       <ActionButton label="Reset Username Style" onPress={() => update("displayNameStyles", null, true)} />
                                       <Text variant="text-sm/bold" color="text-normal">Server Tag</Text>
+                                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10 }}>
+                                          {!!serverTagIconURL(preview.serverTag) && <Image source={{ uri: serverTagIconURL(preview.serverTag) }} style={{ width: 20, height: 20 }} resizeMode="contain" />}
+                                          <Text variant="text-sm/bold" color="text-normal">{preview.serverTag?.tag || "Your Tag"}</Text>
+                                      </View>
+                                      <TableRow arrow label="Tag Icon" subLabel="Choose a Discord server-tag icon" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Server Tag Icon", render: () => <ServerTagPicker onSelect={tag => { update("serverTag", { ...tag, tag: preview.serverTag?.tag || tag.tag }, true); navigation.goBack(); }} /> })} />
                                       <TextInput defaultValue={preview.serverTag?.tag || ""} placeholder="Tag (1–4 characters)" maxLength={4} onChangeText={value => update("serverTag", { ...(preview.serverTag || { guildId: "", badge: "" }), tag: value }, true)} />
                                       <TextInput defaultValue={preview.serverTag?.guildId || ""} placeholder="Server ID" keyboardType="number-pad" onChangeText={value => update("serverTag", { ...(preview.serverTag || { tag: "", badge: "" }), guildId: value.trim() }, true)} />
                                       <ActionButton label="Copy Current Discord Tag" onPress={() => { const user = safeStore("UserStore")?.getCurrentUser?.(); const tag = user?.primaryGuild || user?.primary_guild; if (tag?.tag) update("serverTag", { tag: tag.tag, guildId: tag.identityGuildId || tag.identity_guild_id, badge: tag.badge || "" }, true); }} />

@@ -9,7 +9,7 @@
 
 import "./style.css";
 import decorationCatalog from "./decorations.json";
-import { appearanceOptions, nativeProfileAppearance, normalizeProfileAppearance, ProfileAppearance } from "@utils/profileAppearance";
+import { appearanceOptions, availableServerTags, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, ProfileAppearance, serverTagIconURL } from "@utils/profileAppearance";
 import { findByProps } from "@webpack";
 
 import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
@@ -1275,6 +1275,12 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             </div>
             <div className="cp-field">
                 <div className="cp-section-label">Server Tag</div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "10px 0", color: "var(--text-normal)" }}>
+                    {serverTagIconURL(data.serverTag) && <img src={serverTagIconURL(data.serverTag)} alt="" width={20} height={20} style={{ objectFit: "contain" }} />}
+                    <span>{data.serverTag?.tag || "Your Tag"}</span>
+                </div>
+                <Select options={availableServerTags((UserStore as any).getUsers?.()).map(item => ({ label: item.tag, value: `${item.guildId}:${item.badge}`, tag: item }))} isSelected={(value: string) => value === `${tag.guildId}:${tag.badge}`} select={(value: string) => { const selected = availableServerTags((UserStore as any).getUsers?.()).find(item => `${item.guildId}:${item.badge}` === value); if (selected) set("serverTag", { ...selected, tag: tag.tag || selected.tag }); }} serialize={(value: string) => value} />
+                <Field label="Discord Tag Icon Link" value={serverTagIconURL(data.serverTag)} placeholder="Paste a Discord server-tag image link" onChange={value => { const icon = parseServerTagIcon(value); if (icon) set("serverTag", { ...tag, ...icon }); }} />
                 <Button onClick={() => { const user = UserStore.getUser(selectedAccountId) as any; const current = user?.primaryGuild || user?.primary_guild; if (current?.tag) set("serverTag", { tag: current.tag, guildId: current.identityGuildId || current.identity_guild_id, badge: current.badge || "" }); }}>Copy Current Discord Tag</Button>
                 <Toggle label="Override server tag" checked={data.serverTag != null} onChange={v => set("serverTag", v ? tag : null)} />
                 {data.serverTag != null && <>

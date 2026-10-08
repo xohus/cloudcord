@@ -3,6 +3,29 @@ export type ProfileAppearance = {
     serverTag?: { tag: string; guildId: string; badge: string } | null;
 };
 
+export function serverTagIconURL(tag: ProfileAppearance["serverTag"]): string {
+    if (!tag?.badge || !/^\d{15,22}$/.test(tag.guildId) || !/^[a-f0-9]{32}$/.test(tag.badge)) return "";
+    return `https://cdn.discordapp.com/guild-tag-badges/${tag.guildId}/${tag.badge}.png?size=64`;
+}
+
+export function parseServerTagIcon(value: string): { guildId: string; badge: string } | null {
+    try {
+        const url = new URL(value);
+        const match = url.pathname.match(/^\/guild-tag-badges\/(\d{15,22})\/([a-f0-9]{32})\.(?:png|webp|jpe?g)$/);
+        return url.protocol === "https:" && url.hostname === "cdn.discordapp.com" && match ? { guildId: match[1], badge: match[2] } : null;
+    } catch { return null; }
+}
+
+export function availableServerTags(users: any): NonNullable<ProfileAppearance["serverTag"]>[] {
+    const tags = new Map<string, NonNullable<ProfileAppearance["serverTag"]>>();
+    for (const user of Object.values(users || {}) as any[]) {
+        const native = user?.primaryGuild || user?.primary_guild;
+        const tag = normalizeProfileAppearance({ serverTag: { tag: native?.tag, guildId: native?.identityGuildId || native?.identity_guild_id, badge: native?.badge || "" } }).serverTag;
+        if (tag?.badge) tags.set(`${tag.guildId}:${tag.badge}`, tag);
+    }
+    return [...tags.values()].sort((a, b) => a.tag.localeCompare(b.tag));
+}
+
 export function appearanceOptions(values: any): { value: number; label: string }[] {
     if (!values || typeof values !== "object") return [];
     return Object.entries(values).filter(([, value]) => Number.isInteger(value) && Number(value) >= 0)

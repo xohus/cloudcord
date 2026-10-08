@@ -2,6 +2,7 @@ import { patcher } from "@lib/api";
 import { registerCommand } from "@lib/api/commands";
 import { createStorage } from "@lib/api/storage";
 import { logger } from "@lib/utils/logger";
+import { pluginIdentityMetro } from "@lib/api/profileIdentity";
 
 import { registeredPlugins } from ".";
 import { BunnyPluginObject } from "./types";
@@ -28,6 +29,7 @@ export function createBunnyPluginApi(id: string) {
     // proxying this would be a good idea
     const object = {
         ...window.bunny,
+        metro: pluginIdentityMetro((window.bunny as any).metro),
         api: {
             ...window.bunny.api,
             patcher: {
