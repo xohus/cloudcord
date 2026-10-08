@@ -6057,6 +6057,41 @@
   });
 
   // src/lib/api/profileAppearance.ts
+  function serverTagIconURL(tag) {
+    if (!tag?.badge || !/^\d{15,22}$/.test(tag.guildId) || !/^[a-f0-9]{32}$/.test(tag.badge))
+      return "";
+    return `https://cdn.discordapp.com/guild-tag-badges/${tag.guildId}/${tag.badge}.png?size=64`;
+  }
+  function parseServerTagIcon(value) {
+    try {
+      var url2 = new URL(value);
+      var match = url2.pathname.match(/^\/guild-tag-badges\/(\d{15,22})\/([a-f0-9]{32})\.(?:png|webp|jpe?g)$/);
+      return url2.protocol === "https:" && url2.hostname === "cdn.discordapp.com" && match ? {
+        guildId: match[1],
+        badge: match[2]
+      } : null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function availableServerTags(users) {
+    var tags = /* @__PURE__ */ new Map();
+    for (var user of Object.values(users || {})) {
+      var native = user?.primaryGuild || user?.primary_guild;
+      var tag = normalizeProfileAppearance({
+        serverTag: {
+          tag: native?.tag,
+          guildId: native?.identityGuildId || native?.identity_guild_id,
+          badge: native?.badge || ""
+        }
+      }).serverTag;
+      if (tag?.badge)
+        tags.set(`${tag.guildId}:${tag.badge}`, tag);
+    }
+    return [
+      ...tags.values()
+    ].sort((a, b3) => a.tag.localeCompare(b3.tag));
+  }
   function appearanceOptions(values) {
     if (!values || typeof values !== "object")
       return [];
@@ -6390,6 +6425,88 @@
     }
   });
 
+  // src/lib/api/profileIdentity.ts
+  function present(user) {
+    var resolve = globalThis.__CLOUDCORD_PRESENTATION_USER__;
+    return typeof resolve === "function" ? resolve(user) : user;
+  }
+  function pluginIdentityModule(module) {
+    var _loop2 = function(key2) {
+      if (typeof module[key2] !== "function")
+        return "continue";
+      Object.defineProperty(view, key2, {
+        configurable: true,
+        writable: true,
+        value: (...args) => {
+          var result = module[key2](...args);
+          if (key2 !== "getUsers" || !result)
+            return present(result);
+          return Object.fromEntries(Object.entries(result).map(([id, user]) => [
+            id,
+            present(user)
+          ]));
+        }
+      });
+    };
+    if (!module || typeof module !== "object" && typeof module !== "function")
+      return module;
+    if (typeof module.getUser !== "function" || typeof module.getCurrentUser !== "function")
+      return module;
+    if (storeViews.has(module))
+      return storeViews.get(module);
+    var view = Object.create(module);
+    for (var key of [
+      "getUser",
+      "getCurrentUser",
+      "getUsers"
+    ])
+      _loop2(key);
+    storeViews.set(module, view);
+    return view;
+  }
+  function pluginIdentityMetro(metro) {
+    var _loop2 = function(key2) {
+      if (typeof metro[key2] !== "function")
+        return "continue";
+      view[key2] = (...args) => {
+        var result = metro[key2](...args);
+        return Array.isArray(result) ? result.map(pluginIdentityModule) : pluginIdentityModule(result);
+      };
+    };
+    if (!metro)
+      return metro;
+    var view = {
+      ...metro
+    };
+    if (metro.common)
+      view.common = {
+        ...metro.common,
+        UserStore: pluginIdentityModule(metro.common.UserStore)
+      };
+    for (var key of [
+      "find",
+      "findAll",
+      "findExports",
+      "findAllExports",
+      "findByProps",
+      "findByPropsAll",
+      "findByPropsLazy",
+      "findByStoreName",
+      "findByStoreNameLazy"
+    ])
+      _loop2(key);
+    return view;
+  }
+  var storeViews;
+  var init_profileIdentity = __esm({
+    "src/lib/api/profileIdentity.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      storeViews = /* @__PURE__ */ new WeakMap();
+    }
+  });
+
   // src/core/vendetta/plugins.ts
   var plugins, pluginInstance, VdPluginManager;
   var init_plugins = __esm({
@@ -6400,6 +6517,7 @@
       init_async_to_generator();
       init_storage();
       init_settings();
+      init_profileIdentity();
       init_utils();
       init_constants();
       init_logger();
@@ -6464,6 +6582,7 @@
           return _async_to_generator(function* () {
             var vendettaForPlugins = {
               ...globalThis.vendetta,
+              metro: pluginIdentityMetro(globalThis.vendetta.metro),
               plugin: {
                 id: plugin.id,
                 manifest: plugin.manifest,
@@ -8945,6 +9064,7 @@
     var disposers = new Array();
     var object = {
       ...globalThis.bunny,
+      metro: pluginIdentityMetro(globalThis.bunny.metro),
       api: {
         ...globalThis.bunny.api,
         patcher: {
@@ -8982,6 +9102,7 @@
       init_commands();
       init_storage2();
       init_logger();
+      init_profileIdentity();
       init_plugins4();
     }
   });
@@ -11384,6 +11505,8 @@
       "UserProfilePrimaryInfo",
       "DiscordTag",
       "UsernameWithEffects",
+      "GuildTag",
+      "VoiceGuildTag",
       "UserProfileUsername",
       "UserProfileDisplayName",
       "ProfileHeaderUserInfo",
@@ -11463,7 +11586,10 @@
       return result;
     if (!isCurrentUser(id))
       requestSharedProfile(id);
-    var data = isCurrentUser(id) ? preview.enabled ? ownSharedProfile() : null : getProfileOverride(id);
+    var data = isCurrentUser(id) ? preview.enabled ? {
+      ...preview,
+      globalName: preview.displayName
+    } : null : getProfileOverride(id);
     if (!data)
       return result;
     if (result.id === id && result.username)
@@ -11493,6 +11619,15 @@
     if (initialized)
       return;
     initialized = true;
+    globalThis.__CLOUDCORD_PRESENTATION_USER__ = (user) => {
+      if (!user?.id)
+        return user;
+      if (isCurrentUser(String(user.id)))
+        return preview.enabled ? cloneObject(user, "user") : user;
+      requestSharedProfile(String(user.id));
+      var data = getProfileOverride(String(user.id));
+      return data ? cloneSharedUser(user, data) : user;
+    };
     var messageAuthors = findByProps("getMessageAuthor", "getUserAuthor");
     for (var method of [
       "default",
@@ -11505,6 +11640,56 @@
       addPatch(method, messageAuthors, (args, original) => {
         var result = original(...args);
         return decorateMessageAuthor(result, args);
+      });
+    }
+    var nameUtils = findByProps("getName", "getNickname", "useName");
+    for (var method1 of [
+      "getName",
+      "getNickname",
+      "useName"
+    ]) {
+      addPatch(method1, nameUtils, (args, original) => original(...args.map((value) => {
+        if (value?.id && typeof value.username === "string")
+          return globalThis.__CLOUDCORD_PRESENTATION_USER__(value);
+        if (value?.user?.id)
+          return {
+            ...value,
+            user: globalThis.__CLOUDCORD_PRESENTATION_USER__(value.user)
+          };
+        return value;
+      })));
+    }
+    var nativeStyleHooks = findByProps("useGuildMemberOrUserPendingDisplayNameStyles");
+    addPatch("useGuildMemberOrUserPendingDisplayNameStyles", nativeStyleHooks, (args, original) => {
+      var result = original(...args);
+      var user = args.find((value) => value?.id && typeof value.username === "string") || args.map((value) => typeof value === "string" ? safeStore("UserStore")?.getUser?.(value) : value?.user).find((value) => value?.id);
+      if (!user?.id)
+        return result;
+      var id = String(user.id);
+      if (!isCurrentUser(id))
+        requestSharedProfile(id);
+      var data = isCurrentUser(id) ? preview.enabled ? preview : null : getProfileOverride(id);
+      var styles = nativeProfileAppearance(data).displayNameStyles;
+      return styles === void 0 ? result : styles;
+    });
+    var guildTags = findByProps("getUserPrimaryGuild", "useUserPrimaryGuild");
+    for (var method2 of [
+      "getUserPrimaryGuild",
+      "useUserPrimaryGuild"
+    ]) {
+      addPatch(method2, guildTags, (args, original) => {
+        var result = original(...args);
+        var id = String(args[0]?.id || args[0]?.userId || (typeof args[0] === "string" ? args[0] : ""));
+        if (!id)
+          return result;
+        if (!isCurrentUser(id))
+          requestSharedProfile(id);
+        var data = isCurrentUser(id) ? preview.enabled ? {
+          ...preview,
+          globalName: preview.displayName
+        } : null : getProfileOverride(id);
+        var native = nativeProfileAppearance(data);
+        return native.primaryGuild === void 0 ? result : native.primaryGuild;
       });
     }
     var userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
@@ -11567,34 +11752,34 @@
     var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
     diagnostics.avatarResolver = !!avatarResolver;
     diagnostics.bannerResolver = !!bannerResolver;
-    for (var method1 of [
+    for (var method3 of [
       "getUserAvatarURL",
       "getAvatarURL",
       "getGuildMemberAvatarURL",
       "getGuildMemberAvatarURLSimple"
     ]) {
-      addPatch(method1, avatarResolver, (args, original) => {
+      addPatch(method3, avatarResolver, (args, original) => {
         var uri = mediaUri("avatarMedia");
         return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
       });
     }
-    for (var method2 of [
+    for (var method4 of [
       "getUserAvatarSource",
       "getGuildMemberAvatarSource"
     ]) {
-      addPatch(method2, avatarResolver, (args, original) => {
+      addPatch(method4, avatarResolver, (args, original) => {
         var uri = mediaUri("avatarMedia");
         return preview.enabled && uri && requestIsCurrent(args) ? {
           uri
         } : original(...args);
       });
     }
-    for (var method3 of [
+    for (var method5 of [
       "getUserBannerURL",
       "getBannerURL",
       "getGuildMemberBannerURL"
     ]) {
-      addPatch(method3, bannerResolver, (args, original) => {
+      addPatch(method5, bannerResolver, (args, original) => {
         var uri = mediaUri("bannerMedia");
         return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
       });
@@ -11858,10 +12043,75 @@
       return !!asset;
     })();
   }
-  function NameStylePreview() {
+  function ServerTagPicker({ onSelect }) {
+    var [url2, setUrl] = (0, import_react5.useState)("");
+    var [error, setError] = (0, import_react5.useState)("");
+    var tags = availableServerTags(safeStore("UserStore")?.getUsers?.());
+    return /* @__PURE__ */ jsxs(import_react_native18.ScrollView, {
+      contentContainerStyle: {
+        padding: 16,
+        gap: 16
+      },
+      keyboardShouldPersistTaps: "handled",
+      children: [
+        /* @__PURE__ */ jsx(Text, {
+          color: "text-muted",
+          children: "Choose a Discord server-tag icon. This doesn't join the server."
+        }),
+        tags.map((tag) => /* @__PURE__ */ jsx(TableRow, {
+          label: safeStore("GuildStore")?.getGuild?.(tag.guildId)?.name || tag.tag,
+          subLabel: tag.tag,
+          icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+            source: {
+              uri: serverTagIconURL(tag)
+            }
+          }),
+          onPress: () => onSelect(tag)
+        }, `${tag.guildId}:${tag.badge}`)),
+        !tags.length && /* @__PURE__ */ jsx(Text, {
+          color: "text-muted",
+          children: "No server-tag icons loaded yet. Open a profile with a tag, then return here."
+        }),
+        /* @__PURE__ */ jsx(TextInput3, {
+          value: url2,
+          placeholder: "Discord server-tag icon link",
+          autoCapitalize: "none",
+          autoCorrect: false,
+          onChangeText: setUrl
+        }),
+        /* @__PURE__ */ jsx(Button, {
+          text: "Use Icon",
+          onPress: () => {
+            var icon2 = parseServerTagIcon(url2);
+            if (!icon2) {
+              setError("Use a Discord server-tag image link.");
+              return;
+            }
+            onSelect({
+              ...icon2,
+              tag: preview.serverTag?.tag || "TAG"
+            });
+          }
+        }),
+        !!error && /* @__PURE__ */ jsx(Text, {
+          color: "text-danger",
+          children: error
+        })
+      ]
+    });
+  }
+  function nativeNameStyleOptions(field) {
+    var enums = findByProps("DisplayNameFont", "DisplayNameEffect");
+    var key = field === "fontId" ? "DISPLAY_NAME_STYLES_FONT_NAMES" : "DISPLAY_NAME_STYLES_EFFECT_NAMES";
+    var labels = findByProps(key)?.[key];
+    return appearanceOptions(enums?.[field === "fontId" ? "DisplayNameFont" : "DisplayNameEffect"]).map((option) => ({
+      ...option,
+      label: typeof labels?.[option.value] === "string" ? labels[option.value] : option.label
+    }));
+  }
+  function NameStylePreview({ styles = preview.displayNameStyles || null }) {
     var NativeName = findByProps("AVERAGE_FONT_WIDTH_RATIO")?.default;
     var name = preview.displayName || preview.username || realCurrentUser?.globalName || realCurrentUser?.username || "Your name";
-    var styles = preview.displayNameStyles || null;
     return /* @__PURE__ */ jsxs(import_react_native18.View, {
       style: {
         padding: 16,
@@ -11895,6 +12145,59 @@
           variant: "text-xs/normal",
           color: "text-muted",
           children: "Shown in profiles and message author names."
+        })
+      ]
+    });
+  }
+  function NameStylePicker({ field, onSelect }) {
+    var [selected, setSelected] = (0, import_react5.useState)(preview.displayNameStyles || {
+      fontId: 0,
+      effectId: 0,
+      colors: [
+        16777215
+      ]
+    });
+    var NativeName = findByProps("AVERAGE_FONT_WIDTH_RATIO")?.default;
+    var name = preview.displayName || preview.username || realCurrentUser?.globalName || realCurrentUser?.username || "Your name";
+    return /* @__PURE__ */ jsxs(import_react_native18.ScrollView, {
+      contentContainerStyle: {
+        padding: 16,
+        gap: 12
+      },
+      children: [
+        /* @__PURE__ */ jsx(NameStylePreview, {
+          styles: selected
+        }),
+        nativeNameStyleOptions(field).map((option) => {
+          var style = {
+            ...selected,
+            [field]: option.value
+          };
+          return /* @__PURE__ */ jsx(import_react_native18.View, {
+            style: {
+              borderRadius: 12,
+              borderWidth: selected[field] === option.value ? 2 : 0,
+              borderColor: "#5865f2",
+              overflow: "hidden"
+            },
+            children: /* @__PURE__ */ jsx(TableRow, {
+              label: option.label,
+              onPress: () => {
+                setSelected(style);
+                onSelect(style);
+              },
+              trailing: NativeName ? /* @__PURE__ */ jsx(NamePreviewBoundary, {
+                children: /* @__PURE__ */ jsx(NativeName, {
+                  username: name,
+                  text: name,
+                  displayNameStyles: style,
+                  fontId: style.fontId,
+                  effectId: style.effectId,
+                  colors: style.colors
+                })
+              }, JSON.stringify(style)) : void 0
+            })
+          }, option.value);
         })
       ]
     });
@@ -12139,36 +12442,18 @@
       }
     };
     var chooseNameStyle = (field) => {
-      var enums = findByProps("DisplayNameFont", "DisplayNameEffect");
-      var options = appearanceOptions(enums?.[field === "fontId" ? "DisplayNameFont" : "DisplayNameEffect"]);
-      var key = `CloudCordNameStyle_${field}`;
+      var options = nativeNameStyleOptions(field);
       if (!options.length) {
         diagnostics.last = "Discord's username styles aren't available in this version";
         redraw();
         return;
       }
-      simpleSheets.showSimpleActionSheet({
-        key,
-        header: {
-          title: field === "fontId" ? "Username font" : "Username effect",
-          onClose: () => simpleSheets.hideActionSheet?.(key)
-        },
-        options: options.map((option) => ({
-          label: option.label,
-          onPress: () => {
-            update("displayNameStyles", {
-              ...preview.displayNameStyles || {
-                fontId: 0,
-                effectId: 0,
-                colors: [
-                  16777215
-                ]
-              },
-              [field]: option.value
-            }, true);
-            simpleSheets.hideActionSheet?.(key);
-          }
-        }))
+      navigation2.push("PUPU_CUSTOM_PAGE", {
+        title: field === "fontId" ? "Username Font" : "Username Effect",
+        render: () => /* @__PURE__ */ jsx(NameStylePicker, {
+          field,
+          onSelect: (style) => update("displayNameStyles", style, true)
+        })
       });
     };
     var chooseExperimentalBadge = (group) => {
@@ -12496,7 +12781,7 @@
                       arrow: true,
                       label: "Font",
                       trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
-                        text: appearanceOptions(findByProps("DisplayNameFont", "DisplayNameEffect")?.DisplayNameFont).find((option) => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"
+                        text: nativeNameStyleOptions("fontId").find((option) => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"
                       }),
                       onPress: () => chooseNameStyle("fontId")
                     }),
@@ -12504,7 +12789,7 @@
                       arrow: true,
                       label: "Effect",
                       trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
-                        text: appearanceOptions(findByProps("DisplayNameFont", "DisplayNameEffect")?.DisplayNameEffect).find((option) => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"
+                        text: nativeNameStyleOptions("effectId").find((option) => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"
                       }),
                       onPress: () => chooseNameStyle("effectId")
                     }),
@@ -12512,7 +12797,7 @@
                       0,
                       1,
                       2
-                    ].map((index) => {
+                    ].slice(0, Math.max(1, Math.min(3, Number(findByProps("getEffectColorCount")?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map((index) => {
                       var value = `#${(preview.displayNameStyles?.colors[index] ?? 16777215).toString(16).padStart(6, "0")}`;
                       var apply = (color2) => {
                         var style = preview.displayNameStyles || {
@@ -12556,6 +12841,48 @@
                       variant: "text-sm/bold",
                       color: "text-normal",
                       children: "Server Tag"
+                    }),
+                    /* @__PURE__ */ jsxs(import_react_native18.View, {
+                      style: {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        paddingVertical: 10
+                      },
+                      children: [
+                        !!serverTagIconURL(preview.serverTag) && /* @__PURE__ */ jsx(import_react_native18.Image, {
+                          source: {
+                            uri: serverTagIconURL(preview.serverTag)
+                          },
+                          style: {
+                            width: 20,
+                            height: 20
+                          },
+                          resizeMode: "contain"
+                        }),
+                        /* @__PURE__ */ jsx(Text, {
+                          variant: "text-sm/bold",
+                          color: "text-normal",
+                          children: preview.serverTag?.tag || "Your Tag"
+                        })
+                      ]
+                    }),
+                    /* @__PURE__ */ jsx(TableRow, {
+                      arrow: true,
+                      label: "Tag Icon",
+                      subLabel: "Choose a Discord server-tag icon",
+                      onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                        title: "Server Tag Icon",
+                        render: () => /* @__PURE__ */ jsx(ServerTagPicker, {
+                          onSelect: (tag) => {
+                            update("serverTag", {
+                              ...tag,
+                              tag: preview.serverTag?.tag || tag.tag
+                            }, true);
+                            navigation2.goBack();
+                          }
+                        })
+                      })
                     }),
                     /* @__PURE__ */ jsx(TextInput3, {
                       defaultValue: preview.serverTag?.tag || "",
