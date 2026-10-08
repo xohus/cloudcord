@@ -10730,7 +10730,7 @@
         return original;
       }
     }
-    var displayName2 = preview.displayName || original.globalName || original.displayName || original.username;
+    var displayName2 = preview.displayName || original.globalName || original.global_name || original.displayName || original.username;
     var username = preview.username || original.username;
     var avatar = mediaUri("avatarMedia");
     var banner = mediaUri("bannerMedia");
@@ -10743,6 +10743,7 @@
     var flags = shouldReplaceLocalBadges() ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
     setOwnValue(cloned, "username", username);
     setOwnValue(cloned, "globalName", displayName2);
+    setOwnValue(cloned, "global_name", displayName2);
     setOwnValue(cloned, "displayName", displayName2);
     setOwnValue(cloned, "bio", preview.bio);
     setOwnValue(cloned, "pronouns", preview.pronouns);
@@ -10823,7 +10824,7 @@
     return decorated;
   }
   function profileResultUserId(subject, result) {
-    return String((typeof subject === "string" ? subject : subject?.userId || subject?.user_id || subject?.id || subject?.user?.id) || result?.userId || result?.id || result?.user?.id || result?.userProfile?.userId || result?.userProfile?.user_id || result?.userProfile?.user?.id || result?.guildMemberProfile?.userId || result?.guildMemberProfile?.user?.id || result?.displayProfile?.userId || result?.displayProfile?.user?.id || result?.profile?.userId || result?.profile?.user?.id || "");
+    return String((typeof subject === "string" ? subject : subject?.userId || subject?.user_id || subject?.id || subject?.user?.id) || result?.userId || result?.user_id || result?.id || result?.user?.id || result?.userProfile?.userId || result?.userProfile?.user_id || result?.userProfile?.user?.id || result?.guildMemberProfile?.userId || result?.guildMemberProfile?.user_id || result?.guildMemberProfile?.user?.id || result?.displayProfile?.userId || result?.displayProfile?.user_id || result?.displayProfile?.user?.id || result?.profile?.userId || result?.profile?.user_id || result?.profile?.user?.id || "");
   }
   function isCurrentUser(id) {
     return !!id && !!currentUserId && id === currentUserId;
@@ -11279,6 +11280,7 @@
       if (displayName2) {
         props.displayName = displayName2;
         props.globalName = displayName2;
+        props.global_name = displayName2;
         props.name = displayName2;
       }
     };
@@ -11297,6 +11299,7 @@
             props.username = preview.username || props.username;
             props.displayName = preview.displayName || props.displayName;
             props.globalName = preview.displayName || props.globalName;
+            props.global_name = preview.displayName || props.global_name;
             return;
           }
           requestSharedProfile(id);
