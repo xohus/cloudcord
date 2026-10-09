@@ -6184,6 +6184,8 @@
     var changes = {};
     for (var key of [
       "message",
+      "lastMessage",
+      "latestMessage",
       "author",
       "user",
       "mentionedUser",
@@ -11720,6 +11722,24 @@
       return data ? cloneSharedUser(user, data) : user;
     };
     var messageAuthors = findByProps("getMessageAuthor", "getUserAuthor");
+    var messagePreviews = findByProps("useFormattedMessagePreview", "formatMessagePreview");
+    addPatch("formatMessagePreview", messagePreviews, (args, original) => original(...args.map((value) => presentationIdentity(value))));
+    addPatch("useFormattedMessagePreview", messagePreviews, (args, original) => {
+      var [, refresh] = (0, import_react5.useReducer)((value) => value + 1, 0);
+      (0, import_react5.useEffect)(() => {
+        var update = () => refresh();
+        identityRefreshers.add(update);
+        return () => {
+          identityRefreshers.delete(update);
+        };
+      }, []);
+      return original(...args.map((value) => presentationIdentity(value)));
+    });
+    for (var module of Object.values(metroModules)) {
+      if (module?.isInitialized !== true || module?.hasError || module?.__filePath !== "modules/message_previews/useLatestChannelMessage.tsx")
+        continue;
+      addPatch("default", module.publicModule?.exports, (args, original) => presentationIdentity(original(...args)));
+    }
     var rowManager = findByName("RowManager");
     addPatch("generate", rowManager?.prototype, (args, original) => original(...args.map((value) => presentationIdentity(value))));
     for (var method of [
@@ -13546,6 +13566,7 @@
       init_settings();
       init_plugins4();
       init_metro();
+      init_modules2();
       init_common();
       init_components();
       import_react5 = __toESM(require_react());
