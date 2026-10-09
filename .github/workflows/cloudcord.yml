@@ -332,6 +332,7 @@ jobs:
           import { settings } from "@lib/api/settings";
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByName, findByNameLazy, findByProps, findByStoreName } from "@metro";
+          import { metroModules } from "@metro/internals/modules";
           import { FluxDispatcher, NavigationNative } from "@metro/common";
           import { Text, TableRow, TableRadioGroup, TableRadioRow, Button } from "@metro/common/components";
           import { Component, cloneElement, isValidElement, useEffect, useReducer, useState } from "react";
@@ -2135,6 +2136,19 @@ jobs:
               };
 
               const messageAuthors = findByProps("getMessageAuthor", "getUserAuthor") as any;
+              // Verified against the user's Discord 344.1 module report.
+              // These previews bypass RowManager and NicknameUtils entirely.
+              const messagePreviews = findByProps("useFormattedMessagePreview", "formatMessagePreview") as any;
+              addPatch("formatMessagePreview", messagePreviews, (args, original) => original(...args.map(value => presentationIdentity(value))));
+              addPatch("useFormattedMessagePreview", messagePreviews, (args, original) => {
+                  const [, refresh] = useReducer(value => value + 1, 0);
+                  useEffect(() => { const update = () => refresh(); identityRefreshers.add(update); return () => { identityRefreshers.delete(update); }; }, []);
+                  return original(...args.map(value => presentationIdentity(value)));
+              });
+              for (const module of Object.values(metroModules) as any[]) {
+                  if (module?.isInitialized !== true || module?.hasError || module?.__filePath !== "modules/message_previews/useLatestChannelMessage.tsx") continue;
+                  addPatch("default", module.publicModule?.exports, (args, original) => presentationIdentity(original(...args)));
+              }
               const rowManager = findByName("RowManager") as any;
               addPatch("generate", rowManager?.prototype, (args, original) => original(...args.map(value => presentationIdentity(value))));
               for (const method of ["default", "useNullableMessageAuthor", "getMessageAuthor", "useUserNickAndColor", "useNullableUserAuthor", "getUserAuthor"]) {

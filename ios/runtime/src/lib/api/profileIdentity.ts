@@ -16,7 +16,7 @@ export function presentationIdentity(value: any, depth = 0): any {
     }
     if (value.id && typeof value.username === "string" && !value.author) return present(value);
     const changes: Record<string, any> = {};
-    for (const key of ["message", "author", "user", "mentionedUser", "referencedMessage", "mentions"]) {
+    for (const key of ["message", "lastMessage", "latestMessage", "author", "user", "mentionedUser", "referencedMessage", "mentions"]) {
         const next = presentationIdentity(value[key], depth + 1);
         if (next !== value[key]) changes[key] = next;
     }
