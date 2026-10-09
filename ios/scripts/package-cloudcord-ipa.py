@@ -15,6 +15,11 @@ import tarfile
 import tempfile
 import zipfile
 from pathlib import Path
+import importlib.util
+
+_branding_spec = importlib.util.spec_from_file_location("cloudcord_loader_branding", Path(__file__).with_name("brand-loader.py"))
+_branding = importlib.util.module_from_spec(_branding_spec)
+_branding_spec.loader.exec_module(_branding)
 
 
 LC_SEGMENT_64 = 0x19
@@ -284,7 +289,7 @@ def main() -> None:
             if legacy.exists():
                 legacy.unlink()
             rain = frameworks / "RainTweak.dylib"
-            rain.write_bytes(raw)
+            rain.write_bytes(_branding.brand_loader(raw))
             # Preserve Rain's actual hook engine, not our compatibility shim.
             substrate_files = json.loads((args.rain_loader.parent / "CydiaSubstrate.framework.json").read_text())
             for original_path, encoded in substrate_files.items():
@@ -292,7 +297,7 @@ def main() -> None:
                 target = frameworks / "CydiaSubstrate.framework" / suffix
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(base64.b64decode(encoded))
-            # Keep Rain byte-for-byte intact; the sideload signer signs nested code.
+            # Only equal-length UI strings change; the sideload signer signs nested code.
             bootstrap = frameworks / "CloudCordBootstrap.dylib"
             shutil.copy2(args.rain_bootstrap, bootstrap)
             add_load_command(executable, "@executable_path/Frameworks/CloudCordBootstrap.dylib")

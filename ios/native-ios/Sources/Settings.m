@@ -9,7 +9,7 @@
 - (instancetype)initWithVersion:(NSString *)version {
     self = [super init];
     if (self) {
-        self.title = [NSString stringWithFormat:@"CloudCordTweak v%@ Recovery Menu", version];
+        self.title = [NSString stringWithFormat:@"CloudCord v%@ Recovery", version];
     }
     return self;
 }
