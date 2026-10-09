@@ -6,6 +6,44 @@ function present(user: any) {
     return typeof resolve === "function" ? resolve(user) : user;
 }
 
+// Project only identity-bearing presentation fields, never message text or IDs.
+// Keep native message/cache objects intact, including their prototype methods.
+export function presentationIdentity(value: any, depth = 0): any {
+    if (!value || typeof value !== "object" || depth > 5) return value;
+    if (Array.isArray(value)) {
+        const items = value.map(item => presentationIdentity(item, depth + 1));
+        return items.some((item, index) => item !== value[index]) ? items : value;
+    }
+    if (value.id && typeof value.username === "string" && !value.author) return present(value);
+    const changes: Record<string, any> = {};
+    for (const key of ["message", "author", "user", "mentionedUser", "referencedMessage", "mentions"]) {
+        const next = presentationIdentity(value[key], depth + 1);
+        if (next !== value[key]) changes[key] = next;
+    }
+    if (!Object.keys(changes).length) return value;
+    const clone = Object.create(Object.getPrototypeOf(value));
+    const descriptors = Object.getOwnPropertyDescriptors(value);
+    for (const key of Object.keys(changes)) descriptors[key] = { value: changes[key], enumerable: true, configurable: true, writable: true };
+    Object.defineProperties(clone, descriptors);
+    return clone;
+}
+
+export function pluginIdentityPatcher(patcher: any): any {
+    if (!patcher) return patcher;
+    const view = { ...patcher };
+    for (const key of ["before", "after", "instead"]) {
+        if (typeof patcher[key] !== "function") continue;
+        const wrap = (install: any) => function(this: any, method: any, target: any, callback: any, ...rest: any[]) {
+            return install.call(patcher, method, target, function(this: any, args: any[], ...callbackRest: any[]) {
+                return callback.call(this, args.map(value => presentationIdentity(value)), ...callbackRest);
+            }, ...rest);
+        };
+        view[key] = wrap(patcher[key]);
+        if (typeof patcher[key].await === "function") view[key].await = wrap(patcher[key].await);
+    }
+    return view;
+}
+
 export function pluginIdentityModule(module: any): any {
     if (!module || (typeof module !== "object" && typeof module !== "function")) return module;
     if (typeof module.getUser !== "function" || typeof module.getCurrentUser !== "function") return module;

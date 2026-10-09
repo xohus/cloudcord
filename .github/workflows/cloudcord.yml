@@ -328,9 +328,10 @@ jobs:
           import { after, instead } from "@lib/api/patcher";
           import { onJsxCreate } from "@lib/api/react/jsx";
           import { appearanceOptions, availableServerTags, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, serverTagIconURL } from "@lib/api/profileAppearance";
+          import { presentationIdentity } from "@lib/api/profileIdentity";
           import { settings } from "@lib/api/settings";
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
-          import { findByNameLazy, findByProps, findByStoreName } from "@metro";
+          import { findByName, findByNameLazy, findByProps, findByStoreName } from "@metro";
           import { FluxDispatcher, NavigationNative } from "@metro/common";
           import { Text, TableRow, TableRadioGroup, TableRadioRow, Button } from "@metro/common/components";
           import { Component, cloneElement, isValidElement, useEffect, useReducer, useState } from "react";
@@ -2134,6 +2135,8 @@ jobs:
               };
 
               const messageAuthors = findByProps("getMessageAuthor", "getUserAuthor") as any;
+              const rowManager = findByName("RowManager") as any;
+              addPatch("generate", rowManager?.prototype, (args, original) => original(...args.map(value => presentationIdentity(value))));
               for (const method of ["default", "useNullableMessageAuthor", "getMessageAuthor", "useUserNickAndColor", "useNullableUserAuthor", "getUserAuthor"]) {
                   addPatch(method, messageAuthors, (args, original) => {
                       const result = original(...args);

@@ -1,7 +1,7 @@
 import { awaitStorage, createMMKVBackend, createStorage, purgeStorage, wrapSync } from "@core/vendetta/storage";
 import { Author } from "@lib/addons/types";
 import { settings } from "@lib/api/settings";
-import { pluginIdentityMetro } from "@lib/api/profileIdentity";
+import { pluginIdentityMetro, pluginIdentityPatcher } from "@lib/api/profileIdentity";
 import { safeFetch } from "@lib/utils";
 import { BUNNY_PROXY_PREFIX, VD_PROXY_PREFIX } from "@lib/utils/constants";
 import { logger,LoggerClass } from "@lib/utils/logger";
@@ -94,6 +94,7 @@ export const VdPluginManager = {
         const vendettaForPlugins = {
             ...window.vendetta,
             metro: pluginIdentityMetro(window.vendetta.metro),
+            patcher: pluginIdentityPatcher(window.vendetta.patcher),
             plugin: {
                 id: plugin.id,
                 manifest: plugin.manifest,

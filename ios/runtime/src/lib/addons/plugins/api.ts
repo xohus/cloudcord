@@ -2,7 +2,7 @@ import { patcher } from "@lib/api";
 import { registerCommand } from "@lib/api/commands";
 import { createStorage } from "@lib/api/storage";
 import { logger } from "@lib/utils/logger";
-import { pluginIdentityMetro } from "@lib/api/profileIdentity";
+import { pluginIdentityMetro, pluginIdentityPatcher } from "@lib/api/profileIdentity";
 
 import { registeredPlugins } from ".";
 import { BunnyPluginObject } from "./types";
@@ -25,6 +25,7 @@ function shimDisposableFn<F extends DisposableFn>(unpatches: (() => void)[], f: 
 
 export function createBunnyPluginApi(id: string) {
     const disposers = new Array<DisposableFn>;
+    const identityPatcher = pluginIdentityPatcher(patcher);
 
     // proxying this would be a good idea
     const object = {
@@ -33,9 +34,9 @@ export function createBunnyPluginApi(id: string) {
         api: {
             ...window.bunny.api,
             patcher: {
-                before: shimDisposableFn(disposers, patcher.before),
-                after: shimDisposableFn(disposers, patcher.after),
-                instead: shimDisposableFn(disposers, patcher.instead)
+                before: shimDisposableFn(disposers, identityPatcher.before),
+                after: shimDisposableFn(disposers, identityPatcher.after),
+                instead: shimDisposableFn(disposers, identityPatcher.instead)
             },
             commands: {
                 ...window.bunny.api.commands,
