@@ -328,7 +328,7 @@ jobs:
           import { after, instead } from "@lib/api/patcher";
           import { onJsxCreate } from "@lib/api/react/jsx";
           import { appearanceOptions, availableServerTags, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, serverTagIconURL } from "@lib/api/profileAppearance";
-          import { presentationIdentity } from "@lib/api/profileIdentity";
+          import { presentationIdentity, presentationName } from "@lib/api/profileIdentity";
           import { settings } from "@lib/api/settings";
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByName, findByNameLazy, findByProps, findByStoreName } from "@metro";
@@ -2146,11 +2146,17 @@ jobs:
 
               const nameUtils = findByProps("getName", "getNickname", "useName") as any;
               for (const method of ["getName", "getNickname", "useName"]) {
-                  addPatch(method, nameUtils, (args, original) => original(...args.map(value => {
+                  addPatch(method, nameUtils, (args, original) => {
+                      const store = safeStore("UserStore");
+                      const user = args.find(value => value?.id && typeof value.username === "string")
+                          || args.map(value => value?.user || store?.getUser?.(value?.userId || value?.user_id || (typeof value === "string" ? value : ""))).find(value => value?.id);
+                      const result = original(...args.map(value => {
                       if (value?.id && typeof value.username === "string") return (globalThis as any).__CLOUDCORD_PRESENTATION_USER__(value);
                       if (value?.user?.id) return { ...value, user: (globalThis as any).__CLOUDCORD_PRESENTATION_USER__(value.user) };
                       return value;
-                  })));
+                      }));
+                      return presentationName(result, user);
+                  });
               }
 
               const nativeStyleHooks = findByProps("useGuildMemberOrUserPendingDisplayNameStyles") as any;

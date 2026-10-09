@@ -28,6 +28,19 @@ export function presentationIdentity(value: any, depth = 0): any {
     return clone;
 }
 
+export function presentationName(result: any, user: any): any {
+    if (typeof result !== "string" || !user?.id) return result;
+    const custom = present(user);
+    if (custom === user) return result;
+    const originalDisplay = user.globalName || user.global_name || user.displayName;
+    const customDisplay = custom.globalName || custom.global_name || custom.displayName;
+    if (originalDisplay && result === originalDisplay && customDisplay) return String(customDisplay);
+    if (result === user.username && custom.username) return String(custom.username);
+    if (result === `@${user.username}` && custom.username) return `@${custom.username}`;
+    // Never replace substrings in message bodies, links, or other users' names.
+    return result;
+}
+
 export function pluginIdentityPatcher(patcher: any): any {
     if (!patcher) return patcher;
     const view = { ...patcher };
