@@ -6208,6 +6208,22 @@
     Object.defineProperties(clone, descriptors);
     return clone;
   }
+  function presentationName(result, user) {
+    if (typeof result !== "string" || !user?.id)
+      return result;
+    var custom = present(user);
+    if (custom === user)
+      return result;
+    var originalDisplay = user.globalName || user.global_name || user.displayName;
+    var customDisplay = custom.globalName || custom.global_name || custom.displayName;
+    if (originalDisplay && result === originalDisplay && customDisplay)
+      return String(customDisplay);
+    if (result === user.username && custom.username)
+      return String(custom.username);
+    if (result === `@${user.username}` && custom.username)
+      return `@${custom.username}`;
+    return result;
+  }
   function pluginIdentityPatcher(patcher) {
     if (!patcher)
       return patcher;
@@ -11725,16 +11741,21 @@
       "getNickname",
       "useName"
     ]) {
-      addPatch(method1, nameUtils, (args, original) => original(...args.map((value) => {
-        if (value?.id && typeof value.username === "string")
-          return globalThis.__CLOUDCORD_PRESENTATION_USER__(value);
-        if (value?.user?.id)
-          return {
-            ...value,
-            user: globalThis.__CLOUDCORD_PRESENTATION_USER__(value.user)
-          };
-        return value;
-      })));
+      addPatch(method1, nameUtils, (args, original) => {
+        var store = safeStore("UserStore");
+        var user = args.find((value) => value?.id && typeof value.username === "string") || args.map((value) => value?.user || store?.getUser?.(value?.userId || value?.user_id || (typeof value === "string" ? value : ""))).find((value) => value?.id);
+        var result = original(...args.map((value) => {
+          if (value?.id && typeof value.username === "string")
+            return globalThis.__CLOUDCORD_PRESENTATION_USER__(value);
+          if (value?.user?.id)
+            return {
+              ...value,
+              user: globalThis.__CLOUDCORD_PRESENTATION_USER__(value.user)
+            };
+          return value;
+        }));
+        return presentationName(result, user);
+      });
     }
     var nativeStyleHooks = findByProps("useGuildMemberOrUserPendingDisplayNameStyles");
     addPatch("useGuildMemberOrUserPendingDisplayNameStyles", nativeStyleHooks, (args, original) => {
