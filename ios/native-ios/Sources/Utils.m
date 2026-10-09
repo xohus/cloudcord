@@ -247,7 +247,7 @@ void showBundleSelector(UIViewController *presenter) {
                                      preferredStyle:UIAlertControllerStyleAlert];
     [presenter presentViewController:loadingAlert animated:YES completion:nil];
 
-    NSURL *url = [NSURL URLWithString:@"https://codeberg.org/api/v1/repos/raincord/CloudCordTweak/branches"];
+    NSURL *url = [NSURL URLWithString:@"https://api.github.com/repos/xohus/cloudcord/branches"];
     NSURLSession *session = [NSURLSession
         sessionWithConfiguration:[NSURLSessionConfiguration defaultSessionConfiguration]];
 
@@ -325,7 +325,7 @@ static void showCommitsForBranch(NSString *branch, UIViewController *presenter,
 
     NSString *commitsUrl = [NSString
         stringWithFormat:
-            @"https://codeberg.org/api/v1/repos/raincord/CloudCordTweak/commits?sha=%@&limit=10", branch];
+            @"https://api.github.com/repos/xohus/cloudcord/commits?sha=%@&path=dist/cc.js&per_page=10", branch];
     NSURL *commitsURL    = [NSURL URLWithString:commitsUrl];
 
     [[session
@@ -343,11 +343,11 @@ static void showCommitsForBranch(NSString *branch, UIViewController *presenter,
                                            }
 
                                            NSError *jsonError;
-                                           NSDictionary *commitsResponse =
+                                           id commitsResponse =
                                                [NSJSONSerialization JSONObjectWithData:commitsData
                                                                                options:0
                                                                                  error:&jsonError];
-                                           NSArray *commits = commitsResponse[@"commits"];
+                                           NSArray *commits = [commitsResponse isKindOfClass:NSArray.class] ? commitsResponse : nil;
                                            if (jsonError || !commits.count) {
                                                showErrorAlert(@"Error", @"No commits available",
                                                               nil);
@@ -392,7 +392,7 @@ static void showCommitsForBranch(NSString *branch, UIViewController *presenter,
                                                                        NSString *bundleUrl =
                                                                            [NSString
                                                                                stringWithFormat:
-                                                                                   @"https://codeberg.org/raincord/CloudCordTweak/raw/commit/%@/bundle.js",
+                                                                                   @"https://raw.githubusercontent.com/xohus/cloudcord/%@/dist/cc.js",
                                                                                    sha];
                                                                        NSURL *url = [NSURL
                                                                            URLWithString:bundleUrl];
