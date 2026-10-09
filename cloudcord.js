@@ -6167,6 +6167,161 @@
     }
   });
 
+  // src/lib/api/profileIdentity.ts
+  function present(user) {
+    var resolve = globalThis.__CLOUDCORD_PRESENTATION_USER__;
+    return typeof resolve === "function" ? resolve(user) : user;
+  }
+  function presentationIdentity(value, depth = 0) {
+    if (!value || typeof value !== "object" || depth > 5)
+      return value;
+    if (Array.isArray(value)) {
+      var items = value.map((item) => presentationIdentity(item, depth + 1));
+      return items.some((item, index) => item !== value[index]) ? items : value;
+    }
+    if (value.id && typeof value.username === "string" && !value.author)
+      return present(value);
+    var changes = {};
+    for (var key of [
+      "message",
+      "author",
+      "user",
+      "mentionedUser",
+      "referencedMessage",
+      "mentions"
+    ]) {
+      var next = presentationIdentity(value[key], depth + 1);
+      if (next !== value[key])
+        changes[key] = next;
+    }
+    if (!Object.keys(changes).length)
+      return value;
+    var clone = Object.create(Object.getPrototypeOf(value));
+    var descriptors = Object.getOwnPropertyDescriptors(value);
+    for (var key1 of Object.keys(changes))
+      descriptors[key1] = {
+        value: changes[key1],
+        enumerable: true,
+        configurable: true,
+        writable: true
+      };
+    Object.defineProperties(clone, descriptors);
+    return clone;
+  }
+  function pluginIdentityPatcher(patcher) {
+    if (!patcher)
+      return patcher;
+    var view = {
+      ...patcher
+    };
+    for (var key of [
+      "before",
+      "after",
+      "instead"
+    ]) {
+      if (typeof patcher[key] !== "function")
+        continue;
+      var wrap = (install) => function wrap2(method, target, callback, ...rest) {
+        return install.call(patcher, method, target, function(args, ...callbackRest) {
+          return callback.call(this, args.map((value) => presentationIdentity(value)), ...callbackRest);
+        }, ...rest);
+      };
+      view[key] = wrap(patcher[key]);
+      if (typeof patcher[key].await === "function")
+        view[key].await = wrap(patcher[key].await);
+    }
+    return view;
+  }
+  function pluginIdentityModule(module) {
+    var _loop2 = function(key12) {
+      if (typeof module[key12] !== "function")
+        return "continue";
+      Object.defineProperty(view, key12, {
+        configurable: true,
+        writable: true,
+        value: (...args) => {
+          var result = module[key12](...args);
+          if (key12 !== "getUsers" || !result)
+            return present(result);
+          return Object.fromEntries(Object.entries(result).map(([id, user]) => [
+            id,
+            present(user)
+          ]));
+        }
+      });
+    };
+    if (!module || typeof module !== "object" && typeof module !== "function")
+      return module;
+    if (typeof module.getUser !== "function" || typeof module.getCurrentUser !== "function")
+      return module;
+    if (storeViews.has(module))
+      return storeViews.get(module);
+    var view = Object.create(module);
+    for (var owner = module; owner && owner !== Object.prototype; owner = Object.getPrototypeOf(owner)) {
+      for (var key of Reflect.ownKeys(owner)) {
+        if (key === "constructor" || Object.prototype.hasOwnProperty.call(view, key))
+          continue;
+        var descriptor = Object.getOwnPropertyDescriptor(owner, key);
+        if (typeof descriptor?.value === "function")
+          Object.defineProperty(view, key, {
+            configurable: true,
+            writable: true,
+            value: descriptor.value.bind(module)
+          });
+      }
+    }
+    for (var key1 of [
+      "getUser",
+      "getCurrentUser",
+      "getUsers"
+    ])
+      _loop2(key1);
+    storeViews.set(module, view);
+    return view;
+  }
+  function pluginIdentityMetro(metro) {
+    var _loop2 = function(key2) {
+      if (typeof metro[key2] !== "function")
+        return "continue";
+      view[key2] = (...args) => {
+        var result = metro[key2](...args);
+        return Array.isArray(result) ? result.map(pluginIdentityModule) : pluginIdentityModule(result);
+      };
+    };
+    if (!metro)
+      return metro;
+    var view = {
+      ...metro
+    };
+    if (metro.common)
+      view.common = {
+        ...metro.common,
+        UserStore: pluginIdentityModule(metro.common.UserStore)
+      };
+    for (var key of [
+      "find",
+      "findAll",
+      "findExports",
+      "findAllExports",
+      "findByProps",
+      "findByPropsAll",
+      "findByPropsLazy",
+      "findByStoreName",
+      "findByStoreNameLazy"
+    ])
+      _loop2(key);
+    return view;
+  }
+  var storeViews;
+  var init_profileIdentity = __esm({
+    "src/lib/api/profileIdentity.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      storeViews = /* @__PURE__ */ new WeakMap();
+    }
+  });
+
   // src/core/i18n/default.json
   var default_default;
   var init_default = __esm({
@@ -6425,101 +6580,6 @@
     }
   });
 
-  // src/lib/api/profileIdentity.ts
-  function present(user) {
-    var resolve = globalThis.__CLOUDCORD_PRESENTATION_USER__;
-    return typeof resolve === "function" ? resolve(user) : user;
-  }
-  function pluginIdentityModule(module) {
-    var _loop2 = function(key12) {
-      if (typeof module[key12] !== "function")
-        return "continue";
-      Object.defineProperty(view, key12, {
-        configurable: true,
-        writable: true,
-        value: (...args) => {
-          var result = module[key12](...args);
-          if (key12 !== "getUsers" || !result)
-            return present(result);
-          return Object.fromEntries(Object.entries(result).map(([id, user]) => [
-            id,
-            present(user)
-          ]));
-        }
-      });
-    };
-    if (!module || typeof module !== "object" && typeof module !== "function")
-      return module;
-    if (typeof module.getUser !== "function" || typeof module.getCurrentUser !== "function")
-      return module;
-    if (storeViews.has(module))
-      return storeViews.get(module);
-    var view = Object.create(module);
-    for (var owner = module; owner && owner !== Object.prototype; owner = Object.getPrototypeOf(owner)) {
-      for (var key of Reflect.ownKeys(owner)) {
-        if (key === "constructor" || Object.prototype.hasOwnProperty.call(view, key))
-          continue;
-        var descriptor = Object.getOwnPropertyDescriptor(owner, key);
-        if (typeof descriptor?.value === "function")
-          Object.defineProperty(view, key, {
-            configurable: true,
-            writable: true,
-            value: descriptor.value.bind(module)
-          });
-      }
-    }
-    for (var key1 of [
-      "getUser",
-      "getCurrentUser",
-      "getUsers"
-    ])
-      _loop2(key1);
-    storeViews.set(module, view);
-    return view;
-  }
-  function pluginIdentityMetro(metro) {
-    var _loop2 = function(key2) {
-      if (typeof metro[key2] !== "function")
-        return "continue";
-      view[key2] = (...args) => {
-        var result = metro[key2](...args);
-        return Array.isArray(result) ? result.map(pluginIdentityModule) : pluginIdentityModule(result);
-      };
-    };
-    if (!metro)
-      return metro;
-    var view = {
-      ...metro
-    };
-    if (metro.common)
-      view.common = {
-        ...metro.common,
-        UserStore: pluginIdentityModule(metro.common.UserStore)
-      };
-    for (var key of [
-      "find",
-      "findAll",
-      "findExports",
-      "findAllExports",
-      "findByProps",
-      "findByPropsAll",
-      "findByPropsLazy",
-      "findByStoreName",
-      "findByStoreNameLazy"
-    ])
-      _loop2(key);
-    return view;
-  }
-  var storeViews;
-  var init_profileIdentity = __esm({
-    "src/lib/api/profileIdentity.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      storeViews = /* @__PURE__ */ new WeakMap();
-    }
-  });
-
   // src/core/vendetta/plugins.ts
   var plugins, pluginInstance, VdPluginManager;
   var init_plugins = __esm({
@@ -6596,6 +6656,7 @@
             var vendettaForPlugins = {
               ...globalThis.vendetta,
               metro: pluginIdentityMetro(globalThis.vendetta.metro),
+              patcher: pluginIdentityPatcher(globalThis.vendetta.patcher),
               plugin: {
                 id: plugin.id,
                 manifest: plugin.manifest,
@@ -9075,15 +9136,16 @@
   }
   function createBunnyPluginApi(id) {
     var disposers = new Array();
+    var identityPatcher = pluginIdentityPatcher(patcher_exports);
     var object = {
       ...globalThis.bunny,
       metro: pluginIdentityMetro(globalThis.bunny.metro),
       api: {
         ...globalThis.bunny.api,
         patcher: {
-          before: shimDisposableFn(disposers, patcher_exports.before),
-          after: shimDisposableFn(disposers, patcher_exports.after),
-          instead: shimDisposableFn(disposers, patcher_exports.instead)
+          before: shimDisposableFn(disposers, identityPatcher.before),
+          after: shimDisposableFn(disposers, identityPatcher.after),
+          instead: shimDisposableFn(disposers, identityPatcher.instead)
         },
         commands: {
           ...globalThis.bunny.api.commands,
@@ -11642,6 +11704,8 @@
       return data ? cloneSharedUser(user, data) : user;
     };
     var messageAuthors = findByProps("getMessageAuthor", "getUserAuthor");
+    var rowManager = findByName("RowManager");
+    addPatch("generate", rowManager?.prototype, (args, original) => original(...args.map((value) => presentationIdentity(value))));
     for (var method of [
       "default",
       "useNullableMessageAuthor",
@@ -13457,6 +13521,7 @@
       init_patcher();
       init_jsx();
       init_profileAppearance();
+      init_profileIdentity();
       init_settings();
       init_plugins4();
       init_metro();
