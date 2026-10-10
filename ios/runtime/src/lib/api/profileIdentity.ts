@@ -47,8 +47,15 @@ export function pluginIdentityPatcher(patcher: any): any {
     for (const key of ["before", "after", "instead"]) {
         if (typeof patcher[key] !== "function") continue;
         const wrap = (install: any) => function(this: any, method: any, target: any, callback: any, ...rest: any[]) {
+            // ShowTag reads RowManager's presentation rows. Other hooks must
+            // receive the original argument array, especially send/dispatch
+            // hooks that mutate arguments or rely on native object identity.
+            if (key !== "after" || method !== "generate") {
+                return install.call(patcher, method, target, callback, ...rest);
+            }
             return install.call(patcher, method, target, function(this: any, args: any[], ...callbackRest: any[]) {
-                return callback.call(this, args.map(value => presentationIdentity(value)), ...callbackRest);
+                const rows = args[0]?.rowType === 1 && args[0]?.message;
+                return callback.call(this, rows ? args.map(value => presentationIdentity(value)) : args, ...callbackRest);
             }, ...rest);
         };
         view[key] = wrap(patcher[key]);

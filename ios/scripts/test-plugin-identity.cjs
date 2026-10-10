@@ -50,6 +50,29 @@ compatiblePatcher.after('generate', {}, function(args, result) {
 const output = { message: { username: 'Display Name' } };
 registered([row], output);
 assert.equal(output.message.username, 'Display Name (@custom)');
+for (const kind of ['before', 'after', 'instead']) {
+    let installed;
+    const patcher = api.pluginIdentityPatcher({ [kind](method, target, callback) { installed = callback; } });
+    const outgoing = { author: nativeUser, content: 'hello' };
+    const args = ['channel', outgoing, undefined, {}, 'extra-native-argument'];
+    patcher[kind]('sendMessage', {}, received => {
+        assert.equal(received, args);
+        assert.equal(received[1], outgoing);
+        assert.equal(received[1].author, nativeUser);
+        received[1].content = 'changed by send plugin';
+        received.push('preserved mutation');
+    });
+    installed(args);
+    assert.equal(outgoing.content, 'changed by send plugin');
+    assert.equal(args[5], 'preserved mutation');
+}
+const retiredSource = fs.readFileSync('ios/runtime/src/core/plugins/messagefix/index.ts', 'utf8')
+    .replace(/^import .*;\r?\n/gm, '');
+const retiredContext = { module: { exports: {} }, defineCorePlugin: plugin => plugin, logger: { log() {} } };
+vm.runInNewContext(esbuild.transformSync(retiredSource, { loader: 'ts', format: 'cjs' }).code, retiredContext);
+retiredContext.module.exports.default.start();
+retiredContext.module.exports.default.stop();
+assert.ok(fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8').includes('cp "../ios/runtime/src/core/plugins/messagefix/index.ts" "src/core/plugins/messagefix/index.ts"'));
 username = 'changed';
 assert.equal(api.presentationName('real', nativeUser), 'changed');
 assert.equal(api.presentationName('@real', nativeUser), '@changed');

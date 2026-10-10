@@ -99,6 +99,7 @@ jobs:
           cp "../ios/runtime/src/lib/api/settings.ts" "src/lib/api/settings.ts"
           cp "../ios/runtime/src/lib/api/profileIdentity.ts" "src/lib/api/profileIdentity.ts"
           cp "../ios/runtime/src/lib/addons/plugins/api.ts" "src/lib/addons/plugins/api.ts"
+          cp "../ios/runtime/src/core/plugins/messagefix/index.ts" "src/core/plugins/messagefix/index.ts"
           cp "../desktop/client/src/utils/profileAppearance.ts" "src/lib/api/profileAppearance.ts"
           cp "../ios/runtime/src/lib/api/react/jsx.ts" "src/lib/api/react/jsx.ts"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"

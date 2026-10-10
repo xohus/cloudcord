@@ -1,10 +1,5 @@
 import { defineCorePlugin } from "..";
-import { findByProps } from "@metro";
 import { logger } from "@lib/utils/logger";
-
-// Find the MessageActions module
-const MessageActions = findByProps("sendMessage");
-let originalSendMessage: Function;
 
 export default defineCorePlugin({
   manifest: {
@@ -21,36 +16,12 @@ export default defineCorePlugin({
   },
 
   start() {
-    // Save original function
-    originalSendMessage = MessageActions.sendMessage;
-
-    // Replace with our implementation
-    MessageActions.sendMessage = function (
-      channelId,
-      message,
-      replyRef,
-      options,
-    ) {
-      // Ensure options exists and has a nonce
-      options = options || {};
-      options.nonce = options.nonce || (BigInt(Date.now() - 1420070400000) << 22n).toString();
-
-      // Call original with fixed parameters
-      return originalSendMessage.call(
-        this,
-        channelId,
-        message,
-        replyRef,
-        options,
-      );
-    };
-
-    logger.log("MessageFix: Enabled - adding nonce to all messages");
+    // Retain the plugin ID for persisted settings, but never replace Discord's
+    // current send implementation or discard additional native arguments.
+    logger.log("MessageFix: Retired - using Discord's native message sending");
   },
 
   stop() {
-    // Restore original function
-    if (originalSendMessage) MessageActions.sendMessage = originalSendMessage;
-    logger.log("MessageFix: Disabled");
+    // No native function was patched.
   },
 });
