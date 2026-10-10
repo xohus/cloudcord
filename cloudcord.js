@@ -6227,6 +6227,22 @@
     return result;
   }
   function pluginIdentityPatcher(patcher) {
+    var _loop2 = function(key2) {
+      if (typeof patcher[key2] !== "function")
+        return "continue";
+      var wrap = (install) => function wrap2(method, target, callback, ...rest) {
+        if (key2 !== "after" || method !== "generate") {
+          return install.call(patcher, method, target, callback, ...rest);
+        }
+        return install.call(patcher, method, target, function(args, ...callbackRest) {
+          var rows = args[0]?.rowType === 1 && args[0]?.message;
+          return callback.call(this, rows ? args.map((value) => presentationIdentity(value)) : args, ...callbackRest);
+        }, ...rest);
+      };
+      view[key2] = wrap(patcher[key2]);
+      if (typeof patcher[key2].await === "function")
+        view[key2].await = wrap(patcher[key2].await);
+    };
     if (!patcher)
       return patcher;
     var view = {
@@ -6236,18 +6252,8 @@
       "before",
       "after",
       "instead"
-    ]) {
-      if (typeof patcher[key] !== "function")
-        continue;
-      var wrap = (install) => function wrap2(method, target, callback, ...rest) {
-        return install.call(patcher, method, target, function(args, ...callbackRest) {
-          return callback.call(this, args.map((value) => presentationIdentity(value)), ...callbackRest);
-        }, ...rest);
-      };
-      view[key] = wrap(patcher[key]);
-      if (typeof patcher[key].await === "function")
-        view[key].await = wrap(patcher[key].await);
-    }
+    ])
+      _loop2(key);
     return view;
   }
   function pluginIdentityModule(module) {
@@ -8339,16 +8345,14 @@
   __export(messagefix_exports, {
     default: () => messagefix_default
   });
-  var MessageActions, originalSendMessage, messagefix_default;
+  var messagefix_default;
   var init_messagefix = __esm({
     "src/core/plugins/messagefix/index.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_plugins2();
-      init_metro();
       init_logger();
-      MessageActions = findByProps("sendMessage");
       messagefix_default = defineCorePlugin({
         manifest: {
           id: "bunny.messagefix",
@@ -8370,18 +8374,9 @@
           }
         },
         start() {
-          originalSendMessage = MessageActions.sendMessage;
-          MessageActions.sendMessage = function(channelId, message, replyRef, options) {
-            options = options || {};
-            options.nonce = options.nonce || (BigInt(Date.now() - 14200704e5) << 22n).toString();
-            return originalSendMessage.call(this, channelId, message, replyRef, options);
-          };
-          logger.log("MessageFix: Enabled - adding nonce to all messages");
+          logger.log("MessageFix: Retired - using Discord's native message sending");
         },
         stop() {
-          if (originalSendMessage)
-            MessageActions.sendMessage = originalSendMessage;
-          logger.log("MessageFix: Disabled");
         }
       });
     }
