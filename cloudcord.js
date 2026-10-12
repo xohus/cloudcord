@@ -6395,6 +6395,124 @@
     }
     return result;
   }
+  function nativeSocialProfile(profile, data) {
+    var { customConnections } = normalizeCustomSocial(data);
+    if (!customConnections?.length)
+      return {};
+    var existing = Array.isArray(profile?.connectedAccounts) ? profile.connectedAccounts : Array.isArray(profile?.connected_accounts) ? profile.connected_accounts : [];
+    var accounts = existing.filter((entry2) => !entry2?.cloudcordCustom).map((entry2) => ({
+      ...entry2
+    }));
+    for (var entry of customConnections) {
+      accounts.push({
+        id: entry.accountId || `cloudcord:${entry.id}`,
+        type: entry.service === "x" ? "twitter" : entry.service === "other" ? "domain" : entry.service,
+        name: entry.displayName || entry.username || entry.accountId,
+        verified: false,
+        visibility: 1,
+        show_activity: false,
+        cloudcordCustom: true,
+        cloudcordPreview: entry
+      });
+    }
+    return {
+      connectedAccounts: accounts,
+      connected_accounts: accounts
+    };
+  }
+  function nativeSocialFriends(ownerId, data) {
+    return (normalizeCustomSocial(data).customFriends || []).map((entry) => {
+      var id = `cloudcord-friend:${ownerId}:${entry.id}`;
+      var name = entry.displayName || entry.username || entry.userId || "Custom friend";
+      var user = {
+        id,
+        username: entry.username || name,
+        globalName: name,
+        global_name: name,
+        discriminator: "0",
+        bot: false,
+        system: false,
+        avatar: null,
+        cloudcordCustom: true,
+        cloudcordPreview: entry,
+        getAvatarURL: () => entry.avatar || null,
+        getAvatarSource: () => entry.avatar ? {
+          uri: entry.avatar
+        } : null,
+        getTag: () => entry.username || name,
+        toString: () => name,
+        isPomelo: () => true,
+        isNonUserBot: () => false
+      };
+      return {
+        key: id,
+        userId: id,
+        type: 1,
+        status: "offline",
+        isMobile: false,
+        activities: [],
+        applicationStream: null,
+        user,
+        usernameLower: user.username.toLowerCase(),
+        mutualGuildsLength: 0,
+        mutualGuilds: [],
+        nickname: null,
+        spam: false,
+        ignoredUser: false,
+        isGameRelationship: false,
+        comparator: [
+          1,
+          user.username.toLowerCase()
+        ],
+        cloudcordCustom: true,
+        cloudcordPreview: entry
+      };
+    });
+  }
+  function mergeNativeSocialFriends(original, ownerId, data, search = "") {
+    var real = Array.isArray(original) ? original.filter((row) => !row?.cloudcordCustom) : [];
+    var query = String(search || "").toLowerCase();
+    return [
+      ...real,
+      ...nativeSocialFriends(ownerId, data).filter((row) => !query || `${row.user.username} ${row.user.globalName}`.toLowerCase().includes(query))
+    ];
+  }
+  function nativeSocialFriendsState(state2, ownerId, data) {
+    if (!state2?.rows || !normalizeCustomSocial(data).customFriends?.length)
+      return state2;
+    var rows = Object.assign(Object.create(Object.getPrototypeOf(state2.rows)), state2.rows);
+    if (typeof state2.rows.filter === "function")
+      rows.filter = (section, search) => {
+        var result = state2.rows.filter(section, search);
+        return section === "ALL" ? mergeNativeSocialFriends(result, ownerId, data, search) : result;
+      };
+    if (Array.isArray(state2.rows._rows))
+      rows._rows = mergeNativeSocialFriends(state2.rows._rows, ownerId, data);
+    if (typeof state2.rows.getRelationshipCounts === "function")
+      rows.getRelationshipCounts = () => {
+        var counts = state2.rows.getRelationshipCounts();
+        return {
+          ...counts,
+          1: Number(counts?.[1] || 0) + nativeSocialFriends(ownerId, data).length
+        };
+      };
+    return {
+      ...state2,
+      rows
+    };
+  }
+  function createNativeSocialFriendsReader() {
+    var previousState, previousKey = "", previousResult;
+    return (state2, ownerId, data) => {
+      var safe = normalizeCustomSocial(data);
+      var key = `${ownerId}:${JSON.stringify(safe.customFriends || [])}`;
+      if (state2 === previousState && key === previousKey)
+        return previousResult;
+      previousState = state2;
+      previousKey = key;
+      return previousResult = nativeSocialFriendsState(state2, ownerId, safe);
+    };
+  }
   function nativeProfileAppearance(data) {
     var appearance = normalizeProfileAppearance(data);
     var result = {};
@@ -10139,8 +10257,7 @@
   var CustomSocial_exports = {};
   __export(CustomSocial_exports, {
     CustomSocialDetail: () => CustomSocialDetail,
-    CustomSocialEditor: () => CustomSocialEditor,
-    CustomSocialList: () => CustomSocialList
+    CustomSocialEditor: () => CustomSocialEditor
   });
   function Picture({ uri, banner = false }) {
     var [failed, setFailed] = (0, import_react5.useState)(false);
@@ -10310,52 +10427,6 @@
           entry: safe
         })
       });
-  }
-  function CustomSocialList({ data }) {
-    var navigation2 = NavigationNative.useNavigation();
-    var safe = normalizeCustomSocial(data);
-    if (!safe.customFriends?.length && !safe.customConnections?.length)
-      return null;
-    return /* @__PURE__ */ jsxs(import_react_native18.View, {
-      style: {
-        padding: 12,
-        gap: 8
-      },
-      children: [
-        !!safe.customFriends?.length && /* @__PURE__ */ jsx(Text, {
-          variant: "heading-md/bold",
-          color: "text-normal",
-          children: "Custom friends"
-        }),
-        safe.customFriends?.map((entry) => /* @__PURE__ */ jsx(TableRow, {
-          arrow: true,
-          label: entry.displayName || entry.username || entry.userId,
-          subLabel: "Custom friend preview",
-          icon: entry.avatar ? /* @__PURE__ */ jsx(TableRow.Icon, {
-            source: {
-              uri: entry.avatar
-            }
-          }) : void 0,
-          onPress: () => openDetail(navigation2, entry)
-        }, entry.id)),
-        !!safe.customConnections?.length && /* @__PURE__ */ jsx(Text, {
-          variant: "heading-md/bold",
-          color: "text-normal",
-          children: "Custom connections"
-        }),
-        safe.customConnections?.map((entry) => /* @__PURE__ */ jsx(TableRow, {
-          arrow: true,
-          label: entry.displayName || entry.username || entry.accountId,
-          subLabel: `${customConnectionServiceName(entry.service)} \xB7 Custom preview`,
-          icon: entry.avatar ? /* @__PURE__ */ jsx(TableRow.Icon, {
-            source: {
-              uri: entry.avatar
-            }
-          }) : void 0,
-          onPress: () => openDetail(navigation2, entry)
-        }, entry.id))
-      ]
-    });
   }
   function Input({ label, value, onChange }) {
     return /* @__PURE__ */ jsxs(import_react_native18.View, {
@@ -11035,12 +11106,6 @@
       ...props
     });
   }
-  function CustomSocialList2(props) {
-    var _$Component = (init_CustomSocial(), __toCommonJS(CustomSocial_exports)).CustomSocialList;
-    return /* @__PURE__ */ jsx(_$Component, {
-      ...props
-    });
-  }
   function badgeLayoutKey(badge) {
     var id = String(badge?.id || "");
     if (id.startsWith("cloudcord-official-"))
@@ -11655,23 +11720,25 @@
     if (!original || typeof original !== "object" || !data)
       return original;
     var cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
-    for (var [key, value] of Object.entries(nativeProfileAppearance(data)))
+    for (var [key, value] of Object.entries(nativeSocialProfile(original, data)))
       setOwnValue(cloned, key, value);
+    for (var [key1, value1] of Object.entries(nativeProfileAppearance(data)))
+      setOwnValue(cloned, key1, value1);
     setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userId, data));
     setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userId, data));
     applyAvatarDecoration(cloned, data);
     if (cloned.user)
       setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
     if (depth < 3) {
-      for (var key1 of [
+      for (var key2 of [
         "userProfile",
         "displayProfile",
         "guildMemberProfile",
         "profile"
       ]) {
-        var nested = original[key1];
+        var nested = original[key2];
         if (nested && nested !== original && typeof nested === "object")
-          setOwnValue(cloned, key1, decorateSharedProfile(nested, userId, data, depth + 1));
+          setOwnValue(cloned, key2, decorateSharedProfile(nested, userId, data, depth + 1));
       }
     }
     if (data.username)
@@ -12177,6 +12244,9 @@
     var displayName2 = preview.displayName || original.globalName || original.global_name || original.displayName || original.username;
     for (var [key1, value] of Object.entries(nativeProfileAppearance(preview)))
       setOwnValue(cloned, key1, value);
+    if (kind === "profile")
+      for (var [key2, value1] of Object.entries(nativeSocialProfile(original, preview)))
+        setOwnValue(cloned, key2, value1);
     var username = preview.username || original.username;
     var avatar = mediaUri("avatarMedia");
     var banner = mediaUri("bannerMedia");
@@ -12642,54 +12712,73 @@
       }
     }
   }
-  function getSocialContext() {
-    return socialContext || (socialContext = require_react().createContext(""));
+  function socialEntryFromProps(props) {
+    var source = props?.connection || props?.account || props?.row || props?.user || props?.item;
+    return props?.cloudcordPreview || source?.cloudcordPreview || source?.user?.cloudcordPreview;
   }
-  function connectCustomSocialRenderer() {
-    for (var name of [
-      "UserProfileBody",
-      "UserProfileContent",
-      "UserProfilePrimaryInfo"
-    ]) {
-      onJsxCreate(name, (Component2, rendered) => {
-        var id = String(renderedUserId(rendered?.props) || "");
-        if (!id || typeof Component2 !== "function" || Component2.prototype?.isReactComponent)
-          return rendered;
-        if (!socialRenderers.has(Component2)) {
-          var Wrapped = (props) => {
-            var Context = getSocialContext();
-            var parentOwner = require_react().useContext(Context);
-            var [, redraw] = (0, import_react6.useReducer)((value) => value + 1, 0);
-            (0, import_react6.useEffect)(() => {
-              var refresh = () => redraw();
-              identityRefreshers.add(refresh);
-              return () => {
-                identityRefreshers.delete(refresh);
-              };
-            }, []);
-            var ownerId = String(renderedUserId(props) || "");
-            if (ownerId && !isCurrentUser(ownerId))
-              requestSharedProfile(ownerId);
-            var data = isCurrentUser(ownerId) ? preview.enabled ? preview : null : getProfileOverride(ownerId);
-            var tree = Component2(props);
-            return /* @__PURE__ */ jsxs(Context.Provider, {
-              value: ownerId,
-              children: [
-                tree,
-                data && parentOwner !== ownerId ? /* @__PURE__ */ jsx(CustomSocialList2, {
-                  data
-                }) : null
-              ]
-            });
+  function routeNativeSocialPress(tree, open, depth = 0) {
+    if (depth > 20 || tree == null)
+      return tree;
+    if (Array.isArray(tree))
+      return tree.map((child) => routeNativeSocialPress(child, open, depth + 1));
+    if (!/* @__PURE__ */ (0, import_react6.isValidElement)(tree))
+      return tree;
+    var changes = {};
+    var props = tree.props;
+    for (var key of [
+      "onPress",
+      "onClick",
+      "onLongPress",
+      "onOpenProfile"
+    ])
+      if (typeof props?.[key] === "function")
+        changes[key] = open;
+    if (props?.children)
+      changes.children = routeNativeSocialPress(props.children, open, depth + 1);
+    return Object.keys(changes).length ? /* @__PURE__ */ (0, import_react6.cloneElement)(tree, changes) : tree;
+  }
+  function connectNativeSocialRenderer() {
+    var runtime = findByProps("jsx", "jsxs");
+    var hook = ([Component2], rendered) => {
+      var entry = socialEntryFromProps(rendered?.props);
+      if (!entry || typeof Component2 !== "function" || Component2.prototype?.isReactComponent || socialWrapperTypes.has(Component2))
+        return rendered;
+      if (!socialRenderers.has(Component2))
+        socialRenderers.set(Component2, (current) => {
+          var navigation2 = NavigationNative.useNavigation();
+          var detail = socialEntryFromProps(current);
+          var open = () => {
+            if (detail)
+              navigation2.push("PUPU_CUSTOM_PAGE", {
+                title: "Custom profile preview",
+                render: () => {
+                  var Detail = (init_CustomSocial(), __toCommonJS(CustomSocial_exports)).CustomSocialDetail;
+                  return /* @__PURE__ */ jsx(Detail, {
+                    entry: detail
+                  });
+                }
+              });
           };
-          socialRenderers.set(Component2, Wrapped);
-        }
-        return {
-          ...rendered,
-          type: socialRenderers.get(Component2)
-        };
-      });
-    }
+          var tree = Component2(detail ? {
+            ...current,
+            onPress: open,
+            onClick: open,
+            onOpenProfile: open
+          } : current);
+          return detail ? routeNativeSocialPress(tree, open) : tree;
+        });
+      socialWrapperTypes.add(socialRenderers.get(Component2));
+      return {
+        ...rendered,
+        type: socialRenderers.get(Component2)
+      };
+    };
+    for (var method of [
+      "jsx",
+      "jsxs"
+    ])
+      if (typeof runtime?.[method] === "function")
+        after(method, runtime, hook);
   }
   function replaceIdentityText(node, original, data, depth = 0) {
     if (depth > 20 || node == null)
@@ -12765,7 +12854,7 @@
     return CloudCordIdentity;
   }
   function connectIdentityRenderer() {
-    connectCustomSocialRenderer();
+    connectNativeSocialRenderer();
     var identityComponents = [
       "ProfileHeader",
       "UserProfileHeader",
@@ -13005,6 +13094,11 @@
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
+      var socialOwner = typeof args[0] === "string" && args[0].startsWith("cloudcord-friend:") ? args[0].split(":")[1] : "";
+      var socialData = isCurrentUser(socialOwner) ? preview.enabled ? preview : null : getProfileOverride(socialOwner);
+      var custom = socialOwner ? nativeSocialFriends(socialOwner, socialData).find((row) => row.userId === args[0]) : null;
+      if (custom)
+        return custom.user;
       if (!isCurrentUser(args?.[0]))
         return original(...args);
       var user = original(...args);
@@ -13012,6 +13106,33 @@
       return cloneObject(user, "user");
     });
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
+    var friendsStore = safeStore("FriendsStore");
+    var readSocialFriends = createNativeSocialFriendsReader();
+    addPatch("getState", friendsStore, (args, original) => readSocialFriends(original(...args), String(currentUserId || ""), preview.enabled ? preview : null));
+    addPatch("getMutualFriends", profileStore, (args, original) => {
+      var result = original(...args);
+      var owner = String(args[0] || "");
+      if (!isCurrentUser(owner))
+        requestSharedProfile(owner);
+      var data = isCurrentUser(owner) ? preview.enabled ? preview : null : getProfileOverride(owner);
+      var friends = nativeSocialFriends(owner, data);
+      return friends.length ? [
+        ...Array.isArray(result) ? result : [],
+        ...friends.map((row) => ({
+          key: row.key,
+          status: row.status,
+          user: row.user,
+          cloudcordCustom: true
+        }))
+      ] : result;
+    });
+    addPatch("getMutualFriendsCount", profileStore, (args, original) => {
+      var owner = String(args[0] || "");
+      var data = isCurrentUser(owner) ? preview.enabled ? preview : null : getProfileOverride(owner);
+      var extra = nativeSocialFriends(owner, data).length;
+      var count = original(...args);
+      return extra ? Number(count || 0) + extra : count;
+    });
     diagnostics.profileStore = !!profileStore;
     addPatch("getUserProfile", profileStore, (args, original) => {
       var result = original(...args);
@@ -14787,7 +14908,7 @@
       })
     });
   }
-  var import_react6, import_react_native19, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialContext, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react6, import_react_native19, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -15502,7 +15623,7 @@
       identityRefreshers = /* @__PURE__ */ new Set();
       identityRenderers = /* @__PURE__ */ new WeakMap();
       socialRenderers = /* @__PURE__ */ new WeakMap();
-      socialContext = null;
+      socialWrapperTypes = /* @__PURE__ */ new WeakSet();
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
         _inherits(NamePreviewBoundary2, Component2);
