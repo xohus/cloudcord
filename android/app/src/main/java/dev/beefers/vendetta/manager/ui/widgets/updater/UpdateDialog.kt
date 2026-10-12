@@ -63,7 +63,7 @@ fun UpdateDialog(
         },
         text = {
             Text(
-                text = stringResource(R.string.update_description, release.versionName),
+                text = stringResource(R.string.update_description, release.versionName ?: release.tagName),
                 textAlign = TextAlign.Center
             )
         },

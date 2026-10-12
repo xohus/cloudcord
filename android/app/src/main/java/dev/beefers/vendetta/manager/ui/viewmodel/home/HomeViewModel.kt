@@ -2,6 +2,7 @@ package dev.beefers.vendetta.manager.ui.viewmodel.home
 
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Environment
 import android.provider.Settings
@@ -15,6 +16,11 @@ import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
 import dev.beefers.vendetta.manager.BuildConfig
 import dev.beefers.vendetta.manager.domain.manager.DownloadManager
+import dev.beefers.vendetta.manager.domain.manager.DownloadResult
+import dev.beefers.vendetta.manager.R
+import dev.beefers.vendetta.manager.installer.util.ApkValidation
+import dev.beefers.vendetta.manager.installer.util.Signer
+import dev.beefers.vendetta.manager.utils.showToast
 import dev.beefers.vendetta.manager.domain.manager.InstallManager
 import dev.beefers.vendetta.manager.domain.manager.InstallMethod
 import dev.beefers.vendetta.manager.domain.manager.PreferenceManager
@@ -28,6 +34,10 @@ import dev.beefers.vendetta.manager.network.utils.dataOrNull
 import dev.beefers.vendetta.manager.utils.DiscordVersion
 import dev.beefers.vendetta.manager.utils.isMiui
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
+import java.security.MessageDigest
 import java.io.File
 
 // help me
@@ -121,32 +131,64 @@ class HomeViewModel(
 
     private fun checkForUpdate() {
         screenModelScope.launch {
-            release = repo.getLatestRelease("C0C0B01/CloudCordManager").dataOrNull
-//            release?.let {
-//                val cleanTag = it.tagName.removePrefix("v")
-//                val tagCode = versionStringToCode(cleanTag)
-//                showUpdateDialog = tagCode > BuildConfig.VERSION_CODE
-//            }
-            release?.let {
-                showUpdateDialog = it.tagName.toInt() > BuildConfig.VERSION_CODE
-            }
+            release = repo.getLatestRelease("xohus/cloudcord").dataOrNull
+            showUpdateDialog = (release?.managerVersionCode ?: 0) > BuildConfig.VERSION_CODE
         }
     }
 
     fun downloadAndInstallUpdate() {
+        if (isUpdating) return
+        val selectedRelease = release ?: return
+        val asset = selectedRelease.managerAsset ?: return
+        if ((selectedRelease.managerVersionCode ?: 0) <= BuildConfig.VERSION_CODE) return
+        isUpdating = true
         screenModelScope.launch {
             val update = File(cacheDir, "update.apk")
             if (update.exists()) update.delete()
-            isUpdating = true
-            downloadManager.downloadUpdate(update)
-            isUpdating = false
-
+            try {
+                if (downloadManager.downloadUpdate(update, asset.downloadUrl) !is DownloadResult.Success) {
+                    context.showToast(R.string.msg_download_failed)
+                    return@launch
+                }
+                withContext(Dispatchers.IO) {
+                    require(update.length() == asset.size) { "Manager update size mismatch" }
+                    val digest = MessageDigest.getInstance("SHA-256")
+                    update.inputStream().use { input ->
+                        val buffer = ByteArray(8192)
+                        while (true) {
+                            val count = input.read(buffer)
+                            if (count == -1) break
+                            digest.update(buffer, 0, count)
+                        }
+                    }
+                    val sha = digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
+                    require(sha.equals(asset.digest?.removePrefix("sha256:"), ignoreCase = true)) { "Manager update checksum mismatch" }
+                    ApkValidation.validate(update)
+                    Signer.verifyApk(update)
+                    @Suppress("DEPRECATION")
+                    val installed = context.packageManager.getPackageInfo(BuildConfig.APPLICATION_ID, PackageManager.GET_SIGNING_CERTIFICATES)
+                    @Suppress("DEPRECATION")
+                    val incoming = context.packageManager.getPackageArchiveInfo(update.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES)
+                        ?: error("Invalid Manager package")
+                    require(incoming.packageName == BuildConfig.APPLICATION_ID && incoming.longVersionCode == selectedRelease.managerVersionCode?.toLong()) { "Wrong Manager package or version" }
+                    val currentSigners = installed.signingInfo?.apkContentsSigners?.toSet()
+                    val updateSigners = incoming.signingInfo?.apkContentsSigners?.toSet()
+                    require(!currentSigners.isNullOrEmpty() && currentSigners == updateSigners) { "Manager signing key changed" }
+                }
             val installer: Installer = when (prefs.installMethod) {
                 InstallMethod.DEFAULT -> SessionInstaller(context)
                 InstallMethod.SHIZUKU -> ShizukuInstaller(context)
             }
 
             installer.installApks(silent = !isMiui, update)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                update.delete()
+                context.showToast(R.string.msg_download_verify_failed)
+            } finally {
+                isUpdating = false
+            }
         }
     }
 

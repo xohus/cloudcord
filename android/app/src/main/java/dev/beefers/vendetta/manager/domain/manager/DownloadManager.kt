@@ -22,9 +22,9 @@ class DownloadManager(
     suspend fun downloadSplit(version: String, split: String, out: File, onProgressUpdate: (Float?) -> Unit): DownloadResult =
         download("${prefs.mirror.baseUrl}/tracker/download/$version/$split", out, onProgressUpdate)
 
-    suspend fun downloadUpdate(out: File) =
+    suspend fun downloadUpdate(out: File, url: String) =
         download(
-            "https://github.com/C0C0B01/CloudCordManager/releases/latest/download/Manager.apk",
+            url,
             out
         ) {
             // got to add this later

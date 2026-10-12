@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 import io.ktor.client.request.header
 import io.ktor.client.plugins.timeout
 import dev.beefers.vendetta.manager.network.utils.ApiResponse
+import dev.beefers.vendetta.manager.network.utils.transform
 
 class RestService(
     private val httpService: HttpService,
@@ -19,9 +20,14 @@ class RestService(
 ) {
 
     suspend fun getLatestRelease(repo: String) = withContext(Dispatchers.IO) {
-        httpService.request<Release> {
-            url("https://cloudcord.xohus.lol/api/proxy/releases/latest")
-            header("X-CC-Client", "1")
+        require(repo == "xohus/cloudcord") { "Untrusted Manager update repository" }
+        httpService.request<List<Release>> {
+            url("https://api.github.com/repos/xohus/cloudcord/releases")
+            parameter("per_page", 100)
+            timeout { requestTimeoutMillis = 15_000 }
+        }.transform { releases ->
+            releases.filter { it.managerVersionCode != null && it.managerAsset != null }
+                .maxByOrNull { it.managerVersionCode ?: 0 }
         }
     }
 

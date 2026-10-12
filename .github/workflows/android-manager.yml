@@ -118,6 +118,7 @@ jobs:
         run: node android/scripts/test-installer-input-guards.cjs
 
       - name: Build CloudCord Manager
+        id: manager_build
         run: |
           set -euo pipefail
           export JAVA_HOME="${JAVA_HOME_21_X64:-$JAVA_HOME}"
@@ -132,3 +133,11 @@ jobs:
           name: CloudCordManager-debug
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+
+      - name: Upload installer test results
+        if: always() && (steps.manager_build.outcome == 'success' || steps.manager_build.outcome == 'failure')
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCordManager-test-results
+          path: android/app/build/test-results/testDebugUnitTest/*.xml
+          if-no-files-found: warn
