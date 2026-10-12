@@ -1,6 +1,6 @@
 import { CustomConnectionPreview, CustomFriendPreview, fetchConnectionPreview, searchConnectionItems, normalizeCustomSocial, mergeCustomSocialLookup, customSocialValidationErrors, customPreviewUsername, customConnectionServiceName, ProfileAppearance } from "@utils/profileAppearance";
 import { ModalContent as NativeModalContent, ModalHeader as NativeModalHeader, ModalRoot as NativeModalRoot, openModal } from "@utils/modal";
-import { React } from "@webpack/common";
+import { ChannelActionCreators, React } from "@webpack/common";
 import type { CSSProperties } from "react";
 const ModalRoot = NativeModalRoot as any;
 const ModalHeader = NativeModalHeader as any;
@@ -17,13 +17,20 @@ function Picture({ url, banner = false }: { url: string; banner?: boolean; }) {
     return url && !failed ? <img src={url} alt="" referrerPolicy="no-referrer" loading="lazy" onError={() => setFailed(true)} style={{ width: banner ? "100%" : 48, height: banner ? 120 : 48, borderRadius: banner ? 8 : "50%", objectFit: "cover" }} /> : banner ? null : <span aria-hidden style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--background-tertiary)", display: "grid", placeItems: "center" }}>👤</span>;
 }
 
-export function SocialDetail({ entry }: { entry: Entry; }) {
+export function SocialDetail({ entry, onRemove }: { entry: Entry; onRemove?: () => void; }) {
     const connection = "service" in entry;
+    const [actionError, setActionError] = React.useState("");
     return <div style={panel}>
         <Picture url={entry.banner} banner />
         <div style={{ display: "flex", gap: 12, alignItems: "center", marginTop: 8 }}><Picture url={entry.avatar} /><div><strong>{entry.displayName || entry.username || (connection ? entry.accountId : entry.userId)}</strong><div>{customPreviewUsername(entry.username)}</div></div></div>
         <p style={{ color: "var(--text-muted)" }}>Custom {connection ? `${customConnectionServiceName(entry.service)} connection` : "friend"} preview · Not verified</p>
         {!connection && entry.userId && <p>User ID: {entry.userId}</p>}
+        {!connection && <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+            <button style={button} disabled={!/^\d{15,22}$/.test(entry.userId || "")} onClick={() => { setActionError(""); try { Promise.resolve(ChannelActionCreators.openPrivateChannel(entry.userId!)).catch(() => setActionError("Couldn't open this conversation.")); } catch { setActionError("Couldn't open this conversation."); } }}>Message</button>
+            {onRemove && <button style={{...button,color:"var(--text-danger)"}} onClick={onRemove}>Remove friend preview</button>}
+            {!entry.userId && <p style={{color:"var(--text-muted)"}}>Add a real Discord user ID to open a conversation.</p>}
+        </div>}
+        {actionError && <p role="alert">{actionError}</p>}
         {connection && entry.accountId && <p>Account ID: {entry.accountId}</p>}
         {entry.bio && <p style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{entry.bio}</p>}
         {!connection && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{entry.badges.map((badge, i) => <span key={i} title={badge.name} style={{ display: "flex", gap: 4, alignItems: "center" }}>{badge.icon && <img src={badge.icon} alt="" referrerPolicy="no-referrer" width={20} height={20} onError={e => { e.currentTarget.hidden = true; }} />}{badge.name}</span>)}</div>}
@@ -32,8 +39,8 @@ export function SocialDetail({ entry }: { entry: Entry; }) {
     </div>;
 }
 
-export function openSocialDetail(entry: Entry) {
-    openModal(props => <ModalRoot {...props}><ModalHeader><strong>Custom profile preview</strong><button style={{ ...button, marginLeft: "auto" }} onClick={props.onClose}>Close</button></ModalHeader><ModalContent><SocialDetail entry={entry} /></ModalContent></ModalRoot>);
+export function openSocialDetail(entry: Entry, onRemove?: () => void) {
+    openModal(props => <ModalRoot {...props}><ModalHeader><strong>{"service" in entry ? "Connection details" : "Friend profile"}</strong><button style={{ ...button, marginLeft: "auto" }} onClick={props.onClose}>Close</button></ModalHeader><ModalContent><SocialDetail entry={entry} onRemove={onRemove ? () => { onRemove(); props.onClose(); } : undefined} /></ModalContent></ModalRoot>);
 }
 
 function Input({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (value: string) => void; multiline?: boolean; }) {

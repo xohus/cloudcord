@@ -1273,6 +1273,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         </ModalHeader>
 
         <ModalContent className="cp-content">
+            <details className="cp-group" open><summary>Identity · name, style & server tag</summary>
             <Field label="Username" value={data.username ?? ""} placeholder="my_username" onChange={v => set("username", v)} />
             <Field label="Display Name" value={data.globalName ?? ""} placeholder="My Name" onChange={v => set("globalName", v)} />
             <div className="cp-field">
@@ -1304,6 +1305,8 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                     <div className="cp-sublabel">Visible in CloudCord. This doesn't change server membership or permissions.</div>
                 </>}
             </div>
+            </details>
+            <details className="cp-group"><summary>Appearance · pictures, bio & colors</summary>
             <ImageUpload label="Profile Picture" value={data.avatar ?? ""} onChange={v => set("avatar", v)} />
             <Toggle label="Simulate Nitro" sublabel="Enables banner and profile color" checked={data.nitro ?? false} onChange={v => set("nitro", v)} />
             {data.nitro && <ImageUpload label="Banner" value={data.banner ?? ""} onChange={v => set("banner", v)} />}
@@ -1325,6 +1328,8 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                     {data.accentColor2 != null && <button className="cp-clear-btn" onClick={() => set("accentColor2", undefined)}><CloseIcon /></button>}
                 </div>
             </div>
+            </details>
+            <details className="cp-group"><summary>Badges & dates</summary>
             <Field label="Account creation date" value={data.createdAt ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("createdAt", v)} />
             <Field label="Joined since date" value={data.signupDate ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("signupDate", v)} />
             <Field label="Nitro since date" value={data.nitroSince ?? ""} placeholder="2024-01-01" type="date" onChange={v => set("nitroSince", v)} />
@@ -1332,6 +1337,8 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
             <BadgeLayoutEditor data={data} userId={selectedAccountId} onChange={layout => setData(previous => ({ ...previous, ...layout }))} />
             <div className="cp-divider" />
+            </details>
+            <details className="cp-group"><summary>Avatar decorations</summary>
             <div className="cp-section-label">Avatar decoration</div>
             <input className="cp-input cp-decoration-search" aria-label="Search decorations" placeholder="Search decorations" value={decorationSearch} onChange={e => { setDecorationSearch(e.target.value); setDecorationLimit(24); }} />
             <div className="cp-decoration-grid">
@@ -1345,6 +1352,8 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             </div>
             {!decorations.length && <div className="cp-hint">No matching decorations.</div>}
             {decorationLimit < decorations.length && <Button onClick={() => setDecorationLimit(limit => limit + 24)}>Load More</Button>}
+            </details>
+            <details className="cp-group" open><summary>Friends & connections</summary>
             <CustomSocialEditor data={data} onChange={value => setData(current => ({...current,...value}))} resolveUser={async userId => {
                 let shared = sharedProfiles.get(userId);
                 if (!shared && !isMe(userId)) {
@@ -1359,11 +1368,14 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                 const profile = UserProfileStore.getUserProfile(userId) as any;
                 return { username: shared?.username || user?.username || "", displayName: shared?.globalName || user?.globalName || "", avatar: shared?.avatar || (user ? IconUtils.getUserAvatarURL(user) : ""), banner: shared?.banner || customDiscordMediaURL("banners", userId, profile?.banner ?? (user as any)?.banner), bio: shared?.bio || profile?.bio || "", badges: user ? badgeLayoutRows(shared || {}, userId).map(badge => ({name:badge.description || badge.key || "Badge",icon:badge.iconSrc || ""})) : [] };
             }} />
+            </details>
+            <details className="cp-group"><summary>Upload custom images & badges</summary>
             <div className="cp-upload-section">
                 <div className="cp-section-label">Custom Badges and Pictures</div>
                 <p>Add a badge, profile picture or banner.</p>
                 <Button onClick={() => window.open("https://getcloudcord.com/upload", "_blank", "noopener,noreferrer")}>Upload</Button>
             </div>
+            </details>
         </ModalContent>
 
         <ModalFooter className="cp-footer">
@@ -1736,7 +1748,15 @@ fakeObfuscatedEmail(real: string | null) {
             friendsStore: FriendsStore, userStore: UserStore, profileActions: UserProfileActions,
             profileStore: UserProfileStore, getData: getCustomSocialData,
             channelActions: ChannelActionCreators,
-            platforms: findByProps("isSupported", "getByUrl"), openDetail: openSocialDetail,
+            platforms: findByProps("isSupported", "getByUrl"), openDetail: (entry, ownerId) => openSocialDetail(entry,
+                ownerId === UserStore.getCurrentUser()?.id && !("service" in entry) ? () => {
+                    storedData = { ...storedData, customFriends: storedData.customFriends?.filter(friend => friend.id !== entry.id), syncRevision: Date.now() };
+                    const owner = activeUserId();
+                    allAccountsData[owner] = storedData;
+                    saveDataSync(storedData, isEnabled); saveAllDataSync();
+                    void DataStore.set(DS_KEY, storedData); void DataStore.set(DS_ALL_DATA, allAccountsData);
+                    _dataVersion++; forceAccountPanelRerender(); queueSharedPublish();
+                } : undefined),
         });
         this._socialClick = (event: MouseEvent) => {
             const anchor = (event.target as Element)?.closest?.("a[href]") as HTMLAnchorElement | null;

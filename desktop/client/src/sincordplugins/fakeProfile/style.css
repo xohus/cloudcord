@@ -179,6 +179,11 @@
     font-family: var(--font-primary);
 }
 
+.cp-group { border: 1px solid var(--border-subtle, #80808040); border-radius: 12px; margin-bottom: 12px; padding: 14px; background: var(--background-secondary); }
+.cp-group > summary { cursor: pointer; font-weight: 600; color: var(--text-normal); padding: 4px 0; line-height: 1.5; }
+.cp-group[open] > summary { margin-bottom: 18px; }
+.cp-group > summary:focus-visible { outline: 2px solid var(--brand-experiment, #5865f2); outline-offset: 4px; border-radius: 4px; }
+
 .cp-upload-section {
     margin: 24px 0 12px;
     padding: 16px;

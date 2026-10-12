@@ -2028,7 +2028,14 @@ jobs:
                           const detail = socialEntryFromProps(current);
                           const open = () => { if (detail) navigation.push("PUPU_CUSTOM_PAGE", { title: "Custom profile preview", render: () => {
                               const Detail = require("@core/ui/settings/components/CustomSocial").CustomSocialDetail;
-                              return <Detail entry={detail} />;
+                              const nativeId = current?.user?.id || current?.row?.user?.id || current?.item?.user?.id || "";
+                              const owner = String(nativeId).startsWith("cloudcord-friend:") ? String(nativeId).split(":")[1] : "";
+                              return <Detail entry={detail} onRemove={owner && owner === currentUserId && !("service" in detail) ? () => {
+                                  const saved = rootSettings.fakeProfile || {};
+                                  rootSettings.fakeProfile = { ...saved, customFriends: (saved.customFriends || []).filter((friend: any) => friend.id !== detail.id), syncRevision: Date.now() };
+                                  preview = rootSettings.fakeProfile as PreviewSettings;
+                                  queueSharedPublish(); clearCache(); refreshPreview(); navigation.goBack();
+                              } : undefined} />;
                           } }); };
                           const tree = Component(detail ? { ...current, onPress: open, onClick: open, onOpenProfile: open } : current);
                           return detail ? routeNativeSocialPress(tree,open) : tree;
@@ -2844,7 +2851,7 @@ jobs:
                                   onPress={openPreview} />
                           </Card>
                           <ProfileTabs selected={activeTab} onSelect={setActiveTab} />
-                          {activeTab === "profile" ? <Card><CustomSocialEditor data={preview} onChange={(value: ProfileAppearance) => { rootSettings.fakeProfile = { ...preview, ...value, syncRevision: Date.now() }; preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw(); }} resolveUser={async (id: string) => {
+                          {activeTab === "social" ? <Card><CustomSocialEditor data={preview} onChange={(value: ProfileAppearance) => { rootSettings.fakeProfile = { ...preview, ...value, syncRevision: Date.now() }; preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw(); }} resolveUser={async (id: string) => {
                               let shared = sharedProfiles.get(id);
                               if (!shared && !isCurrentUser(id)) {
                                   const controller = new AbortController();

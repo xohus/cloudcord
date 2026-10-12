@@ -10,7 +10,7 @@ type Hooks = {
     profileActions?: any;
     channelActions?: any;
     platforms?: any;
-    openDetail: (entry: any) => void;
+    openDetail: (entry: any, ownerId?: string) => void;
 };
 
 /** All wrappers are read/presentation hooks. No Flux relationship events or REST writes. */
@@ -50,13 +50,13 @@ export function installNativeSocialHooks(options: Hooks) {
         const id = args[0]?.userId || args[0]?.id || args[0];
         if (typeof id !== "string" || !id.startsWith("cloudcord-friend:")) return original(...args);
         const row = friend(id);
-        if (row) options.openDetail(row.cloudcordPreview);
+        if (row) options.openDetail(row.cloudcordPreview, id.split(":")[1]);
     });
     wrap(options.channelActions, "openPrivateChannel", (original,args) => {
         const id = typeof args[0] === "string" ? args[0] : args[0]?.recipientId || args[0]?.recipientIds?.[0];
         if (typeof id !== "string" || !id.startsWith("cloudcord-friend:")) return original(...args);
         const row = friend(id);
-        if (row) options.openDetail(row.cloudcordPreview);
+        if (row) options.openDetail(row.cloudcordPreview, id.split(":")[1]);
         // Removed/custom preview IDs are never sent to Discord's DM API.
     });
     wrap(options.platforms, "get", (original,args) => {
