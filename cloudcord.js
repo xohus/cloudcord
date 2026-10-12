@@ -12340,7 +12340,8 @@
     try {
       cloned = Object.create(Object.getPrototypeOf(original));
       for (var key of Reflect.ownKeys(original)) {
-        if (overriddenKeys.has(String(key)))
+        var billingField = /^(premiumType|premium_type|premiumSince|premium_since|premiumGuildSince|premium_guild_since)$/.test(String(key));
+        if (overriddenKeys.has(String(key)) && !(kind === "user" && billingField))
           continue;
         var descriptor = Object.getOwnPropertyDescriptor(original, key);
         if (descriptor)
@@ -12401,14 +12402,14 @@
         primaryColor ?? accentColor,
         accentColor ?? primaryColor
       ]);
-    if (preview.nitroEnabled) {
+    if (preview.nitroEnabled && kind === "profile") {
       var premiumSince = monthsAgo(preview.nitroMonths);
       setOwnValue(cloned, "premiumType", 2);
       setOwnValue(cloned, "premium_type", 2);
       setOwnValue(cloned, "premiumSince", premiumSince);
       setOwnValue(cloned, "premium_since", premiumSince.toISOString());
     }
-    if (preview.boostMonths > 0)
+    if (kind === "profile" && preview.boostMonths > 0)
       setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
     if (avatar) {
       setOwnValue(cloned, "avatarURL", avatar);
