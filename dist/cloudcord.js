@@ -9975,6 +9975,10 @@
       profile: [
         "UserIcon"
       ],
+      social: [
+        "PeopleIcon",
+        "UserIcon"
+      ],
       badges: [
         "StarIcon"
       ],
@@ -10050,6 +10054,7 @@
       children: /* @__PURE__ */ jsx(TableRowGroup, {
         children: [
           "profile",
+          "social",
           "badges",
           "custom",
           "others"
@@ -10064,12 +10069,14 @@
           children: /* @__PURE__ */ jsx(TableRow, {
             label: {
               profile: "My profile",
+              social: "Friends & connections",
               badges: "Badges",
               custom: "Custom badges \xB7 beta",
               others: "Other profiles"
             }[tab],
             subLabel: {
               profile: "Name, pictures, bio and profile appearance",
+              social: "Edit shared friends and linked account previews",
               badges: "Choose which badges appear on your profile",
               custom: "Upload a badge name and PNG",
               others: "Changes visible only on this device"
@@ -10342,7 +10349,7 @@
       children: "\u{1F464}"
     });
   }
-  function CustomSocialDetail({ entry }) {
+  function CustomSocialDetail({ entry, onRemove }) {
     var connection = "service" in entry;
     var [linkError, setLinkError] = (0, import_react5.useState)("");
     var openLink = (url2) => {
@@ -10401,6 +10408,39 @@
         /* @__PURE__ */ jsx(Text, {
           color: "text-normal",
           children: entry.bio
+        }),
+        !connection && /* @__PURE__ */ jsxs(import_react_native18.View, {
+          style: {
+            gap: 8
+          },
+          children: [
+            /* @__PURE__ */ jsx(Button, {
+              text: "Message",
+              disabled: !/^\d{15,22}$/.test(entry.userId || ""),
+              onPress: () => {
+                try {
+                  var actions = findByProps("openPrivateChannel");
+                  if (!actions?.openPrivateChannel)
+                    throw new Error();
+                  Promise.resolve(actions.openPrivateChannel({
+                    recipientIds: [
+                      entry.userId
+                    ]
+                  })).catch(() => setLinkError("Couldn't open this conversation."));
+                } catch (e) {
+                  setLinkError("Couldn't open this conversation in this Discord version.");
+                }
+              }
+            }),
+            onRemove ? /* @__PURE__ */ jsx(Button, {
+              text: "Remove friend preview",
+              onPress: onRemove
+            }) : null,
+            !entry.userId ? /* @__PURE__ */ jsx(Text, {
+              color: "text-muted",
+              children: "Add a real Discord user ID to open a conversation."
+            }) : null
+          ]
         }),
         !connection && /* @__PURE__ */ jsx(import_react_native18.View, {
           style: {
@@ -10660,11 +10700,19 @@
           ...connections
         ].map((item) => /* @__PURE__ */ jsxs(import_react_native18.View, {
           style: {
-            gap: 6
+            gap: 8,
+            paddingVertical: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: "#80808040"
           },
           children: [
             /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
+              icon: item.avatar ? /* @__PURE__ */ jsx(TableRow.Icon, {
+                source: {
+                  uri: item.avatar
+                }
+              }) : void 0,
               label: item.displayName || item.username || "New entry",
               subLabel: "service" in item ? customConnectionServiceName(item.service) : "Custom friend",
               onPress: () => {
@@ -10676,15 +10724,17 @@
               style: {
                 flexDirection: "row",
                 flexWrap: "wrap",
-                gap: 6
+                gap: 8
               },
               children: [
                 /* @__PURE__ */ jsx(Button, {
                   text: "Move up",
+                  disabled: ("service" in item ? connections : friends)[0]?.id === item.id,
                   onPress: () => move(item, -1)
                 }),
                 /* @__PURE__ */ jsx(Button, {
                   text: "Move down",
+                  disabled: ("service" in item ? connections : friends).slice(-1)[0]?.id === item.id,
                   onPress: () => move(item, 1)
                 }),
                 /* @__PURE__ */ jsx(Button, {
@@ -11115,6 +11165,7 @@
       init_jsxRuntime();
       init_profileAppearance();
       init_common();
+      init_metro();
       init_components();
       init_FakeProfileGlass();
       import_react5 = __toESM(require_react());
@@ -12816,8 +12867,23 @@
                 title: "Custom profile preview",
                 render: () => {
                   var Detail = (init_CustomSocial(), __toCommonJS(CustomSocial_exports)).CustomSocialDetail;
+                  var nativeId = current?.user?.id || current?.row?.user?.id || current?.item?.user?.id || "";
+                  var owner = String(nativeId).startsWith("cloudcord-friend:") ? String(nativeId).split(":")[1] : "";
                   return /* @__PURE__ */ jsx(Detail, {
-                    entry: detail
+                    entry: detail,
+                    onRemove: owner && owner === currentUserId && !("service" in detail) ? () => {
+                      var saved = rootSettings.fakeProfile || {};
+                      rootSettings.fakeProfile = {
+                        ...saved,
+                        customFriends: (saved.customFriends || []).filter((friend) => friend.id !== detail.id),
+                        syncRevision: Date.now()
+                      };
+                      preview = rootSettings.fakeProfile;
+                      queueSharedPublish();
+                      clearCache();
+                      refreshPreview();
+                      navigation2.goBack();
+                    } : void 0
                   });
                 }
               });
@@ -14165,7 +14231,7 @@
             selected: activeTab,
             onSelect: setActiveTab
           }),
-          activeTab === "profile" ? /* @__PURE__ */ jsx(Card2, {
+          activeTab === "social" ? /* @__PURE__ */ jsx(Card2, {
             children: /* @__PURE__ */ jsx(CustomSocialEditor2, {
               data: preview,
               onChange: (value) => {
