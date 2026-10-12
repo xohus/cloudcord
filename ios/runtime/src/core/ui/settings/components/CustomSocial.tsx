@@ -34,17 +34,6 @@ function openDetail(navigation:Navigation,entry:Entry) {
     const safe= "service" in entry?normalized.customConnections?.[0]:normalized.customFriends?.[0];
     if(safe) navigation.push("PUPU_CUSTOM_PAGE",{title:"Custom profile preview",render:()=> <CustomSocialDetail entry={safe}/>});
 }
-export function CustomSocialList({data}:{data:ProfileAppearance}) {
-    const navigation=NavigationNative.useNavigation();
-    const safe=normalizeCustomSocial(data);
-    if(!safe.customFriends?.length&&!safe.customConnections?.length) return null;
-    return <View style={{padding:12,gap:8}}>
-        {!!safe.customFriends?.length&&<Text variant="heading-md/bold" color="text-normal">Custom friends</Text>}
-        {safe.customFriends?.map(entry=><TableRow key={entry.id} arrow label={entry.displayName||entry.username||entry.userId} subLabel="Custom friend preview" icon={entry.avatar?<TableRow.Icon source={{uri:entry.avatar}}/>:undefined} onPress={()=>openDetail(navigation,entry)}/>)}
-        {!!safe.customConnections?.length&&<Text variant="heading-md/bold" color="text-normal">Custom connections</Text>}
-        {safe.customConnections?.map(entry=><TableRow key={entry.id} arrow label={entry.displayName||entry.username||entry.accountId} subLabel={`${customConnectionServiceName(entry.service)} · Custom preview`} icon={entry.avatar?<TableRow.Icon source={{uri:entry.avatar}}/>:undefined} onPress={()=>openDetail(navigation,entry)}/>)}
-    </View>;
-}
 function Input({label,value,onChange}:{label:string;value:string;onChange:(value:string)=>void}) {
     return <View style={{gap:4}}><Text color="text-muted">{label}</Text><DiscordInput value={value} onChangeText={onChange} autoCapitalize="none" /></View>;
 }

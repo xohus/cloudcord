@@ -2,7 +2,31 @@
 
 User scope: mobile (iOS/Android), desktop (Windows/macOS) and browser. Shared custom friend entries support user ID or manually entered username, display name, avatar, bio, badges and banner. Shared connection entries support Steam and other services, account identifiers and information. Clicking entries opens their detailed custom preview. No real Discord relationships or OAuth verification are created.
 
-In progress, not released or complete.
+## Current native-integration revision (12 October 2026)
+
+The user rejected separate custom profile sections. Those renderers are removed.
+Connections now enter cloned native `connectedAccounts` snapshots with verification
+disabled; native platform URLs route custom cards to detailed previews on desktop/browser.
+Friends enter read-only FriendsStore rows (All, offline), with shared entries in the
+native mutual-friends data. Stored relationships, OAuth accounts and real DM actions
+remain unchanged. Synthetic custom IDs are routed to previews, not the desktop DM API.
+Mobile JSX press routing recognizes tagged entry data rather than component names and
+preserves native row/card layout. The editor remains the place to configure overrides.
+
+Schema/native-store cleanup and routing tests, mobile simulated rendering, generated
+Hermes bundles and generated-editor type regression checks pass. Desktop type checking
+has passed during development. These are not real-device UI coverage. Native mobile
+store availability, native row action coverage and cross-device behavior remain unverified.
+This revision is in progress and not yet published. Earlier public releases used the
+rejected separate-section design; the deployment notes below are historical, not current.
+
+Backend 97c8c17 is pushed to main for live deployment. It adjusts logged-out public
+YouTube requests and validated public-host canonical redirects. Tests pass; live success
+must still be verified after deployment. No Steam API key is configured: automatic
+library import remains unavailable, while basic public profiles and manual game picking
+are supported.
+
+## Historical separate-section build/deployment notes
 
 Desktop build 38249912115 is now verified completed/success. Artifacts CloudCordDesktop-Windows (11747593905) and CloudCord-Web (11747217769) exist and are unexpired. Both GitHub Release upload steps were skipped. These artifacts are test builds; backend test deployment, actual client/device behavior and public release are still outstanding.
 

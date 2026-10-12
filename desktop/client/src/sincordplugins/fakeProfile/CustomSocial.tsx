@@ -36,25 +36,6 @@ export function openSocialDetail(entry: Entry) {
     openModal(props => <ModalRoot {...props}><ModalHeader><strong>Custom profile preview</strong><button style={{ ...button, marginLeft: "auto" }} onClick={props.onClose}>Close</button></ModalHeader><ModalContent><SocialDetail entry={entry} /></ModalContent></ModalRoot>);
 }
 
-function EntryButton({ entry }: { entry: Entry; }) {
-    return <button type="button" style={{ ...panel, width: "100%", textAlign: "left", display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }} onClick={() => openSocialDetail(entry)}><Picture url={entry.avatar} /><span><strong>{entry.displayName || entry.username || ("service" in entry ? entry.accountId : entry.userId)}</strong><small style={{ display: "block", color: "var(--text-muted)" }}>{"service" in entry ? customConnectionServiceName(entry.service) : "Custom friend"} · Custom preview</small></span><span style={{ marginLeft: "auto" }}>›</span></button>;
-}
-
-export function CustomSocialSection({ userId, getData }: { userId: string; getData: (userId: string) => ProfileAppearance | null | undefined; }) {
-    const [data, setData] = React.useState(() => normalizeCustomSocial(getData(userId)));
-    React.useEffect(() => {
-        let previous = "";
-        const refresh = () => { const next = normalizeCustomSocial(getData(userId)); const serialized = JSON.stringify(next); if (serialized !== previous) { previous = serialized; setData(next); } };
-        refresh(); const timer = setInterval(refresh, 1500);
-        return () => clearInterval(timer);
-    }, [userId, getData]);
-    if (!data.customFriends?.length && !data.customConnections?.length) return null;
-    return <section aria-label="CloudCord custom friends and connections" style={{ color: "var(--text-normal)" }}>
-        {!!data.customFriends?.length && <><h3>Custom friends</h3>{data.customFriends.map(entry => <EntryButton key={entry.id} entry={entry} />)}</>}
-        {!!data.customConnections?.length && <><h3>Custom connections</h3>{data.customConnections.map(entry => <EntryButton key={entry.id} entry={entry} />)}</>}
-    </section>;
-}
-
 function Input({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (value: string) => void; multiline?: boolean; }) {
     const style = { padding: 10, borderRadius: 8, background: "var(--background-tertiary)", color: "var(--text-normal)", width: "100%", boxSizing: "border-box" as const };
     return <label style={{ display: "grid", gap: 4 }}>{label}{multiline ? <textarea rows={3} value={value} style={style} onChange={e => onChange(e.target.value)} /> : <input value={value} style={style} onChange={e => onChange(e.target.value)} />}</label>;

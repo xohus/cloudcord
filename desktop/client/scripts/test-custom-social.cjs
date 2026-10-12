@@ -7,6 +7,15 @@ vm.runInNewContext(esbuild.transformSync(fs.readFileSync('desktop/client/src/uti
 const api = context.module.exports;
 const source = {customFriends:[{id:'friend',userId:'1540350369232850995',username:'name',displayName:'Display',avatar:'https://example.com/avatar.png',banner:'https://example.com/banner.png',bio:'Bio',badges:[{name:'Custom badge',icon:'https://example.com/badge.png'}],verified:true}],customConnections:[{id:'connection',service:'steam',accountId:'76561198000000000',username:'steam-user',displayName:'Steam User',avatar:'https://example.com/steam.png',bio:'About',url:'https://steamcommunity.com/profiles/76561198000000000',details:[{label:'Games',value:'123'}],verified:true}]};
 const result = api.normalizeProfileAppearance(source);
+const nativeProfile = {connectedAccounts:[{id:'real',type:'github',name:'Real account',verified:true}]};
+const nativeSocial = api.nativeSocialProfile(nativeProfile, source);
+assert.equal(nativeSocial.connectedAccounts.length,2);
+assert.equal(nativeSocial.connectedAccounts[0].verified,true);
+assert.equal(nativeSocial.connectedAccounts[1].verified,false);
+assert.equal(nativeSocial.connectedAccounts[1].cloudcordPreview.id,'connection');
+assert.equal(nativeProfile.connectedAccounts.length,1,'native account data stays untouched');
+assert.equal(api.nativeSocialProfile({...nativeProfile,...nativeSocial},source).connectedAccounts.length,2,'repeated reads do not duplicate custom accounts');
+assert.equal(Object.keys(api.nativeSocialProfile(nativeProfile,{customConnections:[]})).length,0,'clearing custom entries preserves the original profile');
 assert.equal(api.customSocialValidationErrors(source).length,0);
 assert.ok(api.customSocialValidationErrors({customFriends:[{...source.customFriends[0],username:'',displayName:'',userId:undefined}]}).some(error=>error.includes('unfinished entry')));
 assert.ok(api.customSocialValidationErrors({customFriends:[{...source.customFriends[0],avatar:'javascript:alert(1)'}]}).some(error=>error.includes('HTTPS')));

@@ -83,6 +83,7 @@ jobs:
           node desktop/client/scripts/test-custom-social.cjs
           node desktop/client/scripts/test-custom-social-transport.cjs
           node desktop/client/scripts/test-custom-social-ui.cjs
+          node desktop/client/scripts/test-native-social-hooks.cjs
           node ios/scripts/test-custom-social-render.cjs
 
       - name: Check staff badge contrast after profile mount

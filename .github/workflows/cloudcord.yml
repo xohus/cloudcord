@@ -329,10 +329,9 @@ jobs:
           import { awaitStorage, useProxy } from "@core/vendetta/storage";
           import { after, instead } from "@lib/api/patcher";
           import { onJsxCreate } from "@lib/api/react/jsx";
-          import { appearanceOptions, availableServerTags, customDiscordMediaURL, customSocialValidationErrors, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, serverTagIconURL } from "@lib/api/profileAppearance";
+          import { appearanceOptions, availableServerTags, createNativeSocialFriendsReader, customDiscordMediaURL, customSocialValidationErrors, nativeSocialFriends, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, serverTagIconURL } from "@lib/api/profileAppearance";
           import type { CustomFriendPreview, CustomConnectionPreview, ProfileAppearance } from "@lib/api/profileAppearance";
           function CustomSocialEditor(props: any) { const Component = require("@core/ui/settings/components/CustomSocial").CustomSocialEditor; return <Component {...props} />; }
-          function CustomSocialList(props: any) { const Component = require("@core/ui/settings/components/CustomSocial").CustomSocialList; return <Component {...props} />; }
           import { presentationIdentity, presentationName } from "@lib/api/profileIdentity";
           import { settings } from "@lib/api/settings";
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
@@ -1284,6 +1283,7 @@ jobs:
           function decorateSharedProfile(original: any, userId: string, data: any, depth = 0) {
               if (!original || typeof original !== "object" || !data) return original;
               const cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
+              for (const [key, value] of Object.entries(nativeSocialProfile(original, data))) setOwnValue(cloned, key, value);
               for (const [key, value] of Object.entries(nativeProfileAppearance(data))) setOwnValue(cloned, key, value);
               setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userId, data));
               setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userId, data));
@@ -1639,6 +1639,7 @@ jobs:
 
               const displayName = preview.displayName || original.globalName || original.global_name || original.displayName || original.username;
               for (const [key, value] of Object.entries(nativeProfileAppearance(preview))) setOwnValue(cloned, key, value);
+              if (kind === "profile") for (const [key, value] of Object.entries(nativeSocialProfile(original, preview))) setOwnValue(cloned, key, value);
               const username = preview.username || original.username;
               const avatar = mediaUri("avatarMedia");
               const banner = mediaUri("bannerMedia");
@@ -2001,38 +2002,42 @@ jobs:
           const identityRefreshers = new Set<() => void>();
           const identityRenderers = new WeakMap<Function, Function>();
           const socialRenderers = new WeakMap<Function, Function>();
-          let socialContext: any = null;
-          function getSocialContext() {
-              // Native React is available during rendering, not during runtime startup.
-              return socialContext || (socialContext = require("react").createContext(""));
+          const socialWrapperTypes = new WeakSet<Function>();
+          function socialEntryFromProps(props: any) {
+              const source = props?.connection || props?.account || props?.row || props?.user || props?.item;
+              return props?.cloudcordPreview || source?.cloudcordPreview || source?.user?.cloudcordPreview;
           }
-
-          function connectCustomSocialRenderer() {
-              // Each profile surface gets one section. Nested anchors share context,
-              // while unrelated profiles and different mobile layouts stay independent.
-              for (const name of ["UserProfileBody", "UserProfileContent", "UserProfilePrimaryInfo"]) {
-                  onJsxCreate(name, (Component: any, rendered: any) => {
-                      const id = String(renderedUserId(rendered?.props) || "");
-                      if (!id || typeof Component !== "function" || Component.prototype?.isReactComponent) return rendered;
-                      if (!socialRenderers.has(Component)) {
-                          const Wrapped = (props: any) => {
-                              const Context = getSocialContext();
-                              const parentOwner = require("react").useContext(Context);
-                              const [, redraw] = useReducer(value => value + 1, 0);
-                              useEffect(() => { const refresh = () => redraw(); identityRefreshers.add(refresh); return () => { identityRefreshers.delete(refresh); }; }, []);
-                              const ownerId = String(renderedUserId(props) || "");
-                              if (ownerId && !isCurrentUser(ownerId)) requestSharedProfile(ownerId);
-                              const data = isCurrentUser(ownerId) ? preview.enabled ? preview : null : getProfileOverride(ownerId);
-                              const tree = Component(props);
-                              return <Context.Provider value={ownerId}>{tree}{data && parentOwner !== ownerId ? <CustomSocialList data={data} /> : null}</Context.Provider>;
-                          };
-                          socialRenderers.set(Component, Wrapped);
-                      }
+          function routeNativeSocialPress(tree: any, open: () => void, depth = 0): any {
+              if (depth > 20 || tree == null) return tree;
+              if (Array.isArray(tree)) return tree.map(child => routeNativeSocialPress(child, open, depth + 1));
+              if (!isValidElement(tree)) return tree;
+              const changes: any = {};
+              const props: any = tree.props;
+              for (const key of ["onPress", "onClick", "onLongPress", "onOpenProfile"]) if (typeof props?.[key] === "function") changes[key] = open;
+              if (props?.children) changes.children = routeNativeSocialPress(props.children,open,depth + 1);
+              return Object.keys(changes).length ? cloneElement(tree,changes) : tree;
+          }
+          function connectNativeSocialRenderer() {
+              // Identify our tagged snapshots, not minified/native component names.
+              const runtime = findByProps("jsx", "jsxs") as any;
+              const hook = ([Component]: any[], rendered: any) => {
+                      const entry = socialEntryFromProps(rendered?.props);
+                      if (!entry || typeof Component !== "function" || Component.prototype?.isReactComponent || socialWrapperTypes.has(Component)) return rendered;
+                      if (!socialRenderers.has(Component)) socialRenderers.set(Component, (current: any) => {
+                          const navigation = NavigationNative.useNavigation();
+                          const detail = socialEntryFromProps(current);
+                          const open = () => { if (detail) navigation.push("PUPU_CUSTOM_PAGE", { title: "Custom profile preview", render: () => {
+                              const Detail = require("@core/ui/settings/components/CustomSocial").CustomSocialDetail;
+                              return <Detail entry={detail} />;
+                          } }); };
+                          const tree = Component(detail ? { ...current, onPress: open, onClick: open, onOpenProfile: open } : current);
+                          return detail ? routeNativeSocialPress(tree,open) : tree;
+                      });
+                      socialWrapperTypes.add(socialRenderers.get(Component)!);
                       return { ...rendered, type: socialRenderers.get(Component) };
-                  });
-              }
+              };
+              for (const method of ["jsx", "jsxs"]) if (typeof runtime?.[method] === "function") after(method,runtime,hook);
           }
-
           function replaceIdentityText(node: any, original: any, data: any, depth = 0): any {
               if (depth > 20 || node == null) return node;
               if (typeof node === "string") {
@@ -2087,7 +2092,8 @@ jobs:
           }
 
           function connectIdentityRenderer() {
-              connectCustomSocialRenderer();
+              // Social entries now flow through Discord's native profile data.
+              connectNativeSocialRenderer();
               // Keep shared identity overrides at the profile UI boundary.
               // Discord's internal addUser cache requires the original object
               // returned by UserStore.getUser and crashes on presentation clones.
@@ -2257,6 +2263,10 @@ jobs:
                   return cloneObject(user, "user");
               });
               addPatch("getUser", userStore, (args, original) => {
+                  const socialOwner = typeof args[0] === "string" && args[0].startsWith("cloudcord-friend:") ? args[0].split(":")[1] : "";
+                  const socialData = isCurrentUser(socialOwner) ? preview.enabled ? preview : null : getProfileOverride(socialOwner);
+                  const custom = socialOwner ? nativeSocialFriends(socialOwner, socialData).find(row => row.userId === args[0]) : null;
+                  if (custom) return custom.user;
                   if (!isCurrentUser(args?.[0])) return original(...args);
                   const user = original(...args);
                   realCurrentUser = user || realCurrentUser;
@@ -2264,6 +2274,24 @@ jobs:
               });
 
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
+              const friendsStore = safeStore("FriendsStore");
+              const readSocialFriends = createNativeSocialFriendsReader();
+              addPatch("getState", friendsStore, (args, original) => readSocialFriends(original(...args), String(currentUserId || ""), preview.enabled ? preview : null));
+              addPatch("getMutualFriends", profileStore, (args, original) => {
+                  const result = original(...args);
+                  const owner = String(args[0] || "");
+                  if (!isCurrentUser(owner)) requestSharedProfile(owner);
+                  const data = isCurrentUser(owner) ? preview.enabled ? preview : null : getProfileOverride(owner);
+                  const friends = nativeSocialFriends(owner,data);
+                  return friends.length ? [...(Array.isArray(result) ? result : []), ...friends.map(row => ({key:row.key,status:row.status,user:row.user,cloudcordCustom:true}))] : result;
+              });
+              addPatch("getMutualFriendsCount", profileStore, (args, original) => {
+                  const owner = String(args[0] || "");
+                  const data = isCurrentUser(owner) ? preview.enabled ? preview : null : getProfileOverride(owner);
+                  const extra = nativeSocialFriends(owner,data).length;
+                  const count = original(...args);
+                  return extra ? Number(count || 0) + extra : count;
+              });
               diagnostics.profileStore = !!profileStore;
               addPatch("getUserProfile", profileStore, (args, original) => {
                   const result = original(...args);

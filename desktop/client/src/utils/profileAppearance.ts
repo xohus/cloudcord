@@ -213,6 +213,79 @@ export function normalizeProfileAppearance(data: any): ProfileAppearance {
     return result;
 }
 
+/** Read-only connection snapshots for Discord's existing profile renderer.
+ * Never advertise OAuth verification or insert these into the account store. */
+export function nativeSocialProfile(profile: any, data: any): Record<string, any> {
+    const { customConnections } = normalizeCustomSocial(data);
+    if (!customConnections?.length) return {};
+    const existing = Array.isArray(profile?.connectedAccounts) ? profile.connectedAccounts
+        : Array.isArray(profile?.connected_accounts) ? profile.connected_accounts : [];
+    const accounts = existing.filter((entry: any) => !entry?.cloudcordCustom).map((entry: any) => ({ ...entry }));
+    for (const entry of customConnections) {
+        accounts.push({
+            id: entry.accountId || `cloudcord:${entry.id}`, type: entry.service === "x" ? "twitter" : entry.service === "other" ? "domain" : entry.service,
+            name: entry.displayName || entry.username || entry.accountId,
+            verified: false, visibility: 1, show_activity: false,
+            cloudcordCustom: true, cloudcordPreview: entry,
+        });
+    }
+    return { connectedAccounts: accounts, connected_accounts: accounts };
+}
+
+/** Presentation-only users: synthetic IDs must never be used for Discord API calls. */
+export function nativeSocialFriends(ownerId: string, data: any): any[] {
+    return (normalizeCustomSocial(data).customFriends || []).map(entry => {
+        const id = `cloudcord-friend:${ownerId}:${entry.id}`;
+        const name = entry.displayName || entry.username || entry.userId || "Custom friend";
+        const user = {
+            id, username: entry.username || name, globalName: name, global_name: name,
+            discriminator: "0", bot: false, system: false, avatar: null,
+            cloudcordCustom: true, cloudcordPreview: entry,
+            getAvatarURL: () => entry.avatar || null, getAvatarSource: () => entry.avatar ? { uri: entry.avatar } : null,
+            getTag: () => entry.username || name, toString: () => name,
+            isPomelo: () => true, isNonUserBot: () => false,
+        };
+        return {key:id,userId:id,type:1,status:"offline",isMobile:false,activities:[],applicationStream:null,
+            user,usernameLower:user.username.toLowerCase(),mutualGuildsLength:0,mutualGuilds:[],nickname:null,
+            spam:false,ignoredUser:false,isGameRelationship:false,comparator:[1,user.username.toLowerCase()],
+            cloudcordCustom:true,cloudcordPreview:entry};
+    });
+}
+
+export function mergeNativeSocialFriends(original: any[], ownerId: string, data: any, search = ""): any[] {
+    const real = Array.isArray(original) ? original.filter(row => !row?.cloudcordCustom) : [];
+    const query = String(search || "").toLowerCase();
+    return [...real, ...nativeSocialFriends(ownerId, data).filter(row => !query ||
+        `${row.user.username} ${row.user.globalName}`.toLowerCase().includes(query))];
+}
+
+/** Wrap the native FriendsStore's read snapshot, not its relationship mutation APIs. */
+export function nativeSocialFriendsState(state: any, ownerId: string, data: any): any {
+    if (!state?.rows || !normalizeCustomSocial(data).customFriends?.length) return state;
+    const rows = Object.assign(Object.create(Object.getPrototypeOf(state.rows)), state.rows);
+    if (typeof state.rows.filter === "function") rows.filter = (section: string, search?: string) => {
+        const result = state.rows.filter(section, search);
+        return section === "ALL" ? mergeNativeSocialFriends(result, ownerId, data, search) : result;
+    };
+    if (Array.isArray(state.rows._rows)) rows._rows = mergeNativeSocialFriends(state.rows._rows, ownerId, data);
+    if (typeof state.rows.getRelationshipCounts === "function") rows.getRelationshipCounts = () => {
+        const counts = state.rows.getRelationshipCounts();
+        return {...counts, 1:Number(counts?.[1] || 0) + nativeSocialFriends(ownerId,data).length};
+    };
+    return {...state,rows};
+}
+
+export function createNativeSocialFriendsReader() {
+    let previousState: any, previousKey = "", previousResult: any;
+    return (state: any, ownerId: string, data: any) => {
+        const safe = normalizeCustomSocial(data);
+        const key = `${ownerId}:${JSON.stringify(safe.customFriends || [])}`;
+        if (state === previousState && key === previousKey) return previousResult;
+        previousState = state; previousKey = key;
+        return previousResult = nativeSocialFriendsState(state,ownerId,safe);
+    };
+}
+
 export function nativeProfileAppearance(data: any): Record<string, any> {
     const appearance = normalizeProfileAppearance(data);
     const result: Record<string, any> = {};

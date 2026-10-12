@@ -9,8 +9,9 @@
 
 import "./style.css";
 import decorationCatalog from "./decorations.json";
-import { CustomSocialEditor, CustomSocialSection } from "./CustomSocial";
-import { appearanceOptions, availableServerTags, customDiscordMediaURL, customSocialValidationErrors, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, ProfileAppearance, serverTagIconURL } from "@utils/profileAppearance";
+import { CustomSocialEditor, openSocialDetail } from "./CustomSocial";
+import { installNativeSocialHooks } from "@utils/nativeSocialHooks";
+import { appearanceOptions, availableServerTags, customDiscordMediaURL, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, ProfileAppearance, serverTagIconURL } from "@utils/profileAppearance";
 import { findByProps } from "@webpack";
 
 import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
@@ -27,7 +28,7 @@ const ModalContent = _ModalContent as any;
 const ModalFooter = _ModalFooter as any;
 import { SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { AuthenticationStore, Button, FluxDispatcher, IconUtils, Menu, Popout, React, Select, SnowflakeUtils, UserProfileStore, UserStore } from "@webpack/common";
+import { AuthenticationStore, Button, ChannelActionCreators, FluxDispatcher, FriendsStore, IconUtils, Menu, Popout, React, Select, SnowflakeUtils, UserProfileActions, UserProfileStore, UserStore } from "@webpack/common";
 
 import nitroBronze from "file://../../../../../assets/NitroMilestones/bronze.png?base64";
 import nitroDiamond from "file://../../../../../assets/NitroMilestones/diamond.png?base64";
@@ -789,7 +790,7 @@ function decorateSharedIdentity(source: any, data: CustomProfileData) {
 
 function decorateSharedProfile(profile: any, data: CustomProfileData) {
     if (!profile || !data) return profile;
-    const merged: any = {};
+    const merged: any = nativeSocialProfile(profile, data);
     const username = data.username || profile.username || profile.user?.username;
     const globalName = data.globalName || profile.globalName || profile.displayName || profile.user?.globalName;
     if (username) {
@@ -1386,11 +1387,6 @@ export default definePlugin({
     authors: [SincordDevs.nobody],
     dependencies: ["HeaderBarAPI", "ContextMenuAPI"],
 
-    renderProfileSection: {
-        render: ({userId}) => <CustomSocialSection userId={userId} getData={getCustomSocialData} />,
-        priority: 10
-    },
-
     patches: [
         {
             find: "getAvatarDecorationURL:",
@@ -1503,7 +1499,7 @@ export default definePlugin({
     hookUserProfile(profile: any) {
         if (!profile || !isEnabled) return profile;
         try {
-            const merged: any = {};
+            const merged: any = nativeSocialProfile(profile, storedData);
             if (storedData.bio) merged.bio = storedData.bio;
             if (storedData.pronouns) merged.pronouns = storedData.pronouns;
             if (storedData.accentColor != null) merged.accentColor = storedData.accentColor;
@@ -1734,6 +1730,19 @@ fakeObfuscatedEmail(real: string | null) {
         }
 
         await loadData();
+        this._nativeSocial = installNativeSocialHooks({
+            ownId: () => UserStore.getCurrentUser()?.id || "",
+            ownData: () => isEnabled ? storedData : null,
+            friendsStore: FriendsStore, userStore: UserStore, profileActions: UserProfileActions,
+            profileStore: UserProfileStore, getData: getCustomSocialData,
+            channelActions: ChannelActionCreators,
+            platforms: findByProps("isSupported", "getByUrl"), openDetail: openSocialDetail,
+        });
+        this._socialClick = (event: MouseEvent) => {
+            const anchor = (event.target as Element)?.closest?.("a[href]") as HTMLAnchorElement | null;
+            if (anchor && this._nativeSocial?.openURL(anchor.href)) { event.preventDefault(); event.stopImmediatePropagation(); }
+        };
+        document.addEventListener("click", this._socialClick, true);
         updateCachedRealData();
         // Pull the canonical snapshot before publishing. Publishing first made a
         // stale desktop installation overwrite changes made on mobile.
@@ -1749,6 +1758,8 @@ fakeObfuscatedEmail(real: string | null) {
     },
 
     stop() {
+        document.removeEventListener("click", this._socialClick, true);
+        this._nativeSocial?.stop(); this._nativeSocial = null;
         window.removeEventListener("focus", refreshBadgesOnFocus);
         removeHeaderBarButton("profile-spoofer-btn"); removeContextMenuPatch("user-context", userContextMenuPatch);
         FluxDispatcher.unsubscribe("CONNECTION_OPEN", onAccountSwitch); stopDomObserver();
