@@ -237,14 +237,27 @@ export function nativeSocialFriends(ownerId: string, data: any): any[] {
     return (normalizeCustomSocial(data).customFriends || []).map(entry => {
         const id = `cloudcord-friend:${ownerId}:${entry.id}`;
         const name = entry.displayName || entry.username || entry.userId || "Custom friend";
+        const avatar = entry.avatar || "https://cdn.discordapp.com/embed/avatars/0.png";
         const user = {
             id, username: entry.username || name, globalName: name, global_name: name,
             discriminator: "0", bot: false, system: false, avatar: null,
+            flags: 0, publicFlags: 0, purchasedFlags: 0, premiumUsageFlags: 0, premiumType: 0,
+            avatarDecorationData: null, banner: null, collectibles: null, displayNameStyles: null,
+            guildMemberAvatars: {}, primaryGuild: null, verified: false, mobile: false, desktop: false,
+            isProvisional: false, tag: entry.username || name, createdAt: new Date(0),
             cloudcordCustom: true, cloudcordPreview: entry,
-            getAvatarURL: () => entry.avatar || null, getAvatarSource: () => entry.avatar ? { uri: entry.avatar } : null,
+            getAvatarURL: () => avatar, getAvatarSource: () => ({ uri: avatar }),
             getTag: () => entry.username || name, toString: () => name,
-            isPomelo: () => true, isNonUserBot: () => false,
+            isPomelo: () => true, hasUniqueUsername: () => true, isClaimed: () => true,
         };
+        for (const method of ["hadPremiumSubscription", "hasAvatarForGuild", "hasFlag", "hasFreePremium", "hasHadPremium", "hasHadSKU", "hasPremiumUsageFlag", "hasPurchasedFlag", "hasUrgentMessages", "hasVerifiedEmailOrPhone", "isFractionalPremiumWithNoSubscription", "isLocalBot", "isNonUserBot", "isPhoneVerified", "isPremiumGroupMember", "isPremiumGroupPrimary", "isPremiumWithFractionalPremiumOnly", "isPremiumWithPremiumGroup", "isSystemUser", "isVerifiedBot"]) {
+            Object.assign(user, { [method]: () => false });
+        }
+        Object.assign(user, {
+            toJS: () => ({id,username:user.username,globalName:name,discriminator:"0",bot:false,system:false,cloudcordCustom:true,cloudcordPreview:entry}),
+            update: (props: Record<string, any>) => ({...user,...props}),
+            addGuildAvatarHash: () => user, removeGuildAvatarHash: () => user,
+        });
         return {key:id,userId:id,type:1,status:"offline",isMobile:false,activities:[],applicationStream:null,
             user,usernameLower:user.username.toLowerCase(),mutualGuildsLength:0,mutualGuilds:[],nickname:null,
             spam:false,ignoredUser:false,isGameRelationship:false,comparator:[1,user.username.toLowerCase()],

@@ -45,9 +45,10 @@ export function installNativeSocialHooks(options: Hooks) {
         return extra ? Number(count || 0) + extra : count;
     });
     wrap(options.profileActions, "openUserProfileModal", (original,args) => {
-        const row = friend(args[0]?.userId || args[0]?.id || args[0]);
-        if (!row) return original(...args);
-        options.openDetail(row.cloudcordPreview);
+        const id = args[0]?.userId || args[0]?.id || args[0];
+        if (typeof id !== "string" || !id.startsWith("cloudcord-friend:")) return original(...args);
+        const row = friend(id);
+        if (row) options.openDetail(row.cloudcordPreview);
     });
     wrap(options.channelActions, "openPrivateChannel", (original,args) => {
         const id = typeof args[0] === "string" ? args[0] : args[0]?.recipientId || args[0]?.recipientIds?.[0];
@@ -65,6 +66,7 @@ export function installNativeSocialHooks(options: Hooks) {
                 const safe = normalizeCustomSocial({customConnections:[account.cloudcordPreview]}).customConnections?.[0];
                 if (!safe) return undefined;
                 const url = `https://getcloudcord.com/custom-preview/${encodeURIComponent(safe.service)}/${encodeURIComponent(safe.id)}`;
+                if (previews.size >= 512 && !previews.has(url)) previews.delete(previews.keys().next().value!);
                 previews.set(url,safe);
                 return url;
             }
