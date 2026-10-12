@@ -1628,7 +1628,10 @@ jobs:
               try {
                   cloned = Object.create(Object.getPrototypeOf(original));
                   for (const key of Reflect.ownKeys(original)) {
-                      if (overriddenKeys.has(String(key))) continue;
+                      // UserStore is also consumed by billing. Cosmetic Nitro must
+                      // not change the signed-in account's entitlement/discount state.
+                      const billingField = /^(premiumType|premium_type|premiumSince|premium_since|premiumGuildSince|premium_guild_since)$/.test(String(key));
+                      if (overriddenKeys.has(String(key)) && !(kind === "user" && billingField)) continue;
                       const descriptor = Object.getOwnPropertyDescriptor(original, key);
                       if (descriptor) Object.defineProperty(cloned, key, descriptor);
                   }
@@ -1666,14 +1669,14 @@ jobs:
               if (primaryColor != null) setOwnValue(cloned, "primaryColor", primaryColor);
               if (accentColor != null) setOwnValue(cloned, "accentColor", accentColor);
               if (primaryColor != null || accentColor != null) setOwnValue(cloned, "themeColors", [primaryColor ?? accentColor, accentColor ?? primaryColor]);
-              if (preview.nitroEnabled) {
+              if (preview.nitroEnabled && kind === "profile") {
                   const premiumSince = monthsAgo(preview.nitroMonths);
                   setOwnValue(cloned, "premiumType", 2);
                   setOwnValue(cloned, "premium_type", 2);
                   setOwnValue(cloned, "premiumSince", premiumSince);
                   setOwnValue(cloned, "premium_since", premiumSince.toISOString());
               }
-              if (preview.boostMonths > 0) setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
+              if (kind === "profile" && preview.boostMonths > 0) setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
               if (avatar) {
                   setOwnValue(cloned, "avatarURL", avatar);
                   setOwnValue(cloned, "avatarUrl", avatar);

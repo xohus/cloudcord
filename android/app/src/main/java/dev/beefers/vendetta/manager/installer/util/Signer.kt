@@ -1,7 +1,9 @@
 package dev.beefers.vendetta.manager.installer.util
 
 import android.content.Context
+import android.util.AtomicFile
 import com.android.apksig.ApkSigner
+import com.android.apksig.ApkVerifier
 import dev.beefers.vendetta.manager.utils.Constants
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
@@ -31,11 +33,10 @@ object Signer : KoinComponent {
 
     val keyStore: File by lazy {
         val ks = filesDir.resolve("ks.keystore")
-        migrate(cacheDir, filesDir)
-        migrate(Constants.VENDETTA_DIR, filesDir)
+        if (!ks.exists()) migrate(cacheDir, filesDir)
+        if (!ks.exists()) migrate(Constants.VENDETTA_DIR, filesDir)
         ks.also {
             if (!it.exists()) {
-                it.createNewFile()
                 newKeystore(it)
             }
         }
@@ -53,7 +54,7 @@ object Signer : KoinComponent {
         val certificate = keyStore.getCertificate(alias) as X509Certificate
 
         ApkSigner.SignerConfig.Builder(
-            "Pupu",
+            "CloudCord",
             keyStore.getKey(alias, password) as PrivateKey,
             listOf(certificate)
         ).build()
@@ -65,7 +66,15 @@ object Signer : KoinComponent {
         with(KeyStore.getInstance(KeyStore.getDefaultType())) {
             load(null, password)
             setKeyEntry("alias", key.privateKey, password, arrayOf<Certificate>(key.publicKey))
-            store(out.outputStream(), password)
+            val atomic = AtomicFile(out)
+            val stream = atomic.startWrite()
+            try {
+                store(stream, password)
+                atomic.finishWrite(stream)
+            } catch (e: Exception) {
+                atomic.failWrite(stream)
+                throw e
+            }
         }
     }
 
@@ -75,7 +84,7 @@ object Signer : KoinComponent {
         do serialNumber = SecureRandom().nextInt().toBigInteger()
         while (serialNumber < BigInteger.ZERO)
 
-        val x500Name = X500Name("CN=Pupu Manager")
+        val x500Name = X500Name("CN=CloudCord Manager")
         val pair = KeyPairGenerator.getInstance("RSA").run {
             initialize(2048)
             generateKeyPair()
@@ -95,7 +104,7 @@ object Signer : KoinComponent {
             /* publicKeyInfo = */
             SubjectPublicKeyInfo.getInstance(pair.public.encoded)
         )
-        val signer = JcaContentSignerBuilder("SHA1withRSA").build(pair.private)
+        val signer = JcaContentSignerBuilder("SHA256withRSA").build(pair.private)
 
         return KeySet(
             JcaX509CertificateConverter().getCertificate(builder.build(signer)),
@@ -104,8 +113,6 @@ object Signer : KoinComponent {
     }
 
     fun signApk(apkFile: File, output: File) {
-        val outputApk = cacheDir.resolve(apkFile.name)
-
         ApkSigner.Builder(listOf(signerConfig))
             .setV1SigningEnabled(false) // TODO: enable so api <24 devices can work, however zip-alignment breaks
             .setV2SigningEnabled(true)
@@ -115,16 +122,21 @@ object Signer : KoinComponent {
             .build()
             .sign()
 
-        outputApk.renameTo(apkFile)
+        verifyApk(output)
+    }
+
+    fun verifyApk(apk: File) {
+        val result = ApkVerifier.Builder(apk).build().verify()
+        require(result.isVerified) { "APK signature verification failed: ${apk.name}" }
     }
 
     private fun migrate(oldDir: File, newDir: File) {
         oldDir.resolve("ks.keystore").also {
-            if (it.exists()) {
+            if (it.exists() && !newDir.resolve("ks.keystore").exists()) {
                 Path(it.absolutePath)
                     .moveTo(
                         Path(newDir.resolve("ks.keystore").absolutePath),
-                        overwrite = true
+                        overwrite = false
                     )
             }
         }
