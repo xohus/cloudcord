@@ -29,4 +29,8 @@ assert.ok(signer.includes('SHA256withRSA'));
 assert.ok(signer.includes('require(result.isVerified)'));
 const install = read('installer/step/installing/InstallStep.kt');
 assert.ok(install.indexOf('Signer.verifyApk(apk)') < install.indexOf('installer.installApks'));
+const viewModel = read('ui/viewmodel/installer/InstallerViewModel.kt');
+assert.equal((viewModel.match(/job\?\.cancelAndJoin\(\)/g) || []).length, 2);
+assert.ok(viewModel.includes('activeRunner.runAll()'));
+assert.ok(read('installer/step/Step.kt').includes('if (t is CancellationException) throw t'));
 console.log('PASS: installer input and resource source guards (not compilation or device verification)');

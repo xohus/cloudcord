@@ -25,6 +25,9 @@ import kotlinx.collections.immutable.toImmutableMap
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -54,6 +57,7 @@ class InstallerViewModel(
         get() = runner.logger.logs.joinToString("\n") { it.toString() }
 
     private val installationRunning = AtomicBoolean(false)
+    private val transitionMutex = Mutex()
 
     private var job: Job? = null
 
@@ -109,27 +113,31 @@ class InstallerViewModel(
     }
 
     fun retryInstall() {
-        cancelInstall()
-        runner = StepRunner(discordVersion)
-        startInstall()
+        screenModelScope.launch {
+            transitionMutex.withLock {
+                job?.cancelAndJoin()
+                runner = StepRunner(discordVersion, manualDiscordSource = runner.manualDiscordSource)
+                startInstall()
+            }
+        }
     }
 
     fun importDiscordApk(uri: Uri?) {
         if (uri == null) return
 
         screenModelScope.launch {
-            val imported = withContext(Dispatchers.IO) {
-                copyImportToAppStorage(uri)
+            transitionMutex.withLock {
+                job?.cancelAndJoin()
+                val imported = withContext(Dispatchers.IO) {
+                    copyImportToAppStorage(uri)
+                }
+                if (imported == null) {
+                    context.showToast(R.string.msg_invalid_discord_apk)
+                    return@withLock
+                }
+                runner = StepRunner(discordVersion, manualDiscordSource = imported)
+                startInstall()
             }
-
-            if (imported == null) {
-                context.showToast(R.string.msg_invalid_discord_apk)
-                return@launch
-            }
-
-            cancelInstall()
-            runner = StepRunner(discordVersion, manualDiscordSource = imported)
-            startInstall()
         }
     }
 
@@ -140,14 +148,18 @@ class InstallerViewModel(
     }
 
     private fun startInstall() {
-        installationRunning.set(false)
+        val activeRunner = runner
         job = screenModelScope.launch(Dispatchers.Main) {
             if (installationRunning.getAndSet(true)) {
                 return@launch
             }
 
-            withContext(Dispatchers.IO) {
-                runner.runAll()
+            try {
+                withContext(Dispatchers.IO) {
+                    activeRunner.runAll()
+                }
+            } finally {
+                installationRunning.set(false)
             }
         }
     }

@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import org.koin.core.component.KoinComponent
+import kotlinx.coroutines.CancellationException
 import kotlin.time.measureTimedValue
 
 /**
@@ -69,6 +70,7 @@ abstract class Step: KoinComponent {
                 null
             } catch (t: Throwable) {
                 status = StepStatus.UNSUCCESSFUL
+                if (t is CancellationException) throw t
                 t
             }
         }
