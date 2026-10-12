@@ -43,6 +43,21 @@ export function openSocialDetail(entry: Entry, onRemove?: () => void) {
     openModal(props => <ModalRoot {...props}><ModalHeader><strong>{"service" in entry ? "Connection details" : "Friend profile"}</strong><button style={{ ...button, marginLeft: "auto" }} onClick={props.onClose}>Close</button></ModalHeader><ModalContent><SocialDetail entry={entry} onRemove={onRemove ? () => { onRemove(); props.onClose(); } : undefined} /></ModalContent></ModalRoot>);
 }
 
+/** Actions for an imported friend opened through their real Discord profile. */
+export function FriendProfileActions({ userId, data, onRemove }: { userId: string; data?: ProfileAppearance | null; onRemove: (entry: CustomFriendPreview) => void; }) {
+    const [removed, setRemoved] = React.useState(false);
+    const [error, setError] = React.useState("");
+    React.useEffect(() => setRemoved(false), [userId, data]);
+    const friend = data?.customFriends?.find(entry => entry.userId === userId);
+    if (!friend || removed) return null;
+    return <div style={{display:"flex",gap:8,flexWrap:"wrap",padding:"12px 0"}} aria-label="Custom friend actions">
+        <button style={button} onClick={() => { setError(""); try { Promise.resolve(ChannelActionCreators.openPrivateChannel(userId)).catch(() => setError("Couldn't open this conversation.")); } catch { setError("Couldn't open this conversation."); } }}>Message</button>
+        <button style={button} onClick={() => openSocialDetail(friend, () => { onRemove(friend); setRemoved(true); })}>Friend details</button>
+        <button style={{...button,color:"var(--text-danger)"}} onClick={() => { onRemove(friend); setRemoved(true); }}>Remove friend preview</button>
+        {error && <p role="alert">{error}</p>}
+    </div>;
+}
+
 function Input({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (value: string) => void; multiline?: boolean; }) {
     const style = { padding: 10, borderRadius: 8, background: "var(--background-tertiary)", color: "var(--text-normal)", width: "100%", boxSizing: "border-box" as const };
     return <label style={{ display: "grid", gap: 4 }}>{label}{multiline ? <textarea rows={3} value={value} style={style} onChange={e => onChange(e.target.value)} /> : <input value={value} style={style} onChange={e => onChange(e.target.value)} />}</label>;

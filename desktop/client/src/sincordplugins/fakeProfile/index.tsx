@@ -9,7 +9,7 @@
 
 import "./style.css";
 import decorationCatalog from "./decorations.json";
-import { CustomSocialEditor, openSocialDetail } from "./CustomSocial";
+import { CustomSocialEditor, FriendProfileActions, openSocialDetail } from "./CustomSocial";
 import { installNativeSocialHooks } from "@utils/nativeSocialHooks";
 import { appearanceOptions, availableServerTags, customDiscordMediaURL, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, ProfileAppearance, serverTagIconURL } from "@utils/profileAppearance";
 import { findByProps } from "@webpack";
@@ -1392,12 +1392,29 @@ function CustomProfileButton() {
     return <HeaderBarButton icon={() => <EditIcon size={18} />} tooltip="Custom Profile" onClick={() => openModal(props => <CustomProfileModal rootProps={props} />)} />;
 }
 
+function removeOwnFriendPreview(entryId: string, expectedOwner: string) {
+    const owner = activeUserId();
+    if (!owner || owner !== expectedOwner || !isEnabled) return;
+    storedData = { ...storedData, customFriends: storedData.customFriends?.filter(friend => friend.id !== entryId), syncRevision: Date.now() };
+    allAccountsData[owner] = storedData;
+    saveDataSync(storedData, isEnabled); saveAllDataSync();
+    void DataStore.set(DS_KEY, storedData).catch(() => {}); void DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => {});
+    _dataVersion++; forceAccountPanelRerender(); queueSharedPublish();
+}
+
 export default definePlugin({
     name: "ProfileSpoofer",
     enabledByDefault: true,
     description: "Updating / experimental — visually customize your profile. Some options may currently contain errors.",
     authors: [SincordDevs.nobody],
-    dependencies: ["HeaderBarAPI", "ContextMenuAPI"],
+    dependencies: ["HeaderBarAPI", "ContextMenuAPI", "ProfileSectionsAPI"],
+    renderProfileSection: {
+        priority: 10,
+        render: ({ userId }) => {
+            const owner = activeUserId();
+            return <FriendProfileActions userId={userId} data={isEnabled ? storedData : null} onRemove={entry => { if (owner) removeOwnFriendPreview(entry.id, owner); }} />;
+        },
+    },
 
     patches: [
         {
@@ -1750,13 +1767,7 @@ fakeObfuscatedEmail(real: string | null) {
             channelActions: ChannelActionCreators,
             platforms: findByProps("isSupported", "getByUrl"), openDetail: (entry, ownerId) => openSocialDetail(entry,
                 ownerId === UserStore.getCurrentUser()?.id && !("service" in entry) ? () => {
-                    const owner = activeUserId();
-                    if (!owner || owner !== ownerId) return;
-                    storedData = { ...storedData, customFriends: storedData.customFriends?.filter(friend => friend.id !== entry.id), syncRevision: Date.now() };
-                    allAccountsData[owner] = storedData;
-                    saveDataSync(storedData, isEnabled); saveAllDataSync();
-                    void DataStore.set(DS_KEY, storedData); void DataStore.set(DS_ALL_DATA, allAccountsData);
-                    _dataVersion++; forceAccountPanelRerender(); queueSharedPublish();
+                    if (ownerId) removeOwnFriendPreview(entry.id, ownerId);
                 } : undefined),
         });
         this._socialClick = (event: MouseEvent) => {
