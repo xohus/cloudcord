@@ -25,6 +25,7 @@ assert.equal(api.CustomSocialSection({userId:'owner',getData:()=>({})}),null);
 const editor=walk(api.CustomSocialEditor({data,onChange:()=>{},resolveUser:async()=>null}));
 assert.ok(editor.includes('Add friend'));assert.ok(editor.includes('Add connection'));
 const workflow=fs.readFileSync('.github/workflows/cloudcord.yml','utf8');
+assert.match(workflow, /name: Publish runtime to main\s+if: github\.ref == 'refs\/heads\/main'/, 'branch test builds cannot overwrite the public runtime');
 const page=workflow.split("cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'")[1].split('\n          TSX')[0].replace(/^          /gm,'');
 esbuild.transformSync(page,{loader:'tsx'});
 esbuild.transformSync(fs.readFileSync('ios/runtime/src/core/ui/settings/components/CustomSocial.tsx','utf8'),{loader:'tsx'});

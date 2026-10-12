@@ -3613,6 +3613,7 @@ jobs:
             grep -q "$fallback" ../dist/cc.js
           done
       - name: Publish runtime to main
+        if: github.ref == 'refs/heads/main'
         run: |
           set -e
           git config user.name "github-actions[bot]"
