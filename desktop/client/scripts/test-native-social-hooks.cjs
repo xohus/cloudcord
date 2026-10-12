@@ -49,6 +49,12 @@ channelActions.openPrivateChannel('real');assert.equal(dmCalls,1,'real DM action
 const account=api.nativeSocialProfile({},data).connectedAccounts[0];
 const url=platforms.get('steam').getPlatformUserUrl(account);
 assert.equal(hooks.openURL(url),true);assert.equal(opened.at(-1).id,'c');
+assert.equal(platforms.get('steam').getPlatformUserUrl(account),url,'same native account retains its preview URL');
+const otherAccount=api.nativeSocialProfile({},{customConnections:[{...data.customConnections[0],displayName:'Another owner'}]}).connectedAccounts[0];
+const otherURL=platforms.get('steam').getPlatformUserUrl(otherAccount);
+assert.notEqual(otherURL,url,'matching connection IDs on different profiles do not collide');
+assert.equal(hooks.openURL(otherURL),true);assert.equal(opened.at(-1).displayName,'Another owner');
+assert.equal(hooks.openURL(url),true);assert.equal(opened.at(-1).displayName,'Steam','original profile preview remains intact');
 assert.equal(hooks.openURL('https://example.com'),false);
 assert.equal(platform.getPlatformUserUrl(account),'https://steamcommunity.com/real','platform singleton unchanged');
 data.customFriends=[];assert.equal(friendsStore.getState().rows,rows);

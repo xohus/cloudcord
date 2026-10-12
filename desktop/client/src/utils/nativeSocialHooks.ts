@@ -17,6 +17,8 @@ type Hooks = {
 export function installNativeSocialHooks(options: Hooks) {
     const cleanups: (() => void)[] = [];
     const previews = new Map<string, any>();
+    const accountURLs = new WeakMap<object, string>();
+    let previewSequence = 0;
     const wrap = (object: any, key: string, handler: (original: Function, args: any[]) => any) => {
         if (typeof object?.[key] !== "function") return;
         const original = object[key];
@@ -65,9 +67,14 @@ export function installNativeSocialHooks(options: Hooks) {
                 if (!account?.cloudcordCustom || !account.cloudcordPreview) return platform.getPlatformUserUrl(account,...rest);
                 const safe = normalizeCustomSocial({customConnections:[account.cloudcordPreview]}).customConnections?.[0];
                 if (!safe) return undefined;
-                const url = `https://getcloudcord.com/custom-preview/${encodeURIComponent(safe.service)}/${encodeURIComponent(safe.id)}`;
+                // Entry IDs are scoped to a profile, not globally unique. Keep
+                // distinct native accounts from overwriting each other's preview.
+                const cachedURL = accountURLs.get(account);
+                const url = cachedURL && previews.has(cachedURL) ? cachedURL
+                    : `https://getcloudcord.com/custom-preview/${encodeURIComponent(safe.service)}/${encodeURIComponent(safe.id)}/${++previewSequence}`;
                 if (previews.size >= 512 && !previews.has(url)) previews.delete(previews.keys().next().value!);
                 previews.set(url,safe);
+                accountURLs.set(account,url);
                 return url;
             }
         });
