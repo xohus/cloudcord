@@ -27,27 +27,32 @@ internal class SessionInstaller(private val context: Context) : Installer {
 
         val packageInstaller = packageManager.packageInstaller
         val sessionId = packageInstaller.createSession(params)
-        val session = packageInstaller.openSession(sessionId)
+        try {
+            packageInstaller.openSession(sessionId).use { session ->
+                apks.forEach { apk ->
+                    session.openWrite(apk.name, 0, apk.length()).use { output ->
+                        apk.inputStream().use { input -> input.copyTo(output) }
+                        session.fsync(output)
+                    }
+                }
 
-        apks.forEach { apk ->
-            session.openWrite(apk.name, 0, apk.length()).use {
-                it.write(apk.readBytes())
-                session.fsync(it)
+                val callbackIntent = Intent(context, InstallService::class.java).apply {
+                    action = "vendetta.actions.ACTION_INSTALL"
+                }
+
+                @SuppressLint("UnspecifiedImmutableFlag")
+                val contentIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    PendingIntent.getService(context, sessionId, callbackIntent, PendingIntent.FLAG_MUTABLE)
+                } else {
+                    PendingIntent.getService(context, sessionId, callbackIntent, 0)
+                }
+
+                session.commit(contentIntent.intentSender)
             }
+        } catch (t: Throwable) {
+            // Do not leave an incomplete package session after IO/cancellation errors.
+            runCatching { packageInstaller.abandonSession(sessionId) }
+            throw t
         }
-
-        val callbackIntent = Intent(context, InstallService::class.java).apply {
-            action = "vendetta.actions.ACTION_INSTALL"
-        }
-
-        @SuppressLint("UnspecifiedImmutableFlag")
-        val contentIntent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            PendingIntent.getService(context, 0, callbackIntent, PendingIntent.FLAG_MUTABLE)
-        } else {
-            PendingIntent.getService(context, 0, callbackIntent, 0)
-        }
-
-        session.commit(contentIntent.intentSender)
-        session.close()
     }
 }

@@ -39,4 +39,8 @@ assert.ok(!home.includes('tagName.toInt()'));
 assert.ok(home.includes('!is DownloadResult.Success'));
 assert.ok(home.includes('currentSigners == updateSigners'));
 assert.ok(home.includes('Manager update checksum mismatch'));
+const session = read('installer/session/SessionInstaller.kt');
+assert.ok(!session.includes('apk.readBytes()'));
+assert.ok(session.includes('input.copyTo(output)'));
+assert.ok(session.includes('abandonSession(sessionId)'));
 console.log('PASS: installer input and resource source guards (not compilation or device verification)');
