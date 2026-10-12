@@ -76,6 +76,14 @@ jobs:
         working-directory: desktop/client
         run: node scripts/test-cloudcord-badge-sync.cjs
 
+      - name: Check shared custom friend and connection previews
+        env:
+          NODE_PATH: ${{ github.workspace }}/desktop/client/node_modules
+        run: |
+          node desktop/client/scripts/test-custom-social.cjs
+          node desktop/client/scripts/test-custom-social-ui.cjs
+          node ios/scripts/test-custom-social-render.cjs
+
       - name: Check staff badge contrast after profile mount
         working-directory: desktop/client
         run: node scripts/test-staff-badge-surface.cjs
