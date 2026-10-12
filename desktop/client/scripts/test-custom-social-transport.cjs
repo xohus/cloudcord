@@ -1,0 +1,28 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const {createRequire}=require('node:module'),path=require('node:path');
+const esbuild=createRequire(path.resolve(__dirname,'../package.json'))('esbuild');
+let response,requests=[];
+const context={module:{exports:{}},URL,AbortController,setTimeout,clearTimeout,TypeError,fetch:async(url,options)=>{requests.push({url,options});if(response instanceof Error)throw response;return typeof response==='function'?response(options):response;}};
+vm.runInNewContext(esbuild.transformSync(fs.readFileSync(path.resolve(__dirname,'../src/utils/profileAppearance.ts'),'utf8'),{loader:'ts',format:'cjs'}).code,context);
+const api=context.module.exports;
+(async()=>{
+    response=new Response(JSON.stringify({result:{username:'Public user',avatar:'javascript:bad',verified:true}}));
+    const profile=await api.fetchConnectionPreview('steam','account & query');
+    assert.equal(profile.username,'Public user');assert.equal(profile.avatar,'');assert.equal(profile.verified,undefined);
+    assert.equal(new URL(requests[0].url).searchParams.get('query'),'account & query');
+    assert.ok(requests[0].options.signal instanceof AbortSignal);
+    response=new Response(JSON.stringify({result:[]}));
+    assert.equal((await api.searchConnectionItems('steam','empty')).length,0,'valid empty search is accepted');
+    response=new Response(JSON.stringify({}));
+    await assert.rejects(()=>api.searchConnectionItems('steam','broken'),/incomplete information/);
+    response=new Response('<html>Unavailable</html>');
+    await assert.rejects(()=>api.fetchConnectionPreview('steam','broken'),/unreadable response/);
+    response=new TypeError('fetch failed');
+    await assert.rejects(()=>api.fetchConnectionPreview('steam','offline'),/Check your connection/);
+    response=new Response(JSON.stringify({error:'Provider temporarily unavailable'}),{status:503});
+    await assert.rejects(()=>api.fetchConnectionPreview('steam','unavailable'),/Provider temporarily unavailable/);
+    context.setTimeout=callback=>setTimeout(callback,1);
+    response=options=>new Promise((resolve,reject)=>options.signal.addEventListener('abort',()=>reject(new Error('aborted')),{once:true}));
+    await assert.rejects(()=>api.fetchConnectionPreview('steam','slow'),/timed out.*entry was kept/);
+    console.log('Shared custom social transport: normalized responses, query encoding, empty searches and offline/malformed response handling passed');
+})().catch(error=>{console.error(error);process.exitCode=1;});

@@ -41,9 +41,18 @@ async function publicConnectionRequest(route: "lookup" | "search", service: stri
     const timer = setTimeout(() => controller.abort(), 25000);
     try {
         const response = await fetch(`https://getcloudcord.com/v1/custom-connections/${route}?service=${encodeURIComponent(service)}&query=${encodeURIComponent(query)}`, {signal:controller.signal});
-        const payload = await response.json();
+        let payload: any;
+        try { payload = await response.json(); }
+        catch { throw new Error("The public service returned an unreadable response. Try again or customize manually."); }
         if (!response.ok) throw new Error(typeof payload?.error === "string" ? payload.error.slice(0,300) : "Public information is unavailable. Customize manually or try later.");
+        if (route === "search" ? !Array.isArray(payload?.result) : !payload?.result || typeof payload.result !== "object" || Array.isArray(payload.result)) {
+            throw new Error("The public service returned incomplete information. Try again or customize manually.");
+        }
         return payload?.result;
+    } catch (error) {
+        if (controller.signal.aborted) throw new Error("The public lookup timed out. Your entry was kept; try again or customize manually.");
+        if (error instanceof TypeError) throw new Error("Could not reach the public service. Check your connection or customize manually.");
+        throw error;
     } finally { clearTimeout(timer); }
 }
 

@@ -81,6 +81,7 @@ jobs:
           NODE_PATH: ${{ github.workspace }}/desktop/client/node_modules
         run: |
           node desktop/client/scripts/test-custom-social.cjs
+          node desktop/client/scripts/test-custom-social-transport.cjs
           node desktop/client/scripts/test-custom-social-ui.cjs
           node ios/scripts/test-custom-social-render.cjs
 
