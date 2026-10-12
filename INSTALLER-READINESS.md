@@ -7,6 +7,7 @@ The reported scope is APK archive failure, missing icon resource, decoration pur
 - Validate the ZIP central directory, manifest presence, entry sizes and CRCs for cached, downloaded, imported and final APKs.
 - Reject truncated downloads, discard only invalid installer cache files, and reject duplicate split filenames.
 - Require exactly one imported base APK and place it before splits independent of archive entry order.
+- Reject wrong app packages and unsupported Discord versions before patching; the loader is pinned to stable Discord 344.13.
 - Resolve icon variants and aliases with cycle protection; optional round icon falls back to the square icon.
 - Preserve existing signing keys rather than overwriting them during migration. Create new keys atomically and verify APK signatures.
 - Serialize retry/import transitions and wait for cancellation before replacing the runner and its working files.
@@ -17,6 +18,7 @@ The reported scope is APK archive failure, missing icon resource, decoration pur
 - Commit 81ce57b67: Android workflow 38306858210 passed the Gradle unit-test and assemble tasks and uploaded its Manager artifact.
 - Commit 1a664d563: Android workflow 38307315869 passed; runtime workflow 38307315900 passed and published generated runtime commit a6b9dd0f6.
 - Commit 1532d4212 includes retry/import serialization. Android workflow 38307547096 completed successfully.
+- Updater safeguards at 24302fb65 passed six APK validation and five release-metadata unit tests (11 total, zero skipped/failures/errors), verified from artifact 11773247448. Streaming/session cleanup at fb450bbd5 passed workflow 38308328268.
 - Local installer/network source guards and the executable mobile billing-isolation/profile tests passed. Source guards are not device tests.
 
 ## Still required; do not claim 100% ready

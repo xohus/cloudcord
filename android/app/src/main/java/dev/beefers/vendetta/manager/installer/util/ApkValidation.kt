@@ -1,11 +1,22 @@
 package dev.beefers.vendetta.manager.installer.util
 
+import android.content.Context
 import java.io.File
 import java.util.zip.ZipFile
 import java.util.zip.CRC32
 
 /** Validate the central directory before native patching, including cached/imported APKs. */
 object ApkValidation {
+    fun validateDiscordBase(apk: File, context: Context, expectedVersion: String) {
+        @Suppress("DEPRECATION")
+        val info = context.packageManager.getPackageArchiveInfo(apk.absolutePath, 0)
+            ?: error("Cannot read Discord APK metadata. Import a complete Discord base APK/APKM.")
+        require(info.packageName == "com.discord") { "Import must contain the original Discord APK, not another app or a previously patched client." }
+        require(info.longVersionCode.toString() == expectedVersion) {
+            "This CloudCord loader supports Discord version code $expectedVersion; imported APK is ${info.longVersionCode}."
+        }
+    }
+
     fun validate(apk: File) {
         try {
             ZipFile(apk).use { zip ->

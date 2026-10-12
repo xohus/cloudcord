@@ -4,6 +4,9 @@ import androidx.compose.runtime.Stable
 import dev.beefers.vendetta.manager.R
 import dev.beefers.vendetta.manager.installer.step.download.base.DownloadStep
 import java.io.File
+import android.content.Context
+import dev.beefers.vendetta.manager.installer.util.ApkValidation
+import org.koin.core.component.inject
 
 /**
  * Downloads the base Discord APK
@@ -12,7 +15,7 @@ import java.io.File
 class DownloadBaseStep(
     dir: File,
     workingDir: File,
-    version: String
+    private val version: String
 ): DownloadStep() {
 
     override val nameRes = R.string.step_dl_base
@@ -22,5 +25,12 @@ class DownloadBaseStep(
     override val workingCopy = workingDir.resolve("base-$version.apk")
     override val failureLabel = "base APK"
     override val importsManualDiscordSource = true
+
+    private val context: Context by inject()
+
+    override suspend fun verify() {
+        super.verify()
+        ApkValidation.validateDiscordBase(destination, context, version)
+    }
 
 }

@@ -234,6 +234,9 @@ class StepRunner(
             dev.beefers.vendetta.manager.installer.util.AxmlUtil.isBaseApk(it)
         }
         require(bases.size == 1) { "Import must contain exactly one Discord base APK plus its splits" }
+        dev.beefers.vendetta.manager.installer.util.ApkValidation.validateDiscordBase(
+            bases.single(), context, discordVersion.toVersionCode()
+        )
         // Archive entry order is not guaranteed. Patching expects the base first.
         mutableDiscordApks.remove(bases.single())
         mutableDiscordApks.add(0, bases.single())
