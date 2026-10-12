@@ -30,6 +30,7 @@ import org.koin.core.component.inject
 import java.io.File
 import java.time.Instant
 import java.util.zip.ZipInputStream
+import java.util.zip.ZipFile
 
 /**
  * Runs all installation steps in order
@@ -196,18 +197,27 @@ class StepRunner(
         patchedDir.mkdirs()
         val extension = source.extension.lowercase()
         if (extension == "apk") {
+            dev.beefers.vendetta.manager.installer.util.ApkValidation.validate(source)
             val out = patchedDir.resolve(source.name.ifBlank { "manual-discord.apk" })
             source.copyTo(out, overwrite = true)
             logger.i("Imported manual APK to ${out.absolutePath} (${out.length()} bytes)")
             registerDiscordApk(out)
         } else {
+            // ZipInputStream alone accepts truncated archives without a central directory.
+            ZipFile(source).use { zip ->
+                require(zip.entries().asSequence().any { it.name.endsWith(".apk", ignoreCase = true) }) {
+                    "APK bundle contains no APK files"
+                }
+            }
             ZipInputStream(source.inputStream().buffered()).use { zip ->
                 while (true) {
                     val entry = zip.nextEntry ?: break
                     if (!entry.isDirectory && entry.name.endsWith(".apk", ignoreCase = true)) {
                         val name = File(entry.name).name.ifBlank { "split-${mutableDiscordApks.size}.apk" }
                         val out = patchedDir.resolve(name)
+                        require(!out.exists()) { "APK bundle contains duplicate split filenames" }
                         out.outputStream().use { output -> zip.copyTo(output) }
+                        dev.beefers.vendetta.manager.installer.util.ApkValidation.validate(out)
                         logger.i("Imported manual split ${entry.name} to ${out.absolutePath} (${out.length()} bytes)")
                         registerDiscordApk(out)
                     }
@@ -219,6 +229,14 @@ class StepRunner(
         if (mutableDiscordApks.isEmpty()) {
             throw IllegalArgumentException("Invalid Discord APK/APKM file")
         }
+
+        val bases = mutableDiscordApks.filter {
+            dev.beefers.vendetta.manager.installer.util.AxmlUtil.isBaseApk(it)
+        }
+        require(bases.size == 1) { "Import must contain exactly one Discord base APK plus its splits" }
+        // Archive entry order is not guaranteed. Patching expects the base first.
+        mutableDiscordApks.remove(bases.single())
+        mutableDiscordApks.add(0, bases.single())
 
         manualDiscordImported = true
     }

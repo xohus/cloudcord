@@ -134,25 +134,37 @@ object ArscUtil {
         resourceId: BinaryResourceIdentifier,
         configurationName: String,
     ): String {
-        val packageChunk = this.packages.find { it.id == resourceId.packageId() }
-            ?: error("Unable to find target resource")
+        // Discord versions may use anydpi-v33 or resource aliases rather than v26.
+        return resolveResourceFileName(resourceId, configurationName, mutableSetOf())
+    }
 
-        val typeChunk = packageChunk.getTypeChunks(resourceId.typeId())
-            .find { it.configuration.toString() == configurationName }
-            ?: error("Unable to find target resource")
-
-        val entry = try {
-            typeChunk.getEntry(resourceId.entryId())!!
-        } catch (_: Throwable) {
-            error("Unable to find target resource")
+    private fun ResourceTableChunk.resolveResourceFileName(
+        resourceId: BinaryResourceIdentifier,
+        configurationName: String,
+        visited: MutableSet<Int>,
+    ): String {
+        require(visited.add(resourceId.resourceId())) { "Cyclic icon resource reference" }
+        val pkg = packages.find { it.id == resourceId.packageId() }
+            ?: error("Unable to find icon resource package")
+        val chunks = pkg.getTypeChunks(resourceId.typeId()).sortedBy {
+            if (it.configuration.toString() == configurationName) 0 else 1
         }
-
-        if (entry.isComplex || entry.value().type() != BinaryResourceValue.Type.STRING)
-            error("Target resource value type is not STRING")
-
-        val valueIdx = entry.value().data()
-        val value = this.stringPool.getString(valueIdx)
-
-        return value
+        for (chunk in chunks) {
+            val entry = runCatching { chunk.getEntry(resourceId.entryId()) }.getOrNull() ?: continue
+            if (entry.isComplex) continue
+            val value = entry.value()
+            if (value.type() == BinaryResourceValue.Type.STRING) {
+                val path = stringPool.getString(value.data())
+                if (path.endsWith(".xml")) return path
+            } else if (value.type() == BinaryResourceValue.Type.REFERENCE) {
+                val id = value.data()
+                val alias = BinaryResourceIdentifier.create(id ushr 24, (id ushr 16) and 0xff, id and 0xffff)
+                val path = runCatching {
+                    resolveResourceFileName(alias, configurationName, visited.toMutableSet())
+                }.getOrNull()
+                if (path != null) return path
+            }
+        }
+        error("No adaptive XML icon found for resource ${resourceId.resourceId()}")
     }
 }

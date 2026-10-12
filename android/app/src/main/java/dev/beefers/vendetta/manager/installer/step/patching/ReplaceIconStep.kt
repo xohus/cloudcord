@@ -3,6 +3,7 @@ package dev.beefers.vendetta.manager.installer.step.patching
 import android.content.Context
 import androidx.compose.ui.graphics.Color
 import com.github.diamondminer88.zip.ZipWriter
+import com.github.diamondminer88.zip.ZipReader
 import dev.beefers.vendetta.manager.R
 import dev.beefers.vendetta.manager.domain.manager.PreferenceManager
 import dev.beefers.vendetta.manager.installer.step.Step
@@ -51,8 +52,11 @@ class ReplaceIconStep : Step() {
         }
         
         for (rscFile in setOf(squareIconFile, roundIconFile)) { // setOf to not possibly patch same file twice
-            val referencePath = if (postfix == null) rscFile else {
+            val preferredReference = if (postfix == null) rscFile else {
                 rscFile.replace("_$postfix.xml", ".xml")
+            }
+            val referencePath = ZipReader(baseApk).use {
+                if (it.openEntry(preferredReference) != null) preferredReference else rscFile
             }
 
             runner.logger.i("Patching adaptive icon ($rscFile <- $referencePath)")

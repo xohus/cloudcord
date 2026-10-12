@@ -13,6 +13,7 @@ import dev.beefers.vendetta.manager.installer.step.Step
 import dev.beefers.vendetta.manager.installer.step.StepGroup
 import dev.beefers.vendetta.manager.installer.step.StepRunner
 import dev.beefers.vendetta.manager.installer.step.StepStatus
+import dev.beefers.vendetta.manager.installer.util.ApkValidation
 import dev.beefers.vendetta.manager.utils.mainThread
 import dev.beefers.vendetta.manager.utils.showToast
 import kotlinx.coroutines.CancellationException
@@ -66,6 +67,7 @@ abstract class DownloadStep: Step() {
 
         if (destination.length() <= 0)
             error("Downloaded file is empty: ${destination.absolutePath}")
+        ApkValidation.validate(destination)
     }
 
     override suspend fun run(runner: StepRunner) {
@@ -84,7 +86,14 @@ abstract class DownloadStep: Step() {
         runner.logger.i("Checking if $fileName is cached")
         if (destination.exists()) {
             runner.logger.i("Checking if $fileName isn't empty")
-            if (destination.length() > 0) {
+            val validCache = try {
+                verify()
+                true
+            } catch (e: Exception) {
+                runner.logger.i("Discarding invalid cached APK: ${e.message}")
+                false
+            }
+            if (validCache) {
                 runner.logger.i("$fileName is cached")
                 cached = true
 
@@ -96,7 +105,7 @@ abstract class DownloadStep: Step() {
                 return
             }
 
-            runner.logger.i("Deleting empty file: $fileName")
+            runner.logger.i("Deleting invalid cached file: $fileName")
             destination.delete()
         }
 
@@ -123,6 +132,7 @@ abstract class DownloadStep: Step() {
                     verify()
                     runner.logger.i("$fileName downloaded successfully")
                 } catch (t: Throwable) {
+                    destination.delete()
                     mainThread {
                         context.showToast(R.string.msg_download_verify_failed)
                     }

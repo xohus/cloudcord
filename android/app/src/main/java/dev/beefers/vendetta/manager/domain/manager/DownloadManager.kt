@@ -73,6 +73,9 @@ class DownloadManager(
                     }
                 }
 
+                require(totalBytes == null || totalBytes <= 0 || bytesDownloaded == totalBytes) {
+                    "Incomplete download: expected $totalBytes bytes, received $bytesDownloaded"
+                }
                 DownloadResult.Success(
                     httpStatusCode = statusCode,
                     bytesDownloaded = bytesDownloaded,

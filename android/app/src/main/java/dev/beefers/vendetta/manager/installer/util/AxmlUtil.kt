@@ -8,6 +8,12 @@ import com.google.devrel.gmscore.tools.apk.arsc.*
 import java.io.File
 
 object AxmlUtil {
+    fun isBaseApk(apk: File): Boolean {
+        val manifest = readAxml(apk, "AndroidManifest.xml").getMainAxmlChunk()
+        val root = manifest.getStartElementChunk("manifest") ?: error("Missing manifest root")
+        val splitIdx = manifest.stringPool.indexOf("split")
+        return root.attributes.none { it.nameIndex() == splitIdx }
+    }
     /**
      * Read and parse a specific axml resource inside an APK
      * @param apk The source apk
@@ -184,10 +190,10 @@ object AxmlUtil {
 
         val roundIcon = applicationChunk.attributes
             .find { it.nameIndex() == roundIconStringIdx }
-            ?: error("Unable to find android:roundIcon in manifest")
+            ?: squareIcon // roundIcon is optional in Android manifests.
 
-        assert(squareIcon.typedValue().type() == BinaryResourceValue.Type.REFERENCE)
-        assert(roundIcon.typedValue().type() == BinaryResourceValue.Type.REFERENCE)
+        require(squareIcon.typedValue().type() == BinaryResourceValue.Type.REFERENCE)
+        require(roundIcon.typedValue().type() == BinaryResourceValue.Type.REFERENCE)
 
         return ManifestIconInfo(
             // Resource IDs into resources.arsc
