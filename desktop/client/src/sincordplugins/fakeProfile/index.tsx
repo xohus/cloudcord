@@ -1750,8 +1750,9 @@ fakeObfuscatedEmail(real: string | null) {
             channelActions: ChannelActionCreators,
             platforms: findByProps("isSupported", "getByUrl"), openDetail: (entry, ownerId) => openSocialDetail(entry,
                 ownerId === UserStore.getCurrentUser()?.id && !("service" in entry) ? () => {
-                    storedData = { ...storedData, customFriends: storedData.customFriends?.filter(friend => friend.id !== entry.id), syncRevision: Date.now() };
                     const owner = activeUserId();
+                    if (!owner || owner !== ownerId) return;
+                    storedData = { ...storedData, customFriends: storedData.customFriends?.filter(friend => friend.id !== entry.id), syncRevision: Date.now() };
                     allAccountsData[owner] = storedData;
                     saveDataSync(storedData, isEnabled); saveAllDataSync();
                     void DataStore.set(DS_KEY, storedData); void DataStore.set(DS_ALL_DATA, allAccountsData);
