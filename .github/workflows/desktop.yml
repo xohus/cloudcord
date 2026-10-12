@@ -1,6 +1,6 @@
 name: CloudCord Desktop
 concurrency:
-  group: cloudcord-desktop-release
+  group: cloudcord-desktop-release-${{ github.ref }}
   cancel-in-progress: true
 
 on:
@@ -242,6 +242,7 @@ jobs:
           test -f desktop/client/dist/desktop.asar
 
       - name: Upload binaries to GitHub Release (Production)
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: new_beta_t_desktop
@@ -265,6 +266,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload binaries to GitHub Release (Isolated Test Channel)
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: new_beta_test_desktop
