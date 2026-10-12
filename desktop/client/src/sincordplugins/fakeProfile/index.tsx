@@ -9,7 +9,8 @@
 
 import "./style.css";
 import decorationCatalog from "./decorations.json";
-import { appearanceOptions, availableServerTags, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, ProfileAppearance, serverTagIconURL } from "@utils/profileAppearance";
+import { CustomSocialEditor, CustomSocialSection } from "./CustomSocial";
+import { appearanceOptions, availableServerTags, customDiscordMediaURL, customSocialValidationErrors, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, ProfileAppearance, serverTagIconURL } from "@utils/profileAppearance";
 import { findByProps } from "@webpack";
 
 import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
@@ -756,6 +757,16 @@ function refreshVisibleSharedProfiles() {
     for (const userId of sharedProfiles.keys()) requestSharedProfile(userId, true);
 }
 
+const socialLookupAt = new Map<string, number>();
+function getCustomSocialData(userId: string): ProfileAppearance | null | undefined {
+    if (isMe(userId)) return isEnabled ? storedData : null;
+    if (Date.now() - (socialLookupAt.get(userId) || 0) > 30000) {
+        socialLookupAt.set(userId, Date.now());
+        requestSharedProfile(userId);
+    }
+    return sharedProfiles.get(userId);
+}
+
 function decorateSharedIdentity(source: any, data: CustomProfileData) {
     if (!source || !data) return source;
     const username = data.username || source.username;
@@ -1204,9 +1215,11 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         setSaveError("");
         try {
             const appearance = normalizeProfileAppearance(data);
+            const socialErrors = customSocialValidationErrors(data);
+            if (socialErrors.length) throw new Error(socialErrors[0]);
             if (data.serverTag && !appearance.serverTag) throw new Error("Enter a 1–4 character tag, a valid server ID, and a valid badge hash or leave the badge empty.");
             if (data.displayNameStyles && !appearance.displayNameStyles) throw new Error("Choose valid username styles and colors.");
-            const savedData = { ...data, ...(useEverywhere ? { syncRevision: Date.now() } : {}) };
+            const savedData = { ...data, ...appearance, ...(useEverywhere ? { syncRevision: Date.now() } : {}) };
             allAccountsData[selectedAccountId] = savedData; allAccountsEnabled[selectedAccountId] = true;
             if (selectedAccountId === myId) {
                 storedData = savedData; isEnabled = true; saveDataSync(storedData, true);
@@ -1331,6 +1344,20 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             </div>
             {!decorations.length && <div className="cp-hint">No matching decorations.</div>}
             {decorationLimit < decorations.length && <Button onClick={() => setDecorationLimit(limit => limit + 24)}>Load More</Button>}
+            <CustomSocialEditor data={data} onChange={value => setData(current => ({...current,...value}))} resolveUser={async userId => {
+                let shared = sharedProfiles.get(userId);
+                if (!shared && !isMe(userId)) {
+                    try {
+                        const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`, { signal: AbortSignal.timeout(10000) });
+                        if (response.ok) { const payload = await response.json(); shared = fromSharedProfile(payload?.profile ?? payload); sharedProfiles.set(userId, shared); sharedProfileFetchedAt.set(userId, Date.now()); }
+                    } catch { /* Cached Discord user data remains usable offline. */ }
+                }
+                if (isMe(userId) && isEnabled) shared = storedData;
+                const user = UserStore.getUser(userId);
+                if (!shared && !user) return null;
+                const profile = UserProfileStore.getUserProfile(userId) as any;
+                return { username: shared?.username || user?.username || "", displayName: shared?.globalName || user?.globalName || "", avatar: shared?.avatar || (user ? IconUtils.getUserAvatarURL(user) : ""), banner: shared?.banner || customDiscordMediaURL("banners", userId, profile?.banner ?? (user as any)?.banner), bio: shared?.bio || profile?.bio || "", badges: user ? badgeLayoutRows(shared || {}, userId).map(badge => ({name:badge.description || badge.key || "Badge",icon:badge.iconSrc || ""})) : [] };
+            }} />
             <div className="cp-upload-section">
                 <div className="cp-section-label">Custom Badges and Pictures</div>
                 <p>Add a badge, profile picture or banner.</p>
@@ -1358,6 +1385,11 @@ export default definePlugin({
     description: "Updating / experimental — visually customize your profile. Some options may currently contain errors.",
     authors: [SincordDevs.nobody],
     dependencies: ["HeaderBarAPI", "ContextMenuAPI"],
+
+    renderProfileSection: {
+        render: ({userId}) => <CustomSocialSection userId={userId} getData={getCustomSocialData} />,
+        priority: 10
+    },
 
     patches: [
         {
