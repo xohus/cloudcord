@@ -97,7 +97,8 @@ export function customConnectionServiceName(service: string): string {
 
 export function customSocialValidationErrors(data: ProfileAppearance): string[] {
     const errors: string[] = [];
-    for (const [kind, entries] of [["friend", data?.customFriends], ["connection", data?.customConnections]] as const) {
+    const retiredFriends: CustomFriendPreview[] = [];
+    for (const [kind, entries] of [["friend", retiredFriends], ["connection", data?.customConnections]] as const) {
         if (!entries) continue;
         if (!Array.isArray(entries)) { errors.push(`Custom ${kind} entries must be a list.`); continue; }
         if (entries.length > 30) errors.push(`Keep at most 30 custom ${kind} entries.`);
@@ -136,13 +137,8 @@ export function normalizeCustomSocial(data: any): Pick<ProfileAppearance, "custo
     const result: Pick<ProfileAppearance, "customFriends" | "customConnections"> = {};
     const records = (value: any) => Array.isArray(value) ? value.slice(0, 30).filter(item => item && typeof item === "object" && !Array.isArray(item)) : [];
     const unique = <T extends { id: string }>(items: T[]) => items.filter((item, index) => item.id && items.findIndex(other => other.id === item.id) === index);
-    if (Array.isArray(data?.customFriends)) result.customFriends = unique(records(data.customFriends).map(item => ({
-        id: textField(item.id, 80),
-        ...(typeof item.userId === "string" && /^\d{15,22}$/.test(item.userId) ? { userId: item.userId } : {}),
-        username: textField(item.username, 80), displayName: textField(item.displayName, 80),
-        avatar: customPreviewURL(item.avatar), banner: customPreviewURL(item.banner), bio: textField(item.bio, 1000),
-        badges: records(item.badges).slice(0, 20).map(badge => ({ name: textField(badge.name, 80), icon: customPreviewURL(badge.icon) })).filter(badge => badge.name)
-    })).filter(item => item.username || item.displayName || item.userId));
+    // Retired feature: ignore old/shared friend previews without changing Discord friendships.
+    if (data?.customFriends !== undefined) result.customFriends = [];
     const services = ["steam", "youtube", "roblox", "twitch", "github", "spotify", "x", "reddit", "other"];
     if (Array.isArray(data?.customConnections)) result.customConnections = unique(records(data.customConnections).map(item => ({
         id: textField(item.id, 80),

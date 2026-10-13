@@ -44,7 +44,7 @@ export function CustomSocialEditor({data,onChange,resolveUser}:{data:ProfileAppe
     const [accountQuery,setAccountQuery]=useState(""),[itemQuery,setItemQuery]=useState("");
     const [matches,setMatches]=useState<NonNullable<CustomConnectionPreview["items"]>>([]);
     const navigation=NavigationNative.useNavigation();
-    const friends=data.customFriends||[],connections=data.customConnections||[];
+    const friends:CustomFriendPreview[]=[],connections=data.customConnections||[];
     const entry=[...friends,...connections].find(item=>item.id===selected);
     const latest=useRef(data);latest.current=data;
     const activeSelection=useRef(selected);activeSelection.current=selected;
@@ -71,8 +71,8 @@ export function CustomSocialEditor({data,onChange,resolveUser}:{data:ProfileAppe
     const patch=(fields:Partial<Entry>)=>{if(entry) update({...entry,...("service" in entry?{mode:"manual",fetchedAt:""}:{}),...fields} as Entry);};
     const add=(connection:boolean)=>{const common={id:createId(),username:"",displayName:"",avatar:"",banner:"",bio:""};if(connection)onChange({customConnections:[...connections,{...common,service:"steam",accountId:"",url:"",details:[]}]});else onChange({customFriends:[...friends,{...common,badges:[]}]});setSelected(common.id);setError("");};
     const move=(item:Entry,direction:number)=>{const items=[...("service" in item?connections:friends)];const index=items.findIndex(other=>other.id===item.id),target=index+direction;if(target<0||target>=items.length)return;[items[index],items[target]]=[items[target],items[index]];onChange("service" in item?{customConnections:items as CustomConnectionPreview[]}:{customFriends:items as CustomFriendPreview[]});};
-    return <View style={{padding:14,gap:12}}><Text variant="heading-md/bold" color="text-normal">Custom friends & connections</Text><Text color="text-muted">Shared custom previews. These don't create real friendships or verified linked accounts.</Text>
-        <Button text="Add friend" disabled={friends.length>=30} onPress={()=>add(false)}/><Button text="Add connection" disabled={connections.length>=30} onPress={()=>add(true)}/>
+    return <View style={{padding:14,gap:12}}><Text variant="heading-md/bold" color="text-normal">Custom connections</Text><Text color="text-muted">Shared custom previews. These don't create verified linked accounts.</Text>
+        <Button text="Add connection" disabled={connections.length>=30} onPress={()=>add(true)}/>
         {[...friends,...connections].map(item=><View key={item.id} style={{gap:8,paddingVertical:12,borderBottomWidth:1,borderBottomColor:"#80808040"}}>
             <TableRow arrow icon={item.avatar?<TableRow.Icon source={{uri:item.avatar}}/>:undefined} label={item.displayName||item.username||"New entry"} subLabel={"service" in item?customConnectionServiceName(item.service):"Custom friend"} onPress={()=>{setSelected(item.id);setError("");}}/>
             <View style={{flexDirection:"row",flexWrap:"wrap",gap:8}}>

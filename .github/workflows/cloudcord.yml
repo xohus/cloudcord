@@ -2273,10 +2273,6 @@ jobs:
                   return cloneObject(user, "user");
               });
               addPatch("getUser", userStore, (args, original) => {
-                  const socialOwner = typeof args[0] === "string" && args[0].startsWith("cloudcord-friend:") ? args[0].split(":")[1] : "";
-                  const socialData = isCurrentUser(socialOwner) ? preview.enabled ? preview : null : getProfileOverride(socialOwner);
-                  const custom = socialOwner ? nativeSocialFriends(socialOwner, socialData).find(row => row.userId === args[0]) : null;
-                  if (custom) return custom.user;
                   if (!isCurrentUser(args?.[0])) return original(...args);
                   const user = original(...args);
                   realCurrentUser = user || realCurrentUser;
@@ -2284,24 +2280,6 @@ jobs:
               });
 
               const profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
-              const friendsStore = safeStore("FriendsStore");
-              const readSocialFriends = createNativeSocialFriendsReader();
-              addPatch("getState", friendsStore, (args, original) => readSocialFriends(original(...args), String(currentUserId || ""), preview.enabled ? preview : null));
-              addPatch("getMutualFriends", profileStore, (args, original) => {
-                  const result = original(...args);
-                  const owner = String(args[0] || "");
-                  if (!isCurrentUser(owner)) requestSharedProfile(owner);
-                  const data = isCurrentUser(owner) ? preview.enabled ? preview : null : getProfileOverride(owner);
-                  const friends = nativeSocialFriends(owner,data);
-                  return friends.length ? [...(Array.isArray(result) ? result : []), ...friends.map(row => ({key:row.key,status:row.status,user:row.user,cloudcordCustom:true}))] : result;
-              });
-              addPatch("getMutualFriendsCount", profileStore, (args, original) => {
-                  const owner = String(args[0] || "");
-                  const data = isCurrentUser(owner) ? preview.enabled ? preview : null : getProfileOverride(owner);
-                  const extra = nativeSocialFriends(owner,data).length;
-                  const count = original(...args);
-                  return extra ? Number(count || 0) + extra : count;
-              });
               diagnostics.profileStore = !!profileStore;
               addPatch("getUserProfile", profileStore, (args, original) => {
                   const result = original(...args);

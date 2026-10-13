@@ -31,21 +31,6 @@ export function installNativeSocialHooks(options: Hooks) {
         const owner = id.split(":")[1];
         return nativeSocialFriends(owner,owner === options.ownId() ? options.ownData() : options.getData?.(owner)).find(row => row.userId === id);
     };
-    const readFriends = createNativeSocialFriendsReader();
-    wrap(options.friendsStore, "getState", (original,args) => readFriends(original(...args),options.ownId(),options.ownData()));
-    wrap(options.userStore, "getUser", (original,args) => friend(args[0])?.user || original(...args));
-    wrap(options.profileStore, "getMutualFriends", (original,args) => {
-        const result = original(...args);
-        const owner = String(args[0] || "");
-        const custom = nativeSocialFriends(owner,owner === options.ownId() ? options.ownData() : options.getData?.(owner));
-        return custom.length ? [...(Array.isArray(result) ? result : []), ...custom.map(row => ({key:row.key,status:row.status,user:row.user,cloudcordCustom:true}))] : result;
-    });
-    wrap(options.profileStore, "getMutualFriendsCount", (original,args) => {
-        const count = original(...args);
-        const owner = String(args[0] || "");
-        const extra = nativeSocialFriends(owner,owner === options.ownId() ? options.ownData() : options.getData?.(owner)).length;
-        return extra ? Number(count || 0) + extra : count;
-    });
     wrap(options.profileActions, "openUserProfileModal", (original,args) => {
         const id = args[0]?.userId || args[0]?.id || args[0];
         if (typeof id !== "string" || !id.startsWith("cloudcord-friend:")) return original(...args);
