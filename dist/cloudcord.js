@@ -16486,6 +16486,30 @@
       ...TAB_KEYS.filter((key) => !savedOrder.includes(key))
     ];
     var [movingKey, setMovingKey] = (0, import_react7.useState)(null);
+    var [broadcastCheck, setBroadcastCheck] = (0, import_react7.useState)(null);
+    (0, import_react7.useEffect)(() => {
+      var active = true;
+      readFile("rain/cloudcord-broadcast-check.json", {
+        prefix: ""
+      }).then((raw) => {
+        var data = JSON.parse(raw);
+        var safe = {};
+        for (var key of [
+          "hostSharedContainerAvailable",
+          "broadcastExtensionPresent",
+          "broadcastUploadPointValid"
+        ]) {
+          if (typeof data?.[key] === "boolean")
+            safe[key] = data[key];
+        }
+        if (active)
+          setBroadcastCheck(Object.keys(safe).length ? safe : null);
+      }).catch(() => {
+      });
+      return () => {
+        active = false;
+      };
+    }, []);
     var [versions, setVersions] = (0, import_react7.useState)([]);
     (0, import_react7.useEffect)(() => initializeDiagnosticsCapture(), []);
     (0, import_react7.useEffect)(() => {
@@ -16517,6 +16541,7 @@
         discord: `${debug.discord.version} (${debug.discord.build})`,
         platform: debug.os,
         loader: debug.bunny.loader,
+        broadcastCheck,
         diagnosticsCapture: settings.cloudcordDiagnosticsCapture === true,
         runtimeUrl: loaderConfig.customLoadUrl.enabled ? loaderConfig.customLoadUrl.url : "stable",
         profileIdentity: (() => {
@@ -16737,6 +16762,7 @@
       init_storage();
       init_assets();
       init_debug();
+      init_fs();
       init_modules();
       init_jsx();
       init_settings();
