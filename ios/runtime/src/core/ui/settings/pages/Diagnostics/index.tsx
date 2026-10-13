@@ -2,6 +2,7 @@ import { PupuIcon } from "@core/ui/settings";
 import { useProxy } from "@core/vendetta/storage";
 import { findAssetId } from "@lib/api/assets";
 import { getDebugInfo } from "@lib/api/debug";
+import { readFile } from "@lib/api/native/fs";
 import { BundleUpdaterManager } from "@lib/api/native/modules";
 import { onJsxCreate } from "@lib/api/react/jsx";
 import { loaderConfig, settings } from "@lib/api/settings";
@@ -177,6 +178,19 @@ export default function Diagnostics() {
     const savedOrder = settings.cloudcordTabOrder ?? [];
     const order = [...savedOrder.filter(key => TAB_KEYS.includes(key as any)), ...TAB_KEYS.filter(key => !savedOrder.includes(key))];
     const [movingKey, setMovingKey] = useState<string | null>(null);
+    const [broadcastCheck, setBroadcastCheck] = useState<Record<string, boolean> | null>(null);
+    useEffect(() => {
+        let active = true;
+        readFile("rain/cloudcord-broadcast-check.json", { prefix: "" }).then(raw => {
+            const data = JSON.parse(raw);
+            const safe: Record<string, boolean> = {};
+            for (const key of ["hostSharedContainerAvailable", "broadcastExtensionPresent", "broadcastUploadPointValid"]) {
+                if (typeof data?.[key] === "boolean") safe[key] = data[key];
+            }
+            if (active) setBroadcastCheck(Object.keys(safe).length ? safe : null);
+        }).catch(() => {});
+        return () => { active = false; };
+    }, []);
     const [versions, setVersions] = useState<Array<{ sha: string; date: string; title: string; }>>([]);
     useEffect(() => initializeDiagnosticsCapture(), []);
     useEffect(() => {
@@ -206,6 +220,7 @@ export default function Diagnostics() {
             discord: `${debug.discord.version} (${debug.discord.build})`,
             platform: debug.os,
             loader: debug.bunny.loader,
+            broadcastCheck,
             diagnosticsCapture: settings.cloudcordDiagnosticsCapture === true,
             runtimeUrl: loaderConfig.customLoadUrl.enabled ? loaderConfig.customLoadUrl.url : "stable",
             profileIdentity: (() => {

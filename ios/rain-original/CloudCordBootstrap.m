@@ -9,6 +9,23 @@ __attribute__((constructor)) static void connectCloudCordToRain(void) {
         NSURL *documents = [fm URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].lastObject;
         NSURL *rain = [documents URLByAppendingPathComponent:@"rain"];
         [fm createDirectoryAtURL:rain withIntermediateDirectories:YES attributes:nil error:nil];
+        // Inspect the actual installed host after the user's signer has processed it.
+        // No certificate, account, receipt or authentication data is collected.
+        BOOL sharedContainerAvailable = NO;
+        @try {
+            sharedContainerAvailable = [fm containerURLForSecurityApplicationGroupIdentifier:@"group.com.hammerandchisel.discord"] != nil;
+        } @catch (NSException *exception) {
+            sharedContainerAvailable = NO;
+        }
+        NSURL *broadcast = [NSBundle.mainBundle.bundleURL URLByAppendingPathComponent:@"PlugIns/BroadcastUpload.appex"];
+        NSDictionary *broadcastInfo = [NSDictionary dictionaryWithContentsOfURL:[broadcast URLByAppendingPathComponent:@"Info.plist"]];
+        NSDictionary *broadcastCheck = @{
+            @"hostSharedContainerAvailable": @(sharedContainerAvailable),
+            @"broadcastExtensionPresent": @([fm fileExistsAtPath:broadcast.path]),
+            @"broadcastUploadPointValid": @([broadcastInfo[@"NSExtension"][@"NSExtensionPointIdentifier"] isEqualToString:@"com.apple.broadcast-services-upload"])
+        };
+        NSData *broadcastJSON = [NSJSONSerialization dataWithJSONObject:broadcastCheck options:0 error:nil];
+        [broadcastJSON writeToURL:[rain URLByAppendingPathComponent:@"cloudcord-broadcast-check.json"] atomically:YES];
         NSURL *runtime = [NSBundle.mainBundle.bundleURL URLByAppendingPathComponent:@"BunnyResources.bundle/runtime.js"];
         NSData *data = [NSData dataWithContentsOfURL:runtime];
         if (!data.length) {
