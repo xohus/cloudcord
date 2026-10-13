@@ -13,6 +13,8 @@ on:
       - "ios/native-ios/**"
       - "ios/runtime/**"
       - "ios/scripts/package-cloudcord-ipa.py"
+      - "ios/scripts/verify-broadcast-ipa.py"
+      - "ios/scripts/test-broadcast-capabilities.py"
 
 jobs:
   build:
@@ -76,6 +78,8 @@ jobs:
 
       - name: Verify Discord 331 broadcast entitlements
         run: |
+          python3 ios/scripts/test-broadcast-capabilities.py
+          python3 ios/scripts/verify-broadcast-ipa.py cloudcord0-331.ipa
           rm -rf "$RUNNER_TEMP/cloudcord-331-check"
           unzip -q cloudcord0-331.ipa -d "$RUNNER_TEMP/cloudcord-331-check"
           APP="$RUNNER_TEMP/cloudcord-331-check/Payload/Discord.app"
