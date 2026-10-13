@@ -6246,10 +6246,11 @@
       });
     };
     var errors = [];
+    var retiredFriends = [];
     for (var [kind, entries] of [
       [
         "friend",
-        data?.customFriends
+        retiredFriends
       ],
       [
         "connection",
@@ -6263,22 +6264,8 @@
     var result = {};
     var records = (value) => Array.isArray(value) ? value.slice(0, 30).filter((item) => item && typeof item === "object" && !Array.isArray(item)) : [];
     var unique = (items) => items.filter((item, index) => item.id && items.findIndex((other) => other.id === item.id) === index);
-    if (Array.isArray(data?.customFriends))
-      result.customFriends = unique(records(data.customFriends).map((item) => ({
-        id: textField(item.id, 80),
-        ...typeof item.userId === "string" && /^\d{15,22}$/.test(item.userId) ? {
-          userId: item.userId
-        } : {},
-        username: textField(item.username, 80),
-        displayName: textField(item.displayName, 80),
-        avatar: customPreviewURL(item.avatar),
-        banner: customPreviewURL(item.banner),
-        bio: textField(item.bio, 1e3),
-        badges: records(item.badges).slice(0, 20).map((badge) => ({
-          name: textField(badge.name, 80),
-          icon: customPreviewURL(badge.icon)
-        })).filter((badge) => badge.name)
-      })).filter((item) => item.username || item.displayName || item.userId));
+    if (data?.customFriends !== void 0)
+      result.customFriends = [];
     var services = [
       "steam",
       "youtube",
@@ -6418,162 +6405,6 @@
     return {
       connectedAccounts: accounts,
       connected_accounts: accounts
-    };
-  }
-  function nativeSocialFriends(ownerId, data) {
-    return (normalizeCustomSocial(data).customFriends || []).map((entry) => {
-      var id = `cloudcord-friend:${ownerId}:${entry.id}`;
-      var name = entry.displayName || entry.username || entry.userId || "Custom friend";
-      var avatar = entry.avatar || "https://cdn.discordapp.com/embed/avatars/0.png";
-      var user = {
-        id,
-        username: entry.username || name,
-        globalName: name,
-        global_name: name,
-        discriminator: "0",
-        bot: false,
-        system: false,
-        avatar: null,
-        flags: 0,
-        publicFlags: 0,
-        purchasedFlags: 0,
-        premiumUsageFlags: 0,
-        premiumType: 0,
-        avatarDecorationData: null,
-        banner: null,
-        collectibles: null,
-        displayNameStyles: null,
-        guildMemberAvatars: {},
-        primaryGuild: null,
-        verified: false,
-        mobile: false,
-        desktop: false,
-        isProvisional: false,
-        tag: entry.username || name,
-        createdAt: /* @__PURE__ */ new Date(0),
-        cloudcordCustom: true,
-        cloudcordPreview: entry,
-        getAvatarURL: () => avatar,
-        getAvatarSource: () => ({
-          uri: avatar
-        }),
-        getTag: () => entry.username || name,
-        toString: () => name,
-        isPomelo: () => true,
-        hasUniqueUsername: () => true,
-        isClaimed: () => true
-      };
-      for (var method of [
-        "hadPremiumSubscription",
-        "hasAvatarForGuild",
-        "hasFlag",
-        "hasFreePremium",
-        "hasHadPremium",
-        "hasHadSKU",
-        "hasPremiumUsageFlag",
-        "hasPurchasedFlag",
-        "hasUrgentMessages",
-        "hasVerifiedEmailOrPhone",
-        "isFractionalPremiumWithNoSubscription",
-        "isLocalBot",
-        "isNonUserBot",
-        "isPhoneVerified",
-        "isPremiumGroupMember",
-        "isPremiumGroupPrimary",
-        "isPremiumWithFractionalPremiumOnly",
-        "isPremiumWithPremiumGroup",
-        "isSystemUser",
-        "isVerifiedBot"
-      ]) {
-        Object.assign(user, {
-          [method]: () => false
-        });
-      }
-      Object.assign(user, {
-        toJS: () => ({
-          id,
-          username: user.username,
-          globalName: name,
-          discriminator: "0",
-          bot: false,
-          system: false,
-          cloudcordCustom: true,
-          cloudcordPreview: entry
-        }),
-        update: (props) => ({
-          ...user,
-          ...props
-        }),
-        addGuildAvatarHash: () => user,
-        removeGuildAvatarHash: () => user
-      });
-      return {
-        key: id,
-        userId: id,
-        type: 1,
-        status: "offline",
-        isMobile: false,
-        activities: [],
-        applicationStream: null,
-        user,
-        usernameLower: user.username.toLowerCase(),
-        mutualGuildsLength: 0,
-        mutualGuilds: [],
-        nickname: null,
-        spam: false,
-        ignoredUser: false,
-        isGameRelationship: false,
-        comparator: [
-          1,
-          user.username.toLowerCase()
-        ],
-        cloudcordCustom: true,
-        cloudcordPreview: entry
-      };
-    });
-  }
-  function mergeNativeSocialFriends(original, ownerId, data, search = "") {
-    var real = Array.isArray(original) ? original.filter((row) => !row?.cloudcordCustom) : [];
-    var query = String(search || "").toLowerCase();
-    return [
-      ...real,
-      ...nativeSocialFriends(ownerId, data).filter((row) => !query || `${row.user.username} ${row.user.globalName}`.toLowerCase().includes(query))
-    ];
-  }
-  function nativeSocialFriendsState(state2, ownerId, data) {
-    if (!state2?.rows || !normalizeCustomSocial(data).customFriends?.length)
-      return state2;
-    var rows = Object.assign(Object.create(Object.getPrototypeOf(state2.rows)), state2.rows);
-    if (typeof state2.rows.filter === "function")
-      rows.filter = (section, search) => {
-        var result = state2.rows.filter(section, search);
-        return section === "ALL" ? mergeNativeSocialFriends(result, ownerId, data, search) : result;
-      };
-    if (Array.isArray(state2.rows._rows))
-      rows._rows = mergeNativeSocialFriends(state2.rows._rows, ownerId, data);
-    if (typeof state2.rows.getRelationshipCounts === "function")
-      rows.getRelationshipCounts = () => {
-        var counts = state2.rows.getRelationshipCounts();
-        return {
-          ...counts,
-          1: Number(counts?.[1] || 0) + nativeSocialFriends(ownerId, data).length
-        };
-      };
-    return {
-      ...state2,
-      rows
-    };
-  }
-  function createNativeSocialFriendsReader() {
-    var previousState, previousKey = "", previousResult;
-    return (state2, ownerId, data) => {
-      var safe = normalizeCustomSocial(data);
-      var key = `${ownerId}:${JSON.stringify(safe.customFriends || [])}`;
-      if (state2 === previousState && key === previousKey)
-        return previousResult;
-      previousState = state2;
-      previousKey = key;
-      return previousResult = nativeSocialFriendsState(state2, ownerId, safe);
     };
   }
   function nativeProfileAppearance(data) {
@@ -10554,7 +10385,7 @@
     var [accountQuery, setAccountQuery] = (0, import_react5.useState)(""), [itemQuery, setItemQuery] = (0, import_react5.useState)("");
     var [matches, setMatches] = (0, import_react5.useState)([]);
     var navigation2 = NavigationNative.useNavigation();
-    var friends = data.customFriends || [], connections = data.customConnections || [];
+    var friends = [], connections = data.customConnections || [];
     var entry = [
       ...friends,
       ...connections
@@ -10679,16 +10510,11 @@
         /* @__PURE__ */ jsx(Text, {
           variant: "heading-md/bold",
           color: "text-normal",
-          children: "Custom friends & connections"
+          children: "Custom connections"
         }),
         /* @__PURE__ */ jsx(Text, {
           color: "text-muted",
-          children: "Shared custom previews. These don't create real friendships or verified linked accounts."
-        }),
-        /* @__PURE__ */ jsx(Button, {
-          text: "Add friend",
-          disabled: friends.length >= 30,
-          onPress: () => add(false)
+          children: "Shared custom previews. These don't create verified linked accounts."
         }),
         /* @__PURE__ */ jsx(Button, {
           text: "Add connection",
@@ -13224,11 +13050,6 @@
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
-      var socialOwner = typeof args[0] === "string" && args[0].startsWith("cloudcord-friend:") ? args[0].split(":")[1] : "";
-      var socialData = isCurrentUser(socialOwner) ? preview.enabled ? preview : null : getProfileOverride(socialOwner);
-      var custom = socialOwner ? nativeSocialFriends(socialOwner, socialData).find((row) => row.userId === args[0]) : null;
-      if (custom)
-        return custom.user;
       if (!isCurrentUser(args?.[0]))
         return original(...args);
       var user = original(...args);
@@ -13236,33 +13057,6 @@
       return cloneObject(user, "user");
     });
     var profileStore = safeStore("UserProfileStore") || findByProps("getUserProfile", "getGuildMemberProfile");
-    var friendsStore = safeStore("FriendsStore");
-    var readSocialFriends = createNativeSocialFriendsReader();
-    addPatch("getState", friendsStore, (args, original) => readSocialFriends(original(...args), String(currentUserId || ""), preview.enabled ? preview : null));
-    addPatch("getMutualFriends", profileStore, (args, original) => {
-      var result = original(...args);
-      var owner = String(args[0] || "");
-      if (!isCurrentUser(owner))
-        requestSharedProfile(owner);
-      var data = isCurrentUser(owner) ? preview.enabled ? preview : null : getProfileOverride(owner);
-      var friends = nativeSocialFriends(owner, data);
-      return friends.length ? [
-        ...Array.isArray(result) ? result : [],
-        ...friends.map((row) => ({
-          key: row.key,
-          status: row.status,
-          user: row.user,
-          cloudcordCustom: true
-        }))
-      ] : result;
-    });
-    addPatch("getMutualFriendsCount", profileStore, (args, original) => {
-      var owner = String(args[0] || "");
-      var data = isCurrentUser(owner) ? preview.enabled ? preview : null : getProfileOverride(owner);
-      var extra = nativeSocialFriends(owner, data).length;
-      var count = original(...args);
-      return extra ? Number(count || 0) + extra : count;
-    });
     diagnostics.profileStore = !!profileStore;
     addPatch("getUserProfile", profileStore, (args, original) => {
       var result = original(...args);
