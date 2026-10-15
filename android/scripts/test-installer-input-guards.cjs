@@ -35,6 +35,10 @@ assert.ok(install.indexOf('Signer.verifyApk(apk)') < install.indexOf('installer.
 const viewModel = read('ui/viewmodel/installer/InstallerViewModel.kt');
 assert.equal((viewModel.match(/job\?\.cancelAndJoin\(\)/g) || []).length, 2);
 assert.ok(viewModel.includes('activeRunner.runAll()'));
+const launch = viewModel.slice(viewModel.indexOf('fun launchVendetta()'), viewModel.indexOf('fun cancelInstall()'));
+assert.ok(launch.indexOf('installManager.getInstalled()') < launch.indexOf('installManager.current'));
+assert.ok(launch.includes('if (intent == null)'));
+assert.ok(launch.includes('context.showToast(R.string.install_fail_generic)'));
 assert.ok(read('installer/step/Step.kt').includes('if (t is CancellationException) throw t'));
 const home = read('ui/viewmodel/home/HomeViewModel.kt');
 assert.ok(!home.includes('C0C0B01/CloudCordManager'));

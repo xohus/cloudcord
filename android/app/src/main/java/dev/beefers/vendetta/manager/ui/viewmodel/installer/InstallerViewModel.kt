@@ -98,11 +98,25 @@ class InstallerViewModel(
     }
 
     fun launchVendetta() {
-        installManager.current?.let {
-            val intent = context.packageManager.getLaunchIntentForPackage(it.packageName)?.apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(intent)
+        // Package broadcasts may arrive after this screen has already rendered.
+        installManager.getInstalled()
+        val installed = installManager.current
+        if (installed == null) {
+            logError("Installation has not produced a visible CloudCord app yet. Check the Android installation confirmation and installer logs.")
+            context.showToast(R.string.install_fail_generic)
+            return
+        }
+        val intent = context.packageManager.getLaunchIntentForPackage(installed.packageName)
+        if (intent == null) {
+            logError("Installed package ${installed.packageName} has no available launcher activity.")
+            context.showToast(R.string.install_fail_generic)
+            return
+        }
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) {
+            logError("Could not launch the installed CloudCord app: ${e.message}")
+            context.showToast(R.string.install_fail_generic)
         }
     }
 
