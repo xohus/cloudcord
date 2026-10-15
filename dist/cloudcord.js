@@ -15291,7 +15291,8 @@
         "553936745058664458": "Moderator",
         "463515440606609419": "Founder",
         "1121228881425354832": "Management",
-        "1540350369232850995": "Manager"
+        "1540350369232850995": "Manager",
+        "1169999011642605628": "Manager"
       };
       useBadgesModule2 = findByNameLazy("useBadges", false);
       useUserProfileModule = findByNameLazy("useUserProfile", false);
