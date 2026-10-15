@@ -50,4 +50,8 @@ const session = read('installer/session/SessionInstaller.kt');
 assert.ok(!session.includes('apk.readBytes()'));
 assert.ok(session.includes('input.copyTo(output)'));
 assert.ok(session.includes('abandonSession(sessionId)'));
+assert.ok(session.includes('completion.await()'),'success waits for Android confirmation');
+assert.ok(session.includes('InstallCompletion.forget(sessionId)'));
+const callback = read('installer/session/SessionInstallerService.kt');
+assert.ok(callback.includes('InstallCompletion.finish(sessionId, resultStatus'));
 console.log('PASS: installer input and resource source guards (not compilation or device verification)');

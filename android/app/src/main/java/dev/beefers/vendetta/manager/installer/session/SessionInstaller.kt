@@ -9,6 +9,7 @@ import android.content.pm.PackageManager
 import android.os.Build
 import dev.beefers.vendetta.manager.installer.Installer
 import java.io.File
+import kotlinx.coroutines.withTimeout
 
 internal class SessionInstaller(private val context: Context) : Installer {
 
@@ -27,6 +28,7 @@ internal class SessionInstaller(private val context: Context) : Installer {
 
         val packageInstaller = packageManager.packageInstaller
         val sessionId = packageInstaller.createSession(params)
+        val completion = InstallCompletion.register(sessionId)
         try {
             packageInstaller.openSession(sessionId).use { session ->
                 apks.forEach { apk ->
@@ -38,6 +40,7 @@ internal class SessionInstaller(private val context: Context) : Installer {
 
                 val callbackIntent = Intent(context, InstallService::class.java).apply {
                     action = "vendetta.actions.ACTION_INSTALL"
+                    putExtra("cloudcord.sessionId", sessionId)
                 }
 
                 @SuppressLint("UnspecifiedImmutableFlag")
@@ -49,10 +52,13 @@ internal class SessionInstaller(private val context: Context) : Installer {
 
                 session.commit(contentIntent.intentSender)
             }
+            withTimeout(10 * 60 * 1000L) { completion.await() }
         } catch (t: Throwable) {
             // Do not leave an incomplete package session after IO/cancellation errors.
             runCatching { packageInstaller.abandonSession(sessionId) }
             throw t
+        } finally {
+            InstallCompletion.forget(sessionId)
         }
     }
 }

@@ -22,13 +22,20 @@ class InstallService : Service() {
 
     override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
         val isInstall = intent.action == "vendetta.actions.ACTION_INSTALL"
+        val sessionId = intent.getIntExtra("cloudcord.sessionId", -1)
+        val resultStatus = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -999)
+        if (isInstall) InstallCompletion.finish(sessionId, resultStatus, intent.getStringExtra(PackageInstaller.EXTRA_STATUS_MESSAGE))
         when (val statusCode = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -999)) {
             PackageInstaller.STATUS_PENDING_USER_ACTION -> {
                 @Suppress("DEPRECATION") // No.
-                val confirmationIntent = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
-                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-                startActivity(confirmationIntent)
+                val confirmationIntent = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)
+                try {
+                    checkNotNull(confirmationIntent) { "Android did not provide an installation confirmation" }
+                    startActivity(confirmationIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                } catch (e: Exception) {
+                    InstallCompletion.finish(sessionId, PackageInstaller.STATUS_FAILURE, e.message)
+                    if (isInstall) showToast(R.string.install_fail_generic)
+                }
             }
 
             PackageInstaller.STATUS_SUCCESS -> if (isInstall) showToast(R.string.installer_success)
