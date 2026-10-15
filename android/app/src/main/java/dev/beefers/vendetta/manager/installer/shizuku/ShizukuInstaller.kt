@@ -40,7 +40,10 @@ class ShizukuInstaller(private val context: Context) : Installer, KoinComponent 
         }
 
         val installCommand = "pm install ${movedApks.joinToString(" ") { it.absolutePath }}"
-        executeShellCommand(installCommand)
+        val result = executeShellCommand(installCommand)
+        check(result.lineSequence().any { it.trim() == "Success" }) {
+            "Android package manager did not confirm installation: $result"
+        }
 
         installManager.getInstalled()
         movedApks.forEach {
@@ -55,7 +58,10 @@ class ShizukuInstaller(private val context: Context) : Installer, KoinComponent 
         val errorStr = process.errorStream.bufferedReader().use { it.readText().trim() }
         if(errorStr.isNotBlank()) throw RuntimeException("Failed to execute $command:\n\n$errorStr")
 
-        return process.inputStream.bufferedReader().use { it.readText().trim() }
+        val output = process.inputStream.bufferedReader().use { it.readText().trim() }
+        val exitCode = process.waitFor()
+        check(exitCode == 0) { "Android package command failed ($exitCode): $output" }
+        return output
     }
 
 }

@@ -53,7 +53,7 @@ class InstallStep(
         }
 
         installer.installApks(silent = !isMiui, *files)
-        runner.logger.i("Install result: install request submitted for ${files.size} APK(s)")
+        runner.logger.i("Install result: Android confirmed installation of ${files.size} APK(s)")
     }
 
 }
