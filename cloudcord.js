@@ -15840,7 +15840,11 @@
     return () => _async_to_generator(function* () {
       if (onPress)
         return void onPress();
+      if (typeof renderPromise !== "function")
+        return;
       var Component2 = yield renderPromise().then((m2) => m2.default);
+      if (!Component2)
+        return;
       if (typeof screenOptions === "string") {
         screenOptions = {
           title: screenOptions
@@ -15870,10 +15874,28 @@
       CustomPageRenderer = React.memo(() => {
         var navigation2 = NavigationNative.useNavigation();
         var route = NavigationNative.useRoute();
-        var { render: PageComponent, ...args } = route.params;
-        React.useEffect(() => void navigation2.setOptions({
-          ...args
-        }), []);
+        var { render: PageComponent, ...args } = route?.params ?? {};
+        React.useEffect(() => {
+          navigation2?.setOptions?.({
+            ...args
+          });
+        }, [
+          navigation2,
+          args.title
+        ]);
+        if (!PageComponent) {
+          return /* @__PURE__ */ jsx(ReactNative.View, {
+            style: {
+              padding: 24
+            },
+            children: /* @__PURE__ */ jsx(ReactNative.Text, {
+              style: {
+                color: "#b5bac1"
+              },
+              children: "This CloudCord page did not receive its navigation details. Go back and open it again from CloudCord settings."
+            })
+          });
+        }
         return /* @__PURE__ */ jsx(ErrorBoundary, {
           children: /* @__PURE__ */ jsx(PageComponent, {})
         });
