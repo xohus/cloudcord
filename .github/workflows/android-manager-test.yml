@@ -1,4 +1,5 @@
 name: CloudCord experimental Manager
+# Isolated tester build; never publishes over the production Android release.
 on:
   push:
     branches: [xohus/rain-manager-test]
