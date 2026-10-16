@@ -92,11 +92,17 @@ class HomeViewModel(
     }
 
     fun launchVendetta() {
-        installManager.current?.let {
-            val intent = context.packageManager.getLaunchIntentForPackage(it.packageName)?.apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            if (intent != null) context.startActivity(intent)
+        installManager.getInstalled()
+        val installed = installManager.current
+        val intent = installed?.let { context.packageManager.getLaunchIntentForPackage(it.packageName) }
+        if (intent == null) {
+            context.showToast(R.string.msg_launch_failed, short = false)
+            return
+        }
+        try {
+            context.startActivity(intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        } catch (e: Exception) {
+            context.showToast(R.string.msg_launch_failed, short = false)
         }
     }
 
