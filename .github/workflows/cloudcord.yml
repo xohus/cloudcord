@@ -109,6 +109,7 @@ jobs:
           cp "../ios/runtime/src/lib/ui/settings/index.tsx" "src/lib/ui/settings/index.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/tabs.tsx" "src/lib/ui/settings/patches/tabs.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/panel.tsx" "src/lib/ui/settings/patches/panel.tsx"
+          cp "../ios/runtime/src/lib/ui/settings/patches/shared.tsx" "src/lib/ui/settings/patches/shared.tsx"
           cp "../ios/runtime/src/lib/api/native/loader.ts" "src/lib/api/native/loader.ts"
           cp "../ios/runtime/src/lib/api/native/fs.ts" "src/lib/api/native/fs.ts"
           cp "../ios/runtime/src/lib/api/native/modules/index.ts" "src/lib/api/native/modules/index.ts"
