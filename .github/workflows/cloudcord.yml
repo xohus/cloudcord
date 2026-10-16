@@ -2048,8 +2048,8 @@ jobs:
                                   queueSharedPublish(); clearCache(); refreshPreview(); navigation.goBack();
                               } : undefined} />;
                           } }); };
-                          const tree = Component(detail ? { ...current, onPress: open, onClick: open, onOpenProfile: open } : current);
-                          return detail ? routeNativeSocialPress(tree,open) : tree;
+                          const nextProps = detail ? { ...current, onPress: open, onClick: open, onOpenProfile: open } : current;
+                          return <Component {...nextProps} />;
                       });
                       socialWrapperTypes.add(socialRenderers.get(Component)!);
                       return { ...rendered, type: socialRenderers.get(Component) };
@@ -2102,8 +2102,10 @@ jobs:
                           currentProps.name = name;
                       }
                   }
-                  const tree = Component(currentProps);
-                  return original && data ? replaceIdentityText(tree, original, data) : tree;
+                  // React must own this child's hooks. Calling Component(props)
+                  // merges Discord's hook sequence into this wrapper and can
+                  // trigger "Rendered fewer hooks" when profile state changes.
+                  return <Component {...currentProps} />;
               }
               identityRenderers.set(Component, CloudCordIdentity);
               return CloudCordIdentity;
