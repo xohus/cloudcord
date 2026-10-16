@@ -11368,6 +11368,8 @@
   }
   function publishSharedProfile() {
     return _async_to_generator(function* () {
+      if (rootSettings.fakeProfileLocalOnly)
+        return;
       if (!preview.enabled || !currentUserId)
         return;
       var socialErrors = customSocialValidationErrors(preview);
@@ -11394,6 +11396,8 @@
       var clearSnapshot = {
         ...rootSettings.fakeProfileMediaCleared || {}
       };
+      if (rootSettings.fakeProfileLocalOnly)
+        return;
       var response = yield fetch(`${SHARED_PROFILE_API}${path}`, {
         method: saved.id ? "PUT" : "POST",
         headers: {
@@ -11446,6 +11450,11 @@
     })();
   }
   function queueSharedPublish() {
+    if (rootSettings.fakeProfileLocalOnly) {
+      if (publishTimer)
+        clearTimeout(publishTimer);
+      return;
+    }
     if (!preview.enabled)
       return;
     if (publishTimer)
@@ -11456,6 +11465,8 @@
   }
   function pullOwnSharedProfile(force = false) {
     return _async_to_generator(function* () {
+      if (rootSettings.fakeProfileLocalOnly)
+        return;
       if (!force && (fakeProfileEditorOpen || Date.now() < suppressOwnPullUntil))
         return;
       if (!force && customSocialValidationErrors(preview).length)
@@ -11477,6 +11488,8 @@
         if (!response.ok)
           return;
         var payload = yield response.json();
+        if (rootSettings.fakeProfileLocalOnly)
+          return;
         var data = payload?.profile ?? payload;
         if (!data || typeof data !== "object")
           return;
@@ -14561,9 +14574,30 @@
                     redraw();
                   }
                 }),
+                /* @__PURE__ */ jsx(ToggleRow, {
+                  label: "Keep this profile on this device only",
+                  value: Boolean(rootSettings.fakeProfileLocalOnly),
+                  onPress: () => {
+                    var value = !rootSettings.fakeProfileLocalOnly;
+                    rootSettings.fakeProfileLocalOnly = value;
+                    if (publishTimer) {
+                      clearTimeout(publishTimer);
+                      publishTimer = null;
+                    }
+                    if (!value)
+                      queueSharedPublish();
+                    redraw();
+                  }
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/normal",
+                  color: "text-muted",
+                  children: "Device only stops profile uploads and downloads here. A previously shared profile remains shared until replaced."
+                }),
                 /* @__PURE__ */ jsx(ActionButton, {
                   label: "Use this profile on all devices",
                   onPress: () => void (() => _async_to_generator(function* () {
+                    rootSettings.fakeProfileLocalOnly = false;
                     preview.syncRevision = Date.now();
                     rootSettings.fakeProfile = {
                       ...preview,
@@ -15283,6 +15317,7 @@
       ];
       CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
       CLOUDCORD_STAFF_ROLES = {
+        "1465007041390317579": "Administrator",
         "1457121276748365989": "Administrator",
         "1497588725788442637": "Management",
         "1453130879537905734": "Management",
