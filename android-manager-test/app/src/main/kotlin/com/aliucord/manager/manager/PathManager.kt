@@ -21,7 +21,7 @@ class PathManager(
      * The Rain folder where shared Rain files are stored.
      * Standard path: `~/Rain`
      */
-    val rainDir = Environment.getExternalStorageDirectory().resolve("Rain")
+    val rainDir = context.filesDir.resolve("cloudcord-test")
 
     /**
      * The directory in external storage in which plugins are stored by Aliucord.

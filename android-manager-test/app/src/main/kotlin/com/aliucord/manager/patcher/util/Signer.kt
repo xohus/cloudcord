@@ -79,7 +79,7 @@ object Signer : KoinComponent {
             /* subject = */ x500Name,
             /* publicKeyInfo = */ SubjectPublicKeyInfo.getInstance(pair.public.encoded)
         )
-        val signer = JcaContentSignerBuilder("SHA1withRSA").build(pair.private)
+        val signer = JcaContentSignerBuilder("SHA256withRSA").build(pair.private)
 
         return KeySet(JcaX509CertificateConverter().getCertificate(builder.build(signer)), pair.private)
     }
