@@ -1,6 +1,7 @@
 package dev.beefers.vendetta.manager.installer.step.installing
 
 import android.content.Context
+import android.content.pm.PackageManager
 import dev.beefers.vendetta.manager.R
 import dev.beefers.vendetta.manager.domain.manager.InstallMethod
 import dev.beefers.vendetta.manager.domain.manager.PreferenceManager
@@ -45,6 +46,36 @@ class InstallStep(
         files.forEach { apk ->
             ApkValidation.validate(apk)
             Signer.verifyApk(apk)
+        }
+
+        // Detect a lost/replaced per-device signing key before opening the OS installer.
+        // Never uninstall an existing client to hide a certificate conflict.
+        @Suppress("DEPRECATION")
+        val archives = files.map { apk ->
+            context.packageManager.getPackageArchiveInfo(apk.absolutePath, PackageManager.GET_SIGNING_CERTIFICATES)
+                ?: error("Cannot read signed APK metadata: ${apk.name}")
+        }
+        val base = archives.first()
+        val signers = base.signingInfo?.apkContentsSigners?.toSet()
+        check(!signers.isNullOrEmpty()) { "Patched APK signing certificate is missing" }
+        archives.forEach { archive ->
+            check(archive.packageName == base.packageName && archive.longVersionCode == base.longVersionCode) {
+                "Discord APK splits do not belong to the same app version. Import a complete APK/APKM or retry the download."
+            }
+            check(archive.signingInfo?.apkContentsSigners?.toSet() == signers) {
+                "Discord APK splits have different signing certificates. Installation stopped."
+            }
+        }
+        @Suppress("DEPRECATION")
+        val installed = try {
+            context.packageManager.getPackageInfo(base.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        } catch (_: PackageManager.NameNotFoundException) {
+            null
+        }
+        if (installed != null) {
+            check(installed.signingInfo?.apkContentsSigners?.toSet() == signers) {
+                "Signing key mismatch with the installed CloudCord client. Updating requires the original Manager's signing key. Do not uninstall Discord or clear app data to bypass this error."
+            }
         }
 
         val installer: Installer = when (preferences.installMethod) {

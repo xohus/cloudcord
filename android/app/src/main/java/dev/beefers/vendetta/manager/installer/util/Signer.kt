@@ -127,7 +127,13 @@ object Signer : KoinComponent {
 
     fun verifyApk(apk: File) {
         val result = ApkVerifier.Builder(apk).build().verify()
-        require(result.isVerified) { "APK signature verification failed: ${apk.name}" }
+        require(result.isVerified) {
+            val errors = result.errors.joinToString("; ")
+            val v2Errors = result.v2SchemeSigners.flatMap { it.errors }.joinToString("; ")
+            val v3Errors = result.v3SchemeSigners.flatMap { it.errors }.joinToString("; ")
+            "APK signature verification failed: ${apk.name}. " +
+                listOf(errors, v2Errors, v3Errors).filter { it.isNotBlank() }.joinToString("; ")
+        }
     }
 
     private fun migrate(oldDir: File, newDir: File) {
