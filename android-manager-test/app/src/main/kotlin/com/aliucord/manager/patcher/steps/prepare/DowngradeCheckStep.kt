@@ -51,6 +51,8 @@ class DowngradeCheckStep(private val options: PatchOptions) : Step(), KoinCompon
         container.log("Target discord version: $targetVersion")
 
         if (currentVersion > targetVersion) {
+            error("A newer test client is already installed. Refusing to uninstall it or erase its data.")
+            /* Original upstream downgrade-uninstall flow is disabled for this test.
             container.log("Current installed version is greater than target, forcing uninstallation")
             mainThread { context.showToast(R.string.installer_uninstall_new) }
 
@@ -63,6 +65,7 @@ class DowngradeCheckStep(private val options: PatchOptions) : Step(), KoinCompon
 
                 else -> {}
             }
+            */
         }
     }
 }

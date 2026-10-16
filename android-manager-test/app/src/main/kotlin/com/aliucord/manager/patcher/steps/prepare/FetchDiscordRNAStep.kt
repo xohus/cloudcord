@@ -18,6 +18,9 @@ class FetchDiscordRNAStep(val options: PatchOptions) : Step(), KoinComponent {
     var targetVersion by Delegates.notNull<Int>()
         private set
     override suspend fun execute(container: StepRunner) {
+        check(options.packageName == "gg.xohus.cloudcord.client.test") {
+            "This test build only installs the separate CloudCord Test app. Existing Discord clients must not be replaced."
+        }
         targetVersion = if (options.isDevMode && options.customVersionCode.isNotBlank()) {
             options.customVersionCode.toInt()
         } else {

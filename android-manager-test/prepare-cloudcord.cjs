@@ -12,5 +12,7 @@ for (const dir of fs.readdirSync(root).filter(n => n.startsWith('values'))) {
             value => /Manager/.test(value) ? 'CloudCord Manager Test' : value === 'RainXposed' ? 'CloudCord module' : 'CloudCord');
     });
     if (dir === 'values') text = text.replace(/(<string name="app_name">)[^<]+/, '$1CloudCord Manager Test');
+    text = text.replace(/(<string name="play_protect_warning_desc">)[\s\S]*?<\/string>/,
+        '$1This is an experimental modified application. Keep Play Protect enabled. If Android blocks installation or shows a security warning, stop and send the exact warning to the tester coordinator. Do not bypass it.</string>');
     fs.writeFileSync(file, text);
 }
