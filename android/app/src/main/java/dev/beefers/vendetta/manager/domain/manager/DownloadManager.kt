@@ -2,6 +2,7 @@ package dev.beefers.vendetta.manager.domain.manager
 
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.HttpRequestTimeoutException
+import io.ktor.client.plugins.timeout
 import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsChannel
@@ -42,11 +43,19 @@ class DownloadManager(
         out: File,
         onProgressUpdate: (Float?) -> Unit
     ): DownloadResult {
+        var bytesDownloaded = 0L
         return try {
             out.parentFile?.mkdirs()
-            var bytesDownloaded = 0L
 
-            httpClient.prepareGet(url).execute { response: HttpResponse ->
+            httpClient.prepareGet(url) {
+                // APKs can legitimately take several minutes on mobile data.
+                // Keep stall detection without imposing the API's 90-second cap.
+                timeout {
+                    requestTimeoutMillis = 20 * 60 * 1000L
+                    connectTimeoutMillis = 30_000
+                    socketTimeoutMillis = 60_000
+                }
+            }.execute { response: HttpResponse ->
                 val statusCode = response.status.value
                 if (!response.status.isSuccess()) {
                     return@execute DownloadResult.Error(
@@ -90,7 +99,7 @@ class DownloadManager(
                 url = url,
                 httpStatusCode = null,
                 exceptionMessage = t.message ?: t::class.java.simpleName,
-                bytesDownloaded = out.length(),
+                bytesDownloaded = bytesDownloaded,
                 stacktrace = t.stackTraceToString(),
                 timedOut = t is HttpRequestTimeoutException || t is SocketTimeoutException,
             )
