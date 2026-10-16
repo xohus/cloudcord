@@ -22,7 +22,8 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "gg.xohus.cloudcord.manager.test"
+        // Keep the earlier tester Manager installed; its CI signing key is different.
+        applicationId = "gg.xohus.cloudcord.manager.test2"
         minSdk = 28
         targetSdk = 36
         versionCode = 1011
@@ -33,7 +34,7 @@ android {
             useSupportLibrary = true
         }
 
-        buildConfigField("String", "APPLICATION_NAME", "\"CloudCord Manager Test\"")
+        buildConfigField("String", "APPLICATION_NAME", "\"CloudCord Manager Test 2\"")
         buildConfigField("String", "TAG", "\"CloudCordManagerTest\"")
 
         buildConfigField("String", "CODEBERG_ORG", "\"raincord\"")
