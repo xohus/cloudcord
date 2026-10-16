@@ -34,6 +34,8 @@ class RestService(
     suspend fun getLatestDiscordVersions() = withContext(Dispatchers.IO) {
         httpService.request<Index> {
             url("${prefs.mirror.baseUrl}/tracker/index")
+            header("Cache-Control", "no-cache")
+            timeout { requestTimeoutMillis = 15_000 }
         }
     }
 

@@ -17,15 +17,13 @@ data class DiscordVersion(
     }
 
     override fun compareTo(other: DiscordVersion): Int =
-        toVersionCode().toInt() - other.toVersionCode().toInt()
+        toVersionCode().toLong().compareTo(other.toVersionCode().toLong())
 
     override fun toString() = "$major.$minor - ${type.label}"
 
     fun toVersionCode() = "$major${type.ordinal}${if (minor < 10) 0 else ""}${minor}"
 
     companion object {
-
-        val CLOUDCORD_SUPPORTED = DiscordVersion(344, 13, Type.STABLE)
 
         fun fromVersionCode(string: String): DiscordVersion? = with(string) {
             if (length < 4) return@with null

@@ -79,13 +79,14 @@ class HomeViewModel(
 
     fun getDiscordVersions() {
         screenModelScope.launch {
-            // CloudCord's embedded loader is validated against Discord 344.13.
-            // Do not silently install a newer Discord build with different RN hooks.
-            discordVersions = mapOf(
-                DiscordVersion.Type.STABLE to DiscordVersion.CLOUDCORD_SUPPORTED,
-                DiscordVersion.Type.BETA to null,
-                DiscordVersion.Type.ALPHA to null,
-            )
+            discordVersions = null
+            // Use the same live channel index as the background update checker.
+            // Never disguise a failed lookup as an up-to-date pinned release.
+            discordVersions = repo.getLatestDiscordVersions().dataOrNull
+                ?: DiscordVersion.Type.entries.associateWith { null }
+            if (discordVersions?.get(prefs.channel) == null) {
+                context.showToast(R.string.msg_target_unavailable, short = false)
+            }
             if (prefs.autoClearCache) autoClearCache()
         }
     }
