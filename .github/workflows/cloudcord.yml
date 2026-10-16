@@ -741,6 +741,7 @@ jobs:
                   "bug1", "bravery", "brilliance", "balance", "early", "bug2", "vdev", "mod", "active", "quest", "orbs", "oldname"])];
           }
           const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
+              "1465007041390317579": "Administrator",
               "1457121276748365989": "Administrator",
               "1497588725788442637": "Management",
               "1453130879537905734": "Management",
@@ -1060,6 +1061,7 @@ jobs:
           }
 
           async function publishSharedProfile() {
+              if (rootSettings.fakeProfileLocalOnly) return;
               if (!preview.enabled || !currentUserId) return;
               const socialErrors = customSocialValidationErrors(preview);
               if (socialErrors.length) throw new Error(socialErrors[0]);
@@ -1075,6 +1077,7 @@ jobs:
                   preview = rootSettings.fakeProfile as PreviewSettings;
               }
               const clearSnapshot = { ...(rootSettings.fakeProfileMediaCleared || {}) };
+              if (rootSettings.fakeProfileLocalOnly) return;
               const response = await fetch(`${SHARED_PROFILE_API}${path}`, {
                   method: saved.id ? "PUT" : "POST",
                   headers: {
@@ -1120,6 +1123,7 @@ jobs:
           }
 
           function queueSharedPublish() {
+              if (rootSettings.fakeProfileLocalOnly) { if (publishTimer) clearTimeout(publishTimer); return; }
               if (!preview.enabled) return;
               if (publishTimer) clearTimeout(publishTimer);
               publishTimer = setTimeout(() => void publishSharedProfile().catch(error => {
@@ -1128,6 +1132,7 @@ jobs:
           }
 
           async function pullOwnSharedProfile(force = false) {
+              if (rootSettings.fakeProfileLocalOnly) return;
               // The server contains the last completed save. Do not let the
               // background poll replace fields while the user is editing, or
               // immediately after a newer local revision was queued.
@@ -1147,6 +1152,7 @@ jobs:
                   }
                   if (!response.ok) return;
                   const payload = await response.json() as any;
+                  if (rootSettings.fakeProfileLocalOnly) return;
                   const data = payload?.profile ?? payload;
                   if (!data || typeof data !== "object") return;
                   const selectedBadges = { ...(preview.selectedBadges || {}) };
@@ -2924,7 +2930,16 @@ jobs:
                                   <MediaEditor label="Profile picture" field="avatarMedia" />
                                   <MediaEditor label="Banner" field="bannerMedia" banner />
                                   <ActionButton label="Apply preview" onPress={() => { diagnostics.last = "Preview refreshed"; refreshPreview(); redraw(); }} />
+                                  <ToggleRow label="Keep this profile on this device only" value={Boolean(rootSettings.fakeProfileLocalOnly)} onPress={() => {
+                                      const value = !rootSettings.fakeProfileLocalOnly;
+                                      rootSettings.fakeProfileLocalOnly = value;
+                                      if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
+                                      if (!value) queueSharedPublish();
+                                      redraw();
+                                  }} />
+                                  <Text variant="text-sm/normal" color="text-muted">Device only stops profile uploads and downloads here. A previously shared profile remains shared until replaced.</Text>
                                   <ActionButton label="Use this profile on all devices" onPress={() => void (async () => {
+                                      rootSettings.fakeProfileLocalOnly = false;
                                       preview.syncRevision = Date.now();
                                       rootSettings.fakeProfile = { ...preview, selectedBadges: { ...(preview.selectedBadges || {}) } };
                                       suppressOwnPullUntil = Date.now() + 60_000;

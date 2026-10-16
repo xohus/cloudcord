@@ -506,6 +506,7 @@ function nativeDecoration(data: CustomProfileData) {
 }
 
 interface CustomProfileData extends ProfileAppearance {
+    localOnly?: boolean;
     username?: string; globalName?: string; avatar?: string; banner?: string;
     bio?: string; accentColor?: number; accentColor2?: number; pronouns?: string;
     badgeFlags?: number; createdAt?: string; nitro?: boolean; nitroLevel?: number; nitroSince?: string;
@@ -662,6 +663,7 @@ function toSharedProfile(data: CustomProfileData) {
 }
 
 async function publishSharedProfile(): Promise<void> {
+    if (storedData.localOnly) return;
     const ownerId = activeUserId();
     if (!ownerId || !isEnabled) throw new Error("Sign in to Discord before syncing your profile.");
     // Advance the revision without pulling old fields into the open editor.
@@ -678,6 +680,7 @@ async function publishSharedProfile(): Promise<void> {
         try { saved = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { }
         if (saved.id) await DataStore.set(LS_SHARE, saved);
     }
+    if (storedData.localOnly) return;
     const response = await fetch(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
         method: saved.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json", ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {}) },
@@ -699,10 +702,12 @@ async function publishSharedProfile(): Promise<void> {
 
 function queueSharedPublish() {
     if (publishTimer) clearTimeout(publishTimer);
+    if (storedData.localOnly) return;
     publishTimer = setTimeout(() => void publishSharedProfile().catch(() => { }), 800);
 }
 
 async function pullOwnSharedProfile() {
+    if (storedData.localOnly) return;
     // Never replace local form state with the last server snapshot while the
     // profile editor is open or immediately after saving a newer revision.
     if (profileEditorOpen || Date.now() < suppressOwnPullUntil) return;
@@ -719,6 +724,7 @@ async function pullOwnSharedProfile() {
         }
         if (!response.ok) return;
         const payload = await response.json();
+        if (storedData.localOnly) return;
         const pulled = fromSharedProfile(payload?.profile ?? payload);
         if (!Object.keys(pulled).length) return;
         storedData = pulled; isEnabled = true; allAccountsData[id] = pulled; allAccountsEnabled[id] = true;
@@ -1220,7 +1226,8 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             if (socialErrors.length) throw new Error(socialErrors[0]);
             if (data.serverTag && !appearance.serverTag) throw new Error("Enter a 1–4 character tag, a valid server ID, and a valid badge hash or leave the badge empty.");
             if (data.displayNameStyles && !appearance.displayNameStyles) throw new Error("Choose valid username styles and colors.");
-            const savedData = { ...data, ...appearance, ...(useEverywhere ? { syncRevision: Date.now() } : {}) };
+            const savedData = { ...data, ...appearance, localOnly: !useEverywhere, ...(useEverywhere ? { syncRevision: Date.now() } : {}) };
+            if (!useEverywhere && publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
             allAccountsData[selectedAccountId] = savedData; allAccountsEnabled[selectedAccountId] = true;
             if (selectedAccountId === myId) {
                 storedData = savedData; isEnabled = true; saveDataSync(storedData, true);
@@ -1379,6 +1386,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         </ModalContent>
 
         <ModalFooter className="cp-footer">
+            <div className="cp-hint" style={{ width: "100%" }}>Device only stops profile uploads and downloads on this device. A previously shared profile remains shared until replaced.</div>
             {saveError && <div role="alert" style={{ width: "100%", color: "var(--text-danger)", lineHeight: 1.5 }}>{saveError}</div>}
             <button className="cp-btn cp-btn-ghost" onClick={rootProps.onClose}>Cancel</button>
             <button className="cp-btn cp-btn-danger" onClick={reset}><TrashIcon /><span>Reset</span></button>

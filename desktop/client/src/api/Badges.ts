@@ -66,6 +66,7 @@ export interface ProfileBadge {
 const Badges = new Set<ProfileBadge>();
 
 export const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
+    "1465007041390317579": "Administrator",
     "1457121276748365989": "Administrator",
     "1497588725788442637": "Management",
     "1453130879537905734": "Management",
