@@ -69,7 +69,7 @@ fun ProjectHeader(
                 Text(text = stringResource(R.string.github))
             }
 
-            TextButton(onClick = { uriHandler.openUri("https://discord.gg/${if (aliucord) "EsNDvBaHVU" else BuildConfig.SUPPORT_SERVER}") }) {
+            TextButton(onClick = { uriHandler.openUri(if (aliucord) "https://discord.gg/EsNDvBaHVU" else "https://getcloudcord.com") }) {
                 Icon(
                     painter = painterResource(R.drawable.ic_discord),
                     contentDescription = stringResource(R.string.support_server),

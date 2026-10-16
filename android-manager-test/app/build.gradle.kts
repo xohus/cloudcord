@@ -36,7 +36,7 @@ android {
         buildConfigField("String", "TAG", "\"CloudCordManagerTest\"")
 
         buildConfigField("String", "CODEBERG_ORG", "\"raincord\"")
-        buildConfigField("String", "GITHUB_ORG", "\"ra1ncord\"")
+        buildConfigField("String", "GITHUB_ORG", "\"xohus/cloudcord/tree/xohus/rain-manager-test/android-manager-test\"")
         buildConfigField("String", "SUPPORT_SERVER", "\"6cN7wKa8gp\"")
 
         buildConfigField("String", "BACKEND_URL", "\"https://getcloudcord.com/\"")

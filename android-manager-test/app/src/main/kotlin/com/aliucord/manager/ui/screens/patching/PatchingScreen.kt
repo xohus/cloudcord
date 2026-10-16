@@ -176,7 +176,7 @@ class PatchingScreen(private val data: PatchOptions) : Screen, Parcelable {
                                 iconColor = MaterialTheme.colorScheme.error,
                                 outlineColor = null,
                                 containerColor = MaterialTheme.colorScheme.errorContainer,
-                                onClick = { handler.openUri("https://discord.gg/${BuildConfig.SUPPORT_SERVER}") },
+                                onClick = { handler.openUri("https://getcloudcord.com") },
                                 modifier = Modifier
                                     .padding(bottom = VERTICAL_PADDING)
                                     .fillMaxWidth(),
