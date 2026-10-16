@@ -25,8 +25,9 @@ android {
         applicationId = "gg.xohus.cloudcord.manager.test"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1010
-        versionName = "v1.0.1-cloudcord-test1"
+        versionCode = 1011
+        // InstallMetadata uses the upstream numeric-only SemVer serializer.
+        versionName = "v1.0.2"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -163,6 +164,7 @@ tasks.withType<JavaCompile> {
 }
 
 dependencies {
+    testImplementation("junit:junit:4.13.2")
     implementation(libs.bundles.accompanist)
     implementation(libs.bundles.androidx)
     implementation(libs.bundles.coil)
