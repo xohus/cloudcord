@@ -238,7 +238,8 @@ class HomeModel(
             .getInstalledPackages(PackageManager.GET_META_DATA)
             .filter {
                 // Rain doesn't have "legacy installer" whatsoever
-                return@filter it.applicationInfo?.metaData?.containsKey("isRain") == true
+                return@filter it.packageName == "gg.xohus.cloudcord.client.test" &&
+                    it.applicationInfo?.metaData?.containsKey("isRain") == true
 
                 // // Packages installed via the legacy Installer do not have the metadata marker
                 // val isAliucordPkg = it.packageName == "com.aliucord"
