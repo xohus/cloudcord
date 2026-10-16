@@ -1,0 +1,41 @@
+name: CloudCord experimental Manager
+on:
+  push:
+    branches: [xohus/rain-manager-test]
+    paths: ['android-manager-test/**', '.github/workflows/android-manager-test.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Prepare CloudCord branding and pinned module
+        run: |
+          node android-manager-test/prepare-cloudcord.cjs
+          curl --fail --location --retry 3 --max-time 240 'https://github.com/xohus/cloudcord/releases/download/new_beta_android/CloudCordManager-repair-b97f560fb.apk' -o /tmp/cloudcord-module-source.apk
+          echo '8b989beb6526a113d2f834d6f060b13a1120a887be419de85032b2affb989f69  /tmp/cloudcord-module-source.apk' | sha256sum --check
+          mkdir -p android-manager-test/app/src/main/assets
+          unzip -p /tmp/cloudcord-module-source.apk assets/cloudcord-module.apk > android-manager-test/app/src/main/assets/cloudcord-module.apk
+          test -s android-manager-test/app/src/main/assets/cloudcord-module.apk
+          unzip -l android-manager-test/app/src/main/assets/cloudcord-module.apk | grep assets/xposed_init
+      - name: Build experimental Manager
+        working-directory: android-manager-test
+        run: |
+          chmod +x gradlew
+          ./gradlew :app:assembleDebug --stacktrace
+      - name: Upload tester APK and source notices
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCordManager-test
+          if-no-files-found: error
+          path: |
+            android-manager-test/app/build/outputs/apk/debug/*.apk
+            android-manager-test/LICENSE
+            android-manager-test/CLOUDCORD-MODIFICATIONS.md

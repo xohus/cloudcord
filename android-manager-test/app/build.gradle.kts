@@ -1,0 +1,229 @@
+@file:Suppress("UnstableApiUsage")
+
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+
+plugins {
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.parcelize)
+    alias(libs.plugins.kotlin.serialization)
+}
+
+val isRelease = System.getenv("RELEASE")?.toBoolean() ?: false
+val gitCurrentBranch = providers.execIgnoreCode("git", "symbolic-ref", "--quiet", "--short", "HEAD").takeIf { it.isNotEmpty() }
+val gitLatestCommit = providers.execIgnoreCode("git", "rev-parse", "--short", "HEAD")
+val gitHasLocalCommits = gitCurrentBranch?.let { providers.execIgnoreCode("git", "log", "origin/$gitCurrentBranch..HEAD").isNotEmpty() } ?: false
+val gitHasHasLocalChanges = providers.execIgnoreCode("git", "status", "-s").isNotEmpty()
+
+android {
+    namespace = "dev.raincord.manager"
+    compileSdk = 36
+
+    defaultConfig {
+        applicationId = "gg.xohus.cloudcord.manager.test"
+        minSdk = 28
+        targetSdk = 36
+        versionCode = 1010
+        versionName = "v1.0.1-cloudcord-test1"
+
+        vectorDrawables {
+            useSupportLibrary = true
+        }
+
+        buildConfigField("String", "APPLICATION_NAME", "\"CloudCord Manager Test\"")
+        buildConfigField("String", "TAG", "\"CloudCordManagerTest\"")
+
+        buildConfigField("String", "CODEBERG_ORG", "\"raincord\"")
+        buildConfigField("String", "GITHUB_ORG", "\"ra1ncord\"")
+        buildConfigField("String", "SUPPORT_SERVER", "\"6cN7wKa8gp\"")
+
+        buildConfigField("String", "BACKEND_URL", "\"https://getcloudcord.com/\"")
+
+        buildConfigField("Boolean", "RELEASE", isRelease.toString())
+        buildConfigField("String", "GIT_BRANCH", "\"$gitCurrentBranch\"")
+        buildConfigField("String", "GIT_COMMIT", "\"$gitLatestCommit\"")
+        buildConfigField("boolean", "GIT_LOCAL_COMMITS", "$gitHasLocalCommits")
+        buildConfigField("boolean", "GIT_LOCAL_CHANGES", "$gitHasHasLocalChanges")
+    }
+
+    signingConfigs {
+        create("release") {
+            enableV1Signing = true
+            enableV2Signing = true
+            enableV3Signing = true
+            enableV4Signing = true
+            keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+            keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            storeFile = System.getenv("SIGNING_STORE_FILE")?.let(::File)
+            storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+        }
+    }
+
+    buildTypes {
+        val isRelease = System.getenv("RELEASE")?.toBoolean() ?: false
+        val hasReleaseSigning = System.getenv("SIGNING_STORE_PASSWORD")?.isNotEmpty() == true
+
+        if (isRelease && !hasReleaseSigning)
+            error("Missing keystore in a release workflow!")
+
+        release {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isCrunchPngs = true
+            signingConfig = signingConfigs.getByName(if (hasReleaseSigning) "release" else "debug")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+
+        create("staging") {
+            isMinifyEnabled = true
+            isShrinkResources = true
+            isCrunchPngs = true
+            signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+
+    androidComponents {
+        onVariants(selector().withBuildType("release")) {
+            it.packaging.resources.excludes.apply {
+                // Debug metadata
+                add("/**/*.version")
+                add("/kotlin-tooling-metadata.json")
+                // Kotlin debugging (https://github.com/Kotlin/kotlinx.coroutines/issues/2274)
+                add("/DebugProbesKt.bin")
+                // Reflection symbol list (https://stackoverflow.com/a/41073782/13964629)
+                add("/**/*.kotlin_builtins")
+            }
+        }
+    }
+
+    packaging {
+        resources {
+            // okhttp3 is used by some lib (no cookies so publicsuffixes.gz can be dropped)
+            excludes += "/okhttp3/**"
+
+            // Remnants of smali/baksmali lib
+            excludes += "/*.properties"
+            excludes += "/org/antlr/**"
+            excludes += "/com/android/tools/smali/**"
+            excludes += "/org/eclipse/jgit/**"
+
+            // bouncycastle
+            excludes += "/META-INF/versions/9/OSGI-INF/MANIFEST.MF"
+            excludes += "/org/bouncycastle/**"
+        }
+        jniLibs {
+            // Equivalent of AndroidManifest's extractNativeLibs=false
+            useLegacyPackaging = false
+        }
+    }
+
+    compileOptions {
+        isCoreLibraryDesugaringEnabled = true
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    buildFeatures {
+        buildConfig = true
+        compose = true
+    }
+
+    lint {
+        disable += "ModifierParameter"
+    }
+}
+
+kotlin {
+    sourceSets.all {
+        languageSettings.enableLanguageFeature("ExplicitBackingFields")
+    }
+    compilerOptions {
+        val reportsDir = layout.buildDirectory.asFile.get()
+            .resolve("reports").absolutePath
+
+        jvmTarget = JvmTarget.JVM_1_8
+        freeCompilerArgs.addAll(
+            "-opt-in=kotlin.time.ExperimentalTime",
+            "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api",
+            "-opt-in=androidx.compose.animation.ExperimentalAnimationApi",
+            "-opt-in=androidx.compose.foundation.ExperimentalFoundationApi",
+            "-opt-in=androidx.compose.foundation.layout.ExperimentalLayoutApi",
+            "-P", "plugin:androidx.compose.compiler.plugins.kotlin:reportsDestination=${reportsDir}",
+            "-XXLanguage:+PropertyParamAnnotationDefaultTargetMode", // @StringRes in field parameters of a class warning
+        )
+    }
+}
+
+tasks.withType<JavaCompile> {
+    // Disable warnings about obsolete target version
+    options.compilerArgs.add("-Xlint:-options")
+}
+
+dependencies {
+    implementation(libs.bundles.accompanist)
+    implementation(libs.bundles.androidx)
+    implementation(libs.bundles.coil)
+    implementation(libs.bundles.compose)
+    implementation(libs.bundles.koin)
+    implementation(libs.bundles.ktor)
+    implementation(libs.bundles.voyager)
+
+    implementation(files("libs/lspatch.aar"))
+
+    implementation(libs.compose.ui.tooling.preview)
+    debugImplementation(libs.compose.ui.tooling)
+    debugImplementation(libs.compose.runtime.tracing)
+
+    implementation(libs.kotlinx.immutable)
+    implementation(libs.kotlinx.serialization.json)
+
+    implementation(libs.apksig)
+    implementation(libs.axml)
+    implementation(libs.bouncycastle)
+    implementation(libs.binaryResources)
+    implementation(libs.diff)
+    implementation(libs.microg)
+    implementation(libs.smali)
+    implementation(libs.baksmali)
+    implementation(libs.compose.pipette)
+    implementation(libs.compose.shimmer)
+    implementation(libs.zip)
+
+    coreLibraryDesugaring(libs.desugaring)
+}
+
+configurations.all {
+    exclude(group = "org.bouncycastle")
+    exclude(group = "org.checkerframework", module = "checker-qual")
+    exclude(group = "com.aliucord", module = "axml")
+
+    // Exclude apksig, as it's bundled in LSPatch
+    exclude(group = "com.android.tools.build", module = "apksig")
+
+    // Exclude jcommander
+    exclude(group = "com.beust", module = "jcommander")
+
+    // Exclude Google Guava and its related modules
+    exclude(group = "com.google.guava")
+
+    // Exclude other common utility/annotation libraries
+    exclude(group = "com.google.errorprone", module = "error_prone_annotations")
+    exclude(group = "com.google.j2objc", module = "j2objc-annotations")
+    exclude(group = "com.google.code.findbugs", module = "jsr305")
+}
+
+fun ProviderFactory.execIgnoreCode(vararg command: String): String = run {
+    val result = exec {
+        commandLine = command.toList()
+        isIgnoreExitValue = true
+    }
+
+    val stderr = result.standardError.asText.get()
+    if (stderr.isNotEmpty())
+        throw RuntimeException(stderr)
+
+    result.standardOutput.asText.get().trim()
+}
