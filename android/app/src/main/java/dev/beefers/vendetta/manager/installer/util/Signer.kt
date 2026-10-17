@@ -26,6 +26,9 @@ import kotlin.io.path.Path
 import kotlin.io.path.moveTo
 
 object Signer : KoinComponent {
+    // Config splits often omit uses-sdk. apksig otherwise assumes Android 1
+    // and requires a v1 signature, even though Manager only supports API 28+.
+    private const val MIN_SUPPORTED_SDK = 28
     private val password = "password".toCharArray()
     private val context by inject<Context>()
     private val cacheDir = context.cacheDir
@@ -114,6 +117,7 @@ object Signer : KoinComponent {
 
     fun signApk(apkFile: File, output: File) {
         ApkSigner.Builder(listOf(signerConfig))
+            .setMinSdkVersion(MIN_SUPPORTED_SDK)
             .setV1SigningEnabled(false) // TODO: enable so api <24 devices can work, however zip-alignment breaks
             .setV2SigningEnabled(true)
             .setV3SigningEnabled(true)
@@ -126,7 +130,9 @@ object Signer : KoinComponent {
     }
 
     fun verifyApk(apk: File) {
-        val result = ApkVerifier.Builder(apk).build().verify()
+        val result = ApkVerifier.Builder(apk)
+            .setMinCheckedPlatformVersion(MIN_SUPPORTED_SDK)
+            .build().verify()
         require(result.isVerified) {
             val errors = result.errors.joinToString("; ")
             val v2Errors = result.v2SchemeSigners.flatMap { it.errors }.joinToString("; ")

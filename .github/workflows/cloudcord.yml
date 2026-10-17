@@ -38,6 +38,9 @@ jobs:
       - name: Check mobile render recursion
         run: NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-hook-boundary.cjs
 
+      - name: Check mobile badge and refresh regressions
+        run: NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-report-regressions.cjs
+
       - name: Clone clean Kettu source
         run: |
           set -e
@@ -750,6 +753,7 @@ jobs:
               "1497588725788442637": "Management",
               "1453130879537905734": "Management",
               "1191456523763859558": "Moderator",
+              "1394648991223779328": "Moderator",
               "1417880742502994042": "Management",
               "553936745058664458": "Moderator",
               "463515440606609419": "Founder",
@@ -1164,7 +1168,7 @@ jobs:
                   for (const [id, , flag, , customId] of BADGES) {
                       selectedBadges[id] = customId ? customBadgeIds.includes(customId) : !!(Number(data.badgeFlags || 0) & flag);
                   }
-                  rootSettings.fakeProfile = preview = {
+                  const nextPreview = {
                       ...preview,
                       enabled: true,
                       username: data.username || preview.username,
@@ -1192,6 +1196,10 @@ jobs:
                       badgeOrder: Array.isArray(data.badgeOrder) ? data.badgeOrder : [],
                       syncRevision: Number(data.syncRevision || 0)
                   } satisfies PreviewSettings;
+                  // Polls commonly return the same snapshot. Replacing the
+                  // observed settings and clearing stores still rerenders Discord.
+                  if (JSON.stringify(nextPreview) === JSON.stringify(preview)) return;
+                  rootSettings.fakeProfile = preview = nextPreview;
                   clearCache();
                   diagnostics.last = "Fake Profile synced across devices";
               } catch {} finally {
@@ -1775,7 +1783,7 @@ jobs:
           let publishedBadgeRequest = false;
           let publishedBadgeFetchedAt = 0;
           async function refreshPublishedBadges(force = false) {
-              if (publishedBadgeRequest || (!force && Date.now() - publishedBadgeFetchedAt < 5000)) return;
+              if (AppState.currentState !== "active" || publishedBadgeRequest || (!force && Date.now() - publishedBadgeFetchedAt < 60_000)) return;
               publishedBadgeRequest = true;
               publishedBadgeFetchedAt = Date.now();
               try {
@@ -1848,7 +1856,7 @@ jobs:
                           }
                           const existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter(item => {
                               const badgeId = String(item?.id || "");
-                              return !badgeId.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeId === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
+                              return !badgeId.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeLayoutKey(item) === "nitro");
                           });
                           return appendPublishedBadges([...ordered, ...existing], id);
                       }
@@ -1864,7 +1872,7 @@ jobs:
 
                       const existing = shouldReplaceLocalBadges() ? [] : result.filter(item => {
                           const badgeId = String(item?.id || "");
-                          return !badgeId.startsWith("cloudcord-") && !badgeId.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeId === nitroBadgeId(preview.nitroMonths));
+                          return !badgeId.startsWith("cloudcord-") && !badgeId.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeLayoutKey(item) === "nitro");
                       });
                       const ordered: any[] = [];
                       if (staffBadge) addOfficialBadge(ordered, staffBadge, user, preview);
