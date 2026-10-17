@@ -12670,27 +12670,6 @@
     var source = props?.connection || props?.account || props?.row || props?.user || props?.item;
     return props?.cloudcordPreview || source?.cloudcordPreview || source?.user?.cloudcordPreview;
   }
-  function routeNativeSocialPress(tree, open, depth = 0) {
-    if (depth > 20 || tree == null)
-      return tree;
-    if (Array.isArray(tree))
-      return tree.map((child) => routeNativeSocialPress(child, open, depth + 1));
-    if (!/* @__PURE__ */ (0, import_react6.isValidElement)(tree))
-      return tree;
-    var changes = {};
-    var props = tree.props;
-    for (var key of [
-      "onPress",
-      "onClick",
-      "onLongPress",
-      "onOpenProfile"
-    ])
-      if (typeof props?.[key] === "function")
-        changes[key] = open;
-    if (props?.children)
-      changes.children = routeNativeSocialPress(props.children, open, depth + 1);
-    return Object.keys(changes).length ? /* @__PURE__ */ (0, import_react6.cloneElement)(tree, changes) : tree;
-  }
   function connectNativeSocialRenderer() {
     var runtime = findByProps("jsx", "jsxs");
     var hook = ([Component2], rendered) => {
@@ -12728,13 +12707,15 @@
                 }
               });
           };
-          var tree = Component2(detail ? {
+          var nextProps = detail ? {
             ...current,
             onPress: open,
             onClick: open,
             onOpenProfile: open
-          } : current);
-          return detail ? routeNativeSocialPress(tree, open) : tree;
+          } : current;
+          return /* @__PURE__ */ jsx(Component2, {
+            ...nextProps
+          });
         });
       socialWrapperTypes.add(socialRenderers.get(Component2));
       return {
@@ -12748,25 +12729,6 @@
     ])
       if (typeof runtime?.[method] === "function")
         after(method, runtime, hook);
-  }
-  function replaceIdentityText(node, original, data, depth = 0) {
-    if (depth > 20 || node == null)
-      return node;
-    if (typeof node === "string") {
-      if (data.username && (node === original.username || node === `@${original.username}`))
-        return node.startsWith("@") ? `@${data.username}` : String(data.username);
-      var name = data.globalName || data.displayName;
-      if (name && node === (original.globalName || original.global_name || original.displayName))
-        return String(name);
-      return node;
-    }
-    if (Array.isArray(node))
-      return node.map((child) => replaceIdentityText(child, original, data, depth + 1));
-    if (!/* @__PURE__ */ (0, import_react6.isValidElement)(node) || !node.props?.children)
-      return node;
-    return /* @__PURE__ */ (0, import_react6.cloneElement)(node, {
-      children: replaceIdentityText(node.props.children, original, data, depth + 1)
-    });
   }
   function identityRenderer(Component2) {
     if (identityRenderers.has(Component2))
@@ -12816,8 +12778,9 @@
           currentProps.name = name;
         }
       }
-      var tree = Component2(currentProps);
-      return original && data ? replaceIdentityText(tree, original, data) : tree;
+      return /* @__PURE__ */ jsx(Component2, {
+        ...currentProps
+      });
     }
     identityRenderers.set(Component2, CloudCordIdentity);
     return CloudCordIdentity;
