@@ -97,6 +97,7 @@ jobs:
           node ios/scripts/test-extra-badges.cjs
           node ios/scripts/test-badge-layout.cjs
           node ios/scripts/test-staff-roster.cjs
+          node ios/scripts/test-real-profile-view.cjs
 
       - name: Check runtime user plugin installation
         working-directory: desktop/client

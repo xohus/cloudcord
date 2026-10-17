@@ -13,6 +13,7 @@ let enabled = true;
 const context = vm.createContext({
     after: (_name, _module, fn) => { callback = fn; }, useBadgesModule: {},
     nativeBadgeRows: new Map(), refreshPublishedBadges() {},
+    isRealProfileView: () => false,
     isCurrentUser: () => !remote, requestSharedProfile() {},
     getProfileOverride: () => ({ nitro: enabled, nitroLevel: 1, giftLevel: -1 }),
     cloudCordStaffBadge: () => null, shouldReplaceSharedBadges: () => false,

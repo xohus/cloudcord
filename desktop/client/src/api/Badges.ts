@@ -23,6 +23,7 @@ import BadgeAPIPlugin from "@plugins/_api/badges";
 import { React, Toasts, UserProfileStore } from "@webpack/common";
 import { ComponentType, HTMLProps } from "react";
 import Plugins from "~plugins";
+import { isRealProfileView } from "@utils/realProfileView";
 
 import { isPluginEnabled } from "./PluginManager";
 
@@ -262,6 +263,7 @@ export function removeProfileBadge(badge: ProfileBadge) {
  * You probably don't need to use this.
  */
 export function _getBadges(args: BadgeUserArgs) {
+    if (isRealProfileView(args.userId)) return [];
     const badges = [] as ProfileBadge[];
     for (const badge of Badges) {
         if (badge.shouldShow && !badge.shouldShow(args)) {

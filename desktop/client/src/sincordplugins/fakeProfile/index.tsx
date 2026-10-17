@@ -20,6 +20,7 @@ import { addContextMenuPatch, NavContextMenuPatchCallback, removeContextMenuPatc
 import { addHeaderBarButton, HeaderBarButton, removeHeaderBarButton } from "@api/HeaderBar";
 import { DataStore } from "@api/index";
 import { localStorage } from "@utils/localStorage";
+import { isRealProfileView, setRealProfileView } from "@utils/realProfileView";
 import { ModalContent as _ModalContent, ModalFooter as _ModalFooter, ModalHeader as _ModalHeader, ModalRoot as _ModalRoot, openModal } from "@utils/modal";
 
 const ModalRoot = _ModalRoot as any;
@@ -536,6 +537,9 @@ let _cachedRealDateVariants: string[] | null = null;
 const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
 const SHARED_PROFILE_TTL_MS = 4000;
 const sharedProfiles = new Map<string, CustomProfileData>();
+function viewedSharedProfile(userId: string) {
+    return isRealProfileView(userId) ? undefined : sharedProfiles.get(userId);
+}
 const sharedProfileFetchedAt = new Map<string, number>();
 const sharedRequests = new Set<string>();
 let publishTimer: ReturnType<typeof setTimeout> | null = null;
@@ -771,7 +775,7 @@ function getCustomSocialData(userId: string): ProfileAppearance | null | undefin
         socialLookupAt.set(userId, Date.now());
         requestSharedProfile(userId);
     }
-    return sharedProfiles.get(userId);
+    return viewedSharedProfile(userId);
 }
 
 function decorateSharedIdentity(source: any, data: CustomProfileData) {
@@ -995,6 +999,14 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
     if (!children || !Array.isArray(children) || !user?.id) return;
     try {
         const me = UserStore.getCurrentUser(); if (!me || user.id === me.id) return;
+        children.push(<Menu.MenuGroup>
+            <Menu.MenuItem id="cloudcord-profile-view" label={isRealProfileView(user.id) ? "Show CloudCord profile" : "Show real profile"} action={() => {
+                setRealProfileView(user.id, !isRealProfileView(user.id));
+                try { (UserProfileStore as any).emitChange?.(); } catch {}
+                try { (UserStore as any).emitChange?.(); } catch {}
+                UserProfileActions.openUserProfileModal({ userId: user.id });
+            }} />
+        </Menu.MenuGroup>);
         const isCopied = isEnabled && storedData.copiedUserId === user.id;
         children.push(<Menu.MenuGroup>
             {isCopied ? (
@@ -1427,7 +1439,7 @@ export default definePlugin({
     getBadgeLayout(userId: string) {
         if (isMe(userId)) return isEnabled ? storedData : null;
         requestSharedProfile(userId);
-        return sharedProfiles.get(userId);
+        return viewedSharedProfile(userId);
     },
 
     fakeCurrentUser(user: any) {
@@ -1468,8 +1480,9 @@ export default definePlugin({
     },
 
     fakeOtherUser(user: any) {
+        if (isRealProfileView(user?.id)) return user?.__cp_original || user;
         if (!user || isMe(user.id)) return user;
-        const shared = sharedProfiles.get(user.id);
+        const shared = viewedSharedProfile(user.id);
         if (!shared) {
             requestSharedProfile(user.id);
             return user;
@@ -1510,7 +1523,7 @@ export default definePlugin({
     getActiveProfileColors(userId: string): number[] | null {
         const mine = isMe(userId);
         if (mine && (!isEnabled || !storedData.nitro)) return null;
-        const data = mine ? storedData : sharedProfiles.get(userId);
+        const data = mine ? storedData : viewedSharedProfile(userId);
         if (data?.accentColor == null) return null;
         const colors = [data.accentColor, data.accentColor2 ?? data.accentColor];
         return colors.every(color => Number.isFinite(color) && color >= 0 && color <= 0xffffff) ? colors : null;
@@ -1580,7 +1593,7 @@ fakeObfuscatedEmail(real: string | null) {
                 // desktop stopped requesting as soon as one response was cached, so later
                 // changes made on mobile could never appear until Discord restarted.
                 requestSharedProfile(userId);
-                profileData = sharedProfiles.get(userId);
+                profileData = viewedSharedProfile(userId);
                 if (!profileData) return published;
             }
 
@@ -1703,7 +1716,7 @@ fakeObfuscatedEmail(real: string | null) {
                         const uid = resolveProfileUserId(args[0], p);
                         if (isMe(uid)) return (isEnabled && p) ? this.hookUserProfile(p) : p;
                         requestSharedProfile(uid);
-                        const shared = sharedProfiles.get(uid);
+                        const shared = viewedSharedProfile(uid);
                         return shared && p ? decorateSharedProfile(p, shared) : p;
                     } catch { return origGet(...args); }
                 };
@@ -1714,7 +1727,7 @@ fakeObfuscatedEmail(real: string | null) {
                         const uid = resolveProfileUserId(args[0], p);
                         if (isMe(uid)) return (isEnabled && p) ? this.hookUserProfile(p) : p;
                         requestSharedProfile(uid);
-                        const shared = sharedProfiles.get(uid);
+                        const shared = viewedSharedProfile(uid);
                         return shared && p ? decorateSharedProfile(p, shared) : p;
                     } catch { return origGuild(...args); }
                 };
@@ -1729,7 +1742,7 @@ fakeObfuscatedEmail(real: string | null) {
                 if (user?.id && isMe(user.id) && isEnabled && storedData.avatar) return storedData.avatar;
                 if (user?.id && !isMe(user.id)) {
                     requestSharedProfile(user.id);
-                    const shared = sharedProfiles.get(user.id);
+                    const shared = viewedSharedProfile(user.id);
                     if (shared?.avatar) return shared.avatar;
                 }
                 return orig(user, ...args);

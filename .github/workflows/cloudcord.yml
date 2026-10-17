@@ -39,7 +39,9 @@ jobs:
         run: NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-hook-boundary.cjs
 
       - name: Check mobile badge and refresh regressions
-        run: NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-report-regressions.cjs
+        run: |
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-report-regressions.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-real-profile-view.cjs
 
       - name: Clone clean Kettu source
         run: |
@@ -763,6 +765,7 @@ jobs:
           };
 
           function cloudCordStaffBadge(userId: string) {
+              if (isRealProfileView(userId)) return null;
               const role = CLOUDCORD_STAFF_ROLES[userId];
               return role ? { id: `cloudcord-official-${role.toLowerCase()}`, label: `CloudCord ${role}` } : null;
           }
@@ -1249,7 +1252,49 @@ jobs:
                   .finally(() => sharedRequests.delete(id));
           }
 
+          function isRealProfileView(id: string) {
+              return Array.isArray(rootSettings.cloudcordRealProfileUsers) && rootSettings.cloudcordRealProfileUsers.includes(id);
+          }
+          function toggleRealProfileView(id: string) {
+              if (!/^\d{15,22}$/.test(id) || isCurrentUser(id)) return;
+              const users = new Set<string>(Array.isArray(rootSettings.cloudcordRealProfileUsers) ? rootSettings.cloudcordRealProfileUsers : []);
+              if (users.has(id)) users.delete(id); else users.add(id);
+              rootSettings.cloudcordRealProfileUsers = [...users];
+              clearCache();
+              for (const refresh of identityRefreshers) refresh();
+              for (const store of ["UserStore", "UserProfileStore", "MessageStore"]) {
+                  try { safeStore(store)?.emitChange?.(); } catch {}
+              }
+              try { simpleSheets.hideActionSheet?.(); } catch {}
+              const open = findByName("showUserProfileActionSheet", false) as any;
+              if (typeof open === "function") setTimeout(() => open({ userId: id }), 0);
+          }
+          let realProfileMenuConnected = false;
+          function connectRealProfileMenu() {
+              if (realProfileMenuConnected) return;
+              realProfileMenuConnected = true;
+              const option = (id: string) => ({ label: isRealProfileView(id) ? "Show CloudCord profile" : "Show real profile", onPress: () => toggleRealProfileView(id) });
+              if (typeof simpleSheets?.showSimpleActionSheet === "function") {
+                  instead("showSimpleActionSheet", simpleSheets, (args: any[], original: Function) => {
+                      const sheet = args[0];
+                      const id = String(sheet?.userId || sheet?.user?.id || sheet?.props?.userId || sheet?.props?.user?.id || "");
+                      if (!/^\d{15,22}$/.test(id) || isCurrentUser(id) || !/user|profile/i.test(String(sheet?.key || "")) || !Array.isArray(sheet?.options)) return original(...args);
+                      return original({ ...sheet, options: [...sheet.options, option(id)] }, ...args.slice(1));
+                  });
+              }
+              for (const name of ["UserProfileOverflowMenu", "UserProfileOverflowActionSheet", "UserProfileMoreActionSheet"]) {
+                  onJsxCreate(name, (_component, rendered) => {
+                      const props: any = rendered?.props;
+                      const id = String(props?.userId || props?.user?.id || props?.profile?.userId || "");
+                      if (!/^\d{15,22}$/.test(id) || isCurrentUser(id) || props?.__cloudcordRealProfileMenu) return rendered;
+                      if (Array.isArray(props?.options)) return cloneElement(rendered, { __cloudcordRealProfileMenu: true, options: [...props.options, option(id)] });
+                      if (!props?.children) return rendered;
+                      return cloneElement(rendered, { __cloudcordRealProfileMenu: true, children: [props.children, createElement(TableRow, { key: "cloudcord-profile-view", label: option(id).label, onPress: option(id).onPress })] });
+                  });
+              }
+          }
           function getProfileOverride(id: string) {
+              if (isRealProfileView(id)) return undefined;
               const local = (settings as any).cloudcordLocalProfiles?.[id];
               const shared = sharedProfiles.get(id);
               if (!local) return shared;
@@ -1816,6 +1861,7 @@ jobs:
           }
 
           function appendPublishedBadges(result: any[], userId: string) {
+              if (isRealProfileView(userId)) return result;
               const next = [...result];
               for (const badge of publishedBadges) {
                   if (badge.userId === userId) addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
@@ -1828,6 +1874,7 @@ jobs:
                   after("default", useBadgesModule as any, ([user], result) => {
                       if (!Array.isArray(result)) return result;
                       const id = String(typeof user === "string" ? user : user?.userId || user?.id || user?.user?.id || user?.userProfile?.userId || user?.userProfile?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || user?.displayProfile?.user?.id || "");
+                      if (isRealProfileView(id)) return result;
                       if (id) {
                           nativeBadgeRows.set(id, [...result]);
                           if (nativeBadgeRows.size > 100) nativeBadgeRows.delete(nativeBadgeRows.keys().next().value!);
@@ -2440,6 +2487,7 @@ jobs:
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
+                      connectRealProfileMenu();
                       await pullOwnSharedProfile();
                       void refreshPublishedBadges(true);
                       AppState.addEventListener("change", state => { if (state === "active") void refreshPublishedBadges(true); });
