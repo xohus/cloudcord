@@ -11540,28 +11540,12 @@
       }
     })();
   }
-  function requestSharedProfile(userId, force = false) {
-    var id = String(userId || "");
-    var fetchedAt = sharedProfileFetchedAt.get(id) || 0;
-    if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || !force && sharedProfiles.has(id) && Date.now() - fetchedAt < 5e3)
+  function queueSharedRenderRefresh() {
+    if (sharedRenderTimer)
       return;
-    sharedRequests.add(id);
-    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, {
-      cache: "no-store"
-    }).then((response) => {
-      if (response.ok)
-        return response.json();
-      if (response.status === 404)
-        return null;
-      throw new Error(`Shared profile unavailable (${response.status})`);
-    }).then((payload) => {
-      var profile = payload?.profile ?? payload;
-      var next = profile && typeof profile === "object" ? profile : {};
-      var previous = sharedProfiles.get(id);
-      var changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
-      sharedProfiles.set(id, next);
-      sharedProfileFetchedAt.set(id, Date.now());
-      if (!changed)
+    sharedRenderTimer = setTimeout(() => {
+      sharedRenderTimer = null;
+      if (import_react_native19.AppState.currentState !== "active")
         return;
       for (var refresh of identityRefreshers)
         refresh();
@@ -11577,6 +11561,35 @@
         safeStore("MessageStore")?.emitChange?.();
       } catch (e) {
       }
+    }, 250);
+  }
+  function requestSharedProfile(userId, force = false) {
+    var id = String(userId || "");
+    if (!force)
+      sharedProfileSeenAt.set(id, Date.now());
+    var fetchedAt = sharedProfileFetchedAt.get(id) || 0;
+    if (import_react_native19.AppState.currentState !== "active" || !/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || Date.now() - fetchedAt < 3e4 || sharedRequests.size >= 4)
+      return;
+    sharedRequests.add(id);
+    sharedProfileFetchedAt.set(id, Date.now());
+    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, {
+      cache: "no-store"
+    }).then((response) => {
+      if (response.ok)
+        return response.json();
+      if (response.status === 404)
+        return null;
+      throw new Error(`Shared profile unavailable (${response.status})`);
+    }).then((payload) => {
+      var profile = payload?.profile ?? payload;
+      var next = profile && typeof profile === "object" ? profile : {};
+      var previous = sharedProfiles.get(id);
+      var changed = JSON.stringify(previous ?? {}) !== JSON.stringify(next);
+      sharedProfiles.set(id, next);
+      sharedProfileFetchedAt.set(id, Date.now());
+      if (!changed)
+        return;
+      queueSharedRenderRefresh();
     }).catch(() => {
     }).finally(() => sharedRequests.delete(id));
   }
@@ -11592,8 +11605,21 @@
     };
   }
   function refreshSharedProfiles() {
-    for (var id of sharedProfiles.keys())
+    if (import_react_native19.AppState.currentState !== "active")
+      return;
+    var now = Date.now();
+    var budget = 4;
+    for (var [id, seenAt] of sharedProfileSeenAt) {
+      if (now - seenAt > 12e4) {
+        sharedProfileSeenAt.delete(id);
+        continue;
+      }
+      if (now - (sharedProfileFetchedAt.get(id) || 0) < 3e4)
+        continue;
       requestSharedProfile(id, true);
+      if (--budget === 0)
+        break;
+    }
   }
   function cloneSharedUser(original, data) {
     if (!original || typeof original !== "object" || !data)
@@ -13174,11 +13200,13 @@
         });
         if (!sharedSyncTimer)
           sharedSyncTimer = setInterval(() => {
+            if (import_react_native19.AppState.currentState !== "active")
+              return;
             void pullOwnSharedProfile();
             refreshSharedProfiles();
             if (import_react_native19.AppState.currentState === "active")
               void refreshPublishedBadges();
-          }, 5e3);
+          }, 15e3);
         if (preview.enabled) {
           refreshPreview();
           queueSharedPublish();
@@ -14829,7 +14857,7 @@
       })
     });
   }
-  var import_react6, import_react_native19, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react6, import_react_native19, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -15539,6 +15567,8 @@
       fakeProfileEditorOpen = false;
       suppressOwnPullUntil = 0;
       REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
+      sharedProfileSeenAt = /* @__PURE__ */ new Map();
+      sharedRenderTimer = null;
       publishedBadges = [];
       publishedBadgeRequest = false;
       publishedBadgeFetchedAt = 0;
