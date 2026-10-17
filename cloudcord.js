@@ -11154,6 +11154,8 @@
     ];
   }
   function cloudCordStaffBadge(userId) {
+    if (isRealProfileView(userId))
+      return null;
     var role = CLOUDCORD_STAFF_ROLES[userId];
     return role ? {
       id: `cloudcord-official-${role.toLowerCase()}`,
@@ -11596,7 +11598,103 @@
     }).catch(() => {
     }).finally(() => sharedRequests.delete(id));
   }
+  function isRealProfileView(id) {
+    return Array.isArray(rootSettings.cloudcordRealProfileUsers) && rootSettings.cloudcordRealProfileUsers.includes(id);
+  }
+  function toggleRealProfileView(id) {
+    if (!/^\d{15,22}$/.test(id) || isCurrentUser(id))
+      return;
+    var users = new Set(Array.isArray(rootSettings.cloudcordRealProfileUsers) ? rootSettings.cloudcordRealProfileUsers : []);
+    if (users.has(id))
+      users.delete(id);
+    else
+      users.add(id);
+    rootSettings.cloudcordRealProfileUsers = [
+      ...users
+    ];
+    clearCache();
+    for (var refresh of identityRefreshers)
+      refresh();
+    for (var store of [
+      "UserStore",
+      "UserProfileStore",
+      "MessageStore"
+    ]) {
+      try {
+        safeStore(store)?.emitChange?.();
+      } catch (e) {
+      }
+    }
+    try {
+      simpleSheets.hideActionSheet?.();
+    } catch (e) {
+    }
+    var open = findByName("showUserProfileActionSheet", false);
+    if (typeof open === "function")
+      setTimeout(() => open({
+        userId: id
+      }), 0);
+  }
+  function connectRealProfileMenu() {
+    if (realProfileMenuConnected)
+      return;
+    realProfileMenuConnected = true;
+    var option = (id) => ({
+      label: isRealProfileView(id) ? "Show CloudCord profile" : "Show real profile",
+      onPress: () => toggleRealProfileView(id)
+    });
+    if (typeof simpleSheets?.showSimpleActionSheet === "function") {
+      instead("showSimpleActionSheet", simpleSheets, (args, original) => {
+        var sheet = args[0];
+        var id = String(sheet?.userId || sheet?.user?.id || sheet?.props?.userId || sheet?.props?.user?.id || "");
+        if (!/^\d{15,22}$/.test(id) || isCurrentUser(id) || !/user|profile/i.test(String(sheet?.key || "")) || !Array.isArray(sheet?.options))
+          return original(...args);
+        return original({
+          ...sheet,
+          options: [
+            ...sheet.options,
+            option(id)
+          ]
+        }, ...args.slice(1));
+      });
+    }
+    for (var name of [
+      "UserProfileOverflowMenu",
+      "UserProfileOverflowActionSheet",
+      "UserProfileMoreActionSheet"
+    ]) {
+      onJsxCreate(name, (_component, rendered) => {
+        var props = rendered?.props;
+        var id = String(props?.userId || props?.user?.id || props?.profile?.userId || "");
+        if (!/^\d{15,22}$/.test(id) || isCurrentUser(id) || props?.__cloudcordRealProfileMenu)
+          return rendered;
+        if (Array.isArray(props?.options))
+          return /* @__PURE__ */ (0, import_react6.cloneElement)(rendered, {
+            __cloudcordRealProfileMenu: true,
+            options: [
+              ...props.options,
+              option(id)
+            ]
+          });
+        if (!props?.children)
+          return rendered;
+        return /* @__PURE__ */ (0, import_react6.cloneElement)(rendered, {
+          __cloudcordRealProfileMenu: true,
+          children: [
+            props.children,
+            /* @__PURE__ */ (0, import_react6.createElement)(TableRow, {
+              key: "cloudcord-profile-view",
+              label: option(id).label,
+              onPress: option(id).onPress
+            })
+          ]
+        });
+      });
+    }
+  }
   function getProfileOverride(id) {
+    if (isRealProfileView(id))
+      return void 0;
     var local = settings.cloudcordLocalProfiles?.[id];
     var shared = sharedProfiles.get(id);
     if (!local)
@@ -12416,6 +12514,8 @@
     });
   }
   function appendPublishedBadges(result, userId) {
+    if (isRealProfileView(userId))
+      return result;
     var next = [
       ...result
     ];
@@ -12435,6 +12535,8 @@
         if (!Array.isArray(result))
           return result;
         var id = String(typeof user === "string" ? user : user?.userId || user?.id || user?.user?.id || user?.userProfile?.userId || user?.userProfile?.user?.id || user?.profile?.userId || user?.displayProfile?.userId || user?.displayProfile?.user?.id || "");
+        if (isRealProfileView(id))
+          return result;
         if (id) {
           nativeBadgeRows.set(id, [
             ...result
@@ -13191,6 +13293,7 @@
           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5e3);
         }
         ensurePatches();
+        connectRealProfileMenu();
         yield pullOwnSharedProfile();
         void refreshPublishedBadges(true);
         import_react_native19.AppState.addEventListener("change", (state2) => {
@@ -14856,7 +14959,7 @@
       })
     });
   }
-  var import_react6, import_react_native19, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react6, import_react_native19, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -15569,6 +15672,7 @@
       REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
       sharedProfileSeenAt = /* @__PURE__ */ new Map();
       sharedRenderTimer = null;
+      realProfileMenuConnected = false;
       publishedBadges = [];
       publishedBadgeRequest = false;
       publishedBadgeFetchedAt = 0;
