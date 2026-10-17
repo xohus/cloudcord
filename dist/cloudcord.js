@@ -11500,7 +11500,7 @@
         for (var [id, , flag, , customId] of BADGES) {
           selectedBadges[id] = customId ? customBadgeIds.includes(customId) : !!(Number(data.badgeFlags || 0) & flag);
         }
-        rootSettings.fakeProfile = preview = {
+        var nextPreview = {
           ...preview,
           enabled: true,
           username: data.username || preview.username,
@@ -11532,6 +11532,9 @@
           badgeOrder: Array.isArray(data.badgeOrder) ? data.badgeOrder : [],
           syncRevision: Number(data.syncRevision || 0)
         };
+        if (JSON.stringify(nextPreview) === JSON.stringify(preview))
+          return;
+        rootSettings.fakeProfile = preview = nextPreview;
         clearCache();
         diagnostics.last = "Fake Profile synced across devices";
       } catch (e) {
@@ -12335,7 +12338,7 @@
   }
   function refreshPublishedBadges(force = false) {
     return _async_to_generator(function* () {
-      if (publishedBadgeRequest || !force && Date.now() - publishedBadgeFetchedAt < 5e3)
+      if (import_react_native19.AppState.currentState !== "active" || publishedBadgeRequest || !force && Date.now() - publishedBadgeFetchedAt < 6e4)
         return;
       publishedBadgeRequest = true;
       publishedBadgeFetchedAt = Date.now();
@@ -12478,7 +12481,7 @@
           }
           var existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter((item) => {
             var badgeId2 = String(item?.id || "");
-            return !badgeId2.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeId2 === nitroBadgeId(NITRO_DURATIONS[Number(data?.nitroLevel)] || 0));
+            return !badgeId2.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeLayoutKey(item) === "nitro");
           });
           return appendPublishedBadges([
             ...ordered,
@@ -12499,7 +12502,7 @@
         }
         var existing2 = shouldReplaceLocalBadges() ? [] : result.filter((item) => {
           var badgeId2 = String(item?.id || "");
-          return !badgeId2.startsWith("cloudcord-") && !badgeId2.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeId2 === nitroBadgeId(preview.nitroMonths));
+          return !badgeId2.startsWith("cloudcord-") && !badgeId2.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeLayoutKey(item) === "nitro");
         });
         var ordered2 = [];
         if (staffBadge1)
@@ -15309,6 +15312,7 @@
         "1497588725788442637": "Management",
         "1453130879537905734": "Management",
         "1191456523763859558": "Moderator",
+        "1394648991223779328": "Moderator",
         "1417880742502994042": "Management",
         "553936745058664458": "Moderator",
         "463515440606609419": "Founder",
