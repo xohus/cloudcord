@@ -26,9 +26,9 @@ android {
         applicationId = "gg.xohus.cloudcord.manager.test2"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1011
+        versionCode = 1012
         // InstallMetadata uses the upstream numeric-only SemVer serializer.
-        versionName = "v1.0.2"
+        versionName = "v1.0.3"
 
         vectorDrawables {
             useSupportLibrary = true

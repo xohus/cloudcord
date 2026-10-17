@@ -7,6 +7,7 @@ package com.aliucord.manager.patcher.util
 
 import com.aliucord.manager.manager.PathManager
 import com.android.apksig.ApkSigner
+import com.android.apksig.ApkVerifier
 import dev.raincord.manager.BuildConfig
 import org.bouncycastle.asn1.x500.X500Name
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
@@ -88,6 +89,7 @@ object Signer : KoinComponent {
         val tmpApk = apkFile.resolveSibling(apkFile.name + ".tmp")
 
         ApkSigner.Builder(listOf(signerConfig))
+            .setMinSdkVersion(28) // Config splits can omit uses-sdk; Manager supports API 28+.
             .setV1SigningEnabled(false) // TODO: enable so api <24 devices can work, however zip-alignment breaks
             .setV2SigningEnabled(true)
             .setV3SigningEnabled(true)
@@ -96,7 +98,9 @@ object Signer : KoinComponent {
             .build()
             .sign()
 
-        tmpApk.renameTo(apkFile)
+        val result = ApkVerifier.Builder(tmpApk).setMinCheckedPlatformVersion(28).build().verify()
+        check(result.isVerified) { "Signed APK verification failed for ${apkFile.name}: ${result.errors}" }
+        check(tmpApk.renameTo(apkFile)) { "Could not save signed APK: ${apkFile.name}" }
     }
 
     fun getKeystoreFile(): File {

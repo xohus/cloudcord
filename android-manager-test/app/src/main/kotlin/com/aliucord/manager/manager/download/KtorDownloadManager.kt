@@ -16,8 +16,10 @@ import io.ktor.client.request.prepareGet
 import io.ktor.client.statement.bodyAsChannel
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentLength
+import io.ktor.http.isSuccess
 import io.ktor.utils.io.readAvailable
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.delay
 import java.io.File
 import java.io.IOException
 import java.net.SocketTimeoutException
@@ -32,6 +34,20 @@ class KtorDownloadManager(
     private val application: Application,
 ) : IDownloadManager {
     override suspend fun download(url: String, out: File, onProgressUpdate: IDownloadManager.ProgressListener?): Result {
+        var result: Result = Result.Cancelled(systemTriggered = false)
+        for (attempt in 0..2) {
+            // Refresh tracker redirects on retry rather than reusing a cached,
+            // expired Play CDN URL. Other sources retain their original URL.
+            val requestUrl = if (attempt > 0 && url.startsWith("https://tracker.vendetta.rocks/tracker/download/"))
+                url + "?retry=" + System.currentTimeMillis() else url
+            result = downloadOnce(requestUrl, out, onProgressUpdate)
+            if (result !is Result.Error || result.getError() is InsufficientStorageException) return result
+            if (attempt < 2) delay(1000L * (attempt + 1))
+        }
+        return result
+    }
+
+    private suspend fun downloadOnce(url: String, out: File, onProgressUpdate: IDownloadManager.ProgressListener?): Result {
         onProgressUpdate?.onUpdate(null)
         out.parentFile?.mkdirs()
 
@@ -50,6 +66,7 @@ class KtorDownloadManager(
             }
 
             httpStmt.execute { resp ->
+                if (!resp.status.isSuccess()) throw IOException("Download server returned HTTP ${resp.status.value} (${resp.status.description})")
                 val channel = resp.bodyAsChannel()
                 val total = resp.contentLength() ?: 0
                 var retrieved = 0L
@@ -71,10 +88,10 @@ class KtorDownloadManager(
 
                     while (!channel.isClosedForRead) {
                         bufLen = channel.readAvailable(buf)
-                        if (bufLen <= 0) break
+                        if (bufLen < 0) break
+                        if (bufLen == 0) continue
 
                         stream.write(buf, 0, bufLen)
-                        stream.flush()
 
                         retrieved += bufLen
 
@@ -87,11 +104,12 @@ class KtorDownloadManager(
                             onProgressUpdate?.onUpdate(null)
                         }
                     }
+                    DownloadIntegrity.checkLength(retrieved, total)
                 }
             }
-        } catch (_: CancellationException) {
+        } catch (e: CancellationException) {
             tmpOut.delete()
-            return Result.Cancelled(systemTriggered = false)
+            throw e
         } catch (e: SocketTimeoutException) {
             tmpOut.delete()
             return Error(e, localizedError = R.string.downloader_err_timeout)
@@ -103,7 +121,10 @@ class KtorDownloadManager(
             return Error(t)
         }
 
-        tmpOut.renameTo(out)
+        if (!tmpOut.renameTo(out)) {
+            tmpOut.delete()
+            return Error(IOException("Could not save downloaded file: ${out.name}"))
+        }
         return Result.Success(out)
     }
 

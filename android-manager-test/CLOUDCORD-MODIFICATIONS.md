@@ -13,6 +13,10 @@ Changes: separate test Manager/client IDs, CloudCord branding, bundled CloudCord
 Xposed module, latest stable Discord selection, disabled upstream Manager updates
 and remote control data, and failure on missing LSPatch outputs.
 
+October 17 repair: validate HTTP status and complete download sizes, reject bad
+cached Discord APKs, retry failed transfers at most twice, preserve cancellation,
+check the final file move, and show the download error instead of "Unknown".
+
 Experimental: do not uninstall an existing Manager or Discord. Both test packages
 use separate IDs. Not a production update. Compatibility is unverified. Record
 Android version, device, target Discord version, and export the installation log.

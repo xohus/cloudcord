@@ -106,7 +106,7 @@ abstract class DownloadStep : Step(), KoinComponent {
             is IDownloadManager.Result.Error -> {
                 withContext(Dispatchers.Main) {
                     val toastText = result.getLocalizedReason(context)
-                        ?: context.getString(R.string.downloader_err_unknown)
+                        ?: result.getDebugReason()
 
                     Toast.makeText(context, toastText, Toast.LENGTH_LONG).show()
                 }
