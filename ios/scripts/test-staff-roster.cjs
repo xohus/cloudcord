@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const expected = {
+    '1465007041390317579': 'Administrator',
     '1457121276748365989': 'Administrator',
     '1497588725788442637': 'Management',
     '1453130879537905734': 'Management',
@@ -10,7 +11,8 @@ const expected = {
     '553936745058664458': 'Moderator',
     '463515440606609419': 'Founder',
     '1121228881425354832': 'Management',
-    '1540350369232850995': 'Manager'
+    '1540350369232850995': 'Manager',
+    '1169999011642605628': 'Manager'
 };
 for (const path of ['desktop/client/src/api/Badges.ts', '.github/workflows/cloudcord.yml']) {
     const source = fs.readFileSync(path, 'utf8');
@@ -19,4 +21,4 @@ for (const path of ['desktop/client/src/api/Badges.ts', '.github/workflows/cloud
     assert.deepEqual(actual, expected);
     assert.equal(actual['unknown-user'], undefined);
 }
-console.log('all nine staff roles match on desktop/browser and mobile, including Manager; unlisted users have no staff badge');
+console.log('all eleven staff roles match on desktop/browser and mobile, including Administrator and Manager; unlisted users have no staff badge');
