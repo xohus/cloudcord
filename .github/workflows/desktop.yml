@@ -8,6 +8,7 @@ on:
   push:
     paths:
       - "desktop/**"
+      - "ios/scripts/test-custom-social-render.cjs"
       - ".github/workflows/desktop.yml"
 
 jobs:
