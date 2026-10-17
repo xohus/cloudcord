@@ -12739,9 +12739,7 @@
             onClick: open,
             onOpenProfile: open
           } : current;
-          return /* @__PURE__ */ jsx(Component2, {
-            ...nextProps
-          });
+          return /* @__PURE__ */ (0, import_react6.createElement)(Component2, nextProps);
         });
       socialWrapperTypes.add(socialRenderers.get(Component2));
       return {
@@ -12804,9 +12802,7 @@
           currentProps.name = name;
         }
       }
-      return /* @__PURE__ */ jsx(Component2, {
-        ...currentProps
-      });
+      return /* @__PURE__ */ (0, import_react6.createElement)(Component2, currentProps);
     }
     identityRenderers.set(Component2, CloudCordIdentity);
     return CloudCordIdentity;
