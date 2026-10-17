@@ -1,0 +1,25 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const esbuild = require('esbuild');
+const w = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
+const source = w.slice(w.indexOf('          const sharedProfileSeenAt ='), w.indexOf('          function getProfileOverride('));
+let calls = 0;
+const state = { currentState: 'active' };
+const ctx = { AppState: state, currentUserId: '999999999999999', sharedProfileFetchedAt: new Map(), sharedProfiles: new Map(), sharedRequests: new Set(),
+    SHARED_PROFILE_API: 'https://example.test', fetch: () => { calls++; return new Promise(() => {}); }, setTimeout, clearTimeout, Date };
+vm.runInNewContext(esbuild.transformSync(source, { loader: 'ts' }).code, ctx);
+const id = '123456789012345';
+state.currentState = 'background';
+ctx.requestSharedProfile(id);
+assert.equal(calls, 0);
+state.currentState = 'active';
+ctx.requestSharedProfile(id);
+ctx.requestSharedProfile(id);
+assert.equal(calls, 1);
+for (let n = 1; n <= 20; n++) ctx.requestSharedProfile(String(BigInt(id) + BigInt(n)));
+assert.equal(calls, 4);
+ctx.sharedRequests.clear();
+ctx.requestSharedProfile(id, true);
+assert.equal(calls, 4, 'forced background polling must respect TTL');
+console.log('PASS background suppression, request deduplication, 30-second TTL and four-request cap');

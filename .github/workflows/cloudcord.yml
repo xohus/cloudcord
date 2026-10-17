@@ -1196,11 +1196,26 @@ jobs:
               }
           }
 
+          const sharedProfileSeenAt = new Map<string, number>();
+          let sharedRenderTimer: ReturnType<typeof setTimeout> | null = null;
+          function queueSharedRenderRefresh() {
+              if (sharedRenderTimer) return;
+              sharedRenderTimer = setTimeout(() => {
+                  sharedRenderTimer = null;
+                  if (AppState.currentState !== "active") return;
+                  for (const refresh of identityRefreshers) refresh();
+                  try { safeStore("UserStore")?.emitChange?.(); } catch {}
+                  try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
+                  try { safeStore("MessageStore")?.emitChange?.(); } catch {}
+              }, 250);
+          }
           function requestSharedProfile(userId?: string, force = false) {
               const id = String(userId || "");
+              if (!force) sharedProfileSeenAt.set(id, Date.now());
               const fetchedAt = sharedProfileFetchedAt.get(id) || 0;
-              if (!/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || (!force && sharedProfiles.has(id) && Date.now() - fetchedAt < 5000)) return;
+              if (AppState.currentState !== "active" || !/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || Date.now() - fetchedAt < 30_000 || sharedRequests.size >= 4) return;
               sharedRequests.add(id);
+              sharedProfileFetchedAt.set(id, Date.now());
               void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, { cache: "no-store" })
                   .then(response => {
                       if (response.ok) return response.json();
@@ -1213,14 +1228,11 @@ jobs:
                       // times in quick succession and must not turn one 404 into a loop.
                       const next = profile && typeof profile === "object" ? profile : {};
                       const previous = sharedProfiles.get(id);
-                      const changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
+                      const changed = JSON.stringify(previous ?? {}) !== JSON.stringify(next);
                       sharedProfiles.set(id, next);
                       sharedProfileFetchedAt.set(id, Date.now());
                       if (!changed) return;
-                      for (const refresh of identityRefreshers) refresh();
-                      try { safeStore("UserStore")?.emitChange?.(); } catch {}
-                      try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
-                      try { safeStore("MessageStore")?.emitChange?.(); } catch {}
+                      queueSharedRenderRefresh();
                   })
                   .catch(() => {})
                   .finally(() => sharedRequests.delete(id));
@@ -1234,7 +1246,15 @@ jobs:
           }
 
           function refreshSharedProfiles() {
-              for (const id of sharedProfiles.keys()) requestSharedProfile(id, true);
+              if (AppState.currentState !== "active") return;
+              const now = Date.now();
+              let budget = 4;
+              for (const [id, seenAt] of sharedProfileSeenAt) {
+                  if (now - seenAt > 120_000) { sharedProfileSeenAt.delete(id); continue; }
+                  if (now - (sharedProfileFetchedAt.get(id) || 0) < 30_000) continue;
+                  requestSharedProfile(id, true);
+                  if (--budget === 0) break;
+              }
           }
 
           function cloneSharedUser(original: any, data: any) {
@@ -2409,10 +2429,11 @@ jobs:
                       void refreshPublishedBadges(true);
                       AppState.addEventListener("change", state => { if (state === "active") void refreshPublishedBadges(true); });
                       if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => {
+                          if (AppState.currentState !== "active") return;
                           void pullOwnSharedProfile();
                           refreshSharedProfiles();
                           if (AppState.currentState === "active") void refreshPublishedBadges();
-                      }, 5000);
+                      }, 15_000);
                       if (preview.enabled) { refreshPreview(); queueSharedPublish(); }
                   } catch (error: any) {
                       diagnostics.last = error?.message || "Could not restore Fake Profile";
