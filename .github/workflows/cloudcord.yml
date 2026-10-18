@@ -2442,8 +2442,10 @@ jobs:
 
               const snowflakeUtils = findByProps("extractTimestamp") as any;
               addPatch("extractTimestamp", snowflakeUtils, (args, original) => {
-                  const createdAt = profileDate(preview.createdAt);
-                  return preview.enabled && createdAt && String(args?.[0] || "") === currentUserId ? createdAt.getTime() : original(...args);
+                  // Profiles show "Member since" from the user id's snowflake,
+                  // so the joined-since date has to win here, like desktop.
+                  const memberSince = profileDate(preview.signupDate) || profileDate(preview.createdAt);
+                  return preview.enabled && memberSince && String(args?.[0] || "") === currentUserId ? memberSince.getTime() : original(...args);
               });
 
               connectMediaRenderer();
