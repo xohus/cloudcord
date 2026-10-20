@@ -2638,6 +2638,70 @@ jobs:
               for (const id of fakeRequestIds) FluxDispatcher.dispatch({ type: "RELATIONSHIP_REMOVE", relationship: { id, type: 3 } });
               fakeRequestIds.clear();
           }
+          // ---- Fake boost (device only) ----
+          type BoostFake = { level?: boolean; booster?: boolean };
+          function boostFor(guildId?: string | null): BoostFake | undefined { return guildId ? (extrasState() as any).boosts?.[guildId] : undefined; }
+          const guildOverlays = new WeakMap<object, any>();
+          const memberOverlays = new WeakMap<object, any>();
+          let boostHooksInstalled = false;
+          function installBoostHooks() {
+              if (boostHooksInstalled) return;
+              const guilds = findByStoreName("GuildStore") as any;
+              const members = findByStoreName("GuildMemberStore") as any;
+              if (!guilds || !members) return;
+              boostHooksInstalled = true;
+              after("getGuild", guilds, (args: any[], guild: any) => {
+                  if (!guild || !boostFor(args[0])?.level) return guild;
+                  let overlay = guildOverlays.get(guild);
+                  if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, { get: (target: any, key) => key === "premiumTier" ? 3 : key === "premiumSubscriberCount" ? Math.max(14, target.premiumSubscriberCount ?? 0) : Reflect.get(target, key, target) }));
+                  return overlay;
+              });
+              after("getMember", members, (args: any[], member: any) => {
+                  const me = (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id;
+                  if (!member || member.premiumSince || args[1] !== me || !boostFor(args[0])?.booster) return member;
+                  let overlay = memberOverlays.get(member);
+                  if (!overlay) memberOverlays.set(member, overlay = { ...member, premiumSince: new Date(Date.now() - 90 * 86400000).toISOString() });
+                  return overlay;
+              });
+          }
+          // 8 = boosted, 9/10/11 = boosted and the server reached level 1/2/3.
+          function sendFakeBoostMessage(times: number, reachedLevel: number) {
+              const channelId = (findByStoreName("SelectedChannelStore") as any)?.getChannelId?.();
+              const channel = channelId ? (findByStoreName("ChannelStore") as any)?.getChannel?.(channelId) : null;
+              const me = (findByStoreName("UserStore") as any)?.getCurrentUser?.();
+              if (!channel?.guild_id || !me) { Alert.alert("Fake boost", "Open a server text channel first, then come back."); return; }
+              const snowflake = findByProps("fromTimestamp", "extractTimestamp") as any;
+              FluxDispatcher.dispatch({ type: "MESSAGE_CREATE", channelId, optimistic: false, isPushNotification: false, message: {
+                  id: snowflake?.fromTimestamp?.(Date.now()) ?? String((Date.now() - 1420070400000) * 4194304), type: reachedLevel > 0 ? 8 + reachedLevel : 8, content: times > 1 ? String(times) : "",
+                  channel_id: channelId, guild_id: channel.guild_id, timestamp: new Date().toISOString(), edited_timestamp: null, flags: 0,
+                  author: { id: me.id, username: me.username, global_name: me.globalName, avatar: me.avatar, discriminator: me.discriminator ?? "0", public_flags: me.publicFlags ?? 0 },
+                  attachments: [], embeds: [], mentions: [], mention_roles: [], mention_everyone: false, pinned: false, tts: false, components: [] } });
+              showToast("Fake boost message added to the channel.");
+          }
+          function BoostSection({ refresh }: { refresh: () => void }) {
+              const K = require("@core/ui/settings/components/ProfileEditorKit");
+              const [times, setTimes] = useState(1);
+              const [reached, setReached] = useState(0);
+              const guildId = (findByStoreName("SelectedGuildStore") as any)?.getGuildId?.();
+              const guild = guildId ? (findByStoreName("GuildStore") as any)?.getGuild?.(guildId) : null;
+              const fake = boostFor(guildId) ?? {};
+              const set = (patch: BoostFake) => {
+                  if (!guildId) return;
+                  const state: any = extrasState();
+                  setExtras({ ...state, boosts: { ...state.boosts, [guildId]: { ...fake, ...patch } } });
+                  try { (findByStoreName("GuildStore") as any)?.emitChange?.(); (findByStoreName("GuildMemberStore") as any)?.emitChange?.(); } catch {}
+                  refresh();
+              };
+              return <K.Section title="Fake boost" description={guild ? "For " + guild.name + ". Only on this device." : "Open a server first, then come back here."}>
+                  {guild ? <>
+                      <K.Field label="Boosts"><K.Chips options={[1, 2, 3, 5, 10].map(value => ({ value, label: value + "x" }))} value={times} onChange={(value: number) => setTimes(value)} /></K.Field>
+                      <K.Field label="Message"><K.Chips options={[{ value: 0, label: "Just boosted" }, { value: 1, label: "Level 1" }, { value: 2, label: "Level 2" }, { value: 3, label: "Level 3" }]} value={reached} onChange={(value: number) => setReached(value)} /></K.Field>
+                      <Button text="Send fake boost message" variant="primary" size="sm" onPress={() => sendFakeBoostMessage(times, reached)} />
+                      <ToggleRow label="Show this server as Level 3" subLabel="Perks look unlocked here. Real limits don't change" value={fake.level === true} onPress={() => set({ level: !fake.level })} />
+                      <ToggleRow label="Show me as a booster here" subLabel="Boosting icon by your name in this server" value={fake.booster === true} onPress={() => set({ booster: !fake.booster })} />
+                  </> : null}
+              </K.Section>;
+          }
           let leavingServers = false;
           function confirmLeaveAllServers() {
               const me = (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id;
@@ -2695,6 +2759,7 @@ jobs:
                           {link ? <Button text="Remove" variant="secondary" size="sm" onPress={() => save({ ...state, giftCode: undefined })} /> : null}
                       </View>
                   </K.Section>
+                  <BoostSection refresh={force} />
                   <K.Section title="Fake friend request" description="Only you see it. Don't accept it: that sends them a real request.">
                       <K.Field label="User ID"><TextInput value={friendId} placeholder="123456789012345678" keyboardType="number-pad" autoCorrect={false} onChangeText={setFriendId} placeholderTextColor="#777" /></K.Field>
                       <View style={{ flexDirection: "row", gap: 8 }}>
@@ -2711,6 +2776,12 @@ jobs:
               </View>;
           }
 
+          export function ExtrasPage() {
+              return <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 48 }}>
+                  <Card border="strong"><ExtrasCard onReset={() => { try { bindSavedPreview(); clearCache(); refreshPreview(); } catch {} }} /></Card>
+              </ScrollView>;
+          }
+
           export function initializeFakeProfile() {
               if (initPromise) return initPromise;
               initPromise = (async () => {
@@ -2722,7 +2793,7 @@ jobs:
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
-                      try { installGiftHook(); applyFakeNitro(); FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro); } catch {}
+                      try { installGiftHook(); installBoostHooks(); applyFakeNitro(); FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro); } catch {}
                       connectRealProfileMenu();
                       await pullOwnSharedProfile();
                       void refreshPublishedBadges(true);
@@ -3225,7 +3296,6 @@ jobs:
                               try { nativeAvatar = user?.getAvatarURL?.() || nativeAvatar; } catch {}
                               return { username: shared?.username || user?.username || "", displayName: shared?.globalName || shared?.displayName || user?.globalName || user?.global_name || "", avatar: shared?.avatar || nativeAvatar, banner: shared?.banner || customDiscordMediaURL("banners", id, profile?.banner ?? user?.banner), bio: shared?.bio || profile?.bio || "", badges: BADGES.filter(([, , flag, , customId]) => customId ? customIds.includes(customId) : flag && (flags & flag) !== 0).map(([,name,,icon]) => ({name,icon})) };
                           }} /></Card> : null}
-                          {activeTab === "extras" ? <Card border="strong"><ExtrasCard onReset={() => { bindSavedPreview(); clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
                           {activeTab === "profile" ? <Card border="strong">

@@ -6,7 +6,7 @@ import { findAssetId } from "@lib/api/assets";
 import { tokens } from "@metro/common";
 
 function tabIcon(tab: ProfileTab) {
-    const names = { profile: ["UserIcon"], style: ["PaintPaletteIcon", "SparklesIcon", "StarIcon"], dates: ["CalendarIcon", "ClockIcon"], status: ["CircleIcon", "StatusIcon", "UserIcon"], social: ["LinkIcon", "PeopleIcon"], badges: ["StarIcon"], custom: ["ImageIcon", "StarIcon"], others: ["PeopleIcon", "UserIcon"], extras: ["GiftIcon", "NitroWheelIcon", "StarIcon"] }[tab];
+    const names = { profile: ["UserIcon"], style: ["PaintPaletteIcon", "SparklesIcon", "StarIcon"], dates: ["CalendarIcon", "ClockIcon"], status: ["CircleIcon", "StatusIcon", "UserIcon"], social: ["LinkIcon", "PeopleIcon"], badges: ["StarIcon"], custom: ["ImageIcon", "StarIcon"], others: ["PeopleIcon", "UserIcon"] }[tab];
     for (const name of [...names, "SettingsIcon"]) {
         try { const id = findAssetId(name); if (id) return <TableRow.Icon source={id} />; } catch {}
     }
@@ -29,14 +29,13 @@ export function GlassCard({ children }: { children: ReactNode; border?: string }
 export function GlassButton({ label, onPress, muted = false, disabled = false }: { label: string; onPress: () => void; muted?: boolean; disabled?: boolean }) {
     return <Button text={label} onPress={onPress} disabled={disabled} variant="secondary" />;
 }
-export type ProfileTab = "profile" | "style" | "status" | "badges" | "social" | "dates" | "custom" | "others" | "extras";
+export type ProfileTab = "profile" | "style" | "status" | "badges" | "social" | "dates" | "custom" | "others";
 const MAIN_TABS: [ProfileTab, string][] = [["profile", "Profile"], ["style", "Style"], ["status", "Status"], ["badges", "Badges"]];
 const MORE_TABS: [ProfileTab, string, string][] = [
     ["social", "Connections", "Accounts and domains on your profile"],
     ["dates", "Dates", "Account created and member-since dates"],
     ["custom", "Custom badges · beta", "Upload a badge name and PNG"],
-    ["others", "Other profiles", "Changes visible only on this device"],
-    ["extras", "Nitro & tools", "Fake Nitro, fake gift link, leave servers, reset"]
+    ["others", "Other profiles", "Changes visible only on this device"]
 ];
 /** Four main tabs in one compact row; everything else lives under a collapsible More. */
 export function ProfileTabs({ selected, onSelect }: { selected: ProfileTab; onSelect: (tab: ProfileTab) => void }) {
@@ -53,7 +52,7 @@ export function ProfileTabs({ selected, onSelect }: { selected: ProfileTab; onSe
             })}
         </View>
         <View style={{ borderRadius: 16, overflow: "hidden" }}>
-            <TableRow arrow label={moreOpen ? "Hide more options" : "More options"} subLabel={inMore && !moreOpen ? MORE_TABS.find(([tab]) => tab === selected)?.[1] : "Connections, dates, badges, Nitro & tools"} icon={tabIcon("others")} onPress={() => setMoreOpen(!moreOpen)} />
+            <TableRow arrow label={moreOpen ? "Hide more options" : "More options"} subLabel={inMore && !moreOpen ? MORE_TABS.find(([tab]) => tab === selected)?.[1] : "Connections, dates, custom badges, other profiles"} icon={tabIcon("others")} onPress={() => setMoreOpen(!moreOpen)} />
             {moreOpen ? MORE_TABS.map(([tab, label, sub]) => <View key={tab} style={{ borderLeftWidth: 3, borderLeftColor: tab === selected ? "#5865F2" : "transparent" }}>
                 <TableRow label={label} subLabel={sub} icon={tabIcon(tab)} onPress={() => onSelect(tab)} />
             </View>) : null}

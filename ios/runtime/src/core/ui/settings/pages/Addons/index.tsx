@@ -23,6 +23,7 @@ export default function Addons() {
                 <TableRow arrow label="Discover plugins" subLabel="Browse and install new plugins" icon={icon("ChannelListMagnifyingGlassIcon", "SearchIcon", "SettingsIcon")} onPress={() => open("Discover plugins", () => require("@core/ui/settings/pages/PluginBrowser"))} />
                 {isThemeSupported() && <TableRow arrow label="Themes" subLabel="Manage your Discord themes" icon={icon("PaintPaletteIcon", "ThemeIcon", "SettingsIcon")} onPress={() => open("Themes", () => require("@core/ui/settings/pages/Themes"))} />}
                 {isFontSupported() && <TableRow arrow label="Fonts" subLabel="Choose and manage fonts" icon={icon("LettersIcon", "TextIcon", "SettingsIcon")} onPress={() => open("Fonts", () => require("@core/ui/settings/pages/Fonts"))} />}
+                <TableRow arrow label="Extras" subLabel="Fake Nitro, gift links, boosts, friend requests and account tools" icon={icon("GiftIcon", "NitroWheelIcon", "StarIcon", "SettingsIcon")} onPress={() => open("Extras", () => ({ default: require("@core/ui/settings/pages/FakeProfile").ExtrasPage }))} />
                 <TableRow arrow label="Cloudsync" subLabel="Back up and sync your settings" icon={icon("CloudIcon", "SyncIcon", "SettingsIcon")} onPress={() => open("Cloudsync", () => require("@core/ui/settings/pages/StoreCloud"))} />
             </TableRowGroup>
         </Stack>
