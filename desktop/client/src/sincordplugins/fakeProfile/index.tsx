@@ -32,7 +32,7 @@ const ModalContent = _ModalContent as any;
 const ModalFooter = _ModalFooter as any;
 import { SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { AuthenticationStore, Button, ChannelActionCreators, FluxDispatcher, FriendsStore, IconUtils, Menu, Popout, React, Select, SnowflakeUtils, UserProfileActions, UserProfileStore, UserStore } from "@webpack/common";
+import { AuthenticationStore, Button, ChannelActionCreators, FluxDispatcher, FriendsStore, IconUtils, Menu, Popout, React, Select, showToast, SnowflakeUtils, Toasts, UserProfileActions, UserProfileStore, UserStore } from "@webpack/common";
 
 import nitroBronze from "file://../../../../../assets/NitroMilestones/bronze.png?base64";
 import nitroDiamond from "file://../../../../../assets/NitroMilestones/diamond.png?base64";
@@ -517,6 +517,7 @@ interface CustomProfileData extends ProfileAppearance {
     boostMonths?: number; email?: string; phone?: string; customBadgeIds?: string[];
     hideBadgesWhenSyncOff?: boolean;
     hideOtherProfiles?: boolean;
+    nativeEditorImages?: boolean;
     oldName?: string; decorationAsset?: string; decorationSkuId?: string; copiedUserId?: string; signupDate?: string; replaceRealBadges?: boolean; giftLevel?: number;
     syncRevision?: number;
     hiddenBadgeIds?: string[]; badgeOrder?: string[];
@@ -734,6 +735,38 @@ async function publishSharedProfile(): Promise<void> {
     }
     const result = await response.json();
     if (!saved.id && result?.id) await DataStore.set(LS_SHARE, { id: result.id, editToken: result.editToken });
+}
+
+// Save edits made outside the modal (menus, Discord's own editor) for the active account.
+function saveOwnData(next: CustomProfileData, enabled = isEnabled) {
+    storedData = next; isEnabled = enabled;
+    const myId = activeUserId();
+    if (myId) { allAccountsData[myId] = next; allAccountsEnabled[myId] = enabled; }
+    saveDataSync(next, enabled); saveAllDataSync();
+    DataStore.set(DS_KEY, next).catch(() => { });
+    DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
+    cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+    forceAccountPanelRerender();
+}
+
+const isImageUri = (value: unknown): value is string => typeof value === "string" && /^(data:image\/(png|jpe?g|gif|webp);base64,|https:\/\/)/i.test(value);
+// Discord's Edit Profile writes avatar and banner picks as pending changes. While the
+// custom profile is on, keep them as the CloudCord picture and banner instead, so they
+// work without Nitro (GIFs included) and Discord never tries to upload them.
+function onPendingProfileChange(action: any) {
+    if (action?.guildId || !isEnabled || storedData.nativeEditorImages === false) return;
+    const avatar = action.pendingAvatar?.imageUri ?? (typeof action.pendingAvatar === "string" ? action.pendingAvatar : undefined);
+    const banner = action.pendingBanner?.imageUri ?? (typeof action.pendingBanner === "string" ? action.pendingBanner : undefined);
+    if (!isImageUri(avatar) && !isImageUri(banner)) return;
+    const next = { ...storedData };
+    if (isImageUri(avatar)) next.avatar = avatar;
+    if (isImageUri(banner)) { next.banner = banner; next.nitro = true; }
+    saveOwnData(next);
+    queueSharedPublish();
+    setTimeout(() => {
+        try { FluxDispatcher.dispatch({ type: "USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", pendingAvatar: undefined, pendingBanner: undefined }); } catch { }
+    }, 0);
+    try { showToast(isImageUri(banner) && isImageUri(avatar) ? "Saved as your CloudCord picture and banner." : isImageUri(banner) ? "Saved as your CloudCord banner." : "Saved as your CloudCord profile picture.", Toasts.Type.SUCCESS); } catch { }
 }
 
 function queueSharedPublish() {
@@ -1070,9 +1103,7 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                 setTimeout(() => { try { UserProfileActions.openUserProfileModal({ userId: user.id }); } catch { } }, 50);
             }} />}
             <Menu.MenuCheckboxItem id="cloudcord-hide-other-profiles" label="Hide other CloudCord profiles" checked={storedData.hideOtherProfiles === true} action={() => {
-                storedData = { ...storedData, hideOtherProfiles: !storedData.hideOtherProfiles };
-                saveDataSync(storedData, isEnabled);
-                DataStore.set(DS_KEY, storedData).catch(() => { });
+                saveOwnData({ ...storedData, hideOtherProfiles: !storedData.hideOtherProfiles });
                 refresh();
             }} />
         </Menu.MenuGroup>);
@@ -1100,7 +1131,7 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                             bio: profile.bio || targetUser.bio || "", accentColor: profile.accentColor ?? targetUser.accentColor,
                             badgeFlags: targetUser.publicFlags ?? 0, copiedUserId: user.id, nitro: (profile.premiumType ?? 0) > 0,
                         };
-                        try { const avatarUrl = IconUtils?.getUserAvatarURL?.(targetUser, false, 512); if (avatarUrl) newData.avatar = avatarUrl; } catch { }
+                        try { const avatarUrl = IconUtils?.getUserAvatarURL?.(targetUser, true, 512); if (avatarUrl) newData.avatar = avatarUrl; } catch { }
                         if (profile.banner ?? targetUser.banner) { const bid = profile.banner ?? targetUser.banner; newData.banner = `https://cdn.discordapp.com/banners/${user.id}/${bid}.${bid.startsWith("a_") ? "gif" : "png"}?size=512`; }
                         try { newData.createdAt = new Date(Number(BigInt(user.id) >> 22n) + 1420070400000).toISOString().slice(0, 10); } catch { }
                         if (targetUser.avatarDecorationData?.asset) { newData.decorationAsset = targetUser.avatarDecorationData.asset; newData.decorationSkuId = targetUser.avatarDecorationData.skuId; }
@@ -1371,9 +1402,9 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     const panels: Record<TabId, React.ReactNode> = {
         profile: <>
             <Section title="Pictures" description="Shown on your profile, in chat and in member lists for CloudCord users.">
-                <ImageField label="Profile picture" value={data.avatar ?? ""} onChange={value => set("avatar", value)} />
+                <ImageField label="Profile picture" value={data.avatar ?? ""} hint="PNG, JPG, WebP or an animated GIF (up to 8 MB)." onChange={value => set("avatar", value)} />
                 <Switch label="Simulate Nitro" description="Unlocks a banner and profile colors." checked={data.nitro ?? false} onChange={value => set("nitro", value)} />
-                {data.nitro && <ImageField label="Banner" shape="banner" value={data.banner ?? ""} onChange={value => set("banner", value)} />}
+                {data.nitro && <ImageField label="Banner" shape="banner" value={data.banner ?? ""} hint="Animated GIF banners work too." onChange={value => set("banner", value)} />}
             </Section>
             <Section title="About you">
                 <TextField label="Bio" multiline maxLength={190} value={data.bio ?? ""} placeholder="Tell people about yourself" onChange={value => set("bio", value)} />
@@ -1445,6 +1476,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         badges: <>
             <Section title="Badges" description="Pick the badges shown on your profile.">
                 <Switch label="Hide CloudCord badges while sync is off" description="When you save on this device only, show no CloudCord badges on your profile." checked={data.hideBadgesWhenSyncOff === true} onChange={value => set("hideBadgesWhenSyncOff", value)} />
+                <Switch label="Use Discord's Edit Profile for picture and banner" description="While your custom profile is on, a picture or banner you pick in Discord's own Edit Profile is saved here instead, GIFs included." checked={data.nativeEditorImages !== false} onChange={value => set("nativeEditorImages", value)} />
                 <Switch label="Hide other CloudCord profiles" description="Show everyone with their real Discord profile. You can also switch this from any user's menu." checked={data.hideOtherProfiles === true} onChange={value => set("hideOtherProfiles", value)} />
                 <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
             </Section>
@@ -1792,6 +1824,7 @@ fakeObfuscatedEmail(real: string | null) {
         addHeaderBarButton("profile-spoofer-btn", () => <CustomProfileButton />, 10);
         addContextMenuPatch("user-context", userContextMenuPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
+        FluxDispatcher.subscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange);
 
         // Keep Discord's stored user immutable, but return the configured profile
         // to desktop surfaces which read the current user directly.
@@ -1914,7 +1947,7 @@ fakeObfuscatedEmail(real: string | null) {
         this._nativeSocial?.stop(); this._nativeSocial = null;
         window.removeEventListener("focus", refreshBadgesOnFocus);
         removeHeaderBarButton("profile-spoofer-btn"); removeContextMenuPatch("user-context", userContextMenuPatch);
-        FluxDispatcher.unsubscribe("CONNECTION_OPEN", onAccountSwitch); stopDomObserver();
+        FluxDispatcher.unsubscribe("CONNECTION_OPEN", onAccountSwitch); FluxDispatcher.unsubscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange); stopDomObserver();
         if (sharedSyncTimer) { clearInterval(sharedSyncTimer); sharedSyncTimer = null; }
         if (this._origExtractTimestamp && SnowflakeUtils) { (SnowflakeUtils as any).extractTimestamp = this._origExtractTimestamp; this._origExtractTimestamp = null; }
         if (this._origGetUserAvatarURL && IconUtils) { (IconUtils as any).getUserAvatarURL = this._origGetUserAvatarURL; this._origGetUserAvatarURL = null; _avatarPatchApplied = false; }
