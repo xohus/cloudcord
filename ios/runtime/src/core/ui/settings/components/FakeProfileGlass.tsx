@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, View } from "react-native";
 import { Button, Card, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
 import { findAssetId } from "@lib/api/assets";
@@ -14,6 +14,7 @@ function tabIcon(tab: ProfileTab) {
 
 export function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }: any) {
     const [draft, setDraft] = useState(defaultValue ?? "");
+    useEffect(() => { setDraft(defaultValue ?? ""); }, [defaultValue]);
     const change = (event: any) => {
         const next = typeof event === "string" ? event : event?.nativeEvent?.text ?? event?.text ?? event?.value;
         if (typeof next !== "string") return;
