@@ -8,7 +8,7 @@
 // fake Nitro gift link, local fake friend requests, leave all servers and a full reset.
 
 import * as DataStore from "@api/DataStore";
-import { Alerts, FluxDispatcher, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, showToast, Toasts, UserStore } from "@webpack/common";
+import { Alerts, ChannelStore, FluxDispatcher, GuildMemberStore, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
 
 import { Grid2, Section, SelectField, Switch } from "./editorUi";
 
@@ -31,7 +31,8 @@ const GIFT_STYLES = [
 ];
 const INCOMING_REQUEST = 3;
 
-interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; }
+interface BoostFake { level?: boolean; booster?: boolean; }
+interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; }
 
 function readExtras(): Extras {
     try { return JSON.parse(localStorage.getItem(LS_EXTRAS) || "{}") || {}; } catch { return {}; }
@@ -110,6 +111,80 @@ function uninstallGiftHook() {
 // Called from the patched gift resolver: only the current device link resolves.
 export function fakeGiftFor(code: string) {
     return extras.giftCode && code === extras.giftCode ? fakeGiftBody(code) : null;
+}
+
+// ---- Fake boost ----
+// Boost system messages: 8 = boosted, 9/10/11 = boosted and the server reached level 1/2/3.
+function sendFakeBoostMessage(times: number, reachedLevel: number) {
+    const channelId = SelectedChannelStore.getChannelId();
+    const channel = channelId ? ChannelStore.getChannel(channelId) : null;
+    const me = UserStore.getCurrentUser() as any;
+    if (!channel?.guild_id || !me) { showToast("Open a server text channel first.", Toasts.Type.FAILURE); return; }
+    FluxDispatcher.dispatch({
+        type: "MESSAGE_CREATE", channelId, optimistic: false, isPushNotification: false,
+        message: {
+            id: SnowflakeUtils.fromTimestamp(Date.now()), type: reachedLevel > 0 ? 8 + reachedLevel : 8, content: times > 1 ? String(times) : "",
+            channel_id: channelId, guild_id: channel.guild_id, timestamp: new Date().toISOString(), edited_timestamp: null, flags: 0,
+            author: { id: me.id, username: me.username, global_name: me.globalName, avatar: me.avatar, discriminator: me.discriminator ?? "0", public_flags: me.publicFlags ?? 0 },
+            attachments: [], embeds: [], mentions: [], mention_roles: [], mention_everyone: false, pinned: false, tts: false, components: []
+        }
+    });
+}
+
+const BOOST_SINCE = new Date(Date.now() - 90 * 86400_000);
+let boostOriginals: { getGuild: any; getMember: any; } | null = null;
+const guildOverlays = new WeakMap<object, any>();
+const memberOverlays = new WeakMap<object, any>();
+function boostFor(guildId?: string | null) { return guildId ? extras.boosts?.[guildId] : undefined; }
+// Read-only overlays: Discord's stores keep their real data, we only change what's returned.
+function installBoostHooks() {
+    if (boostOriginals || !GuildStore || !GuildMemberStore) return;
+    boostOriginals = { getGuild: GuildStore.getGuild, getMember: GuildMemberStore.getMember };
+    const { getGuild, getMember } = boostOriginals;
+    (GuildStore as any).getGuild = function (guildId: string, ...rest: any[]) {
+        const guild = getGuild.call(this, guildId, ...rest);
+        if (!guild || !boostFor(guildId)?.level) return guild;
+        let overlay = guildOverlays.get(guild);
+        if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, { get: (target, key) => key === "premiumTier" ? 3 : key === "premiumSubscriberCount" ? Math.max(14, target.premiumSubscriberCount ?? 0) : Reflect.get(target, key, target) }));
+        return overlay;
+    };
+    (GuildMemberStore as any).getMember = function (guildId: string, userId: string, ...rest: any[]) {
+        const member = getMember.call(this, guildId, userId, ...rest);
+        if (!member || member.premiumSince || !boostFor(guildId)?.booster || userId !== UserStore.getCurrentUser()?.id) return member;
+        let overlay = memberOverlays.get(member);
+        if (!overlay) memberOverlays.set(member, overlay = { ...member, premiumSince: BOOST_SINCE.toISOString() });
+        return overlay;
+    };
+}
+function uninstallBoostHooks() {
+    if (!boostOriginals) return;
+    (GuildStore as any).getGuild = boostOriginals.getGuild; (GuildMemberStore as any).getMember = boostOriginals.getMember;
+    boostOriginals = null;
+}
+function refreshGuildViews(guildId: string) {
+    try { (GuildStore as any).emitChange?.(); (GuildMemberStore as any).emitChange?.(); } catch { }
+    try { FluxDispatcher.dispatch({ type: "GUILD_MEMBER_PROFILE_UPDATE", guildId }); } catch { }
+}
+
+function BoostSection() {
+    const guildId = SelectedGuildStore.getGuildId();
+    const guild = guildId ? GuildStore.getGuild(guildId) : null;
+    const [times, setTimes] = React.useState(1);
+    const [reached, setReached] = React.useState(0);
+    const fake = boostFor(guildId) ?? {};
+    const set = (patch: BoostFake) => { if (!guildId) return; writeExtras({ ...extras, boosts: { ...extras.boosts, [guildId]: { ...fake, ...patch } } }); refreshGuildViews(guildId); };
+    return <Section title="Fake boost" description={guild ? `For ${guild.name}. Only on this device: other people see the real server.` : "Open a server first, then come back here."}>
+        {guild && <>
+            <Grid2>
+                <SelectField label="Boosts" options={[1, 2, 3, 5, 10].map(value => ({ value, label: `${value}x` }))} value={times} onChange={value => setTimes(Number(value))} />
+                <SelectField label="Message" options={[{ value: 0, label: "Just boosted" }, { value: 1, label: "Reached level 1" }, { value: 2, label: "Reached level 2" }, { value: 3, label: "Reached level 3" }]} value={reached} onChange={value => setReached(Number(value))} />
+            </Grid2>
+            <div className="cpx-inline"><button type="button" className="cpx-btn" onClick={() => sendFakeBoostMessage(times, reached)}>Send fake boost message</button></div>
+            <span className="cpx-hint">Shows in the channel you have open and disappears when you switch channels or restart.</span>
+            <Switch label="Show this server as Level 3" description="Boost bar and perks look unlocked here. Real limits like upload size don't change." checked={fake.level === true} onChange={value => set({ level: value })} />
+            <Switch label="Show me as a booster here" description="The boosting icon by your name and Server Booster since on your profile." checked={fake.booster === true} onChange={value => set({ booster: value })} />
+        </>}
+    </Section>;
 }
 
 // ---- Fake friend requests ----
@@ -191,11 +266,13 @@ function confirmReset() {
 
 export function startExtras() {
     installGiftHook();
+    installBoostHooks();
     applyFakeNitro();
     FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro);
 }
 export function stopExtras() {
     uninstallGiftHook();
+    uninstallBoostHooks();
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", applyFakeNitro);
     if (extras.fakeNitro) { const prev = extras; extras = { ...prev, fakeNitro: false }; applyFakeNitro(); extras = prev; }
     for (const id of [...fakeRequests]) removeFakeRequest(id);
@@ -224,6 +301,7 @@ export function ExtrasPanel() {
                 {code && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => writeExtras({ ...extras, giftCode: undefined })}>Remove</button>}
             </div>
         </Section>
+        <BoostSection />
         <Section title="Fake friend request" description="Paste a user ID (right-click them, Copy User ID). Only you see the request. Don't accept it: that sends them a real request.">
             <input className="cpx-input" placeholder="User ID" inputMode="numeric" value={friendId} onChange={event => setFriendId(event.target.value)} />
             <div className="cpx-inline">
