@@ -723,12 +723,14 @@ async function publishSharedProfile(): Promise<void> {
     if (activeUserId() !== ownerId || storedData.localOnly) return;
     if (latestResponse.ok) {
         const latest = await latestResponse.json();
+        if (activeUserId() !== ownerId || storedData.localOnly) return;
         lastRemoteProfile = latest?.profile && typeof latest.profile === "object" ? latest.profile : lastRemoteProfile;
         storedData.syncRevision = Math.max(Date.now(), Number(storedData.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
         allAccountsData[ownerId] = storedData;
         saveDataSync(storedData, true); saveAllDataSync();
     }
     else if (latestResponse.status === 404) lastRemoteProfile = null;
+    else throw new Error(`Couldn't load your latest shared profile (${latestResponse.status}). Your local changes are saved; try syncing again shortly.`);
     let saved: any = {};
     saved = await DataStore.get(LS_SHARE) || {};
     if (!saved.id) {
@@ -742,6 +744,7 @@ async function publishSharedProfile(): Promise<void> {
         // Keep fields only the phone app knows about, so saving here never wipes them.
         body: JSON.stringify({ ownerId, profile: { ...remoteOnlyFields(), ...toSharedProfile(storedData) } })
     });
+    if (activeUserId() !== ownerId) return;
     if (!response.ok) {
         if (response.status === 409) throw new Error("Your shared profile changed on another device. Reopen the editor and try again.");
         if (saved.id && (response.status === 401 || response.status === 404)) {
@@ -995,6 +998,7 @@ function loadDataSync() {
     } catch { storedData = {}; isEnabled = false; }
 }
 function onAccountSwitch() {
+    lastRemoteProfile = null;
     updateCachedRealData(); syncCurrentUserData();
     cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
     _realUsername = ""; _realGlobalName = ""; _cachedRealDateVariants = null;

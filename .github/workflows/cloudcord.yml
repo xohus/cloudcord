@@ -1096,6 +1096,7 @@ jobs:
               if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly) return;
               if (latestResponse.ok) {
                   const latest = await latestResponse.json() as any;
+                  if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly) return;
                   // Save everything: keep fields only desktop knows about, and don't wipe a
                   // picture or banner just because this phone couldn't read its own copy.
                   const remote = latest?.profile && typeof latest.profile === "object" ? latest.profile : {};
@@ -1111,8 +1112,9 @@ jobs:
                   rootSettings.fakeProfile = { ...preview, selectedBadges: { ...(preview.selectedBadges || {}) } };
                   preview = rootSettings.fakeProfile as PreviewSettings;
               }
+              else if (latestResponse.status !== 404) throw new Error(`Couldn't load your latest shared profile (${latestResponse.status}). Your local changes are saved; try syncing again shortly.`);
               const clearSnapshot = { ...(rootSettings.fakeProfileMediaCleared || {}) };
-              if (rootSettings.fakeProfileLocalOnly) return;
+              if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly) return;
               const response = await fetch(`${SHARED_PROFILE_API}${path}`, {
                   method: saved.id ? "PUT" : "POST",
                   headers: {
@@ -1121,6 +1123,7 @@ jobs:
                   },
                   body: JSON.stringify({ ownerId, profile: profileSnapshot })
               });
+              if (currentUserId !== ownerId) return;
               if (!response.ok) {
                   if (response.status === 429) {
                       const retrySeconds = Math.max(2, Number(response.headers.get("retry-after") || 10));

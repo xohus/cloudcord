@@ -82,5 +82,31 @@ vm.runInContext(compile(pull), host);
     published = null;
     await publisher.publishSharedProfile();
     assert.equal(published, null, 'account switches cannot upload the previous account profile');
+    publisher.activeUserId = () => 'owner';
+    publisher.storedData = { bio: 'new account edits', syncRevision: 42 };
+    publisher.fetch = async () => ({ ok: true, json: async () => {
+        publisher.activeUserId = () => 'another';
+        return { profile: { bio: 'previous account', syncRevision: 100 } };
+    } });
+    await publisher.publishSharedProfile();
+    assert.equal(publisher.storedData.syncRevision, 42, 'switching while decoding cannot alter the new account revision');
+    assert.equal(published, null);
+    publisher.activeUserId = () => 'owner';
+    publisher.fetch = async () => ({ ok: false, status: 503 });
+    await assert.rejects(publisher.publishSharedProfile(), /latest shared profile \(503\)/);
+    assert.equal(published, null, 'a failed latest-profile read must not publish a stale or cross-account snapshot');
+    const phone = vm.createContext({ rootSettings: { fakeProfile: {} }, preview: { enabled: true, syncRevision: 42 },
+        currentUserId: 'owner', customSocialValidationErrors: () => [], ownSharedProfile: async () => ({ syncRevision: 42 }),
+        SHARED_PROFILE_API: 'https://example.test', Date, JSON,
+        fetch: async () => ({ ok: true, json: async () => {
+            phone.currentUserId = 'another';
+            return { profile: { syncRevision: 100 } };
+        } }) });
+    vm.runInContext(compile(block(mobile, 'async function publishSharedProfile(', 'function queueSharedPublish(')), phone);
+    await phone.publishSharedProfile();
+    assert.equal(phone.preview.syncRevision, 42, 'mobile must also discard account switches during decoding');
+    phone.currentUserId = 'owner';
+    phone.fetch = async () => ({ ok: false, status: 503 });
+    await assert.rejects(phone.publishSharedProfile(), /latest shared profile \(503\)/);
     console.log('PASS explicit badge and Nitro off values, immutable replacement/deduplication, stale and concurrent sync responses, account isolation, local preferences and unchanged polling');
 })().catch(error => { console.error(error); process.exitCode = 1; });
