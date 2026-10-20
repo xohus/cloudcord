@@ -14596,7 +14596,7 @@
     }
   }
   function newGiftCode() {
-    var chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    var chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
     var code = "";
     for (var i = 0; i < 16; i++)
       code += chars[Math.floor(Math.random() * chars.length)];
@@ -14608,25 +14608,27 @@
       me = findByStoreName("UserStore")?.getCurrentUser?.();
     } catch (e) {
     }
+    var state2 = extrasState();
+    var plan = GIFT_PLANS.find((item) => item.id === state2.giftPlan) ?? GIFT_PLANS[0];
     return {
       code,
-      sku_id: NITRO_MONTHLY_SKU,
+      sku_id: plan.sku,
       application_id: NITRO_APP_ID,
       uses: 0,
       max_uses: 1,
       redeemed: false,
       flags: 0,
       expires_at: new Date(Date.now() + 48 * 36e5).toISOString(),
-      subscription_plan_id: NITRO_MONTHLY_PLAN,
+      subscription_plan_id: plan.id,
       subscription_plan: {
-        id: NITRO_MONTHLY_PLAN,
-        name: "Nitro Monthly",
-        interval: 1,
+        id: plan.id,
+        name: plan.name,
+        interval: plan.interval,
         interval_count: 1,
         tax_inclusive: true,
-        sku_id: NITRO_MONTHLY_SKU,
+        sku_id: plan.sku,
         currency: "usd",
-        price: 999,
+        price: plan.price,
         price_tier: null
       },
       user: me ? {
@@ -14636,8 +14638,20 @@
         avatar: me.avatar,
         discriminator: me.discriminator ?? "0"
       } : void 0,
-      store_listing: null,
-      gift_style: null,
+      store_listing: {
+        id: plan.sku,
+        summary: "",
+        sku: {
+          id: plan.sku,
+          type: 5,
+          application_id: NITRO_APP_ID,
+          name: plan.sku === NITRO_BASIC_SKU ? "Nitro Basic" : "Nitro",
+          flags: 0,
+          premium: true,
+          product_line: 1
+        }
+      },
+      gift_style: state2.giftStyle ?? 4,
       batch_id: null,
       promotion: null
     };
@@ -14645,10 +14659,20 @@
   function installGiftHook() {
     if (giftHookInstalled)
       return;
+    giftHookInstalled = true;
+    instead("dispatch", FluxDispatcher, (args, original) => {
+      var action = args[0];
+      var code = extrasState().giftCode;
+      if (code && action?.code === code && action.type === "GIFT_CODE_RESOLVE_FAILURE")
+        return original({
+          type: "GIFT_CODE_RESOLVE_SUCCESS",
+          giftCode: fakeGiftBody(code)
+        });
+      return original(...args);
+    });
     var http = extrasHttp();
     if (!http)
       return;
-    giftHookInstalled = true;
     var match = (req) => typeof req?.url === "string" ? req.url.match(/\/entitlements\/gift-codes\/([A-Za-z0-9-]+)(\/redeem)?/) : null;
     instead("get", http, (args, original) => {
       var m2 = match(args[0]);
@@ -15025,6 +15049,38 @@
           title: "Fake Nitro gift",
           description: "Shows as a Nitro gift only on your device. Everyone else sees an invalid link, and it can't be redeemed.",
           children: [
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "Gift",
+              children: /* @__PURE__ */ jsx(K2.Chips, {
+                options: GIFT_PLANS.map((item) => ({
+                  value: item.id,
+                  label: item.label
+                })),
+                value: state2.giftPlan ?? GIFT_PLANS[0].id,
+                onChange: (value) => save({
+                  ...state2,
+                  giftPlan: value,
+                  giftCode: state2.giftCode && newGiftCode()
+                })
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "Design",
+              children: /* @__PURE__ */ jsx(K2.Chips, {
+                options: GIFT_STYLES,
+                value: state2.giftStyle ?? 4,
+                onChange: (value) => save({
+                  ...state2,
+                  giftStyle: value,
+                  giftCode: state2.giftCode && newGiftCode()
+                })
+              })
+            }),
+            link ? /* @__PURE__ */ jsx(Text, {
+              variant: "text-xs/medium",
+              color: "text-muted",
+              children: "Changing the gift or design makes a new link, because Discord remembers each link once it's shown."
+            }) : null,
             link ? /* @__PURE__ */ jsx(Text, {
               variant: "text-sm/semibold",
               selectable: true,
@@ -17144,7 +17200,7 @@
       })
     });
   }
-  var import_react7, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_MONTHLY_SKU, NITRO_MONTHLY_PLAN, fakeRequestIds, giftHookInstalled, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, giftHookInstalled, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -17872,8 +17928,92 @@
       socialWrapperTypes = /* @__PURE__ */ new WeakSet();
       EXTRAS_KEY = "cloudcordExtras";
       NITRO_APP_ID = "521842831262875670";
-      NITRO_MONTHLY_SKU = "521847234246082599";
-      NITRO_MONTHLY_PLAN = "511651880837840896";
+      NITRO_SKU = "521847234246082599";
+      NITRO_BASIC_SKU = "978380684370378762";
+      GIFT_PLANS = [
+        {
+          id: "511651880837840896",
+          label: "Nitro 1 month",
+          name: "Nitro Monthly",
+          sku: NITRO_SKU,
+          interval: 1,
+          price: 999
+        },
+        {
+          id: "511651885459963904",
+          label: "Nitro 1 year",
+          name: "Nitro Yearly",
+          sku: NITRO_SKU,
+          interval: 2,
+          price: 9999
+        },
+        {
+          id: "978380692553465866",
+          label: "Basic 1 month",
+          name: "Nitro Basic Monthly",
+          sku: NITRO_BASIC_SKU,
+          interval: 1,
+          price: 299
+        },
+        {
+          id: "1024422698568122368",
+          label: "Basic 1 year",
+          name: "Nitro Basic Yearly",
+          sku: NITRO_BASIC_SKU,
+          interval: 2,
+          price: 2999
+        }
+      ];
+      GIFT_STYLES = [
+        {
+          value: 4,
+          label: "Standard box"
+        },
+        {
+          value: 2,
+          label: "Box"
+        },
+        {
+          value: 1,
+          label: "Snow globe"
+        },
+        {
+          value: 3,
+          label: "Cup"
+        },
+        {
+          value: 5,
+          label: "Cake"
+        },
+        {
+          value: 6,
+          label: "Chest"
+        },
+        {
+          value: 7,
+          label: "Coffee"
+        },
+        {
+          value: 8,
+          label: "Seasonal box"
+        },
+        {
+          value: 9,
+          label: "Seasonal cake"
+        },
+        {
+          value: 10,
+          label: "Seasonal chest"
+        },
+        {
+          value: 11,
+          label: "Seasonal coffee"
+        },
+        {
+          value: 12,
+          label: "Nitroween"
+        }
+      ];
       fakeRequestIds = /* @__PURE__ */ new Set();
       giftHookInstalled = false;
       guildOverlays = /* @__PURE__ */ new WeakMap();
