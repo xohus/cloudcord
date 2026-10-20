@@ -12965,8 +12965,8 @@
         setOwnValue(cloned, "accentColor", Number(data.accentColor));
       if (data.primaryColor != null || data.accentColor != null)
         setOwnValue(cloned, "themeColors", [
-          Number(data.primaryColor || data.accentColor),
-          Number(data.accentColor || data.primaryColor)
+          Number(data.primaryColor ?? data.accentColor),
+          Number(data.accentColor ?? data.primaryColor)
         ]);
     }
     if (data.banner) {
@@ -13078,8 +13078,8 @@
         setOwnValue(cloned, "primaryColor", data.primaryColor);
       if (data.primaryColor != null || data.accentColor != null)
         setOwnValue(cloned, "themeColors", [
-          Number(data.primaryColor || data.accentColor),
-          Number(data.accentColor || data.primaryColor)
+          Number(data.primaryColor ?? data.accentColor),
+          Number(data.accentColor ?? data.primaryColor)
         ]);
     }
     setOwnValue(cloned, "userId", userId);
