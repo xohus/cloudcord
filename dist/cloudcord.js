@@ -10139,13 +10139,14 @@
       profile: [
         "UserIcon"
       ],
-      name: [
-        "PencilIcon",
-        "UserIcon"
-      ],
-      cosmetics: [
+      style: [
+        "PaintPaletteIcon",
         "SparklesIcon",
         "StarIcon"
+      ],
+      dates: [
+        "CalendarIcon",
+        "ClockIcon"
       ],
       status: [
         "CircleIcon",
@@ -10227,45 +10228,76 @@
     });
   }
   function ProfileTabs({ selected, onSelect }) {
-    return /* @__PURE__ */ jsx(import_react_native15.View, {
-      children: /* @__PURE__ */ jsx(TableRowGroup, {
-        children: TAB_ORDER.map((tab) => /* @__PURE__ */ jsx(import_react_native15.View, {
+    var inMore = MORE_TABS.some(([tab]) => tab === selected);
+    var [moreOpen, setMoreOpen] = (0, import_react3.useState)(inMore);
+    return /* @__PURE__ */ jsxs(import_react_native15.View, {
+      style: {
+        gap: 12
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native15.View, {
+          accessibilityRole: "tablist",
           style: {
-            borderRadius: 12,
-            overflow: "hidden",
-            borderWidth: 2,
-            borderColor: selected === tab ? tokens.colors.TEXT_NORMAL : "transparent",
-            backgroundColor: selected === tab ? tokens.colors.BACKGROUND_MODIFIER_SELECTED : "transparent"
+            flexDirection: "row",
+            padding: 4,
+            gap: 4,
+            borderRadius: 14,
+            backgroundColor: tokens.colors.BACKGROUND_TERTIARY
           },
-          children: /* @__PURE__ */ jsx(TableRow, {
-            label: {
-              profile: "Profile",
-              name: "Name & tag",
-              cosmetics: "Cosmetics",
-              status: "Status",
-              badges: "Badges",
-              social: "Connections",
-              custom: "Custom badges \xB7 beta",
-              others: "Other profiles"
-            }[tab],
-            subLabel: {
-              profile: "Pictures, bio, colors and dates",
-              name: "Names, name style and server tag",
-              cosmetics: "Decorations, frames, effects and nameplates",
-              status: "Status, custom status and activity",
-              badges: "Choose and arrange your badges",
-              social: "Accounts and domains on your profile",
-              custom: "Upload a badge name and PNG",
-              others: "Changes visible only on this device"
-            }[tab],
-            icon: tabIcon(tab),
-            onPress: () => onSelect(tab)
+          children: MAIN_TABS.map(([tab, label]) => {
+            var on = tab === selected;
+            return /* @__PURE__ */ jsx(import_react_native15.Pressable, {
+              accessibilityRole: "tab",
+              accessibilityState: {
+                selected: on
+              },
+              onPress: () => onSelect(tab),
+              style: {
+                flex: 1,
+                alignItems: "center",
+                paddingVertical: 10,
+                borderRadius: 10,
+                backgroundColor: on ? tokens.colors.BACKGROUND_MODIFIER_SELECTED : "transparent"
+              },
+              children: /* @__PURE__ */ jsx(Text, {
+                variant: "text-sm/semibold",
+                color: on ? "text-normal" : "text-muted",
+                children: label
+              })
+            }, tab);
           })
-        }, tab))
-      })
+        }),
+        /* @__PURE__ */ jsxs(import_react_native15.View, {
+          style: {
+            borderRadius: 16,
+            overflow: "hidden"
+          },
+          children: [
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: moreOpen ? "Hide more options" : "More options",
+              subLabel: inMore && !moreOpen ? MORE_TABS.find(([tab]) => tab === selected)?.[1] : "Connections, dates, custom badges, other profiles",
+              icon: tabIcon("others"),
+              onPress: () => setMoreOpen(!moreOpen)
+            }),
+            moreOpen ? MORE_TABS.map(([tab, label, sub]) => /* @__PURE__ */ jsx(import_react_native15.View, {
+              style: {
+                borderLeftWidth: 3,
+                borderLeftColor: tab === selected ? "#5865F2" : "transparent"
+              },
+              children: /* @__PURE__ */ jsx(TableRow, {
+                label,
+                subLabel: sub,
+                icon: tabIcon(tab),
+                onPress: () => onSelect(tab)
+              })
+            }, tab)) : null
+          ]
+        })
+      ]
     });
   }
-  var import_react3, import_react_native15, TAB_ORDER;
+  var import_react3, import_react_native15, MAIN_TABS, MORE_TABS;
   var init_FakeProfileGlass = __esm({
     "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
       "use strict";
@@ -10277,15 +10309,45 @@
       init_components();
       init_assets();
       init_common();
-      TAB_ORDER = [
-        "profile",
-        "name",
-        "cosmetics",
-        "status",
-        "badges",
-        "social",
-        "custom",
-        "others"
+      MAIN_TABS = [
+        [
+          "profile",
+          "Profile"
+        ],
+        [
+          "style",
+          "Style"
+        ],
+        [
+          "status",
+          "Status"
+        ],
+        [
+          "badges",
+          "Badges"
+        ]
+      ];
+      MORE_TABS = [
+        [
+          "social",
+          "Connections",
+          "Accounts and domains on your profile"
+        ],
+        [
+          "dates",
+          "Dates",
+          "Account created and member-since dates"
+        ],
+        [
+          "custom",
+          "Custom badges \xB7 beta",
+          "Upload a badge name and PNG"
+        ],
+        [
+          "others",
+          "Other profiles",
+          "Changes visible only on this device"
+        ]
       ];
     }
   });
@@ -15279,6 +15341,14 @@
               onPress: openPreview
             })
           }),
+          /* @__PURE__ */ jsx(Card2, {
+            children: /* @__PURE__ */ jsx(ToggleRow, {
+              label: "Use custom profile",
+              subLabel: preview.enabled ? "On: your edits show on this device" : "Off: you see your real profile",
+              value: preview.enabled,
+              onPress: () => update("enabled", !preview.enabled, true)
+            })
+          }),
           /* @__PURE__ */ jsx(ProfileTabs2, {
             selected: activeTab,
             onSelect: setActiveTab
@@ -15366,10 +15436,10 @@
           }) : null,
           [
             "profile",
-            "name",
-            "cosmetics",
+            "style",
             "status",
-            "badges"
+            "badges",
+            "dates"
           ].includes(activeTab) ? /* @__PURE__ */ jsx(Card2, {
             children: /* @__PURE__ */ jsx(import_react_native20.View, {
               style: {
@@ -15414,6 +15484,33 @@
                 gap: 24
               },
               children: [
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Names",
+                  children: [
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Display name",
+                      children: /* @__PURE__ */ jsx(TextInput3, {
+                        defaultValue: preview.displayName,
+                        placeholder: realCurrentUser?.globalName || "Display name",
+                        maxLength: 32,
+                        onChangeText: (value) => update("displayName", value),
+                        placeholderTextColor: "#777"
+                      })
+                    }),
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Username",
+                      children: /* @__PURE__ */ jsx(TextInput3, {
+                        defaultValue: preview.username,
+                        placeholder: realCurrentUser?.username || "username",
+                        maxLength: 32,
+                        autoCapitalize: "none",
+                        autoCorrect: false,
+                        onChangeText: (value) => update("username", value),
+                        placeholderTextColor: "#777"
+                      })
+                    })
+                  ]
+                }),
                 /* @__PURE__ */ jsxs(K2.Section, {
                   title: "Pictures",
                   description: "Shown on your profile, in chat and in member lists for CloudCord users.",
@@ -15510,41 +15607,11 @@
                       ]
                     }) : null
                   ]
-                }),
-                /* @__PURE__ */ jsxs(K2.Section, {
-                  title: "Dates",
-                  description: "Leave empty to use your real dates.",
-                  children: [
-                    /* @__PURE__ */ jsx(K2.Field, {
-                      label: "Account created",
-                      hint: "YYYY-MM-DD",
-                      children: /* @__PURE__ */ jsx(TextInput3, {
-                        defaultValue: preview.createdAt,
-                        placeholder: "2016-05-21",
-                        autoCapitalize: "none",
-                        autoCorrect: false,
-                        onChangeText: (value) => update("createdAt", value, true),
-                        placeholderTextColor: "#777"
-                      })
-                    }),
-                    /* @__PURE__ */ jsx(K2.Field, {
-                      label: "Member since",
-                      hint: "YYYY-MM-DD",
-                      children: /* @__PURE__ */ jsx(TextInput3, {
-                        defaultValue: preview.signupDate,
-                        placeholder: "2016-05-21",
-                        autoCapitalize: "none",
-                        autoCorrect: false,
-                        onChangeText: (value) => update("signupDate", value, true),
-                        placeholderTextColor: "#777"
-                      })
-                    })
-                  ]
                 })
               ]
             })
           }) : null,
-          activeTab === "name" ? /* @__PURE__ */ jsx(Card2, {
+          activeTab === "style" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
@@ -15553,32 +15620,140 @@
               },
               children: [
                 /* @__PURE__ */ jsxs(K2.Section, {
-                  title: "Names",
+                  title: "Avatar decoration",
+                  description: "The frame around your profile picture.",
                   children: [
-                    /* @__PURE__ */ jsx(K2.Field, {
-                      label: "Display name",
-                      children: /* @__PURE__ */ jsx(TextInput3, {
-                        defaultValue: preview.displayName,
-                        placeholder: realCurrentUser?.globalName || "Display name",
-                        maxLength: 32,
-                        onChangeText: (value) => update("displayName", value),
-                        placeholderTextColor: "#777"
-                      })
+                    /* @__PURE__ */ jsx(K2.CurrentRow, {
+                      label: preview.avatarDecoration ? decorations.find((item) => item.uri === preview.avatarDecoration)?.label || "Decoration" : null,
+                      image: preview.avatarDecoration || void 0,
+                      onRemove: () => {
+                        update("avatarDecoration", "", true);
+                        update("avatarDecorationSku", "", true);
+                      }
                     }),
-                    /* @__PURE__ */ jsx(K2.Field, {
-                      label: "Username",
-                      children: /* @__PURE__ */ jsx(TextInput3, {
-                        defaultValue: preview.username,
-                        placeholder: realCurrentUser?.username || "username",
-                        maxLength: 32,
-                        autoCapitalize: "none",
-                        autoCorrect: false,
-                        onChangeText: (value) => update("username", value),
-                        placeholderTextColor: "#777"
-                      })
+                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
+                      SearchInput: TextInput3,
+                      items: decorations,
+                      keyOf: (item) => `${item.asset}:${item.skuId}`,
+                      labelOf: (item) => item.label,
+                      imageOf: (item) => item.uri,
+                      isSelected: (item) => item.uri === preview.avatarDecoration,
+                      onPick: (item) => {
+                        update("avatarDecoration", item.uri, true);
+                        update("avatarDecorationSku", item.skuId, true);
+                      },
+                      noneLabel: "No decoration",
+                      noneSelected: !preview.avatarDecoration,
+                      onNone: () => {
+                        update("avatarDecoration", "", true);
+                        update("avatarDecorationSku", "", true);
+                      },
+                      status: {
+                        loading: decorationsLoading && !decorations.length
+                      }
                     })
                   ]
                 }),
+                /* @__PURE__ */ jsx(K2.Divider, {}),
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Profile frame",
+                  description: "A decorative frame around and above your profile card. On mobile only the top part shows.",
+                  children: [
+                    /* @__PURE__ */ jsx(K2.CurrentRow, {
+                      label: preview.profileFrame ? catalog?.frames.find((item) => item.skuId === preview.profileFrame?.skuId)?.label || "Profile frame" : null,
+                      image: catalog?.frames.find((item) => item.skuId === preview.profileFrame?.skuId)?.preview,
+                      onRemove: () => update("profileFrame", null, true)
+                    }),
+                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
+                      SearchInput: TextInput3,
+                      items: catalog?.frames || [],
+                      keyOf: (item) => item.skuId,
+                      labelOf: (item) => item.label,
+                      imageOf: (item) => item.preview,
+                      isSelected: (item) => item.skuId === preview.profileFrame?.skuId,
+                      onPick: (item) => update("profileFrame", {
+                        skuId: item.skuId
+                      }, true),
+                      noneLabel: "No frame",
+                      noneSelected: !preview.profileFrame,
+                      onNone: () => update("profileFrame", null, true),
+                      status: catalogStatus,
+                      onRetry: () => loadCatalog(true)
+                    })
+                  ]
+                }),
+                /* @__PURE__ */ jsx(K2.Divider, {}),
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Profile effect",
+                  description: "An animated effect that plays over your profile card.",
+                  children: [
+                    /* @__PURE__ */ jsx(K2.CurrentRow, {
+                      label: preview.profileEffect ? catalog?.effects.find((item) => item.skuId === preview.profileEffect?.skuId)?.title || "Profile effect" : null,
+                      image: catalog?.effects.find((item) => item.skuId === preview.profileEffect?.skuId)?.preview,
+                      onRemove: () => update("profileEffect", null, true)
+                    }),
+                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
+                      SearchInput: TextInput3,
+                      items: catalog?.effects || [],
+                      keyOf: (item) => item.skuId,
+                      labelOf: (item) => item.title,
+                      imageOf: (item) => item.preview,
+                      isSelected: (item) => item.skuId === preview.profileEffect?.skuId,
+                      onPick: (item) => update("profileEffect", {
+                        skuId: item.skuId
+                      }, true),
+                      noneLabel: "No effect",
+                      noneSelected: !preview.profileEffect,
+                      onNone: () => update("profileEffect", null, true),
+                      status: catalogStatus,
+                      onRetry: () => loadCatalog(true)
+                    })
+                  ]
+                }),
+                /* @__PURE__ */ jsx(K2.Divider, {}),
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Nameplate",
+                  description: "The background behind your name in member lists and DMs.",
+                  children: [
+                    /* @__PURE__ */ jsx(K2.CurrentRow, {
+                      wide: true,
+                      label: preview.nameplate ? preview.nameplate.label || "Nameplate" : null,
+                      image: preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : void 0,
+                      onRemove: () => update("nameplate", null, true)
+                    }),
+                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
+                      SearchInput: TextInput3,
+                      wide: true,
+                      items: catalog?.nameplates || [],
+                      keyOf: (item) => item.skuId,
+                      labelOf: (item) => item.label,
+                      imageOf: (item) => nameplateAssetURL(item.asset),
+                      isSelected: (item) => item.skuId === preview.nameplate?.skuId,
+                      onPick: (item) => update("nameplate", {
+                        skuId: item.skuId,
+                        asset: item.asset,
+                        label: item.label,
+                        palette: item.palette
+                      }, true),
+                      noneLabel: "No nameplate",
+                      noneSelected: !preview.nameplate,
+                      onNone: () => update("nameplate", null, true),
+                      status: catalogStatus,
+                      onRetry: () => loadCatalog(true)
+                    })
+                  ]
+                })
+              ]
+            })
+          }) : null,
+          activeTab === "style" ? /* @__PURE__ */ jsx(Card2, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native20.View, {
+              style: {
+                padding: 16,
+                gap: 24
+              },
+              children: [
                 /* @__PURE__ */ jsxs(K2.Section, {
                   title: "Name style",
                   description: "Font, effect and colors for your display name.",
@@ -15748,141 +15923,6 @@
               ]
             })
           }) : null,
-          activeTab === "cosmetics" ? /* @__PURE__ */ jsx(Card2, {
-            border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native20.View, {
-              style: {
-                padding: 16,
-                gap: 24
-              },
-              children: [
-                /* @__PURE__ */ jsxs(K2.Section, {
-                  title: "Avatar decoration",
-                  description: "The frame around your profile picture.",
-                  children: [
-                    /* @__PURE__ */ jsx(K2.CurrentRow, {
-                      label: preview.avatarDecoration ? decorations.find((item) => item.uri === preview.avatarDecoration)?.label || "Decoration" : null,
-                      image: preview.avatarDecoration || void 0,
-                      onRemove: () => {
-                        update("avatarDecoration", "", true);
-                        update("avatarDecorationSku", "", true);
-                      }
-                    }),
-                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
-                      SearchInput: TextInput3,
-                      items: decorations,
-                      keyOf: (item) => `${item.asset}:${item.skuId}`,
-                      labelOf: (item) => item.label,
-                      imageOf: (item) => item.uri,
-                      isSelected: (item) => item.uri === preview.avatarDecoration,
-                      onPick: (item) => {
-                        update("avatarDecoration", item.uri, true);
-                        update("avatarDecorationSku", item.skuId, true);
-                      },
-                      noneLabel: "No decoration",
-                      noneSelected: !preview.avatarDecoration,
-                      onNone: () => {
-                        update("avatarDecoration", "", true);
-                        update("avatarDecorationSku", "", true);
-                      },
-                      status: {
-                        loading: decorationsLoading && !decorations.length
-                      }
-                    })
-                  ]
-                }),
-                /* @__PURE__ */ jsx(K2.Divider, {}),
-                /* @__PURE__ */ jsxs(K2.Section, {
-                  title: "Profile frame",
-                  description: "A decorative frame around and above your profile card. On mobile only the top part shows.",
-                  children: [
-                    /* @__PURE__ */ jsx(K2.CurrentRow, {
-                      label: preview.profileFrame ? catalog?.frames.find((item) => item.skuId === preview.profileFrame?.skuId)?.label || "Profile frame" : null,
-                      image: catalog?.frames.find((item) => item.skuId === preview.profileFrame?.skuId)?.preview,
-                      onRemove: () => update("profileFrame", null, true)
-                    }),
-                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
-                      SearchInput: TextInput3,
-                      items: catalog?.frames || [],
-                      keyOf: (item) => item.skuId,
-                      labelOf: (item) => item.label,
-                      imageOf: (item) => item.preview,
-                      isSelected: (item) => item.skuId === preview.profileFrame?.skuId,
-                      onPick: (item) => update("profileFrame", {
-                        skuId: item.skuId
-                      }, true),
-                      noneLabel: "No frame",
-                      noneSelected: !preview.profileFrame,
-                      onNone: () => update("profileFrame", null, true),
-                      status: catalogStatus,
-                      onRetry: () => loadCatalog(true)
-                    })
-                  ]
-                }),
-                /* @__PURE__ */ jsx(K2.Divider, {}),
-                /* @__PURE__ */ jsxs(K2.Section, {
-                  title: "Profile effect",
-                  description: "An animated effect that plays over your profile card.",
-                  children: [
-                    /* @__PURE__ */ jsx(K2.CurrentRow, {
-                      label: preview.profileEffect ? catalog?.effects.find((item) => item.skuId === preview.profileEffect?.skuId)?.title || "Profile effect" : null,
-                      image: catalog?.effects.find((item) => item.skuId === preview.profileEffect?.skuId)?.preview,
-                      onRemove: () => update("profileEffect", null, true)
-                    }),
-                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
-                      SearchInput: TextInput3,
-                      items: catalog?.effects || [],
-                      keyOf: (item) => item.skuId,
-                      labelOf: (item) => item.title,
-                      imageOf: (item) => item.preview,
-                      isSelected: (item) => item.skuId === preview.profileEffect?.skuId,
-                      onPick: (item) => update("profileEffect", {
-                        skuId: item.skuId
-                      }, true),
-                      noneLabel: "No effect",
-                      noneSelected: !preview.profileEffect,
-                      onNone: () => update("profileEffect", null, true),
-                      status: catalogStatus,
-                      onRetry: () => loadCatalog(true)
-                    })
-                  ]
-                }),
-                /* @__PURE__ */ jsx(K2.Divider, {}),
-                /* @__PURE__ */ jsxs(K2.Section, {
-                  title: "Nameplate",
-                  description: "The background behind your name in member lists and DMs.",
-                  children: [
-                    /* @__PURE__ */ jsx(K2.CurrentRow, {
-                      wide: true,
-                      label: preview.nameplate ? preview.nameplate.label || "Nameplate" : null,
-                      image: preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : void 0,
-                      onRemove: () => update("nameplate", null, true)
-                    }),
-                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
-                      SearchInput: TextInput3,
-                      wide: true,
-                      items: catalog?.nameplates || [],
-                      keyOf: (item) => item.skuId,
-                      labelOf: (item) => item.label,
-                      imageOf: (item) => nameplateAssetURL(item.asset),
-                      isSelected: (item) => item.skuId === preview.nameplate?.skuId,
-                      onPick: (item) => update("nameplate", {
-                        skuId: item.skuId,
-                        asset: item.asset,
-                        label: item.label,
-                        palette: item.palette
-                      }, true),
-                      noneLabel: "No nameplate",
-                      noneSelected: !preview.nameplate,
-                      onNone: () => update("nameplate", null, true),
-                      status: catalogStatus,
-                      onRetry: () => loadCatalog(true)
-                    })
-                  ]
-                })
-              ]
-            })
-          }) : null,
           activeTab === "status" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native20.View, {
@@ -16028,6 +16068,45 @@
                   ]
                 })
               ]
+            })
+          }) : null,
+          activeTab === "dates" ? /* @__PURE__ */ jsx(Card2, {
+            border: "strong",
+            children: /* @__PURE__ */ jsx(import_react_native20.View, {
+              style: {
+                padding: 16,
+                gap: 24
+              },
+              children: /* @__PURE__ */ jsxs(K2.Section, {
+                title: "Dates",
+                description: "Leave empty to use your real dates.",
+                children: [
+                  /* @__PURE__ */ jsx(K2.Field, {
+                    label: "Account created",
+                    hint: "YYYY-MM-DD",
+                    children: /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: preview.createdAt,
+                      placeholder: "2016-05-21",
+                      autoCapitalize: "none",
+                      autoCorrect: false,
+                      onChangeText: (value) => update("createdAt", value, true),
+                      placeholderTextColor: "#777"
+                    })
+                  }),
+                  /* @__PURE__ */ jsx(K2.Field, {
+                    label: "Member since",
+                    hint: "YYYY-MM-DD",
+                    children: /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: preview.signupDate,
+                      placeholder: "2016-05-21",
+                      autoCapitalize: "none",
+                      autoCorrect: false,
+                      onChangeText: (value) => update("signupDate", value, true),
+                      placeholderTextColor: "#777"
+                    })
+                  })
+                ]
+              })
             })
           }) : null,
           activeTab === "badges" ? /* @__PURE__ */ jsx(Card2, {
@@ -16246,10 +16325,10 @@
           }) : null,
           [
             "profile",
-            "name",
-            "cosmetics",
+            "style",
             "status",
-            "badges"
+            "badges",
+            "dates"
           ].includes(activeTab) ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native20.View, {
@@ -16258,13 +16337,6 @@
                 gap: 12
               },
               children: [
-                /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "preview on this device",
-                  subLabel: "try your changes here before syncing",
-                  value: preview.enabled,
-                  accent: true,
-                  onPress: () => update("enabled", !preview.enabled, true)
-                }),
                 /* @__PURE__ */ jsx(ActionButton, {
                   label: "Apply preview",
                   onPress: () => {
