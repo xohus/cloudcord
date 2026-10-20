@@ -12751,7 +12751,7 @@
       sharedProfileSeenAt.set(id, Date.now());
     var fetchedAt = sharedProfileFetchedAt.get(id) || 0;
     var cached = sharedProfiles.get(id);
-    var ttl = cached && !Object.keys(cached).length ? 15 * 6e4 : force ? 3e4 : 2 * 6e4;
+    var ttl = cached && !Object.keys(cached).length ? force ? 6e4 : 15 * 6e4 : force ? 3e4 : 2 * 6e4;
     if (import_react_native21.AppState.currentState !== "active" || !/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || Date.now() - fetchedAt < ttl || sharedRequests.size >= 4)
       return;
     sharedRequests.add(id);
