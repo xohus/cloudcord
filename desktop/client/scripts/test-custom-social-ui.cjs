@@ -5,7 +5,7 @@ const schema=schemaContext.module.exports;
 const React={createElement:(type,props,...children)=>({type,props:{...props,children}}),useState:value=>[typeof value==='function'?value():value,()=>{}],useRef:value=>({current:value}),useEffect:()=>{}};
 let modal;let messaged;let removed=0;
 const modalApi={ModalRoot:'modal',ModalContent:'content',ModalHeader:'header',openModal:render=>{modal=render({onClose:()=>{}});}};
-const context={module:{exports:{}},require:name=>name==='@utils/profileAppearance'?schema:name==='@utils/modal'?modalApi:name==='@webpack/common'?{React,ChannelActionCreators:{openPrivateChannel:id=>{messaged=id;}}}:null,setInterval:()=>1,clearInterval:()=>{}};
+const context={module:{exports:{}},require:name=>name==='./serviceIcons'?{SERVICE_ICON_PATHS:{steam:'M0 0h24v24H0z'}}:name==='@utils/profileAppearance'?schema:name==='@utils/modal'?modalApi:name==='@webpack/common'?{React,ChannelActionCreators:{openPrivateChannel:id=>{messaged=id;}}}:null,setInterval:()=>1,clearInterval:()=>{}};
 vm.runInNewContext(esbuild.transformSync(fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/CustomSocial.tsx','utf8'),{loader:'tsx',format:'cjs'}).code,context);
 const api=context.module.exports;
 const data={customFriends:[{id:'friend',userId:'1540350369232850995',username:'custom',displayName:'Custom friend',avatar:'',banner:'',bio:'Friend bio',badges:[{name:'Preview badge',icon:''}]}],customConnections:[{id:'steam',service:'steam',accountId:'123',username:'steam-user',displayName:'Steam preview',avatar:'',banner:'',bio:'Steam bio',url:'https://steamcommunity.com/id/example',details:[{label:'Games',value:'123'}]}]};
@@ -48,7 +48,8 @@ assert.ok(!editor.includes('Custom friend'),'retired entries do not appear in th
 const workflow=fs.readFileSync('.github/workflows/cloudcord.yml','utf8');
 const desktopEditor=fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/index.tsx','utf8');
 assert.ok(!desktopEditor.includes('removeOwnFriendPreview'),'friend-removal handlers are retired');
-for(const heading of ['Identity · name, style & server tag','Appearance · pictures, bio & colors','Badges & dates','Avatar decorations','Connections']) assert.ok(desktopEditor.includes(`<summary>${heading}</summary>`));
+const editorUi=fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/editorUi.tsx','utf8');
+for(const tab of ['profile','name','cosmetics','status','badges','connections']) { assert.ok(editorUi.includes(`id: "${tab}"`),`editor has the ${tab} tab`); assert.ok(desktopEditor.includes(`${tab}: `),`${tab} tab has a panel`); }
 assert.ok(!desktopEditor.includes('renderProfileSection:'),'custom friend actions are not registered on real profiles');
 assert.ok(!workflow.includes('addPatch("getState", friendsStore'),'mobile friend store hooks are removed');
 assert.ok(!fs.readFileSync('ios/runtime/src/core/ui/settings/components/CustomSocial.tsx','utf8').includes('text="Add friend"'));

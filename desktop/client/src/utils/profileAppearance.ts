@@ -1,9 +1,24 @@
 export type ProfileAppearance = {
     displayNameStyles?: { fontId: number; effectId: number; colors: number[] } | null;
-    serverTag?: { tag: string; guildId: string; badge: string } | null;
+    serverTag?: { tag: string; guildId: string; badge: string; icon?: string } | null;
+    nameplate?: ProfileNameplate | null;
+    profileEffect?: { skuId: string } | null;
+    profileFrame?: { skuId: string } | null;
+    customActivity?: ProfileActivity | null;
+    customStatus?: { text: string; emoji?: string } | null;
+    presenceStatus?: "online" | "idle" | "dnd" | "invisible" | null;
     customFriends?: CustomFriendPreview[];
     customConnections?: CustomConnectionPreview[];
 };
+
+export type ProfileNameplate = { skuId: string; asset: string; label?: string; palette?: string };
+/** Discord activity types: 0 Playing, 1 Streaming, 2 Listening to, 3 Watching, 5 Competing in. */
+export type ProfileActivity = { type: 0 | 1 | 2 | 3 | 5; name: string; details?: string; state?: string; url?: string };
+export const ACTIVITY_TYPES = [{ value: 0, label: "Playing" }, { value: 1, label: "Streaming" }, { value: 2, label: "Listening to" }, { value: 3, label: "Watching" }, { value: 5, label: "Competing in" }] as const;
+export const PRESENCE_STATUSES = ["online", "idle", "dnd", "invisible"] as const;
+const SNOWFLAKE = /^\d{15,22}$/;
+const TAG_ICON_DATA = /^data:image\/(?:png|webp|gif|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/;
+export const TAG_ICON_MAX_LENGTH = 70000;
 
 /** Shared presentation records. Never insert these into Discord's relationship or OAuth stores. */
 export type CustomFriendPreview = {
@@ -13,7 +28,7 @@ export type CustomFriendPreview = {
 };
 
 export type CustomConnectionPreview = {
-    id: string; service: "steam" | "youtube" | "roblox" | "twitch" | "github" | "spotify" | "x" | "reddit" | "other";
+    id: string; service: "steam" | "youtube" | "roblox" | "twitch" | "github" | "spotify" | "x" | "reddit" | "domain" | "other";
     accountId: string; username: string; displayName: string;
     avatar: string; banner: string; bio: string; url: string;
     details: { label: string; value: string }[];
@@ -91,7 +106,7 @@ export function customDiscordMediaURL(kind: "avatars" | "banners", userId: strin
 
 /** Drafts stay editable locally, but invalid entries must not disappear silently on sharing. */
 export function customConnectionServiceName(service: string): string {
-    const names: Record<string, string> = {steam:"Steam",youtube:"YouTube",roblox:"Roblox",github:"GitHub",twitch:"Twitch",spotify:"Spotify",x:"X",reddit:"Reddit",other:"Other"};
+    const names: Record<string, string> = {steam:"Steam",youtube:"YouTube",roblox:"Roblox",github:"GitHub",twitch:"Twitch",spotify:"Spotify",x:"X",reddit:"Reddit",domain:"Domain",other:"Other"};
     return names[service] || "Other";
 }
 
@@ -139,7 +154,7 @@ export function normalizeCustomSocial(data: any): Pick<ProfileAppearance, "custo
     const unique = <T extends { id: string }>(items: T[]) => items.filter((item, index) => item.id && items.findIndex(other => other.id === item.id) === index);
     // Retired feature: ignore old/shared friend previews without changing Discord friendships.
     if (data?.customFriends !== undefined) result.customFriends = [];
-    const services = ["steam", "youtube", "roblox", "twitch", "github", "spotify", "x", "reddit", "other"];
+    const services = ["steam", "youtube", "roblox", "twitch", "github", "spotify", "x", "reddit", "domain", "other"];
     if (Array.isArray(data?.customConnections)) result.customConnections = unique(records(data.customConnections).map(item => ({
         id: textField(item.id, 80),
         service: services.includes(item.service) ? item.service as CustomConnectionPreview["service"] : "other" as const,
@@ -203,10 +218,107 @@ export function normalizeProfileAppearance(data: any): ProfileAppearance {
         if (typeof tag === "string" && Array.from(tag.trim()).length >= 1 && Array.from(tag.trim()).length <= 4
             && typeof guildId === "string" && /^\d{15,22}$/.test(guildId)
             && typeof badge === "string" && (badge === "" || /^[a-f0-9]{32}$/.test(badge))) {
-            result.serverTag = { tag: tag.trim(), guildId, badge };
+            const icon = serverTagCustomIcon(data.serverTag.icon);
+            result.serverTag = icon ? { tag: tag.trim(), guildId, badge, icon } : { tag: tag.trim(), guildId, badge };
         }
     }
+    const text = (value: unknown, maximum: number) => typeof value === "string" ? Array.from(value.replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, "").trim()).slice(0, maximum).join("") : "";
+    if (data?.nameplate === null) result.nameplate = null;
+    else if (data?.nameplate && typeof data.nameplate === "object") {
+        const { skuId, asset, label, palette } = data.nameplate;
+        if (typeof skuId === "string" && SNOWFLAKE.test(skuId) && typeof asset === "string" && /^nameplates\/[A-Za-z0-9_\/-]{1,180}\/$/.test(asset) && !asset.includes("..")) {
+            result.nameplate = { skuId, asset, label: text(label, 80), palette: typeof palette === "string" && /^[a-z_]{1,30}$/.test(palette) ? palette : "" };
+        }
+    }
+    if (data?.profileEffect === null) result.profileEffect = null;
+    else if (typeof data?.profileEffect?.skuId === "string" && SNOWFLAKE.test(data.profileEffect.skuId)) result.profileEffect = { skuId: data.profileEffect.skuId };
+    if (data?.profileFrame === null) result.profileFrame = null;
+    else if (typeof data?.profileFrame?.skuId === "string" && SNOWFLAKE.test(data.profileFrame.skuId)) result.profileFrame = { skuId: data.profileFrame.skuId };
+    if (data?.customActivity === null) result.customActivity = null;
+    else if (data?.customActivity && typeof data.customActivity === "object") {
+        const activity = data.customActivity;
+        const name = text(activity.name, 128);
+        if (ACTIVITY_TYPES.some(type => type.value === activity.type) && name) {
+            const url = activity.type === 1 ? streamURL(activity.url) : "";
+            result.customActivity = { type: activity.type, name, details: text(activity.details, 128), state: text(activity.state, 128), ...(url ? { url } : {}) };
+        }
+    }
+    if (data?.customStatus === null) result.customStatus = null;
+    else if (data?.customStatus && typeof data.customStatus === "object") {
+        const statusText = text(data.customStatus.text, 128);
+        const emoji = text(data.customStatus.emoji, 8);
+        const safeEmoji = emoji && !/[A-Za-z0-9<>:]/.test(emoji) ? emoji : "";
+        if (statusText || safeEmoji) result.customStatus = { text: statusText, ...(safeEmoji ? { emoji: safeEmoji } : {}) };
+    }
+    if (data?.presenceStatus === null) result.presenceStatus = null;
+    else if ((PRESENCE_STATUSES as readonly string[]).includes(data?.presenceStatus)) result.presenceStatus = data.presenceStatus;
     return result;
+}
+
+/** Discord's own rule (its STREAMING check): twitch.tv/<name> or youtube.com/watch?v=<id>.
+ * Short and live YouTube links are rewritten to the watch form so they qualify. */
+export const DISCORD_STREAM_URL = /^https?:\/\/(?:www\.)?(twitch\.tv\/(.+)|youtube.com\/watch\?v=)/;
+export function streamURL(value: unknown): string {
+    let url = customPreviewURL(value);
+    if (!url) return "";
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^(www|m)\./, "");
+    const live = parsed.pathname.match(/^\/live\/([\w-]{6,})/);
+    if (host === "youtu.be" && /^\/[\w-]{6,}$/.test(parsed.pathname)) url = `https://www.youtube.com/watch?v=${parsed.pathname.slice(1)}`;
+    else if (host === "youtube.com" && live) url = `https://www.youtube.com/watch?v=${live[1]}`;
+    return DISCORD_STREAM_URL.test(url) ? url : "";
+}
+
+/** A small uploaded image (data URL) or a Discord/CloudCord-hosted HTTPS image. */
+export function serverTagCustomIcon(value: unknown): string {
+    if (typeof value !== "string" || !value || value.length > TAG_ICON_MAX_LENGTH) return "";
+    if (TAG_ICON_DATA.test(value)) return value;
+    const url = customPreviewURL(value);
+    if (!url) return "";
+    const host = new URL(url).hostname;
+    return host === "cdn.discordapp.com" || host === "media.discordapp.net" || host === "getcloudcord.com" ? url : "";
+}
+
+/** Stable 32-hex key so a custom icon can travel through Discord's badge-hash field. */
+export function serverTagIconKey(icon: string): string {
+    let h1 = 0x811c9dc5, h2 = 0x01000193, h3 = 0x9e3779b9, h4 = 0x85ebca6b;
+    for (let index = 0; index < icon.length; index++) {
+        const code = icon.charCodeAt(index);
+        h1 = Math.imul(h1 ^ code, 16777619); h2 = Math.imul(h2 ^ code, 2246822507);
+        h3 = Math.imul(h3 ^ code, 3266489909); h4 = Math.imul(h4 ^ code, 668265263);
+    }
+    return "cc" + [h1, h2, h3, h4].map(value => (value >>> 0).toString(16).padStart(8, "0")).join("").slice(0, 30);
+}
+
+const customTagIcons = new Map<string, string>();
+/** Badge hash -> custom icon, used to swap Discord's guild-tag image for the uploaded one. */
+export function customServerTagIcon(badge: string): string | undefined { return customTagIcons.get(badge); }
+
+/** Native activity objects for Discord's presence renderer (presentation only). */
+export function nativeActivities(data: any): any[] {
+    const appearance = normalizeProfileAppearance(data);
+    const activities: any[] = [];
+    if (appearance.customStatus) {
+        const { text: state, emoji } = appearance.customStatus;
+        activities.push({ type: 4, name: "Custom Status", state: state || null, emoji: emoji ? { name: emoji, id: null, animated: false } : null, id: "custom", created_at: 0, cloudcordCustom: true });
+    }
+    if (appearance.customActivity) {
+        const activity = appearance.customActivity;
+        activities.push({
+            type: activity.type, name: activity.name, details: activity.details || undefined, state: activity.state || undefined,
+            url: activity.type === 1 ? activity.url : undefined, id: "cloudcord-activity", created_at: 0, flags: 0, cloudcordCustom: true
+        });
+    }
+    return activities;
+}
+
+/** Collectibles merged onto Discord's own object, keeping anything it already has. */
+export function nativeCollectibles(existing: any, data: any): any {
+    const { nameplate } = normalizeProfileAppearance(data);
+    if (nameplate === undefined) return existing;
+    const base = existing && typeof existing === "object" ? { ...existing } : {};
+    base.nameplate = nameplate ? { skuId: nameplate.skuId, sku_id: nameplate.skuId, asset: nameplate.asset, label: nameplate.label || "", palette: nameplate.palette || "", expiresAt: null, expires_at: null } : null;
+    return base;
 }
 
 /** Read-only connection snapshots for Discord's existing profile renderer.
@@ -218,9 +330,10 @@ export function nativeSocialProfile(profile: any, data: any): Record<string, any
         : Array.isArray(profile?.connected_accounts) ? profile.connected_accounts : [];
     const accounts = existing.filter((entry: any) => !entry?.cloudcordCustom).map((entry: any) => ({ ...entry }));
     for (const entry of customConnections) {
+        const domain = entry.service === "domain" ? connectionDomain(entry) : "";
         accounts.push({
-            id: entry.accountId || `cloudcord:${entry.id}`, type: entry.service === "x" ? "twitter" : entry.service === "other" ? "domain" : entry.service,
-            name: entry.displayName || entry.username || entry.accountId,
+            id: domain || entry.accountId || `cloudcord:${entry.id}`, type: entry.service === "x" ? "twitter" : entry.service === "other" || entry.service === "domain" ? "domain" : entry.service,
+            name: domain || entry.displayName || entry.username || entry.accountId,
             verified: false, visibility: 1, show_activity: false,
             cloudcordCustom: true, cloudcordPreview: entry,
         });
@@ -305,11 +418,97 @@ export function nativeProfileAppearance(data: any): Record<string, any> {
     }
     if (appearance.serverTag !== undefined) {
         const tag = appearance.serverTag;
+        let badge = tag?.badge || null;
+        if (tag?.icon) { badge = serverTagIconKey(tag.icon); customTagIcons.set(badge, tag.icon); }
         result.primaryGuild = tag ? {
-            identityEnabled: true, identityGuildId: tag.guildId, tag: tag.tag, badge: tag.badge || null,
+            identityEnabled: true, identityGuildId: tag.guildId, tag: tag.tag, badge,
             identity_enabled: true, identity_guild_id: tag.guildId,
         } : null;
         result.primary_guild = result.primaryGuild;
     }
     return result;
+}
+
+// ---------- Discord collectibles catalog (shared by desktop and mobile) ----------
+
+export type CatalogDecoration = { id: string; skuId: string; label: string; url: string };
+export type CatalogNameplate = { skuId: string; asset: string; label: string; palette: string };
+export type CatalogEffect = { skuId: string; title: string; preview: string; config: any };
+export type CatalogFrame = { skuId: string; label: string; preview: string };
+export type Catalog = { decorations: CatalogDecoration[]; nameplates: CatalogNameplate[]; effects: CatalogEffect[]; frames: CatalogFrame[] };
+
+const ITEM_DECORATION = 0, ITEM_EFFECT = 1, ITEM_NAMEPLATE = 2, ITEM_FRAME = 3;
+
+/** First HTTPS image found in a shop payload, used only as a picker thumbnail. */
+function firstImage(...values: any[]): string {
+    const seen = new Set<any>();
+    const visit = (value: any, depth: number): string => {
+        if (depth > 4 || value == null || seen.has(value)) return "";
+        if (typeof value === "string") return /^https:\/\/[^\s"]+\.(?:png|webp|jpe?g|gif)(?:\?[^\s"]*)?$/i.test(value) ? value : "";
+        if (typeof value !== "object") return "";
+        seen.add(value);
+        for (const item of Array.isArray(value) ? value : Object.values(value)) { const found = visit(item, depth + 1); if (found) return found; }
+        return "";
+    };
+    for (const value of values) { const found = visit(value, 0); if (found) return found; }
+    return "";
+}
+
+const camel = (value: any): any => Array.isArray(value) ? value.map(camel)
+    : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key.replace(/_([a-z])/g, (_, char) => char.toUpperCase()), camel(item)]))
+        : value;
+
+export function nameplateAssetURL(asset: string, animated = false): string {
+    return `https://cdn.discordapp.com/assets/collectibles/${asset}${animated ? "asset.webm" : "static.png"}`;
+}
+
+/** Parse shop categories → products → items into one flat catalog. */
+export function parseCatalog(categoriesBody: any, effectsBody: any): Catalog {
+    const categories = Array.isArray(categoriesBody) ? categoriesBody : Array.isArray(categoriesBody?.categories) ? categoriesBody.categories : [];
+    const configs = new Map<string, any>();
+    for (const config of camel(effectsBody?.profile_effect_configs ?? effectsBody?.profileEffectConfigs ?? (Array.isArray(effectsBody) ? effectsBody : []))) {
+        if (config?.skuId) configs.set(String(config.skuId), config);
+    }
+    const decorations = new Map<string, CatalogDecoration>(), nameplates = new Map<string, CatalogNameplate>(), effects = new Map<string, CatalogEffect>(), frames = new Map<string, CatalogFrame>();
+    for (const category of categories) {
+        for (const product of category?.products || []) {
+            for (const item of product?.items || []) {
+                const skuId = String(item?.sku_id || item?.skuId || product?.sku_id || product?.skuId || "");
+                if (!/^\d{15,22}$/.test(skuId)) continue;
+                const label = String(item?.label || product?.name || "").slice(0, 80);
+                if (item.type === ITEM_DECORATION && typeof item.asset === "string") {
+                    decorations.set(item.asset, { id: item.asset, skuId, label, url: `https://cdn.discordapp.com/avatar-decoration-presets/${item.asset}.png?size=160&passthrough=true` });
+                } else if (item.type === ITEM_NAMEPLATE && typeof item.asset === "string") {
+                    nameplates.set(skuId, { skuId, asset: item.asset, label, palette: String(item.palette || "") });
+                } else if (item.type === ITEM_FRAME) {
+                    // Frames are layered art; the top layer reads best as a thumbnail. Items carry
+                    // a long accessibility label, so prefer the product's short name.
+                    const layers = Array.isArray(item.layers) ? item.layers : [];
+                    const layer = layers.find((entry: any) => entry?.anchor === "top") || layers[0];
+                    const layerArt = layer?.id ? `https://cdn.discordapp.com/media/v1/collectibles-shop/${skuId}/${encodeURIComponent(String(layer.id))}/static` : "";
+                    frames.set(skuId, { skuId, label: String(product?.name || item?.label || "Profile frame").slice(0, 80), preview: layerArt || firstImage(item, product) });
+                } else if (item.type === ITEM_EFFECT) {
+                    const config = configs.get(skuId) || camel(item);
+                    effects.set(skuId, { skuId, title: String(config?.title || label), preview: config?.thumbnailPreviewSrc || config?.staticFrameSrc || "", config: { ...config, skuId } });
+                }
+            }
+        }
+    }
+    // Effects that exist in the config list but not in the current shop.
+    for (const [skuId, config] of configs) if (!effects.has(skuId)) effects.set(skuId, { skuId, title: String(config.title || "Profile effect"), preview: config.thumbnailPreviewSrc || config.staticFrameSrc || "", config });
+    const byLabel = <T extends { label?: string; title?: string }>(items: T[]) => items.sort((a, b) => String(a.label ?? a.title).localeCompare(String(b.label ?? b.title)));
+    return { decorations: byLabel([...decorations.values()]), nameplates: byLabel([...nameplates.values()]), effects: byLabel([...effects.values()]), frames: byLabel([...frames.values()]) };
+}
+
+/** The bare hostname for a domain connection, from its link, account ID or name. */
+export function connectionDomain(entry: Pick<CustomConnectionPreview, "url" | "accountId" | "username" | "displayName">): string {
+    for (const value of [entry.url, entry.accountId, entry.username, entry.displayName]) {
+        const text = typeof value === "string" ? value.trim().toLowerCase() : "";
+        if (!text) continue;
+        try {
+            const host = new URL(/^https?:\/\//.test(text) ? text : `https://${text}`).hostname.replace(/^www\./, "");
+            if (/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host)) return host;
+        } catch { }
+    }
+    return "";
 }

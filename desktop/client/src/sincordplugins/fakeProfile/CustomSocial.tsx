@@ -1,7 +1,9 @@
-import { CustomConnectionPreview, CustomFriendPreview, fetchConnectionPreview, searchConnectionItems, normalizeCustomSocial, mergeCustomSocialLookup, customSocialValidationErrors, customPreviewUsername, customConnectionServiceName, ProfileAppearance } from "@utils/profileAppearance";
 import { ModalContent as NativeModalContent, ModalHeader as NativeModalHeader, ModalRoot as NativeModalRoot, openModal } from "@utils/modal";
+import { connectionDomain, CustomConnectionPreview, customConnectionServiceName, CustomFriendPreview, customPreviewUsername, customSocialValidationErrors, fetchConnectionPreview, mergeCustomSocialLookup, normalizeCustomSocial, ProfileAppearance,searchConnectionItems } from "@utils/profileAppearance";
 import { ChannelActionCreators, React } from "@webpack/common";
 import type { CSSProperties } from "react";
+
+import { SERVICE_ICON_PATHS } from "./serviceIcons";
 const ModalRoot = NativeModalRoot as any;
 const ModalHeader = NativeModalHeader as any;
 const ModalContent = NativeModalContent as any;
@@ -58,69 +60,183 @@ export function FriendProfileActions({ userId, data, onRemove }: { userId: strin
     </div>;
 }
 
-function Input({ label, value, onChange, multiline = false }: { label: string; value: string; onChange: (value: string) => void; multiline?: boolean; }) {
-    const style = { padding: 10, borderRadius: 8, background: "var(--background-tertiary)", color: "var(--text-normal)", width: "100%", boxSizing: "border-box" as const };
-    return <label style={{ display: "grid", gap: 4 }}>{label}{multiline ? <textarea rows={3} value={value} style={style} onChange={e => onChange(e.target.value)} /> : <input value={value} style={style} onChange={e => onChange(e.target.value)} />}</label>;
+const makeId = () => `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+const SERVICES: CustomConnectionPreview["service"][] = ["steam", "youtube", "roblox", "twitch", "github", "spotify", "x", "reddit", "domain", "other"];
+const contentLabel = (service: string) => service === "steam" ? "Search Steam games" : service === "youtube" ? "Search YouTube or paste a video link" : service === "roblox" ? "Roblox game link or universe ID" : service === "github" ? "GitHub repo link or owner/repo" : "Search content";
+
+function SocialField({ label, value, onChange, placeholder, multiline = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; multiline?: boolean; }) {
+    const id = React.useMemo(() => `cpx-social-${Math.random().toString(36).slice(2, 9)}`, []);
+    return <div className="cpx-field">
+        <label className="cpx-label" htmlFor={id}>{label}</label>
+        {multiline
+            ? <textarea id={id} className="cpx-input" rows={3} value={value} placeholder={placeholder} onChange={event => onChange(event.target.value)} />
+            : <input id={id} className="cpx-input" value={value} placeholder={placeholder} onChange={event => onChange(event.target.value)} />}
+    </div>;
 }
 
-const makeId = () => `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-export function CustomSocialEditor({ data, onChange, resolveUser }: { data: ProfileAppearance; onChange: (value: ProfileAppearance) => void; resolveUser: (id: string) => Promise<Partial<CustomFriendPreview> | null>; }) {
+function ServiceMark({ service }: { service: string; }) {
+    const path = SERVICE_ICON_PATHS[service];
+    return <span className={`cpx-service cpx-service-${service}`} aria-hidden="true">
+        {path ? <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d={path} /></svg> : customConnectionServiceName(service).slice(0, 2)}
+    </span>;
+}
+
+export function CustomSocialEditor({ data, onChange }: { data: ProfileAppearance; onChange: (value: ProfileAppearance) => void; resolveUser?: (id: string) => Promise<Partial<CustomFriendPreview> | null>; }) {
     const [selected, setSelected] = React.useState<string | null>(null);
     const [error, setError] = React.useState("");
-    const [lookingUp, setLookingUp] = React.useState(false);
     const [accountQuery, setAccountQuery] = React.useState("");
     const [itemQuery, setItemQuery] = React.useState("");
     const [matches, setMatches] = React.useState<NonNullable<CustomConnectionPreview["items"]>>([]);
-    const [fetching, setFetching] = React.useState(false);
-    const friends: CustomFriendPreview[] = [], connections = data.customConnections || [];
-    const entry = [...friends, ...connections].find(item => item.id === selected);
-    const connection = entry && "service" in entry;
+    const [fetching, setFetching] = React.useState<"" | "account" | "content">("");
+    const connections = data.customConnections || [];
+    const entry = connections.find(item => item.id === selected);
     const latest = React.useRef(data);
     latest.current = data;
     const activeSelection = React.useRef(selected);
     activeSelection.current = selected;
     const alive = React.useRef(true);
-    const reportLookupError = (before: Entry, message: string) => {
-        const current = [...(latest.current.customFriends || []), ...(latest.current.customConnections || [])].find(item => item.id === before.id);
-        if (!alive.current || activeSelection.current !== before.id || !current) return;
-        if ("service" in before ? !("service" in current) || current.service !== before.service : "service" in current || current.userId !== before.userId) return;
-        setError(message);
-    };
     React.useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
     React.useEffect(() => { setAccountQuery(""); setItemQuery(""); setMatches([]); setError(""); }, [selected]);
+    // Lookups finish asynchronously; only apply them to the same, still-selected entry.
+    const reportLookupError = (before: CustomConnectionPreview, message: string) => {
+        const current = latest.current.customConnections?.find(item => item.id === before.id);
+        if (alive.current && activeSelection.current === before.id && current?.service === before.service) setError(message);
+    };
     const showMatches = (before: CustomConnectionPreview, items: NonNullable<CustomConnectionPreview["items"]>) => {
         const current = latest.current.customConnections?.find(item => item.id === before.id);
         if (alive.current && activeSelection.current === before.id && current?.service === before.service) setMatches(items);
     };
-    const change = (updated: Entry) => {
+    const change = (updated: CustomConnectionPreview) => {
         if (!alive.current || !entry) return;
-        const items = "service" in updated ? latest.current.customConnections || [] : latest.current.customFriends || [];
-        const merged = mergeCustomSocialLookup(entry, items.find(item => item.id === updated.id), updated);
-        if (!merged) return;
-        onChange("service" in merged ? { customConnections: (items as CustomConnectionPreview[]).map(item => item.id === merged.id ? merged : item) } : { customFriends: (items as CustomFriendPreview[]).map(item => item.id === merged.id ? merged : item) });
+        const items = latest.current.customConnections || [];
+        const merged = mergeCustomSocialLookup(entry, items.find(item => item.id === updated.id), updated) as CustomConnectionPreview | null;
+        if (merged) onChange({ customConnections: items.map(item => item.id === merged.id ? merged : item) });
     };
-    const patch = (value: Partial<Entry>) => { if (entry) change({ ...entry, ...("service" in entry ? {mode:"manual",fetchedAt:""} : {}), ...value } as Entry); };
-    const remove = (item: Entry) => { onChange("service" in item ? { customConnections: connections.filter(other => other.id !== item.id) } : { customFriends: friends.filter(other => other.id !== item.id) }); if (selected === item.id) setSelected(null); };
-    const move = (item: Entry, direction: number) => { const items = [...("service" in item ? connections : friends)]; const index = items.findIndex(other => other.id === item.id); const target = index + direction; if (target < 0 || target >= items.length) return; [items[index], items[target]] = [items[target], items[index]]; onChange("service" in item ? { customConnections: items as CustomConnectionPreview[] } : { customFriends: items as CustomFriendPreview[] }); };
-    const add = (isConnection: boolean) => { const common = { id: makeId(), username: "", displayName: "", avatar: "", banner: "", bio: "" }; if (isConnection) onChange({ customConnections: [...connections, { ...common, service: "steam", accountId: "", url: "", details: [] }] }); else onChange({ customFriends: [...friends, { ...common, badges: [] }] }); setSelected(common.id); setError(""); };
-    return <section style={panel}>
-        <h3>Custom connections</h3><p style={{ color: "var(--text-muted)" }}>Use on all devices shares these clickable previews with CloudCord users. They don't verify linked accounts.</p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" style={button} disabled={connections.length >= 30} onClick={() => add(true)}>Add connection</button></div>
-        {[...friends, ...connections].map(item => <div key={item.id} style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}><button type="button" style={button} aria-pressed={selected === item.id} onClick={() => { setSelected(item.id); setError(""); }}>{item.displayName || item.username || "New entry"}</button><button type="button" style={button} aria-label="Move entry up" onClick={() => move(item, -1)}>↑</button><button type="button" style={button} aria-label="Move entry down" onClick={() => move(item, 1)}>↓</button><button type="button" style={button} onClick={() => openSocialDetail(normalizeCustomSocial("service" in item ? { customConnections: [{...item, username:item.username || "Preview"}] } : { customFriends: [{...item, username:item.username || "Preview"}] })["service" in item ? "customConnections" : "customFriends"]![0])}>Preview</button><button type="button" style={button} onClick={() => remove(item)}>Remove</button></div>)}
-        {entry && <div style={{ ...fields, marginTop: 16 }}>
-            {!connection && <><Input label="Discord user ID (optional)" value={(entry as CustomFriendPreview).userId || ""} onChange={userId => patch({userId})} /><button type="button" style={button} disabled={lookingUp} onClick={async () => { const current = entry as CustomFriendPreview; if (!/^\d{15,22}$/.test(current.userId || "")) { setError("Enter a valid Discord user ID first."); return; } setLookingUp(true); setError(""); try { const found = await resolveUser(current.userId!); if (!found) reportLookupError(current,"User not available. Enter their details manually or try again after opening their profile."); else change({...current,...found,id:current.id,userId:current.userId}); } catch { reportLookupError(current,"Could not load that user. Your entry was kept."); } finally { if(alive.current)setLookingUp(false); } }}>Fill from user ID</button></>}
-            {connection && <><label>Service<select value={(entry as CustomConnectionPreview).service} style={button} onChange={e => {patch({ service: e.target.value as CustomConnectionPreview["service"] });setMatches([]);}}>{["steam","youtube","roblox","twitch","github","spotify","x","reddit","other"].map(service => <option key={service} value={service}>{customConnectionServiceName(service)}</option>)}</select></label><Input label="Fetch from public account link, username or ID" value={accountQuery} onChange={setAccountQuery}/><button style={button} disabled={fetching} onClick={async()=>{const current=entry as CustomConnectionPreview;setFetching(true);setError("");try{const found=await fetchConnectionPreview(current.service,accountQuery||current.url||current.accountId||current.username);change({...found,id:current.id});}catch(error){reportLookupError(entry,error instanceof Error?error.message:"Couldn't fetch public information.");}finally{if(alive.current)setFetching(false);}}}>Fetch public information</button><p style={{color:"var(--text-muted)"}}>Or customize all fields manually. Fetched data doesn't prove account ownership.</p><Input label="Account ID" value={(entry as CustomConnectionPreview).accountId} onChange={accountId => patch({accountId})} /><Input label="Account link (HTTPS)" value={(entry as CustomConnectionPreview).url} onChange={url => patch({url})} /></>}
-            <Input label="Username" value={entry.username} onChange={username => patch({username})} /><Input label="Display name" value={entry.displayName} onChange={displayName => patch({displayName})} /><Input label="Avatar image link (HTTPS)" value={entry.avatar} onChange={avatar => patch({avatar})} /><Input label="Banner image link (HTTPS)" value={entry.banner} onChange={banner => patch({banner})} /><Input label="Bio" value={entry.bio} onChange={bio => patch({bio})} multiline />
-            {!connection && <><h4>Badges</h4>{(entry as CustomFriendPreview).badges.map((badge, i) => <div key={i} style={fields}><Input label="Badge name" value={badge.name} onChange={name => patch({badges:(entry as CustomFriendPreview).badges.map((b,j)=>j===i?{...b,name}:b)})} /><Input label="Badge icon link" value={badge.icon} onChange={icon => patch({badges:(entry as CustomFriendPreview).badges.map((b,j)=>j===i?{...b,icon}:b)})} /><button style={button} onClick={()=>patch({badges:(entry as CustomFriendPreview).badges.filter((_,j)=>j!==i)})}>Remove badge</button></div>)}<button style={button} disabled={(entry as CustomFriendPreview).badges.length>=20} onClick={()=>patch({badges:[...(entry as CustomFriendPreview).badges,{name:"Custom badge",icon:""}]})}>Add badge</button></>}
-            {connection && <><h4>Account information</h4>{(entry as CustomConnectionPreview).details.map((detail,i)=><div key={i} style={fields}><Input label="Information label" value={detail.label} onChange={label=>patch({details:(entry as CustomConnectionPreview).details.map((d,j)=>j===i?{...d,label}:d)})} /><Input label="Value" value={detail.value} onChange={value=>patch({details:(entry as CustomConnectionPreview).details.map((d,j)=>j===i?{...d,value}:d)})} /><button style={button} onClick={()=>patch({details:(entry as CustomConnectionPreview).details.filter((_,j)=>j!==i)})}>Remove information</button></div>)}<button style={button} disabled={(entry as CustomConnectionPreview).details.length>=20} onClick={()=>patch({details:[...(entry as CustomConnectionPreview).details,{label:"Information",value:""}]})}>Add information</button></>}
+    const patch = (value: Partial<CustomConnectionPreview>) => { if (entry) change({ ...entry, mode: "manual", fetchedAt: "", ...value }); };
+    const remove = (item: CustomConnectionPreview) => { onChange({ customConnections: connections.filter(other => other.id !== item.id) }); if (selected === item.id) setSelected(null); };
+    const move = (item: CustomConnectionPreview, direction: number) => {
+        const items = [...connections];
+        const index = items.findIndex(other => other.id === item.id), target = index + direction;
+        if (target < 0 || target >= items.length) return;
+        [items[index], items[target]] = [items[target], items[index]];
+        onChange({ customConnections: items });
+    };
+    const add = () => {
+        const created: CustomConnectionPreview = { id: makeId(), service: "steam", accountId: "", username: "", displayName: "", avatar: "", banner: "", bio: "", url: "", details: [] };
+        onChange({ customConnections: [...connections, created] });
+        setSelected(created.id); setError("");
+    };
+    const issues = customSocialValidationErrors(data);
+
+    return <div className="cpx-social">
+        <div className="cpx-inline cpx-social-top">
+            <span className="cpx-hint">{connections.length ? `${connections.length} of 30 connections` : "No connections yet."}</span>
+            <button type="button" className="cpx-btn cpx-btn-primary" disabled={connections.length >= 30} onClick={add}>Add connection</button>
+        </div>
+
+        {connections.length > 0 && <ul className="cpx-social-list" aria-label="Connections">
+            {connections.map((item, index) => <li key={item.id} className={`cpx-social-row ${selected === item.id ? "cpx-on" : ""}`}>
+                <button type="button" className="cpx-social-main" aria-expanded={selected === item.id} onClick={() => setSelected(selected === item.id ? null : item.id)}>
+                    <ServiceMark service={item.service} />
+                    <span className="cpx-social-names">
+                        <strong>{item.displayName || item.username || "New connection"}</strong>
+                        <span className="cpx-hint">{customConnectionServiceName(item.service)}{item.username ? ` · ${customPreviewUsername(item.username)}` : ""}</span>
+                    </span>
+                </button>
+                <div className="cpx-inline">
+                    <button type="button" className="cpx-btn cpx-btn-ghost cpx-icon-btn" aria-label="Move up" disabled={index === 0} onClick={() => move(item, -1)}>↑</button>
+                    <button type="button" className="cpx-btn cpx-btn-ghost cpx-icon-btn" aria-label="Move down" disabled={index === connections.length - 1} onClick={() => move(item, 1)}>↓</button>
+                    <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => openSocialDetail(normalizeCustomSocial({ customConnections: [{ ...item, username: item.username || "Preview" }] }).customConnections![0])}>Preview</button>
+                    <button type="button" className="cpx-btn cpx-btn-ghost cpx-btn-danger-text" onClick={() => remove(item)}>Remove</button>
+                </div>
+            </li>)}
+        </ul>}
+
+        {entry && <div className="cpx-social-editor">
+            <div className="cpx-field">
+                <span className="cpx-label">Service</span>
+                <div className="cpx-segmented" role="radiogroup" aria-label="Service">
+                    {SERVICES.map(service => <button key={service} type="button" role="radio" aria-checked={entry.service === service}
+                        className={`cpx-segment ${entry.service === service ? "cpx-on" : ""}`} onClick={() => { patch({ service }); setMatches([]); }}>{SERVICE_ICON_PATHS[service] && <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><path d={SERVICE_ICON_PATHS[service]} /></svg>}{customConnectionServiceName(service)}</button>)}
+                </div>
+            </div>
+
+            {entry.service === "domain" && <div className="cpx-field">
+                <SocialField label="Domain" placeholder="example.com" value={entry.accountId || entry.url} onChange={value => { const domain = connectionDomain({ url: "", accountId: value, username: "", displayName: "" }); patch({ accountId: value.trim(), url: domain ? `https://${domain}` : "", displayName: domain || entry.displayName }); }} />
+                <span className={connectionDomain(entry) ? "cpx-hint" : "cpx-hint cpx-error"}>{connectionDomain(entry) ? `Shows as ${connectionDomain(entry)} with Discord's domain connection style.` : "Enter a domain like example.com."}</span>
+            </div>}
+
+            {entry.service !== "domain" && <div className="cpx-field">
+                <span className="cpx-label">Fill in automatically</span>
+                <div className="cpx-inline">
+                    <input className="cpx-input" aria-label="Public account link, username or ID" placeholder="Public account link, username or ID" value={accountQuery} onChange={event => setAccountQuery(event.target.value)} />
+                    <button type="button" className="cpx-btn" disabled={!!fetching} onClick={async () => {
+                        const current = entry; setFetching("account"); setError("");
+                        try { const found = await fetchConnectionPreview(current.service, accountQuery || current.url || current.accountId || current.username); change({ ...found, id: current.id }); }
+                        catch (problem) { reportLookupError(current, problem instanceof Error ? problem.message : "Couldn't fetch public information."); }
+                        finally { if (alive.current) setFetching(""); }
+                    }}>{fetching === "account" ? "Fetching…" : "Fetch"}</button>
+                </div>
+                <span className="cpx-hint">Uses public information only, or fill the fields yourself. This doesn't prove you own the account.</span>
+            </div>}
+
+            <div className="cpx-grid2">
+                <SocialField label="Display name" value={entry.displayName} onChange={displayName => patch({ displayName })} />
+                <SocialField label="Username" value={entry.username} onChange={username => patch({ username })} />
+                <SocialField label="Account ID" value={entry.accountId} onChange={accountId => patch({ accountId })} />
+                <SocialField label="Account link" placeholder="https://" value={entry.url} onChange={url => patch({ url })} />
+                <SocialField label="Avatar image link" placeholder="https://" value={entry.avatar} onChange={avatar => patch({ avatar })} />
+                <SocialField label="Banner image link" placeholder="https://" value={entry.banner} onChange={banner => patch({ banner })} />
+            </div>
+            <SocialField label="Bio" multiline value={entry.bio} onChange={bio => patch({ bio })} />
+
+            <div className="cpx-field">
+                <div className="cpx-label-row"><span className="cpx-label">Account details</span>
+                    <button type="button" className="cpx-btn cpx-btn-ghost" disabled={entry.details.length >= 20} onClick={() => patch({ details: [...entry.details, { label: "", value: "" }] })}>Add detail</button></div>
+                {!entry.details.length && <span className="cpx-hint">Things like level, hours played or member since.</span>}
+                {entry.details.map((detail, index) => <div className="cpx-inline cpx-detail-row" key={index}>
+                    <input className="cpx-input" aria-label="Detail label" placeholder="Label" value={detail.label} onChange={event => patch({ details: entry.details.map((old, i) => i === index ? { ...old, label: event.target.value } : old) })} />
+                    <input className="cpx-input" aria-label="Detail value" placeholder="Value" value={detail.value} onChange={event => patch({ details: entry.details.map((old, i) => i === index ? { ...old, value: event.target.value } : old) })} />
+                    <button type="button" className="cpx-btn cpx-btn-ghost cpx-btn-danger-text" onClick={() => patch({ details: entry.details.filter((_, i) => i !== index) })}>Remove</button>
+                </div>)}
+            </div>
+
+            <div className="cpx-field">
+                <div className="cpx-label-row"><span className="cpx-label">Games, videos & content</span>
+                    <button type="button" className="cpx-btn cpx-btn-ghost" disabled={(entry.items?.length || 0) >= 30} onClick={() => patch({ items: [...(entry.items || []), { id: makeId(), title: "Custom content", image: "", url: "", subtitle: "" }] })}>Add manually</button></div>
+                <div className="cpx-inline">
+                    <input className="cpx-input" aria-label={contentLabel(entry.service)} placeholder={contentLabel(entry.service)} value={itemQuery} onChange={event => setItemQuery(event.target.value)} />
+                    <button type="button" className="cpx-btn" disabled={!!fetching || !itemQuery.trim()} onClick={async () => {
+                        const current = entry; setFetching("content"); setError("");
+                        try { showMatches(current, await searchConnectionItems(current.service, itemQuery)); }
+                        catch (problem) { reportLookupError(current, problem instanceof Error ? problem.message : "Couldn't load content."); }
+                        finally { if (alive.current) setFetching(""); }
+                    }}>{fetching === "content" ? "Searching…" : "Search"}</button>
+                </div>
+                {matches.length > 0 && <ul className="cpx-results" aria-label="Search results">
+                    {matches.map(item => {
+                        const added = !!entry.items?.some(existing => existing.id === item.id);
+                        return <li key={item.id} className="cpx-result">
+                            {item.image ? <img src={item.image} alt="" referrerPolicy="no-referrer" /> : <span className="cpx-result-blank" aria-hidden="true" />}
+                            <span className="cpx-result-text"><strong>{item.title}</strong>{item.subtitle && <span className="cpx-hint">{item.subtitle}</span>}</span>
+                            <button type="button" className="cpx-btn cpx-btn-ghost" disabled={added || (entry.items?.length || 0) >= 30} onClick={() => patch({ items: [...(entry.items || []), item] })}>{added ? "Added" : "Add"}</button>
+                        </li>;
+                    })}
+                </ul>}
+                {(entry.items || []).map((item, index) => <div key={`${item.id}-${index}`} className="cpx-content-item">
+                    <div className="cpx-grid2">
+                        <SocialField label="Title" value={item.title} onChange={title => patch({ items: entry.items!.map((old, i) => i === index ? { ...old, title } : old) })} />
+                        <SocialField label="Description or playtime" value={item.subtitle} onChange={subtitle => patch({ items: entry.items!.map((old, i) => i === index ? { ...old, subtitle } : old) })} />
+                        <SocialField label="Image link" placeholder="https://" value={item.image} onChange={image => patch({ items: entry.items!.map((old, i) => i === index ? { ...old, image } : old) })} />
+                        <SocialField label="Content link" placeholder="https://" value={item.url} onChange={url => patch({ items: entry.items!.map((old, i) => i === index ? { ...old, url } : old) })} />
+                    </div>
+                    <div className="cpx-inline"><button type="button" className="cpx-btn cpx-btn-ghost cpx-btn-danger-text" onClick={() => patch({ items: entry.items!.filter((_, i) => i !== index) })}>Remove this item</button></div>
+                </div>)}
+            </div>
+            <div className="cpx-inline"><button type="button" className="cpx-btn" onClick={() => setSelected(null)}>Done</button></div>
         </div>}
-        {entry && "service" in entry && <div style={fields}>
-            <h4>Choose games / videos / content</h4><Input label={entry.service==="steam"?"Search Steam games":entry.service==="youtube"?"Search YouTube videos or paste a video link":entry.service==="roblox"?"Roblox game link or universe ID":entry.service==="github"?"GitHub repository link or owner/repository":"Search content"} value={itemQuery} onChange={setItemQuery}/><button style={button} disabled={fetching} onClick={async()=>{setFetching(true);setError("");try{showMatches(entry,await searchConnectionItems(entry.service,itemQuery));}catch(error){reportLookupError(entry,error instanceof Error?error.message:"Couldn't load content.");}finally{if(alive.current)setFetching(false);}}}>Find content</button>
-            {matches.map(item=><button key={item.id} style={button} disabled={(entry.items?.length||0)>=30} onClick={()=>{if(!entry.items?.some(existing=>existing.id===item.id))patch({items:[...(entry.items||[]),item]});}}>{item.title} · Add</button>)}
-            {(entry.items||[]).map((item,index)=><div key={`${item.id}-${index}`} style={fields}><Input label="Title" value={item.title} onChange={title=>patch({items:entry.items!.map((old,i)=>i===index?{...old,title}:old)})}/><Input label="Image link" value={item.image} onChange={image=>patch({items:entry.items!.map((old,i)=>i===index?{...old,image}:old)})}/><Input label="Content link" value={item.url} onChange={url=>patch({items:entry.items!.map((old,i)=>i===index?{...old,url}:old)})}/><Input label="Description / playtime" value={item.subtitle} onChange={subtitle=>patch({items:entry.items!.map((old,i)=>i===index?{...old,subtitle}:old)})}/><button style={button} onClick={()=>patch({items:entry.items!.filter((_,i)=>i!==index)})}>Remove content</button></div>)}
-            <button style={button} disabled={(entry.items?.length||0)>=30} onClick={()=>patch({items:[...(entry.items||[]),{id:makeId(),title:"Custom content",image:"",url:"",subtitle:""}]})}>Add content manually</button>
-        </div>}
-        {error && <p role="alert">{error}</p>}
-        {customSocialValidationErrors(data).map(issue => <p key={issue} role="status" style={{color:"var(--text-muted)"}}>{issue}</p>)}
-    </section>;
+
+        {error && <p className="cpx-hint cpx-error" role="alert">{error}</p>}
+        {issues.map(issue => <p key={issue} className="cpx-hint cpx-error" role="status">{issue}</p>)}
+    </div>;
 }

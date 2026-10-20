@@ -8,10 +8,13 @@
  */
 
 import "./style.css";
+import "./editor.css";
 import decorationCatalog from "./decorations.json";
 import { CustomSocialEditor, openSocialDetail } from "./CustomSocial";
+import { ColorField, Grid2, ImageField, ProfilePreview, Section, SelectField, Switch, TabId, TabList, TextField } from "./editorUi";
+import { Current, installPresenceHooks, installTagIconSwap, loadCatalog, NameplateEditor, PickerGrid, onCatalogLoaded, ProfileEffectEditor, profileEffectFor, ProfileFrameEditor, refreshPresence, StatusEditor, TagIconEditor, uninstallPresenceHooks, uninstallTagIconSwap } from "./cosmetics";
 import { installNativeSocialHooks } from "@utils/nativeSocialHooks";
-import { appearanceOptions, availableServerTags, customDiscordMediaURL, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, parseServerTagIcon, ProfileAppearance, serverTagIconURL } from "@utils/profileAppearance";
+import { appearanceOptions, availableServerTags, Catalog, customDiscordMediaURL, nameplateAssetURL, nativeCollectibles, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, ProfileAppearance } from "@utils/profileAppearance";
 import { findByProps } from "@webpack";
 
 import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
@@ -512,6 +515,7 @@ interface CustomProfileData extends ProfileAppearance {
     bio?: string; accentColor?: number; accentColor2?: number; pronouns?: string;
     badgeFlags?: number; createdAt?: string; nitro?: boolean; nitroLevel?: number; nitroSince?: string;
     boostMonths?: number; email?: string; phone?: string; customBadgeIds?: string[];
+    hideBadgesWhenSyncOff?: boolean;
     oldName?: string; decorationAsset?: string; decorationSkuId?: string; copiedUserId?: string; signupDate?: string; replaceRealBadges?: boolean; giftLevel?: number;
     syncRevision?: number;
     hiddenBadgeIds?: string[]; badgeOrder?: string[];
@@ -535,10 +539,28 @@ let _domQueued = false;
 let _domMutations: MutationRecord[] = [];
 let _cachedRealDateVariants: string[] | null = null;
 const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
-const SHARED_PROFILE_TTL_MS = 4000;
+// Network budget for the CloudCord profile server. Member lists can touch hundreds
+// of users a second, so lookups are cached, negative answers remembered, and
+// background refreshes limited to profiles someone actually looked at recently.
+const SHARED_PROFILE_TTL_MS = 2 * 60_000;
+const SHARED_MISSING_TTL_MS = 15 * 60_000;
+const SHARED_VIEWED_WINDOW_MS = 2 * 60_000;
+const SHARED_MAX_IN_FLIGHT = 4;
+const SHARED_REFRESH_PER_TICK = 5;
+const sharedMissingUntil = new Map<string, number>();
+const sharedViewedAt = new Map<string, number>();
+let sharedBackoffUntil = 0;
 const sharedProfiles = new Map<string, CustomProfileData>();
+let realGetUserProfile: ((...args: any[]) => any) | null = null;
+/** Discord marks profiles the viewer isn't allowed to see as private; show those exactly as Discord does. */
+function isPrivateProfile(userId: string): boolean {
+    try { return realGetUserProfile?.(userId)?.private === true; } catch { return false; }
+}
 function viewedSharedProfile(userId: string) {
-    return isRealProfileView(userId) ? undefined : sharedProfiles.get(userId);
+    if (isRealProfileView(userId) || isPrivateProfile(userId)) return undefined;
+    const profile = sharedProfiles.get(userId);
+    if (profile) sharedViewedAt.set(userId, Date.now());
+    return profile;
 }
 const sharedProfileFetchedAt = new Map<string, number>();
 const sharedRequests = new Set<string>();
@@ -548,10 +570,11 @@ let uploadedBadges: { id: string; userId: string; name: string; icon: string; }[
 let badgeFetchPending = false;
 let badgeFetchedAt = 0;
 async function refreshUploadedBadges(force = false) {
-    if (badgeFetchPending || (!force && Date.now() - badgeFetchedAt < 5000)) return;
+    // One list for everyone: refresh every 2 minutes, or at most once a minute when forced.
+    if (badgeFetchPending || Date.now() - badgeFetchedAt < (force ? 60_000 : 2 * 60_000)) return;
     badgeFetchPending = true; badgeFetchedAt = Date.now();
     try {
-        const response = await fetch("https://getcloudcord.com/v1/custom-badges", { cache: "no-store" });
+        const response = await fetch("https://getcloudcord.com/v1/custom-badges");
         if (!response.ok) return;
         const payload = await response.json();
         if (!Array.isArray(payload?.badges)) return;
@@ -613,6 +636,14 @@ function monthsAgo(months: number, explicitDate?: string): Date {
 function applyNativeProfileMetadata(target: any, data: CustomProfileData, includeNested = true): any {
     if (!target) return target;
     Object.assign(target, nativeProfileAppearance(data));
+    if (data.nameplate !== undefined) target.collectibles = nativeCollectibles(target.collectibles, data);
+    if (data.profileEffect !== undefined) {
+        const effect = data.profileEffect ? profileEffectFor(data.profileEffect.skuId) : null;
+        target.profileEffect = effect; target.profile_effect = effect;
+        target.profileEffectId = effect?.skuId ?? null; target.profile_effect_id = target.profileEffectId;
+    }
+    // Discord loads the frame artwork itself from the SKU (profile.profileFrame).
+    if (data.profileFrame !== undefined) target.profileFrame = data.profileFrame ? { skuId: data.profileFrame.skuId, type: 3, expiresAt: undefined } : undefined;
 
     const flags = Number(data.badgeFlags ?? 0);
     if (shouldReplaceBadges(data)) {
@@ -740,11 +771,28 @@ async function pullOwnSharedProfile() {
 
 function requestSharedProfile(userId: string, force = false) {
     if (!/^\d{15,22}$/.test(userId) || isMe(userId) || sharedRequests.has(userId)) return;
+    const now = Date.now();
+    if (now < sharedBackoffUntil || sharedRequests.size >= SHARED_MAX_IN_FLIGHT) return;
+    if ((sharedMissingUntil.get(userId) ?? 0) > now) return;
     const fetchedAt = sharedProfileFetchedAt.get(userId) ?? 0;
-    if (!force && sharedProfiles.has(userId) && Date.now() - fetchedAt < SHARED_PROFILE_TTL_MS) return;
+    // Even forced refreshes wait a little, so one user is never fetched in a loop.
+    if (sharedProfiles.has(userId) && now - fetchedAt < (force ? 30_000 : SHARED_PROFILE_TTL_MS)) return;
     sharedRequests.add(userId);
-    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}?v=${Date.now()}`)
-        .then(r => r.ok ? r.json() : null).then(payload => {
+    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`)
+        .then(r => {
+            if (r.status === 404) {
+                // No CloudCord profile: remember that instead of asking again.
+                sharedMissingUntil.set(userId, Date.now() + SHARED_MISSING_TTL_MS);
+                if (sharedMissingUntil.size > 5000) sharedMissingUntil.delete(sharedMissingUntil.keys().next().value!);
+                return null;
+            }
+            if (r.status === 429 || r.status >= 500) {
+                const retryAfter = Number(r.headers.get("retry-after")) * 1000;
+                sharedBackoffUntil = Date.now() + (Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 5 * 60_000) : 60_000);
+                return null;
+            }
+            return r.ok ? r.json() : null;
+        }).then(payload => {
             const data = payload?.profile ?? payload;
             if (!data) return;
             const next = fromSharedProfile(data);
@@ -757,15 +805,21 @@ function requestSharedProfile(userId: string, force = false) {
                 const UPS = (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore");
                 UPS?.emitChange?.();
                 (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
+                refreshPresence();
             } catch { }
         }).catch(() => { }).finally(() => sharedRequests.delete(userId));
 }
 
 function refreshVisibleSharedProfiles() {
-    // Any remote user encountered by a profile, member list, DM or badge surface
-    // is retained in this small cache. Refresh those users automatically so two
-    // desktop clients can test sync without reopening Discord or the profile.
-    for (const userId of sharedProfiles.keys()) requestSharedProfile(userId, true);
+    // Keep recently viewed CloudCord profiles fresh (so changes made on another
+    // device appear), a few per tick, oldest first. Nobody else is re-fetched.
+    const now = Date.now();
+    const due = [...sharedViewedAt]
+        .filter(([userId, viewedAt]) => now - viewedAt < SHARED_VIEWED_WINDOW_MS && now - (sharedProfileFetchedAt.get(userId) ?? 0) > 30_000)
+        .sort((a, b) => (sharedProfileFetchedAt.get(a[0]) ?? 0) - (sharedProfileFetchedAt.get(b[0]) ?? 0))
+        .slice(0, SHARED_REFRESH_PER_TICK);
+    for (const [userId] of due) requestSharedProfile(userId, true);
+    for (const [userId, viewedAt] of sharedViewedAt) if (now - viewedAt > SHARED_VIEWED_WINDOW_MS) sharedViewedAt.delete(userId);
 }
 
 const socialLookupAt = new Map<string, number>();
@@ -970,6 +1024,7 @@ function forceAccountPanelRerender() {
         const WP = (Vencord as any).Webpack;
         const US = WP?.findByStoreName?.("UserStore"); if (US?.emitChange) US.emitChange();
         const UPS = WP?.findByStoreName?.("UserProfileStore"); if (UPS?.emitChange) UPS.emitChange();
+        refreshPresence();
         FluxDispatcher.dispatch({ type: "USER_SETTINGS_PROTO_UPDATE", settings: { type: 1, proto: {} } });
         if (isEnabled) startDomObserver(); else stopDomObserver();
     } catch { }
@@ -1077,60 +1132,69 @@ function Toggle({ label, checked, onChange, sublabel }: { label: string; checked
         <div className={`cp-toggle ${checked ? "cp-toggle-on" : ""}`}><div className="cp-toggle-thumb" /></div>
     </div>);
 }
-function BadgeBtn({ label, icon, active, onClick }: { label: string; icon?: string; active: boolean; onClick: () => void; }) {
-    return (<button onClick={onClick} className={`cp-badge ${active ? "cp-badge-on" : ""}`} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-        {icon && <img src={icon} alt="" style={{ width: 16, height: 16, objectFit: "contain", flexShrink: 0 }} />}<span>{label}</span>
-    </button>);
+function BadgeCard({ label, icon, active, onClick, radio }: { label: string; icon?: string; active: boolean; onClick: () => void; radio?: boolean; }) {
+    return <button type="button" role={radio ? "radio" : "checkbox"} aria-checked={active} className={`cpx-badge-card ${active ? "cpx-on" : ""}`} onClick={onClick} title={label}>
+        <span className="cpx-badge-icon">{icon ? <img src={icon} alt="" loading="lazy" onError={event => event.currentTarget.setAttribute("data-broken", "")} /> : <span aria-hidden="true">–</span>}</span>
+        <span className="cpx-badge-label">{label}</span>
+    </button>;
 }
+
+function BadgeGroup({ title, hint, children, radio }: { title: string; hint?: string; children: React.ReactNode; radio?: boolean; }) {
+    return <div className="cpx-field">
+        <span className="cpx-label">{title}</span>
+        {hint && <span className="cpx-hint">{hint}</span>}
+        <div className="cpx-badge-grid" role={radio ? "radiogroup" : "group"} aria-label={title}>{children}</div>
+    </div>;
+}
+
 function BadgePicker({ selected, onChange, nitroType, onNitroType, giftLevel, onGiftLevel, boostLevel, onBoostLevel, customIds, onCustomIds, oldName, onOldName, replaceRealBadges, onReplaceRealBadges }: {
     selected: number; onChange: (v: number) => void; nitroType: number; onNitroType: (v: number) => void;
     giftLevel: number; onGiftLevel: (v: number) => void;
     boostLevel: number; onBoostLevel: (v: number) => void; customIds: string[]; onCustomIds: (v: string[]) => void; oldName: string; onOldName: (v: string) => void;
     replaceRealBadges: boolean; onReplaceRealBadges: (v: boolean) => void;
 }) {
+    const toggleId = (id: string) => onCustomIds(customIds.includes(id) ? customIds.filter(other => other !== id) : [...customIds, id]);
     const hasOldName = customIds.includes("oldname");
-    return (<div className="cp-field">
-        <div className="cp-section-label">Badges</div>
-        <div className="cp-badges">{BADGES.map(b => <BadgeBtn key={b.flag} label={b.label} icon={b.icon} active={!!(selected & b.flag)} onClick={() => onChange(selected ^ b.flag)} />)}</div>
-        <div className="cp-toggle-row" onClick={() => onReplaceRealBadges(!replaceRealBadges)} role="button" tabIndex={0}>
-            <div className="cp-toggle-text"><span className="cp-toggle-label">Replace real badges</span><span className="cp-toggle-sub">Replace visible Discord badges when fake badges are selected.</span></div>
-            <div className={`cp-toggle ${replaceRealBadges ? "cp-toggle-on" : ""}`}><div className="cp-toggle-thumb" /></div>
-        </div>
-        <div className="cp-section-label" style={{ marginTop: 8 }}>Evolving Nitro Badge</div>
-        <div className="cp-badges">
-            <BadgeBtn label="None" active={nitroType === -1} onClick={() => onNitroType(-1)} />
-            {NITRO_LEVELS.map((n, i) => <BadgeBtn key={i} label={n.label} icon={n.icon} active={nitroType === i} onClick={() => { onNitroType(i); if (i >= 1) onNitroType(i); }} />)}
-        </div>
-        <div className="cp-section-label" style={{ marginTop: 8 }}>Special Badges</div>
-        <div className="cp-badges">
-            <BadgeBtn label="Completed a Quest" icon="https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png" active={customIds.includes("quest")} onClick={() => onCustomIds(customIds.includes("quest") ? customIds.filter(x => x !== "quest") : [...customIds, "quest"])} />
-            <BadgeBtn label="Orbs — Apprentice" icon="https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png" active={customIds.includes("orbs")} onClick={() => onCustomIds(customIds.includes("orbs") ? customIds.filter(x => x !== "orbs") : [...customIds, "orbs"])} />
-            <BadgeBtn label="Originally Known As" icon={OLD_NAME_BADGE_ICON} active={hasOldName} onClick={() => onCustomIds(hasOldName ? customIds.filter(x => x !== "oldname") : [...customIds, "oldname"])} />
-        </div>
-        <div className="cp-section-label" style={{ marginTop: 8 }}>Experimental Badges</div>
-        {EXPERIMENTAL_BADGE_GROUPS.map(group => <div className="cp-field" key={group.id}>
-            <div className="cp-section-label">{group.label}</div>
-            <Select
+    return <div className="cpx-badges">
+        <Switch label="Hide my real badges" description="When you pick badges here, show only these instead of your real Discord badges." checked={replaceRealBadges} onChange={onReplaceRealBadges} />
+
+        <BadgeGroup title="Discord badges" hint="Pick as many as you like.">
+            {BADGES.map(badge => <BadgeCard key={badge.flag} label={badge.label} icon={badge.icon} active={!!(selected & badge.flag)} onClick={() => onChange(selected ^ badge.flag)} />)}
+        </BadgeGroup>
+
+        <BadgeGroup title="Nitro badge" hint="The badge changes with how long you've had Nitro." radio>
+            <BadgeCard radio label="None" active={nitroType === -1} onClick={() => onNitroType(-1)} />
+            {NITRO_LEVELS.map((level, index) => <BadgeCard radio key={index} label={level.label} icon={level.icon} active={nitroType === index} onClick={() => onNitroType(index)} />)}
+        </BadgeGroup>
+
+        <BadgeGroup title="Server booster" radio>
+            <BadgeCard radio label="None" active={boostLevel === -1} onClick={() => onBoostLevel(-1)} />
+            {BOOST_LABELS.map((label, index) => <BadgeCard radio key={index} label={label} icon={BOOST_ICONS[index]} active={boostLevel === index} onClick={() => onBoostLevel(index)} />)}
+        </BadgeGroup>
+
+        <BadgeGroup title="Gifting" radio>
+            <BadgeCard radio label="None" active={giftLevel === -1} onClick={() => onGiftLevel(-1)} />
+            {GIFT_LEVELS.map((level, index) => <BadgeCard radio key={level.id} label={level.name} icon={level.icon} active={giftLevel === index} onClick={() => onGiftLevel(index)} />)}
+        </BadgeGroup>
+
+        <BadgeGroup title="Special">
+            <BadgeCard label="Completed a Quest" icon="https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png" active={customIds.includes("quest")} onClick={() => toggleId("quest")} />
+            <BadgeCard label="Orbs Apprentice" icon="https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png" active={customIds.includes("orbs")} onClick={() => toggleId("orbs")} />
+            <BadgeCard label="Originally known as" icon={OLD_NAME_BADGE_ICON} active={hasOldName} onClick={() => toggleId("oldname")} />
+        </BadgeGroup>
+        {hasOldName && <TextField label="Previous username (shown in the badge tooltip)" value={oldName} placeholder="olduser#0000" onChange={onOldName} />}
+
+        {EVENT_BADGES.length > 0 && <BadgeGroup title="Event badges">
+            {EVENT_BADGES.map(badge => <BadgeCard key={badge.id} label={badge.name} icon={badge.icon} active={customIds.includes(badge.id)} onClick={() => toggleId(badge.id)} />)}
+        </BadgeGroup>}
+
+        {EXPERIMENTAL_BADGE_GROUPS.length > 0 && <div className="cpx-grid2">
+            {EXPERIMENTAL_BADGE_GROUPS.map(group => <SelectField key={group.id} label={group.label}
                 options={[{ value: "", label: "None" }, ...group.tiers.map(tier => ({ value: tier.id, label: `${tier.name} · ${tier.milestone}` }))]}
-                isSelected={(value: string) => value === (group.tiers.find(tier => customIds.includes(tier.id))?.id || "")}
-                select={(value: string) => onCustomIds([...customIds.filter(id => !group.tiers.some(tier => tier.id === id)), ...(value ? [value] : [])])}
-                serialize={(value: string) => value}
-            />
-        </div>)}
-        <div className="cp-section-label">Event Badges</div>
-        <div className="cp-badges">{EVENT_BADGES.map(badge => <BadgeBtn key={badge.id} label={badge.name} icon={badge.icon} active={customIds.includes(badge.id)} onClick={() => onCustomIds(customIds.includes(badge.id) ? customIds.filter(id => id !== badge.id) : [...customIds, badge.id])} />)}</div>
-        <div className="cp-section-label">Gifting Badge</div>
-        <div className="cp-badges">
-            <BadgeBtn label="None" active={giftLevel === -1} onClick={() => onGiftLevel(-1)} />
-            {GIFT_LEVELS.map((level, index) => <BadgeBtn key={level.id} label={level.name} icon={level.icon} active={giftLevel === index} onClick={() => onGiftLevel(index)} />)}
-        </div>
-        {hasOldName && <div className="cp-field" style={{ marginTop: 6 }}><div className="cp-section-label">Previous username displayed in tooltip</div><input className="cp-input" value={oldName} placeholder="OldUser#0000" onChange={e => onOldName(e.target.value)} /></div>}
-        <div className="cp-section-label" style={{ marginTop: 8 }}>Server Booster Badge</div>
-        <div className="cp-badges">
-            <BadgeBtn label="None" active={boostLevel === -1} onClick={() => onBoostLevel(-1)} />
-            {BOOST_LABELS.map((lbl, i) => <BadgeBtn key={i} label={lbl} icon={BOOST_ICONS[i]} active={boostLevel === i} onClick={() => onBoostLevel(i)} />)}
-        </div>
-    </div>);
+                value={group.tiers.find(tier => customIds.includes(tier.id))?.id || ""}
+                onChange={value => onCustomIds([...customIds.filter(id => !group.tiers.some(tier => tier.id === id)), ...(value ? [value] : [])])} />)}
+        </div>}
+    </div>;
 }
 
 
@@ -1173,20 +1237,25 @@ function BadgeLayoutEditor({ data, userId, onChange }: { data: CustomProfileData
     const rows = badgeLayoutRows(data, userId);
     const hidden = data.hiddenBadgeIds || [];
     const keys = rows.map(row => row.id);
-    return <div className="cp-field">
-        <div className="cp-section-label">Badge Layout</div>
-        <div className="cp-hint">Hide badges or change their order. Hidden badges stay here so you can show them again.</div>
-        {rows.length === 0 && <div className="cp-hint">Select a badge above to arrange it.</div>}
-        {rows.map((row, index) => <div className="cp-badge-layout-row" key={row.id}>
-            {row.iconSrc && <img src={row.iconSrc} alt="" width={20} height={20} />}
-            <span className="cp-badge-layout-label">{row.description || row.id}</span>
-            <div className="cp-badge-layout-actions">
-                <Button size={Button.Sizes.SMALL} onClick={() => onChange({ hiddenBadgeIds: hidden.includes(row.id) ? hidden.filter(id => id !== row.id) : [...hidden, row.id] })}>{hidden.includes(row.id) ? "Show" : "Hide"}</Button>
-                <Button size={Button.Sizes.SMALL} aria-label={`Move ${row.description || row.id} left`} disabled={index === 0} onClick={() => onChange({ badgeOrder: moveBadgeOrder(keys, row.id, -1) })}>←</Button>
-                <Button size={Button.Sizes.SMALL} aria-label={`Move ${row.description || row.id} right`} disabled={index === rows.length - 1} onClick={() => onChange({ badgeOrder: moveBadgeOrder(keys, row.id, 1) })}>→</Button>
-            </div>
-        </div>)}
-        <Button size={Button.Sizes.SMALL} onClick={() => onChange({ hiddenBadgeIds: [], badgeOrder: [] })}>Reset Badge Layout</Button>
+    if (!rows.length) return <p className="cpx-hint">Pick some badges above, then arrange them here.</p>;
+    return <div className="cpx-field">
+        <ol className="cpx-order-list" aria-label="Badge order">
+            {rows.map((row, index) => {
+                const isHidden = hidden.includes(row.id);
+                const name = row.description || row.id;
+                return <li key={row.id} className={`cpx-order-row ${isHidden ? "cpx-order-hidden" : ""}`}>
+                    <span className="cpx-order-pos">{index + 1}</span>
+                    {row.iconSrc ? <img src={row.iconSrc} alt="" width={22} height={22} /> : <span className="cpx-order-blank" aria-hidden="true" />}
+                    <span className="cpx-order-name">{name}{isHidden && <span className="cpx-hint"> · hidden</span>}</span>
+                    <div className="cpx-inline">
+                        <button type="button" className="cpx-btn cpx-btn-ghost cpx-icon-btn" aria-label={`Move ${name} earlier`} disabled={index === 0} onClick={() => onChange({ badgeOrder: moveBadgeOrder(keys, row.id, -1) })}>↑</button>
+                        <button type="button" className="cpx-btn cpx-btn-ghost cpx-icon-btn" aria-label={`Move ${name} later`} disabled={index === rows.length - 1} onClick={() => onChange({ badgeOrder: moveBadgeOrder(keys, row.id, 1) })}>↓</button>
+                        <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => onChange({ hiddenBadgeIds: isHidden ? hidden.filter(id => id !== row.id) : [...hidden, row.id] })}>{isHidden ? "Show" : "Hide"}</button>
+                    </div>
+                </li>;
+            })}
+        </ol>
+        <div className="cpx-inline"><button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => onChange({ hiddenBadgeIds: [], badgeOrder: [] })}>Reset order</button></div>
     </div>;
 }
 
@@ -1198,7 +1267,10 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     const [saveError, setSaveError] = React.useState("");
     const [decorationLimit, setDecorationLimit] = React.useState(24);
     const [decorationSearch, setDecorationSearch] = React.useState("");
-    const decorations = ALL_DECORATIONS.filter(item => item.label.toLowerCase().includes(decorationSearch.toLowerCase()));
+    const [liveDecorations, setLiveDecorations] = React.useState<typeof ALL_DECORATIONS>([]);
+    React.useEffect(() => { loadCatalog().then(result => setLiveDecorations(result.decorations), () => { }); }, []);
+    const decorations = [...ALL_DECORATIONS, ...liveDecorations.filter(live => !ALL_DECORATIONS.some(item => item.id === live.id))]
+        .filter(item => item.label.toLowerCase().includes(decorationSearch.toLowerCase()));
     const nitroLevel = data.nitroLevel ?? -1;
     const boostLevel = data.boostMonths ?? -1;
     const giftLevel = data.giftLevel ?? -1;
@@ -1272,138 +1344,161 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         forceAccountPanelRerender(); rootProps.onClose();
     }
 
-    const accentHex = data.accentColor != null ? "#" + data.accentColor.toString(16).padStart(6, "0") : "";
-    const accent2Hex = data.accentColor2 != null ? "#" + data.accentColor2.toString(16).padStart(6, "0") : "";
+    const [tab, setTab] = React.useState<TabId>("profile");
+    const [catalogData, setCatalogData] = React.useState<Catalog | null>(null);
+    React.useEffect(() => { loadCatalog().then(setCatalogData, () => { }); }, []);
+    const [confirmReset, setConfirmReset] = React.useState(false);
+    const selectedUser: any = accounts.find((account: any) => account.id === selectedAccountId) || UserStore.getUser(selectedAccountId);
+    const fallbackAvatar = selectedUser ? IconUtils.getUserAvatarURL(selectedUser, false, 128) : "https://cdn.discordapp.com/embed/avatars/0.png";
+    const currentDecoration = decorations.find(item => item.id === data.decorationAsset) || ALL_DECORATIONS.find(item => item.id === data.decorationAsset) || liveDecorations.find(item => item.id === data.decorationAsset);
+    const nameColors = [0, 1, 2].map(index => nameStyle.colors[index] ?? nameStyle.colors[0] ?? 0xffffff);
+    const knownTags = availableServerTags((UserStore as any).getUsers?.());
 
-    return (<ModalRoot {...rootProps} size="medium">
-        <ModalHeader separator={false}>
-            <div className="cp-header"><EditIcon size={16} /><span className="cp-header-title">Custom Profile</span></div>
-            <div style={{ marginLeft: "auto", marginRight: 8, minWidth: 200 }}>
+    const panels: Record<TabId, React.ReactNode> = {
+        profile: <>
+            <Section title="Pictures" description="Shown on your profile, in chat and in member lists for CloudCord users.">
+                <ImageField label="Profile picture" value={data.avatar ?? ""} onChange={value => set("avatar", value)} />
+                <Switch label="Simulate Nitro" description="Unlocks a banner and profile colors." checked={data.nitro ?? false} onChange={value => set("nitro", value)} />
+                {data.nitro && <ImageField label="Banner" shape="banner" value={data.banner ?? ""} onChange={value => set("banner", value)} />}
+            </Section>
+            <Section title="About you">
+                <TextField label="Bio" multiline maxLength={190} value={data.bio ?? ""} placeholder="Tell people about yourself" onChange={value => set("bio", value)} />
+                <TextField label="Pronouns" maxLength={40} value={data.pronouns ?? ""} placeholder="they/them" onChange={value => set("pronouns", value)} />
+            </Section>
+            <Section title="Profile colors" description={data.nitro ? "The gradient behind your profile card." : "Turn on Simulate Nitro to show profile colors."}>
+                <Grid2>
+                    <ColorField label="Primary" value={data.accentColor} fallback="#5865f2" onChange={value => set("accentColor", value)} />
+                    <ColorField label="Accent" optional value={data.accentColor2} fallback="#eb459e" onChange={value => set("accentColor2", value)} />
+                </Grid2>
+            </Section>
+            <Section title="Dates" description="Leave empty to use your real dates.">
+                <Grid2>
+                    <TextField label="Account created" type="date" value={data.createdAt ?? ""} onChange={value => set("createdAt", value)} />
+                    <TextField label="Member since" type="date" value={data.signupDate ?? ""} onChange={value => set("signupDate", value)} />
+                    <TextField label="Nitro since" type="date" value={data.nitroSince ?? ""} onChange={value => set("nitroSince", value)} />
+                </Grid2>
+            </Section>
+        </>,
+        name: <>
+            <Section title="Names">
+                <Grid2>
+                    <TextField label="Display name" maxLength={32} value={data.globalName ?? ""} placeholder={selectedUser?.globalName || "Display name"} onChange={value => set("globalName", value)} />
+                    <TextField label="Username" maxLength={32} value={data.username ?? ""} placeholder={selectedUser?.username || "username"} onChange={value => set("username", value)} />
+                </Grid2>
+            </Section>
+            <Section title="Name style" description="Font, effect and colors for your display name.">
+                <Switch label="Custom name style" checked={data.displayNameStyles != null} onChange={value => set("displayNameStyles", value ? nameStyle : null)} />
+                {data.displayNameStyles != null && (fonts.length || effects.length ? <>
+                    <Grid2>
+                        <SelectField label="Font" options={fonts.length ? fonts : [{ value: 0, label: "Default" }]} value={nameStyle.fontId} onChange={value => set("displayNameStyles", { ...nameStyle, fontId: value })} />
+                        <SelectField label="Effect" options={effects.length ? effects : [{ value: 0, label: "None" }]} value={nameStyle.effectId} onChange={value => set("displayNameStyles", { ...nameStyle, effectId: value })} />
+                    </Grid2>
+                    <Grid2>
+                        {[0, 1, 2].map(index => <ColorField key={index} label={`Color ${index + 1}`} value={nameColors[index]} fallback="#ffffff"
+                            onChange={value => { const colors = [...nameColors]; colors[index] = value ?? 0xffffff; set("displayNameStyles", { ...nameStyle, colors }); }} />)}
+                    </Grid2>
+                </> : <p className="cpx-hint">Discord's name styles aren't available in this Discord version.</p>)}
+            </Section>
+            <Section title="Server tag" description="The small tag next to your name. Only changes what CloudCord users see.">
+                <Switch label="Custom server tag" checked={data.serverTag != null} onChange={value => set("serverTag", value ? tag : null)} />
+                {data.serverTag != null && <>
+                    {knownTags.length > 0 && <SelectField label="Start from a tag you've seen" value=""
+                        options={[{ value: "", label: "Choose a tag…" }, ...knownTags.map(item => ({ value: `${item.guildId}:${item.badge}`, label: item.tag }))]}
+                        onChange={value => { const picked = knownTags.find(item => `${item.guildId}:${item.badge}` === value); if (picked) set("serverTag", { ...picked, tag: tag.tag || picked.tag, icon: tag.icon }); }} />}
+                    <Grid2>
+                        <TextField label="Tag text" maxLength={4} value={tag.tag} placeholder="CC" onChange={value => set("serverTag", { ...tag, tag: Array.from(value).slice(0, 4).join("") })} />
+                        <TextField label="Server ID" value={tag.guildId} placeholder="123456789012345678" error={tag.guildId && !/^\d{15,22}$/.test(tag.guildId) ? "Server IDs are 15–22 digits." : undefined} onChange={value => set("serverTag", { ...tag, guildId: value.trim() })} />
+                    </Grid2>
+                    <TagIconEditor tag={tag} onChange={icon => set("serverTag", { ...tag, icon })} />
+                    <div className="cpx-inline">
+                        <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => { const user = UserStore.getUser(selectedAccountId) as any; const current = user?.primaryGuild || user?.primary_guild; if (current?.tag) set("serverTag", { tag: current.tag, guildId: current.identityGuildId || current.identity_guild_id, badge: current.badge || "" }); }}>Copy my current tag</button>
+                    </div>
+                </>}
+            </Section>
+        </>,
+        cosmetics: <>
+            <Section title="Avatar decoration" description="The frame around your profile picture.">
+                <Current label={currentDecoration?.label || (data.decorationAsset ? "Decoration" : null)} image={currentDecoration?.url} onRemove={() => { set("decorationAsset", undefined); set("decorationSkuId", undefined); }} />
+                <PickerGrid items={decorations} label="decorations" keyOf={item => item.id} textOf={item => item.label} renderImage={item => item.url}
+                    isSelected={item => data.decorationAsset === item.id} onPick={item => { set("decorationAsset", item.id); set("decorationSkuId", item.skuId); }}
+                    noneLabel="No decoration" noneSelected={!data.decorationAsset} onNone={() => { set("decorationAsset", undefined); set("decorationSkuId", undefined); }} />
+            </Section>
+            <Section title="Profile frame"><ProfileFrameEditor data={data} set={set as any} /></Section>
+            <Section title="Profile effect"><ProfileEffectEditor data={data} set={set as any} /></Section>
+            <Section title="Nameplate"><NameplateEditor data={data} set={set as any} /></Section>
+        </>,
+        status: <Section title="Status & activity"><StatusEditor data={data} set={set as any} /></Section>,
+        badges: <>
+            <Section title="Badges" description="Pick the badges shown on your profile.">
+                <Switch label="Hide CloudCord badges while sync is off" description="When you save on this device only, show no CloudCord badges on your profile." checked={data.hideBadgesWhenSyncOff === true} onChange={value => set("hideBadgesWhenSyncOff", value)} />
+                <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
+            </Section>
+            <Section title="Badge order" description="Hide badges or change their order.">
+                <BadgeLayoutEditor data={data} userId={selectedAccountId} onChange={layout => setData(previous => ({ ...previous, ...layout }))} />
+            </Section>
+        </>,
+        connections: <>
+            <Section title="Connections" description="Accounts shown on your profile. These are previews, not verified connections.">
+                <CustomSocialEditor data={data} onChange={value => setData(current => ({ ...current, ...value }))} resolveUser={async userId => {
+                    let shared = sharedProfiles.get(userId);
+                    if (!shared && !isMe(userId)) {
+                        try {
+                            const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`, { signal: AbortSignal.timeout(10000) });
+                            if (response.ok) { const payload = await response.json(); shared = fromSharedProfile(payload?.profile ?? payload); sharedProfiles.set(userId, shared); sharedProfileFetchedAt.set(userId, Date.now()); }
+                        } catch { /* Cached Discord user data remains usable offline. */ }
+                    }
+                    if (isMe(userId) && isEnabled) shared = storedData;
+                    const user = UserStore.getUser(userId);
+                    if (!shared && !user) return null;
+                    const profile = UserProfileStore.getUserProfile(userId) as any;
+                    return { username: shared?.username || user?.username || "", displayName: shared?.globalName || user?.globalName || "", avatar: shared?.avatar || (user ? IconUtils.getUserAvatarURL(user) : ""), banner: shared?.banner || customDiscordMediaURL("banners", userId, profile?.banner ?? (user as any)?.banner), bio: shared?.bio || profile?.bio || "", badges: user ? badgeLayoutRows(shared || {}, userId).map(badge => ({ name: badge.description || badge.key || "Badge", icon: badge.iconSrc || "" })) : [] };
+                }} />
+            </Section>
+            <Section title="Custom images & badges" description="Upload your own badge, profile picture or banner on the CloudCord website.">
+                <div className="cpx-inline"><button type="button" className="cpx-btn" onClick={() => window.open("https://getcloudcord.com/upload", "_blank", "noopener,noreferrer")}>Open upload page</button></div>
+            </Section>
+        </>
+    };
+
+    return (<ModalRoot {...rootProps} size="large" className="cpx-root">
+        <ModalHeader separator={false} className="cpx-header">
+            <div className="cpx-header-title"><EditIcon size={18} /><span>Custom Profile</span></div>
+            {accounts.length > 1 && <div className="cpx-account">
                 <Select
                     options={accounts.map((acc: any) => ({ value: acc.id, label: acc.globalName || acc.username }))}
                     isSelected={(v: string) => v === selectedAccountId}
                     select={(v: string) => setSelectedAccountId(v)}
                     serialize={(v: string) => v}
-                    renderOptionLabel={(o: any) => <div style={{ display: "flex", alignItems: "center", gap: 8 }}><img src={IconUtils.getUserAvatarURL(accounts.find((a: any) => a.id === o.value), false, 20)} style={{ borderRadius: "50%", width: 20, height: 20 }} />{o.label}</div>}
-                    renderOptionValue={(selected: any[]) => { const option = selected[0]; if (!option) return <span>Select Account</span>; return <div style={{ display: "flex", alignItems: "center", gap: 8 }}><img src={IconUtils.getUserAvatarURL(accounts.find((a: any) => a.id === option.value), false, 20)} style={{ borderRadius: "50%", width: 20, height: 20 }} />{option.label}</div>; }}
+                    renderOptionLabel={(o: any) => <div className="cpx-account-option"><img src={IconUtils.getUserAvatarURL(accounts.find((a: any) => a.id === o.value), false, 20)} alt="" />{o.label}</div>}
+                    renderOptionValue={(selected: any[]) => { const option = selected[0]; if (!option) return <span>Select account</span>; return <div className="cpx-account-option"><img src={IconUtils.getUserAvatarURL(accounts.find((a: any) => a.id === option.value), false, 20)} alt="" />{option.label}</div>; }}
                 />
-            </div>
-            <button type="button" className="cp-close-button" aria-label="Close" title="Close" onClick={rootProps.onClose}><CloseIcon /></button>
+            </div>}
+            <button type="button" className="cpx-close" aria-label="Close" title="Close" onClick={rootProps.onClose}><CloseIcon /></button>
         </ModalHeader>
 
-        <ModalContent className="cp-content">
-            <details className="cp-group" open><summary>Identity · name, style & server tag</summary>
-            <Field label="Username" value={data.username ?? ""} placeholder="my_username" onChange={v => set("username", v)} />
-            <Field label="Display Name" value={data.globalName ?? ""} placeholder="My Name" onChange={v => set("globalName", v)} />
-            <div className="cp-field">
-                <div className="cp-section-label">Username Style</div>
-                <Toggle label="Override username style" checked={data.displayNameStyles != null} onChange={v => set("displayNameStyles", v ? nameStyle : null)} />
-                {data.displayNameStyles != null && <>
-                    {[{ label: "Font", key: "fontId" as const, options: fonts }, { label: "Effect / Animation", key: "effectId" as const, options: effects }].map(row => <div className="cp-field" key={row.key}>
-                        <div className="cp-section-label">{row.label}</div>
-                        <Select options={row.options} isSelected={(value: number) => value === nameStyle[row.key]} select={(value: number) => set("displayNameStyles", { ...nameStyle, [row.key]: value })} serialize={(value: number) => String(value)} />
-                        {!row.options.length && <div className="cp-sublabel">Discord's style options aren't available in this version.</div>}
-                    </div>)}
-                    <div className="cp-color-row">{[0, 1, 2].map(index => <label key={index}>Color {index + 1}<input type="color" className="cp-color-swatch" value={`#${(nameStyle.colors[index] ?? nameStyle.colors[0] ?? 0xffffff).toString(16).padStart(6, "0")}`} onChange={event => { const colors = [0, 1, 2].map(i => nameStyle.colors[i] ?? nameStyle.colors[0] ?? 0xffffff); colors[index] = parseInt(event.target.value.slice(1), 16); set("displayNameStyles", { ...nameStyle, colors }); }} /></label>)}</div>
-                </>}
+        <ModalContent className="cpx-content" scrollerClassName="cpx-scroller">
+            <div className="cpx-layout">
+                <TabList value={tab} onChange={setTab} />
+                <div className="cpx-panel" id="cpx-panel" role="tabpanel" aria-labelledby={`cpx-tab-${tab}`} key={tab}>{panels[tab]}</div>
+                <ProfilePreview data={data} fallbackName={selectedUser?.globalName || selectedUser?.username || "You"} fallbackUsername={selectedUser?.username || "username"} fallbackAvatar={fallbackAvatar}
+                    decorationUrl={currentDecoration?.url} nameplateUrl={data.nameplate ? nameplateAssetURL(data.nameplate.asset) : undefined}
+                    effectName={data.profileEffect ? catalogData?.effects.find(item => item.skuId === data.profileEffect?.skuId)?.title || "Selected" : undefined}
+                    frameName={data.profileFrame ? catalogData?.frames.find(item => item.skuId === data.profileFrame?.skuId)?.label || "Selected" : undefined} />
             </div>
-            <div className="cp-field">
-                <div className="cp-section-label">Server Tag</div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "10px 0", color: "var(--text-normal)" }}>
-                    {serverTagIconURL(data.serverTag) && <img src={serverTagIconURL(data.serverTag)} alt="" width={20} height={20} style={{ objectFit: "contain" }} />}
-                    <span>{data.serverTag?.tag || "Your Tag"}</span>
-                </div>
-                <Select options={availableServerTags((UserStore as any).getUsers?.()).map(item => ({ label: item.tag, value: `${item.guildId}:${item.badge}`, tag: item }))} isSelected={(value: string) => value === `${tag.guildId}:${tag.badge}`} select={(value: string) => { const selected = availableServerTags((UserStore as any).getUsers?.()).find(item => `${item.guildId}:${item.badge}` === value); if (selected) set("serverTag", { ...selected, tag: tag.tag || selected.tag }); }} serialize={(value: string) => value} />
-                <Field label="Discord Tag Icon Link" value={serverTagIconURL(data.serverTag)} placeholder="Paste a Discord server-tag image link" onChange={value => { const icon = parseServerTagIcon(value); if (icon) set("serverTag", { ...tag, ...icon }); }} />
-                <Button onClick={() => { const user = UserStore.getUser(selectedAccountId) as any; const current = user?.primaryGuild || user?.primary_guild; if (current?.tag) set("serverTag", { tag: current.tag, guildId: current.identityGuildId || current.identity_guild_id, badge: current.badge || "" }); }}>Copy Current Discord Tag</Button>
-                <Toggle label="Override server tag" checked={data.serverTag != null} onChange={v => set("serverTag", v ? tag : null)} />
-                {data.serverTag != null && <>
-                    <Field label="Tag (1–4 characters)" value={tag.tag} placeholder="CC" onChange={value => set("serverTag", { ...tag, tag: Array.from(value).slice(0, 4).join("") })} />
-                    <Field label="Server ID" value={tag.guildId} placeholder="Discord server ID" onChange={guildId => set("serverTag", { ...tag, guildId })} />
-                    <Field label="Discord Tag Badge Hash (optional)" value={tag.badge} placeholder="32-character badge hash" onChange={badge => set("serverTag", { ...tag, badge })} />
-                    <div className="cp-sublabel">Visible in CloudCord. This doesn't change server membership or permissions.</div>
-                </>}
-            </div>
-            </details>
-            <details className="cp-group"><summary>Appearance · pictures, bio & colors</summary>
-            <ImageUpload label="Profile Picture" value={data.avatar ?? ""} onChange={v => set("avatar", v)} />
-            <Toggle label="Simulate Nitro" sublabel="Enables banner and profile color" checked={data.nitro ?? false} onChange={v => set("nitro", v)} />
-            {data.nitro && <ImageUpload label="Banner" value={data.banner ?? ""} onChange={v => set("banner", v)} />}
-            <div className="cp-divider" />
-            <Field label="Bio" value={data.bio ?? ""} placeholder="My description..." onChange={v => set("bio", v)} />
-            <Field label="Pronouns" value={data.pronouns ?? ""} placeholder="he/him" onChange={v => set("pronouns", v)} />
-            <div className="cp-field">
-                <div className="cp-section-label">Profile Colors</div>
-                <div className="cp-color-row" style={{ marginBottom: 6 }}>
-                    <span style={{ fontSize: 11, color: "var(--text-muted)", marginRight: 6 }}>Color 1</span>
-                    <input type="color" value={accentHex || "#5865f2"} className="cp-color-swatch" onChange={e => { const n = parseInt(e.target.value.replace("#", ""), 16); if (!isNaN(n)) set("accentColor", n); }} />
-                    <input value={accentHex} placeholder="#5865f2" className="cp-input cp-color-input" onChange={e => { const h = e.target.value.replace("#", ""); const n = parseInt(h, 16); if (!isNaN(n) && h.length === 6) set("accentColor", n); else if (!e.target.value || e.target.value === "#") set("accentColor", undefined); }} />
-                    {data.accentColor != null && <button className="cp-clear-btn" onClick={() => set("accentColor", undefined)}><CloseIcon /></button>}
-                </div>
-                <div className="cp-color-row">
-                    <span style={{ fontSize: 11, color: "var(--text-muted)", marginRight: 6 }}>Color 2</span>
-                    <input type="color" value={accent2Hex || "#eb459e"} className="cp-color-swatch" onChange={e => { const n = parseInt(e.target.value.replace("#", ""), 16); if (!isNaN(n)) set("accentColor2", n); }} />
-                    <input value={accent2Hex} placeholder="#eb459e (optional)" className="cp-input cp-color-input" onChange={e => { const h = e.target.value.replace("#", ""); const n = parseInt(h, 16); if (!isNaN(n) && h.length === 6) set("accentColor2", n); else if (!e.target.value || e.target.value === "#") set("accentColor2", undefined); }} />
-                    {data.accentColor2 != null && <button className="cp-clear-btn" onClick={() => set("accentColor2", undefined)}><CloseIcon /></button>}
-                </div>
-            </div>
-            </details>
-            <details className="cp-group"><summary>Badges & dates</summary>
-            <Field label="Account creation date" value={data.createdAt ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("createdAt", v)} />
-            <Field label="Joined since date" value={data.signupDate ?? ""} placeholder="2010-06-29" type="date" onChange={v => set("signupDate", v)} />
-            <Field label="Nitro since date" value={data.nitroSince ?? ""} placeholder="2024-01-01" type="date" onChange={v => set("nitroSince", v)} />
-            <div className="cp-divider" />
-            <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
-            <BadgeLayoutEditor data={data} userId={selectedAccountId} onChange={layout => setData(previous => ({ ...previous, ...layout }))} />
-            <div className="cp-divider" />
-            </details>
-            <details className="cp-group"><summary>Avatar decorations</summary>
-            <div className="cp-section-label">Avatar decoration</div>
-            <input className="cp-input cp-decoration-search" aria-label="Search decorations" placeholder="Search decorations" value={decorationSearch} onChange={e => { setDecorationSearch(e.target.value); setDecorationLimit(24); }} />
-            <div className="cp-decoration-grid">
-                <button onClick={() => { set("decorationAsset", undefined); set("decorationSkuId", undefined); }} className={`cp-badge ${!data.decorationAsset ? "cp-badge-on" : ""}`} style={{ minWidth: 60 }}>None</button>
-                {decorations.slice(0, decorationLimit).map(dec => (
-                    <button key={dec.id} onClick={() => { set("decorationAsset", data.decorationAsset === dec.id ? undefined : dec.id); set("decorationSkuId", data.decorationAsset === dec.id ? undefined : dec.skuId); }} className={`cp-badge cp-decoration ${data.decorationAsset === dec.id ? "cp-badge-on" : ""}`} title={dec.label} aria-pressed={data.decorationAsset === dec.id}>
-                        <img loading="lazy" src={dec.url} alt="" onError={e => { e.currentTarget.style.visibility = "hidden"; e.currentTarget.parentElement?.setAttribute("title", `${dec.label} — image unavailable`); }} />
-                        <span>{dec.label}</span>
-                    </button>
-                ))}
-            </div>
-            {!decorations.length && <div className="cp-hint">No matching decorations.</div>}
-            {decorationLimit < decorations.length && <Button onClick={() => setDecorationLimit(limit => limit + 24)}>Load More</Button>}
-            </details>
-            <details className="cp-group" open><summary>Connections</summary>
-            <CustomSocialEditor data={data} onChange={value => setData(current => ({...current,...value}))} resolveUser={async userId => {
-                let shared = sharedProfiles.get(userId);
-                if (!shared && !isMe(userId)) {
-                    try {
-                        const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`, { signal: AbortSignal.timeout(10000) });
-                        if (response.ok) { const payload = await response.json(); shared = fromSharedProfile(payload?.profile ?? payload); sharedProfiles.set(userId, shared); sharedProfileFetchedAt.set(userId, Date.now()); }
-                    } catch { /* Cached Discord user data remains usable offline. */ }
-                }
-                if (isMe(userId) && isEnabled) shared = storedData;
-                const user = UserStore.getUser(userId);
-                if (!shared && !user) return null;
-                const profile = UserProfileStore.getUserProfile(userId) as any;
-                return { username: shared?.username || user?.username || "", displayName: shared?.globalName || user?.globalName || "", avatar: shared?.avatar || (user ? IconUtils.getUserAvatarURL(user) : ""), banner: shared?.banner || customDiscordMediaURL("banners", userId, profile?.banner ?? (user as any)?.banner), bio: shared?.bio || profile?.bio || "", badges: user ? badgeLayoutRows(shared || {}, userId).map(badge => ({name:badge.description || badge.key || "Badge",icon:badge.iconSrc || ""})) : [] };
-            }} />
-            </details>
-            <details className="cp-group"><summary>Upload custom images & badges</summary>
-            <div className="cp-upload-section">
-                <div className="cp-section-label">Custom Badges and Pictures</div>
-                <p>Add a badge, profile picture or banner.</p>
-                <Button onClick={() => window.open("https://getcloudcord.com/upload", "_blank", "noopener,noreferrer")}>Upload</Button>
-            </div>
-            </details>
         </ModalContent>
 
-        <ModalFooter className="cp-footer">
-            <div className="cp-hint" style={{ width: "100%" }}>Device only stops profile uploads and downloads on this device. A previously shared profile remains shared until replaced.</div>
-            {saveError && <div role="alert" style={{ width: "100%", color: "var(--text-danger)", lineHeight: 1.5 }}>{saveError}</div>}
-            <button className="cp-btn cp-btn-ghost" onClick={rootProps.onClose}>Cancel</button>
-            <button className="cp-btn cp-btn-danger" onClick={reset}><TrashIcon /><span>Reset</span></button>
-            <button className="cp-btn cp-btn-ghost" onClick={() => void save(false)} disabled={saving}><SaveIcon /><span>Save on this device</span></button>
-            <button className="cp-btn cp-btn-primary" onClick={() => void save(true)} disabled={saving}><SaveIcon /><span>{saving ? "Syncing..." : "Use on all devices"}</span></button>
+        <ModalFooter className="cpx-footer">
+            {saveError && <div className="cpx-footer-error" role="alert">{saveError}</div>}
+            <div className="cpx-footer-left">
+                {confirmReset
+                    ? <><span className="cpx-hint">Reset everything for this account?</span><button type="button" className="cpx-btn cpx-btn-danger" onClick={reset}>Yes, reset</button><button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => setConfirmReset(false)}>Keep</button></>
+                    : <button type="button" className="cpx-btn cpx-btn-ghost cpx-btn-danger-text" onClick={() => setConfirmReset(true)}><TrashIcon /><span>Reset</span></button>}
+            </div>
+            <div className="cpx-footer-right">
+                <button type="button" className="cpx-btn cpx-btn-ghost" onClick={rootProps.onClose}>Cancel</button>
+                <button type="button" className="cpx-btn" onClick={() => void save(false)} disabled={saving} title="Only this device; nothing is uploaded">Save on this device</button>
+                <button type="button" className="cpx-btn cpx-btn-primary" onClick={() => void save(true)} disabled={saving}><SaveIcon /><span>{saving ? "Syncing…" : "Save everywhere"}</span></button>
+            </div>
         </ModalFooter>
     </ModalRoot>);
 }
@@ -1576,6 +1671,7 @@ fakeObfuscatedEmail(real: string | null) {
 
     toolboxActions: { "Open Profile Spoofer"() { openModal(props => <CustomProfileModal rootProps={props} />); } },
     _origGetUserAvatarURL: null as any,
+    _catalogListener: null as null | (() => void),
     _origGetAvatarDecorationURL: null as any,
     _origExtractTimestamp: null as any,
 
@@ -1587,6 +1683,8 @@ fakeObfuscatedEmail(real: string | null) {
             let profileData: CustomProfileData | undefined;
             if (userIsMe) {
                 if (!isEnabled) return published;
+                // Optional: no CloudCord badges while syncing is switched off for this account.
+                if (storedData.localOnly && storedData.hideBadgesWhenSyncOff) return [];
                 profileData = storedData;
             } else {
                 // Keep checking the shared profile after its short cache window. Previously
@@ -1665,6 +1763,9 @@ fakeObfuscatedEmail(real: string | null) {
     } as ProfileBadge] as ProfileBadge[],
 
     async start() {
+        installPresenceHooks(userId => isMe(userId) ? (isEnabled ? storedData : undefined) : isRealProfileView(userId) ? undefined : viewedSharedProfile(userId));
+        installTagIconSwap();
+        this._catalogListener = onCatalogLoaded(() => { cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++; forceAccountPanelRerender(); });
         // Also hook the public resolver: a source-text patch alone can miss
         // Discord's newer/minified resolver layout.
         const resolver: any = IconUtils;
@@ -1710,6 +1811,7 @@ fakeObfuscatedEmail(real: string | null) {
             const UPS = (Vencord as any).Webpack?.findByProps?.("getUserProfile", "getGuildMemberProfile");
             if (UPS && !UPS._cp_hook) {
                 const origGet = UPS.getUserProfile.bind(UPS);
+                realGetUserProfile = origGet;
                 UPS.getUserProfile = (...args: any[]) => {
                     try {
                         const p = origGet(...args);
@@ -1783,14 +1885,16 @@ fakeObfuscatedEmail(real: string | null) {
         void refreshUploadedBadges(true);
         window.addEventListener("focus", refreshBadgesOnFocus);
         if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => {
+            if (document.hidden) return;
             void pullOwnSharedProfile();
             refreshVisibleSharedProfiles();
-            if (!document.hidden) void refreshUploadedBadges();
-        }, 5000);
+            void refreshUploadedBadges();
+        }, 15_000);
         if (isEnabled) forceAccountPanelRerender();
     },
 
     stop() {
+        uninstallPresenceHooks(); uninstallTagIconSwap(); this._catalogListener?.(); this._catalogListener = null;
         document.removeEventListener("click", this._socialClick, true);
         this._nativeSocial?.stop(); this._nativeSocial = null;
         window.removeEventListener("focus", refreshBadgesOnFocus);

@@ -6,7 +6,7 @@ import { findAssetId } from "@lib/api/assets";
 import { tokens } from "@metro/common";
 
 function tabIcon(tab: ProfileTab) {
-    const names = { profile: ["UserIcon"], social: ["PeopleIcon", "UserIcon"], badges: ["StarIcon"], custom: ["ImageIcon", "StarIcon"], others: ["PeopleIcon", "UserIcon"] }[tab];
+    const names = { profile: ["UserIcon"], name: ["PencilIcon", "UserIcon"], cosmetics: ["SparklesIcon", "StarIcon"], status: ["CircleIcon", "StatusIcon", "UserIcon"], social: ["LinkIcon", "PeopleIcon"], badges: ["StarIcon"], custom: ["ImageIcon", "StarIcon"], others: ["PeopleIcon", "UserIcon"] }[tab];
     for (const name of [...names, "SettingsIcon"]) {
         try { const id = findAssetId(name); if (id) return <TableRow.Icon source={id} />; } catch {}
     }
@@ -29,12 +29,13 @@ export function GlassCard({ children }: { children: ReactNode; border?: string }
 export function GlassButton({ label, onPress, muted = false, disabled = false }: { label: string; onPress: () => void; muted?: boolean; disabled?: boolean }) {
     return <Button text={label} onPress={onPress} disabled={disabled} variant="secondary" />;
 }
-export type ProfileTab = "profile" | "social" | "badges" | "custom" | "others";
+export type ProfileTab = "profile" | "name" | "cosmetics" | "status" | "badges" | "social" | "custom" | "others";
+const TAB_ORDER: ProfileTab[] = ["profile", "name", "cosmetics", "status", "badges", "social", "custom", "others"];
 export function ProfileTabs({ selected, onSelect }: { selected: ProfileTab; onSelect: (tab: ProfileTab) => void }) {
     return <View><TableRowGroup>
-        {(["profile", "social", "badges", "custom", "others"] as ProfileTab[]).map(tab => <View key={tab} style={{ borderRadius: 12, overflow: "hidden", borderWidth: 2, borderColor: selected === tab ? tokens.colors.TEXT_NORMAL : "transparent", backgroundColor: selected === tab ? tokens.colors.BACKGROUND_MODIFIER_SELECTED : "transparent" }}><TableRow
-            label={{ profile: "My profile", social: "Friends & connections", badges: "Badges", custom: "Custom badges · beta", others: "Other profiles" }[tab]}
-            subLabel={{ profile: "Name, pictures, bio and profile appearance", social: "Edit shared friends and linked account previews", badges: "Choose which badges appear on your profile", custom: "Upload a badge name and PNG", others: "Changes visible only on this device" }[tab]}
+        {TAB_ORDER.map(tab => <View key={tab} style={{ borderRadius: 12, overflow: "hidden", borderWidth: 2, borderColor: selected === tab ? tokens.colors.TEXT_NORMAL : "transparent", backgroundColor: selected === tab ? tokens.colors.BACKGROUND_MODIFIER_SELECTED : "transparent" }}><TableRow
+            label={{ profile: "Profile", name: "Name & tag", cosmetics: "Cosmetics", status: "Status", badges: "Badges", social: "Connections", custom: "Custom badges · beta", others: "Other profiles" }[tab]}
+            subLabel={{ profile: "Pictures, bio, colors and dates", name: "Names, name style and server tag", cosmetics: "Decorations, frames, effects and nameplates", status: "Status, custom status and activity", badges: "Choose and arrange your badges", social: "Accounts and domains on your profile", custom: "Upload a badge name and PNG", others: "Changes visible only on this device" }[tab]}
             icon={tabIcon(tab)}
             onPress={() => onSelect(tab)} /></View>)}
     </TableRowGroup></View>;

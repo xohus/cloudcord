@@ -50,7 +50,7 @@ assert.equal(saved.value.staff, true);
 const pickerSource = desktop.slice(desktop.indexOf('function BadgePicker('), desktop.indexOf('\nfunction ', desktop.indexOf('function BadgePicker(') + 1));
 const desktopContext = vm.createContext({
     React: { createElement: (type, props, ...children) => ({ type, props: props || {}, children }) },
-    Select: 'Select', BadgeBtn: 'BadgeBtn', BADGES: [], NITRO_LEVELS: [],
+    Select: 'Select', SelectField: 'SelectField', Switch: 'Switch', TextField: 'TextField', BadgeCard: 'BadgeCard', BadgeGroup: 'BadgeGroup', BadgeBtn: 'BadgeBtn', BADGES: [], NITRO_LEVELS: [],
     GIFT_LEVELS: [], BOOST_LABELS: [], BOOST_ICONS: [], OLD_NAME_BADGE_ICON: '',
     EXPERIMENTAL_BADGE_GROUPS: expected.groups, EVENT_BADGES: expected.events
 });
@@ -62,16 +62,17 @@ const renderPicker = ids => desktopContext.BadgePicker({
 });
 function findSelect(node) {
     if (!node || typeof node !== 'object') return null;
-    if (node.type === 'Select') return node;
+    if (node.type === 'Select' || node.type === 'SelectField') return node;
     for (const child of (Array.isArray(node) ? node : node.children || [])) {
         const found = findSelect(child);
         if (found) return found;
     }
     return null;
 }
-findSelect(renderPicker(['quest', 'account_age_1', 'streaming_1'])).props.select('account_age_10');
+const pick = (node, value) => (node.props.select || node.props.onChange)(value);
+pick(findSelect(renderPicker(['quest', 'account_age_1', 'streaming_1'])), 'account_age_10');
 assert.deepEqual(selectedIds, ['quest', 'streaming_1', 'account_age_10']);
-findSelect(renderPicker(selectedIds)).props.select('');
+pick(findSelect(renderPicker(selectedIds)), '');
 assert.deepEqual(selectedIds, ['quest', 'streaming_1']);
 const serializer = desktop.slice(desktop.indexOf('function toSharedProfile('), desktop.indexOf('async function publishSharedProfile('));
 desktopContext.REPLACE_BADGES_SYNC_ID = 'replace';
