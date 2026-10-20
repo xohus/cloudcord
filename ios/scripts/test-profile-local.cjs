@@ -75,6 +75,8 @@ for (const file of ['components/LocalProfiles.tsx', 'pages/Recovery/index.tsx', 
 const shared = { username: 'original', bio: 'original bio', badgeFlags: 2 };
 const overrides = { '123456789012345': { username: 'local', bio: '', badgeFlags: 0, __localOnly: true } };
 const context = vm.createContext({ settings: { cloudcordLocalProfiles: overrides }, sharedProfiles: new Map([['123456789012345', shared]]) });
+context.isRealProfileView = () => false;
+context.isPrivateProfile = () => false;
 const helper = page.slice(page.indexOf('function getProfileOverride('), page.indexOf('function refreshSharedProfiles('));
 vm.runInContext(esbuild.transformSync(helper, { loader: 'ts' }).code, context);
 const result = context.getProfileOverride('123456789012345');

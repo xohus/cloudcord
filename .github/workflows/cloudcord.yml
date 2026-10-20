@@ -43,6 +43,9 @@ jobs:
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-report-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-real-profile-view.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-sync-regressions.cjs
+          for test in profile-local profile-identity-render published-badges message-identity message-previews profile-device-only profile-billing-isolation; do
+            NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node "ios/scripts/test-$test.cjs"
+          done
 
       - name: Clone clean Kettu source
         run: |
@@ -1107,7 +1110,7 @@ jobs:
                   for (const [key, value] of Object.entries(remote)) {
                       if (!(key in snapshot) && !["localOnly", "hideOtherProfiles", "nativeEditorImages", "hideBadgesWhenSyncOff", "copiedUserId"].includes(key)) snapshot[key] = value;
                   }
-                  profileSnapshot.syncRevision =Math.max(Date.now(), Number(profileSnapshot.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
+                  profileSnapshot.syncRevision = Math.max(Date.now(), Number(profileSnapshot.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
                   preview.syncRevision = profileSnapshot.syncRevision;
                   rootSettings.fakeProfile = { ...preview, selectedBadges: { ...(preview.selectedBadges || {}) } };
                   preview = rootSettings.fakeProfile as PreviewSettings;
@@ -3346,7 +3349,7 @@ jobs:
                           <Card>
                               <ToggleRow label="Use custom profile" subLabel={preview.enabled ? "On: your edits show on this device" : "Off: you see your real profile"} value={preview.enabled} onPress={() => update("enabled", !preview.enabled, true)} />
                               <TableRow arrow label={showPreview ? "Hide preview" : "Show preview"} subLabel="A quick look at your edits" icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("EyeIcon") || require("@lib/api/assets").findAssetId("UserIcon")} />} onPress={() => setShowPreview(!showPreview)} />
-                              <TableRow arrow label="Open my real profile" subLabel="See it exactly as Discord shows it" icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("UserIcon")} />} onPress={openPreview} />
+                              <TableRow arrow label="Preview my profile" subLabel="See your edits in Discord's profile layout" icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("UserIcon")} />} onPress={openPreview} />
                           </Card>
                           {showPreview ? <Card><View style={{ padding: 16 }}>
                               <K.PreviewCard name={preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You"} username={preview.username || realCurrentUser?.username || "username"} pronouns={preview.pronouns}
