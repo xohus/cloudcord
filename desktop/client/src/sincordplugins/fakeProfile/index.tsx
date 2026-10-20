@@ -550,6 +550,7 @@ const SHARED_PROFILE_TTL_MS = 2 * 60_000;
 const SHARED_MISSING_TTL_MS = 15 * 60_000;
 const SHARED_VIEWED_WINDOW_MS = 2 * 60_000;
 const SHARED_MAX_IN_FLIGHT = 4;
+const sharedQueued = new Set<string>();
 const SHARED_REFRESH_PER_TICK = 5;
 const sharedMissingUntil = new Map<string, number>();
 const sharedViewedAt = new Map<string, number>();
@@ -683,10 +684,21 @@ function applyNativeProfileMetadata(target: any, data: CustomProfileData, includ
     return target;
 }
 
+// Last profile pulled from the server for this account (any device's format).
+let lastRemoteProfile: Record<string, any> | null = null;
+// Device-only settings that never belong in the shared profile.
+const LOCAL_ONLY_FIELDS = ["localOnly", "hideOtherProfiles", "nativeEditorImages", "hideBadgesWhenSyncOff", "copiedUserId"];
+function remoteOnlyFields() {
+    if (!lastRemoteProfile || typeof lastRemoteProfile !== "object") return {};
+    const kept: Record<string, any> = {};
+    for (const [key, value] of Object.entries(lastRemoteProfile)) if (!LOCAL_ONLY_FIELDS.includes(key)) kept[key] = value;
+    return kept;
+}
+
 function toSharedProfile(data: CustomProfileData) {
     const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds.filter(id => id !== REPLACE_BADGES_SYNC_ID) : [];
     if (data.replaceRealBadges === true) customBadgeIds.push(REPLACE_BADGES_SYNC_ID);
-    const { replaceRealBadges, ...rest } = data;
+    const { replaceRealBadges, localOnly, hideOtherProfiles, nativeEditorImages, copiedUserId, ...rest } = data as any;
     return {
         ...rest,
         customBadgeIds,
@@ -723,7 +735,8 @@ async function publishSharedProfile(): Promise<void> {
     const response = await fetch(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
         method: saved.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json", ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {}) },
-        body: JSON.stringify({ ownerId, profile: toSharedProfile(storedData) })
+        // Keep fields only the phone app knows about, so saving here never wipes them.
+        body: JSON.stringify({ ownerId, profile: { ...remoteOnlyFields(), ...toSharedProfile(storedData) } })
     });
     if (!response.ok) {
         if (response.status === 409) throw new Error("Your shared profile changed on another device. Reopen the editor and try again.");
@@ -796,7 +809,8 @@ async function pullOwnSharedProfile() {
         if (!response.ok) return;
         const payload = await response.json();
         if (storedData.localOnly) return;
-        const pulled = fromSharedProfile(payload?.profile ?? payload);
+        lastRemoteProfile = payload?.profile ?? payload ?? null;
+        const pulled = fromSharedProfile(lastRemoteProfile);
         if (!Object.keys(pulled).length) return;
         storedData = pulled; isEnabled = true; allAccountsData[id] = pulled; allAccountsEnabled[id] = true;
         saveDataSync(pulled, true); saveAllDataSync();
@@ -808,8 +822,12 @@ async function pullOwnSharedProfile() {
 function requestSharedProfile(userId: string, force = false) {
     if (!/^\d{15,22}$/.test(userId) || isMe(userId) || sharedRequests.has(userId)) return;
     const now = Date.now();
-    if (now < sharedBackoffUntil || sharedRequests.size >= SHARED_MAX_IN_FLIGHT) return;
-    if ((sharedMissingUntil.get(userId) ?? 0) > now) return;
+    if (now < sharedBackoffUntil) return;
+    // Busy: queue it instead of dropping it, so the profile still loads (and its badges replace the real ones).
+    if (sharedRequests.size >= SHARED_MAX_IN_FLIGHT) { if (sharedQueued.size < 200) sharedQueued.add(userId); return; }
+    // "No profile" is remembered, but only for a minute when the profile is actually opened.
+    const missingUntil = sharedMissingUntil.get(userId) ?? 0;
+    if (missingUntil > now && (!force || missingUntil - SHARED_MISSING_TTL_MS + 60_000 > now)) return;
     const fetchedAt = sharedProfileFetchedAt.get(userId) ?? 0;
     // Even forced refreshes wait a little, so one user is never fetched in a loop.
     if (sharedProfiles.has(userId) && now - fetchedAt < (force ? 30_000 : SHARED_PROFILE_TTL_MS)) return;
@@ -843,7 +861,11 @@ function requestSharedProfile(userId: string, force = false) {
                 (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
                 refreshPresence();
             } catch { }
-        }).catch(() => { }).finally(() => sharedRequests.delete(userId));
+        }).catch(() => { }).finally(() => {
+            sharedRequests.delete(userId);
+            const next = sharedQueued.values().next().value;
+            if (next) { sharedQueued.delete(next); requestSharedProfile(next); }
+        });
 }
 
 function refreshVisibleSharedProfiles() {
@@ -1600,7 +1622,7 @@ export default definePlugin({
 
     getBadgeLayout(userId: string) {
         if (isMe(userId)) return isEnabled ? storedData : null;
-        requestSharedProfile(userId);
+        requestSharedProfile(userId, true);
         return viewedSharedProfile(userId);
     },
 

@@ -123,7 +123,7 @@ assert.match(mobile, /accessibilityLabel=\{direction === -1 \? "Move badge up"/)
     const publishHost = vm.createContext({
         activeUserId: () => 'owner', isEnabled: true, storedData: {}, allAccountsData: {},
         SHARED_PROFILE_API: 'https://example.test', LS_SHARE: 'share',
-        saveDataSync() {}, saveAllDataSync() {}, toSharedProfile: data => data,
+        saveDataSync() {}, saveAllDataSync() {}, toSharedProfile: data => data, remoteOnlyFields: () => ({}),
         DataStore: { get: async key => saved.get(key), set: async (key, value) => saved.set(key, value) },
         fetch: async (url, options) => options ? ({ ok: true, json: async () => ({ id: 'profile', editToken: 'test-token' }) }) : ({ ok: false })
     });

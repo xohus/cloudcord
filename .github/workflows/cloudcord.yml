@@ -1092,7 +1092,17 @@ jobs:
               const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`, { cache: "no-store" });
               if (latestResponse.ok) {
                   const latest = await latestResponse.json() as any;
-                  profileSnapshot.syncRevision = Math.max(Date.now(), Number(profileSnapshot.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
+                  // Save everything: keep fields only desktop knows about, and don't wipe a
+                  // picture or banner just because this phone couldn't read its own copy.
+                  const remote = latest?.profile && typeof latest.profile === "object" ? latest.profile : {};
+                  const snapshot = profileSnapshot as Record<string, any>;
+                  for (const [field, media] of [["avatar", "avatarMedia"], ["banner", "bannerMedia"]] as const) {
+                      if (snapshot[field] == null && !mediaClearPending(media) && remote[field]) snapshot[field] = remote[field];
+                  }
+                  for (const [key, value] of Object.entries(remote)) {
+                      if (!(key in snapshot) && !["localOnly", "hideOtherProfiles", "nativeEditorImages", "hideBadgesWhenSyncOff", "copiedUserId"].includes(key)) snapshot[key] = value;
+                  }
+                  profileSnapshot.syncRevision =Math.max(Date.now(), Number(profileSnapshot.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
                   preview.syncRevision = profileSnapshot.syncRevision;
                   rootSettings.fakeProfile = { ...preview, selectedBadges: { ...(preview.selectedBadges || {}) } };
                   preview = rootSettings.fakeProfile as PreviewSettings;
@@ -2630,11 +2640,12 @@ jobs:
               if (giftHookInstalled) return;
               giftHookInstalled = true;
               // Discord resolves gift links with its own request helper, so the lookup for
-              // our code 404s. Turn that failure into the fake gift as it is dispatched.
-              instead("dispatch", FluxDispatcher, (args: any[], original: any) => {
-                  const action = args[0]; const code = extrasState().giftCode;
-                  if (code && action?.code === code && action.type === "GIFT_CODE_RESOLVE_FAILURE") return original({ type: "GIFT_CODE_RESOLVE_SUCCESS", giftCode: fakeGiftBody(code) });
-                  return original(...args);
+              // our code 404s. Answer that failure with the fake gift right after it,
+              // without wrapping the dispatcher itself (Flux forbids nested dispatches).
+              FluxDispatcher.subscribe("GIFT_CODE_RESOLVE_FAILURE", (action: any) => {
+                  const code = extrasState().giftCode;
+                  if (!code || action?.code !== code) return;
+                  setTimeout(() => { try { FluxDispatcher.dispatch({ type: "GIFT_CODE_RESOLVE_SUCCESS", giftCode: fakeGiftBody(code) }); } catch {} }, 0);
               });
               const http = extrasHttp(); if (!http) return;
               const match = (req: any) => typeof req?.url === "string" ? req.url.match(/\/entitlements\/gift-codes\/([A-Za-z0-9-]+)(\/redeem)?/) : null;
@@ -2649,19 +2660,39 @@ jobs:
                   return original(...args);
               });
           }
-          function addFakeFriendRequest(userId: string) {
-              const id = userId.trim();
-              if (!/^\d{17,20}$/.test(id)) { Alert.alert("Fake friend request", "Enter a valid user ID."); return; }
-              const user = (findByStoreName("UserStore") as any)?.getUser?.(id);
-              if (!user) { Alert.alert("Fake friend request", "Open that user's profile once so Discord knows them, then try again."); return; }
-              if (((findByStoreName("RelationshipStore") as any)?.getRelationshipType?.(id) ?? 0) !== 0) { Alert.alert("Fake friend request", "You already have a request or friendship with this user."); return; }
-              fakeRequestIds.add(id);
-              FluxDispatcher.dispatch({ type: "RELATIONSHIP_ADD", relationship: { id, type: 3, user, since: new Date().toISOString(), nickname: null }, shouldNotify: true });
-              showToast("Fake friend request added. Only you see it.");
+          type FakeRequest = { id: string; user: any; since: string };
+          const rawUser = (user: any) => ({ id: user.id, username: user.username, global_name: user.globalName ?? user.global_name ?? null, avatar: user.avatar ?? null, discriminator: user.discriminator ?? "0", public_flags: user.publicFlags ?? user.public_flags ?? 0, bot: user.bot ?? false });
+          function savedFakeRequests(): FakeRequest[] { const list = (extrasState() as any).fakeRequests; return Array.isArray(list) ? list.filter((item: any) => item && /^\d{17,20}$/.test(item.id) && item.user) : []; }
+          function showFakeRequest(item: FakeRequest) {
+              fakeRequestIds.add(item.id);
+              FluxDispatcher.dispatch({ type: "RELATIONSHIP_ADD", relationship: { id: item.id, type: 3, user: item.user, since: item.since, nickname: null }, shouldNotify: false });
+          }
+          // Saved requests stay until removed: Discord reloads relationships on every
+          // connect, so they are shown again after each start or reconnect.
+          function restoreFakeRequests() {
+              const relationships = findByStoreName("RelationshipStore") as any;
+              for (const item of savedFakeRequests()) if ((relationships?.getRelationshipType?.(item.id) ?? 0) === 0) showFakeRequest(item);
+          }
+          // Accepts an ID, a mention like <@123> or a profile link; keeps only the digits.
+          function parseUserId(text: string) { return (String(text).match(/\d{17,20}/) || [""])[0]; }
+          async function addFakeFriendRequest(input: string) {
+              const id = parseUserId(input);
+              if (!id) { Alert.alert("Fake friend request", "Paste a user ID, mention or profile link."); return false; }
+              let user: any = (findByStoreName("UserStore") as any)?.getUser?.(id);
+              if (!user) { try { user = (await extrasHttp()?.get({ url: "/users/" + id }))?.body; } catch {} }
+              if (!user) { Alert.alert("Fake friend request", "Couldn't find that user."); return false; }
+              if (((findByStoreName("RelationshipStore") as any)?.getRelationshipType?.(id) ?? 0) !== 0) { Alert.alert("Fake friend request", "You already have a request or friendship with this user."); return false; }
+              const item: FakeRequest = { id, user: rawUser(user), since: new Date().toISOString() };
+              setExtras({ ...extrasState(), fakeRequests: [...savedFakeRequests().filter(entry => entry.id !== id), item] } as any);
+              showFakeRequest(item);
+              showToast("Fake friend request added. Check Friends, Pending.");
+              return true;
           }
           function clearFakeFriendRequests() {
-              for (const id of fakeRequestIds) FluxDispatcher.dispatch({ type: "RELATIONSHIP_REMOVE", relationship: { id, type: 3 } });
+              const ids = new Set([...fakeRequestIds, ...savedFakeRequests().map(item => item.id)]);
+              for (const id of ids) FluxDispatcher.dispatch({ type: "RELATIONSHIP_REMOVE", relationship: { id, type: 3 } });
               fakeRequestIds.clear();
+              setExtras({ ...extrasState(), fakeRequests: [] } as any);
           }
           // ---- Fake boost (device only) ----
           type BoostFake = { level?: boolean; booster?: boolean };
@@ -2682,8 +2713,9 @@ jobs:
                   return overlay;
               });
               after("getMember", members, (args: any[], member: any) => {
-                  const me = (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id;
-                  if (!member || member.premiumSince || args[1] !== me || !boostFor(args[0])?.booster) return member;
+                  // Called constantly: bail out early unless this server has a fake boost.
+                  if (!member || member.premiumSince || !boostFor(args[0])?.booster) return member;
+                  if (args[1] !== (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id) return member;
                   let overlay = memberOverlays.get(member);
                   if (!overlay) memberOverlays.set(member, overlay = { ...member, premiumSince: new Date(Date.now() - 90 * 86400000).toISOString() });
                   return overlay;
@@ -2769,6 +2801,8 @@ jobs:
               const [, force] = useReducer((x: number) => x + 1, 0);
               const K = require("@core/ui/settings/components/ProfileEditorKit");
               const [friendId, setFriendId] = useState("");
+              const [inputKey, setInputKey] = useState(0);
+              const add = async () => { if (await addFakeFriendRequest(friendId)) { setFriendId(""); setInputKey(key => key + 1); } force(); };
               const state = extrasState();
               const link = state.giftCode ? "https://discord.gift/" + state.giftCode : "";
               const save = (next: ExtrasState) => { setExtras(next); applyFakeNitro(); force(); };
@@ -2789,11 +2823,15 @@ jobs:
                   </K.Section>
                   <BoostSection refresh={force} />
                   <K.Section title="Fake friend request" description="Only you see it. Don't accept it: that sends them a real request.">
-                      <K.Field label="User ID"><TextInput value={friendId} placeholder="123456789012345678" keyboardType="number-pad" autoCorrect={false} onChangeText={setFriendId} placeholderTextColor="#777" /></K.Field>
-                      <View style={{ flexDirection: "row", gap: 8 }}>
-                          <Button text="Add request" variant="primary" size="sm" onPress={() => { addFakeFriendRequest(friendId); force(); }} />
-                          {fakeRequestIds.size ? <Button text={"Remove " + fakeRequestIds.size} variant="secondary" size="sm" onPress={() => { clearFakeFriendRequests(); force(); }} /> : null}
+                      <K.Field label="User ID, mention or profile link"><TextInput key={inputKey} defaultValue={friendId} placeholder="Paste here" autoCapitalize="none" autoCorrect={false} returnKeyType="done" onChangeText={setFriendId} onSubmitEditing={() => void add()} placeholderTextColor="#777" /></K.Field>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                          <Button text="Paste" variant="secondary" size="sm" onPress={async () => {
+                              try { const text = await (findByProps("setString", "getString") as any)?.getString?.(); if (text) { setFriendId(String(text)); setInputKey(key => key + 1); } else showToast("Clipboard is empty."); } catch { showToast("Couldn't read the clipboard."); }
+                          }} />
+                          <Button text="Add request" variant="primary" size="sm" onPress={() => void add()} />
+                          {savedFakeRequests().length ? <Button text={"Remove all (" + savedFakeRequests().length + ")"} variant="secondary" size="sm" onPress={() => { clearFakeFriendRequests(); force(); }} /> : null}
                       </View>
+                      {parseUserId(friendId) ? <Text variant="text-xs/medium" color="text-muted">{"User ID: " + parseUserId(friendId)}</Text> : null}
                   </K.Section>
                   <K.Section title="Account tools">
                       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
@@ -2805,7 +2843,8 @@ jobs:
           }
 
           export function ExtrasPage() {
-              return <ScrollView contentContainerStyle={{ padding: 12, paddingBottom: 48 }}>
+              // Keep taps working with the keyboard open and scroll fields above it.
+              return <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" automaticallyAdjustKeyboardInsets contentContainerStyle={{ padding: 12, paddingBottom: 320 }}>
                   <Card border="strong"><ExtrasCard onReset={() => { try { bindSavedPreview(); clearCache(); refreshPreview(); } catch {} }} /></Card>
               </ScrollView>;
           }
@@ -2821,7 +2860,10 @@ jobs:
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
-                      try { installGiftHook(); installBoostHooks(); applyFakeNitro(); FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro); } catch {}
+                      for (const step of [installGiftHook, installBoostHooks, applyFakeNitro]) { try { step(); } catch {} }
+                      const restoreLater = () => setTimeout(() => { try { restoreFakeRequests(); } catch {} }, 1500);
+                      restoreLater();
+                      try { FluxDispatcher.subscribe("CONNECTION_OPEN", () => { try { applyFakeNitro(); } catch {} restoreLater(); }); } catch {}
                       connectRealProfileMenu();
                       await pullOwnSharedProfile();
                       void refreshPublishedBadges(true);

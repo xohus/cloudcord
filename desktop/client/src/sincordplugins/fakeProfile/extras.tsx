@@ -32,7 +32,7 @@ const GIFT_STYLES = [
 const INCOMING_REQUEST = 3;
 
 interface BoostFake { level?: boolean; booster?: boolean; }
-interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; }
+interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; fakeRequests?: { id: string; user: any; since: string; }[]; }
 
 function readExtras(): Extras {
     try { return JSON.parse(localStorage.getItem(LS_EXTRAS) || "{}") || {}; } catch { return {}; }
@@ -188,11 +188,24 @@ function BoostSection() {
 }
 
 // ---- Fake friend requests ----
+// Saved in extras so requests stay until removed. Discord reloads relationships
+// on every connect, so they are shown again after each start or reconnect.
+interface FakeRequest { id: string; user: any; since: string; }
 const fakeRequests = new Set<string>();
+const savedRequests = (): FakeRequest[] => Array.isArray(extras.fakeRequests) ? extras.fakeRequests.filter(item => item && /^\d{17,20}$/.test(item.id) && item.user) : [];
+function showFakeRequest(item: FakeRequest) {
+    fakeRequests.add(item.id);
+    FluxDispatcher.dispatch({ type: "RELATIONSHIP_ADD", relationship: { id: item.id, type: INCOMING_REQUEST, user: item.user, since: item.since, nickname: null }, shouldNotify: false });
+}
+function restoreFakeRequests() {
+    for (const item of savedRequests()) if ((RelationshipStore.getRelationshipType(item.id) ?? 0) === 0) showFakeRequest(item);
+}
+const restoreSoon = () => void setTimeout(restoreFakeRequests, 1500);
 export function hasFakeRequest(userId: string) { return fakeRequests.has(userId); }
 export async function addFakeRequestById(rawId: string) {
-    const id = rawId.trim();
-    if (!/^\d{17,20}$/.test(id)) { showToast("Enter a valid user ID.", Toasts.Type.FAILURE); return false; }
+    // Accepts an ID, a mention like <@123> or a profile link.
+    const id = (rawId.match(/\d{17,20}/) || [""])[0];
+    if (!id) { showToast("Paste a user ID, mention or profile link.", Toasts.Type.FAILURE); return false; }
     let user: any = UserStore.getUser(id);
     if (!user) {
         // Not cached yet: look the user up once so the request has a name and avatar.
@@ -204,12 +217,14 @@ export async function addFakeRequestById(rawId: string) {
 }
 export function addFakeRequest(user: any) {
     if ((RelationshipStore.getRelationshipType(user.id) ?? 0) !== 0) { showToast("You already have a friend request or friendship with this user.", Toasts.Type.FAILURE); return; }
-    fakeRequests.add(user.id);
     const raw = { id: user.id, username: user.username, global_name: user.globalName ?? user.global_name ?? null, avatar: user.avatar ?? null, discriminator: user.discriminator ?? "0", public_flags: user.publicFlags ?? user.public_flags ?? 0, bot: user.bot ?? false };
-    FluxDispatcher.dispatch({ type: "RELATIONSHIP_ADD", relationship: { id: user.id, type: INCOMING_REQUEST, user: raw, since: new Date().toISOString(), nickname: null }, shouldNotify: true });
+    const item: FakeRequest = { id: user.id, user: raw, since: new Date().toISOString() };
+    writeExtras({ ...extras, fakeRequests: [...savedRequests().filter(entry => entry.id !== item.id), item] });
+    showFakeRequest(item);
 }
-export function removeFakeRequest(userId: string) {
+export function removeFakeRequest(userId: string, forget = true) {
     fakeRequests.delete(userId);
+    if (forget) writeExtras({ ...extras, fakeRequests: savedRequests().filter(entry => entry.id !== userId) });
     FluxDispatcher.dispatch({ type: "RELATIONSHIP_REMOVE", relationship: { id: userId, type: INCOMING_REQUEST } });
 }
 
@@ -273,14 +288,18 @@ export function startExtras() {
     installGiftHook();
     installBoostHooks();
     applyFakeNitro();
+    restoreFakeRequests();
     FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro);
+    FluxDispatcher.subscribe("CONNECTION_OPEN", restoreSoon);
 }
 export function stopExtras() {
     uninstallGiftHook();
     uninstallBoostHooks();
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", applyFakeNitro);
+    FluxDispatcher.unsubscribe("CONNECTION_OPEN", restoreSoon);
     if (extras.fakeNitro) { const prev = extras; extras = { ...prev, fakeNitro: false }; applyFakeNitro(); extras = prev; }
-    for (const id of [...fakeRequests]) removeFakeRequest(id);
+    // Hide them while stopped, but keep them saved for next start.
+    for (const id of [...fakeRequests]) removeFakeRequest(id, false);
 }
 
 export function ExtrasPanel() {
@@ -308,12 +327,12 @@ export function ExtrasPanel() {
         </Section>
         <BoostSection />
         <Section title="Fake friend request" description="Paste a user ID (right-click them, Copy User ID). Only you see the request. Don't accept it: that sends them a real request.">
-            <input className="cpx-input" placeholder="User ID" inputMode="numeric" value={friendId} onChange={event => setFriendId(event.target.value)} />
+            <input className="cpx-input" placeholder="User ID, mention or profile link" inputMode="numeric" value={friendId} onChange={event => setFriendId(event.target.value)} />
             <div className="cpx-inline">
                 <button type="button" className="cpx-btn" onClick={async () => { if (await addFakeRequestById(friendId)) { setFriendId(""); showToast("Fake friend request added. Check Friends, Pending.", Toasts.Type.SUCCESS); } force(); }}>Add request</button>
-                {fakeRequests.size > 0 && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => { for (const id of [...fakeRequests]) removeFakeRequest(id); force(); }}>Remove all ({fakeRequests.size})</button>}
+                {savedRequests().length > 0 && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => { for (const item of savedRequests()) removeFakeRequest(item.id); force(); }}>Remove all ({savedRequests().length})</button>}
             </div>
-            <span className="cpx-hint">They go away when Discord restarts.</span>
+            <span className="cpx-hint">They stay until you remove them, even after restarting.</span>
         </Section>
         <Section title="Account tools">
             <div className="cpx-inline">
