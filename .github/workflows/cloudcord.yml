@@ -338,6 +338,7 @@ jobs:
           import bundledDecorationCatalog from "@assets/cloudcord-decorations.json";
           import { awaitStorage, useProxy } from "@core/vendetta/storage";
           import { after, instead } from "@lib/api/patcher";
+          import { showToast } from "@lib/ui/toasts";
           import { onJsxCreate } from "@lib/api/react/jsx";
           import { ACTIVITY_TYPES, appearanceOptions, availableServerTags, createNativeSocialFriendsReader, customDiscordMediaURL, customSocialValidationErrors, nameplateAssetURL, nativeActivities, nativeCollectibles, nativeSocialFriends, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, parseCatalog, parseServerTagIcon, PRESENCE_STATUSES, serverTagIconURL, streamURL } from "@lib/api/profileAppearance";
           import type { Catalog, ProfileActivity, ProfileNameplate } from "@lib/api/profileAppearance";
@@ -2575,6 +2576,141 @@ jobs:
               }, 0);
           }
 
+          // ---- Nitro & tools (device only) ----
+          const EXTRAS_KEY = "cloudcordExtras";
+          const NITRO_APP_ID = "521842831262875670";
+          const NITRO_MONTHLY_SKU = "521847234246082599";
+          const NITRO_MONTHLY_PLAN = "511651880837840896";
+          const fakeRequestIds = new Set<string>();
+          function extrasState(): { fakeNitro?: boolean; giftCode?: string } { const value = (settings as any)[EXTRAS_KEY]; return value && typeof value === "object" ? value : {}; }
+          function setExtras(next: { fakeNitro?: boolean; giftCode?: string }) { (settings as any)[EXTRAS_KEY] = next; }
+          function extrasHttp() { for (const candidate of [findByProps("getAPIBaseURL", "get"), (findByProps("HTTP") as any)?.HTTP, findByProps("get", "post", "put", "del")]) if (typeof (candidate as any)?.get === "function") return candidate as any; return null; }
+          function applyFakeNitro() {
+              try {
+                  const state = (findByStoreName("OverridePremiumTypeStore") as any)?.getState?.();
+                  if (!state) return;
+                  if (extrasState().fakeNitro) { if (state.premiumTypeActual !== 2) state.premiumTypeOverride = 2; }
+                  else if (state.premiumTypeOverride === 2 && state.premiumTypeActual !== 2) state.premiumTypeOverride = undefined;
+              } catch {}
+          }
+          function newGiftCode() {
+              const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+              let code = ""; for (let i = 0; i < 16; i++) code += chars[Math.floor(Math.random() * chars.length)];
+              return code;
+          }
+          function fakeGiftBody(code: string) {
+              let me: any = null; try { me = (findByStoreName("UserStore") as any)?.getCurrentUser?.(); } catch {}
+              return { code, sku_id: NITRO_MONTHLY_SKU, application_id: NITRO_APP_ID, uses: 0, max_uses: 1, redeemed: false, flags: 0,
+                  expires_at: new Date(Date.now() + 48 * 3600000).toISOString(), subscription_plan_id: NITRO_MONTHLY_PLAN,
+                  subscription_plan: { id: NITRO_MONTHLY_PLAN, name: "Nitro Monthly", interval: 1, interval_count: 1, tax_inclusive: true, sku_id: NITRO_MONTHLY_SKU, currency: "usd", price: 999, price_tier: null },
+                  user: me ? { id: me.id, username: me.username, global_name: me.globalName, avatar: me.avatar, discriminator: me.discriminator ?? "0" } : undefined,
+                  store_listing: null, gift_style: null, batch_id: null, promotion: null };
+          }
+          let giftHookInstalled = false;
+          // Only the link made on this device resolves as a gift, and only here.
+          function installGiftHook() {
+              if (giftHookInstalled) return;
+              const http = extrasHttp(); if (!http) return;
+              giftHookInstalled = true;
+              const match = (req: any) => typeof req?.url === "string" ? req.url.match(/\/entitlements\/gift-codes\/([A-Za-z0-9-]+)(\/redeem)?/) : null;
+              instead("get", http, (args: any[], original: any) => {
+                  const m = match(args[0]); const code = extrasState().giftCode;
+                  if (m && !m[2] && code && m[1] === code) return Promise.resolve({ ok: true, status: 200, body: fakeGiftBody(code), headers: {} });
+                  return original(...args);
+              });
+              instead("post", http, (args: any[], original: any) => {
+                  const m = match(args[0]); const code = extrasState().giftCode;
+                  if (m?.[2] && code && m[1] === code) { showToast("This is your fake gift. It only looks real on your device."); return Promise.reject({ ok: false, status: 400, body: { code: 50050, message: "This gift is only a preview on this device." } }); }
+                  return original(...args);
+              });
+          }
+          function addFakeFriendRequest(userId: string) {
+              const id = userId.trim();
+              if (!/^\d{17,20}$/.test(id)) { Alert.alert("Fake friend request", "Enter a valid user ID."); return; }
+              const user = (findByStoreName("UserStore") as any)?.getUser?.(id);
+              if (!user) { Alert.alert("Fake friend request", "Open that user's profile once so Discord knows them, then try again."); return; }
+              if (((findByStoreName("RelationshipStore") as any)?.getRelationshipType?.(id) ?? 0) !== 0) { Alert.alert("Fake friend request", "You already have a request or friendship with this user."); return; }
+              fakeRequestIds.add(id);
+              FluxDispatcher.dispatch({ type: "RELATIONSHIP_ADD", relationship: { id, type: 3, user, since: new Date().toISOString(), nickname: null }, shouldNotify: true });
+              showToast("Fake friend request added. Only you see it.");
+          }
+          function clearFakeFriendRequests() {
+              for (const id of fakeRequestIds) FluxDispatcher.dispatch({ type: "RELATIONSHIP_REMOVE", relationship: { id, type: 3 } });
+              fakeRequestIds.clear();
+          }
+          let leavingServers = false;
+          function confirmLeaveAllServers() {
+              const me = (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id;
+              const guilds = Object.values((findByStoreName("GuildStore") as any)?.getGuilds?.() ?? {}).filter((guild: any) => guild && guild.ownerId !== me) as any[];
+              if (!guilds.length) { Alert.alert("Leave all servers", "No servers to leave. Servers you own are skipped."); return; }
+              const run = async () => {
+                  if (leavingServers) return; leavingServers = true;
+                  const http = extrasHttp(); let left = 0;
+                  try {
+                      for (const guild of guilds) {
+                          for (let attempt = 0; attempt < 3; attempt++) {
+                              try { await http.del({ url: "/users/@me/guilds/" + guild.id, body: { lurking: false } }); left++; break; } catch (error: any) {
+                                  const retry = Number(error?.body?.retry_after);
+                                  if (error?.status === 429 && Number.isFinite(retry)) { await new Promise(resolve => setTimeout(resolve, retry * 1000 + 250)); continue; }
+                                  break;
+                              }
+                          }
+                          await new Promise(resolve => setTimeout(resolve, 1200));
+                      }
+                  } finally { leavingServers = false; }
+                  showToast("Left " + left + " of " + guilds.length + " servers.");
+              };
+              Alert.alert("Leave all servers?", "You will leave " + guilds.length + " servers. Servers you own are skipped. You'll need new invites to rejoin.", [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Leave all", style: "destructive", onPress: () => Alert.alert("Are you sure?", "Last chance to cancel.", [{ text: "Cancel", style: "cancel" }, { text: "Yes, leave them all", style: "destructive", onPress: () => void run() }]) }
+              ]);
+          }
+          function confirmResetCloudCordProfile(onDone: () => void) {
+              Alert.alert("Reset CloudCord?", "Deletes your custom profile, badges, other-profile edits and Nitro & tools settings on this device, like a fresh install. Your Discord account is not touched.", [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Reset everything", style: "destructive", onPress: () => {
+                      for (const key of Object.keys(settings as any)) if (/^(fakeProfile|cloudcord|localProfiles|customBadge)/i.test(key)) { try { delete (settings as any)[key]; } catch {} }
+                      setExtras({}); applyFakeNitro(); clearFakeFriendRequests();
+                      onDone();
+                      showToast("CloudCord reset. Restart Discord to finish.");
+                  } }
+              ]);
+          }
+          function ExtrasCard({ onReset }: { onReset: () => void }) {
+              const [, force] = useReducer((x: number) => x + 1, 0);
+              const K = require("@core/ui/settings/components/ProfileEditorKit");
+              const [friendId, setFriendId] = useState("");
+              const state = extrasState();
+              const link = state.giftCode ? "https://discord.gift/" + state.giftCode : "";
+              const save = (next: { fakeNitro?: boolean; giftCode?: string }) => { setExtras(next); applyFakeNitro(); force(); };
+              return <View style={{ padding: 16, gap: 24 }}>
+                  <K.Section title="Fake Nitro" description="Only on this device. Nothing changes for other people.">
+                      <ToggleRow label="Act like I have Nitro" subLabel="Removes Nitro previews and upsells. Real Nitro features still need Nitro" value={state.fakeNitro === true} onPress={() => save({ ...state, fakeNitro: !state.fakeNitro })} />
+                  </K.Section>
+                  <K.Section title="Fake Nitro gift" description="Shows as a Nitro gift only on your device. Everyone else sees an invalid link, and it can't be redeemed.">
+                      {link ? <Text variant="text-sm/semibold" selectable>{link}</Text> : null}
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                          <Button text={link ? "Refresh link" : "Make link"} variant="primary" size="sm" onPress={() => save({ ...state, giftCode: newGiftCode() })} />
+                          {link ? <Button text="Copy" variant="secondary" size="sm" onPress={() => { try { (findByProps("setString", "getString") as any)?.setString?.(link); showToast("Copied gift link."); } catch { Alert.alert("Gift link", link); } }} /> : null}
+                          {link ? <Button text="Remove" variant="secondary" size="sm" onPress={() => save({ ...state, giftCode: undefined })} /> : null}
+                      </View>
+                  </K.Section>
+                  <K.Section title="Fake friend request" description="Only you see it. Don't accept it: that sends them a real request.">
+                      <K.Field label="User ID"><TextInput value={friendId} placeholder="123456789012345678" keyboardType="number-pad" autoCorrect={false} onChangeText={setFriendId} placeholderTextColor="#777" /></K.Field>
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                          <Button text="Add request" variant="primary" size="sm" onPress={() => { addFakeFriendRequest(friendId); force(); }} />
+                          {fakeRequestIds.size ? <Button text={"Remove " + fakeRequestIds.size} variant="secondary" size="sm" onPress={() => { clearFakeFriendRequests(); force(); }} /> : null}
+                      </View>
+                  </K.Section>
+                  <K.Section title="Account tools">
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                          <Button text="Leave all servers" variant="destructive" size="sm" onPress={confirmLeaveAllServers} />
+                          <Button text="Reset CloudCord" variant="destructive" size="sm" onPress={() => confirmResetCloudCordProfile(onReset)} />
+                      </View>
+                  </K.Section>
+              </View>;
+          }
+
           export function initializeFakeProfile() {
               if (initPromise) return initPromise;
               initPromise = (async () => {
@@ -2586,6 +2722,7 @@ jobs:
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
+                      try { installGiftHook(); applyFakeNitro(); FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro); } catch {}
                       connectRealProfileMenu();
                       await pullOwnSharedProfile();
                       void refreshPublishedBadges(true);
@@ -3061,7 +3198,7 @@ jobs:
                           </Card>
                           {showPreview ? <Card><View style={{ padding: 16 }}>
                               <K.PreviewCard name={preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You"} username={preview.username || realCurrentUser?.username || "username"} pronouns={preview.pronouns}
-                                  avatar={preview.avatarMedia?.uri || (() => { try { return realCurrentUser?.getAvatarURL?.() || undefined; } catch { return undefined; } })()} banner={preview.nitroEnabled ? preview.bannerMedia?.uri : undefined}
+                                  avatar={preview.avatarMedia?.uri || (() => { try { return realCurrentUser?.getAvatarURL?.() || undefined; } catch { return undefined; } })()} banner={preview.bannerMedia?.uri}
                                   primary={preview.profileColorsEnabled ? preview.primaryColor : undefined} accent={preview.profileColorsEnabled ? preview.accentColor : undefined} decoration={preview.avatarDecoration || undefined}
                                   nameplate={preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : undefined} tagText={preview.serverTag?.tag} tagIcon={preview.serverTag ? serverTagIconURL(preview.serverTag) || undefined : undefined}
                                   status={preview.customActivity?.type === 1 && preview.customActivity.url && streamURL(preview.customActivity.url) ? "streaming" : preview.presenceStatus || "online"}
@@ -3088,6 +3225,7 @@ jobs:
                               try { nativeAvatar = user?.getAvatarURL?.() || nativeAvatar; } catch {}
                               return { username: shared?.username || user?.username || "", displayName: shared?.globalName || shared?.displayName || user?.globalName || user?.global_name || "", avatar: shared?.avatar || nativeAvatar, banner: shared?.banner || customDiscordMediaURL("banners", id, profile?.banner ?? user?.banner), bio: shared?.bio || profile?.bio || "", badges: BADGES.filter(([, , flag, , customId]) => customId ? customIds.includes(customId) : flag && (flags & flag) !== 0).map(([,name,,icon]) => ({name,icon})) };
                           }} /></Card> : null}
+                          {activeTab === "extras" ? <Card border="strong"><ExtrasCard onReset={() => { bindSavedPreview(); clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
                           {activeTab === "profile" ? <Card border="strong">
@@ -3099,7 +3237,7 @@ jobs:
                                   <K.Section title="Pictures" description="Shown on your profile, in chat and in member lists for CloudCord users.">
                                       <MediaEditor label="Profile picture" field="avatarMedia" />
                                       <MediaEditor label="Banner" field="bannerMedia" banner />
-                                      <ToggleRow label="Simulate Nitro" subLabel="Unlocks a banner and profile colors" value={preview.nitroEnabled} onPress={() => update("nitroEnabled", !preview.nitroEnabled, true)} />
+                                      <ToggleRow label="Simulate Nitro" subLabel="Unlocks profile colors. Your banner works without it" value={preview.nitroEnabled} onPress={() => update("nitroEnabled", !preview.nitroEnabled, true)} />
                                   </K.Section>
                                   <K.Section title="About you">
                                       <K.Field label="Bio" hint={`${[...(preview.bio || "")].length}/190`}><TextInput defaultValue={preview.bio} placeholder="Tell people about yourself" multiline maxLength={190} onChangeText={value => update("bio", value, true)} placeholderTextColor="#777" /></K.Field>
