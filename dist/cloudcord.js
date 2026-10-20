@@ -13810,9 +13810,16 @@
   function appendPublishedBadges(result, userId) {
     if (isRealProfileView(userId))
       return result;
-    var next = [
-      ...result
-    ];
+    var seen = /* @__PURE__ */ new Set();
+    var next = result.filter((badge2) => {
+      var key = badgeLayoutKey(badge2);
+      if (!key)
+        return true;
+      if (seen.has(key))
+        return false;
+      seen.add(key);
+      return true;
+    });
     for (var badge of publishedBadges) {
       if (badge.userId === userId)
         addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
