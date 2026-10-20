@@ -46,8 +46,8 @@ export function ProfileTabs({ selected, onSelect }: { selected: ProfileTab; onSe
             {MAIN_TABS.map(([tab, label]) => {
                 const on = tab === selected;
                 return <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => onSelect(tab)}
-                    style={{ flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, backgroundColor: on ? tokens.colors.BACKGROUND_MODIFIER_SELECTED : "transparent" }}>
-                    <Text variant="text-sm/semibold" color={on ? "text-normal" : "text-muted"}>{label}</Text>
+                    style={{ flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, backgroundColor: on ? "#5865F2" : "transparent" }}>
+                    <Text variant={on ? "text-sm/bold" : "text-sm/semibold"} color={on ? undefined : "text-muted"} style={on ? { color: "#FFFFFF" } : undefined}>{label}</Text>
                 </Pressable>;
             })}
         </View>

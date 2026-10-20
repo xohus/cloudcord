@@ -1547,19 +1547,32 @@ jobs:
           function loadCollectiblesCatalog(force = false): Promise<Catalog> {
               if (collectiblesCatalog && !force) return Promise.resolve(collectiblesCatalog);
               if (collectiblesRequest) return collectiblesRequest;
-              const api = findByProps("getAPIBaseURL", "get") as any;
-              const get = async (url: string) => (await api.get({ url, oldFormErrors: true }))?.body;
-              const shopProducts = () => { try { const store = safeStore("CollectiblesCategoryStore") as any; return store?.products ? [...store.products.values()] : []; } catch { return []; } };
-              collectiblesRequest = Promise.all([shopProducts().length ? null : get("/collectibles-categories/v2").catch(() => get("/collectibles-categories")), get("/user-profile-effects").catch(() => null)])
-                  .then(([categories, effects]) => {
-                      const products = shopProducts();
-                      const parsed = parseCatalog(products.length ? [{ products }] : categories, effects);
-                      if (!parsed.nameplates.length && !parsed.effects.length && !parsed.decorations.length && !parsed.frames.length) throw new Error("Discord returned an empty catalog.");
-                      collectiblesCatalog = parsed;
-                      identityRefreshers.forEach(refresh => { try { refresh(); } catch {} });
-                      return parsed;
-                  })
-                  .finally(() => { collectiblesRequest = null; });
+              const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => new Promise((resolve, reject) => {
+                  const timer = setTimeout(() => reject(new Error("Discord took too long to answer. Check your connection and try again.")), ms);
+                  promise.then(value => { clearTimeout(timer); resolve(value); }, error => { clearTimeout(timer); reject(error); });
+              });
+              const store = () => { try { return safeStore("CollectiblesCategoryStore") as any; } catch { return null; } };
+              const shopProducts = () => { const products = store()?.products; try { return products ? [...products.values()] : []; } catch { return []; } };
+              // Discord's REST helper has a different shape across mobile builds.
+              const http = (() => { for (const candidate of [findByProps("getAPIBaseURL", "get"), (findByProps("HTTP") as any)?.HTTP, findByProps("get", "post", "put", "del")]) if (typeof (candidate as any)?.get === "function") return candidate as any; return null; })();
+              const get = async (url: string) => { if (!http) throw new Error("Discord's network helper isn't available in this version."); return (await http.get({ url, oldFormErrors: true }))?.body; };
+              collectiblesRequest = withTimeout((async () => {
+                  // 1. Let Discord's own shop loader fill its store (same data the Shop tab uses).
+                  if (!shopProducts().length) {
+                      try { const fetcher = findByProps("fetchCollectiblesCategories") as any; await withTimeout(Promise.resolve(fetcher?.fetchCollectiblesCategories?.({ includeBundles: true })), 12000); } catch {}
+                  }
+                  const effects = await get("/user-profile-effects").catch(() => null);
+                  let products = shopProducts();
+                  let categories: any = null;
+                  // 2. Fall back to asking Discord directly.
+                  if (!products.length) categories = await get("/collectibles-categories/v2").catch(() => get("/collectibles-categories"));
+                  products = shopProducts();
+                  const parsed = parseCatalog(products.length ? [{ products }] : categories, effects);
+                  if (!parsed.nameplates.length && !parsed.effects.length && !parsed.decorations.length && !parsed.frames.length) throw new Error("Discord's shop didn't return any items. Open the Shop once, then try again.");
+                  collectiblesCatalog = parsed;
+                  identityRefreshers.forEach(refresh => { try { refresh(); } catch {} });
+                  return parsed;
+              })(), 25000).finally(() => { collectiblesRequest = null; });
               return collectiblesRequest;
           }
           function profileEffectObject(data: any) {
@@ -3024,6 +3037,7 @@ jobs:
               };
 
               const K = require("@core/ui/settings/components/ProfileEditorKit");
+              const [showPreview, setShowPreview] = useState(false);
               const [catalog, setCatalog] = useState<Catalog | null>(collectiblesCatalog);
               const [catalogStatus, setCatalogStatus] = useState<{ loading?: boolean; error?: string }>({ loading: !collectiblesCatalog });
               const loadCatalog = (force = false) => { setCatalogStatus({ loading: true }); loadCollectiblesCatalog(force).then(result => { setCatalog(result); setCatalogStatus({}); }, (problem: any) => setCatalogStatus({ error: problem?.message || "Couldn't load Discord's catalog." })); };
@@ -3041,11 +3055,21 @@ jobs:
                   <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 12, paddingTop: 24, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
                       <View style={{ width: "100%", gap: 24 }}>
                           <Card>
-                              <TableRow arrow label="Preview my profile" subLabel={preview.enabled ? "Open your actual Discord profile with your current edits" : "Preview is off. Enable it below to see your edits."}
-                                  icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("UserIcon")} />}
-                                  onPress={openPreview} />
+                              <ToggleRow label="Use custom profile" subLabel={preview.enabled ? "On: your edits show on this device" : "Off: you see your real profile"} value={preview.enabled} onPress={() => update("enabled", !preview.enabled, true)} />
+                              <TableRow arrow label={showPreview ? "Hide preview" : "Show preview"} subLabel="A quick look at your edits" icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("EyeIcon") || require("@lib/api/assets").findAssetId("UserIcon")} />} onPress={() => setShowPreview(!showPreview)} />
+                              <TableRow arrow label="Open my real profile" subLabel="See it exactly as Discord shows it" icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("UserIcon")} />} onPress={openPreview} />
                           </Card>
-                          <Card><ToggleRow label="Use custom profile" subLabel={preview.enabled ? "On: your edits show on this device" : "Off: you see your real profile"} value={preview.enabled} onPress={() => update("enabled", !preview.enabled, true)} /></Card>
+                          {showPreview ? <Card><View style={{ padding: 16 }}>
+                              <K.PreviewCard name={preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You"} username={preview.username || realCurrentUser?.username || "username"} pronouns={preview.pronouns}
+                                  avatar={preview.avatarMedia?.uri || (() => { try { return realCurrentUser?.getAvatarURL?.() || undefined; } catch { return undefined; } })()} banner={preview.nitroEnabled ? preview.bannerMedia?.uri : undefined}
+                                  primary={preview.profileColorsEnabled ? preview.primaryColor : undefined} accent={preview.profileColorsEnabled ? preview.accentColor : undefined} decoration={preview.avatarDecoration || undefined}
+                                  nameplate={preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : undefined} tagText={preview.serverTag?.tag} tagIcon={preview.serverTag ? serverTagIconURL(preview.serverTag) || undefined : undefined}
+                                  status={preview.customActivity?.type === 1 && preview.customActivity.url && streamURL(preview.customActivity.url) ? "streaming" : preview.presenceStatus || "online"}
+                                  customStatus={preview.customStatus ? `${preview.customStatus.emoji || ""} ${preview.customStatus.text || ""}`.trim() : undefined}
+                                  activity={preview.customActivity ? { verb: ACTIVITY_TYPES.find(type => type.value === preview.customActivity?.type)?.label || "", name: preview.customActivity.name, details: preview.customActivity.details } : null}
+                                  bio={preview.bio} frame={preview.profileFrame ? catalog?.frames.find(item => item.skuId === preview.profileFrame?.skuId)?.label || "Selected" : undefined}
+                                  effect={preview.profileEffect ? catalog?.effects.find(item => item.skuId === preview.profileEffect?.skuId)?.title || "Selected" : undefined} />
+                          </View></Card> : null}
                           <ProfileTabs selected={activeTab} onSelect={setActiveTab} />
                           {activeTab === "social" ? <Card><CustomSocialEditor data={preview} onChange={(value: ProfileAppearance) => { rootSettings.fakeProfile = { ...preview, ...value, syncRevision: Date.now() }; preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw(); }} resolveUser={async (id: string) => {
                               let shared = sharedProfiles.get(id);
@@ -3066,17 +3090,6 @@ jobs:
                           }} /></Card> : null}
                           {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
-                          {["profile", "style", "status", "badges", "dates"].includes(activeTab) ? <Card><View style={{ padding: 16 }}>
-                              <K.PreviewCard name={preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You"} username={preview.username || realCurrentUser?.username || "username"} pronouns={preview.pronouns}
-                                  avatar={preview.avatarMedia?.uri || (() => { try { return realCurrentUser?.getAvatarURL?.() || undefined; } catch { return undefined; } })()} banner={preview.nitroEnabled ? preview.bannerMedia?.uri : undefined}
-                                  primary={preview.profileColorsEnabled ? preview.primaryColor : undefined} accent={preview.profileColorsEnabled ? preview.accentColor : undefined} decoration={preview.avatarDecoration || undefined}
-                                  nameplate={preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : undefined} tagText={preview.serverTag?.tag} tagIcon={preview.serverTag ? serverTagIconURL(preview.serverTag) || undefined : undefined}
-                                  status={preview.customActivity?.type === 1 && preview.customActivity.url && streamURL(preview.customActivity.url) ? "streaming" : preview.presenceStatus || "online"}
-                                  customStatus={preview.customStatus ? `${preview.customStatus.emoji || ""} ${preview.customStatus.text || ""}`.trim() : undefined}
-                                  activity={preview.customActivity ? { verb: ACTIVITY_TYPES.find(type => type.value === preview.customActivity?.type)?.label || "", name: preview.customActivity.name, details: preview.customActivity.details } : null}
-                                  bio={preview.bio} frame={preview.profileFrame ? catalog?.frames.find(item => item.skuId === preview.profileFrame?.skuId)?.label || "Selected" : undefined}
-                                  effect={preview.profileEffect ? catalog?.effects.find(item => item.skuId === preview.profileEffect?.skuId)?.title || "Selected" : undefined} />
-                          </View></Card> : null}
                           {activeTab === "profile" ? <Card border="strong">
                               <View style={{ padding: 16, gap: 24 }}>
                                   <K.Section title="Names">
