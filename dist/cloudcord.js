@@ -12405,11 +12405,14 @@
     delete pending2[key];
     rootSettings.fakeProfileMediaCleared = pending2;
   }
+  function localBadgesHidden() {
+    return rootSettings.fakeProfileLocalOnly && preview.hideBadgesWhenSyncOff === true;
+  }
   function localHasFakeBadges() {
     return preview.nitroEnabled || preview.boostMonths > 0 || preview.giftLevel >= 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
   }
   function shouldReplaceLocalBadges() {
-    return preview.replaceBadges && localHasFakeBadges();
+    return !localBadgesHidden() && preview.replaceBadges && localHasFakeBadges();
   }
   function remoteReplaceBadges(data) {
     return data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID);
@@ -13600,7 +13603,7 @@
       cloned = Object.create(Object.getPrototypeOf(original));
       for (var key of Reflect.ownKeys(original)) {
         var billingField = /^(premiumType|premium_type|premiumSince|premium_since|premiumGuildSince|premium_guild_since)$/.test(String(key));
-        if (overriddenKeys.has(String(key)) && !(kind === "user" && billingField))
+        if (overriddenKeys.has(String(key)) && !((kind === "user" || localBadgesHidden()) && billingField))
           continue;
         var descriptor = Object.getOwnPropertyDescriptor(original, key);
         if (descriptor)
@@ -13628,7 +13631,7 @@
     var accentColor = preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null;
     var selectedFlags = 0;
     for (var [id, , flag] of BADGES)
-      if (preview.selectedBadges?.[id])
+      if (!localBadgesHidden() && preview.selectedBadges?.[id])
         selectedFlags |= flag;
     var flags = shouldReplaceLocalBadges() ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
     setOwnValue(cloned, "username", username);
@@ -13662,14 +13665,14 @@
         primaryColor ?? accentColor,
         accentColor ?? primaryColor
       ]);
-    if (preview.nitroEnabled && kind === "profile") {
+    if (preview.nitroEnabled && kind === "profile" && !localBadgesHidden()) {
       var premiumSince = monthsAgo(preview.nitroMonths);
       setOwnValue(cloned, "premiumType", 2);
       setOwnValue(cloned, "premium_type", 2);
       setOwnValue(cloned, "premiumSince", premiumSince);
       setOwnValue(cloned, "premium_since", premiumSince.toISOString());
     }
-    if (kind === "profile" && preview.boostMonths > 0)
+    if (kind === "profile" && preview.boostMonths > 0 && !localBadgesHidden())
       setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
     if (avatar) {
       setOwnValue(cloned, "avatarURL", avatar);
@@ -13820,11 +13823,12 @@
       seen.add(key);
       return true;
     });
+    var hideLocal = isCurrentUser(userId) && localBadgesHidden();
     for (var badge of publishedBadges) {
-      if (badge.userId === userId)
+      if (!hideLocal && badge.userId === userId)
         addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
     }
-    var layout = isCurrentUser(userId) ? preview.enabled ? preview : null : getProfileOverride(userId, true);
+    var layout = isCurrentUser(userId) ? preview.enabled && !hideLocal ? preview : null : getProfileOverride(userId, true);
     return applyBadgeLayout(next, {
       ...layout,
       badgeOrder: layout?.badgeOrder?.length ? layout.badgeOrder : defaultBadgeOrder(nativeBadgeRows.get(userId) || [])
@@ -13892,7 +13896,7 @@
           ], id);
         }
         var staffBadge1 = cloudCordStaffBadge(id);
-        if (!preview.enabled) {
+        if (!preview.enabled || localBadgesHidden()) {
           if (!staffBadge1)
             return appendPublishedBadges(result, id);
           var existing1 = result.filter((item) => !String(item?.id || "").startsWith("cloudcord-"));
