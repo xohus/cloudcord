@@ -121,7 +121,7 @@ assert.match(mobile, /accessibilityLabel=\{direction === -1 \? "Move badge up"/)
 (async () => {
     const saved = new Map();
     const publishHost = vm.createContext({
-        activeUserId: () => 'owner', isEnabled: true, storedData: {}, allAccountsData: {},
+        activeUserId: () => 'owner', isEnabled: true, storedData: {}, allAccountsData: {}, lastRemoteProfile: null,
         SHARED_PROFILE_API: 'https://example.test', LS_SHARE: 'share',
         saveDataSync() {}, saveAllDataSync() {}, toSharedProfile: data => data, remoteOnlyFields: () => ({}),
         DataStore: { get: async key => saved.get(key), set: async (key, value) => saved.set(key, value) },

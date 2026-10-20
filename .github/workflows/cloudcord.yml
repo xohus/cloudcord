@@ -42,6 +42,7 @@ jobs:
         run: |
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-report-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-real-profile-view.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-sync-regressions.cjs
 
       - name: Clone clean Kettu source
         run: |
@@ -1071,6 +1072,7 @@ jobs:
                   joinedSince: preview.signupDate || null,
                   oldName: preview.oldName,
                   badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && preview.selectedBadges?.[id] ? flags | flag : flags, 0),
+                  replaceRealBadges: preview.replaceBadges === true,
                   hiddenBadgeIds: [...preview.hiddenBadgeIds],
                   badgeOrder: [...preview.badgeOrder],
                   customBadgeIds: [
@@ -1084,12 +1086,14 @@ jobs:
           async function publishSharedProfile() {
               if (rootSettings.fakeProfileLocalOnly) return;
               if (!preview.enabled || !currentUserId) return;
+              const ownerId = currentUserId;
               const socialErrors = customSocialValidationErrors(preview);
               if (socialErrors.length) throw new Error(socialErrors[0]);
               const saved = rootSettings.fakeProfileShare || {};
               const path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
               const profileSnapshot = await ownSharedProfile();
-              const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`, { cache: "no-store" });
+              const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
+              if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly) return;
               if (latestResponse.ok) {
                   const latest = await latestResponse.json() as any;
                   // Save everything: keep fields only desktop knows about, and don't wipe a
@@ -1115,7 +1119,7 @@ jobs:
                       "Content-Type": "application/json",
                       ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {})
                   },
-                  body: JSON.stringify({ ownerId: currentUserId, profile: profileSnapshot })
+                  body: JSON.stringify({ ownerId, profile: profileSnapshot })
               });
               if (!response.ok) {
                   if (response.status === 429) {
@@ -1137,6 +1141,7 @@ jobs:
                   throw new Error(`CloudCord sharing failed (${response.status})`);
               }
               const result = await response.json() as any;
+              if (currentUserId !== ownerId) return;
               if (!saved.id) rootSettings.fakeProfileShare = { id: result.id, editToken: result.editToken };
               // A successful complete-snapshot update makes a local media
               // tombstone authoritative. Only clear it after the server has
@@ -1175,6 +1180,8 @@ jobs:
               if ((pullOwnSharedProfile as any).pending || now - Number((pullOwnSharedProfile as any).lastAttempt || 0) < 12000) return;
               (pullOwnSharedProfile as any).pending = true;
               (pullOwnSharedProfile as any).lastAttempt = now;
+              const requestedUserId = currentUserId;
+              const localSnapshot = JSON.stringify(preview);
               try {
                   const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
                   if (response.status === 404) {
@@ -1183,9 +1190,10 @@ jobs:
                   }
                   if (!response.ok) return;
                   const payload = await response.json() as any;
-                  if (rootSettings.fakeProfileLocalOnly) return;
+                  if (rootSettings.fakeProfileLocalOnly || currentUserId !== requestedUserId || JSON.stringify(preview) !== localSnapshot || (!force && (fakeProfileEditorOpen || Date.now() < suppressOwnPullUntil))) return;
                   const data = payload?.profile ?? payload;
                   if (!data || typeof data !== "object") return;
+                  if (Number(data.syncRevision || 0) < Number(preview.syncRevision || 0)) return;
                   const selectedBadges = { ...(preview.selectedBadges || {}) };
                   const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
                   for (const [id, , flag, , customId] of BADGES) {

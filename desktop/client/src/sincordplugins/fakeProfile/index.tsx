@@ -607,7 +607,7 @@ function fromSharedProfile(data: any): CustomProfileData {
         avatar: data?.avatar || "", banner: data?.banner || "", bio: data?.bio || "",
         pronouns: data?.pronouns || "", accentColor: data?.primaryColor ?? data?.accentColor,
         accentColor2: data?.primaryColor != null ? data?.accentColor : data?.accentColor2, badgeFlags: data?.badgeFlags || 0,
-        nitro: !!(data?.nitro || data?.nitroLevel >= 0), nitroLevel: data?.nitroLevel, nitroSince: data?.nitroSince || "",
+        nitro: data?.nitro === true || data?.nitro == null && Number(data?.nitroLevel ?? -1) >= 0, nitroLevel: data?.nitroLevel, nitroSince: data?.nitroSince || "",
         boostMonths: data?.boostMonths, giftLevel: Number.isInteger(data?.giftLevel) ? data.giftLevel : undefined, customBadgeIds: Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id: string) => id !== REPLACE_BADGES_SYNC_ID) : [],
         oldName: data?.oldName || "", createdAt: data?.createdAt || "", signupDate: data?.signupDate || data?.joinedSince || "",
         decorationAsset: sharedDecorationAsset(data?.decorationAsset || data?.avatarDecoration), replaceRealBadges: data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID),
@@ -698,9 +698,10 @@ function remoteOnlyFields() {
 function toSharedProfile(data: CustomProfileData) {
     const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds.filter(id => id !== REPLACE_BADGES_SYNC_ID) : [];
     if (data.replaceRealBadges === true) customBadgeIds.push(REPLACE_BADGES_SYNC_ID);
-    const { replaceRealBadges, localOnly, hideOtherProfiles, nativeEditorImages, copiedUserId, ...rest } = data as any;
+    const { replaceRealBadges, localOnly, hideOtherProfiles, nativeEditorImages, hideBadgesWhenSyncOff, copiedUserId, ...rest } = data as any;
     return {
         ...rest,
+        replaceRealBadges: data.replaceRealBadges === true,
         customBadgeIds,
         displayName: data.globalName,
         joinedSince: data.signupDate,
@@ -719,19 +720,22 @@ async function publishSharedProfile(): Promise<void> {
     if (!ownerId || !isEnabled) throw new Error("Sign in to Discord before syncing your profile.");
     // Advance the revision without pulling old fields into the open editor.
     const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
+    if (activeUserId() !== ownerId || storedData.localOnly) return;
     if (latestResponse.ok) {
         const latest = await latestResponse.json();
+        lastRemoteProfile = latest?.profile && typeof latest.profile === "object" ? latest.profile : lastRemoteProfile;
         storedData.syncRevision = Math.max(Date.now(), Number(storedData.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
         allAccountsData[ownerId] = storedData;
         saveDataSync(storedData, true); saveAllDataSync();
     }
+    else if (latestResponse.status === 404) lastRemoteProfile = null;
     let saved: any = {};
     saved = await DataStore.get(LS_SHARE) || {};
     if (!saved.id) {
         try { saved = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { }
         if (saved.id) await DataStore.set(LS_SHARE, saved);
     }
-    if (storedData.localOnly) return;
+    if (storedData.localOnly || activeUserId() !== ownerId) return;
     const response = await fetch(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
         method: saved.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json", ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {}) },
@@ -749,6 +753,7 @@ async function publishSharedProfile(): Promise<void> {
         throw new Error(response.status === 413 ? "Your profile images are too large to sync. Use Upload to crop and resize them." : response.status === 429 ? "Too many saves. Wait a moment and try again." : response.status === 503 ? "Profile sync is unavailable right now. Your changes are saved on this device." : `Couldn't sync your profile (${response.status}). ${String(details?.error || "Try again shortly.").slice(0, 160)}`);
     }
     const result = await response.json();
+    if (activeUserId() !== ownerId) return;
     if (!saved.id && result?.id) await DataStore.set(LS_SHARE, { id: result.id, editToken: result.editToken });
 }
 
@@ -797,6 +802,7 @@ async function pullOwnSharedProfile() {
     if (profileEditorOpen || Date.now() < suppressOwnPullUntil) return;
     const id = activeUserId();
     if (!id) return;
+    const localSnapshot = JSON.stringify(storedData);
     try {
         const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`);
         // Existing installations may have local profile data but no row in the
@@ -808,10 +814,14 @@ async function pullOwnSharedProfile() {
         }
         if (!response.ok) return;
         const payload = await response.json();
-        if (storedData.localOnly) return;
+        if (activeUserId() !== id || storedData.localOnly || profileEditorOpen || Date.now() < suppressOwnPullUntil || JSON.stringify(storedData) !== localSnapshot) return;
+        const remote = payload?.profile ?? payload;
+        if (Number(remote?.syncRevision || 0) < Number(storedData.syncRevision || 0)) return;
         lastRemoteProfile = payload?.profile ?? payload ?? null;
         const pulled = fromSharedProfile(lastRemoteProfile);
+        for (const key of LOCAL_ONLY_FIELDS) if (Object.prototype.hasOwnProperty.call(storedData, key)) (pulled as any)[key] = (storedData as any)[key];
         if (!Object.keys(pulled).length) return;
+        if (JSON.stringify(pulled) === JSON.stringify(storedData) && isEnabled) return;
         storedData = pulled; isEnabled = true; allAccountsData[id] = pulled; allAccountsEnabled[id] = true;
         saveDataSync(pulled, true); saveAllDataSync();
         await Promise.all([DataStore.set(DS_ALL_DATA, allAccountsData), DataStore.set(DS_ALL_ENABLED, allAccountsEnabled)]);
@@ -1626,6 +1636,15 @@ export default definePlugin({
         return viewedSharedProfile(userId);
     },
 
+    filterNativeBadges(userId: string, badges: ProfileBadge[]) {
+        const data = this.getBadgeLayout(userId);
+        if (!data) return badges;
+        const custom = (badge: ProfileBadge) => (badge as any).cloudcordProfileBadge === true || /^cloudcord-(?:official|custom)-/.test(badge.id);
+        if (shouldReplaceBadges(data)) return badges.filter(custom);
+        const replaced = new Set(badges.filter(badge => (badge as any).cloudcordProfileBadge === true).map(badgeLayoutKey));
+        return badges.filter(badge => custom(badge) || !replaced.has(badgeLayoutKey(badge)));
+    },
+
     fakeGiftCode(code: string) {
         return fakeGiftFor(code);
     },
@@ -1788,17 +1807,6 @@ fakeObfuscatedEmail(real: string | null) {
                 if (!profileData) return published;
             }
 
-            // Suppress real Discord badges by zeroing publicFlags on the live user object
-            try {
-                const WP = (Vencord as any).Webpack;
-                const US = WP?.findByStoreName?.("UserStore") || WP?.findByProps?.("getCurrentUser", "getUser");
-                const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
-                if (liveUser && shouldReplaceBadges(profileData)) {
-                    Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
-                    Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
-                }
-            } catch { }
-
             // Let Discord's profile badge renderer determine the icon size.
             // Forcing 26px made CloudCord badges visibly larger than native ones.
             const style = { objectFit: "contain" as const };
@@ -1845,7 +1853,7 @@ fakeObfuscatedEmail(real: string | null) {
             for (const badge of EXTRA_BADGES) {
                 if (profileData.customBadgeIds?.includes(badge.id)) badges.push({ id: `sp_${badge.id}`, description: badge.label, iconSrc: badge.icon, position: 0, props: { style } });
             }
-            return [...badges, ...published].sort((a, b) => {
+            return [...badges.map(badge => ({ ...badge, cloudcordProfileBadge: true })), ...published].sort((a, b) => {
                 const normalizedA = a.id.startsWith("premium_tenure_") || a.id === "premium" ? "sp_nitro" : a.id;
                 const normalizedB = b.id.startsWith("premium_tenure_") || b.id === "premium" ? "sp_nitro" : b.id;
                 const ai = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedA);
