@@ -3045,6 +3045,7 @@ jobs:
                                   icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("UserIcon")} />}
                                   onPress={openPreview} />
                           </Card>
+                          <Card><ToggleRow label="Use custom profile" subLabel={preview.enabled ? "On: your edits show on this device" : "Off: you see your real profile"} value={preview.enabled} onPress={() => update("enabled", !preview.enabled, true)} /></Card>
                           <ProfileTabs selected={activeTab} onSelect={setActiveTab} />
                           {activeTab === "social" ? <Card><CustomSocialEditor data={preview} onChange={(value: ProfileAppearance) => { rootSettings.fakeProfile = { ...preview, ...value, syncRevision: Date.now() }; preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw(); }} resolveUser={async (id: string) => {
                               let shared = sharedProfiles.get(id);
@@ -3065,7 +3066,7 @@ jobs:
                           }} /></Card> : null}
                           {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
-                          {["profile", "name", "cosmetics", "status", "badges"].includes(activeTab) ? <Card><View style={{ padding: 16 }}>
+                          {["profile", "style", "status", "badges", "dates"].includes(activeTab) ? <Card><View style={{ padding: 16 }}>
                               <K.PreviewCard name={preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You"} username={preview.username || realCurrentUser?.username || "username"} pronouns={preview.pronouns}
                                   avatar={preview.avatarMedia?.uri || (() => { try { return realCurrentUser?.getAvatarURL?.() || undefined; } catch { return undefined; } })()} banner={preview.nitroEnabled ? preview.bannerMedia?.uri : undefined}
                                   primary={preview.profileColorsEnabled ? preview.primaryColor : undefined} accent={preview.profileColorsEnabled ? preview.accentColor : undefined} decoration={preview.avatarDecoration || undefined}
@@ -3078,6 +3079,10 @@ jobs:
                           </View></Card> : null}
                           {activeTab === "profile" ? <Card border="strong">
                               <View style={{ padding: 16, gap: 24 }}>
+                                  <K.Section title="Names">
+                                      <K.Field label="Display name"><TextInput defaultValue={preview.displayName} placeholder={realCurrentUser?.globalName || "Display name"} maxLength={32} onChangeText={value => update("displayName", value)} placeholderTextColor="#777" /></K.Field>
+                                      <K.Field label="Username"><TextInput defaultValue={preview.username} placeholder={realCurrentUser?.username || "username"} maxLength={32} autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} placeholderTextColor="#777" /></K.Field>
+                                  </K.Section>
                                   <K.Section title="Pictures" description="Shown on your profile, in chat and in member lists for CloudCord users.">
                                       <MediaEditor label="Profile picture" field="avatarMedia" />
                                       <MediaEditor label="Banner" field="bannerMedia" banner />
@@ -3094,45 +3099,9 @@ jobs:
                                           <ColorPickerRow label="Accent profile color" value={preview.accentColor} onSelect={value => update("accentColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Accent Color", render: () => <CustomColorPicker title="Accent profile color" initialColor={preview.accentColor} onApply={color => { update("accentColor", color, true); navigation.goBack(); }} /> })} />
                                       </> : null}
                                   </K.Section>
-                                  <K.Section title="Dates" description="Leave empty to use your real dates.">
-                                      <K.Field label="Account created" hint="YYYY-MM-DD"><TextInput defaultValue={preview.createdAt} placeholder="2016-05-21" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("createdAt", value, true)} placeholderTextColor="#777" /></K.Field>
-                                      <K.Field label="Member since" hint="YYYY-MM-DD"><TextInput defaultValue={preview.signupDate} placeholder="2016-05-21" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("signupDate", value, true)} placeholderTextColor="#777" /></K.Field>
-                                  </K.Section>
                               </View>
                           </Card> : null}
-                          {activeTab === "name" ? <Card border="strong">
-                              <View style={{ padding: 16, gap: 24 }}>
-                                  <K.Section title="Names">
-                                      <K.Field label="Display name"><TextInput defaultValue={preview.displayName} placeholder={realCurrentUser?.globalName || "Display name"} maxLength={32} onChangeText={value => update("displayName", value)} placeholderTextColor="#777" /></K.Field>
-                                      <K.Field label="Username"><TextInput defaultValue={preview.username} placeholder={realCurrentUser?.username || "username"} maxLength={32} autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} placeholderTextColor="#777" /></K.Field>
-                                  </K.Section>
-                                  <K.Section title="Name style" description="Font, effect and colors for your display name.">
-                                      <NameStylePreview />
-                                      <View style={{ borderRadius: 16, overflow: "hidden" }}>
-                                          <TableRow arrow label="Font" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("fontId").find(option => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"} />} onPress={() => chooseNameStyle("fontId")} />
-                                          <TableRow arrow label="Effect" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("effectId").find(option => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"} />} onPress={() => chooseNameStyle("effectId")} />
-                                          {[0, 1, 2].slice(0, Math.max(1, Math.min(3, Number((findByProps("getEffectColorCount") as any)?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map(index => {
-                                          const value = `#${(preview.displayNameStyles?.colors[index] ?? 0xffffff).toString(16).padStart(6, "0")}`;
-                                          const apply = (color: string) => { const style = preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] }; const colors = [0, 1, 2].map(i => style.colors[i] ?? style.colors[0] ?? 0xffffff); colors[index] = parseInt(color.replace("#", ""), 16); update("displayNameStyles", { ...style, colors }, true); navigation.goBack(); };
-                                          return <ColorPickerRow key={`name-color-${index}`} label={`Color ${index + 1}`} value={value} onSelect={apply} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: `Username Color ${index + 1}`, render: () => <CustomColorPicker title={`Username Color ${index + 1}`} initialColor={value} onApply={apply} /> })} />;
-                                      })}
-                                      </View>
-                                      {preview.displayNameStyles ? <ActionButton label="Reset name style" muted onPress={() => update("displayNameStyles", null, true)} /> : null}
-                                  </K.Section>
-                                  <K.Section title="Server tag" description="The small tag next to your name. Only changes what CloudCord users see.">
-                                      <ToggleRow label="Custom server tag" value={preview.serverTag != null} onPress={() => update("serverTag", preview.serverTag ? null : { tag: "", guildId: "", badge: "" }, true)} />
-                                      {preview.serverTag ? <>
-                                          <K.Field label="Tag text" hint="1–4 characters"><TextInput defaultValue={preview.serverTag?.tag || ""} placeholder="CC" maxLength={4} onChangeText={value => update("serverTag", { ...(preview.serverTag || { guildId: "", badge: "" }), tag: value }, true)} placeholderTextColor="#777" /></K.Field>
-                                          <K.Field label="Server ID" error={preview.serverTag?.guildId && !/^\d{15,22}$/.test(preview.serverTag.guildId) ? "Server IDs are 15–22 digits." : undefined}><TextInput defaultValue={preview.serverTag?.guildId || ""} placeholder="123456789012345678" keyboardType="number-pad" onChangeText={value => update("serverTag", { ...(preview.serverTag || { tag: "", badge: "" }), guildId: value.trim() }, true)} placeholderTextColor="#777" /></K.Field>
-                                          <View style={{ borderRadius: 16, overflow: "hidden" }}>
-                                              <TableRow arrow label="Tag Icon" subLabel="Choose a Discord server-tag icon" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Server Tag Icon", render: () => <ServerTagPicker onSelect={tag => { update("serverTag", { ...tag, tag: preview.serverTag?.tag || tag.tag }, true); navigation.goBack(); }} /> })} />
-                                          </View>
-                                          <ActionButton label="Copy my current tag" muted onPress={() => { const user = safeStore("UserStore")?.getCurrentUser?.(); const tag = user?.primaryGuild || user?.primary_guild; if (tag?.tag) update("serverTag", { tag: tag.tag, guildId: tag.identityGuildId || tag.identity_guild_id, badge: tag.badge || "" }, true); }} />
-                                      </> : null}
-                                  </K.Section>
-                              </View>
-                          </Card> : null}
-                          {activeTab === "cosmetics" ? <Card border="strong">
+                          {activeTab === "style" ? <Card border="strong">
                               <View style={{ padding: 16, gap: 24 }}>
                                   <K.Section title="Avatar decoration" description="The frame around your profile picture.">
                                       <K.CurrentRow label={preview.avatarDecoration ? decorations.find(item => item.uri === preview.avatarDecoration)?.label || "Decoration" : null} image={preview.avatarDecoration || undefined} onRemove={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} />
@@ -3163,6 +3132,34 @@ jobs:
                                   </K.Section>
                               </View>
                           </Card> : null}
+                          {activeTab === "style" ? <Card border="strong">
+                              <View style={{ padding: 16, gap: 24 }}>
+                                  <K.Section title="Name style" description="Font, effect and colors for your display name.">
+                                      <NameStylePreview />
+                                      <View style={{ borderRadius: 16, overflow: "hidden" }}>
+                                          <TableRow arrow label="Font" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("fontId").find(option => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"} />} onPress={() => chooseNameStyle("fontId")} />
+                                          <TableRow arrow label="Effect" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("effectId").find(option => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"} />} onPress={() => chooseNameStyle("effectId")} />
+                                          {[0, 1, 2].slice(0, Math.max(1, Math.min(3, Number((findByProps("getEffectColorCount") as any)?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map(index => {
+                                          const value = `#${(preview.displayNameStyles?.colors[index] ?? 0xffffff).toString(16).padStart(6, "0")}`;
+                                          const apply = (color: string) => { const style = preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] }; const colors = [0, 1, 2].map(i => style.colors[i] ?? style.colors[0] ?? 0xffffff); colors[index] = parseInt(color.replace("#", ""), 16); update("displayNameStyles", { ...style, colors }, true); navigation.goBack(); };
+                                          return <ColorPickerRow key={`name-color-${index}`} label={`Color ${index + 1}`} value={value} onSelect={apply} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: `Username Color ${index + 1}`, render: () => <CustomColorPicker title={`Username Color ${index + 1}`} initialColor={value} onApply={apply} /> })} />;
+                                      })}
+                                      </View>
+                                      {preview.displayNameStyles ? <ActionButton label="Reset name style" muted onPress={() => update("displayNameStyles", null, true)} /> : null}
+                                  </K.Section>
+                                  <K.Section title="Server tag" description="The small tag next to your name. Only changes what CloudCord users see.">
+                                      <ToggleRow label="Custom server tag" value={preview.serverTag != null} onPress={() => update("serverTag", preview.serverTag ? null : { tag: "", guildId: "", badge: "" }, true)} />
+                                      {preview.serverTag ? <>
+                                          <K.Field label="Tag text" hint="1–4 characters"><TextInput defaultValue={preview.serverTag?.tag || ""} placeholder="CC" maxLength={4} onChangeText={value => update("serverTag", { ...(preview.serverTag || { guildId: "", badge: "" }), tag: value }, true)} placeholderTextColor="#777" /></K.Field>
+                                          <K.Field label="Server ID" error={preview.serverTag?.guildId && !/^\d{15,22}$/.test(preview.serverTag.guildId) ? "Server IDs are 15–22 digits." : undefined}><TextInput defaultValue={preview.serverTag?.guildId || ""} placeholder="123456789012345678" keyboardType="number-pad" onChangeText={value => update("serverTag", { ...(preview.serverTag || { tag: "", badge: "" }), guildId: value.trim() }, true)} placeholderTextColor="#777" /></K.Field>
+                                          <View style={{ borderRadius: 16, overflow: "hidden" }}>
+                                              <TableRow arrow label="Tag Icon" subLabel="Choose a Discord server-tag icon" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Server Tag Icon", render: () => <ServerTagPicker onSelect={tag => { update("serverTag", { ...tag, tag: preview.serverTag?.tag || tag.tag }, true); navigation.goBack(); }} /> })} />
+                                          </View>
+                                          <ActionButton label="Copy my current tag" muted onPress={() => { const user = safeStore("UserStore")?.getCurrentUser?.(); const tag = user?.primaryGuild || user?.primary_guild; if (tag?.tag) update("serverTag", { tag: tag.tag, guildId: tag.identityGuildId || tag.identity_guild_id, badge: tag.badge || "" }, true); }} />
+                                      </> : null}
+                                  </K.Section>
+                              </View>
+                          </Card> : null}
                           {activeTab === "status" ? <Card border="strong">
                               <View style={{ padding: 16, gap: 24 }}>
                                   <K.Section title="Status" description="Seen by people using CloudCord. Only changes how you look while you're actually online.">
@@ -3180,6 +3177,14 @@ jobs:
                                           <K.Field label="Details (optional)"><TextInput defaultValue={preview.customActivity.details || ""} maxLength={128} onChangeText={value => update("customActivity", { ...preview.customActivity, details: value }, true)} placeholderTextColor="#777" /></K.Field>
                                           {preview.customActivity.type === 1 ? <K.Field label="Stream link" error={preview.customActivity.url && !streamURL(preview.customActivity.url) ? "Not a stream link Discord accepts. Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=…)." : undefined} hint="Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=…, youtu.be/… or youtube.com/live/…). Channel pages don't count."><TextInput defaultValue={preview.customActivity.url || ""} placeholder="https://twitch.tv/yourname" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("customActivity", { ...preview.customActivity, url: value }, true)} placeholderTextColor="#777" /></K.Field> : null}
                                       </> : null}
+                                  </K.Section>
+                              </View>
+                          </Card> : null}
+                          {activeTab === "dates" ? <Card border="strong">
+                              <View style={{ padding: 16, gap: 24 }}>
+                                  <K.Section title="Dates" description="Leave empty to use your real dates.">
+                                      <K.Field label="Account created" hint="YYYY-MM-DD"><TextInput defaultValue={preview.createdAt} placeholder="2016-05-21" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("createdAt", value, true)} placeholderTextColor="#777" /></K.Field>
+                                      <K.Field label="Member since" hint="YYYY-MM-DD"><TextInput defaultValue={preview.signupDate} placeholder="2016-05-21" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("signupDate", value, true)} placeholderTextColor="#777" /></K.Field>
                                   </K.Section>
                               </View>
                           </Card> : null}
@@ -3219,15 +3224,8 @@ jobs:
                                   </K.Section>
                               </View>
                           </Card> : null}
-                          {["profile", "name", "cosmetics", "status", "badges"].includes(activeTab) ? <Card border="strong">
+                          {["profile", "style", "status", "badges", "dates"].includes(activeTab) ? <Card border="strong">
                               <View style={{ padding: 16, gap: 12 }}>
-                                  <ToggleRow
-                                      label="preview on this device"
-                                      subLabel="try your changes here before syncing"
-                                      value={preview.enabled}
-                                      accent
-                                      onPress={() => update("enabled", !preview.enabled, true)}
-                                  />
                                   <ActionButton label="Apply preview" onPress={() => { diagnostics.last = "Preview refreshed"; refreshPreview(); redraw(); }} />
                                   <ToggleRow label="Keep this profile on this device only" value={Boolean(rootSettings.fakeProfileLocalOnly)} onPress={() => {
                                       const value = !rootSettings.fakeProfileLocalOnly;
