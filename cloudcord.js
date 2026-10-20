@@ -16206,8 +16206,8 @@
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
-                label: "Open my real profile",
-                subLabel: "See it exactly as Discord shows it",
+                label: "Preview my profile",
+                subLabel: "See your edits in Discord's profile layout",
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: (init_assets(), __toCommonJS(assets_exports)).findAssetId("UserIcon")
                 }),
