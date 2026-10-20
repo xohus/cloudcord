@@ -23,3 +23,25 @@ ctx.sharedRequests.clear();
 ctx.requestSharedProfile(id, true);
 assert.equal(calls, 4, 'forced background polling must respect TTL');
 console.log('PASS background suppression, request deduplication, 30-second TTL and four-request cap');
+
+let now = 1000000, lookups = 0, missing = true;
+const recentlyViewed = { AppState: { currentState: 'active' }, currentUserId: '999999999999999',
+    sharedProfileFetchedAt: new Map(), sharedProfiles: new Map(), sharedRequests: new Set(),
+    SHARED_PROFILE_API: 'https://example.test', Date: { now: () => now }, JSON,
+    setTimeout: () => 1, clearTimeout() {},
+    fetch: async () => { lookups++; return { ok: !missing, status: missing ? 404 : 200,
+        json: async () => ({ profile: { badgeFlags: 8 } }) }; } };
+vm.runInNewContext(esbuild.transformSync(source, { loader: 'ts' }).code, recentlyViewed);
+(async () => {
+    const settle = async () => { for (let turn = 0; turn < 8; turn++) await Promise.resolve(); };
+    recentlyViewed.requestSharedProfile(id); await settle();
+    assert.equal(lookups, 1);
+    now += 30000;
+    recentlyViewed.requestSharedProfile(id, true); await settle();
+    assert.equal(lookups, 1, 'missing profiles must not generate a tight polling loop');
+    missing = false; now += 30000;
+    recentlyViewed.requestSharedProfile(id, true); await settle();
+    assert.equal(lookups, 2, 'actively viewed missing profiles must be checked again within a minute');
+    assert.equal(recentlyViewed.sharedProfiles.get(id).badgeFlags, 8, 'newly published shared badges replace the cached miss');
+    console.log('PASS newly published badges replace an actively viewed missing profile within one minute');
+})().catch(error => { console.error(error); process.exitCode = 1; });
