@@ -24,6 +24,8 @@ import { addHeaderBarButton, HeaderBarButton, removeHeaderBarButton } from "@api
 import { DataStore } from "@api/index";
 import { localStorage } from "@utils/localStorage";
 import { isRealProfileView, setRealProfileView } from "@utils/realProfileView";
+
+import { addFakeRequest, ExtrasPanel, hasFakeRequest, removeFakeRequest, startExtras, stopExtras } from "./extras";
 import { ModalContent as _ModalContent, ModalFooter as _ModalFooter, ModalHeader as _ModalHeader, ModalRoot as _ModalRoot, openModal } from "@utils/modal";
 
 const ModalRoot = _ModalRoot as any;
@@ -1106,6 +1108,9 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                 saveOwnData({ ...storedData, hideOtherProfiles: !storedData.hideOtherProfiles });
                 refresh();
             }} />
+            {!user.bot && (hasFakeRequest(user.id)
+                ? <Menu.MenuItem id="cloudcord-fake-request-remove" label="Remove fake friend request" action={() => removeFakeRequest(user.id)} />
+                : <Menu.MenuItem id="cloudcord-fake-request" label="Fake friend request" subtext="Only you see it" action={() => addFakeRequest(user)} />)}
         </Menu.MenuGroup>);
         const isCopied = isEnabled && storedData.copiedUserId === user.id;
         children.push(<Menu.MenuGroup>
@@ -1504,7 +1509,8 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <Section title="Custom images & badges" description="Upload your own badge, profile picture or banner on the CloudCord website.">
                 <div className="cpx-inline"><button type="button" className="cpx-btn" onClick={() => window.open("https://getcloudcord.com/upload", "_blank", "noopener,noreferrer")}>Open upload page</button></div>
             </Section>
-        </>
+        </>,
+        extras: <ExtrasPanel />
     };
 
     return (<ModalRoot {...rootProps} size="large" className="cpx-root">
@@ -1824,6 +1830,7 @@ fakeObfuscatedEmail(real: string | null) {
         addHeaderBarButton("profile-spoofer-btn", () => <CustomProfileButton />, 10);
         addContextMenuPatch("user-context", userContextMenuPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
+        startExtras();
         FluxDispatcher.subscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange);
 
         // Keep Discord's stored user immutable, but return the configured profile
@@ -1947,6 +1954,7 @@ fakeObfuscatedEmail(real: string | null) {
         this._nativeSocial?.stop(); this._nativeSocial = null;
         window.removeEventListener("focus", refreshBadgesOnFocus);
         removeHeaderBarButton("profile-spoofer-btn"); removeContextMenuPatch("user-context", userContextMenuPatch);
+        stopExtras();
         FluxDispatcher.unsubscribe("CONNECTION_OPEN", onAccountSwitch); FluxDispatcher.unsubscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange); stopDomObserver();
         if (sharedSyncTimer) { clearInterval(sharedSyncTimer); sharedSyncTimer = null; }
         if (this._origExtractTimestamp && SnowflakeUtils) { (SnowflakeUtils as any).extractTimestamp = this._origExtractTimestamp; this._origExtractTimestamp = null; }
