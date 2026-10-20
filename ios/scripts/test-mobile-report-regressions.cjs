@@ -18,6 +18,7 @@ const context = vm.createContext({
     getProfileOverride: () => ({ nitro: enabled, nitroLevel: 1, giftLevel: -1 }),
     cloudCordStaffBadge: () => null, shouldReplaceSharedBadges: () => false,
     shouldReplaceLocalBadges: () => false, remoteNitroEnabled: data => data?.nitro,
+    localBadgesHidden: () => false,
     preview: { enabled: true, nitroEnabled: true, nitroMonths: 12, giftLevel: -1 },
     NITRO_DURATIONS: [0, 12], NITRO_ICONS: [], BADGES: [], GIFT_LEVELS: [],
     nitroBadgeId: months => `premium_tenure_${months}_month_v2`,
@@ -38,6 +39,10 @@ for (remote of [false, true]) {
     assert.deepEqual(Array.from(callback([{ id: '123456789012345' }], native), row => row.id), native.map(row => row.id));
 }
 assert.equal(native.length, 4, 'Discord source badge arrays stay unchanged');
+remote = false;
+context.preview.nitroEnabled = true;
+context.localBadgesHidden = () => true;
+assert.deepEqual(Array.from(callback([{ id: '123456789012345' }], native), row => row.id), native.map(row => row.id), 'hiding device-only cosmetics must retain the real badge list');
 
 let emits = 0;
 let fetches = 0;

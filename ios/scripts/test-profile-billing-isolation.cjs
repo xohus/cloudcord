@@ -14,6 +14,7 @@ const context = vm.createContext({
     nativeProfileAppearance: () => ({}), nativeSocialProfile: () => ({}),
     mediaUri: () => null, colorNumber: () => 0, profileDate: () => null, BADGES: [],
     shouldReplaceLocalBadges: () => false, selectedBadgeObjects: value => value,
+    localBadgesHidden: () => false,
     decorationAsset: value => value,
     applyCollectibles: () => {},
     monthsAgo: () => new Date('2026-01-01T00:00:00Z'),
@@ -32,4 +33,11 @@ for (const tier of [0, 1, 2]) {
     assert.equal(profile.premium_type, 2);
     assert.notEqual(profile.premiumSince, original.premiumSince);
 }
-console.log('PASS: cosmetic profile Nitro cannot overwrite UserStore billing fields');
+context.localBadgesHidden = () => true;
+const hiddenOriginal = Object.freeze({ id: '456', username: 'real', premiumType: 1, premiumSince: 'real-since', premiumGuildSince: 'real-boost' });
+const hiddenProfile = context.cloneObject(hiddenOriginal, 'profile');
+assert.equal(hiddenProfile.premiumType, 1);
+assert.equal(hiddenProfile.premiumSince, 'real-since');
+assert.equal(hiddenProfile.premiumGuildSince, 'real-boost');
+assert.equal(hiddenProfile.username, 'cosmetic', 'hiding badges does not disable the rest of the custom profile');
+console.log('PASS: cosmetic profile Nitro cannot overwrite UserStore billing fields; device-only hidden badges retain real subscription metadata');

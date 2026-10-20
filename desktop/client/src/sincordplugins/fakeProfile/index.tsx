@@ -626,7 +626,7 @@ function hasFakeBadges(data: CustomProfileData | undefined): boolean {
 }
 
 function shouldReplaceBadges(data: CustomProfileData | undefined): boolean {
-    return !!data?.replaceRealBadges && hasFakeBadges(data);
+    return !(data?.localOnly && data.hideBadgesWhenSyncOff) && !!data?.replaceRealBadges && hasFakeBadges(data);
 }
 
 const NITRO_LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
@@ -652,6 +652,7 @@ function applyNativeProfileMetadata(target: any, data: CustomProfileData, includ
     // Discord loads the frame artwork itself from the SKU (profile.profileFrame).
     if (data.profileFrame !== undefined) target.profileFrame = data.profileFrame ? { skuId: data.profileFrame.skuId, type: 3, expiresAt: undefined } : undefined;
 
+    if (data.localOnly && data.hideBadgesWhenSyncOff) return target;
     const flags = Number(data.badgeFlags ?? 0);
     if (shouldReplaceBadges(data)) {
         target.publicFlags = flags;
@@ -1653,7 +1654,7 @@ export default definePlugin({
     ],
 
     getBadgeLayout(userId: string) {
-        if (isMe(userId)) return isEnabled ? storedData : null;
+        if (isMe(userId)) return isEnabled && !(storedData.localOnly && storedData.hideBadgesWhenSyncOff) ? storedData : null;
         requestSharedProfile(userId, true);
         return viewedSharedProfile(userId, true);
     },

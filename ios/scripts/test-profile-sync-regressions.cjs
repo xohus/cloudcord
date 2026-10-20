@@ -68,6 +68,13 @@ for (const [decorate, mine] of [[identity.ownUser, true], [identity.otherUser, f
 }
 assert.equal(nativeUser.flags, accountFlags);
 assert.equal(nativeUser.username, 'real');
+identity.isMe = () => true;
+identity.storedData = { username: 'custom', badgeFlags: 8, replaceRealBadges: true, nitro: true, nitroLevel: 1, localOnly: true, hideBadgesWhenSyncOff: true };
+identity._dataVersion++;
+const hiddenIdentity = identity.ownUser(nativeUser);
+assert.equal(hiddenIdentity.flags, accountFlags);
+assert.equal(hiddenIdentity.publicFlags, nativeUser.publicFlags);
+assert.equal(hiddenIdentity.premiumType, nativeUser.premiumType, 'hidden cosmetic badges cannot generate a fake native Nitro badge');
 
 const pull = block(desktop, 'async function pullOwnSharedProfile(', 'function requestSharedProfile(');
 let resolveResponse;

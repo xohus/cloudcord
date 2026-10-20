@@ -1009,12 +1009,16 @@ jobs:
               rootSettings.fakeProfileMediaCleared = pending;
           }
 
+          function localBadgesHidden() {
+              return rootSettings.fakeProfileLocalOnly && preview.hideBadgesWhenSyncOff === true;
+          }
+
           function localHasFakeBadges() {
               return preview.nitroEnabled || preview.boostMonths > 0 || preview.giftLevel >= 0 || Object.values(preview.selectedBadges || {}).some(Boolean);
           }
 
           function shouldReplaceLocalBadges() {
-              return preview.replaceBadges && localHasFakeBadges();
+              return !localBadgesHidden() && preview.replaceBadges && localHasFakeBadges();
           }
 
           function remoteReplaceBadges(data: any) {
@@ -1815,7 +1819,7 @@ jobs:
                       // UserStore is also consumed by billing. Cosmetic Nitro must
                       // not change the signed-in account's entitlement/discount state.
                       const billingField = /^(premiumType|premium_type|premiumSince|premium_since|premiumGuildSince|premium_guild_since)$/.test(String(key));
-                      if (overriddenKeys.has(String(key)) && !(kind === "user" && billingField)) continue;
+                      if (overriddenKeys.has(String(key)) && !((kind === "user" || localBadgesHidden()) && billingField)) continue;
                       const descriptor = Object.getOwnPropertyDescriptor(original, key);
                       if (descriptor) Object.defineProperty(cloned, key, descriptor);
                   }
@@ -1833,7 +1837,7 @@ jobs:
               const primaryColor = preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null;
               const accentColor = preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null;
               let selectedFlags = 0;
-              for (const [id, , flag] of BADGES) if (preview.selectedBadges?.[id]) selectedFlags |= flag;
+              for (const [id, , flag] of BADGES) if (!localBadgesHidden() && preview.selectedBadges?.[id]) selectedFlags |= flag;
               const flags = shouldReplaceLocalBadges() ? selectedFlags : Number(original.publicFlags ?? original.flags ?? 0) | selectedFlags;
 
               setOwnValue(cloned, "username", username);
@@ -1854,14 +1858,14 @@ jobs:
               if (primaryColor != null) setOwnValue(cloned, "primaryColor", primaryColor);
               if (accentColor != null) setOwnValue(cloned, "accentColor", accentColor);
               if (primaryColor != null || accentColor != null) setOwnValue(cloned, "themeColors", [primaryColor ?? accentColor, accentColor ?? primaryColor]);
-              if (preview.nitroEnabled && kind === "profile") {
+              if (preview.nitroEnabled && kind === "profile" && !localBadgesHidden()) {
                   const premiumSince = monthsAgo(preview.nitroMonths);
                   setOwnValue(cloned, "premiumType", 2);
                   setOwnValue(cloned, "premium_type", 2);
                   setOwnValue(cloned, "premiumSince", premiumSince);
                   setOwnValue(cloned, "premium_since", premiumSince.toISOString());
               }
-              if (kind === "profile" && preview.boostMonths > 0) setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
+              if (kind === "profile" && preview.boostMonths > 0 && !localBadgesHidden()) setOwnValue(cloned, "premiumGuildSince", monthsAgo(preview.boostMonths));
               if (avatar) {
                   setOwnValue(cloned, "avatarURL", avatar);
                   setOwnValue(cloned, "avatarUrl", avatar);
@@ -1973,10 +1977,11 @@ jobs:
                   seen.add(key);
                   return true;
               });
+              const hideLocal = isCurrentUser(userId) && localBadgesHidden();
               for (const badge of publishedBadges) {
-                  if (badge.userId === userId) addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
+                  if (!hideLocal && badge.userId === userId) addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
               }
-              const layout = isCurrentUser(userId) ? (preview.enabled ? preview : null) : getProfileOverride(userId, true);
+              const layout = isCurrentUser(userId) ? (preview.enabled && !hideLocal ? preview : null) : getProfileOverride(userId, true);
               return applyBadgeLayout(next, { ...layout, badgeOrder: layout?.badgeOrder?.length ? layout.badgeOrder : defaultBadgeOrder(nativeBadgeRows.get(userId) || []) });
           }
           function connectBadgeRenderer() {
@@ -2019,7 +2024,7 @@ jobs:
                       }
 
                       const staffBadge = cloudCordStaffBadge(id);
-                      if (!preview.enabled) {
+                      if (!preview.enabled || localBadgesHidden()) {
                           if (!staffBadge) return appendPublishedBadges(result, id);
                           const existing = result.filter(item => !String(item?.id || "").startsWith("cloudcord-"));
                           const ordered: any[] = [];
