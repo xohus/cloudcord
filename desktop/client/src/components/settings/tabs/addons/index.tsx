@@ -1,6 +1,6 @@
 import { Button } from "@components/Button";
 import { useSettings } from "@api/Settings";
-import { CloudIcon, PaintbrushIcon, PluginsIcon } from "@components/Icons";
+import { CloudIcon, PaintbrushIcon, PluginIcon, PluginsIcon } from "@components/Icons";
 import { Heading } from "@components/Heading";
 import { Paragraph } from "@components/Paragraph";
 import { React } from "@webpack/common";
@@ -8,6 +8,7 @@ import { SettingsTab, wrapTab } from "../BaseTab";
 import PluginsTab from "../plugins";
 import ThemesTab from "../../../ThemeSettings/ThemesTab";
 import CloudTab from "../sync/CloudTab";
+import ExtrasTab from "../extras";
 
 function Addons() {
     const visibility = useSettings().plugins.Settings as any;
@@ -15,7 +16,8 @@ function Addons() {
     const rows = [
         { name: "Plugins", description: "Manage installed plugins and their settings.", Icon: PluginsIcon, Tab: PluginsTab },
         { name: "Themes", description: "Change Discord's appearance and manage your themes.", Icon: PaintbrushIcon, Tab: ThemesTab },
-        { name: "Cloudsync", description: "Sync your settings across devices.", Icon: CloudIcon, Tab: CloudTab }
+        { name: "Cloudsync", description: "Sync your settings across devices.", Icon: CloudIcon, Tab: CloudTab },
+        { name: "Extras", description: "Fake Nitro, fake gift links, fake boosts, fake friend requests, leave all servers and reset.", Icon: PluginIcon, Tab: ExtrasTab }
     ];
     const active = rows.find(row => row.name === activePage);
     if (active) {
@@ -27,7 +29,7 @@ function Addons() {
     }
     return <SettingsTab>
         <Heading tag="h2">Add-ons</Heading>
-        <Paragraph>Plugins, themes and sync, together in one place.</Paragraph>
+        <Paragraph>Plugins, themes, sync and extras, together in one place.</Paragraph>
         {rows.filter(row => row.name === "Plugins" ? visibility.showPluginsTab !== false : row.name === "Themes" ? visibility.showThemesTab !== false : row.name === "Cloudsync" ? visibility.showCloudSyncTab !== false : true).map(({ name, description, Icon, Tab }) => <div key={name} style={{ display: "flex", gap: 16, alignItems: "center", padding: "16px 0", borderBottom: "1px solid var(--background-modifier-accent)" }}>
             <Icon width={24} height={24} />
             <div style={{ flex: 1, minWidth: 0 }}><Heading tag="h3">{name}</Heading><Paragraph>{description}</Paragraph></div>

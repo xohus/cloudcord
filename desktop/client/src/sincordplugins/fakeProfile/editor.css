@@ -203,3 +203,13 @@ textarea.cpx-input { min-height: 96px; resize: vertical; line-height: 1.45; }
 .cp-cos-rpc { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--cpx-border, rgb(255 255 255 / 8%)); }
 .cpx-service svg { display: block; }
 .cpx-segment svg { flex-shrink: 0; }
+
+/* Extras page under Add-ons reuses the editor tokens without the modal sizing. */
+.cpx-root.cpx-page {
+    width: auto !important;
+    max-height: none !important;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    margin-top: 16px;
+}

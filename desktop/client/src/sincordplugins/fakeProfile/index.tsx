@@ -25,7 +25,7 @@ import { DataStore } from "@api/index";
 import { localStorage } from "@utils/localStorage";
 import { isRealProfileView, setRealProfileView } from "@utils/realProfileView";
 
-import { addFakeRequest, ExtrasPanel, fakeGiftFor, hasFakeRequest, removeFakeRequest, startExtras, stopExtras } from "./extras";
+import { addFakeRequest, fakeGiftFor, hasFakeRequest, removeFakeRequest, startExtras, stopExtras } from "./extras";
 import { ModalContent as _ModalContent, ModalFooter as _ModalFooter, ModalHeader as _ModalHeader, ModalRoot as _ModalRoot, openModal } from "@utils/modal";
 
 const ModalRoot = _ModalRoot as any;
@@ -1515,8 +1515,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <Section title="Custom images & badges" description="Upload your own badge, profile picture or banner on the CloudCord website.">
                 <div className="cpx-inline"><button type="button" className="cpx-btn" onClick={() => window.open("https://getcloudcord.com/upload", "_blank", "noopener,noreferrer")}>Open upload page</button></div>
             </Section>
-        </>,
-        extras: <ExtrasPanel />
+        </>
     };
 
     return (<ModalRoot {...rootProps} size="large" className="cpx-root">
