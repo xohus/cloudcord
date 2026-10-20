@@ -10,15 +10,28 @@
 import * as DataStore from "@api/DataStore";
 import { Alerts, FluxDispatcher, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, showToast, Toasts, UserStore } from "@webpack/common";
 
-import { Section, Switch } from "./editorUi";
+import { Grid2, Section, SelectField, Switch } from "./editorUi";
 
 const LS_EXTRAS = "cloudcord_profile_extras";
 const NITRO_APP_ID = "521842831262875670";
-const NITRO_MONTHLY_SKU = "521847234246082599";
-const NITRO_MONTHLY_PLAN = "511651880837840896";
+const NITRO_SKU = "521847234246082599";
+const NITRO_BASIC_SKU = "978380684370378762";
+// Discord's own plan IDs, so the embed shows the right product and length.
+const GIFT_PLANS = [
+    { id: "511651880837840896", label: "Nitro, 1 month", name: "Nitro Monthly", sku: NITRO_SKU, interval: 1, price: 999 },
+    { id: "511651885459963904", label: "Nitro, 1 year", name: "Nitro Yearly", sku: NITRO_SKU, interval: 2, price: 9999 },
+    { id: "978380692553465866", label: "Nitro Basic, 1 month", name: "Nitro Basic Monthly", sku: NITRO_BASIC_SKU, interval: 1, price: 299 },
+    { id: "1024422698568122368", label: "Nitro Basic, 1 year", name: "Nitro Basic Yearly", sku: NITRO_BASIC_SKU, interval: 2, price: 2999 }
+];
+// Discord's gift box designs (PremiumGiftStyles).
+const GIFT_STYLES = [
+    { value: 4, label: "Standard box" }, { value: 2, label: "Box" }, { value: 1, label: "Snow globe" }, { value: 3, label: "Cup" },
+    { value: 5, label: "Cake" }, { value: 6, label: "Chest" }, { value: 7, label: "Coffee" }, { value: 8, label: "Seasonal box" },
+    { value: 9, label: "Seasonal cake" }, { value: 10, label: "Seasonal chest" }, { value: 11, label: "Seasonal coffee" }, { value: 12, label: "Nitroween" }
+];
 const INCOMING_REQUEST = 3;
 
-interface Extras { fakeNitro?: boolean; giftCode?: string; }
+interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; }
 
 function readExtras(): Extras {
     try { return JSON.parse(localStorage.getItem(LS_EXTRAS) || "{}") || {}; } catch { return {}; }
@@ -58,15 +71,16 @@ function newGiftCode() {
 const giftUrl = (code: string) => `https://discord.gift/${code}`;
 
 function fakeGiftBody(code: string) {
+    const plan = GIFT_PLANS.find(item => item.id === extras.giftPlan) ?? GIFT_PLANS[0];
     const me = UserStore.getCurrentUser() as any;
     return {
-        code, sku_id: NITRO_MONTHLY_SKU, application_id: NITRO_APP_ID, uses: 0, max_uses: 1, redeemed: false,
+        code, sku_id: plan.sku, application_id: NITRO_APP_ID, uses: 0, max_uses: 1, redeemed: false,
         expires_at: new Date(Date.now() + 48 * 3600_000).toISOString(),
-        subscription_plan_id: NITRO_MONTHLY_PLAN,
-        subscription_plan: { id: NITRO_MONTHLY_PLAN, name: "Nitro Monthly", interval: 1, interval_count: 1, tax_inclusive: true, sku_id: NITRO_MONTHLY_SKU, currency: "usd", price: 999, price_tier: null },
+        subscription_plan_id: plan.id,
+        subscription_plan: { id: plan.id, name: plan.name, interval: plan.interval, interval_count: 1, tax_inclusive: true, sku_id: plan.sku, currency: "usd", price: plan.price, price_tier: null },
         user: me ? { id: me.id, username: me.username, global_name: me.globalName, avatar: me.avatar, discriminator: me.discriminator ?? "0" } : undefined,
-        store_listing: { id: NITRO_MONTHLY_SKU, summary: "", sku: { id: NITRO_MONTHLY_SKU, type: 5, application_id: NITRO_APP_ID, name: "Nitro", flags: 0, premium: true, product_line: 1 } },
-        gift_style: null, batch_id: null, promotion: null, flags: 0
+        store_listing: { id: plan.sku, summary: "", sku: { id: plan.sku, type: 5, application_id: NITRO_APP_ID, name: plan.sku === NITRO_BASIC_SKU ? "Nitro Basic" : "Nitro", flags: 0, premium: true, product_line: 1 } },
+        gift_style: extras.giftStyle ?? 4, batch_id: null, promotion: null, flags: 0
     };
 }
 
@@ -198,6 +212,11 @@ export function ExtrasPanel() {
             <Switch label="Act like I have Nitro" description="Removes Nitro previews, upsells and Get Nitro prompts. Real Nitro features like big uploads still need real Nitro." checked={state.fakeNitro === true} onChange={value => { writeExtras({ ...extras, fakeNitro: value }); applyFakeNitro(); }} />
         </Section>
         <Section title="Fake Nitro gift" description="A gift link that shows as a Nitro gift only on your device. Everyone else sees an invalid link, and it can't be redeemed.">
+            <Grid2>
+                <SelectField label="Gift" options={GIFT_PLANS.map(item => ({ value: item.id, label: item.label }))} value={state.giftPlan ?? GIFT_PLANS[0].id} onChange={value => writeExtras({ ...extras, giftPlan: value, giftCode: extras.giftCode && newGiftCode() })} />
+                <SelectField label="Design" options={GIFT_STYLES} value={state.giftStyle ?? 4} onChange={value => writeExtras({ ...extras, giftStyle: Number(value), giftCode: extras.giftCode && newGiftCode() })} />
+            </Grid2>
+            {code && <span className="cpx-hint">Changing the gift or design makes a new link, because Discord remembers each link once it's shown.</span>}
             {code && <input className="cpx-input" readOnly value={giftUrl(code)} onFocus={event => event.currentTarget.select()} />}
             <div className="cpx-inline">
                 <button type="button" className="cpx-btn" onClick={() => writeExtras({ ...extras, giftCode: newGiftCode() })}>{code ? "Refresh link" : "Make link"}</button>
