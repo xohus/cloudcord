@@ -46,7 +46,7 @@ jobs:
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-report-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-real-profile-view.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-sync-regressions.cjs
-          for test in profile-local profile-identity-render published-badges message-identity message-previews profile-device-only profile-billing-isolation profile-refresh-budget; do
+          for test in profile-local profile-identity-render published-badges message-identity message-previews profile-device-only profile-billing-isolation profile-refresh-budget profile-editor-tabs; do
             NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node "ios/scripts/test-$test.cjs"
           done
 
@@ -3357,7 +3357,7 @@ jobs:
               const [decorations, setDecorations] = useState<Array<{ asset: string; skuId: string; label: string; uri: string }>>([]);
               const [decorationsLoading, setDecorationsLoading] = useState(true);
               useEffect(() => {
-                  if (activeTab !== "cosmetics") return;
+                  if (activeTab !== "style") return;
                   if (!catalog) loadCatalog();
                   let active = true;
                   void findDecorationCatalog().then(result => { if (active) { setDecorations(result); setDecorationsLoading(false); } });
