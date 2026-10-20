@@ -2994,7 +2994,7 @@ jobs:
           class NamePreviewBoundary extends Component<any, { failed: boolean }> {
               state = { failed: false };
               static getDerivedStateFromError() { return { failed: true }; }
-              render() { return this.state.failed ? <Text color="text-muted">Username preview isn't available in this Discord version.</Text> : this.props.children; }
+              render() { return this.state.failed ? <View><Text variant="heading-lg/bold" color="text-normal">{this.props.name || "Your name"}</Text><Text variant="text-xs/normal" color="text-muted">Style preview isn't available in this Discord version.</Text></View> : this.props.children; }
           }
 
           function ServerTagPicker({ onSelect }: { onSelect: (tag: { tag: string; guildId: string; badge: string }) => void }) {
@@ -3023,7 +3023,7 @@ jobs:
               const name = preview.displayName || preview.username || realCurrentUser?.globalName || realCurrentUser?.username || "Your name";
               return <View style={{ padding: 16, borderRadius: 12, gap: 8 }}>
                   <Text variant="text-xs/bold" color="text-muted">PREVIEW</Text>
-                  <NamePreviewBoundary key={JSON.stringify(styles)}>
+                  <NamePreviewBoundary name={name} key={JSON.stringify(styles)}>
                       {NativeName ? <NativeName username={name} text={name} displayNameStyles={styles} fontId={styles?.fontId} effectId={styles?.effectId} colors={styles?.colors} style={{ fontSize: 24 }} /> : <Text variant="heading-lg/bold" color="text-normal">{name}</Text>}
                   </NamePreviewBoundary>
                   <Text variant="text-xs/normal" color="text-muted">Shown in profiles and message author names.</Text>
@@ -3039,7 +3039,7 @@ jobs:
                   {nativeNameStyleOptions(field).map(option => {
                       const style = { ...selected, [field]: option.value };
                       return <View key={option.value} style={{ borderRadius: 12, borderWidth: selected[field] === option.value ? 2 : 0, borderColor: "#5865f2", overflow: "hidden" }}>
-                          <TableRow label={option.label} onPress={() => { setSelected(style); onSelect(style); }} trailing={NativeName ? <NamePreviewBoundary key={JSON.stringify(style)}><NativeName username={name} text={name} displayNameStyles={style} fontId={style.fontId} effectId={style.effectId} colors={style.colors} /></NamePreviewBoundary> : undefined} />
+                          <TableRow label={option.label} onPress={() => { setSelected(style); onSelect(style); }} trailing={NativeName ? <NamePreviewBoundary name={name} key={JSON.stringify(style)}><NativeName username={name} text={name} displayNameStyles={style} fontId={style.fontId} effectId={style.effectId} colors={style.colors} /></NamePreviewBoundary> : undefined} />
                       </View>;
                   })}
               </ScrollView>;
