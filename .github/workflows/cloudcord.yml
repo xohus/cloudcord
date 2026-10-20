@@ -1337,8 +1337,10 @@ jobs:
               checkingPrivacy = true;
               try { return (safeStore("UserProfileStore") as any)?.getUserProfile?.(id)?.private === true; } catch { return false; } finally { checkingPrivacy = false; }
           }
-          function getProfileOverride(id: string) {
-              if (isRealProfileView(id) || isPrivateProfile(id)) return undefined;
+          function getProfileOverride(id: string, badgesOnly = false) {
+              // Published CloudCord badges remain public even if Discord hides
+              // native profile details. Explicit real-profile mode still wins.
+              if (isRealProfileView(id) || !badgesOnly && isPrivateProfile(id)) return undefined;
               const local = (settings as any).cloudcordLocalProfiles?.[id];
               const shared = sharedProfiles.get(id);
               if (!local) return shared;
@@ -1965,7 +1967,7 @@ jobs:
               for (const badge of publishedBadges) {
                   if (badge.userId === userId) addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
               }
-              const layout = isCurrentUser(userId) ? (preview.enabled ? preview : null) : getProfileOverride(userId);
+              const layout = isCurrentUser(userId) ? (preview.enabled ? preview : null) : getProfileOverride(userId, true);
               return applyBadgeLayout(next, { ...layout, badgeOrder: layout?.badgeOrder?.length ? layout.badgeOrder : defaultBadgeOrder(nativeBadgeRows.get(userId) || []) });
           }
           function connectBadgeRenderer() {
@@ -1981,7 +1983,7 @@ jobs:
                       void refreshPublishedBadges();
                       if (!isCurrentUser(id)) {
                           requestSharedProfile(id);
-                          const data = getProfileOverride(id);
+                          const data = getProfileOverride(id, true);
                           const staffBadge = cloudCordStaffBadge(id);
                           if (!data && !staffBadge) return appendPublishedBadges(result, id);
                           const ordered: any[] = [];

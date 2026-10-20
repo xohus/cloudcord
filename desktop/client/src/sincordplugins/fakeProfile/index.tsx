@@ -561,8 +561,10 @@ let realGetUserProfile: ((...args: any[]) => any) | null = null;
 function isPrivateProfile(userId: string): boolean {
     try { return realGetUserProfile?.(userId)?.private === true; } catch { return false; }
 }
-function viewedSharedProfile(userId: string) {
-    if (storedData?.hideOtherProfiles || isRealProfileView(userId) || isPrivateProfile(userId)) return undefined;
+function viewedSharedProfile(userId: string, badgesOnly = false) {
+    // CloudCord's published badge selections are public; Discord's private
+    // profile flag only controls the native profile details, not that publication.
+    if (storedData?.hideOtherProfiles || isRealProfileView(userId) || !badgesOnly && isPrivateProfile(userId)) return undefined;
     const profile = sharedProfiles.get(userId);
     if (profile) sharedViewedAt.set(userId, Date.now());
     return profile;
@@ -851,6 +853,16 @@ function requestSharedProfile(userId: string, force = false) {
                 // No CloudCord profile: remember that instead of asking again.
                 sharedMissingUntil.set(userId, Date.now() + SHARED_MISSING_TTL_MS);
                 if (sharedMissingUntil.size > 5000) sharedMissingUntil.delete(sharedMissingUntil.keys().next().value!);
+                // A deleted shared profile must restore Discord's original presentation.
+                // Keep transient failures separate: only a confirmed 404 removes it.
+                if (sharedProfiles.delete(userId)) {
+                    sharedProfileFetchedAt.delete(userId);
+                    try {
+                        (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore")?.emitChange?.();
+                        (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
+                        refreshPresence();
+                    } catch { }
+                }
                 return null;
             }
             if (r.status === 429 || r.status >= 500) {
@@ -865,6 +877,7 @@ function requestSharedProfile(userId: string, force = false) {
             const next = fromSharedProfile(data);
             const previous = sharedProfiles.get(userId);
             const changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
+            sharedMissingUntil.delete(userId);
             sharedProfiles.set(userId, next);
             sharedProfileFetchedAt.set(userId, Date.now());
             if (!changed) return;
@@ -955,7 +968,7 @@ function decorateSharedProfile(profile: any, data: CustomProfileData) {
     if (data.signupDate) { merged.joinedAt = new Date(data.signupDate + "T12:00:00Z"); merged.memberSince = merged.joinedAt; }
     if (data.accentColor != null) merged.accentColor = data.accentColor;
     if (data.accentColor != null) merged.themeColors = [data.accentColor, data.accentColor2 ?? data.accentColor];
-    merged.badges = [];
+    if (shouldReplaceBadges(data)) merged.badges = [];
     applyNativeProfileMetadata(merged, data);
     return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
 }
@@ -1637,7 +1650,7 @@ export default definePlugin({
     getBadgeLayout(userId: string) {
         if (isMe(userId)) return isEnabled ? storedData : null;
         requestSharedProfile(userId, true);
-        return viewedSharedProfile(userId);
+        return viewedSharedProfile(userId, true);
     },
 
     filterNativeBadges(userId: string, badges: ProfileBadge[]) {
@@ -1757,7 +1770,7 @@ export default definePlugin({
             if (storedData.decorationAsset) { merged.avatarDecoration = nativeDecoration(storedData); merged.avatarDecorationData = merged.avatarDecoration; }
             if (storedData.nitro && storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
             applyNativeProfileMetadata(merged, storedData);
-            merged.badges = [];
+            if (shouldReplaceBadges(storedData)) merged.badges = [];
             return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
         } catch { return profile; }
     },
@@ -1807,7 +1820,7 @@ fakeObfuscatedEmail(real: string | null) {
                 // desktop stopped requesting as soon as one response was cached, so later
                 // changes made on mobile could never appear until Discord restarted.
                 requestSharedProfile(userId);
-                profileData = viewedSharedProfile(userId);
+                profileData = viewedSharedProfile(userId, true);
                 if (!profileData) return published;
             }
 

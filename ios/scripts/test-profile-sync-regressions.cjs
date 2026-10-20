@@ -28,6 +28,24 @@ data.replaceRealBadges = false;
 assert.deepEqual(Array.from(ctx.filter.call(plugin, 'user', badges), b => b.id), ['premium_tenure_12_month_v2', 'partner', 'cloudcord-official-moderator']);
 assert.equal(badges.length, 4, 'native badge lists are never mutated');
 
+// Exercise both native profile-decoration paths, not just the final badge renderer.
+const nativeRows = Object.freeze([Object.freeze({ id: 'partner' })]);
+const nativeProfile = Object.freeze({ badges: nativeRows, bio: 'real' });
+const profiles = vm.createContext({ nativeSocialProfile: profile => ({ ...profile }),
+    applyNativeProfileMetadata() {}, isEnabled: true, storedData: {}, Object, Date });
+vm.runInContext(compile(block(desktop, 'function hasFakeBadges(', 'const NITRO_LEVEL_MONTHS')
+    + block(desktop, 'function decorateSharedProfile(', 'function resolveProfileUserId(')
+    + 'const plugin = {' + block(desktop, '    hookUserProfile(', 'fakeObfuscatedEmail(') + '}; this.ownProfile = plugin.hookUserProfile;'), profiles);
+for (const replaceRealBadges of [false, true]) {
+    profiles.storedData = { replaceRealBadges, nitro: true, nitroLevel: 0 };
+    const sharedProfile = profiles.decorateSharedProfile(nativeProfile, profiles.storedData);
+    const ownProfile = profiles.ownProfile(nativeProfile);
+    assert.equal(sharedProfile.badges.length, replaceRealBadges ? 0 : 1, 'shared profiles respect the native badge toggle');
+    assert.equal(ownProfile.badges.length, replaceRealBadges ? 0 : 1, 'own profiles respect the native badge toggle');
+}
+assert.equal(nativeProfile.badges, nativeRows);
+assert.equal(nativeRows.length, 1, 'decorating profiles must not erase Discord cached badges');
+
 const pull = block(desktop, 'async function pullOwnSharedProfile(', 'function requestSharedProfile(');
 let resolveResponse;
 let activeId = '123456789012345';
@@ -44,6 +62,27 @@ const host = vm.createContext({ storedData: { bio: 'local', syncRevision: 2, hid
 });
 vm.runInContext(compile(pull), host);
 (async () => {
+    let responseStatus = 503;
+    let refreshes = 0;
+    const otherId = '987654321098765';
+    const viewer = vm.createContext({ Date, JSON, isMe: () => false,
+        sharedRequests: new Set(), sharedQueued: new Set(), sharedMissingUntil: new Map(),
+        sharedProfiles: new Map([[otherId, { badgeFlags: 8 }]]), sharedProfileFetchedAt: new Map(),
+        sharedBackoffUntil: 0, SHARED_MAX_IN_FLIGHT: 4, SHARED_MISSING_TTL_MS: 900000, SHARED_PROFILE_TTL_MS: 120000,
+        SHARED_PROFILE_API: 'https://example.test', fromSharedProfile: value => value,
+        fetch: async () => ({ status: responseStatus, ok: responseStatus === 200, headers: { get: () => null }, json: async () => ({ profile: { badgeFlags: 2 } }) }),
+        Vencord: { Webpack: { findByStoreName: () => ({ emitChange: () => refreshes++ }) } }, refreshPresence() {} });
+    vm.runInContext(compile(block(desktop, 'function requestSharedProfile(', 'function refreshVisibleSharedProfiles(')), viewer);
+    const settle = async () => { for (let turn = 0; turn < 8; turn++) await Promise.resolve(); };
+    viewer.requestSharedProfile(otherId); await settle();
+    assert.equal(viewer.sharedProfiles.get(otherId).badgeFlags, 8, 'server outages keep the last valid shared badges');
+    viewer.sharedBackoffUntil = 0; responseStatus = 404;
+    viewer.requestSharedProfile(otherId); await settle();
+    assert.equal(viewer.sharedProfiles.has(otherId), false, 'confirmed deletion restores the real profile');
+    assert.equal(refreshes, 2, 'mounted profile and user surfaces refresh after deletion');
+    viewer.sharedMissingUntil.clear(); responseStatus = 200;
+    viewer.requestSharedProfile(otherId); await settle();
+    assert.equal(viewer.sharedProfiles.get(otherId).badgeFlags, 2, 'republished profiles load again');
     let pending = host.pullOwnSharedProfile();
     host.storedData = { bio: 'edited during request', syncRevision: 4 };
     resolveResponse(); await pending;
