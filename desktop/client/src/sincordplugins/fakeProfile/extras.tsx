@@ -49,7 +49,8 @@ function applyFakeNitro() {
 }
 
 // ---- Fake gift link ----
-const GIFT_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+// Same alphabet Discord uses for gift codes.
+const GIFT_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
 function newGiftCode() {
     const bytes = crypto.getRandomValues(new Uint8Array(16));
     return Array.from(bytes, b => GIFT_CHARS[b % GIFT_CHARS.length]).join("");
@@ -64,7 +65,8 @@ function fakeGiftBody(code: string) {
         subscription_plan_id: NITRO_MONTHLY_PLAN,
         subscription_plan: { id: NITRO_MONTHLY_PLAN, name: "Nitro Monthly", interval: 1, interval_count: 1, tax_inclusive: true, sku_id: NITRO_MONTHLY_SKU, currency: "usd", price: 999, price_tier: null },
         user: me ? { id: me.id, username: me.username, global_name: me.globalName, avatar: me.avatar, discriminator: me.discriminator ?? "0" } : undefined,
-        store_listing: null, gift_style: null, batch_id: null, promotion: null, flags: 0
+        store_listing: { id: NITRO_MONTHLY_SKU, summary: "", sku: { id: NITRO_MONTHLY_SKU, type: 5, application_id: NITRO_APP_ID, name: "Nitro", flags: 0, premium: true, product_line: 1 } },
+        gift_style: null, batch_id: null, promotion: null, flags: 0
     };
 }
 
@@ -75,12 +77,7 @@ let restOriginals: { get: any; post: any; } | null = null;
 function installGiftHook() {
     if (restOriginals || !RestAPI) return;
     restOriginals = { get: RestAPI.get, post: RestAPI.post };
-    const { get, post } = restOriginals;
-    (RestAPI as any).get = function (req: any, ...rest: any[]) {
-        const match = giftPath(req?.url);
-        if (match && !match[2] && extras.giftCode && match[1] === extras.giftCode) return Promise.resolve({ ok: true, status: 200, body: fakeGiftBody(match[1]), headers: {} });
-        return get.call(this, req, ...rest);
-    };
+    const { post } = restOriginals;
     (RestAPI as any).post = function (req: any, ...rest: any[]) {
         const match = giftPath(req?.url);
         if (match?.[2] && extras.giftCode && match[1] === extras.giftCode) {
@@ -96,9 +93,22 @@ function uninstallGiftHook() {
     restOriginals = null;
 }
 
+// Called from the patched gift resolver: only the current device link resolves.
+export function fakeGiftFor(code: string) {
+    return extras.giftCode && code === extras.giftCode ? fakeGiftBody(code) : null;
+}
+
 // ---- Fake friend requests ----
 const fakeRequests = new Set<string>();
 export function hasFakeRequest(userId: string) { return fakeRequests.has(userId); }
+export function addFakeRequestById(rawId: string) {
+    const id = rawId.trim();
+    if (!/^d{17,20}$/.test(id)) { showToast("Enter a valid user ID.", Toasts.Type.FAILURE); return false; }
+    const user = UserStore.getUser(id);
+    if (!user) { showToast("Discord doesn't know that user yet. Open their profile once, then try again.", Toasts.Type.FAILURE); return false; }
+    addFakeRequest(user);
+    return fakeRequests.has(id);
+}
 export function addFakeRequest(user: any) {
     if (RelationshipStore.getRelationshipType(user.id) !== 0) { showToast("You already have a friend request or friendship with this user.", Toasts.Type.FAILURE); return; }
     fakeRequests.add(user.id);
@@ -179,6 +189,8 @@ export function stopExtras() {
 
 export function ExtrasPanel() {
     const state = useExtras();
+    const [friendId, setFriendId] = React.useState("");
+    const [, force] = React.useReducer(x => x + 1, 0);
     const code = state.giftCode;
     const copy = () => { if (!code) return; navigator.clipboard?.writeText(giftUrl(code)).then(() => showToast("Copied gift link.", Toasts.Type.SUCCESS), () => { }); };
     return <>
@@ -193,8 +205,13 @@ export function ExtrasPanel() {
                 {code && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => writeExtras({ ...extras, giftCode: undefined })}>Remove</button>}
             </div>
         </Section>
-        <Section title="Fake friend request" description="Right-click anyone and pick Fake friend request. Only you see it. Don't accept it: that sends them a real request.">
-            <span className="cpx-hint">{fakeRequests.size ? `${fakeRequests.size} showing now. They go away when Discord restarts.` : "None showing."}</span>
+        <Section title="Fake friend request" description="Paste a user ID (right-click them, Copy User ID). Only you see the request. Don't accept it: that sends them a real request.">
+            <input className="cpx-input" placeholder="User ID" inputMode="numeric" value={friendId} onChange={event => setFriendId(event.target.value)} />
+            <div className="cpx-inline">
+                <button type="button" className="cpx-btn" onClick={() => { if (addFakeRequestById(friendId)) { setFriendId(""); showToast("Fake friend request added.", Toasts.Type.SUCCESS); } force(); }}>Add request</button>
+                {fakeRequests.size > 0 && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => { for (const id of [...fakeRequests]) removeFakeRequest(id); force(); }}>Remove all ({fakeRequests.size})</button>}
+            </div>
+            <span className="cpx-hint">They go away when Discord restarts.</span>
         </Section>
         <Section title="Account tools">
             <div className="cpx-inline">

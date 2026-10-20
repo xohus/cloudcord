@@ -25,7 +25,7 @@ import { DataStore } from "@api/index";
 import { localStorage } from "@utils/localStorage";
 import { isRealProfileView, setRealProfileView } from "@utils/realProfileView";
 
-import { addFakeRequest, ExtrasPanel, hasFakeRequest, removeFakeRequest, startExtras, stopExtras } from "./extras";
+import { addFakeRequest, ExtrasPanel, fakeGiftFor, hasFakeRequest, removeFakeRequest, startExtras, stopExtras } from "./extras";
 import { ModalContent as _ModalContent, ModalFooter as _ModalFooter, ModalHeader as _ModalHeader, ModalRoot as _ModalRoot, openModal } from "@utils/modal";
 
 const ModalRoot = _ModalRoot as any;
@@ -1086,28 +1086,34 @@ async function loadData() {
     } catch { }
 }
 
+function realProfileMenuItem(userId: string) {
+    const viewingReal = isRealProfileView(userId);
+    if (!viewingReal && (!sharedProfiles.has(userId) || storedData.hideOtherProfiles)) return null;
+    return <Menu.MenuItem id="cloudcord-profile-view" label={viewingReal ? "Return to CloudCord profile" : "Show real profile"} action={() => {
+        setRealProfileView(userId, !viewingReal);
+        cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+        try { (UserProfileStore as any).emitChange?.(); } catch { }
+        try { (UserStore as any).emitChange?.(); } catch { }
+        forceAccountPanelRerender();
+        // Let the menu close first so Discord does not stack modals on a closing layer.
+        setTimeout(() => { try { UserProfileActions.openUserProfileModal({ userId }); } catch { } }, 50);
+    }} />;
+}
+
+// The "..." menu on a profile popout or full profile.
+const profileOverflowPatch: NavContextMenuPatchCallback = (children, props: any) => {
+    const userId = props?.user?.id ?? props?.userId;
+    if (!Array.isArray(children) || !userId || isMe(userId)) return;
+    const item = realProfileMenuItem(userId);
+    if (item) children.unshift(<Menu.MenuGroup>{item}</Menu.MenuGroup>);
+};
+
 const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: any) => {
     if (!children || !Array.isArray(children) || !user?.id) return;
     try {
         const me = UserStore.getCurrentUser(); if (!me || user.id === me.id) return;
-        const refresh = () => {
-            cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
-            try { (UserProfileStore as any).emitChange?.(); } catch { }
-            try { (UserStore as any).emitChange?.(); } catch { }
-            forceAccountPanelRerender();
-        };
-        const hasCloudCord = sharedProfiles.has(user.id) && !storedData.hideOtherProfiles;
         children.push(<Menu.MenuGroup>
-            {(hasCloudCord || isRealProfileView(user.id)) && <Menu.MenuItem id="cloudcord-profile-view" label={isRealProfileView(user.id) ? "Return to CloudCord profile" : "Show real profile"} action={() => {
-                setRealProfileView(user.id, !isRealProfileView(user.id));
-                refresh();
-                // Let the menu close first so Discord does not stack modals on a closing layer.
-                setTimeout(() => { try { UserProfileActions.openUserProfileModal({ userId: user.id }); } catch { } }, 50);
-            }} />}
-            <Menu.MenuCheckboxItem id="cloudcord-hide-other-profiles" label="Hide other CloudCord profiles" checked={storedData.hideOtherProfiles === true} action={() => {
-                saveOwnData({ ...storedData, hideOtherProfiles: !storedData.hideOtherProfiles });
-                refresh();
-            }} />
+            {realProfileMenuItem(user.id)}
             {!user.bot && (hasFakeRequest(user.id)
                 ? <Menu.MenuItem id="cloudcord-fake-request-remove" label="Remove fake friend request" action={() => removeFakeRequest(user.id)} />
                 : <Menu.MenuItem id="cloudcord-fake-request" label="Fake friend request" subtext="Only you see it" action={() => addFakeRequest(user)} />)}
@@ -1482,7 +1488,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             <Section title="Badges" description="Pick the badges shown on your profile.">
                 <Switch label="Hide CloudCord badges while sync is off" description="When you save on this device only, show no CloudCord badges on your profile." checked={data.hideBadgesWhenSyncOff === true} onChange={value => set("hideBadgesWhenSyncOff", value)} />
                 <Switch label="Use Discord's Edit Profile for picture and banner" description="While your custom profile is on, a picture or banner you pick in Discord's own Edit Profile is saved here instead, GIFs included." checked={data.nativeEditorImages !== false} onChange={value => set("nativeEditorImages", value)} />
-                <Switch label="Hide other CloudCord profiles" description="Show everyone with their real Discord profile. You can also switch this from any user's menu." checked={data.hideOtherProfiles === true} onChange={value => set("hideOtherProfiles", value)} />
+                <Switch label="Hide other CloudCord profiles" description="Show everyone with their real Discord profile. You can still open one person's real profile from the three-dot menu on their profile." checked={data.hideOtherProfiles === true} onChange={value => set("hideOtherProfiles", value)} />
                 <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
             </Section>
             <Section title="Badge order" description="Hide badges or change their order.">
@@ -1569,6 +1575,15 @@ export default definePlugin({
 
     patches: [
         {
+            // Resolve the device-only fake gift link without asking Discord.
+            find: "GIFT_CODE_RESOLVE(e),query:{with_application",
+            noWarn: true,
+            replacement: {
+                match: /(async function \i\((\i)\){)(?=let \i=arguments\.length>1.{0,200}?GIFT_CODE_RESOLVE\(\2\),query)/,
+                replace: "$1{const __ccGift=$self.fakeGiftCode($2);if(__ccGift)return __ccGift;}"
+            }
+        },
+        {
             find: "getAvatarDecorationURL:",
             replacement: {
                 match: /(?<=function \i\((\i)\){)(?=.{0,20}let{avatarDecoration)/,
@@ -1588,6 +1603,10 @@ export default definePlugin({
         if (isMe(userId)) return isEnabled ? storedData : null;
         requestSharedProfile(userId);
         return viewedSharedProfile(userId);
+    },
+
+    fakeGiftCode(code: string) {
+        return fakeGiftFor(code);
     },
 
     fakeCurrentUser(user: any) {
@@ -1829,6 +1848,7 @@ fakeObfuscatedEmail(real: string | null) {
         }
         addHeaderBarButton("profile-spoofer-btn", () => <CustomProfileButton />, 10);
         addContextMenuPatch("user-context", userContextMenuPatch);
+        addContextMenuPatch(["user-profile-actions", "user-profile-overflow-menu"], profileOverflowPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
         startExtras();
         FluxDispatcher.subscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange);
@@ -1953,7 +1973,7 @@ fakeObfuscatedEmail(real: string | null) {
         document.removeEventListener("click", this._socialClick, true);
         this._nativeSocial?.stop(); this._nativeSocial = null;
         window.removeEventListener("focus", refreshBadgesOnFocus);
-        removeHeaderBarButton("profile-spoofer-btn"); removeContextMenuPatch("user-context", userContextMenuPatch);
+        removeHeaderBarButton("profile-spoofer-btn"); removeContextMenuPatch("user-context", userContextMenuPatch); removeContextMenuPatch(["user-profile-actions", "user-profile-overflow-menu"], profileOverflowPatch);
         stopExtras();
         FluxDispatcher.unsubscribe("CONNECTION_OPEN", onAccountSwitch); FluxDispatcher.unsubscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange); stopDomObserver();
         if (sharedSyncTimer) { clearInterval(sharedSyncTimer); sharedSyncTimer = null; }
