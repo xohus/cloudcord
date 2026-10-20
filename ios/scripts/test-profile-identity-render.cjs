@@ -54,6 +54,8 @@ assert.equal(presentationUser.isProvisional(), true);
 assert.equal(presentationUser.hasFlag(1), true);
 assert.equal(presentationUser.publicFlags, 8);
 assert.equal(nativeUser.username, 'original');
+const blackGradient = context.cloneSharedUser(user, { profileColorsEnabled: true, primaryColor: 0, accentColor: 0xffffff });
+assert.deepEqual(Array.from(blackGradient.themeColors), [0, 0xffffff], 'black is a valid synced color, not a missing value');
 assert(!page.includes('setOwnValue(cloned, "flags",'), 'Badge editing must not replace account-status flags');
 assert(!page.includes('setOwnValue(cloned, "hasFlag",'), 'Badge editing must not replace account-status methods');
 console.log('PASS: profile badge overrides preserve native account-status flags and methods.');

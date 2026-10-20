@@ -1397,7 +1397,7 @@ jobs:
               if (data.profileColorsEnabled === true) {
                   if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
                   if (data.accentColor != null) setOwnValue(cloned, "accentColor", Number(data.accentColor));
-                  if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor || data.accentColor), Number(data.accentColor || data.primaryColor)]);
+                  if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor ?? data.accentColor), Number(data.accentColor ?? data.primaryColor)]);
               }
               if (data.banner) { setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "bannerUrl", data.banner); setOwnValue(cloned, "getBannerURL", () => data.banner); }
               if (shouldReplaceSharedBadges(data)) {
@@ -1486,7 +1486,7 @@ jobs:
               if (data.profileColorsEnabled === true) {
                   if (data.accentColor != null) setOwnValue(cloned, "accentColor", data.accentColor);
                   if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", data.primaryColor);
-                  if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor || data.accentColor), Number(data.accentColor || data.primaryColor)]);
+                  if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor ?? data.accentColor), Number(data.accentColor ?? data.primaryColor)]);
               }
               setOwnValue(cloned, "userId", userId);
               return cloned;

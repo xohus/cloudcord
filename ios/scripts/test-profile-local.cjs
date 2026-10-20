@@ -66,6 +66,8 @@ const syncedMobile = mobileContext.decorateSharedProfile(mobileSnapshot, realUse
 assert.equal(syncedMobile.userProfile.user.username, 'desktop_name');
 assert.equal(syncedMobile.displayProfile.user.globalName, 'Desktop Name');
 assert.equal(mobileSnapshot.userProfile.user.username, 'real_name');
+const blackProfile = mobileContext.decorateSharedProfile({}, realUser.id, { profileColorsEnabled: true, primaryColor: 0, accentColor: 0xffffff });
+assert.deepEqual(Array.from(blackProfile.themeColors), [0, 0xffffff], 'nested shared profile gradients preserve a black endpoint');
 assert.doesNotMatch(page, /backgroundColor: "#111521"|preview\.primaryColor \|\| "#5865f2"/);
 assert.match(page, /showProfile\(\{ userId \}\)/);
 assert.match(page, /label="Preview my profile"/);
