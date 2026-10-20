@@ -10257,11 +10257,14 @@
                 alignItems: "center",
                 paddingVertical: 10,
                 borderRadius: 10,
-                backgroundColor: on ? tokens.colors.BACKGROUND_MODIFIER_SELECTED : "transparent"
+                backgroundColor: on ? "#5865F2" : "transparent"
               },
               children: /* @__PURE__ */ jsx(Text, {
-                variant: "text-sm/semibold",
-                color: on ? "text-normal" : "text-muted",
+                variant: on ? "text-sm/bold" : "text-sm/semibold",
+                color: on ? void 0 : "text-muted",
+                style: on ? {
+                  color: "#FFFFFF"
+                } : void 0,
                 children: label
               })
             }, tab);
@@ -13122,35 +13125,74 @@
       return Promise.resolve(collectiblesCatalog);
     if (collectiblesRequest)
       return collectiblesRequest;
-    var api = findByProps("getAPIBaseURL", "get");
-    var get = (url2) => _async_to_generator(function* () {
-      return (yield api.get({
-        url: url2,
-        oldFormErrors: true
-      }))?.body;
-    })();
-    var shopProducts = () => {
+    var withTimeout = (promise, ms) => new Promise((resolve, reject) => {
+      var timer = setTimeout(() => reject(new Error("Discord took too long to answer. Check your connection and try again.")), ms);
+      promise.then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      }, (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+    });
+    var store = () => {
       try {
-        var store = safeStore("CollectiblesCategoryStore");
-        return store?.products ? [
-          ...store.products.values()
+        return safeStore("CollectiblesCategoryStore");
+      } catch (e) {
+        return null;
+      }
+    };
+    var shopProducts = () => {
+      var products = store()?.products;
+      try {
+        return products ? [
+          ...products.values()
         ] : [];
       } catch (e) {
         return [];
       }
     };
-    collectiblesRequest = Promise.all([
-      shopProducts().length ? null : get("/collectibles-categories/v2").catch(() => get("/collectibles-categories")),
-      get("/user-profile-effects").catch(() => null)
-    ]).then(([categories, effects]) => {
+    var http = (() => {
+      for (var candidate of [
+        findByProps("getAPIBaseURL", "get"),
+        findByProps("HTTP")?.HTTP,
+        findByProps("get", "post", "put", "del")
+      ])
+        if (typeof candidate?.get === "function")
+          return candidate;
+      return null;
+    })();
+    var get = (url2) => _async_to_generator(function* () {
+      if (!http)
+        throw new Error("Discord's network helper isn't available in this version.");
+      return (yield http.get({
+        url: url2,
+        oldFormErrors: true
+      }))?.body;
+    })();
+    collectiblesRequest = withTimeout((() => _async_to_generator(function* () {
+      if (!shopProducts().length) {
+        try {
+          var fetcher = findByProps("fetchCollectiblesCategories");
+          yield withTimeout(Promise.resolve(fetcher?.fetchCollectiblesCategories?.({
+            includeBundles: true
+          })), 12e3);
+        } catch (e) {
+        }
+      }
+      var effects = yield get("/user-profile-effects").catch(() => null);
       var products = shopProducts();
+      var categories = null;
+      if (!products.length)
+        categories = yield get("/collectibles-categories/v2").catch(() => get("/collectibles-categories"));
+      products = shopProducts();
       var parsed = parseCatalog(products.length ? [
         {
           products
         }
       ] : categories, effects);
       if (!parsed.nameplates.length && !parsed.effects.length && !parsed.decorations.length && !parsed.frames.length)
-        throw new Error("Discord returned an empty catalog.");
+        throw new Error("Discord's shop didn't return any items. Open the Shop once, then try again.");
       collectiblesCatalog = parsed;
       identityRefreshers.forEach((refresh) => {
         try {
@@ -13159,7 +13201,7 @@
         }
       });
       return parsed;
-    }).finally(() => {
+    })())(), 25e3).finally(() => {
       collectiblesRequest = null;
     });
     return collectiblesRequest;
@@ -15275,6 +15317,7 @@
       }
     };
     var K2 = (init_ProfileEditorKit(), __toCommonJS(ProfileEditorKit_exports));
+    var [showPreview, setShowPreview] = (0, import_react7.useState)(false);
     var [catalog, setCatalog] = (0, import_react7.useState)(collectiblesCatalog);
     var [catalogStatus, setCatalogStatus] = (0, import_react7.useState)({
       loading: !collectiblesCatalog
@@ -15330,25 +15373,70 @@
           gap: 24
         },
         children: [
-          /* @__PURE__ */ jsx(Card2, {
-            children: /* @__PURE__ */ jsx(TableRow, {
-              arrow: true,
-              label: "Preview my profile",
-              subLabel: preview.enabled ? "Open your actual Discord profile with your current edits" : "Preview is off. Enable it below to see your edits.",
-              icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-                source: (init_assets(), __toCommonJS(assets_exports)).findAssetId("UserIcon")
+          /* @__PURE__ */ jsxs(Card2, {
+            children: [
+              /* @__PURE__ */ jsx(ToggleRow, {
+                label: "Use custom profile",
+                subLabel: preview.enabled ? "On: your edits show on this device" : "Off: you see your real profile",
+                value: preview.enabled,
+                onPress: () => update("enabled", !preview.enabled, true)
               }),
-              onPress: openPreview
-            })
+              /* @__PURE__ */ jsx(TableRow, {
+                arrow: true,
+                label: showPreview ? "Hide preview" : "Show preview",
+                subLabel: "A quick look at your edits",
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: (init_assets(), __toCommonJS(assets_exports)).findAssetId("EyeIcon") || (init_assets(), __toCommonJS(assets_exports)).findAssetId("UserIcon")
+                }),
+                onPress: () => setShowPreview(!showPreview)
+              }),
+              /* @__PURE__ */ jsx(TableRow, {
+                arrow: true,
+                label: "Open my real profile",
+                subLabel: "See it exactly as Discord shows it",
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: (init_assets(), __toCommonJS(assets_exports)).findAssetId("UserIcon")
+                }),
+                onPress: openPreview
+              })
+            ]
           }),
-          /* @__PURE__ */ jsx(Card2, {
-            children: /* @__PURE__ */ jsx(ToggleRow, {
-              label: "Use custom profile",
-              subLabel: preview.enabled ? "On: your edits show on this device" : "Off: you see your real profile",
-              value: preview.enabled,
-              onPress: () => update("enabled", !preview.enabled, true)
+          showPreview ? /* @__PURE__ */ jsx(Card2, {
+            children: /* @__PURE__ */ jsx(import_react_native20.View, {
+              style: {
+                padding: 16
+              },
+              children: /* @__PURE__ */ jsx(K2.PreviewCard, {
+                name: preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You",
+                username: preview.username || realCurrentUser?.username || "username",
+                pronouns: preview.pronouns,
+                avatar: preview.avatarMedia?.uri || (() => {
+                  try {
+                    return realCurrentUser?.getAvatarURL?.() || void 0;
+                  } catch (e) {
+                    return void 0;
+                  }
+                })(),
+                banner: preview.nitroEnabled ? preview.bannerMedia?.uri : void 0,
+                primary: preview.profileColorsEnabled ? preview.primaryColor : void 0,
+                accent: preview.profileColorsEnabled ? preview.accentColor : void 0,
+                decoration: preview.avatarDecoration || void 0,
+                nameplate: preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : void 0,
+                tagText: preview.serverTag?.tag,
+                tagIcon: preview.serverTag ? serverTagIconURL(preview.serverTag) || void 0 : void 0,
+                status: preview.customActivity?.type === 1 && preview.customActivity.url && streamURL(preview.customActivity.url) ? "streaming" : preview.presenceStatus || "online",
+                customStatus: preview.customStatus ? `${preview.customStatus.emoji || ""} ${preview.customStatus.text || ""}`.trim() : void 0,
+                activity: preview.customActivity ? {
+                  verb: ACTIVITY_TYPES.find((type) => type.value === preview.customActivity?.type)?.label || "",
+                  name: preview.customActivity.name,
+                  details: preview.customActivity.details
+                } : null,
+                bio: preview.bio,
+                frame: preview.profileFrame ? catalog?.frames.find((item) => item.skuId === preview.profileFrame?.skuId)?.label || "Selected" : void 0,
+                effect: preview.profileEffect ? catalog?.effects.find((item) => item.skuId === preview.profileEffect?.skuId)?.title || "Selected" : void 0
+              })
             })
-          }),
+          }) : null,
           /* @__PURE__ */ jsx(ProfileTabs2, {
             selected: activeTab,
             onSelect: setActiveTab
@@ -15432,48 +15520,6 @@
                 padding: 16
               },
               children: /* @__PURE__ */ jsx(CustomBadgeBeta2, {})
-            })
-          }) : null,
-          [
-            "profile",
-            "style",
-            "status",
-            "badges",
-            "dates"
-          ].includes(activeTab) ? /* @__PURE__ */ jsx(Card2, {
-            children: /* @__PURE__ */ jsx(import_react_native20.View, {
-              style: {
-                padding: 16
-              },
-              children: /* @__PURE__ */ jsx(K2.PreviewCard, {
-                name: preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You",
-                username: preview.username || realCurrentUser?.username || "username",
-                pronouns: preview.pronouns,
-                avatar: preview.avatarMedia?.uri || (() => {
-                  try {
-                    return realCurrentUser?.getAvatarURL?.() || void 0;
-                  } catch (e) {
-                    return void 0;
-                  }
-                })(),
-                banner: preview.nitroEnabled ? preview.bannerMedia?.uri : void 0,
-                primary: preview.profileColorsEnabled ? preview.primaryColor : void 0,
-                accent: preview.profileColorsEnabled ? preview.accentColor : void 0,
-                decoration: preview.avatarDecoration || void 0,
-                nameplate: preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : void 0,
-                tagText: preview.serverTag?.tag,
-                tagIcon: preview.serverTag ? serverTagIconURL(preview.serverTag) || void 0 : void 0,
-                status: preview.customActivity?.type === 1 && preview.customActivity.url && streamURL(preview.customActivity.url) ? "streaming" : preview.presenceStatus || "online",
-                customStatus: preview.customStatus ? `${preview.customStatus.emoji || ""} ${preview.customStatus.text || ""}`.trim() : void 0,
-                activity: preview.customActivity ? {
-                  verb: ACTIVITY_TYPES.find((type) => type.value === preview.customActivity?.type)?.label || "",
-                  name: preview.customActivity.name,
-                  details: preview.customActivity.details
-                } : null,
-                bio: preview.bio,
-                frame: preview.profileFrame ? catalog?.frames.find((item) => item.skuId === preview.profileFrame?.skuId)?.label || "Selected" : void 0,
-                effect: preview.profileEffect ? catalog?.effects.find((item) => item.skuId === preview.profileEffect?.skuId)?.title || "Selected" : void 0
-              })
             })
           }) : null,
           activeTab === "profile" ? /* @__PURE__ */ jsx(Card2, {
