@@ -10167,11 +10167,6 @@
       others: [
         "PeopleIcon",
         "UserIcon"
-      ],
-      extras: [
-        "GiftIcon",
-        "NitroWheelIcon",
-        "StarIcon"
       ]
     }[tab];
     for (var name of [
@@ -10284,7 +10279,7 @@
             /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
               label: moreOpen ? "Hide more options" : "More options",
-              subLabel: inMore && !moreOpen ? MORE_TABS.find(([tab]) => tab === selected)?.[1] : "Connections, dates, badges, Nitro & tools",
+              subLabel: inMore && !moreOpen ? MORE_TABS.find(([tab]) => tab === selected)?.[1] : "Connections, dates, custom badges, other profiles",
               icon: tabIcon("others"),
               onPress: () => setMoreOpen(!moreOpen)
             }),
@@ -10355,11 +10350,6 @@
           "others",
           "Other profiles",
           "Changes visible only on this device"
-        ],
-        [
-          "extras",
-          "Nitro & tools",
-          "Fake Nitro, fake gift link, leave servers, reset"
         ]
       ];
     }
@@ -12132,6 +12122,7 @@
   // src/core/ui/settings/pages/FakeProfile/index.tsx
   var FakeProfile_exports = {};
   __export(FakeProfile_exports, {
+    ExtrasPage: () => ExtrasPage,
     default: () => FakeProfile,
     initializeFakeProfile: () => initializeFakeProfile
   });
@@ -14728,6 +14719,184 @@
       });
     fakeRequestIds.clear();
   }
+  function boostFor(guildId) {
+    return guildId ? extrasState().boosts?.[guildId] : void 0;
+  }
+  function installBoostHooks() {
+    if (boostHooksInstalled)
+      return;
+    var guilds = findByStoreName("GuildStore");
+    var members = findByStoreName("GuildMemberStore");
+    if (!guilds || !members)
+      return;
+    boostHooksInstalled = true;
+    after("getGuild", guilds, (args, guild) => {
+      if (!guild || !boostFor(args[0])?.level)
+        return guild;
+      var overlay = guildOverlays.get(guild);
+      if (!overlay)
+        guildOverlays.set(guild, overlay = new Proxy(guild, {
+          get: (target, key) => key === "premiumTier" ? 3 : key === "premiumSubscriberCount" ? Math.max(14, target.premiumSubscriberCount ?? 0) : Reflect.get(target, key, target)
+        }));
+      return overlay;
+    });
+    after("getMember", members, (args, member) => {
+      var me = findByStoreName("UserStore")?.getCurrentUser?.()?.id;
+      if (!member || member.premiumSince || args[1] !== me || !boostFor(args[0])?.booster)
+        return member;
+      var overlay = memberOverlays.get(member);
+      if (!overlay)
+        memberOverlays.set(member, overlay = {
+          ...member,
+          premiumSince: new Date(Date.now() - 90 * 864e5).toISOString()
+        });
+      return overlay;
+    });
+  }
+  function sendFakeBoostMessage(times, reachedLevel) {
+    var channelId = findByStoreName("SelectedChannelStore")?.getChannelId?.();
+    var channel = channelId ? findByStoreName("ChannelStore")?.getChannel?.(channelId) : null;
+    var me = findByStoreName("UserStore")?.getCurrentUser?.();
+    if (!channel?.guild_id || !me) {
+      import_react_native20.Alert.alert("Fake boost", "Open a server text channel first, then come back.");
+      return;
+    }
+    var snowflake = findByProps("fromTimestamp", "extractTimestamp");
+    FluxDispatcher.dispatch({
+      type: "MESSAGE_CREATE",
+      channelId,
+      optimistic: false,
+      isPushNotification: false,
+      message: {
+        id: snowflake?.fromTimestamp?.(Date.now()) ?? String((Date.now() - 14200704e5) * 4194304),
+        type: reachedLevel > 0 ? 8 + reachedLevel : 8,
+        content: times > 1 ? String(times) : "",
+        channel_id: channelId,
+        guild_id: channel.guild_id,
+        timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+        edited_timestamp: null,
+        flags: 0,
+        author: {
+          id: me.id,
+          username: me.username,
+          global_name: me.globalName,
+          avatar: me.avatar,
+          discriminator: me.discriminator ?? "0",
+          public_flags: me.publicFlags ?? 0
+        },
+        attachments: [],
+        embeds: [],
+        mentions: [],
+        mention_roles: [],
+        mention_everyone: false,
+        pinned: false,
+        tts: false,
+        components: []
+      }
+    });
+    showToast("Fake boost message added to the channel.");
+  }
+  function BoostSection({ refresh }) {
+    var K2 = (init_ProfileEditorKit(), __toCommonJS(ProfileEditorKit_exports));
+    var [times, setTimes] = (0, import_react7.useState)(1);
+    var [reached, setReached] = (0, import_react7.useState)(0);
+    var guildId = findByStoreName("SelectedGuildStore")?.getGuildId?.();
+    var guild = guildId ? findByStoreName("GuildStore")?.getGuild?.(guildId) : null;
+    var fake = boostFor(guildId) ?? {};
+    var set = (patch) => {
+      if (!guildId)
+        return;
+      var state2 = extrasState();
+      setExtras({
+        ...state2,
+        boosts: {
+          ...state2.boosts,
+          [guildId]: {
+            ...fake,
+            ...patch
+          }
+        }
+      });
+      try {
+        findByStoreName("GuildStore")?.emitChange?.();
+        findByStoreName("GuildMemberStore")?.emitChange?.();
+      } catch (e) {
+      }
+      refresh();
+    };
+    return /* @__PURE__ */ jsx(K2.Section, {
+      title: "Fake boost",
+      description: guild ? "For " + guild.name + ". Only on this device." : "Open a server first, then come back here.",
+      children: guild ? /* @__PURE__ */ jsxs(Fragment, {
+        children: [
+          /* @__PURE__ */ jsx(K2.Field, {
+            label: "Boosts",
+            children: /* @__PURE__ */ jsx(K2.Chips, {
+              options: [
+                1,
+                2,
+                3,
+                5,
+                10
+              ].map((value) => ({
+                value,
+                label: value + "x"
+              })),
+              value: times,
+              onChange: (value) => setTimes(value)
+            })
+          }),
+          /* @__PURE__ */ jsx(K2.Field, {
+            label: "Message",
+            children: /* @__PURE__ */ jsx(K2.Chips, {
+              options: [
+                {
+                  value: 0,
+                  label: "Just boosted"
+                },
+                {
+                  value: 1,
+                  label: "Level 1"
+                },
+                {
+                  value: 2,
+                  label: "Level 2"
+                },
+                {
+                  value: 3,
+                  label: "Level 3"
+                }
+              ],
+              value: reached,
+              onChange: (value) => setReached(value)
+            })
+          }),
+          /* @__PURE__ */ jsx(Button, {
+            text: "Send fake boost message",
+            variant: "primary",
+            size: "sm",
+            onPress: () => sendFakeBoostMessage(times, reached)
+          }),
+          /* @__PURE__ */ jsx(ToggleRow, {
+            label: "Show this server as Level 3",
+            subLabel: "Perks look unlocked here. Real limits don't change",
+            value: fake.level === true,
+            onPress: () => set({
+              level: !fake.level
+            })
+          }),
+          /* @__PURE__ */ jsx(ToggleRow, {
+            label: "Show me as a booster here",
+            subLabel: "Boosting icon by your name in this server",
+            value: fake.booster === true,
+            onPress: () => set({
+              booster: !fake.booster
+            })
+          })
+        ]
+      }) : null
+    });
+  }
   function confirmLeaveAllServers() {
     var me = findByStoreName("UserStore")?.getCurrentUser?.()?.id;
     var guilds = Object.values(findByStoreName("GuildStore")?.getGuilds?.() ?? {}).filter((guild) => guild && guild.ownerId !== me);
@@ -14903,6 +15072,9 @@
             })
           ]
         }),
+        /* @__PURE__ */ jsx(BoostSection, {
+          refresh: force
+        }),
         /* @__PURE__ */ jsxs(K2.Section, {
           title: "Fake friend request",
           description: "Only you see it. Don't accept it: that sends them a real request.",
@@ -14973,6 +15145,27 @@
       ]
     });
   }
+  function ExtrasPage() {
+    return /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
+      contentContainerStyle: {
+        padding: 12,
+        paddingBottom: 48
+      },
+      children: /* @__PURE__ */ jsx(Card2, {
+        border: "strong",
+        children: /* @__PURE__ */ jsx(ExtrasCard, {
+          onReset: () => {
+            try {
+              bindSavedPreview();
+              clearCache();
+              refreshPreview();
+            } catch (e) {
+            }
+          }
+        })
+      })
+    });
+  }
   function initializeFakeProfile() {
     if (initPromise)
       return initPromise;
@@ -14987,6 +15180,7 @@
         ensurePatches();
         try {
           installGiftHook();
+          installBoostHooks();
           applyFakeNitro();
           FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro);
         } catch (e) {
@@ -15916,17 +16110,6 @@
                   }))
                 };
               })()
-            })
-          }) : null,
-          activeTab === "extras" ? /* @__PURE__ */ jsx(Card2, {
-            border: "strong",
-            children: /* @__PURE__ */ jsx(ExtrasCard, {
-              onReset: () => {
-                bindSavedPreview();
-                clearCache();
-                refreshPreview();
-                redraw();
-              }
             })
           }) : null,
           activeTab === "others" ? /* @__PURE__ */ jsx(Card2, {
@@ -16961,7 +17144,7 @@
       })
     });
   }
-  var import_react7, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_MONTHLY_SKU, NITRO_MONTHLY_PLAN, fakeRequestIds, giftHookInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_MONTHLY_SKU, NITRO_MONTHLY_PLAN, fakeRequestIds, giftHookInstalled, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -17693,6 +17876,9 @@
       NITRO_MONTHLY_PLAN = "511651880837840896";
       fakeRequestIds = /* @__PURE__ */ new Set();
       giftHookInstalled = false;
+      guildOverlays = /* @__PURE__ */ new WeakMap();
+      memberOverlays = /* @__PURE__ */ new WeakMap();
+      boostHooksInstalled = false;
       leavingServers = false;
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
@@ -25412,6 +25598,15 @@
               subLabel: "Choose and manage fonts",
               icon: icon("LettersIcon", "TextIcon", "SettingsIcon"),
               onPress: () => open("Fonts", () => (init_Fonts(), __toCommonJS(Fonts_exports)))
+            }),
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: "Extras",
+              subLabel: "Fake Nitro, gift links, boosts, friend requests and account tools",
+              icon: icon("GiftIcon", "NitroWheelIcon", "StarIcon", "SettingsIcon"),
+              onPress: () => open("Extras", () => ({
+                default: (init_FakeProfile(), __toCommonJS(FakeProfile_exports)).ExtrasPage
+              }))
             }),
             /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
