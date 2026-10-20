@@ -6170,6 +6170,7 @@
       spotify: "Spotify",
       x: "X",
       reddit: "Reddit",
+      domain: "Domain",
       other: "Other"
     };
     return names[service] || "Other";
@@ -6275,6 +6276,7 @@
       "spotify",
       "x",
       "reddit",
+      "domain",
       "other"
     ];
     if (Array.isArray(data?.customConnections))
@@ -6373,14 +6375,175 @@
     else if (data?.serverTag && typeof data.serverTag === "object") {
       var { tag, guildId, badge } = data.serverTag;
       if (typeof tag === "string" && Array.from(tag.trim()).length >= 1 && Array.from(tag.trim()).length <= 4 && typeof guildId === "string" && /^\d{15,22}$/.test(guildId) && typeof badge === "string" && (badge === "" || /^[a-f0-9]{32}$/.test(badge))) {
-        result.serverTag = {
+        var icon2 = serverTagCustomIcon(data.serverTag.icon);
+        result.serverTag = icon2 ? {
+          tag: tag.trim(),
+          guildId,
+          badge,
+          icon: icon2
+        } : {
           tag: tag.trim(),
           guildId,
           badge
         };
       }
     }
+    var text = (value, maximum) => typeof value === "string" ? Array.from(value.replace(/[\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/g, "").trim()).slice(0, maximum).join("") : "";
+    if (data?.nameplate === null)
+      result.nameplate = null;
+    else if (data?.nameplate && typeof data.nameplate === "object") {
+      var { skuId, asset, label, palette } = data.nameplate;
+      if (typeof skuId === "string" && SNOWFLAKE.test(skuId) && typeof asset === "string" && /^nameplates\/[A-Za-z0-9_\/-]{1,180}\/$/.test(asset) && !asset.includes("..")) {
+        result.nameplate = {
+          skuId,
+          asset,
+          label: text(label, 80),
+          palette: typeof palette === "string" && /^[a-z_]{1,30}$/.test(palette) ? palette : ""
+        };
+      }
+    }
+    if (data?.profileEffect === null)
+      result.profileEffect = null;
+    else if (typeof data?.profileEffect?.skuId === "string" && SNOWFLAKE.test(data.profileEffect.skuId))
+      result.profileEffect = {
+        skuId: data.profileEffect.skuId
+      };
+    if (data?.profileFrame === null)
+      result.profileFrame = null;
+    else if (typeof data?.profileFrame?.skuId === "string" && SNOWFLAKE.test(data.profileFrame.skuId))
+      result.profileFrame = {
+        skuId: data.profileFrame.skuId
+      };
+    if (data?.customActivity === null)
+      result.customActivity = null;
+    else if (data?.customActivity && typeof data.customActivity === "object") {
+      var activity = data.customActivity;
+      var name = text(activity.name, 128);
+      if (ACTIVITY_TYPES.some((type) => type.value === activity.type) && name) {
+        var url2 = activity.type === 1 ? streamURL(activity.url) : "";
+        result.customActivity = {
+          type: activity.type,
+          name,
+          details: text(activity.details, 128),
+          state: text(activity.state, 128),
+          ...url2 ? {
+            url: url2
+          } : {}
+        };
+      }
+    }
+    if (data?.customStatus === null)
+      result.customStatus = null;
+    else if (data?.customStatus && typeof data.customStatus === "object") {
+      var statusText = text(data.customStatus.text, 128);
+      var emoji = text(data.customStatus.emoji, 8);
+      var safeEmoji = emoji && !/[A-Za-z0-9<>:]/.test(emoji) ? emoji : "";
+      if (statusText || safeEmoji)
+        result.customStatus = {
+          text: statusText,
+          ...safeEmoji ? {
+            emoji: safeEmoji
+          } : {}
+        };
+    }
+    if (data?.presenceStatus === null)
+      result.presenceStatus = null;
+    else if (PRESENCE_STATUSES.includes(data?.presenceStatus))
+      result.presenceStatus = data.presenceStatus;
     return result;
+  }
+  function streamURL(value) {
+    var url2 = customPreviewURL(value);
+    if (!url2)
+      return "";
+    var parsed = new URL(url2);
+    var host = parsed.hostname.replace(/^(www|m)\./, "");
+    var live = parsed.pathname.match(/^\/live\/([\w-]{6,})/);
+    if (host === "youtu.be" && /^\/[\w-]{6,}$/.test(parsed.pathname))
+      url2 = `https://www.youtube.com/watch?v=${parsed.pathname.slice(1)}`;
+    else if (host === "youtube.com" && live)
+      url2 = `https://www.youtube.com/watch?v=${live[1]}`;
+    return DISCORD_STREAM_URL.test(url2) ? url2 : "";
+  }
+  function serverTagCustomIcon(value) {
+    if (typeof value !== "string" || !value || value.length > TAG_ICON_MAX_LENGTH)
+      return "";
+    if (TAG_ICON_DATA.test(value))
+      return value;
+    var url2 = customPreviewURL(value);
+    if (!url2)
+      return "";
+    var host = new URL(url2).hostname;
+    return host === "cdn.discordapp.com" || host === "media.discordapp.net" || host === "getcloudcord.com" ? url2 : "";
+  }
+  function serverTagIconKey(icon2) {
+    var h1 = 2166136261, h2 = 16777619, h3 = 2654435769, h4 = 2246822507;
+    for (var index = 0; index < icon2.length; index++) {
+      var code = icon2.charCodeAt(index);
+      h1 = Math.imul(h1 ^ code, 16777619);
+      h2 = Math.imul(h2 ^ code, 2246822507);
+      h3 = Math.imul(h3 ^ code, 3266489909);
+      h4 = Math.imul(h4 ^ code, 668265263);
+    }
+    return "cc" + [
+      h1,
+      h2,
+      h3,
+      h4
+    ].map((value) => (value >>> 0).toString(16).padStart(8, "0")).join("").slice(0, 30);
+  }
+  function nativeActivities(data) {
+    var appearance = normalizeProfileAppearance(data);
+    var activities = [];
+    if (appearance.customStatus) {
+      var { text: state2, emoji } = appearance.customStatus;
+      activities.push({
+        type: 4,
+        name: "Custom Status",
+        state: state2 || null,
+        emoji: emoji ? {
+          name: emoji,
+          id: null,
+          animated: false
+        } : null,
+        id: "custom",
+        created_at: 0,
+        cloudcordCustom: true
+      });
+    }
+    if (appearance.customActivity) {
+      var activity = appearance.customActivity;
+      activities.push({
+        type: activity.type,
+        name: activity.name,
+        details: activity.details || void 0,
+        state: activity.state || void 0,
+        url: activity.type === 1 ? activity.url : void 0,
+        id: "cloudcord-activity",
+        created_at: 0,
+        flags: 0,
+        cloudcordCustom: true
+      });
+    }
+    return activities;
+  }
+  function nativeCollectibles(existing, data) {
+    var { nameplate } = normalizeProfileAppearance(data);
+    if (nameplate === void 0)
+      return existing;
+    var base = existing && typeof existing === "object" ? {
+      ...existing
+    } : {};
+    base.nameplate = nameplate ? {
+      skuId: nameplate.skuId,
+      sku_id: nameplate.skuId,
+      asset: nameplate.asset,
+      label: nameplate.label || "",
+      palette: nameplate.palette || "",
+      expiresAt: null,
+      expires_at: null
+    } : null;
+    return base;
   }
   function nativeSocialProfile(profile, data) {
     var { customConnections } = normalizeCustomSocial(data);
@@ -6391,10 +6554,11 @@
       ...entry2
     }));
     for (var entry of customConnections) {
+      var domain = entry.service === "domain" ? connectionDomain(entry) : "";
       accounts.push({
-        id: entry.accountId || `cloudcord:${entry.id}`,
-        type: entry.service === "x" ? "twitter" : entry.service === "other" ? "domain" : entry.service,
-        name: entry.displayName || entry.username || entry.accountId,
+        id: domain || entry.accountId || `cloudcord:${entry.id}`,
+        type: entry.service === "x" ? "twitter" : entry.service === "other" || entry.service === "domain" ? "domain" : entry.service,
+        name: domain || entry.displayName || entry.username || entry.accountId,
         verified: false,
         visibility: 1,
         show_activity: false,
@@ -6421,11 +6585,16 @@
     }
     if (appearance.serverTag !== void 0) {
       var tag = appearance.serverTag;
+      var badge = tag?.badge || null;
+      if (tag?.icon) {
+        badge = serverTagIconKey(tag.icon);
+        customTagIcons.set(badge, tag.icon);
+      }
       result.primaryGuild = tag ? {
         identityEnabled: true,
         identityGuildId: tag.guildId,
         tag: tag.tag,
-        badge: tag.badge || null,
+        badge,
         identity_enabled: true,
         identity_guild_id: tag.guildId
       } : null;
@@ -6433,14 +6602,178 @@
     }
     return result;
   }
-  var textField;
+  function firstImage(...values) {
+    var seen = /* @__PURE__ */ new Set();
+    var visit = (value2, depth) => {
+      if (depth > 4 || value2 == null || seen.has(value2))
+        return "";
+      if (typeof value2 === "string")
+        return /^https:\/\/[^\s"]+\.(?:png|webp|jpe?g|gif)(?:\?[^\s"]*)?$/i.test(value2) ? value2 : "";
+      if (typeof value2 !== "object")
+        return "";
+      seen.add(value2);
+      for (var item of Array.isArray(value2) ? value2 : Object.values(value2)) {
+        var found2 = visit(item, depth + 1);
+        if (found2)
+          return found2;
+      }
+      return "";
+    };
+    for (var value of values) {
+      var found = visit(value, 0);
+      if (found)
+        return found;
+    }
+    return "";
+  }
+  function nameplateAssetURL(asset, animated = false) {
+    return `https://cdn.discordapp.com/assets/collectibles/${asset}${animated ? "asset.webm" : "static.png"}`;
+  }
+  function parseCatalog(categoriesBody, effectsBody) {
+    var categories = Array.isArray(categoriesBody) ? categoriesBody : Array.isArray(categoriesBody?.categories) ? categoriesBody.categories : [];
+    var configs = /* @__PURE__ */ new Map();
+    for (var config of camel(effectsBody?.profile_effect_configs ?? effectsBody?.profileEffectConfigs ?? (Array.isArray(effectsBody) ? effectsBody : []))) {
+      if (config?.skuId)
+        configs.set(String(config.skuId), config);
+    }
+    var decorations = /* @__PURE__ */ new Map(), nameplates = /* @__PURE__ */ new Map(), effects = /* @__PURE__ */ new Map(), frames = /* @__PURE__ */ new Map();
+    for (var category of categories) {
+      for (var product of category?.products || []) {
+        for (var item of product?.items || []) {
+          var skuId = String(item?.sku_id || item?.skuId || product?.sku_id || product?.skuId || "");
+          if (!/^\d{15,22}$/.test(skuId))
+            continue;
+          var label = String(item?.label || product?.name || "").slice(0, 80);
+          if (item.type === ITEM_DECORATION && typeof item.asset === "string") {
+            decorations.set(item.asset, {
+              id: item.asset,
+              skuId,
+              label,
+              url: `https://cdn.discordapp.com/avatar-decoration-presets/${item.asset}.png?size=160&passthrough=true`
+            });
+          } else if (item.type === ITEM_NAMEPLATE && typeof item.asset === "string") {
+            nameplates.set(skuId, {
+              skuId,
+              asset: item.asset,
+              label,
+              palette: String(item.palette || "")
+            });
+          } else if (item.type === ITEM_FRAME) {
+            var layers = Array.isArray(item.layers) ? item.layers : [];
+            var layer = layers.find((entry) => entry?.anchor === "top") || layers[0];
+            var layerArt = layer?.id ? `https://cdn.discordapp.com/media/v1/collectibles-shop/${skuId}/${encodeURIComponent(String(layer.id))}/static` : "";
+            frames.set(skuId, {
+              skuId,
+              label: String(product?.name || item?.label || "Profile frame").slice(0, 80),
+              preview: layerArt || firstImage(item, product)
+            });
+          } else if (item.type === ITEM_EFFECT) {
+            var config1 = configs.get(skuId) || camel(item);
+            effects.set(skuId, {
+              skuId,
+              title: String(config1?.title || label),
+              preview: config1?.thumbnailPreviewSrc || config1?.staticFrameSrc || "",
+              config: {
+                ...config1,
+                skuId
+              }
+            });
+          }
+        }
+      }
+    }
+    for (var [skuId1, config2] of configs)
+      if (!effects.has(skuId1))
+        effects.set(skuId1, {
+          skuId: skuId1,
+          title: String(config2.title || "Profile effect"),
+          preview: config2.thumbnailPreviewSrc || config2.staticFrameSrc || "",
+          config: config2
+        });
+    var byLabel = (items) => items.sort((a, b3) => String(a.label ?? a.title).localeCompare(String(b3.label ?? b3.title)));
+    return {
+      decorations: byLabel([
+        ...decorations.values()
+      ]),
+      nameplates: byLabel([
+        ...nameplates.values()
+      ]),
+      effects: byLabel([
+        ...effects.values()
+      ]),
+      frames: byLabel([
+        ...frames.values()
+      ])
+    };
+  }
+  function connectionDomain(entry) {
+    for (var value of [
+      entry.url,
+      entry.accountId,
+      entry.username,
+      entry.displayName
+    ]) {
+      var text = typeof value === "string" ? value.trim().toLowerCase() : "";
+      if (!text)
+        continue;
+      try {
+        var host = new URL(/^https?:\/\//.test(text) ? text : `https://${text}`).hostname.replace(/^www\./, "");
+        if (/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host))
+          return host;
+      } catch (e) {
+      }
+    }
+    return "";
+  }
+  var ACTIVITY_TYPES, PRESENCE_STATUSES, SNOWFLAKE, TAG_ICON_DATA, TAG_ICON_MAX_LENGTH, textField, DISCORD_STREAM_URL, customTagIcons, ITEM_DECORATION, ITEM_EFFECT, ITEM_NAMEPLATE, ITEM_FRAME, camel;
   var init_profileAppearance = __esm({
     "src/lib/api/profileAppearance.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_async_to_generator();
+      ACTIVITY_TYPES = [
+        {
+          value: 0,
+          label: "Playing"
+        },
+        {
+          value: 1,
+          label: "Streaming"
+        },
+        {
+          value: 2,
+          label: "Listening to"
+        },
+        {
+          value: 3,
+          label: "Watching"
+        },
+        {
+          value: 5,
+          label: "Competing in"
+        }
+      ];
+      PRESENCE_STATUSES = [
+        "online",
+        "idle",
+        "dnd",
+        "invisible"
+      ];
+      SNOWFLAKE = /^\d{15,22}$/;
+      TAG_ICON_DATA = /^data:image\/(?:png|webp|gif|jpeg);base64,[A-Za-z0-9+/]+={0,2}$/;
+      TAG_ICON_MAX_LENGTH = 7e4;
       textField = (value, maximum) => typeof value === "string" ? value.trim().slice(0, maximum) : "";
+      DISCORD_STREAM_URL = /^https?:\/\/(?:www\.)?(twitch\.tv\/(.+)|youtube.com\/watch\?v=)/;
+      customTagIcons = /* @__PURE__ */ new Map();
+      ITEM_DECORATION = 0;
+      ITEM_EFFECT = 1;
+      ITEM_NAMEPLATE = 2;
+      ITEM_FRAME = 3;
+      camel = (value) => Array.isArray(value) ? value.map(camel) : value && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([key, item]) => [
+        key.replace(/_([a-z])/g, (_2, char) => char.toUpperCase()),
+        camel(item)
+      ])) : value;
     }
   });
 
@@ -9806,9 +10139,22 @@
       profile: [
         "UserIcon"
       ],
-      social: [
-        "PeopleIcon",
+      name: [
+        "PencilIcon",
         "UserIcon"
+      ],
+      cosmetics: [
+        "SparklesIcon",
+        "StarIcon"
+      ],
+      status: [
+        "CircleIcon",
+        "StatusIcon",
+        "UserIcon"
+      ],
+      social: [
+        "LinkIcon",
+        "PeopleIcon"
       ],
       badges: [
         "StarIcon"
@@ -9883,13 +10229,7 @@
   function ProfileTabs({ selected, onSelect }) {
     return /* @__PURE__ */ jsx(import_react_native15.View, {
       children: /* @__PURE__ */ jsx(TableRowGroup, {
-        children: [
-          "profile",
-          "social",
-          "badges",
-          "custom",
-          "others"
-        ].map((tab) => /* @__PURE__ */ jsx(import_react_native15.View, {
+        children: TAB_ORDER.map((tab) => /* @__PURE__ */ jsx(import_react_native15.View, {
           style: {
             borderRadius: 12,
             overflow: "hidden",
@@ -9899,16 +10239,22 @@
           },
           children: /* @__PURE__ */ jsx(TableRow, {
             label: {
-              profile: "My profile",
-              social: "Friends & connections",
+              profile: "Profile",
+              name: "Name & tag",
+              cosmetics: "Cosmetics",
+              status: "Status",
               badges: "Badges",
+              social: "Connections",
               custom: "Custom badges \xB7 beta",
               others: "Other profiles"
             }[tab],
             subLabel: {
-              profile: "Name, pictures, bio and profile appearance",
-              social: "Edit shared friends and linked account previews",
-              badges: "Choose which badges appear on your profile",
+              profile: "Pictures, bio, colors and dates",
+              name: "Names, name style and server tag",
+              cosmetics: "Decorations, frames, effects and nameplates",
+              status: "Status, custom status and activity",
+              badges: "Choose and arrange your badges",
+              social: "Accounts and domains on your profile",
               custom: "Upload a badge name and PNG",
               others: "Changes visible only on this device"
             }[tab],
@@ -9919,7 +10265,7 @@
       })
     });
   }
-  var import_react3, import_react_native15;
+  var import_react3, import_react_native15, TAB_ORDER;
   var init_FakeProfileGlass = __esm({
     "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
       "use strict";
@@ -9931,6 +10277,16 @@
       init_components();
       init_assets();
       init_common();
+      TAB_ORDER = [
+        "profile",
+        "name",
+        "cosmetics",
+        "status",
+        "badges",
+        "social",
+        "custom",
+        "others"
+      ];
     }
   });
 
@@ -10650,6 +11006,7 @@
                         "spotify",
                         "x",
                         "reddit",
+                        "domain",
                         "other"
                       ].map((service) => /* @__PURE__ */ jsx(TableRow, {
                         label: customConnectionServiceName(service),
@@ -11573,7 +11930,9 @@
     if (!force)
       sharedProfileSeenAt.set(id, Date.now());
     var fetchedAt = sharedProfileFetchedAt.get(id) || 0;
-    if (import_react_native19.AppState.currentState !== "active" || !/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || Date.now() - fetchedAt < 3e4 || sharedRequests.size >= 4)
+    var cached = sharedProfiles.get(id);
+    var ttl = cached && !Object.keys(cached).length ? 15 * 6e4 : force ? 3e4 : 2 * 6e4;
+    if (import_react_native19.AppState.currentState !== "active" || !/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || Date.now() - fetchedAt < ttl || sharedRequests.size >= 4)
       return;
     sharedRequests.add(id);
     sharedProfileFetchedAt.set(id, Date.now());
@@ -11692,8 +12051,20 @@
       });
     }
   }
+  function isPrivateProfile(id) {
+    if (checkingPrivacy)
+      return false;
+    checkingPrivacy = true;
+    try {
+      return safeStore("UserProfileStore")?.getUserProfile?.(id)?.private === true;
+    } catch (e) {
+      return false;
+    } finally {
+      checkingPrivacy = false;
+    }
+  }
   function getProfileOverride(id) {
-    if (isRealProfileView(id))
+    if (isRealProfileView(id) || isPrivateProfile(id))
       return void 0;
     var local = settings.cloudcordLocalProfiles?.[id];
     var shared = sharedProfiles.get(id);
@@ -11761,6 +12132,7 @@
         asset: decorationAsset(data.avatarDecoration),
         skuId: data.avatarDecorationSku || "cloudcord-decoration"
       });
+    applyCollectibles(cloned, data);
     if (data.profileColorsEnabled === true) {
       if (data.primaryColor != null)
         setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
@@ -11986,6 +12358,83 @@
     setOwnValue(target, "avatarDecorationData", decoration);
     setOwnValue(target, "avatar_decoration_data", decoration);
   }
+  function loadCollectiblesCatalog(force = false) {
+    if (collectiblesCatalog && !force)
+      return Promise.resolve(collectiblesCatalog);
+    if (collectiblesRequest)
+      return collectiblesRequest;
+    var api = findByProps("getAPIBaseURL", "get");
+    var get = (url2) => _async_to_generator(function* () {
+      return (yield api.get({
+        url: url2,
+        oldFormErrors: true
+      }))?.body;
+    })();
+    var shopProducts = () => {
+      try {
+        var store = safeStore("CollectiblesCategoryStore");
+        return store?.products ? [
+          ...store.products.values()
+        ] : [];
+      } catch (e) {
+        return [];
+      }
+    };
+    collectiblesRequest = Promise.all([
+      shopProducts().length ? null : get("/collectibles-categories/v2").catch(() => get("/collectibles-categories")),
+      get("/user-profile-effects").catch(() => null)
+    ]).then(([categories, effects]) => {
+      var products = shopProducts();
+      var parsed = parseCatalog(products.length ? [
+        {
+          products
+        }
+      ] : categories, effects);
+      if (!parsed.nameplates.length && !parsed.effects.length && !parsed.decorations.length && !parsed.frames.length)
+        throw new Error("Discord returned an empty catalog.");
+      collectiblesCatalog = parsed;
+      identityRefreshers.forEach((refresh) => {
+        try {
+          refresh();
+        } catch (e) {
+        }
+      });
+      return parsed;
+    }).finally(() => {
+      collectiblesRequest = null;
+    });
+    return collectiblesRequest;
+  }
+  function profileEffectObject(data) {
+    var skuId = normalizeProfileAppearance(data).profileEffect?.skuId;
+    if (!skuId)
+      return null;
+    if (!collectiblesCatalog)
+      void loadCollectiblesCatalog().catch(() => {
+      });
+    var known = collectiblesCatalog?.effects.find((effect) => effect.skuId === skuId);
+    return {
+      ...known?.config || {},
+      skuId,
+      expiresAt: null
+    };
+  }
+  function applyCollectibles(target, data) {
+    var appearance = normalizeProfileAppearance(data);
+    if (appearance.nameplate !== void 0)
+      setOwnValue(target, "collectibles", nativeCollectibles(target.collectibles, data));
+    if (appearance.profileEffect !== void 0) {
+      var effect = profileEffectObject(data);
+      setOwnValue(target, "profileEffect", effect);
+      setOwnValue(target, "profileEffectId", effect?.skuId ?? null);
+    }
+    if (appearance.profileFrame !== void 0)
+      setOwnValue(target, "profileFrame", appearance.profileFrame ? {
+        skuId: appearance.profileFrame.skuId,
+        type: 3,
+        expiresAt: void 0
+      } : void 0);
+  }
   function findDecorationCatalog() {
     return _async_to_generator(function* () {
       var roots = [];
@@ -12208,6 +12657,8 @@
       }
     };
     var result = [];
+    if (!forEditor && rootSettings.fakeProfileLocalOnly && preview.hideBadgesWhenSyncOff)
+      return Array.isArray(existing) ? existing : result;
     if (preview.nitroEnabled) {
       var icon2 = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
       result.push({
@@ -12359,6 +12810,7 @@
       asset: decorationAsset(preview.avatarDecoration),
       skuId: preview.avatarDecorationSku || "cloudcord-decoration"
     } : null);
+    applyCollectibles(cloned, preview);
     if (primaryColor != null)
       setOwnValue(cloned, "primaryColor", primaryColor);
     if (accentColor != null)
@@ -13139,6 +13591,36 @@
         return native.primaryGuild === void 0 ? result : native.primaryGuild;
       });
     }
+    var presenceStore = safeStore("PresenceStore");
+    var presenceData = (id) => {
+      if (!id)
+        return null;
+      if (!isCurrentUser(id))
+        requestSharedProfile(id);
+      return isCurrentUser(id) ? preview.enabled ? preview : null : getProfileOverride(id);
+    };
+    addPatch("getActivities", presenceStore, (args, original) => {
+      var real = original(...args);
+      var custom = nativeActivities(presenceData(String(args[0] || "")));
+      if (!custom.length)
+        return real;
+      var hasStatus = custom.some((activity) => activity.type === 4);
+      return [
+        ...custom,
+        ...(Array.isArray(real) ? real : []).filter((activity) => !activity?.cloudcordCustom && !(hasStatus && activity?.type === 4))
+      ];
+    });
+    addPatch("getPrimaryActivity", presenceStore, (args, original) => {
+      var custom = nativeActivities(presenceData(String(args[0] || ""))).find((activity) => activity.type !== 4);
+      return custom || original(...args);
+    });
+    addPatch("getStatus", presenceStore, (args, original) => {
+      var real = original(...args);
+      var wanted = normalizeProfileAppearance(presenceData(String(args[0] || "")) || {}).presenceStatus;
+      if (!wanted || real === "offline")
+        return real;
+      return wanted === "invisible" ? "offline" : wanted;
+    });
     var userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
     diagnostics.userStore = !!userStore;
     try {
@@ -13804,6 +14286,83 @@
       })
     });
   }
+  function CollectibleGallery({ kind, selected, onSelect }) {
+    var [catalog, setCatalog] = (0, import_react6.useState)(collectiblesCatalog);
+    var [error, setError] = (0, import_react6.useState)("");
+    var [query, setQuery] = (0, import_react6.useState)("");
+    var load = (force = false) => {
+      setError("");
+      loadCollectiblesCatalog(force).then(setCatalog, (problem) => setError(problem?.message || "Couldn't load Discord's catalog."));
+    };
+    (0, import_react6.useEffect)(() => {
+      if (!catalog)
+        load();
+    }, []);
+    var items = (catalog?.[kind] || []).filter((item) => String(item.label || item.title || "").toLowerCase().includes(query.toLowerCase()));
+    return /* @__PURE__ */ jsx(import_react_native19.FlatList, {
+      data: items,
+      keyExtractor: (item) => item.skuId,
+      initialNumToRender: 12,
+      maxToRenderPerBatch: 12,
+      windowSize: 5,
+      contentContainerStyle: {
+        padding: 12,
+        paddingBottom: 48
+      },
+      ListHeaderComponent: /* @__PURE__ */ jsx(TextInput3, {
+        value: query,
+        placeholder: kind === "nameplates" ? "Search nameplates" : kind === "frames" ? "Search profile frames" : "Search profile effects",
+        placeholderTextColor: "#777",
+        autoCorrect: false,
+        onChangeText: setQuery,
+        style: {
+          color: "#fff",
+          backgroundColor: "#1e1f22",
+          borderRadius: 9,
+          padding: 12,
+          marginBottom: 8
+        }
+      }),
+      renderItem: ({ item }) => /* @__PURE__ */ jsx(TableRow, {
+        arrow: true,
+        label: item.label || item.title,
+        subLabel: item.skuId === selected ? "Selected" : void 0,
+        icon: /* @__PURE__ */ jsx(import_react_native19.Image, {
+          source: {
+            uri: kind === "nameplates" ? nameplateAssetURL(item.asset) : item.preview
+          },
+          style: kind === "nameplates" ? {
+            width: 64,
+            height: 22,
+            borderRadius: 4
+          } : {
+            width: 32,
+            height: 32,
+            borderRadius: 6
+          },
+          resizeMode: "cover"
+        }),
+        onPress: () => onSelect(item)
+      }),
+      ListEmptyComponent: /* @__PURE__ */ jsxs(import_react_native19.View, {
+        style: {
+          padding: 16,
+          gap: 8
+        },
+        children: [
+          /* @__PURE__ */ jsx(Text, {
+            variant: "text-sm/medium",
+            color: "text-muted",
+            children: error || (catalog ? "Nothing matches your search." : "Loading Discord's catalog\u2026")
+          }),
+          error ? /* @__PURE__ */ jsx(Button, {
+            text: "Retry",
+            onPress: () => load(true)
+          }) : null
+        ]
+      })
+    });
+  }
   function FakeProfile() {
     var [activeTab, setActiveTab] = (0, import_react6.useState)("profile");
     var [showDetails, setShowDetails] = (0, import_react6.useState)(false);
@@ -14217,16 +14776,210 @@
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native19.View, {
               style: {
-                padding: 14,
-                gap: 14
+                padding: 16,
+                gap: 16
               },
               children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-md/semibold",
+                  color: "text-normal",
+                  children: "Pictures"
+                }),
+                /* @__PURE__ */ jsx(MediaEditor, {
+                  label: "Profile picture",
+                  field: "avatarMedia"
+                }),
+                /* @__PURE__ */ jsx(MediaEditor, {
+                  label: "Banner",
+                  field: "bannerMedia",
+                  banner: true
+                }),
                 /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "preview on this device",
-                  subLabel: "try your changes here before syncing",
-                  value: preview.enabled,
-                  accent: true,
-                  onPress: () => update("enabled", !preview.enabled, true)
+                  label: "Simulate Nitro",
+                  subLabel: "Enables the Nitro badge, banner, and profile colors",
+                  value: preview.nitroEnabled,
+                  onPress: () => update("nitroEnabled", !preview.nitroEnabled, true)
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-md/semibold",
+                  color: "text-normal",
+                  children: "About you"
+                }),
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  style: {
+                    gap: 8
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "About You"
+                    }),
+                    /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: preview.bio,
+                      placeholder: "My description...",
+                      placeholderTextColor: "#777",
+                      multiline: true,
+                      onChangeText: (value) => update("bio", value, true),
+                      style: {
+                        minHeight: 88,
+                        color: "#fff",
+                        backgroundColor: "#1e1f22",
+                        borderRadius: 9,
+                        padding: 12,
+                        textAlignVertical: "top"
+                      }
+                    })
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  style: {
+                    gap: 8
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "Pronouns"
+                    }),
+                    /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: preview.pronouns,
+                      placeholder: "he/him",
+                      placeholderTextColor: "#777",
+                      onChangeText: (value) => update("pronouns", value, true),
+                      style: {
+                        color: "#fff",
+                        backgroundColor: "#1e1f22",
+                        borderRadius: 9,
+                        padding: 12
+                      }
+                    })
+                  ]
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-md/semibold",
+                  color: "text-normal",
+                  children: "Profile colors"
+                }),
+                /* @__PURE__ */ jsx(ToggleRow, {
+                  label: "Use custom profile colors",
+                  subLabel: "Turn off to use Discord's normal profile colors",
+                  value: preview.profileColorsEnabled,
+                  onPress: () => update("profileColorsEnabled", !preview.profileColorsEnabled, true)
+                }),
+                preview.profileColorsEnabled ? /* @__PURE__ */ jsxs(Fragment, {
+                  children: [
+                    /* @__PURE__ */ jsx(ColorPickerRow, {
+                      label: "Primary profile color",
+                      value: preview.primaryColor,
+                      onSelect: (value) => update("primaryColor", value, true),
+                      onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                        title: "Primary Color",
+                        render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
+                          title: "Primary profile color",
+                          initialColor: preview.primaryColor,
+                          onApply: (color2) => {
+                            update("primaryColor", color2, true);
+                            navigation2.goBack();
+                          }
+                        })
+                      })
+                    }),
+                    /* @__PURE__ */ jsx(ColorPickerRow, {
+                      label: "Accent profile color",
+                      value: preview.accentColor,
+                      onSelect: (value) => update("accentColor", value, true),
+                      onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                        title: "Accent Color",
+                        render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
+                          title: "Accent profile color",
+                          initialColor: preview.accentColor,
+                          onApply: (color2) => {
+                            update("accentColor", color2, true);
+                            navigation2.goBack();
+                          }
+                        })
+                      })
+                    })
+                  ]
+                }) : null,
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-md/semibold",
+                  color: "text-normal",
+                  children: "Dates"
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-muted",
+                  children: "Leave empty to use your real dates."
+                }),
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  style: {
+                    gap: 8
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "Account creation date"
+                    }),
+                    /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: preview.createdAt,
+                      placeholder: "2010-06-29",
+                      placeholderTextColor: "#777",
+                      autoCapitalize: "none",
+                      autoCorrect: false,
+                      onChangeText: (value) => update("createdAt", value, true),
+                      style: {
+                        color: "#fff",
+                        backgroundColor: "#1e1f22",
+                        borderRadius: 9,
+                        padding: 12
+                      }
+                    })
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  style: {
+                    gap: 8
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "Joined since date"
+                    }),
+                    /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: preview.signupDate,
+                      placeholder: "2010-06-29",
+                      placeholderTextColor: "#777",
+                      autoCapitalize: "none",
+                      autoCorrect: false,
+                      onChangeText: (value) => update("signupDate", value, true),
+                      style: {
+                        color: "#fff",
+                        backgroundColor: "#1e1f22",
+                        borderRadius: 9,
+                        padding: 12
+                      }
+                    })
+                  ]
+                })
+              ]
+            })
+          }) : null,
+          activeTab === "name" ? /* @__PURE__ */ jsx(Card2, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+              style: {
+                padding: 16,
+                gap: 16
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-md/semibold",
+                  color: "text-normal",
+                  children: "Names"
                 }),
                 /* @__PURE__ */ jsxs(import_react_native19.View, {
                   style: {
@@ -14441,125 +15194,29 @@
                       variant: "text-xs/normal",
                       color: "text-muted",
                       children: "Appearance only. Your server membership stays unchanged."
-                    }),
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "About You"
-                    }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.bio,
-                      placeholder: "My description...",
-                      placeholderTextColor: "#777",
-                      multiline: true,
-                      onChangeText: (value) => update("bio", value, true),
-                      style: {
-                        minHeight: 88,
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12,
-                        textAlignVertical: "top"
-                      }
                     })
                   ]
+                })
+              ]
+            })
+          }) : null,
+          activeTab === "cosmetics" ? /* @__PURE__ */ jsx(Card2, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+              style: {
+                padding: 16,
+                gap: 16
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-md/semibold",
+                  color: "text-normal",
+                  children: "Cosmetics"
                 }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Pronouns"
-                    }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.pronouns,
-                      placeholder: "he/him",
-                      placeholderTextColor: "#777",
-                      onChangeText: (value) => update("pronouns", value, true),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
-                  ]
-                }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Account creation date"
-                    }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.createdAt,
-                      placeholder: "2010-06-29",
-                      placeholderTextColor: "#777",
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("createdAt", value, true),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
-                  ]
-                }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Joined since date"
-                    }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.signupDate,
-                      placeholder: "2010-06-29",
-                      placeholderTextColor: "#777",
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("signupDate", value, true),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
-                  ]
-                }),
-                /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "Simulate Nitro",
-                  subLabel: "Enables the Nitro badge, banner, and profile colors",
-                  value: preview.nitroEnabled,
-                  onPress: () => update("nitroEnabled", !preview.nitroEnabled, true)
-                }),
-                preview.nitroEnabled ? /* @__PURE__ */ jsx(DurationSelect, {
-                  label: "Nitro badge",
-                  value: preview.nitroMonths,
-                  onPress: () => chooseDuration("nitroMonths", "Choose Nitro badge", NITRO_DURATIONS)
-                }) : null,
-                /* @__PURE__ */ jsx(DurationSelect, {
-                  label: "Gifting badge",
-                  value: preview.giftLevel,
-                  onPress: chooseGiftBadge
-                }),
-                /* @__PURE__ */ jsx(DurationSelect, {
-                  label: "Server booster duration",
-                  value: preview.boostMonths,
-                  onPress: () => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-muted",
+                  children: "Avatar decorations, profile frames, profile effects and nameplates from Discord's shop."
                 }),
                 /* @__PURE__ */ jsx(ActionButton, {
                   label: "Browse Discord decorations",
@@ -14608,56 +15265,319 @@
                     update("avatarDecorationSku", "", true);
                   }
                 }) : null,
-                /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "Use custom profile colors",
-                  subLabel: "Turn off to use Discord's normal profile colors",
-                  value: preview.profileColorsEnabled,
-                  onPress: () => update("profileColorsEnabled", !preview.profileColorsEnabled, true)
+                /* @__PURE__ */ jsx(ActionButton, {
+                  label: preview.nameplate ? `Nameplate: ${preview.nameplate.label || "Selected"}` : "Browse nameplates",
+                  onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                    title: "Nameplates",
+                    render: () => /* @__PURE__ */ jsx(CollectibleGallery, {
+                      kind: "nameplates",
+                      selected: preview.nameplate?.skuId,
+                      onSelect: (item) => {
+                        update("nameplate", {
+                          skuId: item.skuId,
+                          asset: item.asset,
+                          label: item.label,
+                          palette: item.palette
+                        }, true);
+                        navigation2.goBack();
+                      }
+                    })
+                  })
                 }),
-                preview.profileColorsEnabled ? /* @__PURE__ */ jsxs(Fragment, {
+                preview.nameplate ? /* @__PURE__ */ jsx(ActionButton, {
+                  label: "Remove nameplate",
+                  muted: true,
+                  onPress: () => update("nameplate", null, true)
+                }) : null,
+                /* @__PURE__ */ jsx(ActionButton, {
+                  label: preview.profileEffect ? `Profile effect: ${collectiblesCatalog?.effects.find((effect) => effect.skuId === preview.profileEffect?.skuId)?.title || "Selected"}` : "Browse profile effects",
+                  onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                    title: "Profile Effects",
+                    render: () => /* @__PURE__ */ jsx(CollectibleGallery, {
+                      kind: "effects",
+                      selected: preview.profileEffect?.skuId,
+                      onSelect: (item) => {
+                        update("profileEffect", {
+                          skuId: item.skuId
+                        }, true);
+                        navigation2.goBack();
+                      }
+                    })
+                  })
+                }),
+                preview.profileEffect ? /* @__PURE__ */ jsx(ActionButton, {
+                  label: "Remove profile effect",
+                  muted: true,
+                  onPress: () => update("profileEffect", null, true)
+                }) : null,
+                /* @__PURE__ */ jsx(ActionButton, {
+                  label: preview.profileFrame ? `Profile frame: ${collectiblesCatalog?.frames.find((frame) => frame.skuId === preview.profileFrame?.skuId)?.label || "Selected"}` : "Browse profile frames",
+                  onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                    title: "Profile Frames",
+                    render: () => /* @__PURE__ */ jsx(CollectibleGallery, {
+                      kind: "frames",
+                      selected: preview.profileFrame?.skuId,
+                      onSelect: (item) => {
+                        update("profileFrame", {
+                          skuId: item.skuId
+                        }, true);
+                        navigation2.goBack();
+                      }
+                    })
+                  })
+                }),
+                preview.profileFrame ? /* @__PURE__ */ jsx(ActionButton, {
+                  label: "Remove profile frame",
+                  muted: true,
+                  onPress: () => update("profileFrame", null, true)
+                }) : null
+              ]
+            })
+          }) : null,
+          activeTab === "status" ? /* @__PURE__ */ jsx(Card2, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+              style: {
+                padding: 16,
+                gap: 16
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-md/semibold",
+                  color: "text-normal",
+                  children: "Status & activity"
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-muted",
+                  children: "Seen by people using CloudCord. Everyone else sees your real status."
+                }),
+                /* @__PURE__ */ jsx(TableRow, {
+                  arrow: true,
+                  label: "Status",
+                  trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
+                    text: {
+                      online: "Online",
+                      idle: "Idle",
+                      dnd: "Do Not Disturb",
+                      invisible: "Invisible"
+                    }[preview.presenceStatus || ""] || "Real status"
+                  }),
+                  onPress: () => import_react_native19.Alert.alert("Status", "Only changes how you appear while you're actually online.", [
+                    {
+                      text: "Use my real status",
+                      onPress: () => update("presenceStatus", null, true)
+                    },
+                    ...PRESENCE_STATUSES.map((value) => ({
+                      text: {
+                        online: "Online",
+                        idle: "Idle",
+                        dnd: "Do Not Disturb",
+                        invisible: "Invisible"
+                      }[value],
+                      onPress: () => update("presenceStatus", value, true)
+                    })),
+                    {
+                      text: "Cancel",
+                      style: "cancel"
+                    }
+                  ])
+                }),
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  style: {
+                    gap: 8
+                  },
                   children: [
-                    /* @__PURE__ */ jsx(ColorPickerRow, {
-                      label: "Primary profile color",
-                      value: preview.primaryColor,
-                      onSelect: (value) => update("primaryColor", value, true),
-                      onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                        title: "Primary Color",
-                        render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
-                          title: "Primary profile color",
-                          initialColor: preview.primaryColor,
-                          onApply: (color2) => {
-                            update("primaryColor", color2, true);
-                            navigation2.goBack();
-                          }
-                        })
-                      })
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      children: "Custom status"
                     }),
-                    /* @__PURE__ */ jsx(ColorPickerRow, {
-                      label: "Accent profile color",
-                      value: preview.accentColor,
-                      onSelect: (value) => update("accentColor", value, true),
-                      onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                        title: "Accent Color",
-                        render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
-                          title: "Accent profile color",
-                          initialColor: preview.accentColor,
-                          onApply: (color2) => {
-                            update("accentColor", color2, true);
-                            navigation2.goBack();
-                          }
-                        })
-                      })
+                    /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: preview.customStatus?.text || "",
+                      placeholder: "What's on your mind?",
+                      maxLength: 128,
+                      onChangeText: (value) => update("customStatus", {
+                        text: value,
+                        emoji: preview.customStatus?.emoji
+                      }, true),
+                      placeholderTextColor: "#777",
+                      autoCorrect: false,
+                      style: {
+                        color: "#fff",
+                        backgroundColor: "#1e1f22",
+                        borderRadius: 9,
+                        padding: 12
+                      }
+                    }),
+                    /* @__PURE__ */ jsx(TextInput3, {
+                      defaultValue: preview.customStatus?.emoji || "",
+                      placeholder: "Emoji (optional)",
+                      maxLength: 8,
+                      onChangeText: (value) => update("customStatus", {
+                        text: preview.customStatus?.text || "",
+                        emoji: value
+                      }, true),
+                      placeholderTextColor: "#777",
+                      autoCorrect: false,
+                      style: {
+                        color: "#fff",
+                        backgroundColor: "#1e1f22",
+                        borderRadius: 9,
+                        padding: 12
+                      }
                     })
                   ]
-                }) : null,
-                /* @__PURE__ */ jsx(MediaEditor, {
-                  label: "Profile picture",
-                  field: "avatarMedia"
                 }),
-                /* @__PURE__ */ jsx(MediaEditor, {
-                  label: "Banner",
-                  field: "bannerMedia",
-                  banner: true
+                /* @__PURE__ */ jsx(TableRow, {
+                  arrow: true,
+                  label: "Activity",
+                  trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
+                    text: preview.customActivity ? ACTIVITY_TYPES.find((type) => type.value === preview.customActivity?.type)?.label || "Activity" : "None"
+                  }),
+                  onPress: () => import_react_native19.Alert.alert("Activity", void 0, [
+                    {
+                      text: "No activity",
+                      onPress: () => update("customActivity", null, true)
+                    },
+                    ...ACTIVITY_TYPES.map((type) => ({
+                      text: type.label,
+                      onPress: () => update("customActivity", {
+                        ...preview.customActivity || {
+                          name: "CloudCord"
+                        },
+                        type: type.value
+                      }, true)
+                    })),
+                    {
+                      text: "Cancel",
+                      style: "cancel"
+                    }
+                  ])
+                }),
+                preview.customActivity ? /* @__PURE__ */ jsxs(Fragment, {
+                  children: [
+                    /* @__PURE__ */ jsxs(import_react_native19.View, {
+                      style: {
+                        gap: 8
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx(Text, {
+                          variant: "text-sm/bold",
+                          color: "text-normal",
+                          children: "Activity name"
+                        }),
+                        /* @__PURE__ */ jsx(TextInput3, {
+                          defaultValue: preview.customActivity.name,
+                          placeholder: "Game, stream, song or show",
+                          maxLength: 128,
+                          onChangeText: (value) => update("customActivity", {
+                            ...preview.customActivity,
+                            name: value
+                          }, true),
+                          placeholderTextColor: "#777",
+                          autoCorrect: false,
+                          style: {
+                            color: "#fff",
+                            backgroundColor: "#1e1f22",
+                            borderRadius: 9,
+                            padding: 12
+                          }
+                        })
+                      ]
+                    }),
+                    /* @__PURE__ */ jsxs(import_react_native19.View, {
+                      style: {
+                        gap: 8
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx(Text, {
+                          variant: "text-sm/bold",
+                          color: "text-normal",
+                          children: "Details"
+                        }),
+                        /* @__PURE__ */ jsx(TextInput3, {
+                          defaultValue: preview.customActivity.details || "",
+                          placeholder: "Optional",
+                          maxLength: 128,
+                          onChangeText: (value) => update("customActivity", {
+                            ...preview.customActivity,
+                            details: value
+                          }, true),
+                          placeholderTextColor: "#777",
+                          autoCorrect: false,
+                          style: {
+                            color: "#fff",
+                            backgroundColor: "#1e1f22",
+                            borderRadius: 9,
+                            padding: 12
+                          }
+                        })
+                      ]
+                    }),
+                    preview.customActivity.type === 1 ? /* @__PURE__ */ jsxs(Fragment, {
+                      children: [
+                        /* @__PURE__ */ jsxs(import_react_native19.View, {
+                          style: {
+                            gap: 8
+                          },
+                          children: [
+                            /* @__PURE__ */ jsx(Text, {
+                              variant: "text-sm/bold",
+                              color: "text-normal",
+                              children: "Stream link"
+                            }),
+                            /* @__PURE__ */ jsx(TextInput3, {
+                              defaultValue: preview.customActivity.url || "",
+                              placeholder: "https://twitch.tv/yourname",
+                              autoCapitalize: "none",
+                              onChangeText: (value) => update("customActivity", {
+                                ...preview.customActivity,
+                                url: value
+                              }, true),
+                              placeholderTextColor: "#777",
+                              autoCorrect: false,
+                              style: {
+                                color: "#fff",
+                                backgroundColor: "#1e1f22",
+                                borderRadius: 9,
+                                padding: 12
+                              }
+                            })
+                          ]
+                        }),
+                        /* @__PURE__ */ jsx(Text, {
+                          variant: "text-xs/medium",
+                          color: "text-muted",
+                          children: preview.customActivity.url && !streamURL(preview.customActivity.url) ? "Not a stream link Discord accepts. Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=\u2026)." : "Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=\u2026, youtu.be/\u2026 or youtube.com/live/\u2026). Channel pages don't count."
+                        })
+                      ]
+                    }) : null
+                  ]
+                }) : null
+              ]
+            })
+          }) : null,
+          [
+            "profile",
+            "name",
+            "cosmetics",
+            "status",
+            "badges"
+          ].includes(activeTab) ? /* @__PURE__ */ jsx(Card2, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+              style: {
+                padding: 16,
+                gap: 12
+              },
+              children: [
+                /* @__PURE__ */ jsx(ToggleRow, {
+                  label: "preview on this device",
+                  subLabel: "try your changes here before syncing",
+                  value: preview.enabled,
+                  accent: true,
+                  onPress: () => update("enabled", !preview.enabled, true)
                 }),
                 /* @__PURE__ */ jsx(ActionButton, {
                   label: "Apply preview",
@@ -14732,6 +15652,27 @@
                   subLabel: "Selected badges replace your real badges for CloudCord users",
                   value: preview.replaceBadges,
                   onPress: () => update("replaceBadges", !preview.replaceBadges, true)
+                }),
+                /* @__PURE__ */ jsx(ToggleRow, {
+                  label: "Hide CloudCord badges while sync is off",
+                  subLabel: "When this profile stays on this device only, show no CloudCord badges",
+                  value: preview.hideBadgesWhenSyncOff === true,
+                  onPress: () => update("hideBadgesWhenSyncOff", !preview.hideBadgesWhenSyncOff, true)
+                }),
+                preview.nitroEnabled ? /* @__PURE__ */ jsx(DurationSelect, {
+                  label: "Nitro badge",
+                  value: preview.nitroMonths,
+                  onPress: () => chooseDuration("nitroMonths", "Choose Nitro badge", NITRO_DURATIONS)
+                }) : null,
+                /* @__PURE__ */ jsx(DurationSelect, {
+                  label: "Gifting badge",
+                  value: preview.giftLevel,
+                  onPress: chooseGiftBadge
+                }),
+                /* @__PURE__ */ jsx(DurationSelect, {
+                  label: "Server booster duration",
+                  value: preview.boostMonths,
+                  onPress: () => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)
                 }),
                 BADGES.filter(([id]) => !EXPERIMENTAL_BADGE_GROUPS.some((group) => group.tiers.some((tier) => tier.id === id))).map(([id, label]) => /* @__PURE__ */ jsx(ToggleRow, {
                   label,
@@ -14959,7 +15900,7 @@
       })
     });
   }
-  var import_react6, import_react_native19, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react6, import_react_native19, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -15673,6 +16614,9 @@
       sharedProfileSeenAt = /* @__PURE__ */ new Map();
       sharedRenderTimer = null;
       realProfileMenuConnected = false;
+      checkingPrivacy = false;
+      collectiblesCatalog = null;
+      collectiblesRequest = null;
       publishedBadges = [];
       publishedBadgeRequest = false;
       publishedBadgeFetchedAt = 0;
