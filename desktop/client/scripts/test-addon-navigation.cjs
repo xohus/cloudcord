@@ -4,10 +4,10 @@ const assert = require('node:assert/strict');
 const esbuild = require('esbuild');
 let selected = null;
 const React = { createElement: (type, props, ...children) => ({ type, props: { ...props, children } }), useState: () => [selected, value => { selected = value; }] };
-const context = vm.createContext({ React, useSettings: () => ({ plugins: { Settings: {} } }), Button: 'button', SettingsTab: 'section', Heading: 'heading', Paragraph: 'paragraph', PluginsIcon: 'icon', PaintbrushIcon: 'icon', CloudIcon: 'icon', PluginsTab: 'plugins', ThemesTab: 'themes', CloudTab: 'sync' });
+const context = vm.createContext({ React, useSettings: () => ({ plugins: { Settings: {} } }), Button: 'button', SettingsTab: 'section', Heading: 'heading', Paragraph: 'paragraph', PluginsIcon: 'icon', PaintbrushIcon: 'icon', CloudIcon: 'icon', PluginsTab: 'plugins', ThemesTab: 'themes', CloudTab: 'sync', PluginIcon: 'icon', ExtrasTab: 'extras' });
 const source = fs.readFileSync('src/components/settings/tabs/addons/index.tsx', 'utf8').replace(/^import .*;\r?\n/gm, '').replace(/^export default .*;\r?$/gm, '');
 vm.runInContext(esbuild.transformSync(source, { loader: 'tsx', jsxFactory: 'React.createElement' }).code, context);
-for (const [index, page] of ['plugins', 'themes', 'sync'].entries()) {
+for (const [index, page] of ['plugins', 'themes', 'sync', 'extras'].entries()) {
     const listing = context.Addons();
     listing.props.children[2][index].props.children[2].props.onClick();
     const opened = context.Addons();

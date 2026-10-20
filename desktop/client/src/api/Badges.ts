@@ -140,14 +140,10 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             // Read the same per-user data that FakeProfile actually renders.
             const profilePlugin = Plugins.ProfileSpoofer as { started?: boolean; getActiveProfileColors?(userId: string): number[] | null; } | undefined;
             const editedColors: number[] | null = profilePlugin?.started ? (profilePlugin.getActiveProfileColors?.(badge.userId) ?? null) : null;
-            // Decide from the profile's primary color: black icon on light, white on dark.
+            // Edited profiles decide from their primary color; others from the surface Discord actually rendered.
             const toRgb = (color: number) => [(color >> 16) & 255, (color >> 8) & 255, color & 255];
             if (editedColors?.length) {
                 apply(useBlack([toRgb(editedColors[0])]));
-                return;
-            }
-            if (profileColors.length) {
-                apply(useBlack([toRgb(profileColors[0])]));
                 return;
             }
             // Prefer the rendered surface near the badge, not globally inherited

@@ -13,14 +13,13 @@ assert.equal(decorationContext.resolveDecoration({ avatarDecoration: { asset: 'a
 assert.equal(decorationContext.resolveDecoration({ avatarDecorationData: { asset: 'a_test' } }), 'https://cdn.discordapp.com/avatar-decoration-presets/a_test.png');
 assert.equal(decorationContext.resolveDecoration({ avatarDecoration: { asset: 'unrelated' } }), undefined);
 assert.ok(catalog.filter(item => item.category === 'decorations').length > 100);
-assert.match(source, /decorations\.slice\(0, decorationLimit\)/);
-assert.match(source, /limit => limit \+ 24/);
+// The rebuilt editor shows decorations through the shared picker grid.
+assert.match(source, /<PickerGrid items=\{decorations\}/);
 assert.doesNotMatch(source, /Gifted \$\{.*count/);
-assert.ok(source.indexOf('className="cp-upload-section"') > source.indexOf('className="cp-decoration-grid"'));
 assert.doesNotMatch(fs.readFileSync('src/components/settings/tabs/fakeProfile/index.tsx', 'utf8'), /getcloudcord\.com\/upload/);
 const addons = fs.readFileSync('src/components/settings/tabs/addons/index.tsx', 'utf8');
 assert.doesNotMatch(addons, /DiscoverPlugins|Discover plugins|mobile client/);
-assert.match(source, /cp-close-button/);
+assert.match(source, /<ModalRoot \{\.\.\.rootProps\}/);
 assert.match(source, /Couldn't save your profile/);
 for (const file of ['src/components/settings/SettingsModal.tsx', 'src/components/settings/tabs/updater/index.tsx', 'src/components/settings/tabs/vencord/NotificationSettings.tsx', 'src/components/settings/tabs/changelog/index.tsx', 'src/components/settings/tabs/changelog/NewPluginsSection.tsx', 'src/components/settings/tabs/plugins/PluginModal.tsx']) esbuild.transformSync(fs.readFileSync(file, 'utf8'), { loader: 'tsx' });
 const layout = fs.readFileSync('src/plugins/_core/settings.tsx', 'utf8');

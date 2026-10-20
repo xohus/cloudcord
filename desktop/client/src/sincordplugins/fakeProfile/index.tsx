@@ -574,8 +574,8 @@ let uploadedBadges: { id: string; userId: string; name: string; icon: string; }[
 let badgeFetchPending = false;
 let badgeFetchedAt = 0;
 async function refreshUploadedBadges(force = false) {
-    // One list for everyone: refresh every 2 minutes, or at most once a minute when forced.
-    if (badgeFetchPending || Date.now() - badgeFetchedAt < (force ? 60_000 : 2 * 60_000)) return;
+    // One list for everyone: refresh every 2 minutes; forced refreshes (focus, after uploads) skip the wait.
+    if (badgeFetchPending || !force && Date.now() - badgeFetchedAt < 2 * 60_000) return;
     badgeFetchPending = true; badgeFetchedAt = Date.now();
     try {
         const response = await fetch("https://getcloudcord.com/v1/custom-badges");

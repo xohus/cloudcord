@@ -97,7 +97,7 @@ esbuild.transformSync(mobile, { loader: 'tsx' });
 const profileHost = host(mobileHelper);
 Object.assign(profileHost, {
     preview: { nitroEnabled: false, boostMonths: 0, selectedBadges: {}, hiddenBadgeIds: ['staff'], badgeOrder: ['boost', 'nitro'] },
-    BADGES: [], badgeRenderProps: new Map(), shouldReplaceLocalBadges: () => false
+    BADGES: [], badgeRenderProps: new Map(), shouldReplaceLocalBadges: () => false, rootSettings: {}
 });
 vm.runInContext(esbuild.transformSync(mobile.slice(mobile.indexOf('function selectedBadgeObjects('), mobile.indexOf('function cloneObject(')), { loader: 'ts' }).code, profileHost);
 const nativeRows = [{ id: 'premium' }, { id: 'staff' }, { id: 'premium_guild_subscriber' }];

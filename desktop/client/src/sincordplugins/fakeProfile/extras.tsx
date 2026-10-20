@@ -190,18 +190,23 @@ function BoostSection() {
 // ---- Fake friend requests ----
 const fakeRequests = new Set<string>();
 export function hasFakeRequest(userId: string) { return fakeRequests.has(userId); }
-export function addFakeRequestById(rawId: string) {
+export async function addFakeRequestById(rawId: string) {
     const id = rawId.trim();
-    if (!/^d{17,20}$/.test(id)) { showToast("Enter a valid user ID.", Toasts.Type.FAILURE); return false; }
-    const user = UserStore.getUser(id);
-    if (!user) { showToast("Discord doesn't know that user yet. Open their profile once, then try again.", Toasts.Type.FAILURE); return false; }
+    if (!/^\d{17,20}$/.test(id)) { showToast("Enter a valid user ID.", Toasts.Type.FAILURE); return false; }
+    let user: any = UserStore.getUser(id);
+    if (!user) {
+        // Not cached yet: look the user up once so the request has a name and avatar.
+        try { user = (await RestAPI.get({ url: `/users/${id}` }))?.body; } catch { }
+    }
+    if (!user) { showToast("Couldn't find that user.", Toasts.Type.FAILURE); return false; }
     addFakeRequest(user);
     return fakeRequests.has(id);
 }
 export function addFakeRequest(user: any) {
-    if (RelationshipStore.getRelationshipType(user.id) !== 0) { showToast("You already have a friend request or friendship with this user.", Toasts.Type.FAILURE); return; }
+    if ((RelationshipStore.getRelationshipType(user.id) ?? 0) !== 0) { showToast("You already have a friend request or friendship with this user.", Toasts.Type.FAILURE); return; }
     fakeRequests.add(user.id);
-    FluxDispatcher.dispatch({ type: "RELATIONSHIP_ADD", relationship: { id: user.id, type: INCOMING_REQUEST, user, since: new Date().toISOString(), nickname: null }, shouldNotify: true });
+    const raw = { id: user.id, username: user.username, global_name: user.globalName ?? user.global_name ?? null, avatar: user.avatar ?? null, discriminator: user.discriminator ?? "0", public_flags: user.publicFlags ?? user.public_flags ?? 0, bot: user.bot ?? false };
+    FluxDispatcher.dispatch({ type: "RELATIONSHIP_ADD", relationship: { id: user.id, type: INCOMING_REQUEST, user: raw, since: new Date().toISOString(), nickname: null }, shouldNotify: true });
 }
 export function removeFakeRequest(userId: string) {
     fakeRequests.delete(userId);
@@ -305,7 +310,7 @@ export function ExtrasPanel() {
         <Section title="Fake friend request" description="Paste a user ID (right-click them, Copy User ID). Only you see the request. Don't accept it: that sends them a real request.">
             <input className="cpx-input" placeholder="User ID" inputMode="numeric" value={friendId} onChange={event => setFriendId(event.target.value)} />
             <div className="cpx-inline">
-                <button type="button" className="cpx-btn" onClick={() => { if (addFakeRequestById(friendId)) { setFriendId(""); showToast("Fake friend request added.", Toasts.Type.SUCCESS); } force(); }}>Add request</button>
+                <button type="button" className="cpx-btn" onClick={async () => { if (await addFakeRequestById(friendId)) { setFriendId(""); showToast("Fake friend request added. Check Friends, Pending.", Toasts.Type.SUCCESS); } force(); }}>Add request</button>
                 {fakeRequests.size > 0 && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => { for (const id of [...fakeRequests]) removeFakeRequest(id); force(); }}>Remove all ({fakeRequests.size})</button>}
             </div>
             <span className="cpx-hint">They go away when Discord restarts.</span>
