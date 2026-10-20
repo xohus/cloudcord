@@ -12866,8 +12866,8 @@
       checkingPrivacy = false;
     }
   }
-  function getProfileOverride(id) {
-    if (isRealProfileView(id) || isPrivateProfile(id))
+  function getProfileOverride(id, badgesOnly = false) {
+    if (isRealProfileView(id) || !badgesOnly && isPrivateProfile(id))
       return void 0;
     var local = settings.cloudcordLocalProfiles?.[id];
     var shared = sharedProfiles.get(id);
@@ -13817,7 +13817,7 @@
       if (badge.userId === userId)
         addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
     }
-    var layout = isCurrentUser(userId) ? preview.enabled ? preview : null : getProfileOverride(userId);
+    var layout = isCurrentUser(userId) ? preview.enabled ? preview : null : getProfileOverride(userId, true);
     return applyBadgeLayout(next, {
       ...layout,
       badgeOrder: layout?.badgeOrder?.length ? layout.badgeOrder : defaultBadgeOrder(nativeBadgeRows.get(userId) || [])
@@ -13841,7 +13841,7 @@
         void refreshPublishedBadges();
         if (!isCurrentUser(id)) {
           requestSharedProfile(id);
-          var data = getProfileOverride(id);
+          var data = getProfileOverride(id, true);
           var staffBadge = cloudCordStaffBadge(id);
           if (!data && !staffBadge)
             return appendPublishedBadges(result, id);
