@@ -16175,7 +16175,7 @@
     var [decorations, setDecorations] = (0, import_react7.useState)([]);
     var [decorationsLoading, setDecorationsLoading] = (0, import_react7.useState)(true);
     (0, import_react7.useEffect)(() => {
-      if (activeTab !== "cosmetics")
+      if (activeTab !== "style")
         return;
       if (!catalog)
         loadCatalog();
