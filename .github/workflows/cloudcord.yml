@@ -83,6 +83,7 @@ jobs:
           mkdir -p src/core/ui/settings/pages/Plugins/models
           mkdir -p src/core/ui/settings/components
           cp "../ios/runtime/src/core/ui/settings/components/FakeProfileGlass.tsx" "src/core/ui/settings/components/FakeProfileGlass.tsx"
+          cp "../ios/runtime/src/core/ui/settings/components/ProfileEditorKit.tsx" "src/core/ui/settings/components/ProfileEditorKit.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/CustomSocial.tsx" "src/core/ui/settings/components/CustomSocial.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/CustomBadgeBeta.tsx" "src/core/ui/settings/components/CustomBadgeBeta.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/LocalProfiles.tsx" "src/core/ui/settings/components/LocalProfiles.tsx"
@@ -3022,6 +3023,20 @@ jobs:
                   }
               };
 
+              const K = require("@core/ui/settings/components/ProfileEditorKit");
+              const [catalog, setCatalog] = useState<Catalog | null>(collectiblesCatalog);
+              const [catalogStatus, setCatalogStatus] = useState<{ loading?: boolean; error?: string }>({ loading: !collectiblesCatalog });
+              const loadCatalog = (force = false) => { setCatalogStatus({ loading: true }); loadCollectiblesCatalog(force).then(result => { setCatalog(result); setCatalogStatus({}); }, (problem: any) => setCatalogStatus({ error: problem?.message || "Couldn't load Discord's catalog." })); };
+              const [decorations, setDecorations] = useState<Array<{ asset: string; skuId: string; label: string; uri: string }>>([]);
+              const [decorationsLoading, setDecorationsLoading] = useState(true);
+              useEffect(() => {
+                  if (activeTab !== "cosmetics") return;
+                  if (!catalog) loadCatalog();
+                  let active = true;
+                  void findDecorationCatalog().then(result => { if (active) { setDecorations(result); setDecorationsLoading(false); } });
+                  return () => { active = false; };
+              }, [activeTab]);
+
               return (
                   <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 12, paddingTop: 24, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
                       <View style={{ width: "100%", gap: 24 }}>
@@ -3050,121 +3065,158 @@ jobs:
                           }} /></Card> : null}
                           {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
+                          {["profile", "name", "cosmetics", "status", "badges"].includes(activeTab) ? <Card><View style={{ padding: 16 }}>
+                              <K.PreviewCard name={preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You"} username={preview.username || realCurrentUser?.username || "username"} pronouns={preview.pronouns}
+                                  avatar={preview.avatarMedia?.uri || (() => { try { return realCurrentUser?.getAvatarURL?.() || undefined; } catch { return undefined; } })()} banner={preview.nitroEnabled ? preview.bannerMedia?.uri : undefined}
+                                  primary={preview.profileColorsEnabled ? preview.primaryColor : undefined} accent={preview.profileColorsEnabled ? preview.accentColor : undefined} decoration={preview.avatarDecoration || undefined}
+                                  nameplate={preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : undefined} tagText={preview.serverTag?.tag} tagIcon={preview.serverTag ? serverTagIconURL(preview.serverTag) || undefined : undefined}
+                                  status={preview.customActivity?.type === 1 && preview.customActivity.url && streamURL(preview.customActivity.url) ? "streaming" : preview.presenceStatus || "online"}
+                                  customStatus={preview.customStatus ? `${preview.customStatus.emoji || ""} ${preview.customStatus.text || ""}`.trim() : undefined}
+                                  activity={preview.customActivity ? { verb: ACTIVITY_TYPES.find(type => type.value === preview.customActivity?.type)?.label || "", name: preview.customActivity.name, details: preview.customActivity.details } : null}
+                                  bio={preview.bio} frame={preview.profileFrame ? catalog?.frames.find(item => item.skuId === preview.profileFrame?.skuId)?.label || "Selected" : undefined}
+                                  effect={preview.profileEffect ? catalog?.effects.find(item => item.skuId === preview.profileEffect?.skuId)?.title || "Selected" : undefined} />
+                          </View></Card> : null}
                           {activeTab === "profile" ? <Card border="strong">
-                              <View style={{ padding: 16, gap: 16 }}>
-                                  <Text variant="heading-md/semibold" color="text-normal">Pictures</Text>
-                                  <MediaEditor label="Profile picture" field="avatarMedia" />
-                                  <MediaEditor label="Banner" field="bannerMedia" banner />
-                                  <ToggleRow label="Simulate Nitro" subLabel="Enables the Nitro badge, banner, and profile colors" value={preview.nitroEnabled} onPress={() => update("nitroEnabled", !preview.nitroEnabled, true)} />
-                                  <Text variant="heading-md/semibold" color="text-normal">About you</Text>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">About You</Text>
-                                      <TextInput defaultValue={preview.bio} placeholder="My description..." placeholderTextColor="#777" multiline onChangeText={value => update("bio", value, true)} style={{ minHeight: 88, color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12, textAlignVertical: "top" }} />
-                                  </View>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Pronouns</Text>
-                                      <TextInput defaultValue={preview.pronouns} placeholder="he/him" placeholderTextColor="#777" onChangeText={value => update("pronouns", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View>
-                                  <Text variant="heading-md/semibold" color="text-normal">Profile colors</Text>
-                                  <ToggleRow label="Use custom profile colors" subLabel="Turn off to use Discord's normal profile colors" value={preview.profileColorsEnabled} onPress={() => update("profileColorsEnabled", !preview.profileColorsEnabled, true)} />
-                                  {preview.profileColorsEnabled ? <>
-                                      <ColorPickerRow label="Primary profile color" value={preview.primaryColor} onSelect={value => update("primaryColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Primary Color", render: () => <CustomColorPicker title="Primary profile color" initialColor={preview.primaryColor} onApply={color => { update("primaryColor", color, true); navigation.goBack(); }} /> })} />
-                                      <ColorPickerRow label="Accent profile color" value={preview.accentColor} onSelect={value => update("accentColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Accent Color", render: () => <CustomColorPicker title="Accent profile color" initialColor={preview.accentColor} onApply={color => { update("accentColor", color, true); navigation.goBack(); }} /> })} />
-                                  </> : null}
-                                  <Text variant="heading-md/semibold" color="text-normal">Dates</Text>
-                                  <Text variant="text-sm/medium" color="text-muted">Leave empty to use your real dates.</Text>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Account creation date</Text>
-                                      <TextInput defaultValue={preview.createdAt} placeholder="2010-06-29" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("createdAt", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Joined since date</Text>
-                                      <TextInput defaultValue={preview.signupDate} placeholder="2010-06-29" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("signupDate", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View>
+                              <View style={{ padding: 16, gap: 24 }}>
+                                  <K.Section title="Pictures" description="Shown on your profile, in chat and in member lists for CloudCord users.">
+                                      <MediaEditor label="Profile picture" field="avatarMedia" />
+                                      <MediaEditor label="Banner" field="bannerMedia" banner />
+                                      <ToggleRow label="Simulate Nitro" subLabel="Unlocks a banner and profile colors" value={preview.nitroEnabled} onPress={() => update("nitroEnabled", !preview.nitroEnabled, true)} />
+                                  </K.Section>
+                                  <K.Section title="About you">
+                                      <K.Field label="Bio" hint={`${[...(preview.bio || "")].length}/190`}><TextInput defaultValue={preview.bio} placeholder="Tell people about yourself" multiline maxLength={190} onChangeText={value => update("bio", value, true)} placeholderTextColor="#777" /></K.Field>
+                                      <K.Field label="Pronouns"><TextInput defaultValue={preview.pronouns} placeholder="they/them" maxLength={40} onChangeText={value => update("pronouns", value, true)} placeholderTextColor="#777" /></K.Field>
+                                  </K.Section>
+                                  <K.Section title="Profile colors" description="The gradient behind your profile card.">
+                                      <ToggleRow label="Custom profile colors" value={preview.profileColorsEnabled} onPress={() => update("profileColorsEnabled", !preview.profileColorsEnabled, true)} />
+                                      {preview.profileColorsEnabled ? <>
+                                          <ColorPickerRow label="Primary profile color" value={preview.primaryColor} onSelect={value => update("primaryColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Primary Color", render: () => <CustomColorPicker title="Primary profile color" initialColor={preview.primaryColor} onApply={color => { update("primaryColor", color, true); navigation.goBack(); }} /> })} />
+                                          <ColorPickerRow label="Accent profile color" value={preview.accentColor} onSelect={value => update("accentColor", value, true)} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Accent Color", render: () => <CustomColorPicker title="Accent profile color" initialColor={preview.accentColor} onApply={color => { update("accentColor", color, true); navigation.goBack(); }} /> })} />
+                                      </> : null}
+                                  </K.Section>
+                                  <K.Section title="Dates" description="Leave empty to use your real dates.">
+                                      <K.Field label="Account created" hint="YYYY-MM-DD"><TextInput defaultValue={preview.createdAt} placeholder="2016-05-21" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("createdAt", value, true)} placeholderTextColor="#777" /></K.Field>
+                                      <K.Field label="Member since" hint="YYYY-MM-DD"><TextInput defaultValue={preview.signupDate} placeholder="2016-05-21" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("signupDate", value, true)} placeholderTextColor="#777" /></K.Field>
+                                  </K.Section>
                               </View>
                           </Card> : null}
                           {activeTab === "name" ? <Card border="strong">
-                              <View style={{ padding: 16, gap: 16 }}>
-                                  <Text variant="heading-md/semibold" color="text-normal">Names</Text>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Display name</Text>
-                                      <TextInput defaultValue={preview.displayName} placeholder="Preview Name" placeholderTextColor="#777" onChangeText={value => update("displayName", value)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Username</Text>
-                                      <TextInput defaultValue={preview.username} placeholder="preview" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Username Style</Text>
+                              <View style={{ padding: 16, gap: 24 }}>
+                                  <K.Section title="Names">
+                                      <K.Field label="Display name"><TextInput defaultValue={preview.displayName} placeholder={realCurrentUser?.globalName || "Display name"} maxLength={32} onChangeText={value => update("displayName", value)} placeholderTextColor="#777" /></K.Field>
+                                      <K.Field label="Username"><TextInput defaultValue={preview.username} placeholder={realCurrentUser?.username || "username"} maxLength={32} autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} placeholderTextColor="#777" /></K.Field>
+                                  </K.Section>
+                                  <K.Section title="Name style" description="Font, effect and colors for your display name.">
                                       <NameStylePreview />
-                                      <TableRow arrow label="Font" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("fontId").find(option => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"} />} onPress={() => chooseNameStyle("fontId")} />
-                                      <TableRow arrow label="Effect" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("effectId").find(option => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"} />} onPress={() => chooseNameStyle("effectId")} />
-                                      {[0, 1, 2].slice(0, Math.max(1, Math.min(3, Number((findByProps("getEffectColorCount") as any)?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map(index => {
+                                      <View style={{ borderRadius: 16, overflow: "hidden" }}>
+                                          <TableRow arrow label="Font" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("fontId").find(option => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"} />} onPress={() => chooseNameStyle("fontId")} />
+                                          <TableRow arrow label="Effect" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("effectId").find(option => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"} />} onPress={() => chooseNameStyle("effectId")} />
+                                          {[0, 1, 2].slice(0, Math.max(1, Math.min(3, Number((findByProps("getEffectColorCount") as any)?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map(index => {
                                           const value = `#${(preview.displayNameStyles?.colors[index] ?? 0xffffff).toString(16).padStart(6, "0")}`;
                                           const apply = (color: string) => { const style = preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] }; const colors = [0, 1, 2].map(i => style.colors[i] ?? style.colors[0] ?? 0xffffff); colors[index] = parseInt(color.replace("#", ""), 16); update("displayNameStyles", { ...style, colors }, true); navigation.goBack(); };
                                           return <ColorPickerRow key={`name-color-${index}`} label={`Color ${index + 1}`} value={value} onSelect={apply} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: `Username Color ${index + 1}`, render: () => <CustomColorPicker title={`Username Color ${index + 1}`} initialColor={value} onApply={apply} /> })} />;
                                       })}
-                                      <ActionButton label="Reset Username Style" onPress={() => update("displayNameStyles", null, true)} />
-                                      <Text variant="text-sm/bold" color="text-normal">Server Tag</Text>
-                                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 10 }}>
-                                          {!!serverTagIconURL(preview.serverTag) && <Image source={{ uri: serverTagIconURL(preview.serverTag) }} style={{ width: 20, height: 20 }} resizeMode="contain" />}
-                                          <Text variant="text-sm/bold" color="text-normal">{preview.serverTag?.tag || "Your Tag"}</Text>
                                       </View>
-                                      <TableRow arrow label="Tag Icon" subLabel="Choose a Discord server-tag icon" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Server Tag Icon", render: () => <ServerTagPicker onSelect={tag => { update("serverTag", { ...tag, tag: preview.serverTag?.tag || tag.tag }, true); navigation.goBack(); }} /> })} />
-                                      <TextInput defaultValue={preview.serverTag?.tag || ""} placeholder="Tag (1–4 characters)" maxLength={4} onChangeText={value => update("serverTag", { ...(preview.serverTag || { guildId: "", badge: "" }), tag: value }, true)} />
-                                      <TextInput defaultValue={preview.serverTag?.guildId || ""} placeholder="Server ID" keyboardType="number-pad" onChangeText={value => update("serverTag", { ...(preview.serverTag || { tag: "", badge: "" }), guildId: value.trim() }, true)} />
-                                      <ActionButton label="Copy Current Discord Tag" onPress={() => { const user = safeStore("UserStore")?.getCurrentUser?.(); const tag = user?.primaryGuild || user?.primary_guild; if (tag?.tag) update("serverTag", { tag: tag.tag, guildId: tag.identityGuildId || tag.identity_guild_id, badge: tag.badge || "" }, true); }} />
-                                      <ActionButton label="Reset Server Tag" onPress={() => update("serverTag", null, true)} />
-                                      <Text variant="text-xs/normal" color="text-muted">Appearance only. Your server membership stays unchanged.</Text>
-                                  </View>
+                                      {preview.displayNameStyles ? <ActionButton label="Reset name style" muted onPress={() => update("displayNameStyles", null, true)} /> : null}
+                                  </K.Section>
+                                  <K.Section title="Server tag" description="The small tag next to your name. Only changes what CloudCord users see.">
+                                      <ToggleRow label="Custom server tag" value={preview.serverTag != null} onPress={() => update("serverTag", preview.serverTag ? null : { tag: "", guildId: "", badge: "" }, true)} />
+                                      {preview.serverTag ? <>
+                                          <K.Field label="Tag text" hint="1–4 characters"><TextInput defaultValue={preview.serverTag?.tag || ""} placeholder="CC" maxLength={4} onChangeText={value => update("serverTag", { ...(preview.serverTag || { guildId: "", badge: "" }), tag: value }, true)} placeholderTextColor="#777" /></K.Field>
+                                          <K.Field label="Server ID" error={preview.serverTag?.guildId && !/^\d{15,22}$/.test(preview.serverTag.guildId) ? "Server IDs are 15–22 digits." : undefined}><TextInput defaultValue={preview.serverTag?.guildId || ""} placeholder="123456789012345678" keyboardType="number-pad" onChangeText={value => update("serverTag", { ...(preview.serverTag || { tag: "", badge: "" }), guildId: value.trim() }, true)} placeholderTextColor="#777" /></K.Field>
+                                          <View style={{ borderRadius: 16, overflow: "hidden" }}>
+                                              <TableRow arrow label="Tag Icon" subLabel="Choose a Discord server-tag icon" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Server Tag Icon", render: () => <ServerTagPicker onSelect={tag => { update("serverTag", { ...tag, tag: preview.serverTag?.tag || tag.tag }, true); navigation.goBack(); }} /> })} />
+                                          </View>
+                                          <ActionButton label="Copy my current tag" muted onPress={() => { const user = safeStore("UserStore")?.getCurrentUser?.(); const tag = user?.primaryGuild || user?.primary_guild; if (tag?.tag) update("serverTag", { tag: tag.tag, guildId: tag.identityGuildId || tag.identity_guild_id, badge: tag.badge || "" }, true); }} />
+                                      </> : null}
+                                  </K.Section>
                               </View>
                           </Card> : null}
                           {activeTab === "cosmetics" ? <Card border="strong">
-                              <View style={{ padding: 16, gap: 16 }}>
-                                  <Text variant="heading-md/semibold" color="text-normal">Cosmetics</Text>
-                                  <Text variant="text-sm/medium" color="text-muted">Avatar decorations, profile frames, profile effects and nameplates from Discord's shop.</Text>
-                                  <ActionButton label="Browse Discord decorations" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Avatar Decorations", render: () => <DecorationGallery onSelect={item => { update("avatarDecoration", item.uri, true); update("avatarDecorationSku", item.skuId, true); navigation.goBack(); }} /> })} />
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Avatar decoration URL</Text>
-                                      <TextInput value={preview.avatarDecoration} placeholder="https://..." placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("avatarDecoration", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View>
-                                  {preview.avatarDecoration ? <ActionButton label="Clear decoration" muted onPress={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} /> : null}
-                                  <ActionButton label={preview.nameplate ? `Nameplate: ${preview.nameplate.label || "Selected"}` : "Browse nameplates"} onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Nameplates", render: () => <CollectibleGallery kind="nameplates" selected={preview.nameplate?.skuId} onSelect={item => { update("nameplate", { skuId: item.skuId, asset: item.asset, label: item.label, palette: item.palette }, true); navigation.goBack(); }} /> })} />
-                                  {preview.nameplate ? <ActionButton label="Remove nameplate" muted onPress={() => update("nameplate", null, true)} /> : null}
-                                  <ActionButton label={preview.profileEffect ? `Profile effect: ${collectiblesCatalog?.effects.find(effect => effect.skuId === preview.profileEffect?.skuId)?.title || "Selected"}` : "Browse profile effects"} onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Profile Effects", render: () => <CollectibleGallery kind="effects" selected={preview.profileEffect?.skuId} onSelect={item => { update("profileEffect", { skuId: item.skuId }, true); navigation.goBack(); }} /> })} />
-                                  {preview.profileEffect ? <ActionButton label="Remove profile effect" muted onPress={() => update("profileEffect", null, true)} /> : null}
-                                  <ActionButton label={preview.profileFrame ? `Profile frame: ${collectiblesCatalog?.frames.find(frame => frame.skuId === preview.profileFrame?.skuId)?.label || "Selected"}` : "Browse profile frames"} onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Profile Frames", render: () => <CollectibleGallery kind="frames" selected={preview.profileFrame?.skuId} onSelect={item => { update("profileFrame", { skuId: item.skuId }, true); navigation.goBack(); }} /> })} />
-                                  {preview.profileFrame ? <ActionButton label="Remove profile frame" muted onPress={() => update("profileFrame", null, true)} /> : null}
+                              <View style={{ padding: 16, gap: 24 }}>
+                                  <K.Section title="Avatar decoration" description="The frame around your profile picture.">
+                                      <K.CurrentRow label={preview.avatarDecoration ? decorations.find(item => item.uri === preview.avatarDecoration)?.label || "Decoration" : null} image={preview.avatarDecoration || undefined} onRemove={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} />
+                                      <K.ChoiceGrid SearchInput={TextInput} items={decorations} keyOf={item => `${item.asset}:${item.skuId}`} labelOf={item => item.label} imageOf={item => item.uri}
+                                          isSelected={item => item.uri === preview.avatarDecoration} onPick={item => { update("avatarDecoration", item.uri, true); update("avatarDecorationSku", item.skuId, true); }}
+                                          noneLabel="No decoration" noneSelected={!preview.avatarDecoration} onNone={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} status={{ loading: decorationsLoading && !decorations.length }} />
+                                  </K.Section>
+                                  <K.Divider />
+                                  <K.Section title="Profile frame" description="A decorative frame around and above your profile card. On mobile only the top part shows.">
+                                      <K.CurrentRow label={preview.profileFrame ? catalog?.frames.find(item => item.skuId === preview.profileFrame?.skuId)?.label || "Profile frame" : null} image={catalog?.frames.find(item => item.skuId === preview.profileFrame?.skuId)?.preview} onRemove={() => update("profileFrame", null, true)} />
+                                      <K.ChoiceGrid SearchInput={TextInput} items={catalog?.frames || []} keyOf={item => item.skuId} labelOf={item => item.label} imageOf={item => item.preview}
+                                          isSelected={item => item.skuId === preview.profileFrame?.skuId} onPick={item => update("profileFrame", { skuId: item.skuId }, true)}
+                                          noneLabel="No frame" noneSelected={!preview.profileFrame} onNone={() => update("profileFrame", null, true)} status={catalogStatus} onRetry={() => loadCatalog(true)} />
+                                  </K.Section>
+                                  <K.Divider />
+                                  <K.Section title="Profile effect" description="An animated effect that plays over your profile card.">
+                                      <K.CurrentRow label={preview.profileEffect ? catalog?.effects.find(item => item.skuId === preview.profileEffect?.skuId)?.title || "Profile effect" : null} image={catalog?.effects.find(item => item.skuId === preview.profileEffect?.skuId)?.preview} onRemove={() => update("profileEffect", null, true)} />
+                                      <K.ChoiceGrid SearchInput={TextInput} items={catalog?.effects || []} keyOf={item => item.skuId} labelOf={item => item.title} imageOf={item => item.preview}
+                                          isSelected={item => item.skuId === preview.profileEffect?.skuId} onPick={item => update("profileEffect", { skuId: item.skuId }, true)}
+                                          noneLabel="No effect" noneSelected={!preview.profileEffect} onNone={() => update("profileEffect", null, true)} status={catalogStatus} onRetry={() => loadCatalog(true)} />
+                                  </K.Section>
+                                  <K.Divider />
+                                  <K.Section title="Nameplate" description="The background behind your name in member lists and DMs.">
+                                      <K.CurrentRow wide label={preview.nameplate ? preview.nameplate.label || "Nameplate" : null} image={preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : undefined} onRemove={() => update("nameplate", null, true)} />
+                                      <K.ChoiceGrid SearchInput={TextInput} wide items={catalog?.nameplates || []} keyOf={item => item.skuId} labelOf={item => item.label} imageOf={item => nameplateAssetURL(item.asset)}
+                                          isSelected={item => item.skuId === preview.nameplate?.skuId} onPick={item => update("nameplate", { skuId: item.skuId, asset: item.asset, label: item.label, palette: item.palette }, true)}
+                                          noneLabel="No nameplate" noneSelected={!preview.nameplate} onNone={() => update("nameplate", null, true)} status={catalogStatus} onRetry={() => loadCatalog(true)} />
+                                  </K.Section>
                               </View>
                           </Card> : null}
                           {activeTab === "status" ? <Card border="strong">
-                              <View style={{ padding: 16, gap: 16 }}>
-                                  <Text variant="heading-md/semibold" color="text-normal">Status & activity</Text>
-                                  <Text variant="text-sm/medium" color="text-muted">Seen by people using CloudCord. Everyone else sees your real status.</Text>
-                                  <TableRow arrow label="Status" trailing={<TableRow.TrailingText text={({ online: "Online", idle: "Idle", dnd: "Do Not Disturb", invisible: "Invisible" } as Record<string, string>)[preview.presenceStatus || ""] || "Real status"} />} onPress={() => Alert.alert("Status", "Only changes how you appear while you're actually online.", [{ text: "Use my real status", onPress: () => update("presenceStatus", null, true) }, ...PRESENCE_STATUSES.map(value => ({ text: ({ online: "Online", idle: "Idle", dnd: "Do Not Disturb", invisible: "Invisible" } as Record<string, string>)[value], onPress: () => update("presenceStatus", value, true) })), { text: "Cancel", style: "cancel" as const }])} />
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Custom status</Text>
-                                      <TextInput defaultValue={preview.customStatus?.text || ""} placeholder="What's on your mind?" maxLength={128} onChangeText={value => update("customStatus", { text: value, emoji: preview.customStatus?.emoji }, true)} placeholderTextColor="#777" autoCorrect={false} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                      <TextInput defaultValue={preview.customStatus?.emoji || ""} placeholder="Emoji (optional)" maxLength={8} onChangeText={value => update("customStatus", { text: preview.customStatus?.text || "", emoji: value }, true)} placeholderTextColor="#777" autoCorrect={false} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View>
-                                  <TableRow arrow label="Activity" trailing={<TableRow.TrailingText text={preview.customActivity ? (ACTIVITY_TYPES.find(type => type.value === preview.customActivity?.type)?.label || "Activity") : "None"} />} onPress={() => Alert.alert("Activity", undefined, [{ text: "No activity", onPress: () => update("customActivity", null, true) }, ...ACTIVITY_TYPES.map(type => ({ text: type.label, onPress: () => update("customActivity", { ...(preview.customActivity || { name: "CloudCord" }), type: type.value }, true) })), { text: "Cancel", style: "cancel" as const }])} />
-                                  {preview.customActivity ? <>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Activity name</Text>
-                                      <TextInput defaultValue={preview.customActivity.name} placeholder="Game, stream, song or show" maxLength={128} onChangeText={value => update("customActivity", { ...preview.customActivity, name: value }, true)} placeholderTextColor="#777" autoCorrect={false} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Details</Text>
-                                      <TextInput defaultValue={preview.customActivity.details || ""} placeholder="Optional" maxLength={128} onChangeText={value => update("customActivity", { ...preview.customActivity, details: value }, true)} placeholderTextColor="#777" autoCorrect={false} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View>
-                                      {preview.customActivity.type === 1 ? <>
-                                  <View style={{ gap: 8 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Stream link</Text>
-                                      <TextInput defaultValue={preview.customActivity.url || ""} placeholder="https://twitch.tv/yourname" autoCapitalize="none" onChangeText={value => update("customActivity", { ...preview.customActivity, url: value }, true)} placeholderTextColor="#777" autoCorrect={false} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View>
-                                          <Text variant="text-xs/medium" color="text-muted">{preview.customActivity.url && !streamURL(preview.customActivity.url) ? "Not a stream link Discord accepts. Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=…)." : "Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=…, youtu.be/… or youtube.com/live/…). Channel pages don't count."}</Text>
+                              <View style={{ padding: 16, gap: 24 }}>
+                                  <K.Section title="Status" description="Seen by people using CloudCord. Only changes how you look while you're actually online.">
+                                      <K.Chips value={preview.presenceStatus || ""} onChange={value => update("presenceStatus", value || null, true)} options={[{ value: "", label: "Real status" }, ...PRESENCE_STATUSES.map(value => ({ value, label: ({ online: "Online", idle: "Idle", dnd: "Do Not Disturb", invisible: "Invisible" } as Record<string, string>)[value], dot: ({ online: "#23a55a", idle: "#f0b232", dnd: "#f23f43", invisible: "#80848e" } as Record<string, string>)[value] }))]} />
+                                  </K.Section>
+                                  <K.Section title="Custom status">
+                                      <K.Field label="Emoji"><TextInput defaultValue={preview.customStatus?.emoji || ""} placeholder="Emoji (optional)" maxLength={8} onChangeText={value => update("customStatus", { text: preview.customStatus?.text || "", emoji: value }, true)} placeholderTextColor="#777" /></K.Field>
+                                      <K.Field label="Text"><TextInput defaultValue={preview.customStatus?.text || ""} placeholder="What's on your mind?" maxLength={128} onChangeText={value => update("customStatus", { text: value, emoji: preview.customStatus?.emoji }, true)} placeholderTextColor="#777" /></K.Field>
+                                      {preview.customStatus ? <ActionButton label="Clear custom status" muted onPress={() => update("customStatus", null, true)} /> : null}
+                                  </K.Section>
+                                  <K.Section title="Activity">
+                                      <K.Chips value={preview.customActivity ? preview.customActivity.type : -1} onChange={value => update("customActivity", value < 0 ? null : { name: "", details: "", state: "", ...(preview.customActivity || {}), type: value }, true)} options={[{ value: -1, label: "None" }, ...ACTIVITY_TYPES.map(type => ({ value: type.value, label: type.label }))]} />
+                                      {preview.customActivity ? <>
+                                          <K.Field label={preview.customActivity.type === 1 ? "What you're streaming" : "Name"} error={!preview.customActivity.name?.trim() ? "Add a name or the activity won't show." : undefined}><TextInput defaultValue={preview.customActivity.name} placeholder="Game, stream, song or show" maxLength={128} onChangeText={value => update("customActivity", { ...preview.customActivity, name: value }, true)} placeholderTextColor="#777" /></K.Field>
+                                          <K.Field label="Details (optional)"><TextInput defaultValue={preview.customActivity.details || ""} maxLength={128} onChangeText={value => update("customActivity", { ...preview.customActivity, details: value }, true)} placeholderTextColor="#777" /></K.Field>
+                                          {preview.customActivity.type === 1 ? <K.Field label="Stream link" error={preview.customActivity.url && !streamURL(preview.customActivity.url) ? "Not a stream link Discord accepts. Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=…)." : undefined} hint="Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=…, youtu.be/… or youtube.com/live/…). Channel pages don't count."><TextInput defaultValue={preview.customActivity.url || ""} placeholder="https://twitch.tv/yourname" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("customActivity", { ...preview.customActivity, url: value }, true)} placeholderTextColor="#777" /></K.Field> : null}
                                       </> : null}
-                                  </> : null}
+                                  </K.Section>
+                              </View>
+                          </Card> : null}
+                          {activeTab === "badges" ? <Card border="strong">
+                              <View style={{ padding: 16, gap: 24 }}>
+                                  <K.Section title="Badges" description="Pick as many as you like.">
+                                      <ToggleRow label="Hide my real badges" subLabel="Show only the badges picked here" value={preview.replaceBadges} onPress={() => update("replaceBadges", !preview.replaceBadges, true)} />
+                                      <ToggleRow label="Hide CloudCord badges while sync is off" subLabel="When this profile stays on this device only" value={preview.hideBadgesWhenSyncOff === true} onPress={() => update("hideBadgesWhenSyncOff", !preview.hideBadgesWhenSyncOff, true)} />
+                                      <K.BadgeGrid items={BADGES.filter(([id]) => !EXPERIMENTAL_BADGE_GROUPS.some(group => group.tiers.some(tier => tier.id === id))).map(([id, label, , icon]) => ({ key: id, label, icon, active: !!preview.selectedBadges?.[id], onPress: () => update("selectedBadges", { ...preview.selectedBadges, [id]: !preview.selectedBadges?.[id] }, true) }))} />
+                                      {preview.selectedBadges?.oldname ? <View style={{ gap: 8, marginTop: 4 }}>
+                                      <Text variant="text-sm/bold" color="text-normal">Previous username displayed in tooltip</Text>
+                                      <TextInput defaultValue={preview.oldName} placeholder="OldUser#0000" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("oldName", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
+                                      </View> : null}
+                                  </K.Section>
+                                  <K.Section title="Nitro badge" description="Changes with how long you've had Nitro.">
+                                      <K.BadgeGrid items={[{ key: "none", label: "None", active: !preview.nitroEnabled, onPress: () => update("nitroEnabled", false, true) }, ...NITRO_DURATIONS.map(months => ({ key: String(months), label: NITRO_LABELS.get(months) || durationLabel(months), icon: milestoneIcon(months, NITRO_ICONS), active: preview.nitroEnabled && preview.nitroMonths === months, onPress: () => { update("nitroEnabled", true, true); update("nitroMonths", months, true); } }))]} />
+                                  </K.Section>
+                                  <K.Section title="Server booster">
+                                      <K.BadgeGrid items={BOOST_DURATIONS.map(months => ({ key: String(months), label: boosterLabel(months), icon: months ? milestoneIcon(months, BOOST_ICONS) : undefined, active: preview.boostMonths === months, onPress: () => update("boostMonths", months, true) }))} />
+                                  </K.Section>
+                                  <K.Section title="Gifting">
+                                      <K.BadgeGrid items={[{ key: "none", label: "None", active: preview.giftLevel < 0, onPress: () => update("giftLevel", -1, true) }, ...GIFT_LEVELS.map((gift, index) => ({ key: gift.name, label: gift.name, icon: gift.icon, active: preview.giftLevel === index, onPress: () => update("giftLevel", index, true) }))]} />
+                                  </K.Section>
+                                  {EXPERIMENTAL_BADGE_GROUPS.length ? <K.Section title="Milestone badges">
+                                      {EXPERIMENTAL_BADGE_GROUPS.map(group => <ActionButton key={group.id} label={`${group.label}: ${group.tiers.find(tier => preview.selectedBadges?.[tier.id])?.name || "None"}`} muted onPress={() => chooseExperimentalBadge(group)} />)}
+                                  </K.Section> : null}
+                                  <K.Section title="Badge order" description="Top to bottom is the order on your profile.">
+                                      {editableBadgeRows().map((badge, index, rows) => (
+                                      <View key={badge.id} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 }}>
+                                      <Image source={badge.source || { uri: badge.iconSrc || (/^[a-f0-9]{32}$/i.test(badge.icon || "") ? `https://cdn.discordapp.com/badge-icons/${badge.icon}.png` : badge.icon) }} style={{ width: 22, height: 22, opacity: preview.hiddenBadgeIds.includes(badge.id) ? 0.4 : 1, ...(badge.id.startsWith("cloudcord-official-") ? { tintColor: safeStore("ThemeStore")?.theme === "light" ? "#000000" : "#ffffff" } : {}) }} resizeMode="contain" />
+                                      <View style={{ flex: 1 }}><Text variant="text-sm/semibold" color="text-normal">{badge.description || badge.id}</Text></View>
+                                      <Pressable accessibilityRole="button" accessibilityLabel={preview.hiddenBadgeIds.includes(badge.id) ? "Show badge" : "Hide badge"} onPress={() => update("hiddenBadgeIds", preview.hiddenBadgeIds.includes(badge.id) ? preview.hiddenBadgeIds.filter(id => id !== badge.id) : [...preview.hiddenBadgeIds, badge.id], true)} style={{ padding: 8 }}><Text variant="text-sm/medium" color="text-normal">{preview.hiddenBadgeIds.includes(badge.id) ? "Show" : "Hide"}</Text></Pressable>
+                                      {([-1, 1] as const).map(direction => <Pressable key={direction} accessibilityRole="button" accessibilityLabel={direction === -1 ? "Move badge up" : "Move badge down"} disabled={direction === -1 ? index === 0 : index === rows.length - 1} onPress={() => update("badgeOrder", moveBadgeOrder(editableBadgeRows().map(row => row.id), badge.id, direction), true)} style={{ padding: 8, opacity: (direction === -1 ? index === 0 : index === rows.length - 1) ? 0.3 : 1 }}><Text variant="heading-md/semibold" color="text-normal">{direction === -1 ? "↑" : "↓"}</Text></Pressable>)}
+                                      </View>
+                                      ))}
+                                      <ActionButton muted label="Reset Badge Layout" onPress={() => { update("hiddenBadgeIds", [], true); update("badgeOrder", [], true); }} />
+                                  </K.Section>
                               </View>
                           </Card> : null}
                           {["profile", "name", "cosmetics", "status", "badges"].includes(activeTab) ? <Card border="strong">
@@ -3203,47 +3255,7 @@ jobs:
                                   })()} />
                               </View>
                           </Card> : null}
-                          {activeTab === "badges" ? <Card border="strong">
-                              <View style={{ padding: 14, gap: 10 }}>
-                                  <Text variant="heading-md/semibold" color="text-normal">your badges</Text>
-                                  <ToggleRow
-                                      label="Replace real badges"
-                                      subLabel="Selected badges replace your real badges for CloudCord users"
-                                      value={preview.replaceBadges}
-                                      onPress={() => update("replaceBadges", !preview.replaceBadges, true)}
-                                  />
-                                  <ToggleRow label="Hide CloudCord badges while sync is off" subLabel="When this profile stays on this device only, show no CloudCord badges" value={preview.hideBadgesWhenSyncOff === true} onPress={() => update("hideBadgesWhenSyncOff", !preview.hideBadgesWhenSyncOff, true)} />
-                                  {preview.nitroEnabled ? <DurationSelect label="Nitro badge" value={preview.nitroMonths} onPress={() => chooseDuration("nitroMonths", "Choose Nitro badge", NITRO_DURATIONS)} /> : null}
-                                  <DurationSelect label="Gifting badge" value={preview.giftLevel} onPress={chooseGiftBadge} />
-                                  <DurationSelect label="Server booster duration" value={preview.boostMonths} onPress={() => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)} />
-                                  {BADGES.filter(([id]) => !EXPERIMENTAL_BADGE_GROUPS.some(group => group.tiers.some(tier => tier.id === id))).map(([id, label]) => (
-                                      <ToggleRow
-                                          key={id}
-                                          label={label}
-                                          value={!!preview.selectedBadges?.[id]}
-                                          onPress={() => update("selectedBadges", { ...preview.selectedBadges, [id]: !preview.selectedBadges?.[id] }, true)}
-                                      />
-                                  ))}
-                                  {EXPERIMENTAL_BADGE_GROUPS.map(group => (
-                                      <ActionButton key={group.id} label={`${group.label}: ${group.tiers.find(tier => preview.selectedBadges?.[tier.id])?.name || "None"}`} muted onPress={() => chooseExperimentalBadge(group)} />
-                                  ))}
-                                  {preview.selectedBadges?.oldname ? <View style={{ gap: 8, marginTop: 4 }}>
-                                      <Text variant="text-sm/bold" color="text-normal">Previous username displayed in tooltip</Text>
-                                      <TextInput defaultValue={preview.oldName} placeholder="OldUser#0000" placeholderTextColor="#777" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("oldName", value, true)} style={{ color: "#fff", backgroundColor: "#1e1f22", borderRadius: 9, padding: 12 }} />
-                                  </View> : null}
-                                  <Text variant="heading-sm/semibold" color="text-normal">Badge Layout</Text>
-                                  <Text variant="text-sm/medium" color="text-muted">Top to bottom is the order on your profile. Use the arrows to reorder.</Text>
-                                  {editableBadgeRows().map((badge, index, rows) => (
-                                      <View key={badge.id} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 6 }}>
-                                          <Image source={badge.source || { uri: badge.iconSrc || (/^[a-f0-9]{32}$/i.test(badge.icon || "") ? `https://cdn.discordapp.com/badge-icons/${badge.icon}.png` : badge.icon) }} style={{ width: 22, height: 22, opacity: preview.hiddenBadgeIds.includes(badge.id) ? 0.4 : 1, ...(badge.id.startsWith("cloudcord-official-") ? { tintColor: safeStore("ThemeStore")?.theme === "light" ? "#000000" : "#ffffff" } : {}) }} resizeMode="contain" />
-                                          <View style={{ flex: 1 }}><Text variant="text-sm/semibold" color="text-normal">{badge.description || badge.id}</Text></View>
-                                          <Pressable accessibilityRole="button" accessibilityLabel={preview.hiddenBadgeIds.includes(badge.id) ? "Show badge" : "Hide badge"} onPress={() => update("hiddenBadgeIds", preview.hiddenBadgeIds.includes(badge.id) ? preview.hiddenBadgeIds.filter(id => id !== badge.id) : [...preview.hiddenBadgeIds, badge.id], true)} style={{ padding: 8 }}><Text variant="text-sm/medium" color="text-normal">{preview.hiddenBadgeIds.includes(badge.id) ? "Show" : "Hide"}</Text></Pressable>
-                                          {([-1, 1] as const).map(direction => <Pressable key={direction} accessibilityRole="button" accessibilityLabel={direction === -1 ? "Move badge up" : "Move badge down"} disabled={direction === -1 ? index === 0 : index === rows.length - 1} onPress={() => update("badgeOrder", moveBadgeOrder(editableBadgeRows().map(row => row.id), badge.id, direction), true)} style={{ padding: 8, opacity: (direction === -1 ? index === 0 : index === rows.length - 1) ? 0.3 : 1 }}><Text variant="heading-md/semibold" color="text-normal">{direction === -1 ? "↑" : "↓"}</Text></Pressable>)}
-                                      </View>
-                                  ))}
-                                  <ActionButton muted label="Reset Badge Layout" onPress={() => { update("hiddenBadgeIds", [], true); update("badgeOrder", [], true); }} />
-                              </View>
-                          </Card> : null}
+
 
                           <ActionButton label={showDetails ? "Hide connection details" : "Connection details"} muted onPress={() => setShowDetails(!showDetails)} />
                           {showDetails ? <Card border="strong">
