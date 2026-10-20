@@ -3207,12 +3207,12 @@
     }
     if (import_chroma_js.default.valid(colorString))
       return (0, import_chroma_js.default)(colorString).hex();
-    var color2 = Number((0, import_react_native3.processColor)(colorString));
+    var color3 = Number((0, import_react_native3.processColor)(colorString));
     return import_chroma_js.default.rgb(
-      color2 >> 16 & 255,
-      color2 >> 8 & 255,
-      color2 & 255,
-      color2 >> 24 & 255
+      color3 >> 16 & 255,
+      color3 >> 8 & 255,
+      color3 & 255,
+      color3 >> 24 & 255
       // alpha
     ).hex();
   }
@@ -6360,7 +6360,7 @@
       var fontId = style.fontId ?? style.font_id;
       var effectId = style.effectId ?? style.effect_id;
       var colors = Array.isArray(style.colors) ? style.colors : [];
-      if (Number.isInteger(fontId) && fontId >= 0 && Number.isInteger(effectId) && effectId >= 0 && colors.length <= 3 && colors.every((color2) => Number.isInteger(color2) && color2 >= 0 && color2 <= 16777215)) {
+      if (Number.isInteger(fontId) && fontId >= 0 && Number.isInteger(effectId) && effectId >= 0 && colors.length <= 3 && colors.every((color3) => Number.isInteger(color3) && color3 >= 0 && color3 <= 16777215)) {
         result.displayNameStyles = {
           fontId,
           effectId,
@@ -11357,6 +11357,703 @@
     }
   });
 
+  // src/core/ui/settings/components/ProfileEditorKit.tsx
+  var ProfileEditorKit_exports = {};
+  __export(ProfileEditorKit_exports, {
+    BadgeGrid: () => BadgeGrid,
+    Chips: () => Chips,
+    ChoiceGrid: () => ChoiceGrid,
+    CurrentRow: () => CurrentRow,
+    Divider: () => Divider,
+    Field: () => Field,
+    PreviewCard: () => PreviewCard,
+    Section: () => Section
+  });
+  function Section({ title, description, children }) {
+    return /* @__PURE__ */ jsxs(import_react_native19.View, {
+      style: {
+        gap: SPACE.md
+      },
+      children: [
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
+          style: {
+            gap: SPACE.xs
+          },
+          children: [
+            /* @__PURE__ */ jsx(Text, {
+              variant: "heading-md/bold",
+              color: "text-normal",
+              children: title
+            }),
+            description ? /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/medium",
+              color: "text-muted",
+              children: description
+            }) : null
+          ]
+        }),
+        /* @__PURE__ */ jsx(import_react_native19.View, {
+          style: {
+            gap: SPACE.md
+          },
+          children
+        })
+      ]
+    });
+  }
+  function Divider() {
+    return /* @__PURE__ */ jsx(import_react_native19.View, {
+      style: {
+        height: 1,
+        backgroundColor: "rgba(255,255,255,0.08)",
+        marginVertical: SPACE.sm
+      }
+    });
+  }
+  function Field({ label, hint, error, children }) {
+    return /* @__PURE__ */ jsxs(import_react_native19.View, {
+      style: {
+        gap: SPACE.xs + 2
+      },
+      children: [
+        /* @__PURE__ */ jsx(Text, {
+          variant: "text-xs/bold",
+          color: "text-muted",
+          children: label.toUpperCase()
+        }),
+        children,
+        error ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-xs/medium",
+          color: "text-danger",
+          children: error
+        }) : hint ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-xs/medium",
+          color: "text-muted",
+          children: hint
+        }) : null
+      ]
+    });
+  }
+  function Chips({ options, value, onChange }) {
+    return /* @__PURE__ */ jsx(import_react_native19.View, {
+      accessibilityRole: "radiogroup",
+      style: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: SPACE.sm
+      },
+      children: options.map((option) => {
+        var on = option.value === value;
+        return /* @__PURE__ */ jsxs(import_react_native19.Pressable, {
+          accessibilityRole: "radio",
+          accessibilityState: {
+            checked: on
+          },
+          onPress: () => onChange(option.value),
+          style: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingVertical: 8,
+            paddingHorizontal: 12,
+            borderRadius: 10,
+            borderWidth: 2,
+            borderColor: on ? BRAND : "transparent",
+            backgroundColor: on ? "rgba(88,101,242,0.16)" : surfaceAlt()
+          },
+          children: [
+            option.dot ? /* @__PURE__ */ jsx(import_react_native19.View, {
+              style: {
+                width: 10,
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: option.dot
+              }
+            }) : null,
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/semibold",
+              color: "text-normal",
+              children: option.label
+            })
+          ]
+        }, String(option.value));
+      })
+    });
+  }
+  function Check() {
+    return /* @__PURE__ */ jsx(import_react_native19.View, {
+      style: {
+        position: "absolute",
+        top: 6,
+        right: 6,
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        backgroundColor: BRAND,
+        alignItems: "center",
+        justifyContent: "center"
+      },
+      children: /* @__PURE__ */ jsx(Text, {
+        variant: "text-xs/bold",
+        style: {
+          color: "#fff"
+        },
+        children: "\u2713"
+      })
+    });
+  }
+  function CurrentRow({ label, image, wide, onRemove }) {
+    return /* @__PURE__ */ jsxs(import_react_native19.View, {
+      style: {
+        flexDirection: "row",
+        alignItems: "center",
+        gap: SPACE.md,
+        padding: SPACE.sm + 2,
+        borderRadius: 12,
+        backgroundColor: surfaceAlt(),
+        minHeight: 52
+      },
+      children: [
+        label && image ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+          source: {
+            uri: image
+          },
+          resizeMode: wide ? "cover" : "contain",
+          style: {
+            width: wide ? 96 : 36,
+            height: 36,
+            borderRadius: 6
+          }
+        }) : null,
+        /* @__PURE__ */ jsx(import_react_native19.View, {
+          style: {
+            flex: 1
+          },
+          children: /* @__PURE__ */ jsx(Text, {
+            variant: "text-sm/semibold",
+            color: label ? "text-normal" : "text-muted",
+            lineClamp: 1,
+            children: label || "Nothing selected"
+          })
+        }),
+        label ? /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+          accessibilityRole: "button",
+          onPress: onRemove,
+          style: {
+            paddingVertical: 6,
+            paddingHorizontal: 10
+          },
+          children: /* @__PURE__ */ jsx(Text, {
+            variant: "text-sm/semibold",
+            color: "text-danger",
+            children: "Remove"
+          })
+        }) : null
+      ]
+    });
+  }
+  function ChoiceGrid({ items, keyOf, labelOf, imageOf, isSelected, onPick, noneLabel, noneSelected, onNone, wide, status, onRetry, SearchInput }) {
+    var [query, setQuery] = (0, import_react6.useState)("");
+    var [limit, setLimit] = (0, import_react6.useState)(18);
+    var needle = query.trim().toLowerCase();
+    var filtered = (0, import_react6.useMemo)(() => needle ? items.filter((item) => labelOf(item).toLowerCase().includes(needle)) : items, [
+      items,
+      needle
+    ]);
+    var columns = wide ? 2 : 3;
+    var cardWidth = `${100 / columns - 2}%`;
+    var card = (key, label, image, selected, onPress, none = false) => /* @__PURE__ */ jsxs(import_react_native19.Pressable, {
+      accessibilityRole: "button",
+      accessibilityState: {
+        selected
+      },
+      accessibilityLabel: label,
+      onPress,
+      style: {
+        width: cardWidth,
+        padding: 6,
+        borderRadius: 12,
+        borderWidth: 2,
+        borderColor: selected ? BRAND : "transparent",
+        backgroundColor: selected ? "rgba(88,101,242,0.14)" : surfaceAlt(),
+        gap: 6
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native19.View, {
+          style: {
+            width: "100%",
+            aspectRatio: wide ? 4 : 1,
+            borderRadius: 8,
+            overflow: "hidden",
+            backgroundColor: "rgba(0,0,0,0.25)",
+            alignItems: "center",
+            justifyContent: "center"
+          },
+          children: none ? /* @__PURE__ */ jsx(Text, {
+            variant: "heading-lg/bold",
+            color: "text-muted",
+            children: "\u2205"
+          }) : image ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+            source: {
+              uri: image
+            },
+            resizeMode: wide ? "cover" : "contain",
+            style: {
+              width: "100%",
+              height: "100%"
+            }
+          }) : null
+        }),
+        /* @__PURE__ */ jsx(Text, {
+          variant: "text-xs/semibold",
+          color: "text-normal",
+          lineClamp: 1,
+          children: label
+        }),
+        selected ? /* @__PURE__ */ jsx(Check, {}) : null
+      ]
+    }, key);
+    if (status?.loading)
+      return /* @__PURE__ */ jsx(Text, {
+        variant: "text-sm/medium",
+        color: "text-muted",
+        children: "Loading Discord's catalog\u2026"
+      });
+    if (status?.error)
+      return /* @__PURE__ */ jsxs(import_react_native19.View, {
+        style: {
+          gap: SPACE.sm
+        },
+        children: [
+          /* @__PURE__ */ jsx(Text, {
+            variant: "text-sm/medium",
+            color: "text-danger",
+            children: status.error
+          }),
+          onRetry ? /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+            accessibilityRole: "button",
+            onPress: onRetry,
+            children: /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/semibold",
+              color: "text-link",
+              children: "Try again"
+            })
+          }) : null
+        ]
+      });
+    return /* @__PURE__ */ jsxs(import_react_native19.View, {
+      style: {
+        gap: SPACE.md
+      },
+      children: [
+        /* @__PURE__ */ jsx(SearchInput, {
+          value: query,
+          placeholder: `Search ${items.length}`,
+          autoCorrect: false,
+          onChangeText: (value) => {
+            setQuery(value);
+            setLimit(18);
+          }
+        }),
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
+          style: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 8,
+            justifyContent: "space-between"
+          },
+          children: [
+            !needle ? card("__none", noneLabel, void 0, noneSelected, onNone, true) : null,
+            filtered.slice(0, limit).map((item) => card(keyOf(item), labelOf(item), imageOf(item), isSelected(item), () => onPick(item)))
+          ]
+        }),
+        !filtered.length ? /* @__PURE__ */ jsxs(Text, {
+          variant: "text-sm/medium",
+          color: "text-muted",
+          children: [
+            "Nothing matches \u201C",
+            query,
+            "\u201D."
+          ]
+        }) : null,
+        limit < filtered.length ? /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+          accessibilityRole: "button",
+          onPress: () => setLimit((value) => value + 18),
+          style: {
+            alignSelf: "center",
+            paddingVertical: 10,
+            paddingHorizontal: 16,
+            borderRadius: 10,
+            backgroundColor: surfaceAlt()
+          },
+          children: /* @__PURE__ */ jsxs(Text, {
+            variant: "text-sm/semibold",
+            color: "text-normal",
+            children: [
+              "Show more (",
+              filtered.length - limit,
+              " left)"
+            ]
+          })
+        }) : null
+      ]
+    });
+  }
+  function BadgeGrid({ items }) {
+    return /* @__PURE__ */ jsx(import_react_native19.View, {
+      style: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 8
+      },
+      children: items.map((item) => /* @__PURE__ */ jsxs(import_react_native19.Pressable, {
+        accessibilityRole: "checkbox",
+        accessibilityState: {
+          checked: item.active
+        },
+        accessibilityLabel: item.label,
+        onPress: item.onPress,
+        style: {
+          width: "48.5%",
+          flexDirection: "row",
+          alignItems: "center",
+          gap: 8,
+          paddingVertical: 8,
+          paddingHorizontal: 10,
+          borderRadius: 10,
+          borderWidth: 2,
+          borderColor: item.active ? BRAND : "transparent",
+          backgroundColor: item.active ? "rgba(88,101,242,0.16)" : surfaceAlt()
+        },
+        children: [
+          item.icon ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+            source: {
+              uri: item.icon
+            },
+            style: {
+              width: 22,
+              height: 22
+            },
+            resizeMode: "contain"
+          }) : /* @__PURE__ */ jsx(import_react_native19.View, {
+            style: {
+              width: 22,
+              height: 22
+            }
+          }),
+          /* @__PURE__ */ jsx(import_react_native19.View, {
+            style: {
+              flex: 1
+            },
+            children: /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/medium",
+              color: "text-normal",
+              lineClamp: 1,
+              children: item.label
+            })
+          })
+        ]
+      }, item.key))
+    });
+  }
+  function PreviewCard({ name, username, pronouns, avatar, banner, primary, accent, decoration, nameplate, tagText, tagIcon, status, customStatus, activity, bio, frame, effect }) {
+    var edge = primary || BRAND;
+    return /* @__PURE__ */ jsxs(import_react_native19.View, {
+      style: {
+        gap: SPACE.sm
+      },
+      children: [
+        /* @__PURE__ */ jsx(Text, {
+          variant: "text-xs/bold",
+          color: "text-muted",
+          children: "PREVIEW"
+        }),
+        /* @__PURE__ */ jsxs(import_react_native19.View, {
+          style: {
+            borderRadius: 16,
+            padding: 3,
+            backgroundColor: edge,
+            borderWidth: frame ? 2 : 0,
+            borderColor: "#f0b232"
+          },
+          children: [
+            /* @__PURE__ */ jsx(import_react_native19.View, {
+              style: {
+                height: 80,
+                borderTopLeftRadius: 13,
+                borderTopRightRadius: 13,
+                overflow: "hidden",
+                backgroundColor: accent || edge
+              },
+              children: banner ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+                source: {
+                  uri: banner
+                },
+                style: {
+                  width: "100%",
+                  height: "100%"
+                },
+                resizeMode: "cover"
+              }) : null
+            }),
+            /* @__PURE__ */ jsxs(import_react_native19.View, {
+              style: {
+                backgroundColor: surfaceAlt(),
+                borderBottomLeftRadius: 13,
+                borderBottomRightRadius: 13,
+                padding: SPACE.md,
+                paddingTop: 48,
+                gap: 6
+              },
+              children: [
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  style: {
+                    position: "absolute",
+                    top: -40,
+                    left: 14,
+                    width: 80,
+                    height: 80
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(import_react_native19.Image, {
+                      source: {
+                        uri: avatar
+                      },
+                      style: {
+                        width: 80,
+                        height: 80,
+                        borderRadius: 40,
+                        borderWidth: 6,
+                        borderColor: surfaceAlt()
+                      }
+                    }),
+                    decoration ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+                      source: {
+                        uri: decoration
+                      },
+                      style: {
+                        position: "absolute",
+                        top: -10,
+                        left: -10,
+                        width: 100,
+                        height: 100
+                      },
+                      resizeMode: "contain"
+                    }) : null,
+                    /* @__PURE__ */ jsx(import_react_native19.View, {
+                      style: {
+                        position: "absolute",
+                        right: 2,
+                        bottom: 4,
+                        width: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        borderWidth: 4,
+                        borderColor: surfaceAlt(),
+                        backgroundColor: STATUS_COLORS[status || "online"] || STATUS_COLORS.online
+                      }
+                    })
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  style: {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 6,
+                    borderRadius: 8,
+                    overflow: "hidden",
+                    paddingVertical: 2
+                  },
+                  children: [
+                    nameplate ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+                      source: {
+                        uri: nameplate
+                      },
+                      style: {
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0
+                      },
+                      resizeMode: "cover"
+                    }) : null,
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "heading-lg/bold",
+                      color: "text-normal",
+                      lineClamp: 1,
+                      children: name
+                    }),
+                    tagText ? /* @__PURE__ */ jsxs(import_react_native19.View, {
+                      style: {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        paddingHorizontal: 6,
+                        paddingVertical: 1,
+                        borderRadius: 4,
+                        backgroundColor: "rgba(0,0,0,0.35)"
+                      },
+                      children: [
+                        tagIcon ? /* @__PURE__ */ jsx(import_react_native19.Image, {
+                          source: {
+                            uri: tagIcon
+                          },
+                          style: {
+                            width: 12,
+                            height: 12
+                          },
+                          resizeMode: "contain"
+                        }) : null,
+                        /* @__PURE__ */ jsx(Text, {
+                          variant: "text-xs/bold",
+                          color: "text-normal",
+                          children: tagText
+                        })
+                      ]
+                    }) : null
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-muted",
+                  lineClamp: 1,
+                  children: [
+                    "@",
+                    username,
+                    pronouns ? ` \xB7 ${pronouns}` : ""
+                  ]
+                }),
+                customStatus ? /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-normal",
+                  lineClamp: 2,
+                  children: customStatus
+                }) : null,
+                activity?.name ? /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  style: {
+                    padding: 8,
+                    borderRadius: 8,
+                    backgroundColor: surface(),
+                    gap: 2
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/medium",
+                      color: "text-muted",
+                      children: activity.verb
+                    }),
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      color: "text-normal",
+                      lineClamp: 1,
+                      children: activity.name
+                    }),
+                    activity.details ? /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/medium",
+                      color: "text-muted",
+                      lineClamp: 1,
+                      children: activity.details
+                    }) : null
+                  ]
+                }) : null,
+                bio ? /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-normal",
+                  lineClamp: 4,
+                  children: bio
+                }) : null,
+                frame || effect ? /* @__PURE__ */ jsxs(import_react_native19.View, {
+                  style: {
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    gap: 6
+                  },
+                  children: [
+                    frame ? /* @__PURE__ */ jsx(import_react_native19.View, {
+                      style: {
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 99,
+                        backgroundColor: surface()
+                      },
+                      children: /* @__PURE__ */ jsxs(Text, {
+                        variant: "text-xs/medium",
+                        color: "text-muted",
+                        children: [
+                          "Frame: ",
+                          frame
+                        ]
+                      })
+                    }) : null,
+                    effect ? /* @__PURE__ */ jsx(import_react_native19.View, {
+                      style: {
+                        paddingHorizontal: 8,
+                        paddingVertical: 2,
+                        borderRadius: 99,
+                        backgroundColor: surface()
+                      },
+                      children: /* @__PURE__ */ jsxs(Text, {
+                        variant: "text-xs/medium",
+                        color: "text-muted",
+                        children: [
+                          "Effect: ",
+                          effect
+                        ]
+                      })
+                    }) : null
+                  ]
+                }) : null
+              ]
+            })
+          ]
+        }),
+        /* @__PURE__ */ jsx(Text, {
+          variant: "text-xs/medium",
+          color: "text-muted",
+          children: "A rough preview. Frames and effects are drawn by Discord on your real profile."
+        })
+      ]
+    });
+  }
+  var import_react6, import_react_native19, SPACE, color2, BRAND, surface, surfaceAlt, STATUS_COLORS;
+  var init_ProfileEditorKit = __esm({
+    "src/core/ui/settings/components/ProfileEditorKit.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_jsxRuntime();
+      import_react6 = __toESM(require_react());
+      import_react_native19 = __toESM(require_react_native());
+      init_components();
+      init_common();
+      SPACE = {
+        xs: 4,
+        sm: 8,
+        md: 12,
+        lg: 16,
+        xl: 24
+      };
+      color2 = (name, fallback) => {
+        try {
+          return tokens.colors?.[name] ?? fallback;
+        } catch (e) {
+          return fallback;
+        }
+      };
+      BRAND = "#5865F2";
+      surface = () => color2("BACKGROUND_SECONDARY", "#2b2d31");
+      surfaceAlt = () => color2("BACKGROUND_TERTIARY", "#1e1f22");
+      STATUS_COLORS = {
+        online: "#23a55a",
+        idle: "#f0b232",
+        dnd: "#f23f43",
+        invisible: "#80848e",
+        streaming: "#593695"
+      };
+    }
+  });
+
   // src/core/ui/settings/pages/FakeProfile/index.tsx
   var FakeProfile_exports = {};
   __export(FakeProfile_exports, {
@@ -11540,7 +12237,7 @@
     return _async_to_generator(function* () {
       if (globalThis.__CLOUDCORD_LOADER__?.loaderName !== "RealCord")
         return;
-      var reader = import_react_native19.NativeModules.FileReaderModule ?? import_react_native19.NativeModules.RCTFileReaderModule;
+      var reader = import_react_native20.NativeModules.FileReaderModule ?? import_react_native20.NativeModules.RCTFileReaderModule;
       if (typeof reader?.readAsDataURL !== "function")
         return;
       try {
@@ -11907,7 +12604,7 @@
       return;
     sharedRenderTimer = setTimeout(() => {
       sharedRenderTimer = null;
-      if (import_react_native19.AppState.currentState !== "active")
+      if (import_react_native20.AppState.currentState !== "active")
         return;
       for (var refresh of identityRefreshers)
         refresh();
@@ -11932,7 +12629,7 @@
     var fetchedAt = sharedProfileFetchedAt.get(id) || 0;
     var cached = sharedProfiles.get(id);
     var ttl = cached && !Object.keys(cached).length ? 15 * 6e4 : force ? 3e4 : 2 * 6e4;
-    if (import_react_native19.AppState.currentState !== "active" || !/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || Date.now() - fetchedAt < ttl || sharedRequests.size >= 4)
+    if (import_react_native20.AppState.currentState !== "active" || !/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || Date.now() - fetchedAt < ttl || sharedRequests.size >= 4)
       return;
     sharedRequests.add(id);
     sharedProfileFetchedAt.set(id, Date.now());
@@ -12028,7 +12725,7 @@
         if (!/^\d{15,22}$/.test(id) || isCurrentUser(id) || props?.__cloudcordRealProfileMenu)
           return rendered;
         if (Array.isArray(props?.options))
-          return /* @__PURE__ */ (0, import_react6.cloneElement)(rendered, {
+          return /* @__PURE__ */ (0, import_react7.cloneElement)(rendered, {
             __cloudcordRealProfileMenu: true,
             options: [
               ...props.options,
@@ -12037,11 +12734,11 @@
           });
         if (!props?.children)
           return rendered;
-        return /* @__PURE__ */ (0, import_react6.cloneElement)(rendered, {
+        return /* @__PURE__ */ (0, import_react7.cloneElement)(rendered, {
           __cloudcordRealProfileMenu: true,
           children: [
             props.children,
-            /* @__PURE__ */ (0, import_react6.createElement)(TableRow, {
+            /* @__PURE__ */ (0, import_react7.createElement)(TableRow, {
               key: "cloudcord-profile-view",
               label: option(id).label,
               onPress: option(id).onPress
@@ -12077,7 +12774,7 @@
     };
   }
   function refreshSharedProfiles() {
-    if (import_react_native19.AppState.currentState !== "active")
+    if (import_react_native20.AppState.currentState !== "active")
       return;
     var now = Date.now();
     var budget = 4;
@@ -12635,7 +13332,7 @@
       });
     } catch (error) {
       diagnostics.last = error?.message || "Could not open gifting badges";
-      import_react_native19.Alert.alert("Gifting Badge", "Discord's native gifting badge overlay is unavailable in this Discord version.");
+      import_react_native20.Alert.alert("Gifting Badge", "Discord's native gifting badge overlay is unavailable in this Discord version.");
     }
   }
   function selectedBadgeObjects(existing, forEditor = false) {
@@ -12888,7 +13585,7 @@
   }
   function refreshPublishedBadges(force = false) {
     return _async_to_generator(function* () {
-      if (import_react_native19.AppState.currentState !== "active" || publishedBadgeRequest || !force && Date.now() - publishedBadgeFetchedAt < 6e4)
+      if (import_react_native20.AppState.currentState !== "active" || publishedBadgeRequest || !force && Date.now() - publishedBadgeFetchedAt < 6e4)
         return;
       publishedBadgeRequest = true;
       publishedBadgeFetchedAt = Date.now();
@@ -13094,11 +13791,11 @@
           var props = badgeRenderProps.get(rendered.props.id);
           if (props) {
             if (String(props.id || "").startsWith("cloudcord-official-")) {
-              return /* @__PURE__ */ jsx(import_react_native19.Pressable, {
+              return /* @__PURE__ */ jsx(import_react_native20.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: String(props.label),
-                onPress: () => import_react_native19.Alert.alert(String(props.label)),
-                children: /* @__PURE__ */ jsx(import_react_native19.Image, {
+                onPress: () => import_react_native20.Alert.alert(String(props.label)),
+                children: /* @__PURE__ */ jsx(import_react_native20.Image, {
                   source: props.source,
                   resizeMode: "contain",
                   style: {
@@ -13296,7 +13993,7 @@
             onClick: open,
             onOpenProfile: open
           } : current;
-          return /* @__PURE__ */ (0, import_react6.createElement)(Component2, nextProps);
+          return /* @__PURE__ */ (0, import_react7.createElement)(Component2, nextProps);
         });
       socialWrapperTypes.add(socialRenderers.get(Component2));
       return {
@@ -13315,8 +14012,8 @@
     if (identityRenderers.has(Component2))
       return identityRenderers.get(Component2);
     function CloudCordIdentity(props) {
-      var [, refresh] = (0, import_react6.useReducer)((value) => value + 1, 0);
-      (0, import_react6.useEffect)(() => {
+      var [, refresh] = (0, import_react7.useReducer)((value) => value + 1, 0);
+      (0, import_react7.useEffect)(() => {
         var update = () => refresh();
         identityRefreshers.add(update);
         return () => {
@@ -13359,7 +14056,7 @@
           currentProps.name = name;
         }
       }
-      return /* @__PURE__ */ (0, import_react6.createElement)(Component2, currentProps);
+      return /* @__PURE__ */ (0, import_react7.createElement)(Component2, currentProps);
     }
     identityRenderers.set(Component2, CloudCordIdentity);
     return CloudCordIdentity;
@@ -13506,8 +14203,8 @@
     var messagePreviews = findByProps("useFormattedMessagePreview", "formatMessagePreview");
     addPatch("formatMessagePreview", messagePreviews, (args, original) => original(...args.map((value) => presentationIdentity(value))));
     addPatch("useFormattedMessagePreview", messagePreviews, (args, original) => {
-      var [, refresh] = (0, import_react6.useReducer)((value) => value + 1, 0);
-      (0, import_react6.useEffect)(() => {
+      var [, refresh] = (0, import_react7.useReducer)((value) => value + 1, 0);
+      (0, import_react7.useEffect)(() => {
         var update = () => refresh();
         identityRefreshers.add(update);
         return () => {
@@ -13778,17 +14475,17 @@
         connectRealProfileMenu();
         yield pullOwnSharedProfile();
         void refreshPublishedBadges(true);
-        import_react_native19.AppState.addEventListener("change", (state2) => {
+        import_react_native20.AppState.addEventListener("change", (state2) => {
           if (state2 === "active")
             void refreshPublishedBadges(true);
         });
         if (!sharedSyncTimer)
           sharedSyncTimer = setInterval(() => {
-            if (import_react_native19.AppState.currentState !== "active")
+            if (import_react_native20.AppState.currentState !== "active")
               return;
             void pullOwnSharedProfile();
             refreshSharedProfiles();
-            if (import_react_native19.AppState.currentState === "active")
+            if (import_react_native20.AppState.currentState === "active")
               void refreshPublishedBadges();
           }, 15e3);
         if (preview.enabled) {
@@ -13810,7 +14507,7 @@
           height: Number(asset.height)
         };
       return yield new Promise((resolve, reject) => {
-        import_react_native19.Image.getSize(uri, (width, height) => resolve({
+        import_react_native20.Image.getSize(uri, (width, height) => resolve({
           width,
           height
         }), reject);
@@ -13976,10 +14673,10 @@
     })();
   }
   function ServerTagPicker({ onSelect }) {
-    var [url2, setUrl] = (0, import_react6.useState)("");
-    var [error, setError] = (0, import_react6.useState)("");
+    var [url2, setUrl] = (0, import_react7.useState)("");
+    var [error, setError] = (0, import_react7.useState)("");
     var tags = availableServerTags(safeStore("UserStore")?.getUsers?.());
-    return /* @__PURE__ */ jsxs(import_react_native19.ScrollView, {
+    return /* @__PURE__ */ jsxs(import_react_native20.ScrollView, {
       contentContainerStyle: {
         padding: 16,
         gap: 16
@@ -14044,7 +14741,7 @@
   function NameStylePreview({ styles = preview.displayNameStyles || null }) {
     var NativeName = findByProps("AVERAGE_FONT_WIDTH_RATIO")?.default;
     var name = preview.displayName || preview.username || realCurrentUser?.globalName || realCurrentUser?.username || "Your name";
-    return /* @__PURE__ */ jsxs(import_react_native19.View, {
+    return /* @__PURE__ */ jsxs(import_react_native20.View, {
       style: {
         padding: 16,
         borderRadius: 12,
@@ -14082,7 +14779,7 @@
     });
   }
   function NameStylePicker({ field, onSelect }) {
-    var [selected, setSelected] = (0, import_react6.useState)(preview.displayNameStyles || {
+    var [selected, setSelected] = (0, import_react7.useState)(preview.displayNameStyles || {
       fontId: 0,
       effectId: 0,
       colors: [
@@ -14091,7 +14788,7 @@
     });
     var NativeName = findByProps("AVERAGE_FONT_WIDTH_RATIO")?.default;
     var name = preview.displayName || preview.username || realCurrentUser?.globalName || realCurrentUser?.username || "Your name";
-    return /* @__PURE__ */ jsxs(import_react_native19.ScrollView, {
+    return /* @__PURE__ */ jsxs(import_react_native20.ScrollView, {
       contentContainerStyle: {
         padding: 16,
         gap: 12
@@ -14105,7 +14802,7 @@
             ...selected,
             [field]: option.value
           };
-          return /* @__PURE__ */ jsx(import_react_native19.View, {
+          return /* @__PURE__ */ jsx(import_react_native20.View, {
             style: {
               borderRadius: 12,
               borderWidth: selected[field] === option.value ? 2 : 0,
@@ -14143,7 +14840,7 @@
   }
   function ToggleRow({ label, subLabel, value, onPress }) {
     var { TableSwitchRow: TableSwitchRow2 } = (init_components(), __toCommonJS(components_exports));
-    return /* @__PURE__ */ jsx(import_react_native19.View, {
+    return /* @__PURE__ */ jsx(import_react_native20.View, {
       style: {
         borderRadius: 16,
         overflow: "hidden"
@@ -14154,18 +14851,6 @@
         value,
         onValueChange: onPress
       })
-    });
-  }
-  function DurationSelect({ label, value, onPress }) {
-    var { TableRow: TableRow2 } = (init_components(), __toCommonJS(components_exports));
-    var selected = label === "Gifting badge" ? GIFT_LEVELS[value]?.name || "None" : label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value);
-    return /* @__PURE__ */ jsx(TableRow2, {
-      arrow: true,
-      label,
-      trailing: /* @__PURE__ */ jsx(TableRow2.TrailingText, {
-        text: selected || "None"
-      }),
-      onPress
     });
   }
   function ColorPickerRow({ label, value, onOpen }) {
@@ -14180,8 +14865,8 @@
     });
   }
   function CustomColorPicker({ title, initialColor, onApply }) {
-    var [color2, setColor] = (0, import_react6.useState)(initialColor);
-    return /* @__PURE__ */ jsxs(import_react_native19.ScrollView, {
+    var [color3, setColor] = (0, import_react7.useState)(initialColor);
+    return /* @__PURE__ */ jsxs(import_react_native20.ScrollView, {
       contentContainerStyle: {
         padding: 12,
         paddingBottom: 48,
@@ -14190,7 +14875,7 @@
       keyboardShouldPersistTaps: "handled",
       children: [
         /* @__PURE__ */ jsx(Card2, {
-          children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+          children: /* @__PURE__ */ jsxs(import_react_native20.View, {
             style: {
               padding: 16,
               gap: 12
@@ -14202,7 +14887,7 @@
               }),
               /* @__PURE__ */ jsx(TextInput3, {
                 accessibilityLabel: "Exact hex color",
-                value: color2,
+                value: color3,
                 placeholder: "#5865F2",
                 autoCapitalize: "characters",
                 autoCorrect: false,
@@ -14212,15 +14897,15 @@
               /* @__PURE__ */ jsx(Button, {
                 text: "Apply color",
                 variant: "secondary",
-                disabled: colorNumber(color2) == null,
-                onPress: () => onApply(color2.toUpperCase())
+                disabled: colorNumber(color3) == null,
+                onPress: () => onApply(color3.toUpperCase())
               })
             ]
           })
         }),
         /* @__PURE__ */ jsx(TableRadioGroup, {
           title: "Presets",
-          value: color2.toUpperCase(),
+          value: color3.toUpperCase(),
           onChange: setColor,
           hasIcons: true,
           children: PROFILE_COLORS.map((preset) => /* @__PURE__ */ jsx(TableRadioRow, {
@@ -14234,142 +14919,13 @@
       ]
     });
   }
-  function DecorationGallery({ onSelect }) {
-    var [items, setItems] = (0, import_react6.useState)([]);
-    var [loading, setLoading] = (0, import_react6.useState)(true);
-    (0, import_react6.useEffect)(() => {
-      var active = true;
-      void findDecorationCatalog().then((result) => {
-        if (active) {
-          setItems(result);
-          setLoading(false);
-        }
-      });
-      var timer = setTimeout(() => void findDecorationCatalog().then((result) => {
-        if (active) {
-          setItems(result);
-          setLoading(false);
-        }
-      }), 1200);
-      return () => {
-        active = false;
-        clearTimeout(timer);
-      };
-    }, []);
-    return /* @__PURE__ */ jsx(import_react_native19.FlatList, {
-      data: items,
-      keyExtractor: (item) => `${item.asset}:${item.skuId}`,
-      initialNumToRender: 12,
-      maxToRenderPerBatch: 12,
-      windowSize: 5,
-      contentContainerStyle: {
-        padding: 12,
-        paddingBottom: 48
-      },
-      renderItem: ({ item }) => /* @__PURE__ */ jsx(TableRow, {
-        arrow: true,
-        label: item.label,
-        icon: /* @__PURE__ */ jsx(TableRow.Icon, {
-          source: {
-            uri: item.uri
-          }
-        }),
-        onPress: () => onSelect(item)
-      }),
-      ListEmptyComponent: /* @__PURE__ */ jsx(Text, {
-        variant: "text-sm/medium",
-        color: "text-muted",
-        style: {
-          padding: 16
-        },
-        children: loading ? "Loading decorations\u2026" : "No decorations loaded. Open Discord's Shop, then try again."
-      })
-    });
-  }
-  function CollectibleGallery({ kind, selected, onSelect }) {
-    var [catalog, setCatalog] = (0, import_react6.useState)(collectiblesCatalog);
-    var [error, setError] = (0, import_react6.useState)("");
-    var [query, setQuery] = (0, import_react6.useState)("");
-    var load = (force = false) => {
-      setError("");
-      loadCollectiblesCatalog(force).then(setCatalog, (problem) => setError(problem?.message || "Couldn't load Discord's catalog."));
-    };
-    (0, import_react6.useEffect)(() => {
-      if (!catalog)
-        load();
-    }, []);
-    var items = (catalog?.[kind] || []).filter((item) => String(item.label || item.title || "").toLowerCase().includes(query.toLowerCase()));
-    return /* @__PURE__ */ jsx(import_react_native19.FlatList, {
-      data: items,
-      keyExtractor: (item) => item.skuId,
-      initialNumToRender: 12,
-      maxToRenderPerBatch: 12,
-      windowSize: 5,
-      contentContainerStyle: {
-        padding: 12,
-        paddingBottom: 48
-      },
-      ListHeaderComponent: /* @__PURE__ */ jsx(TextInput3, {
-        value: query,
-        placeholder: kind === "nameplates" ? "Search nameplates" : kind === "frames" ? "Search profile frames" : "Search profile effects",
-        placeholderTextColor: "#777",
-        autoCorrect: false,
-        onChangeText: setQuery,
-        style: {
-          color: "#fff",
-          backgroundColor: "#1e1f22",
-          borderRadius: 9,
-          padding: 12,
-          marginBottom: 8
-        }
-      }),
-      renderItem: ({ item }) => /* @__PURE__ */ jsx(TableRow, {
-        arrow: true,
-        label: item.label || item.title,
-        subLabel: item.skuId === selected ? "Selected" : void 0,
-        icon: /* @__PURE__ */ jsx(import_react_native19.Image, {
-          source: {
-            uri: kind === "nameplates" ? nameplateAssetURL(item.asset) : item.preview
-          },
-          style: kind === "nameplates" ? {
-            width: 64,
-            height: 22,
-            borderRadius: 4
-          } : {
-            width: 32,
-            height: 32,
-            borderRadius: 6
-          },
-          resizeMode: "cover"
-        }),
-        onPress: () => onSelect(item)
-      }),
-      ListEmptyComponent: /* @__PURE__ */ jsxs(import_react_native19.View, {
-        style: {
-          padding: 16,
-          gap: 8
-        },
-        children: [
-          /* @__PURE__ */ jsx(Text, {
-            variant: "text-sm/medium",
-            color: "text-muted",
-            children: error || (catalog ? "Nothing matches your search." : "Loading Discord's catalog\u2026")
-          }),
-          error ? /* @__PURE__ */ jsx(Button, {
-            text: "Retry",
-            onPress: () => load(true)
-          }) : null
-        ]
-      })
-    });
-  }
   function FakeProfile() {
-    var [activeTab, setActiveTab] = (0, import_react6.useState)("profile");
-    var [showDetails, setShowDetails] = (0, import_react6.useState)(false);
+    var [activeTab, setActiveTab] = (0, import_react7.useState)("profile");
+    var [showDetails, setShowDetails] = (0, import_react7.useState)(false);
     useProxy(settings);
-    var [, redraw] = (0, import_react6.useReducer)((value) => value + 1, 0);
+    var [, redraw] = (0, import_react7.useReducer)((value) => value + 1, 0);
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react6.useEffect)(() => {
+    (0, import_react7.useEffect)(() => {
       fakeProfileEditorOpen = true;
       initializeFakeProfile();
       redraw();
@@ -14401,7 +14957,7 @@
       } catch (error) {
         diagnostics.last = error?.message || "Could not open the picker.";
         redraw();
-        import_react_native19.Alert.alert("FakeProfile", diagnostics.last);
+        import_react_native20.Alert.alert("FakeProfile", diagnostics.last);
       }
     })();
     var clearMedia = (field) => {
@@ -14497,7 +15053,7 @@
           ]
         });
       } catch (error) {
-        import_react_native19.Alert.alert("Couldn't open badges", error?.message || "Try opening the editor again.");
+        import_react_native20.Alert.alert("Couldn't open badges", error?.message || "Try opening the editor again.");
       }
     };
     var chooseGiftBadge = () => {
@@ -14533,7 +15089,7 @@
     };
     var MediaEditor = ({ label, field, banner = false }) => {
       var value = preview[field];
-      return /* @__PURE__ */ jsxs(import_react_native19.View, {
+      return /* @__PURE__ */ jsxs(import_react_native20.View, {
         style: {
           width: "100%",
           gap: 9,
@@ -14550,7 +15106,7 @@
             color: "text-muted",
             children: "Choose your file, then refresh here to load it."
           }),
-          /* @__PURE__ */ jsxs(import_react_native19.View, {
+          /* @__PURE__ */ jsxs(import_react_native20.View, {
             style: {
               width: "100%",
               gap: 8
@@ -14559,7 +15115,7 @@
               /* @__PURE__ */ jsx(ActionButton, {
                 label: "Upload",
                 onPress: () => {
-                  void require_react_native().Linking.openURL("https://getcloudcord.com/upload").catch(() => import_react_native19.Alert.alert("Couldn't open uploads", "Open getcloudcord.com/upload in your browser."));
+                  void require_react_native().Linking.openURL("https://getcloudcord.com/upload").catch(() => import_react_native20.Alert.alert("Couldn't open uploads", "Open getcloudcord.com/upload in your browser."));
                 }
               }),
               /* @__PURE__ */ jsx(ActionButton, {
@@ -14574,13 +15130,13 @@
                     refreshPreview();
                     redraw();
                   } catch (error) {
-                    import_react_native19.Alert.alert("Couldn't refresh", error?.message || "Try again later.");
+                    import_react_native20.Alert.alert("Couldn't refresh", error?.message || "Try again later.");
                   }
                 })())()
               })
             ]
           }),
-          value?.uri && /* @__PURE__ */ jsxs(import_react_native19.View, {
+          value?.uri && /* @__PURE__ */ jsxs(import_react_native20.View, {
             style: {
               width: "100%",
               borderRadius: 12,
@@ -14588,7 +15144,7 @@
               backgroundColor: "#1e1f22"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native19.View, {
+              /* @__PURE__ */ jsx(import_react_native20.View, {
                 style: banner ? {
                   width: "100%",
                   aspectRatio: 2.5,
@@ -14601,7 +15157,7 @@
                   alignSelf: "center",
                   marginVertical: 12
                 },
-                children: /* @__PURE__ */ jsx(import_react_native19.Image, {
+                children: /* @__PURE__ */ jsx(import_react_native20.Image, {
                   source: {
                     uri: value.uri
                   },
@@ -14612,7 +15168,7 @@
                   }
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native19.View, {
+              /* @__PURE__ */ jsxs(import_react_native20.View, {
                 style: {
                   flexDirection: "row",
                   alignItems: "center",
@@ -14653,10 +15209,46 @@
           userId
         });
       } catch (error) {
-        import_react_native19.Alert.alert("Couldn't open preview", error?.message || "Try opening your profile from Discord.");
+        import_react_native20.Alert.alert("Couldn't open preview", error?.message || "Try opening your profile from Discord.");
       }
     };
-    return /* @__PURE__ */ jsx(import_react_native19.ScrollView, {
+    var K2 = (init_ProfileEditorKit(), __toCommonJS(ProfileEditorKit_exports));
+    var [catalog, setCatalog] = (0, import_react7.useState)(collectiblesCatalog);
+    var [catalogStatus, setCatalogStatus] = (0, import_react7.useState)({
+      loading: !collectiblesCatalog
+    });
+    var loadCatalog = (force = false) => {
+      setCatalogStatus({
+        loading: true
+      });
+      loadCollectiblesCatalog(force).then((result) => {
+        setCatalog(result);
+        setCatalogStatus({});
+      }, (problem) => setCatalogStatus({
+        error: problem?.message || "Couldn't load Discord's catalog."
+      }));
+    };
+    var [decorations, setDecorations] = (0, import_react7.useState)([]);
+    var [decorationsLoading, setDecorationsLoading] = (0, import_react7.useState)(true);
+    (0, import_react7.useEffect)(() => {
+      if (activeTab !== "cosmetics")
+        return;
+      if (!catalog)
+        loadCatalog();
+      var active = true;
+      void findDecorationCatalog().then((result) => {
+        if (active) {
+          setDecorations(result);
+          setDecorationsLoading(false);
+        }
+      });
+      return () => {
+        active = false;
+      };
+    }, [
+      activeTab
+    ]);
+    return /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
       style: {
         flex: 1,
         width: "100%"
@@ -14670,7 +15262,7 @@
         paddingBottom: 48
       },
       keyboardShouldPersistTaps: "handled",
-      children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native20.View, {
         style: {
           width: "100%",
           gap: 24
@@ -14765,203 +15357,187 @@
           }) : null,
           activeTab === "custom" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsx(import_react_native19.View, {
+            children: /* @__PURE__ */ jsx(import_react_native20.View, {
               style: {
                 padding: 16
               },
               children: /* @__PURE__ */ jsx(CustomBadgeBeta2, {})
             })
           }) : null,
+          [
+            "profile",
+            "name",
+            "cosmetics",
+            "status",
+            "badges"
+          ].includes(activeTab) ? /* @__PURE__ */ jsx(Card2, {
+            children: /* @__PURE__ */ jsx(import_react_native20.View, {
+              style: {
+                padding: 16
+              },
+              children: /* @__PURE__ */ jsx(K2.PreviewCard, {
+                name: preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You",
+                username: preview.username || realCurrentUser?.username || "username",
+                pronouns: preview.pronouns,
+                avatar: preview.avatarMedia?.uri || (() => {
+                  try {
+                    return realCurrentUser?.getAvatarURL?.() || void 0;
+                  } catch (e) {
+                    return void 0;
+                  }
+                })(),
+                banner: preview.nitroEnabled ? preview.bannerMedia?.uri : void 0,
+                primary: preview.profileColorsEnabled ? preview.primaryColor : void 0,
+                accent: preview.profileColorsEnabled ? preview.accentColor : void 0,
+                decoration: preview.avatarDecoration || void 0,
+                nameplate: preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : void 0,
+                tagText: preview.serverTag?.tag,
+                tagIcon: preview.serverTag ? serverTagIconURL(preview.serverTag) || void 0 : void 0,
+                status: preview.customActivity?.type === 1 && preview.customActivity.url && streamURL(preview.customActivity.url) ? "streaming" : preview.presenceStatus || "online",
+                customStatus: preview.customStatus ? `${preview.customStatus.emoji || ""} ${preview.customStatus.text || ""}`.trim() : void 0,
+                activity: preview.customActivity ? {
+                  verb: ACTIVITY_TYPES.find((type) => type.value === preview.customActivity?.type)?.label || "",
+                  name: preview.customActivity.name,
+                  details: preview.customActivity.details
+                } : null,
+                bio: preview.bio,
+                frame: preview.profileFrame ? catalog?.frames.find((item) => item.skuId === preview.profileFrame?.skuId)?.label || "Selected" : void 0,
+                effect: preview.profileEffect ? catalog?.effects.find((item) => item.skuId === preview.profileEffect?.skuId)?.title || "Selected" : void 0
+              })
+            })
+          }) : null,
           activeTab === "profile" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
                 padding: 16,
-                gap: 16
+                gap: 24
               },
               children: [
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-md/semibold",
-                  color: "text-normal",
-                  children: "Pictures"
-                }),
-                /* @__PURE__ */ jsx(MediaEditor, {
-                  label: "Profile picture",
-                  field: "avatarMedia"
-                }),
-                /* @__PURE__ */ jsx(MediaEditor, {
-                  label: "Banner",
-                  field: "bannerMedia",
-                  banner: true
-                }),
-                /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "Simulate Nitro",
-                  subLabel: "Enables the Nitro badge, banner, and profile colors",
-                  value: preview.nitroEnabled,
-                  onPress: () => update("nitroEnabled", !preview.nitroEnabled, true)
-                }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-md/semibold",
-                  color: "text-normal",
-                  children: "About you"
-                }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Pictures",
+                  description: "Shown on your profile, in chat and in member lists for CloudCord users.",
                   children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "About You"
+                    /* @__PURE__ */ jsx(MediaEditor, {
+                      label: "Profile picture",
+                      field: "avatarMedia"
                     }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.bio,
-                      placeholder: "My description...",
-                      placeholderTextColor: "#777",
-                      multiline: true,
-                      onChangeText: (value) => update("bio", value, true),
-                      style: {
-                        minHeight: 88,
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12,
-                        textAlignVertical: "top"
-                      }
+                    /* @__PURE__ */ jsx(MediaEditor, {
+                      label: "Banner",
+                      field: "bannerMedia",
+                      banner: true
+                    }),
+                    /* @__PURE__ */ jsx(ToggleRow, {
+                      label: "Simulate Nitro",
+                      subLabel: "Unlocks a banner and profile colors",
+                      value: preview.nitroEnabled,
+                      onPress: () => update("nitroEnabled", !preview.nitroEnabled, true)
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "About you",
                   children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Pronouns"
-                    }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.pronouns,
-                      placeholder: "he/him",
-                      placeholderTextColor: "#777",
-                      onChangeText: (value) => update("pronouns", value, true),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
-                  ]
-                }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-md/semibold",
-                  color: "text-normal",
-                  children: "Profile colors"
-                }),
-                /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "Use custom profile colors",
-                  subLabel: "Turn off to use Discord's normal profile colors",
-                  value: preview.profileColorsEnabled,
-                  onPress: () => update("profileColorsEnabled", !preview.profileColorsEnabled, true)
-                }),
-                preview.profileColorsEnabled ? /* @__PURE__ */ jsxs(Fragment, {
-                  children: [
-                    /* @__PURE__ */ jsx(ColorPickerRow, {
-                      label: "Primary profile color",
-                      value: preview.primaryColor,
-                      onSelect: (value) => update("primaryColor", value, true),
-                      onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                        title: "Primary Color",
-                        render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
-                          title: "Primary profile color",
-                          initialColor: preview.primaryColor,
-                          onApply: (color2) => {
-                            update("primaryColor", color2, true);
-                            navigation2.goBack();
-                          }
-                        })
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Bio",
+                      hint: `${[
+                        ...preview.bio || ""
+                      ].length}/190`,
+                      children: /* @__PURE__ */ jsx(TextInput3, {
+                        defaultValue: preview.bio,
+                        placeholder: "Tell people about yourself",
+                        multiline: true,
+                        maxLength: 190,
+                        onChangeText: (value) => update("bio", value, true),
+                        placeholderTextColor: "#777"
                       })
                     }),
-                    /* @__PURE__ */ jsx(ColorPickerRow, {
-                      label: "Accent profile color",
-                      value: preview.accentColor,
-                      onSelect: (value) => update("accentColor", value, true),
-                      onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                        title: "Accent Color",
-                        render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
-                          title: "Accent profile color",
-                          initialColor: preview.accentColor,
-                          onApply: (color2) => {
-                            update("accentColor", color2, true);
-                            navigation2.goBack();
-                          }
-                        })
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Pronouns",
+                      children: /* @__PURE__ */ jsx(TextInput3, {
+                        defaultValue: preview.pronouns,
+                        placeholder: "they/them",
+                        maxLength: 40,
+                        onChangeText: (value) => update("pronouns", value, true),
+                        placeholderTextColor: "#777"
                       })
                     })
                   ]
-                }) : null,
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-md/semibold",
-                  color: "text-normal",
-                  children: "Dates"
                 }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "text-sm/medium",
-                  color: "text-muted",
-                  children: "Leave empty to use your real dates."
-                }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Profile colors",
+                  description: "The gradient behind your profile card.",
                   children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Account creation date"
+                    /* @__PURE__ */ jsx(ToggleRow, {
+                      label: "Custom profile colors",
+                      value: preview.profileColorsEnabled,
+                      onPress: () => update("profileColorsEnabled", !preview.profileColorsEnabled, true)
                     }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.createdAt,
-                      placeholder: "2010-06-29",
-                      placeholderTextColor: "#777",
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("createdAt", value, true),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
+                    preview.profileColorsEnabled ? /* @__PURE__ */ jsxs(Fragment, {
+                      children: [
+                        /* @__PURE__ */ jsx(ColorPickerRow, {
+                          label: "Primary profile color",
+                          value: preview.primaryColor,
+                          onSelect: (value) => update("primaryColor", value, true),
+                          onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                            title: "Primary Color",
+                            render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
+                              title: "Primary profile color",
+                              initialColor: preview.primaryColor,
+                              onApply: (color3) => {
+                                update("primaryColor", color3, true);
+                                navigation2.goBack();
+                              }
+                            })
+                          })
+                        }),
+                        /* @__PURE__ */ jsx(ColorPickerRow, {
+                          label: "Accent profile color",
+                          value: preview.accentColor,
+                          onSelect: (value) => update("accentColor", value, true),
+                          onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                            title: "Accent Color",
+                            render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
+                              title: "Accent profile color",
+                              initialColor: preview.accentColor,
+                              onApply: (color3) => {
+                                update("accentColor", color3, true);
+                                navigation2.goBack();
+                              }
+                            })
+                          })
+                        })
+                      ]
+                    }) : null
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Dates",
+                  description: "Leave empty to use your real dates.",
                   children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Joined since date"
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Account created",
+                      hint: "YYYY-MM-DD",
+                      children: /* @__PURE__ */ jsx(TextInput3, {
+                        defaultValue: preview.createdAt,
+                        placeholder: "2016-05-21",
+                        autoCapitalize: "none",
+                        autoCorrect: false,
+                        onChangeText: (value) => update("createdAt", value, true),
+                        placeholderTextColor: "#777"
+                      })
                     }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.signupDate,
-                      placeholder: "2010-06-29",
-                      placeholderTextColor: "#777",
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("signupDate", value, true),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Member since",
+                      hint: "YYYY-MM-DD",
+                      children: /* @__PURE__ */ jsx(TextInput3, {
+                        defaultValue: preview.signupDate,
+                        placeholder: "2016-05-21",
+                        autoCapitalize: "none",
+                        autoCorrect: false,
+                        onChangeText: (value) => update("signupDate", value, true),
+                        placeholderTextColor: "#777"
+                      })
                     })
                   ]
                 })
@@ -14970,231 +15546,203 @@
           }) : null,
           activeTab === "name" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
                 padding: 16,
-                gap: 16
+                gap: 24
               },
               children: [
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-md/semibold",
-                  color: "text-normal",
-                  children: "Names"
-                }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Names",
                   children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Display name"
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Display name",
+                      children: /* @__PURE__ */ jsx(TextInput3, {
+                        defaultValue: preview.displayName,
+                        placeholder: realCurrentUser?.globalName || "Display name",
+                        maxLength: 32,
+                        onChangeText: (value) => update("displayName", value),
+                        placeholderTextColor: "#777"
+                      })
                     }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.displayName,
-                      placeholder: "Preview Name",
-                      placeholderTextColor: "#777",
-                      onChangeText: (value) => update("displayName", value),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Username",
+                      children: /* @__PURE__ */ jsx(TextInput3, {
+                        defaultValue: preview.username,
+                        placeholder: realCurrentUser?.username || "username",
+                        maxLength: 32,
+                        autoCapitalize: "none",
+                        autoCorrect: false,
+                        onChangeText: (value) => update("username", value),
+                        placeholderTextColor: "#777"
+                      })
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Name style",
+                  description: "Font, effect and colors for your display name.",
                   children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Username"
-                    }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.username,
-                      placeholder: "preview",
-                      placeholderTextColor: "#777",
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("username", value),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
-                  ]
-                }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Username Style"
-                    }),
                     /* @__PURE__ */ jsx(NameStylePreview, {}),
-                    /* @__PURE__ */ jsx(TableRow, {
-                      arrow: true,
-                      label: "Font",
-                      trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
-                        text: nativeNameStyleOptions("fontId").find((option) => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"
-                      }),
-                      onPress: () => chooseNameStyle("fontId")
-                    }),
-                    /* @__PURE__ */ jsx(TableRow, {
-                      arrow: true,
-                      label: "Effect",
-                      trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
-                        text: nativeNameStyleOptions("effectId").find((option) => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"
-                      }),
-                      onPress: () => chooseNameStyle("effectId")
-                    }),
-                    [
-                      0,
-                      1,
-                      2
-                    ].slice(0, Math.max(1, Math.min(3, Number(findByProps("getEffectColorCount")?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map((index) => {
-                      var value = `#${(preview.displayNameStyles?.colors[index] ?? 16777215).toString(16).padStart(6, "0")}`;
-                      var apply = (color2) => {
-                        var style = preview.displayNameStyles || {
-                          fontId: 0,
-                          effectId: 0,
-                          colors: [
-                            16777215
-                          ]
-                        };
-                        var colors = [
+                    /* @__PURE__ */ jsxs(import_react_native20.View, {
+                      style: {
+                        borderRadius: 16,
+                        overflow: "hidden"
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx(TableRow, {
+                          arrow: true,
+                          label: "Font",
+                          trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
+                            text: nativeNameStyleOptions("fontId").find((option) => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"
+                          }),
+                          onPress: () => chooseNameStyle("fontId")
+                        }),
+                        /* @__PURE__ */ jsx(TableRow, {
+                          arrow: true,
+                          label: "Effect",
+                          trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
+                            text: nativeNameStyleOptions("effectId").find((option) => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"
+                          }),
+                          onPress: () => chooseNameStyle("effectId")
+                        }),
+                        [
                           0,
                           1,
                           2
-                        ].map((i) => style.colors[i] ?? style.colors[0] ?? 16777215);
-                        colors[index] = parseInt(color2.replace("#", ""), 16);
-                        update("displayNameStyles", {
-                          ...style,
-                          colors
-                        }, true);
-                        navigation2.goBack();
-                      };
-                      return /* @__PURE__ */ jsx(ColorPickerRow, {
-                        label: `Color ${index + 1}`,
-                        value,
-                        onSelect: apply,
-                        onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                          title: `Username Color ${index + 1}`,
-                          render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
-                            title: `Username Color ${index + 1}`,
-                            initialColor: value,
-                            onApply: apply
-                          })
-                        })
-                      }, `name-color-${index}`);
-                    }),
-                    /* @__PURE__ */ jsx(ActionButton, {
-                      label: "Reset Username Style",
-                      onPress: () => update("displayNameStyles", null, true)
-                    }),
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Server Tag"
-                    }),
-                    /* @__PURE__ */ jsxs(import_react_native19.View, {
-                      style: {
-                        flexDirection: "row",
-                        alignItems: "center",
-                        gap: 6,
-                        paddingVertical: 10
-                      },
-                      children: [
-                        !!serverTagIconURL(preview.serverTag) && /* @__PURE__ */ jsx(import_react_native19.Image, {
-                          source: {
-                            uri: serverTagIconURL(preview.serverTag)
-                          },
-                          style: {
-                            width: 20,
-                            height: 20
-                          },
-                          resizeMode: "contain"
-                        }),
-                        /* @__PURE__ */ jsx(Text, {
-                          variant: "text-sm/bold",
-                          color: "text-normal",
-                          children: preview.serverTag?.tag || "Your Tag"
+                        ].slice(0, Math.max(1, Math.min(3, Number(findByProps("getEffectColorCount")?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map((index) => {
+                          var value = `#${(preview.displayNameStyles?.colors[index] ?? 16777215).toString(16).padStart(6, "0")}`;
+                          var apply = (color3) => {
+                            var style = preview.displayNameStyles || {
+                              fontId: 0,
+                              effectId: 0,
+                              colors: [
+                                16777215
+                              ]
+                            };
+                            var colors = [
+                              0,
+                              1,
+                              2
+                            ].map((i) => style.colors[i] ?? style.colors[0] ?? 16777215);
+                            colors[index] = parseInt(color3.replace("#", ""), 16);
+                            update("displayNameStyles", {
+                              ...style,
+                              colors
+                            }, true);
+                            navigation2.goBack();
+                          };
+                          return /* @__PURE__ */ jsx(ColorPickerRow, {
+                            label: `Color ${index + 1}`,
+                            value,
+                            onSelect: apply,
+                            onOpen: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                              title: `Username Color ${index + 1}`,
+                              render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
+                                title: `Username Color ${index + 1}`,
+                                initialColor: value,
+                                onApply: apply
+                              })
+                            })
+                          }, `name-color-${index}`);
                         })
                       ]
                     }),
-                    /* @__PURE__ */ jsx(TableRow, {
-                      arrow: true,
-                      label: "Tag Icon",
-                      subLabel: "Choose a Discord server-tag icon",
-                      onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                        title: "Server Tag Icon",
-                        render: () => /* @__PURE__ */ jsx(ServerTagPicker, {
-                          onSelect: (tag) => {
-                            update("serverTag", {
-                              ...tag,
-                              tag: preview.serverTag?.tag || tag.tag
-                            }, true);
-                            navigation2.goBack();
+                    preview.displayNameStyles ? /* @__PURE__ */ jsx(ActionButton, {
+                      label: "Reset name style",
+                      muted: true,
+                      onPress: () => update("displayNameStyles", null, true)
+                    }) : null
+                  ]
+                }),
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Server tag",
+                  description: "The small tag next to your name. Only changes what CloudCord users see.",
+                  children: [
+                    /* @__PURE__ */ jsx(ToggleRow, {
+                      label: "Custom server tag",
+                      value: preview.serverTag != null,
+                      onPress: () => update("serverTag", preview.serverTag ? null : {
+                        tag: "",
+                        guildId: "",
+                        badge: ""
+                      }, true)
+                    }),
+                    preview.serverTag ? /* @__PURE__ */ jsxs(Fragment, {
+                      children: [
+                        /* @__PURE__ */ jsx(K2.Field, {
+                          label: "Tag text",
+                          hint: "1\u20134 characters",
+                          children: /* @__PURE__ */ jsx(TextInput3, {
+                            defaultValue: preview.serverTag?.tag || "",
+                            placeholder: "CC",
+                            maxLength: 4,
+                            onChangeText: (value) => update("serverTag", {
+                              ...preview.serverTag || {
+                                guildId: "",
+                                badge: ""
+                              },
+                              tag: value
+                            }, true),
+                            placeholderTextColor: "#777"
+                          })
+                        }),
+                        /* @__PURE__ */ jsx(K2.Field, {
+                          label: "Server ID",
+                          error: preview.serverTag?.guildId && !/^\d{15,22}$/.test(preview.serverTag.guildId) ? "Server IDs are 15\u201322 digits." : void 0,
+                          children: /* @__PURE__ */ jsx(TextInput3, {
+                            defaultValue: preview.serverTag?.guildId || "",
+                            placeholder: "123456789012345678",
+                            keyboardType: "number-pad",
+                            onChangeText: (value) => update("serverTag", {
+                              ...preview.serverTag || {
+                                tag: "",
+                                badge: ""
+                              },
+                              guildId: value.trim()
+                            }, true),
+                            placeholderTextColor: "#777"
+                          })
+                        }),
+                        /* @__PURE__ */ jsx(import_react_native20.View, {
+                          style: {
+                            borderRadius: 16,
+                            overflow: "hidden"
+                          },
+                          children: /* @__PURE__ */ jsx(TableRow, {
+                            arrow: true,
+                            label: "Tag Icon",
+                            subLabel: "Choose a Discord server-tag icon",
+                            onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
+                              title: "Server Tag Icon",
+                              render: () => /* @__PURE__ */ jsx(ServerTagPicker, {
+                                onSelect: (tag) => {
+                                  update("serverTag", {
+                                    ...tag,
+                                    tag: preview.serverTag?.tag || tag.tag
+                                  }, true);
+                                  navigation2.goBack();
+                                }
+                              })
+                            })
+                          })
+                        }),
+                        /* @__PURE__ */ jsx(ActionButton, {
+                          label: "Copy my current tag",
+                          muted: true,
+                          onPress: () => {
+                            var user = safeStore("UserStore")?.getCurrentUser?.();
+                            var tag = user?.primaryGuild || user?.primary_guild;
+                            if (tag?.tag)
+                              update("serverTag", {
+                                tag: tag.tag,
+                                guildId: tag.identityGuildId || tag.identity_guild_id,
+                                badge: tag.badge || ""
+                              }, true);
                           }
                         })
-                      })
-                    }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.serverTag?.tag || "",
-                      placeholder: "Tag (1\u20134 characters)",
-                      maxLength: 4,
-                      onChangeText: (value) => update("serverTag", {
-                        ...preview.serverTag || {
-                          guildId: "",
-                          badge: ""
-                        },
-                        tag: value
-                      }, true)
-                    }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.serverTag?.guildId || "",
-                      placeholder: "Server ID",
-                      keyboardType: "number-pad",
-                      onChangeText: (value) => update("serverTag", {
-                        ...preview.serverTag || {
-                          tag: "",
-                          badge: ""
-                        },
-                        guildId: value.trim()
-                      }, true)
-                    }),
-                    /* @__PURE__ */ jsx(ActionButton, {
-                      label: "Copy Current Discord Tag",
-                      onPress: () => {
-                        var user = safeStore("UserStore")?.getCurrentUser?.();
-                        var tag = user?.primaryGuild || user?.primary_guild;
-                        if (tag?.tag)
-                          update("serverTag", {
-                            tag: tag.tag,
-                            guildId: tag.identityGuildId || tag.identity_guild_id,
-                            badge: tag.badge || ""
-                          }, true);
-                      }
-                    }),
-                    /* @__PURE__ */ jsx(ActionButton, {
-                      label: "Reset Server Tag",
-                      onPress: () => update("serverTag", null, true)
-                    }),
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-xs/normal",
-                      color: "text-muted",
-                      children: "Appearance only. Your server membership stays unchanged."
-                    })
+                      ]
+                    }) : null
                   ]
                 })
               ]
@@ -15202,359 +15750,497 @@
           }) : null,
           activeTab === "cosmetics" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
                 padding: 16,
-                gap: 16
+                gap: 24
               },
               children: [
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-md/semibold",
-                  color: "text-normal",
-                  children: "Cosmetics"
-                }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "text-sm/medium",
-                  color: "text-muted",
-                  children: "Avatar decorations, profile frames, profile effects and nameplates from Discord's shop."
-                }),
-                /* @__PURE__ */ jsx(ActionButton, {
-                  label: "Browse Discord decorations",
-                  onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                    title: "Avatar Decorations",
-                    render: () => /* @__PURE__ */ jsx(DecorationGallery, {
-                      onSelect: (item) => {
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Avatar decoration",
+                  description: "The frame around your profile picture.",
+                  children: [
+                    /* @__PURE__ */ jsx(K2.CurrentRow, {
+                      label: preview.avatarDecoration ? decorations.find((item) => item.uri === preview.avatarDecoration)?.label || "Decoration" : null,
+                      image: preview.avatarDecoration || void 0,
+                      onRemove: () => {
+                        update("avatarDecoration", "", true);
+                        update("avatarDecorationSku", "", true);
+                      }
+                    }),
+                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
+                      SearchInput: TextInput3,
+                      items: decorations,
+                      keyOf: (item) => `${item.asset}:${item.skuId}`,
+                      labelOf: (item) => item.label,
+                      imageOf: (item) => item.uri,
+                      isSelected: (item) => item.uri === preview.avatarDecoration,
+                      onPick: (item) => {
                         update("avatarDecoration", item.uri, true);
                         update("avatarDecorationSku", item.skuId, true);
-                        navigation2.goBack();
-                      }
-                    })
-                  })
-                }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Avatar decoration URL"
-                    }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      value: preview.avatarDecoration,
-                      placeholder: "https://...",
-                      placeholderTextColor: "#777",
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("avatarDecoration", value, true),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
+                      },
+                      noneLabel: "No decoration",
+                      noneSelected: !preview.avatarDecoration,
+                      onNone: () => {
+                        update("avatarDecoration", "", true);
+                        update("avatarDecorationSku", "", true);
+                      },
+                      status: {
+                        loading: decorationsLoading && !decorations.length
                       }
                     })
                   ]
                 }),
-                preview.avatarDecoration ? /* @__PURE__ */ jsx(ActionButton, {
-                  label: "Clear decoration",
-                  muted: true,
-                  onPress: () => {
-                    update("avatarDecoration", "", true);
-                    update("avatarDecorationSku", "", true);
-                  }
-                }) : null,
-                /* @__PURE__ */ jsx(ActionButton, {
-                  label: preview.nameplate ? `Nameplate: ${preview.nameplate.label || "Selected"}` : "Browse nameplates",
-                  onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                    title: "Nameplates",
-                    render: () => /* @__PURE__ */ jsx(CollectibleGallery, {
-                      kind: "nameplates",
-                      selected: preview.nameplate?.skuId,
-                      onSelect: (item) => {
-                        update("nameplate", {
-                          skuId: item.skuId,
-                          asset: item.asset,
-                          label: item.label,
-                          palette: item.palette
-                        }, true);
-                        navigation2.goBack();
-                      }
+                /* @__PURE__ */ jsx(K2.Divider, {}),
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Profile frame",
+                  description: "A decorative frame around and above your profile card. On mobile only the top part shows.",
+                  children: [
+                    /* @__PURE__ */ jsx(K2.CurrentRow, {
+                      label: preview.profileFrame ? catalog?.frames.find((item) => item.skuId === preview.profileFrame?.skuId)?.label || "Profile frame" : null,
+                      image: catalog?.frames.find((item) => item.skuId === preview.profileFrame?.skuId)?.preview,
+                      onRemove: () => update("profileFrame", null, true)
+                    }),
+                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
+                      SearchInput: TextInput3,
+                      items: catalog?.frames || [],
+                      keyOf: (item) => item.skuId,
+                      labelOf: (item) => item.label,
+                      imageOf: (item) => item.preview,
+                      isSelected: (item) => item.skuId === preview.profileFrame?.skuId,
+                      onPick: (item) => update("profileFrame", {
+                        skuId: item.skuId
+                      }, true),
+                      noneLabel: "No frame",
+                      noneSelected: !preview.profileFrame,
+                      onNone: () => update("profileFrame", null, true),
+                      status: catalogStatus,
+                      onRetry: () => loadCatalog(true)
                     })
-                  })
+                  ]
                 }),
-                preview.nameplate ? /* @__PURE__ */ jsx(ActionButton, {
-                  label: "Remove nameplate",
-                  muted: true,
-                  onPress: () => update("nameplate", null, true)
-                }) : null,
-                /* @__PURE__ */ jsx(ActionButton, {
-                  label: preview.profileEffect ? `Profile effect: ${collectiblesCatalog?.effects.find((effect) => effect.skuId === preview.profileEffect?.skuId)?.title || "Selected"}` : "Browse profile effects",
-                  onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                    title: "Profile Effects",
-                    render: () => /* @__PURE__ */ jsx(CollectibleGallery, {
-                      kind: "effects",
-                      selected: preview.profileEffect?.skuId,
-                      onSelect: (item) => {
-                        update("profileEffect", {
-                          skuId: item.skuId
-                        }, true);
-                        navigation2.goBack();
-                      }
+                /* @__PURE__ */ jsx(K2.Divider, {}),
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Profile effect",
+                  description: "An animated effect that plays over your profile card.",
+                  children: [
+                    /* @__PURE__ */ jsx(K2.CurrentRow, {
+                      label: preview.profileEffect ? catalog?.effects.find((item) => item.skuId === preview.profileEffect?.skuId)?.title || "Profile effect" : null,
+                      image: catalog?.effects.find((item) => item.skuId === preview.profileEffect?.skuId)?.preview,
+                      onRemove: () => update("profileEffect", null, true)
+                    }),
+                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
+                      SearchInput: TextInput3,
+                      items: catalog?.effects || [],
+                      keyOf: (item) => item.skuId,
+                      labelOf: (item) => item.title,
+                      imageOf: (item) => item.preview,
+                      isSelected: (item) => item.skuId === preview.profileEffect?.skuId,
+                      onPick: (item) => update("profileEffect", {
+                        skuId: item.skuId
+                      }, true),
+                      noneLabel: "No effect",
+                      noneSelected: !preview.profileEffect,
+                      onNone: () => update("profileEffect", null, true),
+                      status: catalogStatus,
+                      onRetry: () => loadCatalog(true)
                     })
-                  })
+                  ]
                 }),
-                preview.profileEffect ? /* @__PURE__ */ jsx(ActionButton, {
-                  label: "Remove profile effect",
-                  muted: true,
-                  onPress: () => update("profileEffect", null, true)
-                }) : null,
-                /* @__PURE__ */ jsx(ActionButton, {
-                  label: preview.profileFrame ? `Profile frame: ${collectiblesCatalog?.frames.find((frame) => frame.skuId === preview.profileFrame?.skuId)?.label || "Selected"}` : "Browse profile frames",
-                  onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                    title: "Profile Frames",
-                    render: () => /* @__PURE__ */ jsx(CollectibleGallery, {
-                      kind: "frames",
-                      selected: preview.profileFrame?.skuId,
-                      onSelect: (item) => {
-                        update("profileFrame", {
-                          skuId: item.skuId
-                        }, true);
-                        navigation2.goBack();
-                      }
+                /* @__PURE__ */ jsx(K2.Divider, {}),
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Nameplate",
+                  description: "The background behind your name in member lists and DMs.",
+                  children: [
+                    /* @__PURE__ */ jsx(K2.CurrentRow, {
+                      wide: true,
+                      label: preview.nameplate ? preview.nameplate.label || "Nameplate" : null,
+                      image: preview.nameplate ? nameplateAssetURL(preview.nameplate.asset) : void 0,
+                      onRemove: () => update("nameplate", null, true)
+                    }),
+                    /* @__PURE__ */ jsx(K2.ChoiceGrid, {
+                      SearchInput: TextInput3,
+                      wide: true,
+                      items: catalog?.nameplates || [],
+                      keyOf: (item) => item.skuId,
+                      labelOf: (item) => item.label,
+                      imageOf: (item) => nameplateAssetURL(item.asset),
+                      isSelected: (item) => item.skuId === preview.nameplate?.skuId,
+                      onPick: (item) => update("nameplate", {
+                        skuId: item.skuId,
+                        asset: item.asset,
+                        label: item.label,
+                        palette: item.palette
+                      }, true),
+                      noneLabel: "No nameplate",
+                      noneSelected: !preview.nameplate,
+                      onNone: () => update("nameplate", null, true),
+                      status: catalogStatus,
+                      onRetry: () => loadCatalog(true)
                     })
-                  })
-                }),
-                preview.profileFrame ? /* @__PURE__ */ jsx(ActionButton, {
-                  label: "Remove profile frame",
-                  muted: true,
-                  onPress: () => update("profileFrame", null, true)
-                }) : null
+                  ]
+                })
               ]
             })
           }) : null,
           activeTab === "status" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
                 padding: 16,
-                gap: 16
+                gap: 24
               },
               children: [
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-md/semibold",
-                  color: "text-normal",
-                  children: "Status & activity"
+                /* @__PURE__ */ jsx(K2.Section, {
+                  title: "Status",
+                  description: "Seen by people using CloudCord. Only changes how you look while you're actually online.",
+                  children: /* @__PURE__ */ jsx(K2.Chips, {
+                    value: preview.presenceStatus || "",
+                    onChange: (value) => update("presenceStatus", value || null, true),
+                    options: [
+                      {
+                        value: "",
+                        label: "Real status"
+                      },
+                      ...PRESENCE_STATUSES.map((value) => ({
+                        value,
+                        label: {
+                          online: "Online",
+                          idle: "Idle",
+                          dnd: "Do Not Disturb",
+                          invisible: "Invisible"
+                        }[value],
+                        dot: {
+                          online: "#23a55a",
+                          idle: "#f0b232",
+                          dnd: "#f23f43",
+                          invisible: "#80848e"
+                        }[value]
+                      }))
+                    ]
+                  })
                 }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "text-sm/medium",
-                  color: "text-muted",
-                  children: "Seen by people using CloudCord. Everyone else sees your real status."
-                }),
-                /* @__PURE__ */ jsx(TableRow, {
-                  arrow: true,
-                  label: "Status",
-                  trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
-                    text: {
-                      online: "Online",
-                      idle: "Idle",
-                      dnd: "Do Not Disturb",
-                      invisible: "Invisible"
-                    }[preview.presenceStatus || ""] || "Real status"
-                  }),
-                  onPress: () => import_react_native19.Alert.alert("Status", "Only changes how you appear while you're actually online.", [
-                    {
-                      text: "Use my real status",
-                      onPress: () => update("presenceStatus", null, true)
-                    },
-                    ...PRESENCE_STATUSES.map((value) => ({
-                      text: {
-                        online: "Online",
-                        idle: "Idle",
-                        dnd: "Do Not Disturb",
-                        invisible: "Invisible"
-                      }[value],
-                      onPress: () => update("presenceStatus", value, true)
-                    })),
-                    {
-                      text: "Cancel",
-                      style: "cancel"
-                    }
-                  ])
-                }),
-                /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8
-                  },
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Custom status",
                   children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Custom status"
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Emoji",
+                      children: /* @__PURE__ */ jsx(TextInput3, {
+                        defaultValue: preview.customStatus?.emoji || "",
+                        placeholder: "Emoji (optional)",
+                        maxLength: 8,
+                        onChangeText: (value) => update("customStatus", {
+                          text: preview.customStatus?.text || "",
+                          emoji: value
+                        }, true),
+                        placeholderTextColor: "#777"
+                      })
                     }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.customStatus?.text || "",
-                      placeholder: "What's on your mind?",
-                      maxLength: 128,
-                      onChangeText: (value) => update("customStatus", {
-                        text: value,
-                        emoji: preview.customStatus?.emoji
-                      }, true),
-                      placeholderTextColor: "#777",
-                      autoCorrect: false,
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Text",
+                      children: /* @__PURE__ */ jsx(TextInput3, {
+                        defaultValue: preview.customStatus?.text || "",
+                        placeholder: "What's on your mind?",
+                        maxLength: 128,
+                        onChangeText: (value) => update("customStatus", {
+                          text: value,
+                          emoji: preview.customStatus?.emoji
+                        }, true),
+                        placeholderTextColor: "#777"
+                      })
                     }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.customStatus?.emoji || "",
-                      placeholder: "Emoji (optional)",
-                      maxLength: 8,
-                      onChangeText: (value) => update("customStatus", {
-                        text: preview.customStatus?.text || "",
-                        emoji: value
-                      }, true),
-                      placeholderTextColor: "#777",
-                      autoCorrect: false,
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
+                    preview.customStatus ? /* @__PURE__ */ jsx(ActionButton, {
+                      label: "Clear custom status",
+                      muted: true,
+                      onPress: () => update("customStatus", null, true)
+                    }) : null
                   ]
                 }),
-                /* @__PURE__ */ jsx(TableRow, {
-                  arrow: true,
-                  label: "Activity",
-                  trailing: /* @__PURE__ */ jsx(TableRow.TrailingText, {
-                    text: preview.customActivity ? ACTIVITY_TYPES.find((type) => type.value === preview.customActivity?.type)?.label || "Activity" : "None"
-                  }),
-                  onPress: () => import_react_native19.Alert.alert("Activity", void 0, [
-                    {
-                      text: "No activity",
-                      onPress: () => update("customActivity", null, true)
-                    },
-                    ...ACTIVITY_TYPES.map((type) => ({
-                      text: type.label,
-                      onPress: () => update("customActivity", {
-                        ...preview.customActivity || {
-                          name: "CloudCord"
-                        },
-                        type: type.value
-                      }, true)
-                    })),
-                    {
-                      text: "Cancel",
-                      style: "cancel"
-                    }
-                  ])
-                }),
-                preview.customActivity ? /* @__PURE__ */ jsxs(Fragment, {
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Activity",
                   children: [
-                    /* @__PURE__ */ jsxs(import_react_native19.View, {
+                    /* @__PURE__ */ jsx(K2.Chips, {
+                      value: preview.customActivity ? preview.customActivity.type : -1,
+                      onChange: (value) => update("customActivity", value < 0 ? null : {
+                        name: "",
+                        details: "",
+                        state: "",
+                        ...preview.customActivity || {},
+                        type: value
+                      }, true),
+                      options: [
+                        {
+                          value: -1,
+                          label: "None"
+                        },
+                        ...ACTIVITY_TYPES.map((type) => ({
+                          value: type.value,
+                          label: type.label
+                        }))
+                      ]
+                    }),
+                    preview.customActivity ? /* @__PURE__ */ jsxs(Fragment, {
+                      children: [
+                        /* @__PURE__ */ jsx(K2.Field, {
+                          label: preview.customActivity.type === 1 ? "What you're streaming" : "Name",
+                          error: !preview.customActivity.name?.trim() ? "Add a name or the activity won't show." : void 0,
+                          children: /* @__PURE__ */ jsx(TextInput3, {
+                            defaultValue: preview.customActivity.name,
+                            placeholder: "Game, stream, song or show",
+                            maxLength: 128,
+                            onChangeText: (value) => update("customActivity", {
+                              ...preview.customActivity,
+                              name: value
+                            }, true),
+                            placeholderTextColor: "#777"
+                          })
+                        }),
+                        /* @__PURE__ */ jsx(K2.Field, {
+                          label: "Details (optional)",
+                          children: /* @__PURE__ */ jsx(TextInput3, {
+                            defaultValue: preview.customActivity.details || "",
+                            maxLength: 128,
+                            onChangeText: (value) => update("customActivity", {
+                              ...preview.customActivity,
+                              details: value
+                            }, true),
+                            placeholderTextColor: "#777"
+                          })
+                        }),
+                        preview.customActivity.type === 1 ? /* @__PURE__ */ jsx(K2.Field, {
+                          label: "Stream link",
+                          error: preview.customActivity.url && !streamURL(preview.customActivity.url) ? "Not a stream link Discord accepts. Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=\u2026)." : void 0,
+                          hint: "Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=\u2026, youtu.be/\u2026 or youtube.com/live/\u2026). Channel pages don't count.",
+                          children: /* @__PURE__ */ jsx(TextInput3, {
+                            defaultValue: preview.customActivity.url || "",
+                            placeholder: "https://twitch.tv/yourname",
+                            autoCapitalize: "none",
+                            autoCorrect: false,
+                            onChangeText: (value) => update("customActivity", {
+                              ...preview.customActivity,
+                              url: value
+                            }, true),
+                            placeholderTextColor: "#777"
+                          })
+                        }) : null
+                      ]
+                    }) : null
+                  ]
+                })
+              ]
+            })
+          }) : null,
+          activeTab === "badges" ? /* @__PURE__ */ jsx(Card2, {
+            border: "strong",
+            children: /* @__PURE__ */ jsxs(import_react_native20.View, {
+              style: {
+                padding: 16,
+                gap: 24
+              },
+              children: [
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Badges",
+                  description: "Pick as many as you like.",
+                  children: [
+                    /* @__PURE__ */ jsx(ToggleRow, {
+                      label: "Hide my real badges",
+                      subLabel: "Show only the badges picked here",
+                      value: preview.replaceBadges,
+                      onPress: () => update("replaceBadges", !preview.replaceBadges, true)
+                    }),
+                    /* @__PURE__ */ jsx(ToggleRow, {
+                      label: "Hide CloudCord badges while sync is off",
+                      subLabel: "When this profile stays on this device only",
+                      value: preview.hideBadgesWhenSyncOff === true,
+                      onPress: () => update("hideBadgesWhenSyncOff", !preview.hideBadgesWhenSyncOff, true)
+                    }),
+                    /* @__PURE__ */ jsx(K2.BadgeGrid, {
+                      items: BADGES.filter(([id]) => !EXPERIMENTAL_BADGE_GROUPS.some((group) => group.tiers.some((tier) => tier.id === id))).map(([id, label, , icon2]) => ({
+                        key: id,
+                        label,
+                        icon: icon2,
+                        active: !!preview.selectedBadges?.[id],
+                        onPress: () => update("selectedBadges", {
+                          ...preview.selectedBadges,
+                          [id]: !preview.selectedBadges?.[id]
+                        }, true)
+                      }))
+                    }),
+                    preview.selectedBadges?.oldname ? /* @__PURE__ */ jsxs(import_react_native20.View, {
                       style: {
-                        gap: 8
+                        gap: 8,
+                        marginTop: 4
                       },
                       children: [
                         /* @__PURE__ */ jsx(Text, {
                           variant: "text-sm/bold",
                           color: "text-normal",
-                          children: "Activity name"
+                          children: "Previous username displayed in tooltip"
                         }),
                         /* @__PURE__ */ jsx(TextInput3, {
-                          defaultValue: preview.customActivity.name,
-                          placeholder: "Game, stream, song or show",
-                          maxLength: 128,
-                          onChangeText: (value) => update("customActivity", {
-                            ...preview.customActivity,
-                            name: value
-                          }, true),
+                          defaultValue: preview.oldName,
+                          placeholder: "OldUser#0000",
                           placeholderTextColor: "#777",
+                          autoCapitalize: "none",
                           autoCorrect: false,
+                          onChangeText: (value) => update("oldName", value, true),
                           style: {
                             color: "#fff",
                             backgroundColor: "#1e1f22",
                             borderRadius: 9,
                             padding: 12
                           }
-                        })
-                      ]
-                    }),
-                    /* @__PURE__ */ jsxs(import_react_native19.View, {
-                      style: {
-                        gap: 8
-                      },
-                      children: [
-                        /* @__PURE__ */ jsx(Text, {
-                          variant: "text-sm/bold",
-                          color: "text-normal",
-                          children: "Details"
-                        }),
-                        /* @__PURE__ */ jsx(TextInput3, {
-                          defaultValue: preview.customActivity.details || "",
-                          placeholder: "Optional",
-                          maxLength: 128,
-                          onChangeText: (value) => update("customActivity", {
-                            ...preview.customActivity,
-                            details: value
-                          }, true),
-                          placeholderTextColor: "#777",
-                          autoCorrect: false,
-                          style: {
-                            color: "#fff",
-                            backgroundColor: "#1e1f22",
-                            borderRadius: 9,
-                            padding: 12
-                          }
-                        })
-                      ]
-                    }),
-                    preview.customActivity.type === 1 ? /* @__PURE__ */ jsxs(Fragment, {
-                      children: [
-                        /* @__PURE__ */ jsxs(import_react_native19.View, {
-                          style: {
-                            gap: 8
-                          },
-                          children: [
-                            /* @__PURE__ */ jsx(Text, {
-                              variant: "text-sm/bold",
-                              color: "text-normal",
-                              children: "Stream link"
-                            }),
-                            /* @__PURE__ */ jsx(TextInput3, {
-                              defaultValue: preview.customActivity.url || "",
-                              placeholder: "https://twitch.tv/yourname",
-                              autoCapitalize: "none",
-                              onChangeText: (value) => update("customActivity", {
-                                ...preview.customActivity,
-                                url: value
-                              }, true),
-                              placeholderTextColor: "#777",
-                              autoCorrect: false,
-                              style: {
-                                color: "#fff",
-                                backgroundColor: "#1e1f22",
-                                borderRadius: 9,
-                                padding: 12
-                              }
-                            })
-                          ]
-                        }),
-                        /* @__PURE__ */ jsx(Text, {
-                          variant: "text-xs/medium",
-                          color: "text-muted",
-                          children: preview.customActivity.url && !streamURL(preview.customActivity.url) ? "Not a stream link Discord accepts. Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=\u2026)." : "Use twitch.tv/yourname or a YouTube video link (youtube.com/watch?v=\u2026, youtu.be/\u2026 or youtube.com/live/\u2026). Channel pages don't count."
                         })
                       ]
                     }) : null
                   ]
-                }) : null
+                }),
+                /* @__PURE__ */ jsx(K2.Section, {
+                  title: "Nitro badge",
+                  description: "Changes with how long you've had Nitro.",
+                  children: /* @__PURE__ */ jsx(K2.BadgeGrid, {
+                    items: [
+                      {
+                        key: "none",
+                        label: "None",
+                        active: !preview.nitroEnabled,
+                        onPress: () => update("nitroEnabled", false, true)
+                      },
+                      ...NITRO_DURATIONS.map((months) => ({
+                        key: String(months),
+                        label: NITRO_LABELS.get(months) || durationLabel(months),
+                        icon: milestoneIcon(months, NITRO_ICONS),
+                        active: preview.nitroEnabled && preview.nitroMonths === months,
+                        onPress: () => {
+                          update("nitroEnabled", true, true);
+                          update("nitroMonths", months, true);
+                        }
+                      }))
+                    ]
+                  })
+                }),
+                /* @__PURE__ */ jsx(K2.Section, {
+                  title: "Server booster",
+                  children: /* @__PURE__ */ jsx(K2.BadgeGrid, {
+                    items: BOOST_DURATIONS.map((months) => ({
+                      key: String(months),
+                      label: boosterLabel(months),
+                      icon: months ? milestoneIcon(months, BOOST_ICONS) : void 0,
+                      active: preview.boostMonths === months,
+                      onPress: () => update("boostMonths", months, true)
+                    }))
+                  })
+                }),
+                /* @__PURE__ */ jsx(K2.Section, {
+                  title: "Gifting",
+                  children: /* @__PURE__ */ jsx(K2.BadgeGrid, {
+                    items: [
+                      {
+                        key: "none",
+                        label: "None",
+                        active: preview.giftLevel < 0,
+                        onPress: () => update("giftLevel", -1, true)
+                      },
+                      ...GIFT_LEVELS.map((gift, index) => ({
+                        key: gift.name,
+                        label: gift.name,
+                        icon: gift.icon,
+                        active: preview.giftLevel === index,
+                        onPress: () => update("giftLevel", index, true)
+                      }))
+                    ]
+                  })
+                }),
+                EXPERIMENTAL_BADGE_GROUPS.length ? /* @__PURE__ */ jsx(K2.Section, {
+                  title: "Milestone badges",
+                  children: EXPERIMENTAL_BADGE_GROUPS.map((group) => /* @__PURE__ */ jsx(ActionButton, {
+                    label: `${group.label}: ${group.tiers.find((tier) => preview.selectedBadges?.[tier.id])?.name || "None"}`,
+                    muted: true,
+                    onPress: () => chooseExperimentalBadge(group)
+                  }, group.id))
+                }) : null,
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Badge order",
+                  description: "Top to bottom is the order on your profile.",
+                  children: [
+                    editableBadgeRows().map((badge, index, rows) => /* @__PURE__ */ jsxs(import_react_native20.View, {
+                      style: {
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 8,
+                        paddingVertical: 6
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx(import_react_native20.Image, {
+                          source: badge.source || {
+                            uri: badge.iconSrc || (/^[a-f0-9]{32}$/i.test(badge.icon || "") ? `https://cdn.discordapp.com/badge-icons/${badge.icon}.png` : badge.icon)
+                          },
+                          style: {
+                            width: 22,
+                            height: 22,
+                            opacity: preview.hiddenBadgeIds.includes(badge.id) ? 0.4 : 1,
+                            ...badge.id.startsWith("cloudcord-official-") ? {
+                              tintColor: safeStore("ThemeStore")?.theme === "light" ? "#000000" : "#ffffff"
+                            } : {}
+                          },
+                          resizeMode: "contain"
+                        }),
+                        /* @__PURE__ */ jsx(import_react_native20.View, {
+                          style: {
+                            flex: 1
+                          },
+                          children: /* @__PURE__ */ jsx(Text, {
+                            variant: "text-sm/semibold",
+                            color: "text-normal",
+                            children: badge.description || badge.id
+                          })
+                        }),
+                        /* @__PURE__ */ jsx(import_react_native20.Pressable, {
+                          accessibilityRole: "button",
+                          accessibilityLabel: preview.hiddenBadgeIds.includes(badge.id) ? "Show badge" : "Hide badge",
+                          onPress: () => update("hiddenBadgeIds", preview.hiddenBadgeIds.includes(badge.id) ? preview.hiddenBadgeIds.filter((id) => id !== badge.id) : [
+                            ...preview.hiddenBadgeIds,
+                            badge.id
+                          ], true),
+                          style: {
+                            padding: 8
+                          },
+                          children: /* @__PURE__ */ jsx(Text, {
+                            variant: "text-sm/medium",
+                            color: "text-normal",
+                            children: preview.hiddenBadgeIds.includes(badge.id) ? "Show" : "Hide"
+                          })
+                        }),
+                        [
+                          -1,
+                          1
+                        ].map((direction) => /* @__PURE__ */ jsx(import_react_native20.Pressable, {
+                          accessibilityRole: "button",
+                          accessibilityLabel: direction === -1 ? "Move badge up" : "Move badge down",
+                          disabled: direction === -1 ? index === 0 : index === rows.length - 1,
+                          onPress: () => update("badgeOrder", moveBadgeOrder(editableBadgeRows().map((row) => row.id), badge.id, direction), true),
+                          style: {
+                            padding: 8,
+                            opacity: (direction === -1 ? index === 0 : index === rows.length - 1) ? 0.3 : 1
+                          },
+                          children: /* @__PURE__ */ jsx(Text, {
+                            variant: "heading-md/semibold",
+                            color: "text-normal",
+                            children: direction === -1 ? "\u2191" : "\u2193"
+                          })
+                        }, direction))
+                      ]
+                    }, badge.id)),
+                    /* @__PURE__ */ jsx(ActionButton, {
+                      muted: true,
+                      label: "Reset Badge Layout",
+                      onPress: () => {
+                        update("hiddenBadgeIds", [], true);
+                        update("badgeOrder", [], true);
+                      }
+                    })
+                  ]
+                })
               ]
             })
           }) : null,
@@ -15566,7 +16252,7 @@
             "badges"
           ].includes(activeTab) ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
                 padding: 16,
                 gap: 12
@@ -15623,182 +16309,13 @@
                     try {
                       yield publishSharedProfile();
                       diagnostics.last = "This profile is now active on all devices";
-                      import_react_native19.Alert.alert("FakeProfile", "This profile is now active on all of your CloudCord devices.");
+                      import_react_native20.Alert.alert("FakeProfile", "This profile is now active on all of your CloudCord devices.");
                     } catch (error) {
                       diagnostics.last = error?.message || "Could not sync this profile";
-                      import_react_native19.Alert.alert("FakeProfile", diagnostics.last);
+                      import_react_native20.Alert.alert("FakeProfile", diagnostics.last);
                     }
                     redraw();
                   })())()
-                })
-              ]
-            })
-          }) : null,
-          activeTab === "badges" ? /* @__PURE__ */ jsx(Card2, {
-            border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
-              style: {
-                padding: 14,
-                gap: 10
-              },
-              children: [
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-md/semibold",
-                  color: "text-normal",
-                  children: "your badges"
-                }),
-                /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "Replace real badges",
-                  subLabel: "Selected badges replace your real badges for CloudCord users",
-                  value: preview.replaceBadges,
-                  onPress: () => update("replaceBadges", !preview.replaceBadges, true)
-                }),
-                /* @__PURE__ */ jsx(ToggleRow, {
-                  label: "Hide CloudCord badges while sync is off",
-                  subLabel: "When this profile stays on this device only, show no CloudCord badges",
-                  value: preview.hideBadgesWhenSyncOff === true,
-                  onPress: () => update("hideBadgesWhenSyncOff", !preview.hideBadgesWhenSyncOff, true)
-                }),
-                preview.nitroEnabled ? /* @__PURE__ */ jsx(DurationSelect, {
-                  label: "Nitro badge",
-                  value: preview.nitroMonths,
-                  onPress: () => chooseDuration("nitroMonths", "Choose Nitro badge", NITRO_DURATIONS)
-                }) : null,
-                /* @__PURE__ */ jsx(DurationSelect, {
-                  label: "Gifting badge",
-                  value: preview.giftLevel,
-                  onPress: chooseGiftBadge
-                }),
-                /* @__PURE__ */ jsx(DurationSelect, {
-                  label: "Server booster duration",
-                  value: preview.boostMonths,
-                  onPress: () => chooseDuration("boostMonths", "Choose booster duration", BOOST_DURATIONS)
-                }),
-                BADGES.filter(([id]) => !EXPERIMENTAL_BADGE_GROUPS.some((group) => group.tiers.some((tier) => tier.id === id))).map(([id, label]) => /* @__PURE__ */ jsx(ToggleRow, {
-                  label,
-                  value: !!preview.selectedBadges?.[id],
-                  onPress: () => update("selectedBadges", {
-                    ...preview.selectedBadges,
-                    [id]: !preview.selectedBadges?.[id]
-                  }, true)
-                }, id)),
-                EXPERIMENTAL_BADGE_GROUPS.map((group) => /* @__PURE__ */ jsx(ActionButton, {
-                  label: `${group.label}: ${group.tiers.find((tier) => preview.selectedBadges?.[tier.id])?.name || "None"}`,
-                  muted: true,
-                  onPress: () => chooseExperimentalBadge(group)
-                }, group.id)),
-                preview.selectedBadges?.oldname ? /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    gap: 8,
-                    marginTop: 4
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(Text, {
-                      variant: "text-sm/bold",
-                      color: "text-normal",
-                      children: "Previous username displayed in tooltip"
-                    }),
-                    /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.oldName,
-                      placeholder: "OldUser#0000",
-                      placeholderTextColor: "#777",
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("oldName", value, true),
-                      style: {
-                        color: "#fff",
-                        backgroundColor: "#1e1f22",
-                        borderRadius: 9,
-                        padding: 12
-                      }
-                    })
-                  ]
-                }) : null,
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "heading-sm/semibold",
-                  color: "text-normal",
-                  children: "Badge Layout"
-                }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "text-sm/medium",
-                  color: "text-muted",
-                  children: "Top to bottom is the order on your profile. Use the arrows to reorder."
-                }),
-                editableBadgeRows().map((badge, index, rows) => /* @__PURE__ */ jsxs(import_react_native19.View, {
-                  style: {
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 8,
-                    paddingVertical: 6
-                  },
-                  children: [
-                    /* @__PURE__ */ jsx(import_react_native19.Image, {
-                      source: badge.source || {
-                        uri: badge.iconSrc || (/^[a-f0-9]{32}$/i.test(badge.icon || "") ? `https://cdn.discordapp.com/badge-icons/${badge.icon}.png` : badge.icon)
-                      },
-                      style: {
-                        width: 22,
-                        height: 22,
-                        opacity: preview.hiddenBadgeIds.includes(badge.id) ? 0.4 : 1,
-                        ...badge.id.startsWith("cloudcord-official-") ? {
-                          tintColor: safeStore("ThemeStore")?.theme === "light" ? "#000000" : "#ffffff"
-                        } : {}
-                      },
-                      resizeMode: "contain"
-                    }),
-                    /* @__PURE__ */ jsx(import_react_native19.View, {
-                      style: {
-                        flex: 1
-                      },
-                      children: /* @__PURE__ */ jsx(Text, {
-                        variant: "text-sm/semibold",
-                        color: "text-normal",
-                        children: badge.description || badge.id
-                      })
-                    }),
-                    /* @__PURE__ */ jsx(import_react_native19.Pressable, {
-                      accessibilityRole: "button",
-                      accessibilityLabel: preview.hiddenBadgeIds.includes(badge.id) ? "Show badge" : "Hide badge",
-                      onPress: () => update("hiddenBadgeIds", preview.hiddenBadgeIds.includes(badge.id) ? preview.hiddenBadgeIds.filter((id) => id !== badge.id) : [
-                        ...preview.hiddenBadgeIds,
-                        badge.id
-                      ], true),
-                      style: {
-                        padding: 8
-                      },
-                      children: /* @__PURE__ */ jsx(Text, {
-                        variant: "text-sm/medium",
-                        color: "text-normal",
-                        children: preview.hiddenBadgeIds.includes(badge.id) ? "Show" : "Hide"
-                      })
-                    }),
-                    [
-                      -1,
-                      1
-                    ].map((direction) => /* @__PURE__ */ jsx(import_react_native19.Pressable, {
-                      accessibilityRole: "button",
-                      accessibilityLabel: direction === -1 ? "Move badge up" : "Move badge down",
-                      disabled: direction === -1 ? index === 0 : index === rows.length - 1,
-                      onPress: () => update("badgeOrder", moveBadgeOrder(editableBadgeRows().map((row) => row.id), badge.id, direction), true),
-                      style: {
-                        padding: 8,
-                        opacity: (direction === -1 ? index === 0 : index === rows.length - 1) ? 0.3 : 1
-                      },
-                      children: /* @__PURE__ */ jsx(Text, {
-                        variant: "heading-md/semibold",
-                        color: "text-normal",
-                        children: direction === -1 ? "\u2191" : "\u2193"
-                      })
-                    }, direction))
-                  ]
-                }, badge.id)),
-                /* @__PURE__ */ jsx(ActionButton, {
-                  muted: true,
-                  label: "Reset Badge Layout",
-                  onPress: () => {
-                    update("hiddenBadgeIds", [], true);
-                    update("badgeOrder", [], true);
-                  }
                 })
               ]
             })
@@ -15810,7 +16327,7 @@
           }),
           showDetails ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native19.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
                 padding: 14,
                 gap: 5
@@ -15900,7 +16417,7 @@
       })
     });
   }
-  var import_react6, import_react_native19, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -15925,8 +16442,8 @@
       init_modules2();
       init_common();
       init_components();
-      import_react6 = __toESM(require_react());
-      import_react_native19 = __toESM(require_react_native());
+      import_react7 = __toESM(require_react());
+      import_react_native20 = __toESM(require_react_native());
       EXPERIMENTAL_BADGE_GROUPS = [
         {
           "id": "account_age",
@@ -16657,7 +17174,7 @@
           }
         ]);
         return NamePreviewBoundary2;
-      }(import_react6.Component);
+      }(import_react7.Component);
       PROFILE_COLORS = [
         "#5865F2",
         "#4752C4",
@@ -16703,7 +17220,7 @@
         children: /* @__PURE__ */ jsxs(SafeAreaView, {
           style: styles.container,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native20.View, {
+            /* @__PURE__ */ jsxs(import_react_native21.View, {
               style: {
                 gap: 4
               },
@@ -16731,7 +17248,7 @@
                 })
               ]
             }),
-            /* @__PURE__ */ jsxs(import_react_native20.ScrollView, {
+            /* @__PURE__ */ jsxs(import_react_native21.ScrollView, {
               fadingEdgeLength: 64,
               contentContainerStyle: {
                 gap: 12
@@ -16774,7 +17291,7 @@
       })
     });
   }
-  var import_react_native20, useStyles2;
+  var import_react_native21, useStyles2;
   var init_ErrorBoundaryScreen = __esm({
     "src/core/ui/reporter/components/ErrorBoundaryScreen.tsx"() {
       "use strict";
@@ -16789,7 +17306,7 @@
       init_styles();
       init_common();
       init_components();
-      import_react_native20 = __toESM(require_react_native());
+      import_react_native21 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
       useStyles2 = createStyles({
@@ -17584,9 +18101,9 @@
       ...savedOrder.filter((key) => TAB_KEYS.includes(key)),
       ...TAB_KEYS.filter((key) => !savedOrder.includes(key))
     ];
-    var [movingKey, setMovingKey] = (0, import_react7.useState)(null);
-    var [broadcastCheck, setBroadcastCheck] = (0, import_react7.useState)(null);
-    (0, import_react7.useEffect)(() => {
+    var [movingKey, setMovingKey] = (0, import_react8.useState)(null);
+    var [broadcastCheck, setBroadcastCheck] = (0, import_react8.useState)(null);
+    (0, import_react8.useEffect)(() => {
       var active = true;
       readFile("rain/cloudcord-broadcast-check.json", {
         prefix: ""
@@ -17609,9 +18126,9 @@
         active = false;
       };
     }, []);
-    var [versions, setVersions] = (0, import_react7.useState)([]);
-    (0, import_react7.useEffect)(() => initializeDiagnosticsCapture(), []);
-    (0, import_react7.useEffect)(() => {
+    var [versions, setVersions] = (0, import_react8.useState)([]);
+    (0, import_react8.useEffect)(() => initializeDiagnosticsCapture(), []);
+    (0, import_react8.useEffect)(() => {
       fetch("https://api.github.com/repos/xohus/cloudcord/commits?path=dist/cc.js&per_page=10").then((response) => response.ok ? response.json() : []).then((items) => setVersions(items.slice(0, 10).map((item) => ({
         sha: String(item.sha),
         date: String(item.commit?.committer?.date ?? ""),
@@ -17680,7 +18197,7 @@
         showToast(`Could not copy module report: ${String(error?.message || error).slice(0, 100)}`, findAssetId("Small"));
       }
     };
-    return /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native22.ScrollView, {
       style: {
         flex: 1
       },
@@ -17756,7 +18273,7 @@
                 onValueChange: (value) => loaderConfig.customLoadUrl.enabled = value
               }),
               loaderConfig.customLoadUrl.enabled && /* @__PURE__ */ jsx(TableRow, {
-                label: /* @__PURE__ */ jsxs(import_react_native21.View, {
+                label: /* @__PURE__ */ jsxs(import_react_native22.View, {
                   style: {
                     width: "100%",
                     gap: 10
@@ -17812,11 +18329,11 @@
                   ]
                 })
               }),
-              order.map((key) => /* @__PURE__ */ jsx(import_react_native21.Pressable, {
+              order.map((key) => /* @__PURE__ */ jsx(import_react_native22.Pressable, {
                 delayLongPress: 350,
                 onLongPress: () => setMovingKey(key),
                 onPress: () => movingKey && placeBefore(key),
-                children: /* @__PURE__ */ jsx(import_react_native21.View, {
+                children: /* @__PURE__ */ jsx(import_react_native22.View, {
                   style: movingKey === key ? {
                     borderWidth: 1,
                     borderColor: "#5865f2",
@@ -17849,7 +18366,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, requestEvents, uiEvents, runtimeErrors, lastUiEvent, fetchWrapped, uiCaptureInstalled, errorCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
+  var import_react8, import_react_native22, requestEvents, uiEvents, runtimeErrors, lastUiEvent, fetchWrapped, uiCaptureInstalled, errorCaptureInstalled, requestSequence, NITRO_COMPONENTS, SAFE_UI_KEYS, TAB_KEYS, TAB_LABELS;
   var init_Diagnostics = __esm({
     "src/core/ui/settings/pages/Diagnostics/index.tsx"() {
       "use strict";
@@ -17869,8 +18386,8 @@
       init_components();
       init_modules2();
       init_toasts();
-      import_react7 = __toESM(require_react());
-      import_react_native21 = __toESM(require_react_native());
+      import_react8 = __toESM(require_react());
+      import_react_native22 = __toESM(require_react_native());
       requestEvents = [];
       uiEvents = [];
       runtimeErrors = [];
@@ -18023,7 +18540,7 @@
         version: debugInfo.device.manufacturer,
         icon: "WrenchIcon"
       },
-      ...import_react_native22.Platform.OS !== "ios" ? [
+      ...import_react_native23.Platform.OS !== "ios" ? [
         {
           label: Strings.BRAND,
           version: debugInfo.device.brand,
@@ -18036,9 +18553,9 @@
         icon: "MobilePhoneIcon"
       },
       // this is renamed now on android but i cant be bothered to find it
-      ...import_react_native22.Platform.OS !== "android" ? [
+      ...import_react_native23.Platform.OS !== "android" ? [
         {
-          label: import_react_native22.Platform.select({
+          label: import_react_native23.Platform.select({
             android: Strings.CODENAME,
             ios: Strings.MODELID
           }),
@@ -18047,7 +18564,7 @@
         }
       ] : []
     ];
-    return /* @__PURE__ */ jsx(import_react_native22.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native23.ScrollView, {
       style: {
         flex: 1
       },
@@ -18081,7 +18598,7 @@
       })
     });
   }
-  var import_react_native22;
+  var import_react_native23;
   var init_About = __esm({
     "src/core/ui/settings/pages/General/About.tsx"() {
       "use strict";
@@ -18095,7 +18612,7 @@
       init_debug();
       init_settings();
       init_components();
-      import_react_native22 = __toESM(require_react_native());
+      import_react_native23 = __toESM(require_react_native());
     }
   });
 
@@ -18126,7 +18643,7 @@
     useProxy(settings);
     var debugInfo = getDebugInfo();
     var navigation2 = NavigationNative.useNavigation();
-    return /* @__PURE__ */ jsx(import_react_native23.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native24.ScrollView, {
       style: {
         flex: 1
       },
@@ -18185,7 +18702,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("Discord")
                 }),
-                onPress: () => import_react_native23.Linking.openURL("https://discord.gg/EBEZJ84zBT")
+                onPress: () => import_react_native24.Linking.openURL("https://discord.gg/EBEZJ84zBT")
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
@@ -18193,7 +18710,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("GlobeIcon") || findAssetId("CircleInformationIcon-primary")
                 }),
-                onPress: () => import_react_native23.Linking.openURL("https://getcloudcord.com")
+                onPress: () => import_react_native24.Linking.openURL("https://getcloudcord.com")
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
@@ -18201,7 +18718,7 @@
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: findAssetId("img_account_sync_github_white")
                 }),
-                onPress: () => import_react_native23.Linking.openURL(GITHUB)
+                onPress: () => import_react_native24.Linking.openURL(GITHUB)
               })
             ]
           }),
@@ -18312,7 +18829,7 @@
       })
     });
   }
-  var import_react_native23;
+  var import_react_native24;
   var init_General = __esm({
     "src/core/ui/settings/pages/General/index.tsx"() {
       "use strict";
@@ -18332,7 +18849,7 @@
       init_constants();
       init_common();
       init_components();
-      import_react_native23 = __toESM(require_react_native());
+      import_react_native24 = __toESM(require_react_native());
     }
   });
 
@@ -18352,7 +18869,7 @@
         ])
       ];
     };
-    return /* @__PURE__ */ jsx(import_react_native24.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native25.ScrollView, {
       style: {
         flex: 1
       },
@@ -18396,7 +18913,7 @@
       })
     });
   }
-  var import_react_native24, tabs;
+  var import_react_native25, tabs;
   var init_Customization = __esm({
     "src/core/ui/settings/pages/Customization/index.tsx"() {
       "use strict";
@@ -18408,7 +18925,7 @@
       init_modules();
       init_settings();
       init_components();
-      import_react_native24 = __toESM(require_react_native());
+      import_react_native25 = __toESM(require_react_native());
       tabs = [
         [
           "BOTCORD",
@@ -18554,8 +19071,8 @@
     })();
   }
   function useBotCordState() {
-    var [value, setValue] = import_react8.default.useState(() => snapshot());
-    import_react8.default.useEffect(() => {
+    var [value, setValue] = import_react9.default.useState(() => snapshot());
+    import_react9.default.useEffect(() => {
       var active = true;
       var update = () => active && setValue(snapshot());
       listeners.add(update);
@@ -18770,7 +19287,7 @@
       return response.json();
     })();
   }
-  var import_react8, FILE_PATH, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners;
+  var import_react9, FILE_PATH, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners;
   var init_botcord = __esm({
     "src/lib/api/botcord.ts"() {
       "use strict";
@@ -18779,7 +19296,7 @@
       init_async_to_generator();
       init_type_of();
       init_modules();
-      import_react8 = __toESM(require_react());
+      import_react9 = __toESM(require_react());
       FILE_PATH = "botcord/accounts.json";
       MAX_FILE_BYTES = 256 * 1024;
       MAX_ACCOUNTS = 50;
@@ -18819,7 +19336,7 @@
     var uri = avatarUrl(user, 128);
     var colors = getNativeColors();
     if (uri)
-      return /* @__PURE__ */ jsx(import_react_native25.Image, {
+      return /* @__PURE__ */ jsx(import_react_native26.Image, {
         source: {
           uri
         },
@@ -18830,7 +19347,7 @@
         }
       });
     var label = displayName(user).trim().slice(0, 2).toUpperCase() || "?";
-    return /* @__PURE__ */ jsx(import_react_native25.View, {
+    return /* @__PURE__ */ jsx(import_react_native26.View, {
       style: {
         width: size,
         height: size,
@@ -18853,17 +19370,17 @@
       minute: "2-digit"
     }) : "";
     var reactionCount = message.reactions?.reduce((sum, reaction) => sum + (reaction.count || 0), 0) || 0;
-    return /* @__PURE__ */ jsxs(import_react_native25.View, {
+    return /* @__PURE__ */ jsxs(import_react_native26.View, {
       style: styles.row,
       children: [
         /* @__PURE__ */ jsx(ApiAvatar, {
           user: author,
           size: 40
         }),
-        /* @__PURE__ */ jsxs(import_react_native25.View, {
+        /* @__PURE__ */ jsxs(import_react_native26.View, {
           style: styles.messageBody,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native25.View, {
+            /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: styles.nameLine,
               children: [
                 /* @__PURE__ */ jsx(Text, {
@@ -18887,7 +19404,7 @@
               variant: "text-md/normal",
               children: message.content
             }),
-            !!message.attachments?.length && /* @__PURE__ */ jsx(import_react_native25.View, {
+            !!message.attachments?.length && /* @__PURE__ */ jsx(import_react_native26.View, {
               style: {
                 marginTop: 6,
                 gap: 6
@@ -18896,7 +19413,7 @@
                 var uri = attachment.url || attachment.proxy_url;
                 var type = String(attachment.content_type || "");
                 var isImage = type.startsWith("image/") || /\.(png|jpe?g|gif|webp)(?:$|\?)/i.test(String(uri || attachment.filename || ""));
-                return isImage && uri ? /* @__PURE__ */ jsx(import_react_native25.Image, {
+                return isImage && uri ? /* @__PURE__ */ jsx(import_react_native26.Image, {
                   source: {
                     uri
                   },
@@ -18939,7 +19456,7 @@
   }
   function AccountSheet({ accounts, active, onMain }) {
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native25.View, {
+      children: /* @__PURE__ */ jsxs(import_react_native26.View, {
         style: {
           paddingHorizontal: 12,
           paddingBottom: 20
@@ -18994,21 +19511,21 @@
     var navigation2 = NavigationNative.useNavigation();
     var state2 = useBotCordState();
     var active = accounts.find((a) => a.id === activeId) ?? accounts[0] ?? null;
-    var [guilds, setGuilds] = (0, import_react9.useState)([]);
-    var [channels2, setChannels] = (0, import_react9.useState)([]);
-    var [guild, setGuild] = (0, import_react9.useState)(null);
-    var [channel, setChannel] = (0, import_react9.useState)(null);
-    var [messages, setMessages] = (0, import_react9.useState)([]);
-    var [composer, setComposer] = (0, import_react9.useState)("");
-    var [selectedImage, setSelectedImage] = (0, import_react9.useState)(null);
-    var [loading, setLoading] = (0, import_react9.useState)(false);
-    var [error, setError] = (0, import_react9.useState)(null);
-    var [screen, setScreen] = (0, import_react9.useState)("messages");
-    var [members, setMembers] = (0, import_react9.useState)([]);
-    var [memberSearch, setMemberSearch] = (0, import_react9.useState)("");
-    var [memberStatus, setMemberStatus] = (0, import_react9.useState)("");
-    var listRef = (0, import_react9.useRef)(null);
-    (0, import_react9.useEffect)(() => {
+    var [guilds, setGuilds] = (0, import_react10.useState)([]);
+    var [channels2, setChannels] = (0, import_react10.useState)([]);
+    var [guild, setGuild] = (0, import_react10.useState)(null);
+    var [channel, setChannel] = (0, import_react10.useState)(null);
+    var [messages, setMessages] = (0, import_react10.useState)([]);
+    var [composer, setComposer] = (0, import_react10.useState)("");
+    var [selectedImage, setSelectedImage] = (0, import_react10.useState)(null);
+    var [loading, setLoading] = (0, import_react10.useState)(false);
+    var [error, setError] = (0, import_react10.useState)(null);
+    var [screen, setScreen] = (0, import_react10.useState)("messages");
+    var [members, setMembers] = (0, import_react10.useState)([]);
+    var [memberSearch, setMemberSearch] = (0, import_react10.useState)("");
+    var [memberStatus, setMemberStatus] = (0, import_react10.useState)("");
+    var listRef = (0, import_react10.useRef)(null);
+    (0, import_react10.useEffect)(() => {
       if (!active)
         return;
       setLoading(true);
@@ -19025,7 +19542,7 @@
     }, [
       active?.id
     ]);
-    (0, import_react9.useEffect)(() => {
+    (0, import_react10.useEffect)(() => {
       if (!active || !channel?.id)
         return;
       var disposed = false;
@@ -19297,15 +19814,15 @@
     };
     if (channel) {
       var dmUser = channel.recipients?.[0];
-      return /* @__PURE__ */ jsxs(import_react_native25.KeyboardAvoidingView, {
+      return /* @__PURE__ */ jsxs(import_react_native26.KeyboardAvoidingView, {
         style: styles.root,
-        behavior: import_react_native25.Platform.OS === "ios" ? "padding" : void 0,
+        behavior: import_react_native26.Platform.OS === "ios" ? "padding" : void 0,
         keyboardVerticalOffset: 0,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native25.View, {
+          /* @__PURE__ */ jsxs(import_react_native26.View, {
             style: styles.header,
             children: [
-              /* @__PURE__ */ jsx(import_react_native25.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Back",
                 onPress: returnFromChat,
@@ -19321,7 +19838,7 @@
                   opacity: pressed ? 0.7 : 1,
                   zIndex: 20
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native25.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 15,
@@ -19334,7 +19851,7 @@
                 user: dmUser,
                 size: 32
               }) : null,
-              /* @__PURE__ */ jsxs(import_react_native25.View, {
+              /* @__PURE__ */ jsxs(import_react_native26.View, {
                 style: {
                   flex: 1
                 },
@@ -19361,7 +19878,7 @@
               })
             ]
           }),
-          error ? /* @__PURE__ */ jsx(import_react_native25.View, {
+          error ? /* @__PURE__ */ jsx(import_react_native26.View, {
             style: {
               paddingHorizontal: 12,
               paddingVertical: 8
@@ -19381,7 +19898,7 @@
             },
             children: "Loading"
           }) : null,
-          /* @__PURE__ */ jsx(import_react_native25.FlatList, {
+          /* @__PURE__ */ jsx(import_react_native26.FlatList, {
             ref: listRef,
             style: {
               flex: 1
@@ -19394,13 +19911,13 @@
             contentContainerStyle: {
               paddingVertical: 6
             },
-            keyboardDismissMode: import_react_native25.Platform.OS === "ios" ? "interactive" : "on-drag",
+            keyboardDismissMode: import_react_native26.Platform.OS === "ios" ? "interactive" : "on-drag",
             keyboardShouldPersistTaps: "handled",
             onContentSizeChange: () => listRef.current?.scrollToEnd?.({
               animated: false
             })
           }),
-          selectedImage ? /* @__PURE__ */ jsxs(import_react_native25.View, {
+          selectedImage ? /* @__PURE__ */ jsxs(import_react_native26.View, {
             style: {
               height: 72,
               paddingHorizontal: 10,
@@ -19411,7 +19928,7 @@
               backgroundColor: tokens.colors.BACKGROUND_PRIMARY
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native25.Image, {
+              /* @__PURE__ */ jsx(import_react_native26.Image, {
                 source: {
                   uri: selectedImage.uri
                 },
@@ -19422,7 +19939,7 @@
                   backgroundColor: tokens.colors.BACKGROUND_SECONDARY
                 }
               }),
-              /* @__PURE__ */ jsx(import_react_native25.Text, {
+              /* @__PURE__ */ jsx(import_react_native26.Text, {
                 numberOfLines: 1,
                 style: {
                   flex: 1,
@@ -19431,7 +19948,7 @@
                 },
                 children: selectedImage.name
               }),
-              /* @__PURE__ */ jsx(import_react_native25.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 onPress: () => setSelectedImage(null),
                 hitSlop: 8,
                 style: ({ pressed }) => ({
@@ -19443,7 +19960,7 @@
                   backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native25.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 13,
@@ -19454,10 +19971,10 @@
               })
             ]
           }) : null,
-          /* @__PURE__ */ jsxs(import_react_native25.View, {
+          /* @__PURE__ */ jsxs(import_react_native26.View, {
             style: styles.composer,
             children: [
-              /* @__PURE__ */ jsx(import_react_native25.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Add photo",
                 onPress: pickImage,
@@ -19472,7 +19989,7 @@
                   backgroundColor: nativeColors.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native25.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.text,
                     fontSize: 13,
@@ -19481,7 +19998,7 @@
                   children: "Photo"
                 })
               }),
-              /* @__PURE__ */ jsx(import_react_native25.TextInput, {
+              /* @__PURE__ */ jsx(import_react_native26.TextInput, {
                 value: composer,
                 placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
                 placeholderTextColor: nativeColors.muted,
@@ -19506,7 +20023,7 @@
                   fontSize: 16
                 }
               }),
-              /* @__PURE__ */ jsx(import_react_native25.Pressable, {
+              /* @__PURE__ */ jsx(import_react_native26.Pressable, {
                 accessibilityRole: "button",
                 accessibilityLabel: "Send message",
                 disabled: !composer.trim() && !selectedImage,
@@ -19522,7 +20039,7 @@
                   opacity: !composer.trim() && !selectedImage ? 0.45 : pressed ? 0.72 : 1,
                   backgroundColor: nativeColors.brand
                 }),
-                children: /* @__PURE__ */ jsx(import_react_native25.Text, {
+                children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
                     color: nativeColors.inverse,
                     fontSize: 13,
@@ -19536,13 +20053,13 @@
         ]
       });
     }
-    return /* @__PURE__ */ jsxs(import_react_native25.View, {
+    return /* @__PURE__ */ jsxs(import_react_native26.View, {
       style: styles.root,
       children: [
-        /* @__PURE__ */ jsxs(import_react_native25.View, {
+        /* @__PURE__ */ jsxs(import_react_native26.View, {
           style: styles.header,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native25.View, {
+            /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: {
                 flex: 1
               },
@@ -19560,7 +20077,7 @@
                 })
               ]
             }),
-            screen === "members" ? /* @__PURE__ */ jsx(import_react_native25.Pressable, {
+            screen === "members" ? /* @__PURE__ */ jsx(import_react_native26.Pressable, {
               accessibilityRole: "button",
               accessibilityLabel: "Back",
               onPress: openMessages,
@@ -19571,7 +20088,7 @@
                 justifyContent: "center",
                 opacity: pressed ? 0.65 : 1
               }),
-              children: /* @__PURE__ */ jsx(import_react_native25.Text, {
+              children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                 style: {
                   color: nativeColors.text,
                   fontSize: 16,
@@ -19594,7 +20111,7 @@
             })
           ]
         }),
-        error ? /* @__PURE__ */ jsx(import_react_native25.View, {
+        error ? /* @__PURE__ */ jsx(import_react_native26.View, {
           style: {
             paddingHorizontal: 12,
             paddingVertical: 8
@@ -19614,10 +20131,10 @@
           },
           children: "Loading"
         }) : null,
-        /* @__PURE__ */ jsxs(import_react_native25.View, {
+        /* @__PURE__ */ jsxs(import_react_native26.View, {
           style: styles.navigator,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native25.View, {
+            /* @__PURE__ */ jsxs(import_react_native26.View, {
               style: styles.guildRail,
               children: [
                 /* @__PURE__ */ jsx(PressableScale, {
@@ -19630,7 +20147,7 @@
                     onPress: openMessages
                   })
                 }),
-                /* @__PURE__ */ jsx(import_react_native25.FlatList, {
+                /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                   data: guilds,
                   keyExtractor: (g2) => g2.id,
                   showsVerticalScrollIndicator: false,
@@ -19639,12 +20156,12 @@
                     return /* @__PURE__ */ jsx(PressableScale, {
                       onPress: () => openGuild(item),
                       style: styles.guildButton,
-                      children: uri ? /* @__PURE__ */ jsx(import_react_native25.Image, {
+                      children: uri ? /* @__PURE__ */ jsx(import_react_native26.Image, {
                         source: {
                           uri
                         },
                         style: styles.guildImage
-                      }) : /* @__PURE__ */ jsx(import_react_native25.View, {
+                      }) : /* @__PURE__ */ jsx(import_react_native26.View, {
                         style: styles.guildImage,
                         children: /* @__PURE__ */ jsx(Text, {
                           variant: "text-sm/semibold",
@@ -19656,11 +20173,11 @@
                 })
               ]
             }),
-            /* @__PURE__ */ jsx(import_react_native25.View, {
+            /* @__PURE__ */ jsx(import_react_native26.View, {
               style: styles.sidebar,
               children: screen === "messages" ? /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native25.View, {
+                  /* @__PURE__ */ jsxs(import_react_native26.View, {
                     style: styles.sidebarHeader,
                     children: [
                       /* @__PURE__ */ jsx(Text, {
@@ -19678,7 +20195,7 @@
                       })
                     ]
                   }),
-                  /* @__PURE__ */ jsx(import_react_native25.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                     data: recentDMs,
                     keyExtractor: (dm) => dm.channelId,
                     renderItem: ({ item }) => /* @__PURE__ */ jsxs(PressableScale, {
@@ -19689,7 +20206,7 @@
                           user: item.recipient,
                           size: 36
                         }),
-                        /* @__PURE__ */ jsxs(import_react_native25.View, {
+                        /* @__PURE__ */ jsxs(import_react_native26.View, {
                           style: {
                             flex: 1
                           },
@@ -19708,7 +20225,7 @@
                         })
                       ]
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native25.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native26.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -19720,7 +20237,7 @@
                 ]
               }) : screen === "members" ? /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native25.View, {
+                  /* @__PURE__ */ jsxs(import_react_native26.View, {
                     style: styles.sidebarHeader,
                     children: [
                       /* @__PURE__ */ jsx(Button, {
@@ -19729,7 +20246,7 @@
                         text: "Back",
                         onPress: openMessages
                       }),
-                      /* @__PURE__ */ jsxs(import_react_native25.View, {
+                      /* @__PURE__ */ jsxs(import_react_native26.View, {
                         style: {
                           flex: 1
                         },
@@ -19747,7 +20264,7 @@
                       })
                     ]
                   }),
-                  /* @__PURE__ */ jsx(import_react_native25.View, {
+                  /* @__PURE__ */ jsx(import_react_native26.View, {
                     style: styles.search,
                     children: /* @__PURE__ */ jsx(TextInput, {
                       size: "md",
@@ -19756,7 +20273,7 @@
                       onChange: (value) => setMemberSearch(typeof value === "string" ? value : value?.nativeEvent?.text ?? "")
                     })
                   }),
-                  /* @__PURE__ */ jsx(import_react_native25.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                     data: filteredMembers,
                     keyExtractor: (member, i) => member.user?.id || String(i),
                     keyboardShouldPersistTaps: "handled",
@@ -19772,7 +20289,7 @@
                           user: item.user,
                           size: 36
                         }),
-                        /* @__PURE__ */ jsxs(import_react_native25.View, {
+                        /* @__PURE__ */ jsxs(import_react_native26.View, {
                           style: {
                             flex: 1
                           },
@@ -19796,7 +20313,7 @@
                         })
                       ]
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native25.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native26.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -19808,7 +20325,7 @@
                 ]
               }) : /* @__PURE__ */ jsxs(Fragment, {
                 children: [
-                  /* @__PURE__ */ jsx(import_react_native25.View, {
+                  /* @__PURE__ */ jsx(import_react_native26.View, {
                     style: styles.sidebarHeader,
                     children: /* @__PURE__ */ jsx(Text, {
                       variant: "heading-md/semibold",
@@ -19816,7 +20333,7 @@
                       children: guild?.name
                     })
                   }),
-                  /* @__PURE__ */ jsx(import_react_native25.FlatList, {
+                  /* @__PURE__ */ jsx(import_react_native26.FlatList, {
                     data: [
                       ...textChannels(null),
                       ...categories.flatMap((cat) => [
@@ -19842,7 +20359,7 @@
                         children: item.name
                       })
                     }),
-                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native25.View, {
+                    ListEmptyComponent: /* @__PURE__ */ jsx(import_react_native26.View, {
                       style: styles.listEmpty,
                       children: /* @__PURE__ */ jsx(Text, {
                         variant: "text-md/normal",
@@ -19861,12 +20378,12 @@
   }
   function BotCord() {
     var state2 = useBotCordState();
-    var [token, setToken] = (0, import_react9.useState)("");
-    var [adding, setAdding] = (0, import_react9.useState)(false);
-    var [error, setError] = (0, import_react9.useState)(null);
-    var [opened, setOpened] = (0, import_react9.useState)(false);
+    var [token, setToken] = (0, import_react10.useState)("");
+    var [adding, setAdding] = (0, import_react10.useState)(false);
+    var [error, setError] = (0, import_react10.useState)(null);
+    var [opened, setOpened] = (0, import_react10.useState)(false);
     var accounts = state2.accounts;
-    var active = (0, import_react9.useMemo)(() => accounts.find((a) => a.id === state2.activeAccountId) ?? accounts[0] ?? null, [
+    var active = (0, import_react10.useMemo)(() => accounts.find((a) => a.id === state2.activeAccountId) ?? accounts[0] ?? null, [
       accounts,
       state2.activeAccountId
     ]);
@@ -19876,7 +20393,7 @@
         activeId: active.id,
         onExit: () => setOpened(false)
       });
-    return /* @__PURE__ */ jsx(import_react_native25.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native26.ScrollView, {
       style: {
         flex: 1
       },
@@ -19890,7 +20407,7 @@
         },
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native25.View, {
+          /* @__PURE__ */ jsxs(import_react_native26.View, {
             children: [
               /* @__PURE__ */ jsx(Text, {
                 variant: "heading-xl/bold",
@@ -19934,7 +20451,7 @@
           /* @__PURE__ */ jsx(TableRowGroup, {
             title: "Add Bot Account",
             children: /* @__PURE__ */ jsx(TableRow, {
-              label: /* @__PURE__ */ jsxs(import_react_native25.View, {
+              label: /* @__PURE__ */ jsxs(import_react_native26.View, {
                 style: {
                   width: "100%",
                   gap: 10
@@ -19982,7 +20499,7 @@
       })
     });
   }
-  var import_react9, import_react_native25, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
+  var import_react10, import_react_native26, useStyles3, avatarUrl, guildIconUrl, displayName, getNativeColors;
   var init_BotCord = __esm({
     "src/core/ui/settings/pages/BotCord/index.tsx"() {
       "use strict";
@@ -19998,8 +20515,8 @@
       init_metro();
       init_common();
       init_components();
-      import_react9 = __toESM(require_react());
-      import_react_native25 = __toESM(require_react_native());
+      import_react10 = __toESM(require_react());
+      import_react_native26 = __toESM(require_react_native());
       useStyles3 = createStyles({
         root: {
           flex: 1,
@@ -20112,11 +20629,11 @@
   // src/core/ui/settings/components/ScaledPluginSettings.tsx
   function ScaledPluginSettings({ component: Component2 }) {
     if (typeof Component2 !== "function") {
-      return /* @__PURE__ */ jsx(import_react_native26.View, {
+      return /* @__PURE__ */ jsx(import_react_native27.View, {
         style: {
           padding: 16
         },
-        children: /* @__PURE__ */ jsx(import_react_native26.Text, {
+        children: /* @__PURE__ */ jsx(import_react_native27.Text, {
           style: {
             color: "#ffffff"
           },
@@ -20124,7 +20641,7 @@
         })
       });
     }
-    return /* @__PURE__ */ jsx(import_react_native26.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native27.ScrollView, {
       style: {
         flex: 1
       },
@@ -20133,7 +20650,7 @@
         paddingHorizontal: 12
       },
       showsVerticalScrollIndicator: true,
-      children: /* @__PURE__ */ jsx(import_react_native26.View, {
+      children: /* @__PURE__ */ jsx(import_react_native27.View, {
         style: {
           width: "100%",
           paddingRight: 24,
@@ -20143,14 +20660,14 @@
       })
     });
   }
-  var import_react_native26;
+  var import_react_native27;
   var init_ScaledPluginSettings = __esm({
     "src/core/ui/settings/components/ScaledPluginSettings.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      import_react_native26 = __toESM(require_react_native());
+      import_react_native27 = __toESM(require_react_native());
     }
   });
 
@@ -20161,8 +20678,8 @@
   });
   function StoreCloud() {
     useProxy(VdPluginManager.plugins);
-    var [busy, setBusy] = (0, import_react10.useState)(false);
-    var [refresh, setRefresh] = (0, import_react10.useState)(0);
+    var [busy, setBusy] = (0, import_react11.useState)(false);
+    var [refresh, setRefresh] = (0, import_react11.useState)(0);
     var plugin = VdPluginManager.plugins[PLUGIN_URL];
     var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
     function installOrStart() {
@@ -20234,7 +20751,7 @@
         component: SettingsComponent
       }, `storecloud-settings-${refresh}`);
     }
-    return /* @__PURE__ */ jsx(import_react_native27.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native28.ScrollView, {
       style: {
         flex: 1
       },
@@ -20251,7 +20768,7 @@
           /* @__PURE__ */ jsxs(TableRowGroup, {
             title: "CloudSync",
             children: [
-              /* @__PURE__ */ jsxs(import_react_native27.View, {
+              /* @__PURE__ */ jsxs(import_react_native28.View, {
                 style: {
                   paddingHorizontal: 12,
                   paddingBottom: 12
@@ -20302,7 +20819,7 @@
           }),
           /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsx(import_react_native27.View, {
+            children: /* @__PURE__ */ jsx(import_react_native28.View, {
               style: {
                 padding: 12
               },
@@ -20317,7 +20834,7 @@
       })
     });
   }
-  var import_react10, import_react_native27, PLUGIN_URL, STORECLOUD_ICON;
+  var import_react11, import_react_native28, PLUGIN_URL, STORECLOUD_ICON;
   var init_StoreCloud = __esm({
     "src/core/ui/settings/pages/StoreCloud/index.tsx"() {
       "use strict";
@@ -20331,8 +20848,8 @@
       init_assets();
       init_toasts();
       init_components();
-      import_react10 = __toESM(require_react());
-      import_react_native27 = __toESM(require_react_native());
+      import_react11 = __toESM(require_react());
+      import_react_native28 = __toESM(require_react_native());
       PLUGIN_URL = "https://revenge.nexpid.xyz/cloud-sync/";
       STORECLOUD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
     }
@@ -21172,9 +21689,9 @@
 
   // src/core/ui/components/AddonPage.tsx
   function InputAlert2(props) {
-    var [value, setValue] = (0, import_react11.useState)("");
-    var [error, setError] = (0, import_react11.useState)("");
-    var [isFetching, setIsFetching] = (0, import_react11.useState)(false);
+    var [value, setValue] = (0, import_react12.useState)("");
+    var [error, setError] = (0, import_react12.useState)("");
+    var [isFetching, setIsFetching] = (0, import_react12.useState)(false);
     function onConfirmWrapper() {
       setIsFetching(true);
       props.fetchFn(value).then(() => dismissAlert("AddonInputAlert")).catch((e) => e instanceof Error ? setError(e.message) : String(e)).finally(() => setIsFetching(false));
@@ -21201,7 +21718,7 @@
             state: error ? "error" : void 0,
             errorMessage: error || void 0
           }),
-          /* @__PURE__ */ jsx(import_react_native28.ScrollView, {
+          /* @__PURE__ */ jsx(import_react_native29.ScrollView, {
             horizontal: true,
             showsHorizontalScrollIndicator: false,
             style: {
@@ -21236,11 +21753,11 @@
     });
   }
   function AddonPage({ CardComponent, ...props }) {
-    var [search, setSearch] = (0, import_react11.useState)("");
+    var [search, setSearch] = (0, import_react12.useState)("");
     var [sortFn, setSortFn] = React.useState(() => null);
     var { bottom: bottomInset } = useSafeAreaInsets();
     var navigation2 = NavigationNative.useNavigation();
-    (0, import_react11.useEffect)(() => {
+    (0, import_react12.useEffect)(() => {
       if (props.OptionsActionSheetComponent) {
         navigation2.setOptions({
           headerRight: () => /* @__PURE__ */ jsx(IconButton, {
@@ -21254,7 +21771,7 @@
     }, [
       navigation2
     ]);
-    var results = (0, import_react11.useMemo)(() => {
+    var results = (0, import_react12.useMemo)(() => {
       var values = props.items;
       if (props.resolveItem)
         values = values.map(props.resolveItem).filter(isNotNil);
@@ -21270,7 +21787,7 @@
       sortFn,
       search
     ]);
-    var onInstallPress = (0, import_react11.useCallback)(() => {
+    var onInstallPress = (0, import_react12.useCallback)(() => {
       if (!props.installAction)
         return () => {
         };
@@ -21285,7 +21802,7 @@
       }
     }, []);
     if (results.length === 0 && !search) {
-      return /* @__PURE__ */ jsxs(import_react_native28.View, {
+      return /* @__PURE__ */ jsxs(import_react_native29.View, {
         style: {
           gap: 32,
           flexGrow: 1,
@@ -21293,13 +21810,13 @@
           alignItems: "center"
         },
         children: [
-          /* @__PURE__ */ jsxs(import_react_native28.View, {
+          /* @__PURE__ */ jsxs(import_react_native29.View, {
             style: {
               gap: 8,
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native28.Image, {
+              /* @__PURE__ */ jsx(import_react_native29.Image, {
                 source: findAssetId("empty_quick_switcher")
               }),
               /* @__PURE__ */ jsx(Text, {
@@ -21318,12 +21835,12 @@
         ]
       });
     }
-    var headerElement = /* @__PURE__ */ jsxs(import_react_native28.View, {
+    var headerElement = /* @__PURE__ */ jsxs(import_react_native29.View, {
       style: {
         paddingBottom: 8
       },
       children: [
-        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native28.View, {
+        settings.safeMode?.enabled && /* @__PURE__ */ jsxs(import_react_native29.View, {
           style: {
             marginBottom: 10
           },
@@ -21335,7 +21852,7 @@
             props.safeModeHint?.footer
           ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native28.View, {
+        /* @__PURE__ */ jsxs(import_react_native29.View, {
           style: {
             flexDirection: "row",
             gap: 8
@@ -21376,14 +21893,14 @@
           extraData: search,
           estimatedItemSize: 136,
           ListHeaderComponent: headerElement,
-          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native28.View, {
+          ListEmptyComponent: () => /* @__PURE__ */ jsxs(import_react_native29.View, {
             style: {
               gap: 12,
               padding: 12,
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsx(import_react_native28.Image, {
+              /* @__PURE__ */ jsx(import_react_native29.Image, {
                 source: findAssetId("devices_not_found")
               }),
               /* @__PURE__ */ jsx(Text, {
@@ -21398,7 +21915,7 @@
             paddingHorizontal: 12,
             paddingBottom: 90
           },
-          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native28.View, {
+          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native29.View, {
             style: {
               height: 8
             }
@@ -21417,7 +21934,7 @@
       ]
     });
   }
-  var import_fuzzysort, import_react11, import_react_native28, showSimpleActionSheet2, hideActionSheet;
+  var import_fuzzysort, import_react12, import_react_native29, showSimpleActionSheet2, hideActionSheet;
   var init_AddonPage = __esm({
     "src/core/ui/components/AddonPage.tsx"() {
       "use strict";
@@ -21436,8 +21953,8 @@
       init_components2();
       init_dist();
       import_fuzzysort = __toESM(require_fuzzysort());
-      import_react11 = __toESM(require_react());
-      import_react_native28 = __toESM(require_react_native());
+      import_react12 = __toESM(require_react());
+      import_react_native29 = __toESM(require_react_native());
       ({ showSimpleActionSheet: showSimpleActionSheet2, hideActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
     }
   });
@@ -21492,14 +22009,14 @@
       variant: "heading-lg/semibold",
       children: highlightedNode.length ? highlightedNode : plugin.name
     });
-    return /* @__PURE__ */ jsxs(import_react_native29.View, {
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         flexDirection: "row",
         alignItems: "center",
         gap: 6
       },
       children: [
-        icon2 && /* @__PURE__ */ jsx(import_react_native29.Image, {
+        icon2 && /* @__PURE__ */ jsx(import_react_native30.Image, {
           style: styles.smallIcon,
           source: icon2
         }),
@@ -21520,7 +22037,7 @@
     }, i));
     var badges = plugin.getBadges();
     var authorText = highlightedNode.length > 0 ? highlightedNode : plugin.authors.map((a) => a.name).join(", ");
-    return /* @__PURE__ */ jsxs(import_react_native29.View, {
+    return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         flexDirection: "row",
         flexWrap: "wrap",
@@ -21536,9 +22053,9 @@
             authorText
           ]
         }),
-        badges.length > 0 && /* @__PURE__ */ jsx(import_react_native29.View, {
+        badges.length > 0 && /* @__PURE__ */ jsx(import_react_native30.View, {
           style: styles.badgesContainer,
-          children: badges.map((b3, i) => /* @__PURE__ */ jsx(import_react_native29.Image, {
+          children: badges.map((b3, i) => /* @__PURE__ */ jsx(import_react_native30.Image, {
             source: b3.source,
             style: styles.badgeIcon
           }, i))
@@ -21561,8 +22078,8 @@
   }
   function PluginCard({ result, item: plugin }) {
     plugin.usePluginState();
-    var [toggling, setToggling] = (0, import_react12.useState)(false);
-    var cardContextValue = (0, import_react12.useMemo)(() => ({
+    var [toggling, setToggling] = (0, import_react13.useState)(false);
+    var cardContextValue = (0, import_react13.useMemo)(() => ({
       plugin,
       result
     }), [
@@ -21576,13 +22093,13 @@
         children: /* @__PURE__ */ jsxs(Stack, {
           spacing: 16,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native29.View, {
+            /* @__PURE__ */ jsxs(import_react_native30.View, {
               style: {
                 flexDirection: "row",
                 justifyContent: "space-between"
               },
               children: [
-                /* @__PURE__ */ jsxs(import_react_native29.View, {
+                /* @__PURE__ */ jsxs(import_react_native30.View, {
                   style: {
                     flexShrink: 1
                   },
@@ -21591,13 +22108,13 @@
                     /* @__PURE__ */ jsx(Authors, {})
                   ]
                 }),
-                /* @__PURE__ */ jsx(import_react_native29.View, {
+                /* @__PURE__ */ jsx(import_react_native30.View, {
                   children: /* @__PURE__ */ jsxs(Stack, {
                     spacing: 12,
                     direction: "horizontal",
                     children: [
                       /* @__PURE__ */ jsx(Actions, {}),
-                      /* @__PURE__ */ jsx(import_react_native29.View, {
+                      /* @__PURE__ */ jsx(import_react_native30.View, {
                         style: core ? {
                           opacity: 0.5
                         } : void 0,
@@ -21629,7 +22146,7 @@
       })
     });
   }
-  var import_chroma_js3, import_react12, import_react_native29, CardContext, useCardContext, Actions;
+  var import_chroma_js3, import_react13, import_react_native30, CardContext, useCardContext, Actions;
   var init_PluginCard = __esm({
     "src/core/ui/settings/pages/Plugins/components/PluginCard.tsx"() {
       "use strict";
@@ -21644,15 +22161,15 @@
       init_components();
       init_sheets();
       import_chroma_js3 = __toESM(require_chroma_js());
-      import_react12 = __toESM(require_react());
-      import_react_native29 = __toESM(require_react_native());
+      import_react13 = __toESM(require_react());
+      import_react_native30 = __toESM(require_react_native());
       init_plugins4();
-      CardContext = /* @__PURE__ */ (0, import_react12.createContext)(null);
-      useCardContext = () => (0, import_react12.useContext)(CardContext);
+      CardContext = /* @__PURE__ */ (0, import_react13.createContext)(null);
+      useCardContext = () => (0, import_react13.useContext)(CardContext);
       Actions = () => {
         var { plugin } = useCardContext();
         var navigation2 = NavigationNative.useNavigation();
-        return /* @__PURE__ */ jsxs(import_react_native29.View, {
+        return /* @__PURE__ */ jsxs(import_react_native30.View, {
           style: {
             flexDirection: "row",
             gap: 6
@@ -21720,23 +22237,23 @@
         _loop2(author);
       authorTextNode.pop();
     }
-    return /* @__PURE__ */ jsxs(import_react_native30.View, {
+    return /* @__PURE__ */ jsxs(import_react_native31.View, {
       style: {
         gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native30.View, {
+        /* @__PURE__ */ jsx(import_react_native31.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
             children: plugin.name
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native30.View, {
+        /* @__PURE__ */ jsx(import_react_native31.View, {
           style: {
             flexDirection: "row",
             flexShrink: 1
           },
-          children: authors?.length && /* @__PURE__ */ jsxs(import_react_native30.View, {
+          children: authors?.length && /* @__PURE__ */ jsxs(import_react_native31.View, {
             style: {
               flexDirection: "row",
               gap: 8,
@@ -21766,7 +22283,7 @@
       ]
     });
   }
-  var import_react_native30, showUserProfileActionSheet, maybeFetchUser;
+  var import_react_native31, showUserProfileActionSheet, maybeFetchUser;
   var init_TitleComponent = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/TitleComponent.tsx"() {
       "use strict";
@@ -21778,7 +22295,7 @@
       init_common();
       init_components();
       init_stores();
-      import_react_native30 = __toESM(require_react_native());
+      import_react_native31 = __toESM(require_react_native());
       showUserProfileActionSheet = findByNameLazy("showUserProfileActionSheet");
       ({ getUser: maybeFetchUser } = lazyDestructure(() => findByProps("getUser", "fetchProfile")));
     }
@@ -21801,7 +22318,7 @@
   }
   function PluginInfoActionSheet({ plugin, navigation: navigation2 }) {
     plugin.usePluginState();
-    var [loading, setLoading] = (0, import_react13.useState)(false);
+    var [loading, setLoading] = (0, import_react14.useState)(false);
     var isVendettaPlugin = plugin.id.includes("/");
     var isCorePlugin2 = plugin.id.startsWith("bunny.") || plugin.id.startsWith("vendetta.");
     var copyPluginUrl = () => {
@@ -21897,13 +22414,13 @@
       });
     };
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native31.ScrollView, {
+      children: /* @__PURE__ */ jsxs(import_react_native32.ScrollView, {
         contentContainerStyle: {
           gap: 12,
           marginBottom: 12
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native31.View, {
+          /* @__PURE__ */ jsx(import_react_native32.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
@@ -21916,7 +22433,7 @@
               plugin
             })
           }),
-          /* @__PURE__ */ jsxs(import_react_native31.View, {
+          /* @__PURE__ */ jsxs(import_react_native32.View, {
             style: {
               flexDirection: "row",
               justifyContent: "center",
@@ -21988,7 +22505,7 @@
       })
     });
   }
-  var import_react13, import_react_native31;
+  var import_react14, import_react_native32;
   var init_PluginInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Plugins/sheets/PluginInfoActionSheet.tsx"() {
       "use strict";
@@ -22005,8 +22522,8 @@
       init_storage();
       init_storage2();
       init_assets();
-      import_react13 = __toESM(require_react());
-      import_react_native31 = __toESM(require_react_native());
+      import_react14 = __toESM(require_react());
+      import_react_native32 = __toESM(require_react_native());
       init_TitleComponent();
       init_ScaledPluginSettings();
     }
@@ -22160,14 +22677,14 @@
         var unproxiedPlugins = Object.values(VdPluginManager.plugins).filter((p) => !p.id.startsWith(VD_PROXY_PREFIX) && !p.id.startsWith(BUNNY_PROXY_PREFIX));
         if (!unproxiedPlugins.length)
           return null;
-        return /* @__PURE__ */ jsx(import_react_native32.View, {
+        return /* @__PURE__ */ jsx(import_react_native33.View, {
           style: {
             marginVertical: 12,
             marginHorizontal: 10
           },
           children: /* @__PURE__ */ jsx(Card, {
             border: "strong",
-            children: /* @__PURE__ */ jsxs(import_react_native32.View, {
+            children: /* @__PURE__ */ jsxs(import_react_native33.View, {
               style: {
                 flex: 1,
                 justifyContent: "center",
@@ -22175,7 +22692,7 @@
                 flexDirection: "row"
               },
               children: [
-                /* @__PURE__ */ jsxs(import_react_native32.View, {
+                /* @__PURE__ */ jsxs(import_react_native33.View, {
                   style: {
                     gap: 6,
                     flexShrink: 1
@@ -22192,7 +22709,7 @@
                     })
                   ]
                 }),
-                /* @__PURE__ */ jsx(import_react_native32.View, {
+                /* @__PURE__ */ jsx(import_react_native33.View, {
                   style: {
                     marginLeft: "auto"
                   },
@@ -22212,7 +22729,7 @@
                             contentContainerStyle: {
                               padding: 8
                             },
-                            ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native32.View, {
+                            ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native33.View, {
                               style: {
                                 height: 8
                               }
@@ -22283,7 +22800,7 @@
       }
     });
   }
-  var import_react_native32, openAlert2, AlertModal3, AlertActions2, AlertActionButton3;
+  var import_react_native33, openAlert2, AlertModal3, AlertActions2, AlertActionButton3;
   var init_Plugins = __esm({
     "src/core/ui/settings/pages/Plugins/index.tsx"() {
       "use strict";
@@ -22306,7 +22823,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react_native32 = __toESM(require_react_native());
+      import_react_native33 = __toESM(require_react_native());
       init_bunny();
       init_vendetta();
       ({ openAlert: openAlert2 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
@@ -22503,14 +23020,14 @@
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native33.View, {
+          /* @__PURE__ */ jsxs(import_react_native34.View, {
             style: {
               flexDirection: "row",
               justifyContent: "space-between",
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsxs(import_react_native33.View, {
+              /* @__PURE__ */ jsxs(import_react_native34.View, {
                 style: {
                   flexShrink: 1
                 },
@@ -22540,7 +23057,7 @@
                   })
                 ]
               }),
-              /* @__PURE__ */ jsx(import_react_native33.View, {
+              /* @__PURE__ */ jsx(import_react_native34.View, {
                 children: /* @__PURE__ */ jsx(TrailingButtons, {
                   addon,
                   isPluginMode,
@@ -22700,7 +23217,7 @@
       sort
     ]);
     if (error) {
-      return /* @__PURE__ */ jsx(import_react_native33.View, {
+      return /* @__PURE__ */ jsx(import_react_native34.View, {
         style: {
           flex: 1,
           paddingHorizontal: 8,
@@ -22737,24 +23254,24 @@
         })
       });
     }
-    return /* @__PURE__ */ jsxs(import_react_native33.View, {
+    return /* @__PURE__ */ jsxs(import_react_native34.View, {
       style: {
         flex: 1
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native33.View, {
+        /* @__PURE__ */ jsx(import_react_native34.View, {
           style: {
             paddingHorizontal: 10
           },
           children: /* @__PURE__ */ jsxs(Stack, {
             spacing: 12,
             children: [
-              /* @__PURE__ */ jsx(import_react_native33.View, {
+              /* @__PURE__ */ jsx(import_react_native34.View, {
                 style: {
                   flexDirection: "row",
                   paddingTop: 10
                 },
-                children: /* @__PURE__ */ jsxs(import_react_native33.View, {
+                children: /* @__PURE__ */ jsxs(import_react_native34.View, {
                   style: {
                     flex: 1,
                     flexDirection: "row",
@@ -22770,7 +23287,7 @@
                         flex: 1
                       }
                     }),
-                    /* @__PURE__ */ jsx(import_react_native33.View, {
+                    /* @__PURE__ */ jsx(import_react_native34.View, {
                       style: {
                         width: 8
                       }
@@ -22787,7 +23304,7 @@
                   ]
                 })
               }),
-              /* @__PURE__ */ jsxs(import_react_native33.View, {
+              /* @__PURE__ */ jsxs(import_react_native34.View, {
                 style: {
                   flexDirection: "row",
                   alignItems: "center",
@@ -22803,7 +23320,7 @@
                       flex: 1
                     }
                   }),
-                  /* @__PURE__ */ jsx(import_react_native33.View, {
+                  /* @__PURE__ */ jsx(import_react_native34.View, {
                     style: {
                       flexDirection: "row",
                       alignItems: "center",
@@ -22843,21 +23360,21 @@
             paddingBottom: 90,
             paddingHorizontal: 5
           },
-          ListHeaderComponent: mode === "plugins" ? /* @__PURE__ */ jsx(import_react_native33.View, {
+          ListHeaderComponent: mode === "plugins" ? /* @__PURE__ */ jsx(import_react_native34.View, {
             style: {
               paddingVertical: 6,
               paddingHorizontal: 8
             },
             children: /* @__PURE__ */ jsx(Card, {
               border: "strong",
-              children: /* @__PURE__ */ jsx(import_react_native33.View, {
+              children: /* @__PURE__ */ jsx(import_react_native34.View, {
                 style: {
                   flex: 1,
                   justifyContent: "center",
                   alignItems: "center",
                   flexDirection: "row"
                 },
-                children: /* @__PURE__ */ jsxs(import_react_native33.View, {
+                children: /* @__PURE__ */ jsxs(import_react_native34.View, {
                   style: {
                     gap: 6,
                     flexShrink: 1
@@ -22878,7 +23395,7 @@
             })
           }) : null,
           //@ts-ignore
-          renderItem: ({ item: addon }) => /* @__PURE__ */ jsx(import_react_native33.View, {
+          renderItem: ({ item: addon }) => /* @__PURE__ */ jsx(import_react_native34.View, {
             style: {
               paddingVertical: 6,
               paddingHorizontal: 8
@@ -22895,7 +23412,7 @@
       ]
     });
   }
-  var import_react_native33, showSimpleActionSheet3, hideActionSheet2, PLUGIN_URL2, THEME_URL, Sort;
+  var import_react_native34, showSimpleActionSheet3, hideActionSheet2, PLUGIN_URL2, THEME_URL, Sort;
   var init_PluginBrowser = __esm({
     "src/core/ui/settings/pages/PluginBrowser/index.tsx"() {
       "use strict";
@@ -22904,7 +23421,7 @@
       init_async_to_generator();
       init_jsxRuntime();
       init_common();
-      import_react_native33 = __toESM(require_react_native());
+      import_react_native34 = __toESM(require_react_native());
       init_components();
       init_assets();
       init_safeFetch();
@@ -22942,13 +23459,13 @@
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
-          /* @__PURE__ */ jsxs(import_react_native34.View, {
+          /* @__PURE__ */ jsxs(import_react_native35.View, {
             style: {
               flexDirection: "row",
               alignItems: "center"
             },
             children: [
-              /* @__PURE__ */ jsxs(import_react_native34.View, {
+              /* @__PURE__ */ jsxs(import_react_native35.View, {
                 style: styles.headerLeading,
                 children: [
                   /* @__PURE__ */ jsx(Text, {
@@ -22961,7 +23478,7 @@
                   })
                 ]
               }),
-              /* @__PURE__ */ jsxs(import_react_native34.View, {
+              /* @__PURE__ */ jsxs(import_react_native35.View, {
                 style: [
                   styles.headerTrailing,
                   {
@@ -22969,7 +23486,7 @@
                   }
                 ],
                 children: [
-                  /* @__PURE__ */ jsxs(import_react_native34.View, {
+                  /* @__PURE__ */ jsxs(import_react_native35.View, {
                     style: styles.actions,
                     children: [
                       props.overflowActions && /* @__PURE__ */ jsx(IconButton, {
@@ -23006,7 +23523,7 @@
                   props.toggleType && (props.toggleType === "switch" ? /* @__PURE__ */ jsx(FormSwitch, {
                     value: props.toggleValue(),
                     onValueChange: props.onToggleChange
-                  }) : /* @__PURE__ */ jsx(import_react_native34.TouchableOpacity, {
+                  }) : /* @__PURE__ */ jsx(import_react_native35.TouchableOpacity, {
                     onPress: () => {
                       props.onToggleChange?.(!props.toggleValue());
                     },
@@ -23026,7 +23543,7 @@
       })
     });
   }
-  var import_react_native34, hideActionSheet3, showSimpleActionSheet4, useStyles4;
+  var import_react_native35, hideActionSheet3, showSimpleActionSheet4, useStyles4;
   var init_AddonCard = __esm({
     "src/core/ui/components/AddonCard.tsx"() {
       "use strict";
@@ -23039,7 +23556,7 @@
       init_wrappers();
       init_color();
       init_styles();
-      import_react_native34 = __toESM(require_react_native());
+      import_react_native35 = __toESM(require_react_native());
       ({ hideActionSheet: hideActionSheet3 } = lazyDestructure(() => findByProps("openLazy", "hideActionSheet")));
       ({ showSimpleActionSheet: showSimpleActionSheet4 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
       useStyles4 = createStyles({
@@ -23113,23 +23630,23 @@
   }
   function TitleComponent2({ theme }) {
     var { authors } = theme.data;
-    return /* @__PURE__ */ jsxs(import_react_native35.View, {
+    return /* @__PURE__ */ jsxs(import_react_native36.View, {
       style: {
         gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native35.View, {
+        /* @__PURE__ */ jsx(import_react_native36.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
             children: theme.data.name
           })
         }),
-        /* @__PURE__ */ jsx(import_react_native35.View, {
+        /* @__PURE__ */ jsx(import_react_native36.View, {
           style: {
             flexDirection: "row",
             flexShrink: 1
           },
-          children: authors && authors.length > 0 && /* @__PURE__ */ jsx(import_react_native35.TouchableOpacity, {
+          children: authors && authors.length > 0 && /* @__PURE__ */ jsx(import_react_native36.TouchableOpacity, {
             style: {
               flexDirection: "row",
               gap: 8,
@@ -23153,11 +23670,11 @@
     });
   }
   function ThemeInfoActionSheet({ theme, navigation: navigation2 }) {
-    var [themeState, setThemeState] = (0, import_react14.useState)({
+    var [themeState, setThemeState] = (0, import_react15.useState)({
       ...theme
     });
-    var [loading, setLoading] = (0, import_react14.useState)(false);
-    (0, import_react14.useEffect)(() => {
+    var [loading, setLoading] = (0, import_react15.useState)(false);
+    (0, import_react15.useEffect)(() => {
       var interval = setInterval(() => {
         setThemeState({
           ...theme
@@ -23221,13 +23738,13 @@
       }
     };
     return /* @__PURE__ */ jsx(ActionSheet, {
-      children: /* @__PURE__ */ jsxs(import_react_native35.ScrollView, {
+      children: /* @__PURE__ */ jsxs(import_react_native36.ScrollView, {
         contentContainerStyle: {
           gap: 12,
           marginBottom: 12
         },
         children: [
-          /* @__PURE__ */ jsx(import_react_native35.View, {
+          /* @__PURE__ */ jsx(import_react_native36.View, {
             style: {
               flexDirection: "row",
               alignItems: "center",
@@ -23240,7 +23757,7 @@
               theme: themeState
             })
           }),
-          /* @__PURE__ */ jsxs(import_react_native35.View, {
+          /* @__PURE__ */ jsxs(import_react_native36.View, {
             style: {
               flexDirection: "row",
               justifyContent: "center",
@@ -23291,7 +23808,7 @@
       })
     });
   }
-  var import_react14, import_react_native35;
+  var import_react15, import_react_native36;
   var init_ThemeInfoActionSheet = __esm({
     "src/core/ui/settings/pages/Themes/sheets/ThemeInfoActionSheet.tsx"() {
       "use strict";
@@ -23303,8 +23820,8 @@
       init_sheets();
       init_components();
       init_common();
-      import_react14 = __toESM(require_react());
-      import_react_native35 = __toESM(require_react_native());
+      import_react15 = __toESM(require_react());
+      import_react_native36 = __toESM(require_react_native());
       init_toasts();
       init_alerts();
       init_themes();
@@ -23414,7 +23931,7 @@
             /* @__PURE__ */ jsx(BottomSheetTitleHeader, {
               title: "Options"
             }),
-            /* @__PURE__ */ jsxs(import_react_native36.View, {
+            /* @__PURE__ */ jsxs(import_react_native37.View, {
               style: {
                 paddingVertical: 20,
                 gap: 12
@@ -23500,7 +24017,7 @@
       }
     });
   }
-  var import_react_native36;
+  var import_react_native37;
   var init_Themes = __esm({
     "src/core/ui/settings/pages/Themes/index.tsx"() {
       "use strict";
@@ -23518,7 +24035,7 @@
       init_settings();
       init_storage2();
       init_components();
-      import_react_native36 = __toESM(require_react_native());
+      import_react_native37 = __toESM(require_react_native());
     }
   });
 
@@ -23702,9 +24219,9 @@
   function RevengeFontsExtractor({ fonts: fonts2, setName }) {
     var currentTheme = getCurrentTheme().data;
     var themeFonts = currentTheme.fonts;
-    var [fontName, setFontName] = (0, import_react15.useState)(guessFontName(Object.values(themeFonts)));
-    var [error, setError] = (0, import_react15.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native37.View, {
+    var [fontName, setFontName] = (0, import_react16.useState)(guessFontName(Object.values(themeFonts)));
+    var [error, setError] = (0, import_react16.useState)(void 0);
+    return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -23754,10 +24271,10 @@
     });
   }
   function JsonFontImporter({ fonts: fonts2, setName, setSource }) {
-    var [fontLink, setFontLink] = (0, import_react15.useState)("");
-    var [saving, setSaving] = (0, import_react15.useState)(false);
-    var [error, setError] = (0, import_react15.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native37.View, {
+    var [fontLink, setFontLink] = (0, import_react16.useState)("");
+    var [saving, setSaving] = (0, import_react16.useState)(false);
+    var [error, setError] = (0, import_react16.useState)(void 0);
+    return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -23798,9 +24315,9 @@
     });
   }
   function EntryEditorActionSheet(props) {
-    var [familyName, setFamilyName] = (0, import_react15.useState)(props.name);
-    var [fontUrl, setFontUrl] = (0, import_react15.useState)(props.fontEntries[props.name]);
-    return /* @__PURE__ */ jsxs(import_react_native37.View, {
+    var [familyName, setFamilyName] = (0, import_react16.useState)(props.name);
+    var [fontUrl, setFontUrl] = (0, import_react16.useState)(props.fontEntries[props.name]);
+    return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -23854,18 +24371,18 @@
     }), "FontEditorActionSheet");
   }
   function NewEntryRow({ fontName, fontEntry }) {
-    var nameRef = (0, import_react15.useRef)();
-    var urlRef = (0, import_react15.useRef)();
-    var [nameSet, setNameSet] = (0, import_react15.useState)(false);
-    var [error, setError] = (0, import_react15.useState)();
-    return /* @__PURE__ */ jsxs(import_react_native37.View, {
+    var nameRef = (0, import_react16.useRef)();
+    var urlRef = (0, import_react16.useRef)();
+    var [nameSet, setNameSet] = (0, import_react16.useState)(false);
+    var [error, setError] = (0, import_react16.useState)();
+    return /* @__PURE__ */ jsxs(import_react_native38.View, {
       style: {
         flexDirection: "row",
         gap: 8,
         justifyContent: "flex-start"
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native37.View, {
+        /* @__PURE__ */ jsx(import_react_native38.View, {
           style: {
             flex: 1
           },
@@ -23919,11 +24436,11 @@
     });
   }
   function FontEditor(props) {
-    var [name, setName] = (0, import_react15.useState)(props.name);
-    var [source, setSource] = (0, import_react15.useState)(props.name && fonts[props.name].source);
-    var [importing, setIsImporting] = (0, import_react15.useState)(false);
-    var [errors, setErrors] = (0, import_react15.useState)();
-    var memoEntry = (0, import_react15.useMemo)(() => {
+    var [name, setName] = (0, import_react16.useState)(props.name);
+    var [source, setSource] = (0, import_react16.useState)(props.name && fonts[props.name].source);
+    var [importing, setIsImporting] = (0, import_react16.useState)(false);
+    var [errors, setErrors] = (0, import_react16.useState)();
+    var memoEntry = (0, import_react16.useMemo)(() => {
       return createProxy(props.name ? {
         ...fonts[props.name].main
       } : {}).proxy;
@@ -23933,7 +24450,7 @@
     var fontEntries = useProxy(memoEntry);
     var navigation2 = NavigationNative.useNavigation();
     var [, forceUpdate] = React.useReducer(() => ({}), 0);
-    return /* @__PURE__ */ jsx(import_react_native37.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native38.ScrollView, {
       style: {
         flex: 1
       },
@@ -24064,7 +24581,7 @@
             color: "text-feedback-critical",
             children: "Some font entries cannot be imported. Please modify the entries and try again."
           }),
-          /* @__PURE__ */ jsx(import_react_native37.View, {
+          /* @__PURE__ */ jsx(import_react_native38.View, {
             style: {
               flexDirection: "row",
               justifyContent: "flex-end",
@@ -24107,7 +24624,7 @@
       })
     });
   }
-  var import_react15, import_react_native37, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
+  var import_react16, import_react_native38, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
   var init_FontEditor = __esm({
     "src/core/ui/settings/pages/Fonts/FontEditor.tsx"() {
       "use strict";
@@ -24126,8 +24643,8 @@
       init_components();
       init_wrappers();
       init_components2();
-      import_react15 = __toESM(require_react());
-      import_react_native37 = __toESM(require_react_native());
+      import_react16 = __toESM(require_react());
+      import_react_native38 = __toESM(require_react_native());
       actionSheet2 = findByPropsLazy("hideActionSheet");
       ({ openAlert: openAlert3 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
       ({ AlertModal: AlertModal4, AlertActionButton: AlertActionButton4 } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
@@ -24142,19 +24659,19 @@
     return /* @__PURE__ */ jsx(Card, {
       children: /* @__PURE__ */ jsx(Stack, {
         spacing: 16,
-        children: /* @__PURE__ */ jsxs(import_react_native38.View, {
+        children: /* @__PURE__ */ jsxs(import_react_native39.View, {
           style: {
             flexDirection: "row",
             alignItems: "center"
           },
           children: [
-            /* @__PURE__ */ jsx(import_react_native38.View, {
+            /* @__PURE__ */ jsx(import_react_native39.View, {
               children: /* @__PURE__ */ jsx(Text, {
                 variant: "heading-lg/semibold",
                 children: font.name
               })
             }),
-            /* @__PURE__ */ jsx(import_react_native38.View, {
+            /* @__PURE__ */ jsx(import_react_native39.View, {
               style: {
                 marginLeft: "auto"
               },
@@ -24200,7 +24717,7 @@
       })
     });
   }
-  var import_react_native38, useToken2;
+  var import_react_native39, useToken2;
   var init_FontCard = __esm({
     "src/core/ui/settings/pages/Fonts/FontCard.tsx"() {
       "use strict";
@@ -24218,7 +24735,7 @@
       init_metro();
       init_common();
       init_components();
-      import_react_native38 = __toESM(require_react_native());
+      import_react_native39 = __toESM(require_react_native());
       init_FontEditor();
       ({ useToken: useToken2 } = lazyDestructure(() => findByProps("useToken")));
     }
@@ -24303,7 +24820,7 @@
         return /* @__PURE__ */ jsx(Page, {});
       }
     });
-    return /* @__PURE__ */ jsx(import_react_native39.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native40.ScrollView, {
       contentContainerStyle: {
         paddingBottom: 38
       },
@@ -24356,14 +24873,14 @@
       })
     });
   }
-  var import_react_native39;
+  var import_react_native40;
   var init_Addons = __esm({
     "src/core/ui/settings/pages/Addons/index.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      import_react_native39 = __toESM(require_react_native());
+      import_react_native40 = __toESM(require_react_native());
       init_common();
       init_components();
       init_loader();
@@ -24552,7 +25069,7 @@
   });
 
   // src/core/vendetta/api.tsx
-  var import_react16, import_react_native40, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react17, import_react_native41, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -24582,14 +25099,14 @@
       init_styles();
       init_toasts();
       init_dist();
-      import_react16 = __toESM(require_react());
-      import_react_native40 = __toESM(require_react_native());
+      import_react17 = __toESM(require_react());
+      import_react_native41 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
       CompatRow = TableRow ?? Forms.FormRow ?? ReactNative.View;
       CompatSwitchRow = TableSwitchRow ?? Forms.FormSwitchRow ?? CompatRow;
       CompatSection = TableRowGroup ?? Forms.FormSection ?? ReactNative.View;
-      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatRow, {
+      PatchedFormRow = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -24600,7 +25117,7 @@
       });
       PatchedFormRow.Icon = Forms.FormRow?.Icon ?? TableRow?.Icon ?? (() => null);
       PatchedFormRow.Arrow = Forms.FormRow?.Arrow ?? TableRow?.Arrow ?? (() => null);
-      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatSwitchRow, {
+      PatchedFormSwitchRow = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatSwitchRow, {
         label: props.label,
         subLabel: props.subLabel,
         icon: makeIcon(props.leading),
@@ -24608,7 +25125,7 @@
         onValueChange: props.onValueChange,
         disabled: props.disabled
       });
-      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react16.createElement)(CompatSection, {
+      PatchedFormSection = (props) => /* @__PURE__ */ (0, import_react17.createElement)(CompatSection, {
         title: props.title,
         ...props
       }, props.children);
@@ -24647,8 +25164,8 @@
                     ...module,
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
-                      (0, import_react16.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react16.createElement)(import_react_native40.View, null, children);
+                      (0, import_react17.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
+                      return /* @__PURE__ */ (0, import_react17.createElement)(import_react_native41.View, null, children);
                     }
                   };
                 }
@@ -24835,7 +25352,7 @@
   // src/lib/api/native/legacyRuntimeRefresh.ts
   function invokeLegacyReload() {
     return _async_to_generator(function* () {
-      var reader = import_react_native41.NativeModules.FileReaderModule ?? import_react_native41.NativeModules.RCTFileReaderModule;
+      var reader = import_react_native42.NativeModules.FileReaderModule ?? import_react_native42.NativeModules.RCTFileReaderModule;
       if (typeof reader?.readAsDataURL !== "function")
         return false;
       yield reader.readAsDataURL({
@@ -24872,7 +25389,7 @@
       }
     })();
   }
-  var import_react_native41, CURRENT_RUNTIME_URL;
+  var import_react_native42, CURRENT_RUNTIME_URL;
   var init_legacyRuntimeRefresh = __esm({
     "src/lib/api/native/legacyRuntimeRefresh.ts"() {
       "use strict";
@@ -24881,7 +25398,7 @@
       init_async_to_generator();
       init_storage();
       init_settings();
-      import_react_native41 = __toESM(require_react_native());
+      import_react_native42 = __toESM(require_react_native());
       CURRENT_RUNTIME_URL = "https://getcloudcord.com/api/proxy/raw/dist/cc.js";
     }
   });
