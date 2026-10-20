@@ -15665,6 +15665,7 @@
           children: "PREVIEW"
         }),
         /* @__PURE__ */ jsx(NamePreviewBoundary, {
+          name,
           children: NativeName ? /* @__PURE__ */ jsx(NativeName, {
             username: name,
             text: name,
@@ -15727,6 +15728,7 @@
                 onSelect(style);
               },
               trailing: NativeName ? /* @__PURE__ */ jsx(NamePreviewBoundary, {
+                name,
                 children: /* @__PURE__ */ jsx(NativeName, {
                   username: name,
                   text: name,
@@ -18186,9 +18188,19 @@
           {
             key: "render",
             value: function render() {
-              return this.state.failed ? /* @__PURE__ */ jsx(Text, {
-                color: "text-muted",
-                children: "Username preview isn't available in this Discord version."
+              return this.state.failed ? /* @__PURE__ */ jsxs(import_react_native20.View, {
+                children: [
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "heading-lg/bold",
+                    color: "text-normal",
+                    children: this.props.name || "Your name"
+                  }),
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "text-xs/normal",
+                    color: "text-muted",
+                    children: "Style preview isn't available in this Discord version."
+                  })
+                ]
               }) : this.props.children;
             }
           }
