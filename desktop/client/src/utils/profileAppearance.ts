@@ -330,7 +330,7 @@ export function nativeSocialProfile(profile: any, data: any): Record<string, any
         : Array.isArray(profile?.connected_accounts) ? profile.connected_accounts : [];
     const accounts = existing.filter((entry: any) => !entry?.cloudcordCustom).map((entry: any) => ({ ...entry }));
     for (const entry of customConnections) {
-        const domain = entry.service === "domain" ? connectionDomain(entry) : "";
+        const domain = entry.service === "domain" || entry.service === "other" ? connectionDomain(entry) : "";
         accounts.push({
             id: domain || entry.accountId || `cloudcord:${entry.id}`, type: entry.service === "x" ? "twitter" : entry.service === "other" || entry.service === "domain" ? "domain" : entry.service,
             name: domain || entry.displayName || entry.username || entry.accountId,

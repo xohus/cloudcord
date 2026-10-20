@@ -38,6 +38,9 @@ jobs:
       - name: Check mobile render recursion
         run: NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-hook-boundary.cjs
 
+      - name: Check Android confirmation compatibility
+        run: NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-toast-compatibility.cjs
+
       - name: Check mobile badge and refresh regressions
         run: |
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-report-regressions.cjs
@@ -111,6 +114,7 @@ jobs:
           cp "../ios/runtime/src/core/ui/settings/index.ts" "src/core/ui/settings/index.ts"
           cp "../ios/runtime/src/core/vendetta/plugins.ts" "src/core/vendetta/plugins.ts"
           cp "../ios/runtime/src/lib/api/settings.ts" "src/lib/api/settings.ts"
+          cp "../ios/runtime/src/lib/ui/toasts.ts" "src/lib/ui/toasts.ts"
           cp "../ios/runtime/src/lib/api/profileIdentity.ts" "src/lib/api/profileIdentity.ts"
           cp "../ios/runtime/src/lib/addons/plugins/api.ts" "src/lib/addons/plugins/api.ts"
           cp "../ios/runtime/src/core/plugins/messagefix/index.ts" "src/core/plugins/messagefix/index.ts"
