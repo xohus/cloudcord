@@ -12505,6 +12505,31 @@
       });
       if (latestResponse.ok) {
         var latest = yield latestResponse.json();
+        var remote = latest?.profile && typeof latest.profile === "object" ? latest.profile : {};
+        var snapshot2 = profileSnapshot;
+        for (var [field, media] of [
+          [
+            "avatar",
+            "avatarMedia"
+          ],
+          [
+            "banner",
+            "bannerMedia"
+          ]
+        ]) {
+          if (snapshot2[field] == null && !mediaClearPending(media) && remote[field])
+            snapshot2[field] = remote[field];
+        }
+        for (var [key, value] of Object.entries(remote)) {
+          if (!(key in snapshot2) && ![
+            "localOnly",
+            "hideOtherProfiles",
+            "nativeEditorImages",
+            "hideBadgesWhenSyncOff",
+            "copiedUserId"
+          ].includes(key))
+            snapshot2[key] = value;
+        }
         profileSnapshot.syncRevision = Math.max(Date.now(), Number(profileSnapshot.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
         preview.syncRevision = profileSnapshot.syncRevision;
         rootSettings.fakeProfile = {
@@ -12559,13 +12584,13 @@
           id: result.id,
           editToken: result.editToken
         };
-      for (var key of [
+      for (var key1 of [
         "avatarMedia",
         "bannerMedia"
       ]) {
-        var serverField = key === "avatarMedia" ? "avatar" : "banner";
-        if (profileSnapshot[serverField] == null && clearSnapshot[key] && rootSettings.fakeProfileMediaCleared?.[key] === clearSnapshot[key]) {
-          unmarkMediaCleared(key);
+        var serverField = key1 === "avatarMedia" ? "avatar" : "banner";
+        if (profileSnapshot[serverField] == null && clearSnapshot[key1] && rootSettings.fakeProfileMediaCleared?.[key1] === clearSnapshot[key1]) {
+          unmarkMediaCleared(key1);
         }
       }
       diagnostics.last = "Fake Profile shared automatically";
@@ -14660,15 +14685,19 @@
     if (giftHookInstalled)
       return;
     giftHookInstalled = true;
-    instead("dispatch", FluxDispatcher, (args, original) => {
-      var action = args[0];
+    FluxDispatcher.subscribe("GIFT_CODE_RESOLVE_FAILURE", (action) => {
       var code = extrasState().giftCode;
-      if (code && action?.code === code && action.type === "GIFT_CODE_RESOLVE_FAILURE")
-        return original({
-          type: "GIFT_CODE_RESOLVE_SUCCESS",
-          giftCode: fakeGiftBody(code)
-        });
-      return original(...args);
+      if (!code || action?.code !== code)
+        return;
+      setTimeout(() => {
+        try {
+          FluxDispatcher.dispatch({
+            type: "GIFT_CODE_RESOLVE_SUCCESS",
+            giftCode: fakeGiftBody(code)
+          });
+        } catch (e) {
+        }
+      }, 0);
     });
     var http = extrasHttp();
     if (!http)
@@ -14703,37 +14732,82 @@
       return original(...args);
     });
   }
-  function addFakeFriendRequest(userId) {
-    var id = userId.trim();
-    if (!/^\d{17,20}$/.test(id)) {
-      import_react_native20.Alert.alert("Fake friend request", "Enter a valid user ID.");
-      return;
-    }
-    var user = findByStoreName("UserStore")?.getUser?.(id);
-    if (!user) {
-      import_react_native20.Alert.alert("Fake friend request", "Open that user's profile once so Discord knows them, then try again.");
-      return;
-    }
-    if ((findByStoreName("RelationshipStore")?.getRelationshipType?.(id) ?? 0) !== 0) {
-      import_react_native20.Alert.alert("Fake friend request", "You already have a request or friendship with this user.");
-      return;
-    }
-    fakeRequestIds.add(id);
+  function savedFakeRequests() {
+    var list = extrasState().fakeRequests;
+    return Array.isArray(list) ? list.filter((item) => item && /^\d{17,20}$/.test(item.id) && item.user) : [];
+  }
+  function showFakeRequest(item) {
+    fakeRequestIds.add(item.id);
     FluxDispatcher.dispatch({
       type: "RELATIONSHIP_ADD",
       relationship: {
-        id,
+        id: item.id,
         type: 3,
-        user,
-        since: (/* @__PURE__ */ new Date()).toISOString(),
+        user: item.user,
+        since: item.since,
         nickname: null
       },
-      shouldNotify: true
+      shouldNotify: false
     });
-    showToast("Fake friend request added. Only you see it.");
+  }
+  function restoreFakeRequests() {
+    var relationships = findByStoreName("RelationshipStore");
+    for (var item of savedFakeRequests())
+      if ((relationships?.getRelationshipType?.(item.id) ?? 0) === 0)
+        showFakeRequest(item);
+  }
+  function parseUserId(text) {
+    return (String(text).match(/\d{17,20}/) || [
+      ""
+    ])[0];
+  }
+  function addFakeFriendRequest(input) {
+    return _async_to_generator(function* () {
+      var id = parseUserId(input);
+      if (!id) {
+        import_react_native20.Alert.alert("Fake friend request", "Paste a user ID, mention or profile link.");
+        return false;
+      }
+      var user = findByStoreName("UserStore")?.getUser?.(id);
+      if (!user) {
+        try {
+          user = (yield extrasHttp()?.get({
+            url: "/users/" + id
+          }))?.body;
+        } catch (e) {
+        }
+      }
+      if (!user) {
+        import_react_native20.Alert.alert("Fake friend request", "Couldn't find that user.");
+        return false;
+      }
+      if ((findByStoreName("RelationshipStore")?.getRelationshipType?.(id) ?? 0) !== 0) {
+        import_react_native20.Alert.alert("Fake friend request", "You already have a request or friendship with this user.");
+        return false;
+      }
+      var item = {
+        id,
+        user: rawUser(user),
+        since: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      setExtras({
+        ...extrasState(),
+        fakeRequests: [
+          ...savedFakeRequests().filter((entry) => entry.id !== id),
+          item
+        ]
+      });
+      showFakeRequest(item);
+      showToast("Fake friend request added. Check Friends, Pending.");
+      return true;
+    })();
   }
   function clearFakeFriendRequests() {
-    for (var id of fakeRequestIds)
+    var ids = /* @__PURE__ */ new Set([
+      ...fakeRequestIds,
+      ...savedFakeRequests().map((item) => item.id)
+    ]);
+    for (var id of ids)
       FluxDispatcher.dispatch({
         type: "RELATIONSHIP_REMOVE",
         relationship: {
@@ -14742,6 +14816,10 @@
         }
       });
     fakeRequestIds.clear();
+    setExtras({
+      ...extrasState(),
+      fakeRequests: []
+    });
   }
   function boostFor(guildId) {
     return guildId ? extrasState().boosts?.[guildId] : void 0;
@@ -14765,8 +14843,9 @@
       return overlay;
     });
     after("getMember", members, (args, member) => {
-      var me = findByStoreName("UserStore")?.getCurrentUser?.()?.id;
-      if (!member || member.premiumSince || args[1] !== me || !boostFor(args[0])?.booster)
+      if (!member || member.premiumSince || !boostFor(args[0])?.booster)
+        return member;
+      if (args[1] !== findByStoreName("UserStore")?.getCurrentUser?.()?.id)
         return member;
       var overlay = memberOverlays.get(member);
       if (!overlay)
@@ -15019,6 +15098,14 @@
     var [, force] = (0, import_react7.useReducer)((x2) => x2 + 1, 0);
     var K2 = (init_ProfileEditorKit(), __toCommonJS(ProfileEditorKit_exports));
     var [friendId, setFriendId] = (0, import_react7.useState)("");
+    var [inputKey, setInputKey] = (0, import_react7.useState)(0);
+    var add = () => _async_to_generator(function* () {
+      if (yield addFakeFriendRequest(friendId)) {
+        setFriendId("");
+        setInputKey((key) => key + 1);
+      }
+      force();
+    })();
     var state2 = extrasState();
     var link = state2.giftCode ? "https://discord.gift/" + state2.giftCode : "";
     var save = (next) => {
@@ -15136,33 +15223,50 @@
           description: "Only you see it. Don't accept it: that sends them a real request.",
           children: [
             /* @__PURE__ */ jsx(K2.Field, {
-              label: "User ID",
+              label: "User ID, mention or profile link",
               children: /* @__PURE__ */ jsx(TextInput3, {
-                value: friendId,
-                placeholder: "123456789012345678",
-                keyboardType: "number-pad",
+                defaultValue: friendId,
+                placeholder: "Paste here",
+                autoCapitalize: "none",
                 autoCorrect: false,
+                returnKeyType: "done",
                 onChangeText: setFriendId,
+                onSubmitEditing: () => void add(),
                 placeholderTextColor: "#777"
-              })
+              }, inputKey)
             }),
             /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
                 flexDirection: "row",
+                flexWrap: "wrap",
                 gap: 8
               },
               children: [
                 /* @__PURE__ */ jsx(Button, {
+                  text: "Paste",
+                  variant: "secondary",
+                  size: "sm",
+                  onPress: () => _async_to_generator(function* () {
+                    try {
+                      var text = yield findByProps("setString", "getString")?.getString?.();
+                      if (text) {
+                        setFriendId(String(text));
+                        setInputKey((key) => key + 1);
+                      } else
+                        showToast("Clipboard is empty.");
+                    } catch (e) {
+                      showToast("Couldn't read the clipboard.");
+                    }
+                  })()
+                }),
+                /* @__PURE__ */ jsx(Button, {
                   text: "Add request",
                   variant: "primary",
                   size: "sm",
-                  onPress: () => {
-                    addFakeFriendRequest(friendId);
-                    force();
-                  }
+                  onPress: () => void add()
                 }),
-                fakeRequestIds.size ? /* @__PURE__ */ jsx(Button, {
-                  text: "Remove " + fakeRequestIds.size,
+                savedFakeRequests().length ? /* @__PURE__ */ jsx(Button, {
+                  text: "Remove all (" + savedFakeRequests().length + ")",
                   variant: "secondary",
                   size: "sm",
                   onPress: () => {
@@ -15171,7 +15275,12 @@
                   }
                 }) : null
               ]
-            })
+            }),
+            parseUserId(friendId) ? /* @__PURE__ */ jsx(Text, {
+              variant: "text-xs/medium",
+              color: "text-muted",
+              children: "User ID: " + parseUserId(friendId)
+            }) : null
           ]
         }),
         /* @__PURE__ */ jsx(K2.Section, {
@@ -15203,9 +15312,12 @@
   }
   function ExtrasPage() {
     return /* @__PURE__ */ jsx(import_react_native20.ScrollView, {
+      keyboardShouldPersistTaps: "handled",
+      keyboardDismissMode: "on-drag",
+      automaticallyAdjustKeyboardInsets: true,
       contentContainerStyle: {
         padding: 12,
-        paddingBottom: 48
+        paddingBottom: 320
       },
       children: /* @__PURE__ */ jsx(Card2, {
         border: "strong",
@@ -15234,11 +15346,31 @@
           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5e3);
         }
         ensurePatches();
+        for (var step of [
+          installGiftHook,
+          installBoostHooks,
+          applyFakeNitro
+        ]) {
+          try {
+            step();
+          } catch (e) {
+          }
+        }
+        var restoreLater = () => setTimeout(() => {
+          try {
+            restoreFakeRequests();
+          } catch (e) {
+          }
+        }, 1500);
+        restoreLater();
         try {
-          installGiftHook();
-          installBoostHooks();
-          applyFakeNitro();
-          FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro);
+          FluxDispatcher.subscribe("CONNECTION_OPEN", () => {
+            try {
+              applyFakeNitro();
+            } catch (e) {
+            }
+            restoreLater();
+          });
         } catch (e) {
         }
         connectRealProfileMenu();
@@ -17200,7 +17332,7 @@
       })
     });
   }
-  var import_react7, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, giftHookInstalled, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -18016,6 +18148,15 @@
       ];
       fakeRequestIds = /* @__PURE__ */ new Set();
       giftHookInstalled = false;
+      rawUser = (user) => ({
+        id: user.id,
+        username: user.username,
+        global_name: user.globalName ?? user.global_name ?? null,
+        avatar: user.avatar ?? null,
+        discriminator: user.discriminator ?? "0",
+        public_flags: user.publicFlags ?? user.public_flags ?? 0,
+        bot: user.bot ?? false
+      });
       guildOverlays = /* @__PURE__ */ new WeakMap();
       memberOverlays = /* @__PURE__ */ new WeakMap();
       boostHooksInstalled = false;
