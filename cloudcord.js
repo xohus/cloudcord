@@ -5994,6 +5994,365 @@
     }
   });
 
+  // src/core/i18n/default.json
+  var default_default;
+  var init_default = __esm({
+    "src/core/i18n/default.json"() {
+      default_default = {
+        ABOUT: "About",
+        ACTIONS: "Actions",
+        ARE_YOU_SURE_TO_CLEAR_DATA: "Are you sure you wish to clear the data of {name}?",
+        ARE_YOU_SURE_TO_DELETE_PLUGIN: "Are you sure you wish to delete {name}? This will clear all of the plugin's data.",
+        ARE_YOU_SURE_TO_DELETE_THEME: "Are you sure you wish to delete {name}?",
+        ASSET_BROWSER: "Asset Browser",
+        BRAND: "Brand",
+        PUPU: "CloudCord",
+        PUPU_URL: "CloudCord URL",
+        BROWSER: "Addon Browser",
+        BYTECODE: "Bytecode",
+        CANCEL: "Cancel",
+        CLEAR: "Clear",
+        CLEAR_BUNDLE: "Clear JS Bundle",
+        CLEAR_BUNDLE_DESC: "Clear the cached bundle. This will force a re-download of the bundle next app launch.",
+        CLEAR_DATA: "Clear data",
+        CLEAR_DATA_FAILED: "Failed to clear data for {name}",
+        CLEAR_DATA_SUCCESSFUL: "Cleared data for {name}",
+        CODEBERG: "",
+        CODENAME: "Codename",
+        COMMAND_DEBUG_DESC: "Send CloudCord debug info.",
+        COMMAND_DEBUG_OPT_EPHEMERALLY: "Send debug info ephemerally.",
+        COMMAND_EVAL_DESC: "Evaluate JavaScript code.",
+        COMMAND_EVAL_OPT_ASYNC: "Whether to support 'await' in code. Must explicitly return for result (default: false)",
+        COMMAND_EVAL_OPT_CODE: "The code to evaluate.",
+        COMMAND_PLUGINS_DESC: "Send list of installed plugins.",
+        COMMAND_PLUGINS_OPT_EPHEMERALLY: "Send plugins list ephemerally.",
+        COMPONENT: "Component",
+        CONFIRMATION_LINK_IS_A_TYPE: "This link is a **{urlType, select, plugin {Plugin} theme {Theme} other {Add-on}}**, would you like to install it?",
+        CONNECT_TO_DEBUG_WEBSOCKET: "Connect to debug WebSocket",
+        CONNECT_TO_REACT_DEVTOOLS: "Connect to React DevTools",
+        CONTINUE: "Continue",
+        COPIED_TO_CLIPBOARD: "Copied to clipboard",
+        COPY_URL: "Copy URL",
+        DEBUG: "Debug",
+        DEBUGGER_URL: "RainDevTools URL",
+        AUTO_DEBUGGER: "Automatically connect to RainDevTools",
+        DEVTOOLS_URL: "React DevTools URL",
+        AUTO_DEVTOOLS: "Automatically connect to React Devtools",
+        DELETE: "Delete",
+        DESC_EXTRACT_FONTS_FROM_THEME: 'Looks out for "fonts" field in your currently applied theme and install it.',
+        DEVELOPER: "Developer",
+        DEVELOPER_SETTINGS: "Developer Settings",
+        DISABLE_THEME: "Disable Theme",
+        DISABLE_UPDATES: "Disable Updates",
+        DISCORD_SERVER: "Discord Server",
+        DONE: "Done",
+        ENABLE_EVAL_COMMAND: "Enable /eval command",
+        ENABLE_EVAL_COMMAND_DESC: "Evaluate JavaScript directly from a command. Be cautious when using this command as it may pose a security risk. Make sure to know what you are doing.",
+        ENABLE_UPDATES: "Enable Updates",
+        ERROR_BOUNDARY_TOOLS_LABEL: "ErrorBoundary Tools",
+        EXTRACT: "Extract",
+        FONT_NAME: "Font Name",
+        FONTS: "Fonts",
+        GENERAL: "General",
+        GITHUB: "GitHub",
+        HOLD_UP: "Hold Up",
+        INFO: "Info",
+        INSTALL: "Install",
+        INSTALL_ADDON: "Install an add-on",
+        INSTALL_FONT: "Install a font",
+        INSTALL_PLUGIN: "Install a plugin",
+        INSTALL_REACT_DEVTOOLS: "Install React DevTools",
+        INSTALL_THEME: "Install a theme",
+        LABEL_EXTRACT_FONTS_FROM_THEME: "Extract font from theme",
+        LINKS: "Links",
+        LOAD_FROM_CUSTOM_URL: "Load from custom URL",
+        LOAD_FROM_CUSTOM_URL_DEC: "Load CloudCord from a custom endpoint.",
+        LOAD_REACT_DEVTOOLS: "Load React DevTools",
+        LOADER: "Loader",
+        MACHINE_ID: "Machine ID",
+        MANUFACTURER: "Manufacturer",
+        MESSAGE: "Message",
+        MISCELLANEOUS: "Miscellaneous",
+        MODAL_RELOAD_REQUIRED: "Reload app?",
+        MODAL_RELOAD_REQUIRED_DESC: "A reload is required to see the changes. Do you want to reload now?",
+        MODAL_THEME_REFETCHED: "Theme refetched",
+        MODAL_THEME_REFETCHED_DESC: "A reload is required to see the changes. Do you want to reload now?",
+        MODAL_UNPROXIED_PLUGIN_DESC: "The plugin you are trying to install has not been proxied/verified by staff. Are you sure you want to continue?",
+        MODAL_UNPROXIED_PLUGIN_HEADER: "Unproxied Plugin",
+        MODEL: "Model",
+        MODELID: "Model Identifier",
+        OPEN_IN_BROWSER: "Open in Browser",
+        OPERATING_SYSTEM: "Operating System",
+        OVERFLOW_PLUGIN_SETTINGS: "Plugin Settings",
+        PLATFORM: "Platform",
+        PLUGIN_REFETCH_FAILED: "Failed to refetch plugin",
+        PLUGIN_REFETCH_SUCCESSFUL: "Successfully refetched plugin",
+        PLUGINS: "Plugins",
+        REFETCH: "Refetch",
+        RELOAD: "Reload",
+        RELOAD_DISCORD: "Reload Discord",
+        RELOAD_IN_NORMAL_MODE: "Reload in Normal Mode",
+        RELOAD_IN_NORMAL_MODE_DESC: "Safe mode currently enabled, tap to reload in normal mode",
+        RELOAD_IN_SAFE_MODE: "Reload in Safe Mode",
+        RELOAD_IN_SAFE_MODE_DESC: "Tap to reload Discord without loading addons",
+        REMOVE: "Remove",
+        RESTART_REQUIRED_TO_TAKE_EFFECT: "Restart is required to take effect",
+        RETRY: "Retry",
+        RETRY_RENDER: "Retry Render",
+        SAFE_MODE: "Safe Mode",
+        SAFE_MODE_NOTICE_FONTS: "You are in safe mode, meaning fonts have been temporarily disabled. {enabled, select, true {If a font appears to be causing the issue, you can press below to disable it persistently.} other {}}",
+        SAFE_MODE_NOTICE_PLUGINS: "You are in safe mode, so plugins cannot be loaded. Disable any misbehaving plugins, then return to Normal Mode from the General settings page.",
+        SAFE_MODE_NOTICE_THEMES: "You are in safe mode, meaning themes have been temporarily disabled. {enabled, select, true {If a theme appears to be causing the issue, you can press below to disable it persistently.} other {}}",
+        SEARCH: "Search",
+        SEPARATOR: ", ",
+        SETTINGS_ACTIVATE_DISCORD_EXPERIMENTS: "Activate Discord Experiments",
+        SETTINGS_ACTIVATE_DISCORD_EXPERIMENTS_DESC: "Warning: Messing with this feature may lead to account termination. I heavily discourage using this and am not responsible for anything that happens if you use it",
+        STACK_TRACE: "Stack Trace",
+        SUCCESSFULLY_INSTALLED: "Successfully installed",
+        THEME_EXTRACTOR_DESC: "This pack overrides the following: {fonts}",
+        THEME_REFETCH_FAILED: "Failed to refetch theme",
+        THEME_REFETCH_SUCCESSFUL: "Successfully refetched theme",
+        THEMES: "Themes",
+        THEMES_RELOAD_FOR_CHANGES: "Reload the app to fully apply changes",
+        TOASTS_INSTALLED_PLUGIN: "Installed plugin",
+        TOASTS_PLUGIN_UPDATE: "{update, select, true {Enabled} other {Disabled}} updates for {name}",
+        UH_OH: "Uh Oh",
+        UNINSTALL: "Uninstall",
+        UNINSTALL_TITLE: "Uninstall {title}",
+        URL_PLACEHOLDER: "https://github.com/xohus/cloudcord",
+        VERSION: "Version",
+        VERSIONS: "Versions"
+      };
+    }
+  });
+
+  // src/core/i18n/index.ts
+  function fetchLocale(locale) {
+    var resolvedLocale = _lastSetLocale = languageMap[locale] ?? locale;
+    logger.log("[i18n] fetchLocale called:", locale, "->", resolvedLocale);
+    if (!_loadedLocale.has(resolvedLocale)) {
+      _loadedLocale.add(resolvedLocale);
+      if (resolvedLocale.toLowerCase().startsWith("en")) {
+        logger.log("[i18n] Using local default.json for English locale");
+        _loadedStrings[resolvedLocale] = default_default;
+        _currentLocale = resolvedLocale;
+      } else {
+        fetch(`https://codeberg.org/cocobo1/kettu-i18n/raw/branch/main/base/${resolvedLocale}.json`).then((r) => r.json()).then((strings) => {
+          logger.log("[i18n] Loaded strings for:", resolvedLocale);
+          _loadedStrings[resolvedLocale] = strings;
+          _currentLocale = resolvedLocale;
+        }).catch((e) => logger.error(`[i18n] Error fetching strings for ${resolvedLocale}: ${e}`));
+      }
+    } else {
+      _currentLocale = resolvedLocale;
+    }
+  }
+  function initFetchI18nStrings() {
+    var attempts = 0;
+    var checkAndFetch = () => {
+      attempts++;
+      try {
+        var LocaleStore = findByStoreName("LocaleStore");
+        logger.log("[i18n] Attempt", attempts, "- LocaleStore:", !!LocaleStore);
+        if (!LocaleStore) {
+          logger.log("[i18n] LocaleStore not found yet");
+          return false;
+        }
+        if (LocaleStore?._isInitialized !== true) {
+          logger.log("[i18n] LocaleStore not initialized yet");
+          return false;
+        }
+        var locale = LocaleStore.locale;
+        if (locale) {
+          logger.log("[i18n] Using LocaleStore:", locale);
+          fetchLocale(locale);
+          return true;
+        }
+      } catch (e) {
+        logger.log("[i18n] Error:", e);
+      }
+      return false;
+    };
+    var tryTimes = () => {
+      if (checkAndFetch())
+        return;
+      if (attempts < 15) {
+        setTimeout(tryTimes, 500);
+      }
+    };
+    tryTimes();
+    var cb = (e) => {
+      if (e?.settings?.changes?.loading) {
+        logger.log("[i18n] Settings loading, skipping...");
+        return;
+      }
+      var locale = e?.settings?.changes?.protoToSave?.localization?.locale?.value;
+      logger.log("[i18n] Locale changed:", locale);
+      if (locale) {
+        logger.log("[i18n] Found locale in event:", locale);
+        fetchLocale(locale);
+      }
+    };
+    FluxDispatcher.subscribe("USER_SETTINGS_PROTO_UPDATE_EDIT_INFO", cb);
+    return () => {
+      FluxDispatcher.unsubscribe("USER_SETTINGS_PROTO_UPDATE_EDIT_INFO", cb);
+    };
+  }
+  function formatString(key, val) {
+    var str = Strings[key];
+    return new IntlMessageFormat(str).format(val);
+  }
+  var IntlMessageFormat, _currentLocale, _lastSetLocale, _loadedLocale, _loadedStrings, Strings, languageMap;
+  var init_i18n = __esm({
+    "src/core/i18n/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_logger();
+      init_common();
+      init_wrappers();
+      init_default();
+      IntlMessageFormat = findByNameLazy("MessageFormat");
+      _currentLocale = null;
+      _lastSetLocale = null;
+      _loadedLocale = /* @__PURE__ */ new Set();
+      _loadedStrings = {};
+      Strings = new Proxy({}, {
+        get: (_t, prop) => {
+          if (_currentLocale && _loadedStrings[_currentLocale]?.[prop]) {
+            return _loadedStrings[_currentLocale]?.[prop];
+          }
+          return default_default[prop];
+        }
+      });
+      languageMap = {
+        "ar-SA": "ar",
+        "bn-BD": "bn",
+        "ca-ES": "ca",
+        "de-DE": "de",
+        "es-ES": "es",
+        "es-419": "es",
+        "fa-IR": "fa",
+        "fi-FI": "fi",
+        "fr-FR": "fr",
+        "hi-IN": "hi",
+        "hr-HR": "hr",
+        "hu-HU": "hu",
+        "id-ID": "id",
+        "it-IT": "it",
+        "ja-JP": "ja",
+        "pl-PL": "pl",
+        "pt-BR": "pt_BR",
+        "ru-RU": "ru",
+        "sk-SK": "sk",
+        "sv-SE": "sv",
+        "tr-TR": "tr",
+        "vi-VN": "vi"
+      };
+    }
+  });
+
+  // src/lib/api/assets/index.ts
+  var assets_exports = {};
+  __export(assets_exports, {
+    filterAssets: () => filterAssets,
+    findAsset: () => findAsset,
+    findAssetId: () => findAssetId,
+    iterateAssets: () => iterateAssets
+  });
+  function* iterateAssets() {
+    var { flagsIndex } = getMetroCache();
+    var yielded = /* @__PURE__ */ new Set();
+    for (var id in flagsIndex) {
+      if (flagsIndex[id] & ModuleFlags.ASSET) {
+        var assetId = requireModule(Number(id));
+        if (typeof assetId !== "number" || yielded.has(assetId))
+          continue;
+        yield getAssetById(assetId);
+        yielded.add(assetId);
+      }
+    }
+  }
+  function getAssetById(id) {
+    var asset = assetsModule.getAssetByID(id);
+    if (!asset)
+      return asset;
+    return Object.assign(asset, {
+      id
+    });
+  }
+  function findAsset(param) {
+    if (typeof param === "number")
+      return getAssetById(param);
+    if (typeof param === "string" && _nameToAssetCache[param]) {
+      return _nameToAssetCache[param];
+    }
+    for (var asset of iterateAssets()) {
+      if (typeof param === "string" && asset.name === param) {
+        _nameToAssetCache[param] = asset;
+        return asset;
+      } else if (typeof param === "function" && param(asset)) {
+        return asset;
+      }
+    }
+  }
+  function filterAssets(param) {
+    var filteredAssets = [];
+    for (var asset of iterateAssets()) {
+      if (typeof param === "string" ? asset.name === param : param(asset)) {
+        filteredAssets.push(asset);
+      }
+    }
+    return filteredAssets;
+  }
+  function findAssetId(name) {
+    return findAsset(name)?.id;
+  }
+  var _nameToAssetCache;
+  var init_assets = __esm({
+    "src/lib/api/assets/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_caches();
+      init_enums();
+      init_modules2();
+      init_patches();
+      _nameToAssetCache = {};
+    }
+  });
+
+  // src/lib/ui/toasts.ts
+  var toasts_exports = {};
+  __export(toasts_exports, {
+    showToast: () => showToast
+  });
+  var uuid4, showToast;
+  var init_toasts = __esm({
+    "src/lib/ui/toasts.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_i18n();
+      init_assets();
+      init_lazy();
+      init_common();
+      init_wrappers();
+      ({ uuid4 } = lazyDestructure(() => findByProps("uuid4")));
+      showToast = (content, asset) => toasts.open({
+        // ? In build 182205/44707, Discord changed their toasts, source is no longer used, rather icon, and a key is needed.
+        // TODO: We could probably have the developer specify a key themselves, but this works to fix toasts
+        key: `vd-toast-${uuid4()}`,
+        content,
+        source: asset,
+        icon: asset
+      });
+      showToast.showCopyToClipboard = (message = Strings.COPIED_TO_CLIPBOARD) => {
+        showToast(message, findAssetId("toast_copy_link"));
+      };
+    }
+  });
+
   // src/lib/api/react/jsx.ts
   var jsx_exports = {};
   __export(jsx_exports, {
@@ -6956,264 +7315,6 @@
     }
   });
 
-  // src/core/i18n/default.json
-  var default_default;
-  var init_default = __esm({
-    "src/core/i18n/default.json"() {
-      default_default = {
-        ABOUT: "About",
-        ACTIONS: "Actions",
-        ARE_YOU_SURE_TO_CLEAR_DATA: "Are you sure you wish to clear the data of {name}?",
-        ARE_YOU_SURE_TO_DELETE_PLUGIN: "Are you sure you wish to delete {name}? This will clear all of the plugin's data.",
-        ARE_YOU_SURE_TO_DELETE_THEME: "Are you sure you wish to delete {name}?",
-        ASSET_BROWSER: "Asset Browser",
-        BRAND: "Brand",
-        PUPU: "CloudCord",
-        PUPU_URL: "CloudCord URL",
-        BROWSER: "Addon Browser",
-        BYTECODE: "Bytecode",
-        CANCEL: "Cancel",
-        CLEAR: "Clear",
-        CLEAR_BUNDLE: "Clear JS Bundle",
-        CLEAR_BUNDLE_DESC: "Clear the cached bundle. This will force a re-download of the bundle next app launch.",
-        CLEAR_DATA: "Clear data",
-        CLEAR_DATA_FAILED: "Failed to clear data for {name}",
-        CLEAR_DATA_SUCCESSFUL: "Cleared data for {name}",
-        CODEBERG: "",
-        CODENAME: "Codename",
-        COMMAND_DEBUG_DESC: "Send CloudCord debug info.",
-        COMMAND_DEBUG_OPT_EPHEMERALLY: "Send debug info ephemerally.",
-        COMMAND_EVAL_DESC: "Evaluate JavaScript code.",
-        COMMAND_EVAL_OPT_ASYNC: "Whether to support 'await' in code. Must explicitly return for result (default: false)",
-        COMMAND_EVAL_OPT_CODE: "The code to evaluate.",
-        COMMAND_PLUGINS_DESC: "Send list of installed plugins.",
-        COMMAND_PLUGINS_OPT_EPHEMERALLY: "Send plugins list ephemerally.",
-        COMPONENT: "Component",
-        CONFIRMATION_LINK_IS_A_TYPE: "This link is a **{urlType, select, plugin {Plugin} theme {Theme} other {Add-on}}**, would you like to install it?",
-        CONNECT_TO_DEBUG_WEBSOCKET: "Connect to debug WebSocket",
-        CONNECT_TO_REACT_DEVTOOLS: "Connect to React DevTools",
-        CONTINUE: "Continue",
-        COPIED_TO_CLIPBOARD: "Copied to clipboard",
-        COPY_URL: "Copy URL",
-        DEBUG: "Debug",
-        DEBUGGER_URL: "RainDevTools URL",
-        AUTO_DEBUGGER: "Automatically connect to RainDevTools",
-        DEVTOOLS_URL: "React DevTools URL",
-        AUTO_DEVTOOLS: "Automatically connect to React Devtools",
-        DELETE: "Delete",
-        DESC_EXTRACT_FONTS_FROM_THEME: 'Looks out for "fonts" field in your currently applied theme and install it.',
-        DEVELOPER: "Developer",
-        DEVELOPER_SETTINGS: "Developer Settings",
-        DISABLE_THEME: "Disable Theme",
-        DISABLE_UPDATES: "Disable Updates",
-        DISCORD_SERVER: "Discord Server",
-        DONE: "Done",
-        ENABLE_EVAL_COMMAND: "Enable /eval command",
-        ENABLE_EVAL_COMMAND_DESC: "Evaluate JavaScript directly from a command. Be cautious when using this command as it may pose a security risk. Make sure to know what you are doing.",
-        ENABLE_UPDATES: "Enable Updates",
-        ERROR_BOUNDARY_TOOLS_LABEL: "ErrorBoundary Tools",
-        EXTRACT: "Extract",
-        FONT_NAME: "Font Name",
-        FONTS: "Fonts",
-        GENERAL: "General",
-        GITHUB: "GitHub",
-        HOLD_UP: "Hold Up",
-        INFO: "Info",
-        INSTALL: "Install",
-        INSTALL_ADDON: "Install an add-on",
-        INSTALL_FONT: "Install a font",
-        INSTALL_PLUGIN: "Install a plugin",
-        INSTALL_REACT_DEVTOOLS: "Install React DevTools",
-        INSTALL_THEME: "Install a theme",
-        LABEL_EXTRACT_FONTS_FROM_THEME: "Extract font from theme",
-        LINKS: "Links",
-        LOAD_FROM_CUSTOM_URL: "Load from custom URL",
-        LOAD_FROM_CUSTOM_URL_DEC: "Load CloudCord from a custom endpoint.",
-        LOAD_REACT_DEVTOOLS: "Load React DevTools",
-        LOADER: "Loader",
-        MACHINE_ID: "Machine ID",
-        MANUFACTURER: "Manufacturer",
-        MESSAGE: "Message",
-        MISCELLANEOUS: "Miscellaneous",
-        MODAL_RELOAD_REQUIRED: "Reload app?",
-        MODAL_RELOAD_REQUIRED_DESC: "A reload is required to see the changes. Do you want to reload now?",
-        MODAL_THEME_REFETCHED: "Theme refetched",
-        MODAL_THEME_REFETCHED_DESC: "A reload is required to see the changes. Do you want to reload now?",
-        MODAL_UNPROXIED_PLUGIN_DESC: "The plugin you are trying to install has not been proxied/verified by staff. Are you sure you want to continue?",
-        MODAL_UNPROXIED_PLUGIN_HEADER: "Unproxied Plugin",
-        MODEL: "Model",
-        MODELID: "Model Identifier",
-        OPEN_IN_BROWSER: "Open in Browser",
-        OPERATING_SYSTEM: "Operating System",
-        OVERFLOW_PLUGIN_SETTINGS: "Plugin Settings",
-        PLATFORM: "Platform",
-        PLUGIN_REFETCH_FAILED: "Failed to refetch plugin",
-        PLUGIN_REFETCH_SUCCESSFUL: "Successfully refetched plugin",
-        PLUGINS: "Plugins",
-        REFETCH: "Refetch",
-        RELOAD: "Reload",
-        RELOAD_DISCORD: "Reload Discord",
-        RELOAD_IN_NORMAL_MODE: "Reload in Normal Mode",
-        RELOAD_IN_NORMAL_MODE_DESC: "Safe mode currently enabled, tap to reload in normal mode",
-        RELOAD_IN_SAFE_MODE: "Reload in Safe Mode",
-        RELOAD_IN_SAFE_MODE_DESC: "Tap to reload Discord without loading addons",
-        REMOVE: "Remove",
-        RESTART_REQUIRED_TO_TAKE_EFFECT: "Restart is required to take effect",
-        RETRY: "Retry",
-        RETRY_RENDER: "Retry Render",
-        SAFE_MODE: "Safe Mode",
-        SAFE_MODE_NOTICE_FONTS: "You are in safe mode, meaning fonts have been temporarily disabled. {enabled, select, true {If a font appears to be causing the issue, you can press below to disable it persistently.} other {}}",
-        SAFE_MODE_NOTICE_PLUGINS: "You are in safe mode, so plugins cannot be loaded. Disable any misbehaving plugins, then return to Normal Mode from the General settings page.",
-        SAFE_MODE_NOTICE_THEMES: "You are in safe mode, meaning themes have been temporarily disabled. {enabled, select, true {If a theme appears to be causing the issue, you can press below to disable it persistently.} other {}}",
-        SEARCH: "Search",
-        SEPARATOR: ", ",
-        SETTINGS_ACTIVATE_DISCORD_EXPERIMENTS: "Activate Discord Experiments",
-        SETTINGS_ACTIVATE_DISCORD_EXPERIMENTS_DESC: "Warning: Messing with this feature may lead to account termination. I heavily discourage using this and am not responsible for anything that happens if you use it",
-        STACK_TRACE: "Stack Trace",
-        SUCCESSFULLY_INSTALLED: "Successfully installed",
-        THEME_EXTRACTOR_DESC: "This pack overrides the following: {fonts}",
-        THEME_REFETCH_FAILED: "Failed to refetch theme",
-        THEME_REFETCH_SUCCESSFUL: "Successfully refetched theme",
-        THEMES: "Themes",
-        THEMES_RELOAD_FOR_CHANGES: "Reload the app to fully apply changes",
-        TOASTS_INSTALLED_PLUGIN: "Installed plugin",
-        TOASTS_PLUGIN_UPDATE: "{update, select, true {Enabled} other {Disabled}} updates for {name}",
-        UH_OH: "Uh Oh",
-        UNINSTALL: "Uninstall",
-        UNINSTALL_TITLE: "Uninstall {title}",
-        URL_PLACEHOLDER: "https://github.com/xohus/cloudcord",
-        VERSION: "Version",
-        VERSIONS: "Versions"
-      };
-    }
-  });
-
-  // src/core/i18n/index.ts
-  function fetchLocale(locale) {
-    var resolvedLocale = _lastSetLocale = languageMap[locale] ?? locale;
-    logger.log("[i18n] fetchLocale called:", locale, "->", resolvedLocale);
-    if (!_loadedLocale.has(resolvedLocale)) {
-      _loadedLocale.add(resolvedLocale);
-      if (resolvedLocale.toLowerCase().startsWith("en")) {
-        logger.log("[i18n] Using local default.json for English locale");
-        _loadedStrings[resolvedLocale] = default_default;
-        _currentLocale = resolvedLocale;
-      } else {
-        fetch(`https://codeberg.org/cocobo1/kettu-i18n/raw/branch/main/base/${resolvedLocale}.json`).then((r) => r.json()).then((strings) => {
-          logger.log("[i18n] Loaded strings for:", resolvedLocale);
-          _loadedStrings[resolvedLocale] = strings;
-          _currentLocale = resolvedLocale;
-        }).catch((e) => logger.error(`[i18n] Error fetching strings for ${resolvedLocale}: ${e}`));
-      }
-    } else {
-      _currentLocale = resolvedLocale;
-    }
-  }
-  function initFetchI18nStrings() {
-    var attempts = 0;
-    var checkAndFetch = () => {
-      attempts++;
-      try {
-        var LocaleStore = findByStoreName("LocaleStore");
-        logger.log("[i18n] Attempt", attempts, "- LocaleStore:", !!LocaleStore);
-        if (!LocaleStore) {
-          logger.log("[i18n] LocaleStore not found yet");
-          return false;
-        }
-        if (LocaleStore?._isInitialized !== true) {
-          logger.log("[i18n] LocaleStore not initialized yet");
-          return false;
-        }
-        var locale = LocaleStore.locale;
-        if (locale) {
-          logger.log("[i18n] Using LocaleStore:", locale);
-          fetchLocale(locale);
-          return true;
-        }
-      } catch (e) {
-        logger.log("[i18n] Error:", e);
-      }
-      return false;
-    };
-    var tryTimes = () => {
-      if (checkAndFetch())
-        return;
-      if (attempts < 15) {
-        setTimeout(tryTimes, 500);
-      }
-    };
-    tryTimes();
-    var cb = (e) => {
-      if (e?.settings?.changes?.loading) {
-        logger.log("[i18n] Settings loading, skipping...");
-        return;
-      }
-      var locale = e?.settings?.changes?.protoToSave?.localization?.locale?.value;
-      logger.log("[i18n] Locale changed:", locale);
-      if (locale) {
-        logger.log("[i18n] Found locale in event:", locale);
-        fetchLocale(locale);
-      }
-    };
-    FluxDispatcher.subscribe("USER_SETTINGS_PROTO_UPDATE_EDIT_INFO", cb);
-    return () => {
-      FluxDispatcher.unsubscribe("USER_SETTINGS_PROTO_UPDATE_EDIT_INFO", cb);
-    };
-  }
-  function formatString(key, val) {
-    var str = Strings[key];
-    return new IntlMessageFormat(str).format(val);
-  }
-  var IntlMessageFormat, _currentLocale, _lastSetLocale, _loadedLocale, _loadedStrings, Strings, languageMap;
-  var init_i18n = __esm({
-    "src/core/i18n/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_logger();
-      init_common();
-      init_wrappers();
-      init_default();
-      IntlMessageFormat = findByNameLazy("MessageFormat");
-      _currentLocale = null;
-      _lastSetLocale = null;
-      _loadedLocale = /* @__PURE__ */ new Set();
-      _loadedStrings = {};
-      Strings = new Proxy({}, {
-        get: (_t, prop) => {
-          if (_currentLocale && _loadedStrings[_currentLocale]?.[prop]) {
-            return _loadedStrings[_currentLocale]?.[prop];
-          }
-          return default_default[prop];
-        }
-      });
-      languageMap = {
-        "ar-SA": "ar",
-        "bn-BD": "bn",
-        "ca-ES": "ca",
-        "de-DE": "de",
-        "es-ES": "es",
-        "es-419": "es",
-        "fa-IR": "fa",
-        "fi-FI": "fi",
-        "fr-FR": "fr",
-        "hi-IN": "hi",
-        "hr-HR": "hr",
-        "hu-HU": "hu",
-        "id-ID": "id",
-        "it-IT": "it",
-        "ja-JP": "ja",
-        "pl-PL": "pl",
-        "pt-BR": "pt_BR",
-        "ru-RU": "ru",
-        "sk-SK": "sk",
-        "sv-SE": "sv",
-        "tr-TR": "tr",
-        "vi-VN": "vi"
-      };
-    }
-  });
-
   // src/core/vendetta/plugins.ts
   var plugins, pluginInstance, VdPluginManager;
   var init_plugins = __esm({
@@ -7383,76 +7484,6 @@
         },
         getSettings: (id) => pluginInstance[id]?.settings
       };
-    }
-  });
-
-  // src/lib/api/assets/index.ts
-  var assets_exports = {};
-  __export(assets_exports, {
-    filterAssets: () => filterAssets,
-    findAsset: () => findAsset,
-    findAssetId: () => findAssetId,
-    iterateAssets: () => iterateAssets
-  });
-  function* iterateAssets() {
-    var { flagsIndex } = getMetroCache();
-    var yielded = /* @__PURE__ */ new Set();
-    for (var id in flagsIndex) {
-      if (flagsIndex[id] & ModuleFlags.ASSET) {
-        var assetId = requireModule(Number(id));
-        if (typeof assetId !== "number" || yielded.has(assetId))
-          continue;
-        yield getAssetById(assetId);
-        yielded.add(assetId);
-      }
-    }
-  }
-  function getAssetById(id) {
-    var asset = assetsModule.getAssetByID(id);
-    if (!asset)
-      return asset;
-    return Object.assign(asset, {
-      id
-    });
-  }
-  function findAsset(param) {
-    if (typeof param === "number")
-      return getAssetById(param);
-    if (typeof param === "string" && _nameToAssetCache[param]) {
-      return _nameToAssetCache[param];
-    }
-    for (var asset of iterateAssets()) {
-      if (typeof param === "string" && asset.name === param) {
-        _nameToAssetCache[param] = asset;
-        return asset;
-      } else if (typeof param === "function" && param(asset)) {
-        return asset;
-      }
-    }
-  }
-  function filterAssets(param) {
-    var filteredAssets = [];
-    for (var asset of iterateAssets()) {
-      if (typeof param === "string" ? asset.name === param : param(asset)) {
-        filteredAssets.push(asset);
-      }
-    }
-    return filteredAssets;
-  }
-  function findAssetId(name) {
-    return findAsset(name)?.id;
-  }
-  var _nameToAssetCache;
-  var init_assets = __esm({
-    "src/lib/api/assets/index.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_caches();
-      init_enums();
-      init_modules2();
-      init_patches();
-      _nameToAssetCache = {};
     }
   });
 
@@ -8288,37 +8319,6 @@
       init_ErrorBoundary();
       init_Search();
       init_Summary();
-    }
-  });
-
-  // src/lib/ui/toasts.ts
-  var toasts_exports = {};
-  __export(toasts_exports, {
-    showToast: () => showToast
-  });
-  var uuid4, showToast;
-  var init_toasts = __esm({
-    "src/lib/ui/toasts.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_i18n();
-      init_assets();
-      init_lazy();
-      init_common();
-      init_wrappers();
-      ({ uuid4 } = lazyDestructure(() => findByProps("uuid4")));
-      showToast = (content, asset) => toasts.open({
-        // ? In build 182205/44707, Discord changed their toasts, source is no longer used, rather icon, and a key is needed.
-        // TODO: We could probably have the developer specify a key themselves, but this works to fix toasts
-        key: `vd-toast-${uuid4()}`,
-        content,
-        source: asset,
-        icon: asset
-      });
-      showToast.showCopyToClipboard = (message = Strings.COPIED_TO_CLIPBOARD) => {
-        showToast(message, findAssetId("toast_copy_link"));
-      };
     }
   });
 
@@ -10167,6 +10167,11 @@
       others: [
         "PeopleIcon",
         "UserIcon"
+      ],
+      extras: [
+        "GiftIcon",
+        "NitroWheelIcon",
+        "StarIcon"
       ]
     }[tab];
     for (var name of [
@@ -10279,7 +10284,7 @@
             /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
               label: moreOpen ? "Hide more options" : "More options",
-              subLabel: inMore && !moreOpen ? MORE_TABS.find(([tab]) => tab === selected)?.[1] : "Connections, dates, custom badges, other profiles",
+              subLabel: inMore && !moreOpen ? MORE_TABS.find(([tab]) => tab === selected)?.[1] : "Connections, dates, badges, Nitro & tools",
               icon: tabIcon("others"),
               onPress: () => setMoreOpen(!moreOpen)
             }),
@@ -10350,6 +10355,11 @@
           "others",
           "Other profiles",
           "Changes visible only on this device"
+        ],
+        [
+          "extras",
+          "Nitro & tools",
+          "Fake Nitro, fake gift link, leave servers, reset"
         ]
       ];
     }
@@ -14564,6 +14574,405 @@
       }
     }, 0);
   }
+  function extrasState() {
+    var value = settings[EXTRAS_KEY];
+    return value && typeof value === "object" ? value : {};
+  }
+  function setExtras(next) {
+    settings[EXTRAS_KEY] = next;
+  }
+  function extrasHttp() {
+    for (var candidate of [
+      findByProps("getAPIBaseURL", "get"),
+      findByProps("HTTP")?.HTTP,
+      findByProps("get", "post", "put", "del")
+    ])
+      if (typeof candidate?.get === "function")
+        return candidate;
+    return null;
+  }
+  function applyFakeNitro() {
+    try {
+      var state2 = findByStoreName("OverridePremiumTypeStore")?.getState?.();
+      if (!state2)
+        return;
+      if (extrasState().fakeNitro) {
+        if (state2.premiumTypeActual !== 2)
+          state2.premiumTypeOverride = 2;
+      } else if (state2.premiumTypeOverride === 2 && state2.premiumTypeActual !== 2)
+        state2.premiumTypeOverride = void 0;
+    } catch (e) {
+    }
+  }
+  function newGiftCode() {
+    var chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+    var code = "";
+    for (var i = 0; i < 16; i++)
+      code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  }
+  function fakeGiftBody(code) {
+    var me = null;
+    try {
+      me = findByStoreName("UserStore")?.getCurrentUser?.();
+    } catch (e) {
+    }
+    return {
+      code,
+      sku_id: NITRO_MONTHLY_SKU,
+      application_id: NITRO_APP_ID,
+      uses: 0,
+      max_uses: 1,
+      redeemed: false,
+      flags: 0,
+      expires_at: new Date(Date.now() + 48 * 36e5).toISOString(),
+      subscription_plan_id: NITRO_MONTHLY_PLAN,
+      subscription_plan: {
+        id: NITRO_MONTHLY_PLAN,
+        name: "Nitro Monthly",
+        interval: 1,
+        interval_count: 1,
+        tax_inclusive: true,
+        sku_id: NITRO_MONTHLY_SKU,
+        currency: "usd",
+        price: 999,
+        price_tier: null
+      },
+      user: me ? {
+        id: me.id,
+        username: me.username,
+        global_name: me.globalName,
+        avatar: me.avatar,
+        discriminator: me.discriminator ?? "0"
+      } : void 0,
+      store_listing: null,
+      gift_style: null,
+      batch_id: null,
+      promotion: null
+    };
+  }
+  function installGiftHook() {
+    if (giftHookInstalled)
+      return;
+    var http = extrasHttp();
+    if (!http)
+      return;
+    giftHookInstalled = true;
+    var match = (req) => typeof req?.url === "string" ? req.url.match(/\/entitlements\/gift-codes\/([A-Za-z0-9-]+)(\/redeem)?/) : null;
+    instead("get", http, (args, original) => {
+      var m2 = match(args[0]);
+      var code = extrasState().giftCode;
+      if (m2 && !m2[2] && code && m2[1] === code)
+        return Promise.resolve({
+          ok: true,
+          status: 200,
+          body: fakeGiftBody(code),
+          headers: {}
+        });
+      return original(...args);
+    });
+    instead("post", http, (args, original) => {
+      var m2 = match(args[0]);
+      var code = extrasState().giftCode;
+      if (m2?.[2] && code && m2[1] === code) {
+        showToast("This is your fake gift. It only looks real on your device.");
+        return Promise.reject({
+          ok: false,
+          status: 400,
+          body: {
+            code: 50050,
+            message: "This gift is only a preview on this device."
+          }
+        });
+      }
+      return original(...args);
+    });
+  }
+  function addFakeFriendRequest(userId) {
+    var id = userId.trim();
+    if (!/^\d{17,20}$/.test(id)) {
+      import_react_native20.Alert.alert("Fake friend request", "Enter a valid user ID.");
+      return;
+    }
+    var user = findByStoreName("UserStore")?.getUser?.(id);
+    if (!user) {
+      import_react_native20.Alert.alert("Fake friend request", "Open that user's profile once so Discord knows them, then try again.");
+      return;
+    }
+    if ((findByStoreName("RelationshipStore")?.getRelationshipType?.(id) ?? 0) !== 0) {
+      import_react_native20.Alert.alert("Fake friend request", "You already have a request or friendship with this user.");
+      return;
+    }
+    fakeRequestIds.add(id);
+    FluxDispatcher.dispatch({
+      type: "RELATIONSHIP_ADD",
+      relationship: {
+        id,
+        type: 3,
+        user,
+        since: (/* @__PURE__ */ new Date()).toISOString(),
+        nickname: null
+      },
+      shouldNotify: true
+    });
+    showToast("Fake friend request added. Only you see it.");
+  }
+  function clearFakeFriendRequests() {
+    for (var id of fakeRequestIds)
+      FluxDispatcher.dispatch({
+        type: "RELATIONSHIP_REMOVE",
+        relationship: {
+          id,
+          type: 3
+        }
+      });
+    fakeRequestIds.clear();
+  }
+  function confirmLeaveAllServers() {
+    var me = findByStoreName("UserStore")?.getCurrentUser?.()?.id;
+    var guilds = Object.values(findByStoreName("GuildStore")?.getGuilds?.() ?? {}).filter((guild) => guild && guild.ownerId !== me);
+    if (!guilds.length) {
+      import_react_native20.Alert.alert("Leave all servers", "No servers to leave. Servers you own are skipped.");
+      return;
+    }
+    var run = () => _async_to_generator(function* () {
+      if (leavingServers)
+        return;
+      leavingServers = true;
+      var http = extrasHttp();
+      var left = 0;
+      try {
+        for (var guild of guilds) {
+          var _loop2 = function* (attempt2) {
+            try {
+              yield http.del({
+                url: "/users/@me/guilds/" + guild.id,
+                body: {
+                  lurking: false
+                }
+              });
+              left++;
+              return "break";
+            } catch (error) {
+              var retry = Number(error?.body?.retry_after);
+              if (error?.status === 429 && Number.isFinite(retry)) {
+                yield new Promise((resolve) => setTimeout(resolve, retry * 1e3 + 250));
+                return "continue";
+              }
+              return "break";
+            }
+          };
+          for (var attempt = 0; attempt < 3; attempt++) {
+            var _ret = yield* _loop2(attempt);
+            if (_ret === "break")
+              break;
+          }
+          yield new Promise((resolve) => setTimeout(resolve, 1200));
+        }
+      } finally {
+        leavingServers = false;
+      }
+      showToast("Left " + left + " of " + guilds.length + " servers.");
+    })();
+    import_react_native20.Alert.alert("Leave all servers?", "You will leave " + guilds.length + " servers. Servers you own are skipped. You'll need new invites to rejoin.", [
+      {
+        text: "Cancel",
+        style: "cancel"
+      },
+      {
+        text: "Leave all",
+        style: "destructive",
+        onPress: () => import_react_native20.Alert.alert("Are you sure?", "Last chance to cancel.", [
+          {
+            text: "Cancel",
+            style: "cancel"
+          },
+          {
+            text: "Yes, leave them all",
+            style: "destructive",
+            onPress: () => void run()
+          }
+        ])
+      }
+    ]);
+  }
+  function confirmResetCloudCordProfile(onDone) {
+    import_react_native20.Alert.alert("Reset CloudCord?", "Deletes your custom profile, badges, other-profile edits and Nitro & tools settings on this device, like a fresh install. Your Discord account is not touched.", [
+      {
+        text: "Cancel",
+        style: "cancel"
+      },
+      {
+        text: "Reset everything",
+        style: "destructive",
+        onPress: () => {
+          for (var key of Object.keys(settings))
+            if (/^(fakeProfile|cloudcord|localProfiles|customBadge)/i.test(key)) {
+              try {
+                delete settings[key];
+              } catch (e) {
+              }
+            }
+          setExtras({});
+          applyFakeNitro();
+          clearFakeFriendRequests();
+          onDone();
+          showToast("CloudCord reset. Restart Discord to finish.");
+        }
+      }
+    ]);
+  }
+  function ExtrasCard({ onReset }) {
+    var [, force] = (0, import_react7.useReducer)((x2) => x2 + 1, 0);
+    var K2 = (init_ProfileEditorKit(), __toCommonJS(ProfileEditorKit_exports));
+    var [friendId, setFriendId] = (0, import_react7.useState)("");
+    var state2 = extrasState();
+    var link = state2.giftCode ? "https://discord.gift/" + state2.giftCode : "";
+    var save = (next) => {
+      setExtras(next);
+      applyFakeNitro();
+      force();
+    };
+    return /* @__PURE__ */ jsxs(import_react_native20.View, {
+      style: {
+        padding: 16,
+        gap: 24
+      },
+      children: [
+        /* @__PURE__ */ jsx(K2.Section, {
+          title: "Fake Nitro",
+          description: "Only on this device. Nothing changes for other people.",
+          children: /* @__PURE__ */ jsx(ToggleRow, {
+            label: "Act like I have Nitro",
+            subLabel: "Removes Nitro previews and upsells. Real Nitro features still need Nitro",
+            value: state2.fakeNitro === true,
+            onPress: () => save({
+              ...state2,
+              fakeNitro: !state2.fakeNitro
+            })
+          })
+        }),
+        /* @__PURE__ */ jsxs(K2.Section, {
+          title: "Fake Nitro gift",
+          description: "Shows as a Nitro gift only on your device. Everyone else sees an invalid link, and it can't be redeemed.",
+          children: [
+            link ? /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/semibold",
+              selectable: true,
+              children: link
+            }) : null,
+            /* @__PURE__ */ jsxs(import_react_native20.View, {
+              style: {
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8
+              },
+              children: [
+                /* @__PURE__ */ jsx(Button, {
+                  text: link ? "Refresh link" : "Make link",
+                  variant: "primary",
+                  size: "sm",
+                  onPress: () => save({
+                    ...state2,
+                    giftCode: newGiftCode()
+                  })
+                }),
+                link ? /* @__PURE__ */ jsx(Button, {
+                  text: "Copy",
+                  variant: "secondary",
+                  size: "sm",
+                  onPress: () => {
+                    try {
+                      findByProps("setString", "getString")?.setString?.(link);
+                      showToast("Copied gift link.");
+                    } catch (e) {
+                      import_react_native20.Alert.alert("Gift link", link);
+                    }
+                  }
+                }) : null,
+                link ? /* @__PURE__ */ jsx(Button, {
+                  text: "Remove",
+                  variant: "secondary",
+                  size: "sm",
+                  onPress: () => save({
+                    ...state2,
+                    giftCode: void 0
+                  })
+                }) : null
+              ]
+            })
+          ]
+        }),
+        /* @__PURE__ */ jsxs(K2.Section, {
+          title: "Fake friend request",
+          description: "Only you see it. Don't accept it: that sends them a real request.",
+          children: [
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "User ID",
+              children: /* @__PURE__ */ jsx(TextInput3, {
+                value: friendId,
+                placeholder: "123456789012345678",
+                keyboardType: "number-pad",
+                autoCorrect: false,
+                onChangeText: setFriendId,
+                placeholderTextColor: "#777"
+              })
+            }),
+            /* @__PURE__ */ jsxs(import_react_native20.View, {
+              style: {
+                flexDirection: "row",
+                gap: 8
+              },
+              children: [
+                /* @__PURE__ */ jsx(Button, {
+                  text: "Add request",
+                  variant: "primary",
+                  size: "sm",
+                  onPress: () => {
+                    addFakeFriendRequest(friendId);
+                    force();
+                  }
+                }),
+                fakeRequestIds.size ? /* @__PURE__ */ jsx(Button, {
+                  text: "Remove " + fakeRequestIds.size,
+                  variant: "secondary",
+                  size: "sm",
+                  onPress: () => {
+                    clearFakeFriendRequests();
+                    force();
+                  }
+                }) : null
+              ]
+            })
+          ]
+        }),
+        /* @__PURE__ */ jsx(K2.Section, {
+          title: "Account tools",
+          children: /* @__PURE__ */ jsxs(import_react_native20.View, {
+            style: {
+              flexDirection: "row",
+              flexWrap: "wrap",
+              gap: 8
+            },
+            children: [
+              /* @__PURE__ */ jsx(Button, {
+                text: "Leave all servers",
+                variant: "destructive",
+                size: "sm",
+                onPress: confirmLeaveAllServers
+              }),
+              /* @__PURE__ */ jsx(Button, {
+                text: "Reset CloudCord",
+                variant: "destructive",
+                size: "sm",
+                onPress: () => confirmResetCloudCordProfile(onReset)
+              })
+            ]
+          })
+        })
+      ]
+    });
+  }
   function initializeFakeProfile() {
     if (initPromise)
       return initPromise;
@@ -14576,6 +14985,12 @@
           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5e3);
         }
         ensurePatches();
+        try {
+          installGiftHook();
+          applyFakeNitro();
+          FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro);
+        } catch (e) {
+        }
         connectRealProfileMenu();
         yield pullOwnSharedProfile();
         void refreshPublishedBadges(true);
@@ -15417,7 +15832,7 @@
                     return void 0;
                   }
                 })(),
-                banner: preview.nitroEnabled ? preview.bannerMedia?.uri : void 0,
+                banner: preview.bannerMedia?.uri,
                 primary: preview.profileColorsEnabled ? preview.primaryColor : void 0,
                 accent: preview.profileColorsEnabled ? preview.accentColor : void 0,
                 decoration: preview.avatarDecoration || void 0,
@@ -15503,6 +15918,17 @@
               })()
             })
           }) : null,
+          activeTab === "extras" ? /* @__PURE__ */ jsx(Card2, {
+            border: "strong",
+            children: /* @__PURE__ */ jsx(ExtrasCard, {
+              onReset: () => {
+                bindSavedPreview();
+                clearCache();
+                refreshPreview();
+                redraw();
+              }
+            })
+          }) : null,
           activeTab === "others" ? /* @__PURE__ */ jsx(Card2, {
             children: /* @__PURE__ */ jsx(LocalProfiles2, {
               badges: BADGES,
@@ -15572,7 +15998,7 @@
                     }),
                     /* @__PURE__ */ jsx(ToggleRow, {
                       label: "Simulate Nitro",
-                      subLabel: "Unlocks a banner and profile colors",
+                      subLabel: "Unlocks profile colors. Your banner works without it",
                       value: preview.nitroEnabled,
                       onPress: () => update("nitroEnabled", !preview.nitroEnabled, true)
                     })
@@ -16535,7 +16961,7 @@
       })
     });
   }
-  var import_react7, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_MONTHLY_SKU, NITRO_MONTHLY_PLAN, fakeRequestIds, giftHookInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -16551,6 +16977,7 @@
       init_cloudcord_decorations();
       init_storage();
       init_patcher();
+      init_toasts();
       init_jsx();
       init_profileAppearance();
       init_profileIdentity();
@@ -17260,6 +17687,13 @@
       identityRenderers = /* @__PURE__ */ new WeakMap();
       socialRenderers = /* @__PURE__ */ new WeakMap();
       socialWrapperTypes = /* @__PURE__ */ new WeakSet();
+      EXTRAS_KEY = "cloudcordExtras";
+      NITRO_APP_ID = "521842831262875670";
+      NITRO_MONTHLY_SKU = "521847234246082599";
+      NITRO_MONTHLY_PLAN = "511651880837840896";
+      fakeRequestIds = /* @__PURE__ */ new Set();
+      giftHookInstalled = false;
+      leavingServers = false;
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
         _inherits(NamePreviewBoundary2, Component2);
