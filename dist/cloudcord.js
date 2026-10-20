@@ -10199,6 +10199,11 @@
   }
   function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }) {
     var [draft, setDraft] = (0, import_react3.useState)(defaultValue ?? "");
+    (0, import_react3.useEffect)(() => {
+      setDraft(defaultValue ?? "");
+    }, [
+      defaultValue
+    ]);
     var change = (event) => {
       var next = typeof event === "string" ? event : event?.nativeEvent?.text ?? event?.text ?? event?.value;
       if (typeof next !== "string")
