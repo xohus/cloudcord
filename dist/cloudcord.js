@@ -12509,6 +12509,8 @@
         return;
       if (latestResponse.ok) {
         var latest = yield latestResponse.json();
+        if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly)
+          return;
         var remote = latest?.profile && typeof latest.profile === "object" ? latest.profile : {};
         var snapshot2 = profileSnapshot;
         for (var [field, media] of [
@@ -12543,11 +12545,12 @@
           }
         };
         preview = rootSettings.fakeProfile;
-      }
+      } else if (latestResponse.status !== 404)
+        throw new Error(`Couldn't load your latest shared profile (${latestResponse.status}). Your local changes are saved; try syncing again shortly.`);
       var clearSnapshot = {
         ...rootSettings.fakeProfileMediaCleared || {}
       };
-      if (rootSettings.fakeProfileLocalOnly)
+      if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly)
         return;
       var response = yield fetch(`${SHARED_PROFILE_API}${path}`, {
         method: saved.id ? "PUT" : "POST",
@@ -12562,6 +12565,8 @@
           profile: profileSnapshot
         })
       });
+      if (currentUserId !== ownerId)
+        return;
       if (!response.ok) {
         if (response.status === 429) {
           var retrySeconds = Math.max(2, Number(response.headers.get("retry-after") || 10));
