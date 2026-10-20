@@ -1963,7 +1963,16 @@ jobs:
 
           function appendPublishedBadges(result: any[], userId: string) {
               if (isRealProfileView(userId)) return result;
-              const next = [...result];
+              // The selected cosmetic row precedes its native equivalent. Keep
+              // one logical badge, even when Discord uses a different ID for it.
+              const seen = new Set<string>();
+              const next = result.filter(badge => {
+                  const key = badgeLayoutKey(badge);
+                  if (!key) return true;
+                  if (seen.has(key)) return false;
+                  seen.add(key);
+                  return true;
+              });
               for (const badge of publishedBadges) {
                   if (badge.userId === userId) addRenderedBadge(next, `cloudcord-custom-${badge.id}`, badge.name, badge.icon);
               }

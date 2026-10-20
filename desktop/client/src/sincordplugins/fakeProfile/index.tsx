@@ -656,7 +656,6 @@ function applyNativeProfileMetadata(target: any, data: CustomProfileData, includ
     if (shouldReplaceBadges(data)) {
         target.publicFlags = flags;
         target.public_flags = flags;
-        target.flags = flags;
     }
 
     const hasNitro = data.nitro === true && Number(data.nitroLevel ?? -1) >= 0;
@@ -920,7 +919,13 @@ function decorateSharedIdentity(source: any, data: CustomProfileData) {
     if (!source || !data) return source;
     const username = data.username || source.username;
     const globalName = data.globalName || source.globalName || source.displayName;
-    const clone = Object.assign(Object.create(Object.getPrototypeOf(source) || Object.prototype), source);
+    const clone = Object.create(Object.getPrototypeOf(source) || Object.prototype);
+    // Native account flags/methods may be non-enumerable. Preserve them on the
+    // presentation clone instead of dropping them through object spread/assign.
+    for (const key of Reflect.ownKeys(source)) {
+        const descriptor = Object.getOwnPropertyDescriptor(source, key);
+        if (descriptor) Object.defineProperty(clone, key, { ...descriptor, configurable: true, ...("value" in descriptor ? { writable: true } : {}) });
+    }
     if (username) {
         clone.username = username;
         clone.userName = username;
@@ -1694,9 +1699,7 @@ export default definePlugin({
         if (storedData.decorationAsset) { clone.avatarDecoration = nativeDecoration(storedData); clone.avatarDecorationData = clone.avatarDecoration; }
         const wantedFlags = storedData.badgeFlags != null ? storedData.badgeFlags : 0;
         if (shouldReplaceBadges(storedData)) {
-            clone.publicFlags = wantedFlags; clone.flags = wantedFlags;
-        } else {
-            clone.publicFlags = realUser.publicFlags ?? realUser.flags ?? 0; clone.flags = realUser.flags ?? realUser.publicFlags ?? 0;
+            clone.publicFlags = wantedFlags;
         }
         applyNativeProfileMetadata(clone, storedData);
         cachedOriginalUser = user; cachedFakeUser = clone; cachedDataHash = _dataVersion;
@@ -1736,9 +1739,7 @@ export default definePlugin({
         if (shared.decorationAsset) { clone.avatarDecoration = nativeDecoration(shared); clone.avatarDecorationData = clone.avatarDecoration; }
         const wantedFlags = shared.badgeFlags != null ? shared.badgeFlags : 0;
         if (shouldReplaceBadges(shared)) {
-            clone.publicFlags = wantedFlags; clone.flags = wantedFlags;
-        } else {
-            clone.publicFlags = realUser.publicFlags ?? realUser.flags ?? 0; clone.flags = realUser.flags ?? realUser.publicFlags ?? 0;
+            clone.publicFlags = wantedFlags;
         }
         applyNativeProfileMetadata(clone, shared);
         return clone;

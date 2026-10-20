@@ -46,6 +46,29 @@ for (const replaceRealBadges of [false, true]) {
 assert.equal(nativeProfile.badges, nativeRows);
 assert.equal(nativeRows.length, 1, 'decorating profiles must not erase Discord cached badges');
 
+const accountFlags = Object.freeze({ has: bit => bit === 1 });
+const nativeUser = Object.create({ isProvisional() { return this.flags.has(1); } });
+Object.assign(nativeUser, { id: '123456789012345', username: 'real', globalName: 'Real' });
+Object.defineProperty(nativeUser, 'flags', { value: accountFlags });
+const identity = vm.createContext({ nativeProfileAppearance: () => ({}), nativeCollectibles: value => value,
+    isEnabled: true, storedData: { username: 'custom', badgeFlags: 8, replaceRealBadges: true },
+    viewedSharedProfile: () => ({ username: 'shared', badgeFlags: 8, replaceRealBadges: true }),
+    isRealProfileView: () => false, isMe: () => false,
+    cachedOriginalUser: null, cachedFakeUser: null, cachedDataHash: -1, _dataVersion: 0, _trueOriginalUser: null,
+    GIFT_LEVELS: [], Date, Object, Reflect });
+vm.runInContext(compile(block(desktop, 'function hasFakeBadges(', '// Last profile pulled')
+    + block(desktop, 'function decorateSharedIdentity(', 'function decorateSharedProfile(')
+    + 'const plugin = {' + block(desktop, '    fakeCurrentUser(', '    getActiveProfileColors(') + '}; this.ownUser = plugin.fakeCurrentUser; this.otherUser = plugin.fakeOtherUser;'), identity);
+for (const [decorate, mine] of [[identity.ownUser, true], [identity.otherUser, false], [value => identity.decorateSharedIdentity(value, { username: 'shared' }), false]]) {
+    identity.isMe = () => mine;
+    const cloned = decorate(nativeUser);
+    assert.equal(cloned.flags, accountFlags, 'cosmetic badges cannot replace Discord account-status flags');
+    assert.equal(cloned.isProvisional(), true, 'native account-status methods remain callable');
+    assert.notEqual(cloned.username, 'real');
+}
+assert.equal(nativeUser.flags, accountFlags);
+assert.equal(nativeUser.username, 'real');
+
 const pull = block(desktop, 'async function pullOwnSharedProfile(', 'function requestSharedProfile(');
 let resolveResponse;
 let activeId = '123456789012345';

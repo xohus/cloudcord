@@ -9,11 +9,16 @@ let calls = 0, changes = 0;
 const context = vm.createContext({ Date, JSON, fetch: async () => { calls++; return { ok: true, json: async () => ({ badges: rows }) }; }, safeStore: () => ({ emitChange: () => changes++ }), addRenderedBadge: (result, id, description, icon) => result.push({ id, description, icon }) });
 Object.assign(context, { AppState: { currentState: 'active' }, isRealProfileView: () => false, applyBadgeLayout: rows => rows });
 Object.assign(context, { isCurrentUser: () => false, getProfileOverride: () => null, defaultBadgeOrder: () => [] });
+const mobile = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'")[1].split('\n          TSX')[0].replace(/^          /gm, '');
+vm.runInContext(esbuild.transformSync(mobile.slice(mobile.indexOf('function badgeLayoutKey('), mobile.indexOf('function applyBadgeLayout')), { loader: 'ts' }).code, context);
 vm.runInContext(esbuild.transformSync(helper, { loader: 'ts' }).code, context);
 (async () => {
     await context.refreshPublishedBadges(true);
     assert.equal(context.appendPublishedBadges([], '123').length, 1);
     assert.equal(context.appendPublishedBadges([], '456').length, 0);
+    const originals = Object.freeze([{ id: 'cloudcord-shared-partner' }, { id: 'partnered_server_owner' }, { id: 'active_developer' }].map(Object.freeze));
+    assert.deepEqual(Array.from(context.appendPublishedBadges(originals, '456'), row => row.id), ['cloudcord-shared-partner', 'active_developer']);
+    assert.equal(originals.length, 3, 'deduplication must not change Discord cached badge arrays');
     assert.equal(changes, 2);
     await context.refreshPublishedBadges();
     assert.equal(calls, 1);
