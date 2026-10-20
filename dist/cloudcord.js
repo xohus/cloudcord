@@ -12472,6 +12472,7 @@
         joinedSince: preview.signupDate || null,
         oldName: preview.oldName,
         badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && preview.selectedBadges?.[id] ? flags | flag : flags, 0),
+        replaceRealBadges: preview.replaceBadges === true,
         hiddenBadgeIds: [
           ...preview.hiddenBadgeIds
         ],
@@ -12494,15 +12495,18 @@
         return;
       if (!preview.enabled || !currentUserId)
         return;
+      var ownerId = currentUserId;
       var socialErrors = customSocialValidationErrors(preview);
       if (socialErrors.length)
         throw new Error(socialErrors[0]);
       var saved = rootSettings.fakeProfileShare || {};
       var path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
       var profileSnapshot = yield ownSharedProfile();
-      var latestResponse = yield fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`, {
+      var latestResponse = yield fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, {
         cache: "no-store"
       });
+      if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly)
+        return;
       if (latestResponse.ok) {
         var latest = yield latestResponse.json();
         var remote = latest?.profile && typeof latest.profile === "object" ? latest.profile : {};
@@ -12554,7 +12558,7 @@
           } : {}
         },
         body: JSON.stringify({
-          ownerId: currentUserId,
+          ownerId,
           profile: profileSnapshot
         })
       });
@@ -12579,6 +12583,8 @@
         throw new Error(`CloudCord sharing failed (${response.status})`);
       }
       var result = yield response.json();
+      if (currentUserId !== ownerId)
+        return;
       if (!saved.id)
         rootSettings.fakeProfileShare = {
           id: result.id,
@@ -12625,6 +12631,8 @@
         return;
       pullOwnSharedProfile.pending = true;
       pullOwnSharedProfile.lastAttempt = now;
+      var requestedUserId = currentUserId;
+      var localSnapshot = JSON.stringify(preview);
       try {
         var response = yield fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
         if (response.status === 404) {
@@ -12635,10 +12643,12 @@
         if (!response.ok)
           return;
         var payload = yield response.json();
-        if (rootSettings.fakeProfileLocalOnly)
+        if (rootSettings.fakeProfileLocalOnly || currentUserId !== requestedUserId || JSON.stringify(preview) !== localSnapshot || !force && (fakeProfileEditorOpen || Date.now() < suppressOwnPullUntil))
           return;
         var data = payload?.profile ?? payload;
         if (!data || typeof data !== "object")
+          return;
+        if (Number(data.syncRevision || 0) < Number(preview.syncRevision || 0))
           return;
         var selectedBadges = {
           ...preview.selectedBadges || {}
