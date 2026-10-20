@@ -29,3 +29,111 @@
 .vc-customRPC-settings-error {
     color: var(--text-feedback-critical);
 }
+.vc-customRPC-settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--background-base-lower, var(--background-secondary));
+}
+
+.vc-customRPC-settings-section-title {
+    margin: 0;
+}
+
+.vc-customRPC-settings-hint {
+    color: var(--text-muted);
+}
+
+.vc-customRPC-settings-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--background-base-lowest, var(--background-tertiary));
+    border: 1px solid var(--border-subtle, transparent);
+}
+
+.vc-customRPC-settings-preview-type {
+    color: var(--text-muted);
+    letter-spacing: 0.02em;
+}
+
+.vc-customRPC-settings-preview-body,
+.vc-customRPC-settings-image-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+
+.vc-customRPC-settings-preview-art {
+    position: relative;
+    flex: none;
+}
+
+.vc-customRPC-settings-preview-big,
+.vc-customRPC-settings-thumb {
+    width: 72px;
+    height: 72px;
+    border-radius: 8px;
+    object-fit: cover;
+    flex: none;
+}
+
+.vc-customRPC-settings-preview-empty,
+.vc-customRPC-settings-thumb {
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    color: var(--text-muted);
+    font-size: 12px;
+    background: var(--background-mod-normal, rgb(255 255 255 / 6%));
+}
+
+.vc-customRPC-settings-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.vc-customRPC-settings-preview-small {
+    position: absolute;
+    right: -4px;
+    bottom: -4px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 3px solid var(--background-base-lowest, var(--background-tertiary));
+    object-fit: cover;
+}
+
+.vc-customRPC-settings-preview-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.vc-customRPC-settings-preview-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.vc-customRPC-settings-preview-button {
+    padding: 6px;
+    border-radius: 4px;
+    text-align: center;
+    font-size: 14px;
+    color: var(--text-normal);
+    background: var(--background-mod-strong, rgb(255 255 255 / 10%));
+}
+
+.vc-customRPC-settings-image-fields {
+    display: grid;
+    gap: 0.5em;
+    flex: 1;
+    min-width: 0;
+}

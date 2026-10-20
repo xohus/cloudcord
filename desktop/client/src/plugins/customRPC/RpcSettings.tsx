@@ -7,7 +7,6 @@
 import "./settings.css";
 
 import { isPluginEnabled } from "@api/PluginManager";
-import { Divider } from "@components/Divider";
 import { Heading } from "@components/Heading";
 import { resolveError } from "@components/settings/tabs/plugins/components/Common";
 import { debounce } from "@shared/debounce";
@@ -86,6 +85,69 @@ function isImageKeyValid(value: string) {
     return true;
 }
 
+function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode; }) {
+    return (
+        <section className={cl("section")}>
+            <Heading tag="h3" className={cl("section-title")}>{title}</Heading>
+            {hint && <Text variant="text-sm/normal" className={cl("hint")}>{hint}</Text>}
+            {children}
+        </section>
+    );
+}
+
+const TYPE_LABEL: Record<number, string> = {
+    [ActivityType.PLAYING]: "Playing",
+    [ActivityType.STREAMING]: "Streaming",
+    [ActivityType.LISTENING]: "Listening to",
+    [ActivityType.WATCHING]: "Watching",
+    [ActivityType.COMPETING]: "Competing in",
+};
+
+const previewImage = (value?: string) => value && /^https?:\/\//.test(value) ? value : undefined;
+
+// A live card that mirrors what friends will see on your profile.
+function ActivityPreview() {
+    const s = settings.use();
+    const big = previewImage(s.imageBig);
+    const small = previewImage(s.imageSmall);
+    const buttons = [s.buttonOneText, s.buttonTwoText].filter(Boolean);
+    return (
+        <div className={cl("preview")}>
+            <Text variant="text-xs/semibold" className={cl("preview-type")}>{(TYPE_LABEL[s.type ?? 0] ?? "Playing").toUpperCase()}</Text>
+            <div className={cl("preview-body")}>
+                <div className={cl("preview-art")}>
+                    {big ? <img src={big} alt="" className={cl("preview-big")} /> : <div className={cl("preview-big", "preview-empty")}>{s.imageBig ? "Key" : "No image"}</div>}
+                    {small && <img src={small} alt="" className={cl("preview-small")} />}
+                </div>
+                <div className={cl("preview-text")}>
+                    <Text variant="text-md/semibold">{s.appName || "Application name"}</Text>
+                    {s.details && <Text variant="text-sm/normal">{s.details}</Text>}
+                    {s.state && <Text variant="text-sm/normal">{s.state}{s.partySize && s.partyMaxSize ? ` (${s.partySize} of ${s.partyMaxSize})` : ""}</Text>}
+                    {s.timestampMode !== TimestampMode.NONE && <Text variant="text-xs/normal" className={cl("hint")}>00:00 elapsed</Text>}
+                </div>
+            </div>
+            {buttons.length > 0 && <div className={cl("preview-buttons")}>{buttons.map((label, i) => <div key={i} className={cl("preview-button")}>{label}</div>)}</div>}
+        </div>
+    );
+}
+
+function ImagePair({ keyName, label }: { keyName: "imageBig" | "imageSmall"; label: string; }) {
+    const s = settings.use();
+    const url = previewImage(s[keyName]);
+    return (
+        <div className={cl("image-row")}>
+            <div className={cl("thumb")}>{url ? <img src={url} alt="" /> : <span>{label === "Large image" ? "L" : "S"}</span>}</div>
+            <div className={cl("image-fields")}>
+                <PairSetting data={[
+                    { settingsKey: keyName, label: `${label} link`, isValid: isImageKeyValid },
+                    { settingsKey: `${keyName}Tooltip` as SettingsKey, label: "Hover text", isValid: maxLength128 },
+                ]} />
+                <SingleSetting settingsKey={`${keyName}URL` as SettingsKey} label="Opens when clicked (optional)" isValid={isUrlValid} />
+            </div>
+        </div>
+    );
+}
+
 function PairSetting<T>(props: { data: [TextOption<T>, TextOption<T>]; }) {
     const [left, right] = props.data;
 
@@ -153,6 +215,9 @@ export function RPCSettings() {
 
     return (
         <div className={cl("root")}>
+            <ActivityPreview />
+
+            <Section title="Activity" hint="What it says you are doing.">
             <SelectSetting
                 settingsKey="type"
                 label="Activity Type"
@@ -187,18 +252,18 @@ export function RPCSettings() {
             ]} />
 
             <PairSetting data={[
-                { settingsKey: "details", label: "Detail (line 1)", isValid: maxLength128 },
-                { settingsKey: "detailsURL", label: "Detail URL", isValid: isUrlValid },
+                { settingsKey: "details", label: "First line", isValid: maxLength128 },
+                { settingsKey: "detailsURL", label: "First line link", isValid: isUrlValid },
             ]} />
 
             <PairSetting data={[
-                { settingsKey: "state", label: "State (line 2)", isValid: maxLength128 },
-                { settingsKey: "stateURL", label: "State URL", isValid: isUrlValid },
+                { settingsKey: "state", label: "Second line", isValid: maxLength128 },
+                { settingsKey: "stateURL", label: "Second line link", isValid: isUrlValid },
             ]} />
 
             <SingleSetting
                 settingsKey="streamLink"
-                label="Stream Link (Twitch or YouTube, only if activity type is Streaming)"
+                label="Stream link (Twitch channel or YouTube video, Streaming only)"
                 disabled={s.type !== ActivityType.STREAMING}
                 isValid={isStreamLinkValid}
             />
@@ -220,33 +285,27 @@ export function RPCSettings() {
                 },
             ]} />
 
-            <Divider />
+            </Section>
+
+            <Section title="Images" hint="Paste a direct image link, for example from Imgur (right-click the picture, Copy image address). Discord links expire, so they are not accepted. GIFs work.">
+            <ImagePair keyName="imageBig" label="Large image" />
+            <ImagePair keyName="imageSmall" label="Small image" />
+            </Section>
+
+            <Section title="Buttons" hint="Up to two buttons. Other people can click them; you can't click your own.">
 
             <PairSetting data={[
-                { settingsKey: "imageBig", label: "Large Image URL/Key", isValid: isImageKeyValid },
-                { settingsKey: "imageBigTooltip", label: "Large Image Text", isValid: maxLength128 },
-            ]} />
-            <SingleSetting settingsKey="imageBigURL" label="Large Image clickable URL" isValid={isUrlValid} />
-
-            <PairSetting data={[
-                { settingsKey: "imageSmall", label: "Small Image URL/Key", isValid: isImageKeyValid },
-                { settingsKey: "imageSmallTooltip", label: "Small Image Text", isValid: maxLength128 },
-            ]} />
-            <SingleSetting settingsKey="imageSmallURL" label="Small Image clickable URL" isValid={isUrlValid} />
-
-            <Divider />
-
-            <PairSetting data={[
-                { settingsKey: "buttonOneText", label: "Button1 Text", isValid: makeValidator(31) },
-                { settingsKey: "buttonOneURL", label: "Button1 URL", isValid: isUrlValid },
+                { settingsKey: "buttonOneText", label: "Button 1 text", isValid: makeValidator(31) },
+                { settingsKey: "buttonOneURL", label: "Button 1 link", isValid: isUrlValid },
             ]} />
             <PairSetting data={[
-                { settingsKey: "buttonTwoText", label: "Button2 Text", isValid: makeValidator(31) },
-                { settingsKey: "buttonTwoURL", label: "Button2 URL", isValid: isUrlValid },
+                { settingsKey: "buttonTwoText", label: "Button 2 text", isValid: makeValidator(31) },
+                { settingsKey: "buttonTwoURL", label: "Button 2 link", isValid: isUrlValid },
             ]} />
 
-            <Divider />
+            </Section>
 
+            <Section title="Time">
             <SelectSetting
                 settingsKey="timestampMode"
                 label="Timestamp Mode"
@@ -287,6 +346,7 @@ export function RPCSettings() {
                     disabled: s.timestampMode !== TimestampMode.CUSTOM,
                 },
             ]} />
+            </Section>
         </div>
     );
 }

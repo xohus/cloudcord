@@ -1403,8 +1403,8 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         profile: <>
             <Section title="Pictures" description="Shown on your profile, in chat and in member lists for CloudCord users.">
                 <ImageField label="Profile picture" value={data.avatar ?? ""} hint="PNG, JPG, WebP or an animated GIF (up to 8 MB)." onChange={value => set("avatar", value)} />
-                <Switch label="Simulate Nitro" description="Unlocks a banner and profile colors." checked={data.nitro ?? false} onChange={value => set("nitro", value)} />
-                {data.nitro && <ImageField label="Banner" shape="banner" value={data.banner ?? ""} hint="Animated GIF banners work too." onChange={value => set("banner", value)} />}
+                <Switch label="Simulate Nitro" description="Unlocks profile colors. Your banner works with or without it." checked={data.nitro ?? false} onChange={value => set("nitro", value)} />
+                <ImageField label="Banner" shape="banner" value={data.banner ?? ""} hint="Animated GIF banners work too." onChange={value => set("banner", value)} />
             </Section>
             <Section title="About you">
                 <TextField label="Bio" multiline maxLength={190} value={data.bio ?? ""} placeholder="Tell people about yourself" onChange={value => set("bio", value)} />
@@ -1712,7 +1712,7 @@ fakeObfuscatedEmail(real: string | null) {
     },
 
     patchBannerUrl({ displayProfile }: any) {
-        if (!isEnabled || !storedData.nitro || !storedData.banner) return null;
+        if (!isEnabled || !storedData.banner) return null;
         try { return isMe(displayProfile?.userId) ? storedData.banner : null; } catch { return null; }
     },
 
