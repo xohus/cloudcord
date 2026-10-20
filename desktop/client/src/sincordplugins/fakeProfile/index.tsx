@@ -516,6 +516,7 @@ interface CustomProfileData extends ProfileAppearance {
     badgeFlags?: number; createdAt?: string; nitro?: boolean; nitroLevel?: number; nitroSince?: string;
     boostMonths?: number; email?: string; phone?: string; customBadgeIds?: string[];
     hideBadgesWhenSyncOff?: boolean;
+    hideOtherProfiles?: boolean;
     oldName?: string; decorationAsset?: string; decorationSkuId?: string; copiedUserId?: string; signupDate?: string; replaceRealBadges?: boolean; giftLevel?: number;
     syncRevision?: number;
     hiddenBadgeIds?: string[]; badgeOrder?: string[];
@@ -557,7 +558,7 @@ function isPrivateProfile(userId: string): boolean {
     try { return realGetUserProfile?.(userId)?.private === true; } catch { return false; }
 }
 function viewedSharedProfile(userId: string) {
-    if (isRealProfileView(userId) || isPrivateProfile(userId)) return undefined;
+    if (storedData?.hideOtherProfiles || isRealProfileView(userId) || isPrivateProfile(userId)) return undefined;
     const profile = sharedProfiles.get(userId);
     if (profile) sharedViewedAt.set(userId, Date.now());
     return profile;
@@ -1054,12 +1055,25 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
     if (!children || !Array.isArray(children) || !user?.id) return;
     try {
         const me = UserStore.getCurrentUser(); if (!me || user.id === me.id) return;
+        const refresh = () => {
+            cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+            try { (UserProfileStore as any).emitChange?.(); } catch { }
+            try { (UserStore as any).emitChange?.(); } catch { }
+            forceAccountPanelRerender();
+        };
+        const hasCloudCord = sharedProfiles.has(user.id) && !storedData.hideOtherProfiles;
         children.push(<Menu.MenuGroup>
-            <Menu.MenuItem id="cloudcord-profile-view" label={isRealProfileView(user.id) ? "Show CloudCord profile" : "Show real profile"} action={() => {
+            {(hasCloudCord || isRealProfileView(user.id)) && <Menu.MenuItem id="cloudcord-profile-view" label={isRealProfileView(user.id) ? "Return to CloudCord profile" : "Show real profile"} action={() => {
                 setRealProfileView(user.id, !isRealProfileView(user.id));
-                try { (UserProfileStore as any).emitChange?.(); } catch {}
-                try { (UserStore as any).emitChange?.(); } catch {}
-                UserProfileActions.openUserProfileModal({ userId: user.id });
+                refresh();
+                // Let the menu close first so Discord does not stack modals on a closing layer.
+                setTimeout(() => { try { UserProfileActions.openUserProfileModal({ userId: user.id }); } catch { } }, 50);
+            }} />}
+            <Menu.MenuCheckboxItem id="cloudcord-hide-other-profiles" label="Hide other CloudCord profiles" checked={storedData.hideOtherProfiles === true} action={() => {
+                storedData = { ...storedData, hideOtherProfiles: !storedData.hideOtherProfiles };
+                saveDataSync(storedData, isEnabled);
+                DataStore.set(DS_KEY, storedData).catch(() => { });
+                refresh();
             }} />
         </Menu.MenuGroup>);
         const isCopied = isEnabled && storedData.copiedUserId === user.id;
@@ -1431,6 +1445,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         badges: <>
             <Section title="Badges" description="Pick the badges shown on your profile.">
                 <Switch label="Hide CloudCord badges while sync is off" description="When you save on this device only, show no CloudCord badges on your profile." checked={data.hideBadgesWhenSyncOff === true} onChange={value => set("hideBadgesWhenSyncOff", value)} />
+                <Switch label="Hide other CloudCord profiles" description="Show everyone with their real Discord profile. You can also switch this from any user's menu." checked={data.hideOtherProfiles === true} onChange={value => set("hideOtherProfiles", value)} />
                 <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
             </Section>
             <Section title="Badge order" description="Hide badges or change their order.">
