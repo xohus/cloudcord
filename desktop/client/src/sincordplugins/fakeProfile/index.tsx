@@ -1156,10 +1156,73 @@ function rewriteFetchedProfile(action: any) {
     } catch { }
     return false;
 }
+// Discord's badge directory (owned badges, tiers, "Subscriber since" labels) loads
+// separately from the profile. Edit it the same way as it arrives.
+const fetchBadgeDirectory = findByCodeLazy("BADGE_DIRECTORY_FETCH_START");
+// Discord's numeric badge_id for each badge ID it uses in profiles.
+function directoryBadgeId(id: string): number | undefined {
+    if (id === "premium" || id.startsWith("premium_tenure_")) return 1;
+    if (id.startsWith("guild_booster_lvl")) return 12;
+    return ({ staff: 22, partner: 2, certified_moderator: 3, hypesquad: 4, hypesquad_house_1: 5, hypesquad_house_2: 6, hypesquad_house_3: 7,
+        bug_hunter_level_1: 8, bug_hunter_level_2: 9, verified_developer: 10, early_supporter: 11, legacy_username: 13,
+        quest_completed: 14, orb_profile_badge: 16, sp_gifting: 17 } as Record<string, number>)[id];
+}
+// Badges Discord derives from activity, not ones CloudCord lets you pick.
+const DIRECTORY_ONLY_BADGES = new Set([18, 19, 20, 21]);
+function addMonths(date: Date, months: number) { const next = new Date(date); next.setMonth(next.getMonth() + months); return next; }
+function tieredEntry(entry: any, tierIndex: number, since: Date, monthsPerTier: number[], label: string) {
+    const keys: string[] = (entry.tiers || []).map((tier: any) => tier.key);
+    const index = Math.max(0, Math.min(keys.length - 1, tierIndex));
+    const obtained: Record<string, string> = {};
+    keys.slice(0, index + 1).forEach((key, i) => { obtained[key] = addMonths(since, monthsPerTier[i] ?? 0).toISOString(); });
+    return { ...entry, owned: true, hidden: false, obtained_at: since.toISOString(), current_tier: keys[index], next_tier: keys[index + 1] ?? null, tier_obtained_at: obtained, info_label: label };
+}
+function fakeDirectoryEntry(entry: any, userId: string, data: CustomProfileData, owned: Map<number, any>, replace: boolean) {
+    if (!entry || DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return entry;
+    const fake = owned.get(entry.badge_id);
+    if (!fake) return replace ? { ...entry, owned: false, current_tier: undefined, next_tier: undefined, info_label: undefined } : entry;
+    if (entry.badge_id === 1) {
+        const level = Number(data.nitroLevel ?? 0);
+        const since = nitroSinceFor(level, data.nitroSince);
+        return tieredEntry(entry, level, since, NITRO_LEVEL_MONTHS, `Subscriber since ${shortProfileDate(since)}`);
+    }
+    if (entry.badge_id === 12) {
+        const level = Number(data.boostMonths ?? 0);
+        const since = monthsAgo(BOOST_LEVEL_MONTHS[level] ?? 1);
+        return tieredEntry(entry, level, since, [0, ...BOOST_LEVEL_MONTHS.map((months, i) => (BOOST_LEVEL_MONTHS[i + 1] ?? months) - BOOST_LEVEL_MONTHS[0])].slice(0, 9), `Boosting since ${shortProfileDate(since)}`);
+    }
+    if (entry.badge_id === 17) {
+        const level = Number(data.giftLevel ?? 0);
+        return tieredEntry(entry, level, monthsAgo(1), [], fake.description);
+    }
+    return { ...entry, owned: true, hidden: false };
+}
+function rewriteBadgeDirectory(action: any) {
+    if (!profileRuntimeActive) return false;
+    const type = action?.type;
+    if (type !== "BADGE_DIRECTORY_FETCH_SUCCESS" && type !== "BADGE_FETCH_SUCCESS" && type !== "BADGE_SUMMARY_FETCH_SUCCESS") return false;
+    const userId = action.userId;
+    const data = userId ? profileDataFor(userId) : undefined;
+    if (!data) return false;
+    try {
+        const owned = new Map<number, any>();
+        for (const badge of buildProfileBadges(userId)) { const id = directoryBadgeId(badge.id); if (id != null) owned.set(id, badge); }
+        const replace = shouldReplaceBadges(data);
+        if (Array.isArray(action.badges)) action.badges = action.badges.map((entry: any) => fakeDirectoryEntry(entry, userId, data, owned, replace));
+        if (action.badge) action.badge = fakeDirectoryEntry(action.badge, userId, data, owned, replace);
+    } catch { }
+    return false;
+}
+function reloadBadgeDirectory(userId: string | null | undefined) {
+    if (!userId) return;
+    try { void Promise.resolve(fetchBadgeDirectory(userId)).catch(() => { }); } catch { }
+}
+
 // Ask Discord to load a profile again so the edited data replaces what it cached.
 function reloadDiscordProfile(userId: string | null | undefined) {
     if (!userId) return;
     try { void Promise.resolve(fetchUserProfile(userId, { withMutualGuilds: false, withMutualFriends: false })).catch(() => { }); } catch { }
+    reloadBadgeDirectory(userId);
 }
 
 function decorateSharedProfile(profile: any, data: CustomProfileData, userId?: string) {
@@ -1852,17 +1915,6 @@ export default definePlugin({
 
     patches: [
         {
-            // Discord's badge-management card looks badges up in the account's real
-            // badge catalog, so CloudCord profiles showed the real Nitro tier. Use the
-            // regular badge tooltip (which shows the badge's own tier and date) for them.
-            find: "legacyBadgeId:",
-            noWarn: true,
-            replacement: {
-                match: /if\((\i)\)(return\(0,\i\.jsx\)\(\i,\{shouldShow:!\i,legacyBadgeId:\i\.id,userId:(\i)\?\.userId)/,
-                replace: "if($1&&!$self.usesCloudCordBadges($3?.userId))$2"
-            }
-        },
-        {
             // Resolve the device-only fake gift link without asking Discord.
             find: "GIFT_CODE_RESOLVE(e),query:{with_application",
             noWarn: true,
@@ -1886,11 +1938,6 @@ export default definePlugin({
         { find: "AccountPanel", replacement: { match: /user:([a-zA-Z0-9_]+),/, replace: "user:$self.fakeCurrentUser($1)," } },
         { find: "UserAccountSettings", replacement: [{ match: /user:([a-zA-Z0-9_]+),/, replace: "user:$self.fakeCurrentUser($1)," }, { match: /email:([^,}]+),/, replace: "email:$self.fakeObfuscatedEmail($1)," }] },
     ],
-
-    usesCloudCordBadges(userId?: string) {
-        if (!userId) return false;
-        return isMe(userId) ? isEnabled : !!viewedSharedProfile(userId);
-    },
 
     getBadgeLayout(userId: string) {
         if (isMe(userId)) return isEnabled ? storedData : null;
@@ -2070,6 +2117,7 @@ fakeObfuscatedEmail(real: string | null) {
         addContextMenuPatch(["user-profile-actions", "user-profile-overflow-menu"], profileOverflowPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
         (FluxDispatcher as any).addInterceptor?.(rewriteFetchedProfile);
+        (FluxDispatcher as any).addInterceptor?.(rewriteBadgeDirectory);
         reloadDiscordProfile(activeUserId());
         startExtras();
         FluxDispatcher.subscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange);
@@ -2136,7 +2184,7 @@ fakeObfuscatedEmail(real: string | null) {
 
     stop() {
         profileRuntimeActive = false;
-        try { const d = FluxDispatcher as any; if (Array.isArray(d._interceptors)) d._interceptors = d._interceptors.filter((fn: any) => fn !== rewriteFetchedProfile); } catch { }
+        try { const d = FluxDispatcher as any; if (Array.isArray(d._interceptors)) d._interceptors = d._interceptors.filter((fn: any) => fn !== rewriteFetchedProfile && fn !== rewriteBadgeDirectory); } catch { }
         reloadDiscordProfile(activeUserId());
         profileRuntimeGeneration++;
         otherUserCache = new WeakMap();
