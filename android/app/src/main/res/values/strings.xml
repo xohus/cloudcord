@@ -1,5 +1,11 @@
 <resources xmlns:tools="http://schemas.android.com/tools" tools:ignore="MissingTranslation">
     <string name="app_name">CloudCord Manager</string>
+    <string name="cloudcord_slogan">Your Discord, your way.</string>
+    <string name="cloudcord_about">The Android installer for CloudCord, an unofficial Discord modification by Xohus. Install and update CloudCord, customize your profile, and manage your Android installation. Not affiliated with Discord.</string>
+    <string name="cloudcord_owner">Creator of CloudCord</string>
+    <string name="cloudcord_upstream_credits">Upstream contributors</string>
+    <string name="cloudcord_upstream_role">Original manager / loader contributor</string>
+    <string name="cloudcord_website">Website &amp; support</string>
     <string name="msg_launch_failed">Could not open the installed CloudCord app. Check whether Android completed installation. You can also try opening it from your app drawer.</string>
 
     <string name="cd_library_author">Author: %1$s</string>
@@ -102,7 +108,7 @@
     <string name="title_installer">Installer</string>
     <string name="title_home">Home</string>
     <string name="home_hero_title">CloudCord</string>
-    <string name="home_hero_subtitle">Install CloudCord for Discord with the bundled Android module and CloudCord runtime.</string>
+    <string name="home_hero_subtitle">Your Discord, your way. Install and update CloudCord on Android.</string>
     <string name="home_status_title">Discord target</string>
     <string name="home_actions_title">Quick actions</string>
     <string name="home_updates_title">Runtime updates</string>

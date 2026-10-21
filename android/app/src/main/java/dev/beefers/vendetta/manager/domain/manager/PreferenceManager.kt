@@ -53,6 +53,9 @@ class PreferenceManager(context: Context) :
     var allowDowngrade by booleanPreference("allow_downgrade", false)
 
     init {
+        // Rename upstream defaults only; preserve user names, package identity,
+        // signing keys and installed-app update compatibility.
+        if (appName in setOf("Vendetta", "Bunny", "Revenge", "Pupu")) appName = "CloudCord"
         // Will be removed next update
         if(mirror == Mirror.VENDETTA_ROCKS) mirror = Mirror.VENDETTA_ROCKS_ALT
     }

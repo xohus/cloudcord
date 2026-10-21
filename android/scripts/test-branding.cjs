@@ -1,0 +1,32 @@
+const fs = require('node:fs');
+const path = require('node:path');
+const assert = require('node:assert/strict');
+const root = path.resolve(__dirname, '..');
+const read = name => fs.readFileSync(path.join(root, name), 'utf8');
+const java = 'app/src/main/java/dev/beefers/vendetta/manager/';
+const res = 'app/src/main/res/';
+for (const dir of fs.readdirSync(path.join(root, res)).filter(dir => dir.startsWith('values'))) {
+    const file = path.join(root, res, dir, 'strings.xml');
+    if (!fs.existsSync(file)) continue;
+    const name = fs.readFileSync(file, 'utf8').match(/<string name="app_name">([^<]*)<\/string>/);
+    if (name) assert.equal(name[1], 'CloudCord Manager', `consistent application name in ${dir}`);
+}
+assert.deepEqual(fs.readFileSync(path.join(root, res, 'drawable/cloudcord_mark_source.png')), fs.readFileSync(path.join(root, '../cloudcord-favicon.png')), 'reuse the canonical CloudCord logo, not a replacement illustration');
+assert.match(read('app/src/main/AndroidManifest.xml'), /android:icon="@drawable\/ic_cloudcord_launcher"/);
+assert.match(read(res + 'values/themes.xml'), /windowSplashScreenAnimatedIcon">@drawable\/cloudcord_launcher_foreground/);
+assert.match(read(res + 'drawable/cloudcord_brand_mark.xml'), /android:tint="#FFFFFFFF"/);
+assert.match(read(res + 'drawable-v26/ic_cloudcord_launcher.xml'), /monochrome android:drawable="@drawable\/cloudcord_launcher_foreground"/);
+const home = read(java + 'ui/screen/home/HomeScreen.kt');
+assert.match(home, /customIcon = true/);
+assert.match(home, /title = \{ Text\(stringResource\(R.string.app_name\)\)/);
+assert.match(read(java + 'ui/widgets/AppIcon.kt'), /if \(customIcon\) R.drawable.cloudcord_mark_source/);
+const about = read(java + 'ui/screen/about/AboutScreen.kt');
+assert.match(about, /UserEntry\("Xohus", stringResource\(R.string.cloudcord_owner\)/);
+assert.match(about, /R.string.cloudcord_upstream_credits/);
+assert.doesNotMatch(about, /Creator\\nCloudCord|discord.gg\/pkewGMtmYf/);
+assert.match(about, /https:\/\/getcloudcord.com/);
+const installer = read(java + 'installer/step/patching/ReplaceIconStep.kt');
+for (const text of ['R.drawable.cloudcord_mark_source', 'foregroundIcon = foregroundIcon', 'monochromeIcon = foregroundIcon', 'it.writeEntry(markPath, markBytes)', 'Rect(72, 72, 360, 360)']) assert(installer.includes(text), text);
+assert.match(read('app/build.gradle.kts'), /applicationId = "gg.xohus.cloudcord.manager"/);
+assert.match(read(java + 'domain/manager/PreferenceManager.kt'), /stringPreference\("package_name", "cocobo1.pupu.app"\)/, 'branding must not silently replace installed app identity');
+console.log('PASS Android branding source guards: canonical mark, launcher/splash/home, localized names, honest credits, installed icon layers and identity preservation (not device verification)');

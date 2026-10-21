@@ -40,6 +40,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import cafe.adriel.voyager.core.screen.Screen
 import cafe.adriel.voyager.navigator.LocalNavigator
@@ -67,7 +68,7 @@ class AboutScreen : Screen {
         val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
         val ctx = LocalContext.current
         val bitmap = remember {
-            ctx.getBitmap(R.drawable.ic_launcher, 60).asImageBitmap()
+            ctx.getBitmap(R.drawable.ic_cloudcord_launcher, 60).asImageBitmap()
         }
         var tapCount by remember {
             mutableIntStateOf(0)
@@ -105,8 +106,16 @@ class AboutScreen : Screen {
                         style = MaterialTheme.typography.titleLarge
                     )
 
+                    Text(stringResource(R.string.cloudcord_slogan), style = MaterialTheme.typography.titleMedium)
                     Text(
-                        text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+                        stringResource(R.string.cloudcord_about),
+                        style = MaterialTheme.typography.bodyMedium,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(horizontal = 24.dp)
+                    )
+
+                    Text(
+                        text = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE}) · ${BuildConfig.GIT_COMMIT.take(7)}",
                         style = MaterialTheme.typography.labelLarge,
                         color = LocalContentColor.current.copy(alpha = 0.5f),
                         modifier = Modifier.clickable(
@@ -137,9 +146,9 @@ class AboutScreen : Screen {
                         )
 
                         LinkItem(
-                            icon = R.drawable.ic_discord,
-                            label = R.string.label_discord,
-                            link = "https://discord.gg/pkewGMtmYf"
+                            icon = R.drawable.ic_website,
+                            label = R.string.cloudcord_website,
+                            link = "https://getcloudcord.com"
                         )
                     }
                 }
@@ -151,13 +160,11 @@ class AboutScreen : Screen {
                         .fillMaxWidth()
                         .padding(top = 16.dp, bottom = 20.dp)
                 ) {
-                    UserEntry("Maisy", "Creator\nCloudCord", "maisymoe")
-                    UserEntry("cocobo1", "Creator\nCloudCord", "C0C0B01", isLarge = true)
-                    UserEntry("Pylix", "Creator\nCloudCord", "pylixonly")
+                    UserEntry("Xohus", stringResource(R.string.cloudcord_owner), "xohus", isLarge = true)
                 }
 
                 Text(
-                    text = stringResource(R.string.label_team),
+                    text = stringResource(R.string.cloudcord_upstream_credits),
                     style = MaterialTheme.typography.labelLarge,
                     modifier = Modifier.padding(16.dp),
                     color = MaterialTheme.colorScheme.primary
@@ -166,6 +173,9 @@ class AboutScreen : Screen {
                     modifier = Modifier.padding(horizontal = 16.dp)
                 ) {
                     ElevatedCard {
+                        ListItem(text = "Maisy", subtext = stringResource(R.string.cloudcord_upstream_role), imageUrl = "https://github.com/maisymoe.png", onClick = { uriHandler.openUri("https://github.com/maisymoe") })
+                        ListItem(text = "cocobo1", subtext = stringResource(R.string.cloudcord_upstream_role), imageUrl = "https://github.com/C0C0B01.png", onClick = { uriHandler.openUri("https://github.com/C0C0B01") })
+                        ListItem(text = "Pylix", subtext = stringResource(R.string.cloudcord_upstream_role), imageUrl = "https://github.com/pylixonly.png", onClick = { uriHandler.openUri("https://github.com/pylixonly") })
                         Constants.TEAM_MEMBERS.forEachIndexed { i, member ->
                             ListItem(
                                 text = member.name,

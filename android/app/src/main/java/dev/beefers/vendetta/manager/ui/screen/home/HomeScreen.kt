@@ -148,7 +148,7 @@ class HomeScreen : Screen {
     @OptIn(ExperimentalMaterial3Api::class)
     private fun TitleBar() {
         TopAppBar(
-            title = { Text(stringResource(R.string.title_home)) },
+            title = { Text(stringResource(R.string.app_name)) },
             actions = { Actions() }
         )
     }
@@ -176,7 +176,7 @@ class HomeScreen : Screen {
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     AppIcon(
-                        customIcon = prefs.patchIcon,
+                        customIcon = true,
                         releaseChannel = prefs.channel,
                         modifier = Modifier.size(64.dp)
                     )
