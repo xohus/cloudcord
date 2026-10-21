@@ -143,6 +143,20 @@ const host = testContext({ ...runtime, storedData: { bio: 'local', syncRevision:
     cachedFakeUser: null, cachedOriginalUser: null, _dataVersion: 0, forceAccountPanelRerender() {}
 });
 vm.runInContext(compile(pull), host);
+const nativeSave = testContext({ storedData: { syncRevision: Date.now() + 600000 }, isEnabled: true,
+    Date, activeUserId: () => 'owner', allAccountsData: {}, allAccountsEnabled: {},
+    saveDataSync() {}, saveAllDataSync() {}, DataStore: { set: async () => {} },
+    DS_KEY: 'profile', DS_ALL_DATA: 'accounts', DS_ALL_ENABLED: 'enabled',
+    cachedFakeUser: null, cachedOriginalUser: null, _dataVersion: 0, forceAccountPanelRerender() {} });
+vm.runInContext(compile(block(desktop, 'function saveOwnData(', 'function resetProfileAccount(')), nativeSave);
+const previousRevision = nativeSave.storedData.syncRevision;
+const imageEdit = { avatar: 'https://example.test/avatar.png' };
+nativeSave.saveOwnData(imageEdit);
+assert(nativeSave.storedData.syncRevision > previousRevision, 'native-editor saves remain newer than the previous server revision, even with clock skew');
+assert.equal(imageEdit.syncRevision, undefined, 'revision stamping does not mutate the editor input');
+assert.equal(nativeSave.allAccountsData.owner, nativeSave.storedData);
+nativeSave.saveOwnData({ bio: 'private', localOnly: true });
+assert.equal(nativeSave.storedData.syncRevision, undefined, 'device-only saves need no public sync revision');
 (async () => {
     let modalError = '', modalWrites = 0;
     const modal = testContext({ myId: 'old-account', activeUserId: () => 'new-account',

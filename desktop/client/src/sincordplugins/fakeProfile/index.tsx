@@ -829,6 +829,9 @@ async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
 
 // Save edits made outside the modal (menus, Discord's own editor) for the active account.
 function saveOwnData(next: CustomProfileData, enabled = isEnabled) {
+    // Native image edits need the same conflict protection as modal saves,
+    // including when the server is temporarily unavailable.
+    if (enabled && !next.localOnly) next = { ...next, syncRevision: Math.max(Date.now(), Number(storedData.syncRevision || 0) + 1) };
     storedData = next; isEnabled = enabled;
     const myId = activeUserId();
     if (myId) { allAccountsData[myId] = next; allAccountsEnabled[myId] = enabled; }
@@ -1597,7 +1600,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             if (socialErrors.length) throw new Error(socialErrors[0]);
             if (data.serverTag && !appearance.serverTag) throw new Error("Enter a 1–4 character tag, a valid server ID, and a valid badge hash or leave the badge empty.");
             if (data.displayNameStyles && !appearance.displayNameStyles) throw new Error("Choose valid username styles and colors.");
-            const savedData = { ...data, ...appearance, localOnly: !useEverywhere, ...(useEverywhere ? { syncRevision: Date.now() } : {}) };
+            const savedData = { ...data, ...appearance, localOnly: !useEverywhere, ...(useEverywhere ? { syncRevision: Math.max(Date.now(), Number(allAccountsData[selectedAccountId]?.syncRevision || 0) + 1) } : {}) };
             if (!useEverywhere && publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
             allAccountsData[selectedAccountId] = savedData; allAccountsEnabled[selectedAccountId] = true;
             if (selectedAccountId === myId) {

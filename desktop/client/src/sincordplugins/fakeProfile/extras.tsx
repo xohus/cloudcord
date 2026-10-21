@@ -102,14 +102,15 @@ function fakeGiftBody(code: string) {
 }
 
 const giftPath = (url: unknown) => typeof url === "string" ? url.match(/\/entitlements\/gift-codes\/([A-Za-z0-9-]+)(\/redeem)?/) : null;
-let restOriginals: { get: any; post: any; } | null = null;
+let restOriginals: { post: any; wrappedPost: any; } | null = null;
 // Only the code made on this device resolves as a gift, and only here. Everyone
 // else (and this device after you make a new link) gets Discord's "invalid gift".
 function installGiftHook() {
     if (restOriginals || !RestAPI) return;
-    restOriginals = { get: RestAPI.get, post: RestAPI.post };
-    const { post } = restOriginals;
-    (RestAPI as any).post = function (req: any, ...rest: any[]) {
+    const post: any = RestAPI.post;
+    const owned = { post, wrappedPost: null as any };
+    const wrappedPost = function (this: any, req: any, ...rest: any[]) {
+        if (restOriginals !== owned) return post.call(this, req, ...rest);
         const match = giftPath(req?.url);
         if (match?.[2] && extras.giftCode && match[1] === extras.giftCode) {
             showToast("This is your fake gift. It only looks real on your device.", Toasts.Type.MESSAGE);
@@ -117,10 +118,14 @@ function installGiftHook() {
         }
         return post.call(this, req, ...rest);
     };
+    owned.wrappedPost = wrappedPost;
+    restOriginals = owned;
+    (RestAPI as any).post = wrappedPost;
 }
 function uninstallGiftHook() {
     if (!restOriginals) return;
-    (RestAPI as any).get = restOriginals.get; (RestAPI as any).post = restOriginals.post;
+    // We never changed GET, and another plugin may have wrapped POST since us.
+    if (RestAPI.post === restOriginals.wrappedPost) (RestAPI as any).post = restOriginals.post;
     restOriginals = null;
 }
 
