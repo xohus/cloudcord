@@ -896,7 +896,7 @@ function installProfileStoreHooks(plugin: any) {
                     if (isMe(id)) return isEnabled && profile ? plugin.hookUserProfile(profile) : profile;
                     requestSharedProfile(id);
                     const shared = viewedSharedProfile(id);
-                    return shared && profile ? decorateSharedProfile(profile, shared) : profile;
+                    return shared && profile ? decorateSharedProfile(profile, shared, id) : profile;
                 } catch { return profile; }
             });
             UPS._cp_hook = owner;
@@ -1025,7 +1025,110 @@ function decorateSharedIdentity(source: any, data: CustomProfileData) {
     return clone;
 }
 
-function decorateSharedProfile(profile: any, data: CustomProfileData) {
+// Every badge CloudCord shows for a user (fake Discord badges plus uploaded ones),
+// in Discord's order and with Discord's own badge IDs.
+function buildProfileBadges(userId: string): ProfileBadge[] {
+        void refreshUploadedBadges();
+        const published = uploadedUserBadges(userId);
+        const userIsMe = isMe(userId);
+        let profileData: CustomProfileData | undefined;
+        if (userIsMe) {
+            if (!isEnabled) return published;
+            // New feature: no CloudCord badges while sync is switched off, if chosen.
+            if (storedData.localOnly && storedData.hideBadgesWhenSyncOff) return [];
+            profileData = storedData;
+        } else {
+            // Keep checking the shared profile after its short cache window. Previously
+            // desktop stopped requesting as soon as one response was cached, so later
+            // changes made on mobile could never appear until Discord restarted.
+            requestSharedProfile(userId);
+            profileData = viewedSharedProfile(userId);
+            if (!profileData) return published;
+        }
+
+        // Suppress real Discord badges by zeroing publicFlags on the live user object
+        try {
+            const WP = (Vencord as any).Webpack;
+            const US = WP?.findByStoreName?.("UserStore") || WP?.findByProps?.("getCurrentUser", "getUser");
+            const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
+            if (liveUser && shouldReplaceBadges(profileData)) {
+                Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
+                Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
+            }
+        } catch { }
+
+        // Let Discord's profile badge renderer determine the icon size.
+        // Forcing 26px made CloudCord badges visibly larger than native ones.
+        const style = { objectFit: "contain" as const };
+        const nl = profileData.nitroLevel ?? -1;
+        const bm = profileData.boostMonths ?? -1;
+        const gl = profileData.giftLevel ?? -1;
+        const hasNitroFake = profileData.nitro === true && nl >= 0 && nl < NITRO_LEVELS.length;
+        const hasBoostFake = bm >= 0 && bm < BOOST_ICONS.length;
+        const f = profileData.badgeFlags ?? 0; const badges: ProfileBadge[] = [];
+        // Keep Discord's badge sequence while retaining CloudCord's full Nitro
+        // milestone hover card on Windows.
+        if (f & FLAG.STAFF) badges.push({ id: "sp_staff", description: "Discord Staff", iconSrc: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png", position: 0, props: { style } });
+        if (f & FLAG.PARTNER) badges.push({ id: "sp_partner", description: "Partnered Server Owner", iconSrc: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png", position: 0, props: { style } });
+        if (f & FLAG.HYPESQUAD) badges.push({ id: "sp_hypesquad", description: "HypeSquad Events", iconSrc: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png", position: 0, props: { style } });
+        if (f & FLAG.BUG_HUNTER_1) badges.push({ id: "sp_bh1", description: "Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png", position: 0, props: { style } });
+        if (f & FLAG.BRAVERY) badges.push({ id: "sp_bravery", description: "HypeSquad Bravery", iconSrc: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png", position: 0, props: { style } });
+        if (f & FLAG.BRILLIANCE) badges.push({ id: "sp_brilliance", description: "HypeSquad Brilliance", iconSrc: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png", position: 0, props: { style } });
+        if (f & FLAG.BALANCE) badges.push({ id: "sp_balance", description: "HypeSquad Balance", iconSrc: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png", position: 0, props: { style } });
+        if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", position: 0, props: { style } });
+        if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Golden Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
+        if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Early Verified Bot Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
+        if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
+        if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
+        if (hasNitroFake) badges.push({
+            id: nativeNitroBadgeId(nl),
+            key: NITRO_LEVELS[nl].name,
+            description: `Subscriber since ${shortProfileDate(nitroSinceFor(nl, profileData.nitroSince))}`,
+            iconSrc: NITRO_LEVELS[nl].icon,
+            link: "https://discord.com/settings/premium",
+            props: { style },
+            position: 0
+        });
+        if (gl >= 0 && gl < GIFT_LEVELS.length) {
+            const gift = GIFT_LEVELS[gl];
+            badges.push({ id: "sp_gifting", description: gift.name, iconSrc: gift.icon, position: 0, props: { style } });
+        }
+        if (hasBoostFake) {
+            const boostSince = monthsAgo(BOOST_LEVEL_MONTHS[bm] ?? 1);
+            badges.push({ id: "sp_boost", description: `Server boosting since ${shortProfileDate(boostSince)}`, iconSrc: BOOST_ICONS[bm], position: 0, props: { style } });
+        }
+        if (profileData.customBadgeIds?.includes("oldname")) { const desc = profileData.oldName ? `Originally Known As: ${profileData.oldName}` : "Originally Known As"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
+        if (profileData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a Quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
+        if (profileData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs — Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
+        for (const badge of EXTRA_BADGES) {
+            if (profileData.customBadgeIds?.includes(badge.id)) badges.push({ id: `sp_${badge.id}`, description: badge.label, iconSrc: badge.icon, position: 0, props: { style } });
+        }
+        return [...badges, ...published].sort((a, b) => {
+            const normalizedA = a.id.startsWith("premium_tenure_") || a.id === "premium" ? "sp_nitro" : a.id;
+            const normalizedB = b.id.startsWith("premium_tenure_") || b.id === "premium" ? "sp_nitro" : b.id;
+            const ai = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedA);
+            const bi = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedB);
+            return (ai < 0 ? Number.MAX_SAFE_INTEGER : ai) - (bi < 0 ? Number.MAX_SAFE_INTEGER : bi);
+        }).map(badge => nativeBadge(badge, bm));
+}
+
+const badgeIconHash = (url?: string) => url?.match(/\/badge-icons\/([a-f0-9]{32})\.png/)?.[1];
+// Shape Discord uses for badges in profile.badges, so it renders them as real ones.
+function toDiscordBadge(badge: ProfileBadge): any {
+    const hash = badgeIconHash(badge.iconSrc);
+    return { id: badge.id, description: badge.description, icon: hash ?? badge.iconSrc, ...(hash ? {} : { iconSrc: badge.iconSrc }), ...(badge.link ? { link: badge.link } : {}) };
+}
+// The badge list Discord should show: fake badges replace real ones of the same kind,
+// or all real ones when "Hide my real badges" is on.
+function discordProfileBadges(userId: string, data: CustomProfileData, real: any[] | undefined): any[] {
+    const published = new Set(uploadedUserBadges(userId).map(badge => badge.id));
+    const fake = buildProfileBadges(userId).filter(badge => !published.has(badge.id)).map(toDiscordBadge);
+    if (shouldReplaceBadges(data) || !Array.isArray(real)) return fake;
+    const taken = new Set(fake.map(badgeLayoutKey));
+    return [...real.filter(badge => !taken.has(badgeLayoutKey(badge))), ...fake];
+}
+
+function decorateSharedProfile(profile: any, data: CustomProfileData, userId?: string) {
     if (!profile || !data) return profile;
     const merged: any = nativeSocialProfile(profile, data);
     const username = data.username || profile.username || profile.user?.username;
@@ -1057,8 +1160,9 @@ function decorateSharedProfile(profile: any, data: CustomProfileData) {
     if (data.signupDate) { merged.joinedAt = new Date(data.signupDate + "T12:00:00Z"); merged.memberSince = merged.joinedAt; }
     if (data.accentColor != null) merged.accentColor = data.accentColor;
     if (data.accentColor != null) merged.themeColors = [data.accentColor, data.accentColor2 ?? data.accentColor];
-    if (shouldReplaceBadges(data)) merged.badges = [];
     applyNativeProfileMetadata(merged, data);
+    const id = userId ?? profile.userId ?? profile.user?.id;
+    if (id) try { merged.badges = discordProfileBadges(id, data, profile.badges); } catch { }
     return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
 }
 
@@ -1871,7 +1975,8 @@ export default definePlugin({
             if (storedData.decorationAsset) { merged.avatarDecoration = nativeDecoration(storedData); merged.avatarDecorationData = merged.avatarDecoration; }
             if (storedData.nitro && storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
             applyNativeProfileMetadata(merged, storedData);
-            merged.badges = [];
+            const myId = profile.userId ?? profile.user?.id ?? activeUserId();
+            if (myId) try { merged.badges = storedData.localOnly && storedData.hideBadgesWhenSyncOff ? profile.badges : discordProfileBadges(myId, storedData, profile.badges); } catch { }
             return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
         } catch { return profile; }
     },
@@ -1907,89 +2012,11 @@ fakeObfuscatedEmail(real: string | null) {
     _origExtractTimestamp: null as any,
 
     userProfileBadges: [{
+        // Fake Discord badges now live in profile.badges (see discordProfileBadges);
+        // only CloudCord's own uploaded badges still come through the badge API.
         getBadges({ userId }: { userId: string; guildId: string; }) {
             void refreshUploadedBadges();
-            const published = uploadedUserBadges(userId);
-            const userIsMe = isMe(userId);
-            let profileData: CustomProfileData | undefined;
-            if (userIsMe) {
-                if (!isEnabled) return published;
-                // New feature: no CloudCord badges while sync is switched off, if chosen.
-                if (storedData.localOnly && storedData.hideBadgesWhenSyncOff) return [];
-                profileData = storedData;
-            } else {
-                // Keep checking the shared profile after its short cache window. Previously
-                // desktop stopped requesting as soon as one response was cached, so later
-                // changes made on mobile could never appear until Discord restarted.
-                requestSharedProfile(userId);
-                profileData = viewedSharedProfile(userId);
-                if (!profileData) return published;
-            }
-
-            // Suppress real Discord badges by zeroing publicFlags on the live user object
-            try {
-                const WP = (Vencord as any).Webpack;
-                const US = WP?.findByStoreName?.("UserStore") || WP?.findByProps?.("getCurrentUser", "getUser");
-                const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
-                if (liveUser && shouldReplaceBadges(profileData)) {
-                    Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
-                    Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
-                }
-            } catch { }
-
-            // Let Discord's profile badge renderer determine the icon size.
-            // Forcing 26px made CloudCord badges visibly larger than native ones.
-            const style = { objectFit: "contain" as const };
-            const nl = profileData.nitroLevel ?? -1;
-            const bm = profileData.boostMonths ?? -1;
-            const gl = profileData.giftLevel ?? -1;
-            const hasNitroFake = profileData.nitro === true && nl >= 0 && nl < NITRO_LEVELS.length;
-            const hasBoostFake = bm >= 0 && bm < BOOST_ICONS.length;
-            const f = profileData.badgeFlags ?? 0; const badges: ProfileBadge[] = [];
-            // Keep Discord's badge sequence while retaining CloudCord's full Nitro
-            // milestone hover card on Windows.
-            if (f & FLAG.STAFF) badges.push({ id: "sp_staff", description: "Discord Staff", iconSrc: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png", position: 0, props: { style } });
-            if (f & FLAG.PARTNER) badges.push({ id: "sp_partner", description: "Partnered Server Owner", iconSrc: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png", position: 0, props: { style } });
-            if (f & FLAG.HYPESQUAD) badges.push({ id: "sp_hypesquad", description: "HypeSquad Events", iconSrc: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png", position: 0, props: { style } });
-            if (f & FLAG.BUG_HUNTER_1) badges.push({ id: "sp_bh1", description: "Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png", position: 0, props: { style } });
-            if (f & FLAG.BRAVERY) badges.push({ id: "sp_bravery", description: "HypeSquad Bravery", iconSrc: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png", position: 0, props: { style } });
-            if (f & FLAG.BRILLIANCE) badges.push({ id: "sp_brilliance", description: "HypeSquad Brilliance", iconSrc: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png", position: 0, props: { style } });
-            if (f & FLAG.BALANCE) badges.push({ id: "sp_balance", description: "HypeSquad Balance", iconSrc: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png", position: 0, props: { style } });
-            if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", position: 0, props: { style } });
-            if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Golden Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
-            if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Early Verified Bot Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
-            if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
-            if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
-            if (hasNitroFake) badges.push({
-                id: nativeNitroBadgeId(nl),
-                key: NITRO_LEVELS[nl].name,
-                description: `Subscriber since ${shortProfileDate(nitroSinceFor(nl, profileData.nitroSince))}`,
-                iconSrc: NITRO_LEVELS[nl].icon,
-                link: "https://discord.com/settings/premium",
-                props: { style },
-                position: 0
-            });
-            if (gl >= 0 && gl < GIFT_LEVELS.length) {
-                const gift = GIFT_LEVELS[gl];
-                badges.push({ id: "sp_gifting", description: gift.name, iconSrc: gift.icon, position: 0, props: { style } });
-            }
-            if (hasBoostFake) {
-                const boostSince = monthsAgo(BOOST_LEVEL_MONTHS[bm] ?? 1);
-                badges.push({ id: "sp_boost", description: `Server boosting since ${shortProfileDate(boostSince)}`, iconSrc: BOOST_ICONS[bm], position: 0, props: { style } });
-            }
-            if (profileData.customBadgeIds?.includes("oldname")) { const desc = profileData.oldName ? `Originally Known As: ${profileData.oldName}` : "Originally Known As"; badges.push({ id: "sp_oldname", description: desc, iconSrc: OLD_NAME_BADGE_ICON, position: 0, props: { style } }); }
-            if (profileData.customBadgeIds?.includes("quest")) badges.push({ id: "sp_quest", description: "Completed a Quest", iconSrc: "https://cdn.discordapp.com/badge-icons/7d9ae358c8c5e118768335dbe68b4fb8.png", position: 0, props: { style } });
-            if (profileData.customBadgeIds?.includes("orbs")) badges.push({ id: "sp_orbs", description: "Orbs — Apprentice", iconSrc: "https://cdn.discordapp.com/badge-icons/83d8a1eb09a8d64e59233eec5d4d5c2d.png", position: 0, props: { style } });
-            for (const badge of EXTRA_BADGES) {
-                if (profileData.customBadgeIds?.includes(badge.id)) badges.push({ id: `sp_${badge.id}`, description: badge.label, iconSrc: badge.icon, position: 0, props: { style } });
-            }
-            return [...badges, ...published].sort((a, b) => {
-                const normalizedA = a.id.startsWith("premium_tenure_") || a.id === "premium" ? "sp_nitro" : a.id;
-                const normalizedB = b.id.startsWith("premium_tenure_") || b.id === "premium" ? "sp_nitro" : b.id;
-                const ai = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedA);
-                const bi = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedB);
-                return (ai < 0 ? Number.MAX_SAFE_INTEGER : ai) - (bi < 0 ? Number.MAX_SAFE_INTEGER : bi);
-            }).map(badge => nativeBadge(badge, bm));
+            return uploadedUserBadges(userId);
         }
     } as ProfileBadge] as ProfileBadge[],
 
