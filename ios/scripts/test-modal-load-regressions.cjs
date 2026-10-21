@@ -25,11 +25,11 @@ function timers() {
         assert.equal(clock.tasks.size, 0, 'successful loads clear their timeout');
     }
     const desktop = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/cosmetics.tsx', 'utf8');
-    const clock = timers(); let mode = 'hang', goodListeners = 0;
+    const clock = timers(); let mode = 'hang', goodListeners = 0, nativeStore = null, requests = [];
     const expected = { decorations: [{ skuId: 'one' }], effects: [], nameplates: [], frames: [] };
     const catalog = vm.createContext({ ...clock, Date,
-        RestAPI: { get: () => mode === 'hang' ? new Promise(() => {}) : Promise.resolve({ body: {} }) },
-        findStore: () => null, findByCode: () => null, parseCatalog: () => expected });
+        RestAPI: { get: ({ url }) => { requests.push(url); return mode === 'hang' ? new Promise(() => {}) : Promise.resolve({ body: {} }); } },
+        findStore: () => nativeStore, findByCode: () => null, parseCatalog: () => expected });
     vm.runInContext(compile(fs.readFileSync('desktop/client/src/utils/asyncTimeout.ts', 'utf8').replace('export ', '')
         + desktop.slice(desktop.indexOf('let catalog:'), desktop.indexOf('/** Full effect config')).replace('export ', '')
         + 'this.addListener = callback => listeners.add(callback);'), catalog);
@@ -42,6 +42,11 @@ function timers() {
     catalog.addListener(() => goodListeners++);
     assert.equal(await catalog.loadCatalog(true), expected, 'a timed-out catalog load releases the request and supports retry');
     assert.equal(goodListeners, 1, 'one stale listener cannot break catalog publication');
+    assert.equal(clock.tasks.size, 0);
+    nativeStore = { products: { size: 1, values() { throw Error('native store not ready'); } } };
+    requests = [];
+    assert.equal(await catalog.loadCatalog(true), expected, 'a failed native shop store must still fall back to the catalog endpoint');
+    assert(requests.includes('/collectibles-categories/v2'), 'the fallback must actually fetch categories');
     assert.equal(clock.tasks.size, 0);
     const effects = []; let finishLoad, stateUpdates = 0;
     const hook = vm.createContext({ catalog: null,

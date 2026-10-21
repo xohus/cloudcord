@@ -49,7 +49,9 @@ export function loadCatalog(force = false): Promise<Catalog> {
         const effects = await get("/user-profile-effects").catch(() => null);
         // Prefer Discord's own shop store: it has every product type, including
         // profile frames, and keeps Discord's renderer able to draw them.
-        let parsed = await fromDiscordStore(effects);
+        // Native stores can be unavailable during startup or after a Discord update.
+        // Their failure must not prevent the independent REST fallback from loading.
+        let parsed = await fromDiscordStore(effects).catch(() => null);
         if (!parsed) {
             const categories = await get("/collectibles-categories/v2").catch(() => get("/collectibles-categories"));
             parsed = parseCatalog(categories, effects);
