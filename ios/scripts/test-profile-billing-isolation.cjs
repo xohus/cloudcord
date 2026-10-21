@@ -21,6 +21,18 @@ const context = vm.createContext({
     setOwnValue: (target, key, value) => Object.defineProperty(target, key, { value, writable: true, configurable: true, enumerable: true }),
 });
 vm.runInContext(esbuild.transformSync(source, { loader: 'ts' }).code, context);
+const decorationHelper = page.slice(page.indexOf('function applyAvatarDecoration('), page.indexOf('\n}', page.indexOf('function applyAvatarDecoration(')) + 2);
+vm.runInContext(esbuild.transformSync(decorationHelper, { loader: 'ts' }).code, context);
+context.preview = { enabled: true, avatarDecoration: 'chosen-decoration', avatarDecorationSku: 'chosen-sku' };
+const originalDecoration = Object.freeze({ asset: 'native-decoration', sku_id: 'native-sku' });
+const decorationUser = Object.freeze({ id: 'decoration', username: 'real', avatar_decoration_data: originalDecoration });
+const decoratedUser = context.cloneObject(decorationUser, 'user');
+assert.equal(decoratedUser.avatar_decoration_data.asset, 'chosen-decoration', 'native snake-case readers must see the chosen decoration too');
+assert.equal(decoratedUser.avatarDecorationData, decoratedUser.avatar_decoration_data);
+assert.equal(decoratedUser.avatar_decoration_data.sku_id, 'chosen-sku');
+assert.equal(decorationUser.avatar_decoration_data, originalDecoration, 'native cached decoration is unchanged');
+assert.match(page.slice(page.indexOf('function cloneSharedUser('), page.indexOf('function cloneSharedProfile(')), /applyAvatarDecoration\(cloned, data\)/);
+context.preview = { enabled: true, username: 'cosmetic', nitroEnabled: true, nitroMonths: 6, boostMonths: 6 };
 for (const tier of [0, 1, 2]) {
     const original = Object.freeze({ id: '123', username: 'real', premiumType: tier, premium_type: tier,
         premiumSince: 'real-since', premium_since: 'real-since', premiumGuildSince: 'real-boost', premium_guild_since: 'real-boost' });

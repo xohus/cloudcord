@@ -11,6 +11,8 @@ const decorationContext = vm.createContext({ profileRuntimeActive: true, ALL_DEC
 vm.runInContext(esbuild.transformSync(`const decorationPlugin = { ${decorationResolver} }; globalThis.resolveDecoration = decorationPlugin.patchDecorationUrl;`, { loader: 'ts' }).code, decorationContext);
 assert.equal(decorationContext.resolveDecoration({ avatarDecoration: { asset: 'a_test' } }), 'https://cdn.discordapp.com/avatar-decoration-presets/a_test.png');
 assert.equal(decorationContext.resolveDecoration({ avatarDecorationData: { asset: 'a_test' } }), 'https://cdn.discordapp.com/avatar-decoration-presets/a_test.png');
+assert.equal(decorationContext.resolveDecoration({ avatar_decoration_data: { asset: 'a_test' } }), 'https://cdn.discordapp.com/avatar-decoration-presets/a_test.png');
+assert.equal(decorationContext.resolveDecoration({ user: { avatar_decoration_data: { asset: 'a_test' } } }), 'https://cdn.discordapp.com/avatar-decoration-presets/a_test.png');
 assert.equal(decorationContext.resolveDecoration({ avatarDecoration: { asset: 'unrelated' } }), undefined);
 assert.ok(catalog.filter(item => item.category === 'decorations').length > 100);
 // The rebuilt editor shows decorations through the shared picker grid.

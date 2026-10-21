@@ -1993,7 +1993,7 @@ fakeObfuscatedEmail(real: string | null) {
     patchDecorationUrl(input: any) {
         if (!profileRuntimeActive) return undefined;
         const user = input?.user ?? input;
-        const asset = sharedDecorationAsset(input?.avatarDecoration?.asset || input?.avatarDecorationData?.asset || user?.avatarDecoration?.asset || user?.avatarDecorationData?.asset);
+        const asset = sharedDecorationAsset(input?.avatarDecoration?.asset || input?.avatarDecorationData?.asset || input?.avatar_decoration_data?.asset || user?.avatarDecoration?.asset || user?.avatarDecorationData?.asset || user?.avatar_decoration_data?.asset);
         const item = ALL_DECORATIONS.find(decoration => decoration.id === asset);
         return item?.url;
     },
