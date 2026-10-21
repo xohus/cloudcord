@@ -97,16 +97,23 @@ export function ColorField({ label, value, onChange, fallback, optional }: { lab
 
 export function ImageField({ label, value, onChange, shape = "circle", hint }: { label: string; value: string; onChange: (value: string) => void; shape?: "circle" | "banner"; hint?: string; }) {
     const fileRef = React.useRef<HTMLInputElement>(null);
+    const readRevision = React.useRef(0);
+    React.useEffect(() => {
+        readRevision.current++;
+        return () => { readRevision.current++; };
+    }, [value]);
     const [error, setError] = React.useState("");
     const id = useId("cpx-image");
+    const change = (next: string) => { readRevision.current++; setError(""); onChange(next); };
     const pick = (file?: File) => {
         setError("");
         if (!file) return;
+        const revision = ++readRevision.current;
         if (!file.type.startsWith("image/")) { setError("Choose an image file."); return; }
         if (file.size > 8 * 1024 * 1024) { setError("Choose an image under 8 MB."); return; }
         const reader = new FileReader();
-        reader.onload = () => onChange(String(reader.result || ""));
-        reader.onerror = () => setError("That file couldn't be read.");
+        reader.onload = () => { if (revision === readRevision.current) onChange(String(reader.result || "")); };
+        reader.onerror = () => { if (revision === readRevision.current) setError("That file couldn't be read."); };
         reader.readAsDataURL(file);
     };
     return <div className="cpx-field">
@@ -116,9 +123,9 @@ export function ImageField({ label, value, onChange, shape = "circle", hint }: {
             <div className="cpx-image-controls">
                 <div className="cpx-inline">
                     <button type="button" className="cpx-btn" onClick={() => fileRef.current?.click()}>{value ? "Change" : "Upload"}</button>
-                    {value && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => onChange("")}>Remove</button>}
+                    {value && <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => change("")}>Remove</button>}
                 </div>
-                <input id={id} className="cpx-input" placeholder="…or paste an image link" value={value.startsWith("data:") ? "" : value} onChange={event => onChange(event.target.value.trim())} />
+                <input id={id} className="cpx-input" placeholder="…or paste an image link" value={value.startsWith("data:") ? "" : value} onChange={event => change(event.target.value.trim())} />
             </div>
             <input ref={fileRef} type="file" accept="image/*" hidden onChange={event => { pick(event.target.files?.[0]); event.target.value = ""; }} />
         </div>
