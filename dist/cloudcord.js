@@ -6450,6 +6450,57 @@
     }
   });
 
+  // src/lib/utils/profileSyncNetwork.ts
+  function fetchProfileResponse(_0) {
+    return _async_to_generator(function* (url2, options = {}, timeoutMs = 15e3) {
+      var controller = new AbortController();
+      var timer;
+      var deadline = new Promise((_resolve, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error("CloudCord profile request timed out. Your local changes are saved."));
+          controller.abort();
+        }, timeoutMs);
+      });
+      try {
+        return yield Promise.race([
+          (() => _async_to_generator(function* () {
+            var response = yield fetch(url2, {
+              ...options,
+              signal: controller.signal
+            });
+            var payload = null;
+            try {
+              payload = yield response.json();
+            } catch (e) {
+              if (response.ok)
+                throw new Error("CloudCord profile service returned invalid JSON. Your local changes are saved.");
+            }
+            return {
+              ok: response.ok,
+              status: response.status,
+              headers: response.headers,
+              json: () => _async_to_generator(function* () {
+                return payload;
+              })()
+            };
+          })())(),
+          deadline
+        ]);
+      } finally {
+        if (timer !== void 0)
+          clearTimeout(timer);
+      }
+    }).apply(this, arguments);
+  }
+  var init_profileSyncNetwork = __esm({
+    "src/lib/utils/profileSyncNetwork.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+    }
+  });
+
   // src/lib/api/profileAppearance.ts
   function mergeCustomSocialLookup(before3, current, incoming) {
     if (!current || before3.id !== current.id || ("service" in before3 ? before3.service : before3.userId) !== ("service" in current ? current.service : current.userId))
@@ -12429,6 +12480,49 @@
     preview = rootSettings.fakeProfile;
     configReady = true;
   }
+  function adoptProfileAccount(user) {
+    var nextId = user?.id ? String(user.id) : null;
+    realCurrentUser = user || null;
+    var previousId = rootSettings.fakeProfileOwnerId || currentUserId;
+    currentUserId = nextId;
+    if (!configReady || previousId === nextId)
+      return;
+    if (!previousId && nextId && rootSettings.fakeProfileOwnerId === void 0) {
+      rootSettings.fakeProfileOwnerId = nextId;
+      if (rootSettings.fakeProfileShare && !rootSettings.fakeProfileShare.ownerId)
+        rootSettings.fakeProfileShare = {
+          ...rootSettings.fakeProfileShare,
+          ownerId: nextId
+        };
+      return;
+    }
+    var accounts = {
+      ...rootSettings.fakeProfileAccounts || {}
+    };
+    if (previousId)
+      accounts[previousId] = {
+        profile: rootSettings.fakeProfile || preview,
+        localOnly: !!rootSettings.fakeProfileLocalOnly,
+        mediaCleared: {
+          ...rootSettings.fakeProfileMediaCleared || {}
+        }
+      };
+    rootSettings.fakeProfileAccounts = accounts;
+    var next = nextId ? accounts[nextId] : null;
+    rootSettings.fakeProfileOwnerId = nextId;
+    rootSettings.fakeProfile = next?.profile || defaultPreview();
+    rootSettings.fakeProfileLocalOnly = next?.localOnly ?? !nextId;
+    rootSettings.fakeProfileMediaCleared = next?.mediaCleared || {};
+    configReady = false;
+    bindSavedPreview();
+    if (publishTimer) {
+      clearTimeout(publishTimer);
+      publishTimer = null;
+    }
+    suppressOwnPullUntil = 0;
+    userCache = /* @__PURE__ */ new WeakMap();
+    profileCache = /* @__PURE__ */ new WeakMap();
+  }
   function mediaClearPending(key) {
     return Number(rootSettings.fakeProfileMediaCleared?.[key] || 0) > 0;
   }
@@ -12534,6 +12628,33 @@
   }
   function publishSharedProfile() {
     return _async_to_generator(function* () {
+      if (rootSettings.fakeProfileLocalOnly || !preview.enabled || !currentUserId)
+        return;
+      var queue = publishSharedProfile;
+      if (queue.pending) {
+        queue.queued = true;
+        return queue.pending;
+      }
+      queue.pending = (() => _async_to_generator(function* () {
+        try {
+          do {
+            queue.queued = false;
+            try {
+              yield publishSharedProfileSnapshot();
+            } catch (error) {
+              if (!queue.queued)
+                throw error;
+            }
+          } while (queue.queued && !rootSettings.fakeProfileLocalOnly && preview.enabled && currentUserId);
+        } finally {
+          queue.pending = void 0;
+        }
+      })())();
+      return queue.pending;
+    })();
+  }
+  function publishSharedProfileSnapshot(allowRetry = true) {
+    return _async_to_generator(function* () {
       if (rootSettings.fakeProfileLocalOnly)
         return;
       if (!preview.enabled || !currentUserId)
@@ -12542,10 +12663,23 @@
       var socialErrors = customSocialValidationErrors(preview);
       if (socialErrors.length)
         throw new Error(socialErrors[0]);
-      var saved = rootSettings.fakeProfileShare || {};
+      var legacy = rootSettings.fakeProfileShare;
+      if (legacy?.id && (!legacy.ownerId || legacy.ownerId === ownerId) && !rootSettings.fakeProfileShares?.[ownerId] && allowRetry) {
+        rootSettings.fakeProfileShares = {
+          ...rootSettings.fakeProfileShares || {},
+          [ownerId]: {
+            ...legacy,
+            ownerId
+          }
+        };
+        delete rootSettings.fakeProfileShare;
+      }
+      var saved = rootSettings.fakeProfileShares?.[ownerId] || {};
       var path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
       var profileSnapshot = yield ownSharedProfile();
-      var latestResponse = yield fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, {
+      if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly)
+        return;
+      var latestResponse = yield fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, {
         cache: "no-store"
       });
       if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly)
@@ -12595,7 +12729,7 @@
       };
       if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly)
         return;
-      var response = yield fetch(`${SHARED_PROFILE_API}${path}`, {
+      var response = yield fetchProfileResponse(`${SHARED_PROFILE_API}${path}`, {
         method: saved.id ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
@@ -12622,11 +12756,19 @@
           return;
         }
         if (response.status === 409) {
+          if (allowRetry)
+            return publishSharedProfileSnapshot(false);
           throw new Error("Your shared profile changed. Try saving again.");
         }
         if (saved.id && (response.status === 401 || response.status === 404)) {
-          delete rootSettings.fakeProfileShare;
-          return publishSharedProfile();
+          var credentials = {
+            ...rootSettings.fakeProfileShares || {}
+          };
+          delete credentials[ownerId];
+          rootSettings.fakeProfileShares = credentials;
+          if (allowRetry)
+            return publishSharedProfileSnapshot(false);
+          throw new Error("Your sharing credentials expired. Save your profile again.");
         }
         throw new Error(`CloudCord sharing failed (${response.status})`);
       }
@@ -12634,9 +12776,13 @@
       if (currentUserId !== ownerId)
         return;
       if (!saved.id)
-        rootSettings.fakeProfileShare = {
-          id: result.id,
-          editToken: result.editToken
+        rootSettings.fakeProfileShares = {
+          ...rootSettings.fakeProfileShares || {},
+          [ownerId]: {
+            id: result.id,
+            editToken: result.editToken,
+            ownerId
+          }
         };
       for (var key1 of [
         "avatarMedia",
@@ -12682,7 +12828,7 @@
       var requestedUserId = currentUserId;
       var localSnapshot = JSON.stringify(preview);
       try {
-        var response = yield fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
+        var response = yield fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
         if (response.status === 404) {
           if (preview.enabled)
             queueSharedPublish();
@@ -12755,8 +12901,12 @@
       sharedRenderTimer = null;
       if (import_react_native21.AppState.currentState !== "active")
         return;
-      for (var refresh of identityRefreshers)
-        refresh();
+      for (var refresh of identityRefreshers) {
+        try {
+          refresh();
+        } catch (e) {
+        }
+      }
       try {
         safeStore("UserStore")?.emitChange?.();
       } catch (e) {
@@ -12782,7 +12932,7 @@
       return;
     sharedRequests.add(id);
     sharedProfileFetchedAt.set(id, Date.now());
-    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, {
+    void fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, {
       cache: "no-store"
     }).then((response) => {
       if (response.ok)
@@ -13788,7 +13938,7 @@
       publishedBadgeRequest = true;
       publishedBadgeFetchedAt = Date.now();
       try {
-        var response = yield fetch("https://getcloudcord.com/v1/custom-badges", {
+        var response = yield fetchProfileResponse("https://getcloudcord.com/v1/custom-badges", {
           cache: "no-store"
         });
         if (!response.ok)
@@ -14527,14 +14677,12 @@
     var userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
     diagnostics.userStore = !!userStore;
     try {
-      realCurrentUser = userStore?.getCurrentUser?.() || null;
-      currentUserId = realCurrentUser?.id || null;
+      adoptProfileAccount(userStore?.getCurrentUser?.() || null);
     } catch (e) {
     }
     addPatch("getCurrentUser", userStore, (args, original) => {
       var user = original(...args);
-      realCurrentUser = user || realCurrentUser;
-      currentUserId = user?.id || currentUserId;
+      adoptProfileAccount(user);
       return cloneObject(user, "user");
     });
     addPatch("getUser", userStore, (args, original) => {
@@ -15922,6 +16070,7 @@
     });
   }
   function FakeProfile() {
+    var editorOwner = (0, import_react7.useRef)(currentUserId);
     var [activeTab, setActiveTab] = (0, import_react7.useState)("profile");
     var [showDetails, setShowDetails] = (0, import_react7.useState)(false);
     useProxy(settings);
@@ -15929,9 +16078,16 @@
     var navigation2 = NavigationNative.useNavigation();
     (0, import_react7.useEffect)(() => {
       fakeProfileEditorOpen = true;
-      initializeFakeProfile();
-      redraw();
+      var active = true;
+      void initializeFakeProfile().then(() => {
+        if (active) {
+          if (editorOwner.current == null)
+            editorOwner.current = currentUserId;
+          redraw();
+        }
+      });
       return () => {
+        active = false;
         fakeProfileEditorOpen = false;
       };
     }, []);
@@ -16271,6 +16427,13 @@
     }, [
       activeTab
     ]);
+    if (editorOwner.current !== currentUserId)
+      return /* @__PURE__ */ jsx(Text, {
+        style: {
+          padding: 24
+        },
+        children: "Your Discord account changed. Go back and reopen the profile editor before making changes."
+      });
     return /* @__PURE__ */ jsx(import_react_native21.ScrollView, {
       style: {
         flex: 1,
@@ -17472,6 +17635,7 @@
       init_toasts();
       init_jsx();
       init_asyncTimeout();
+      init_profileSyncNetwork();
       init_profileAppearance();
       init_profileIdentity();
       init_settings();
