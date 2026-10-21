@@ -1768,6 +1768,17 @@ export default definePlugin({
 
     patches: [
         {
+            // Discord's badge-management card looks badges up in the account's real
+            // badge catalog, so CloudCord profiles showed the real Nitro tier. Use the
+            // regular badge tooltip (which shows the badge's own tier and date) for them.
+            find: "legacyBadgeId:",
+            noWarn: true,
+            replacement: {
+                match: /if\((\i)\)(return\(0,\i\.jsx\)\(\i,\{shouldShow:!\i,legacyBadgeId:\i\.id,userId:(\i)\?\.userId)/,
+                replace: "if($1&&!$self.usesCloudCordBadges($3?.userId))$2"
+            }
+        },
+        {
             // Resolve the device-only fake gift link without asking Discord.
             find: "GIFT_CODE_RESOLVE(e),query:{with_application",
             noWarn: true,
@@ -1791,6 +1802,11 @@ export default definePlugin({
         { find: "AccountPanel", replacement: { match: /user:([a-zA-Z0-9_]+),/, replace: "user:$self.fakeCurrentUser($1)," } },
         { find: "UserAccountSettings", replacement: [{ match: /user:([a-zA-Z0-9_]+),/, replace: "user:$self.fakeCurrentUser($1)," }, { match: /email:([^,}]+),/, replace: "email:$self.fakeObfuscatedEmail($1)," }] },
     ],
+
+    usesCloudCordBadges(userId?: string) {
+        if (!userId) return false;
+        return isMe(userId) ? isEnabled : !!viewedSharedProfile(userId);
+    },
 
     getBadgeLayout(userId: string) {
         if (isMe(userId)) return isEnabled ? storedData : null;
