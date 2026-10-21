@@ -418,14 +418,6 @@ function shortProfileDate(date: Date): string {
     return date.toLocaleDateString("en-GB", { month: "2-digit", day: "2-digit", year: "numeric" });
 }
 
-function NativeNitroBadge({ nitroLevel, nitroSince, accentColor, accentColor2 }: { nitroLevel: number; nitroSince?: string; accentColor?: number; accentColor2?: number; }) {
-    const index = Number.isInteger(nitroLevel) && nitroLevel >= 0 && nitroLevel < NITRO_LEVELS.length ? nitroLevel : 0;
-    const level = NITRO_LEVELS[index];
-    return <NativeBadgeCard title={index ? `NITRO ${level.name.toUpperCase()}` : "NITRO"}
-        subtitle={`Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[index] ?? 0, nitroSince))}`}
-        art={level.art} icon={level.icon} label={level.label} sparkleColor={level.light} variant="nitro" />;
-}
-
 function NativeProfileBadge({ userId, id }: { userId: string; id: string; }) {
     const data = isMe(userId) ? storedData : viewedSharedProfile(userId);
     if (!data) return null;
@@ -436,7 +428,7 @@ function NativeProfileBadge({ userId, id }: { userId: string; id: string; }) {
         const gift = GIFT_LEVELS[data.giftLevel ?? -1];
         return gift ? <NativeBadgeCard title={gift.name.toUpperCase()} art={gift.icon} icon={gift.icon} label={gift.name} variant="gift" sparkleColor={gift.light} /> : null;
     }
-    return <NativeNitroBadge nitroLevel={data.nitroLevel ?? 0} nitroSince={data.nitroSince} />;
+    return null;
 }
 
 function NativeBadgeCard({ title, subtitle, art, icon, label, sparkleColor, variant }: {
@@ -2058,7 +2050,6 @@ fakeObfuscatedEmail(real: string | null) {
                 key: NITRO_LEVELS[nl].name,
                 description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
                 iconSrc: NITRO_LEVELS[nl].icon,
-                component: NativeProfileBadge,
                 link: "https://discord.com/settings/premium",
                 props: { style },
                 position: 0
