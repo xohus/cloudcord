@@ -54,6 +54,7 @@ jobs:
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-sync-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-load-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-settings-route.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-addon-loading.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-account-isolation.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-compatibility.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-media-load-races.cjs
@@ -114,6 +115,8 @@ jobs:
           cp "../ios/runtime/src/core/ui/settings/components/LocalProfiles.tsx" "src/core/ui/settings/components/LocalProfiles.tsx"
           mkdir -p src/core/ui/settings/pages/Addons
           cp "../ios/runtime/src/core/ui/settings/pages/Addons/index.tsx" "src/core/ui/settings/pages/Addons/index.tsx"
+          mkdir -p src/core/ui/settings/pages/PluginBrowser
+          cp "../ios/runtime/src/core/ui/settings/pages/PluginBrowser/index.tsx" "src/core/ui/settings/pages/PluginBrowser/index.tsx"
           mkdir -p src/core/ui/settings/pages/Recovery
           cp "../ios/runtime/src/core/ui/settings/pages/Recovery/index.tsx" "src/core/ui/settings/pages/Recovery/index.tsx"
           mkdir -p src/core/ui/settings/pages/Themes

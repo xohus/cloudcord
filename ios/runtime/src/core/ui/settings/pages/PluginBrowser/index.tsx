@@ -16,7 +16,7 @@ import { lazyDestructure } from "@lib/utils/lazy";
 import { findByProps } from "@metro";
 
 const { showSimpleActionSheet } = lazyDestructure(() => findByProps("showSimpleActionSheet"));
-const { hideActionSheet } = findByProps("hideActionSheet")
+const { hideActionSheet } = lazyDestructure(() => findByProps("hideActionSheet"));
 
 interface BaseAddonData {
     name: string;

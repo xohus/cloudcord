@@ -1,8 +1,9 @@
 import { ScrollView } from "react-native";
-import { NavigationNative } from "@metro/common";
+import { NavigationNative, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import { isFontSupported, isThemeSupported } from "@lib/api/native/loader";
 import { findAssetId } from "@lib/api/assets";
+import { wrapOnPress } from "@lib/ui/settings/patches/shared";
 
 function icon(...names: string[]) {
     for (const name of names) {
@@ -13,9 +14,13 @@ function icon(...names: string[]) {
 
 export default function Addons() {
     const navigation = NavigationNative.useNavigation();
-    const open = (title: string, load: () => any) => navigation.push("PUPU_CUSTOM_PAGE", {
-        title, render: () => { const Page = load().default; return <Page />; }
-    });
+    const open = React.useMemo(() => {
+        const actions = new Map<string, () => Promise<void>>();
+        return (title: string, load: () => any) => {
+            if (!actions.has(title)) actions.set(title, wrapOnPress(undefined, navigation, async () => load(), title));
+            return actions.get(title)!();
+        };
+    }, [navigation]);
     return <ScrollView contentContainerStyle={{ paddingBottom: 38 }}>
         <Stack style={{ paddingVertical: 24, paddingHorizontal: 12 }} spacing={24}>
             <TableRowGroup title="Add-ons">
