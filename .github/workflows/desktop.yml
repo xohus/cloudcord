@@ -1,7 +1,9 @@
 name: CloudCord Desktop
 concurrency:
   group: cloudcord-desktop-release-${{ github.ref }}
-  cancel-in-progress: true
+  # Finish the running release so frequent repair commits cannot starve the
+  # public download. GitHub keeps the newest pending build in this group.
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
