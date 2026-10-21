@@ -2053,9 +2053,12 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
             if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
             if (hasNitroFake) badges.push({
-                id: nativeNitroBadgeId(nl),
+                // On your own profile Discord's native Nitro card reads your real
+                // subscription (which we never touch, for billing safety), so it showed
+                // the real tier and date. Use CloudCord's tooltip there instead.
+                id: userIsMe ? "sp_nitro" : nativeNitroBadgeId(nl),
                 key: NITRO_LEVELS[nl].name,
-                description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
+                description: `${userIsMe && nl > 0 ? `Nitro ${NITRO_LEVELS[nl].name} · ` : ""}Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
                 iconSrc: NITRO_LEVELS[nl].icon,
                 link: "https://discord.com/settings/premium",
                 props: { style },
