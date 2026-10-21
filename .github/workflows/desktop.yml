@@ -93,7 +93,9 @@ jobs:
 
       - name: Check staff badge contrast after profile mount
         working-directory: desktop/client
-        run: node scripts/test-staff-badge-surface.cjs
+        run: |
+          node scripts/test-staff-badge-surface.cjs
+          node scripts/test-badge-provider-isolation.cjs
 
       - name: Check cross-platform badge catalog and tier selection
         # Reuse desktop's esbuild to compile the generated mobile editor too.

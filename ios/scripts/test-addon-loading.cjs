@@ -2,7 +2,12 @@ const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:a
 const compile = file => esbuild.transformSync(fs.readFileSync(file, 'utf8'), { loader: 'tsx', format: 'cjs' }).code;
 const React = { memo: fn => fn, useMemo: fn => fn(), createElement: (type, props, ...children) => ({ type, props: { ...props, children } }) };
 const alerts = [], navigations = [];
-const navigation = { navigate: (...args) => navigations.push(args), push: (...args) => navigations.push(args), isFocused: () => true };
+const history = [{ name: 'PUPU_CUSTOM_PAGE', params: { title: 'Add-ons' } }];
+const navigation = {
+    navigate: (name, params) => { navigations.push([name, params]); const previous = history.findLast(entry => entry.name === name); if (previous) previous.params = params; else history.push({ name, params }); },
+    push: (name, params) => { navigations.push([name, params]); history.push({ name, params }); },
+    isFocused: () => true
+};
 const common = { React, NavigationNative: { useNavigation: () => navigation }, ReactNative: { Alert: { alert: (...args) => alerts.push(args) } } };
 const shared = { module: { exports: {} }, React, require: name => name === '@metro/common' ? common : name === '@lib/utils/asyncTimeout' ? { withTimeout: p => p } : name === '@metro/wrappers' ? { findByPropsLazy: () => ({}) } : {} };
 vm.runInNewContext(compile('ios/runtime/src/lib/ui/settings/patches/shared.tsx'), shared);
@@ -33,6 +38,9 @@ const walk = node => !node || typeof node !== 'object' ? [] : [node, ...(node.pr
     assert.equal(navigations.length, 1);
     assert.equal(navigations[0][0], 'PUPU_CUSTOM_PAGE');
     assert.equal(navigations[0][1].render().type, Plugin);
+    assert.equal(history.length, 2, 'a nested add-on page must push a separate screen, not replace the Add-ons screen');
+    history.pop();
+    assert.equal(history[0].params.title, 'Add-ons', 'Back must return to the original Add-ons screen');
     const lazy = { module: { exports: {} }, __DEV__: false };
     vm.runInNewContext(compile('ios/runtime/src/lib/utils/lazy.ts'), lazy);
     let lookups = 0;

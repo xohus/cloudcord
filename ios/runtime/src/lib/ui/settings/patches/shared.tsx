@@ -29,6 +29,7 @@ export function wrapOnPress(
     renderPromise?: RowConfig["render"],
     screenOptions?: string | Record<string, any>,
     props?: any,
+    navigationMethod: "navigate" | "push" = "navigate",
 ) {
     let pending = false;
     return async () => {
@@ -48,15 +49,15 @@ export function wrapOnPress(
             }
 
             navigation ??= tabsNavigationRef.getRootNavigationRef();
-            if (!navigation?.navigate) throw new Error("Discord's navigation is still loading. Go back and try again.");
-            navigation.navigate("PUPU_CUSTOM_PAGE", {
+            if (typeof navigation?.[navigationMethod] !== "function") throw new Error("Discord's navigation is still loading. Go back and try again.");
+            navigation[navigationMethod]("PUPU_CUSTOM_PAGE", {
                 ...screenOptions,
                 render: () => <Component {...props} />
             });
         } catch (error) {
             ReactNative.Alert.alert("Couldn't open CloudCord page", error instanceof Error ? error.message : "Loading failed. Check your connection and try again.", [
                 { text: "Close", style: "cancel" },
-                { text: "Retry", onPress: () => { void wrapOnPress(onPress, navigation, renderPromise, screenOptions, props)(); } }
+                { text: "Retry", onPress: () => { void wrapOnPress(onPress, navigation, renderPromise, screenOptions, props, navigationMethod)(); } }
             ]);
         } finally { pending = false; }
     };

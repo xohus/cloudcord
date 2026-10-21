@@ -17,7 +17,7 @@ export default function Addons() {
     const open = React.useMemo(() => {
         const actions = new Map<string, () => Promise<void>>();
         return (title: string, load: () => any) => {
-            if (!actions.has(title)) actions.set(title, wrapOnPress(undefined, navigation, async () => load(), title));
+            if (!actions.has(title)) actions.set(title, wrapOnPress(undefined, navigation, async () => load(), title, undefined, "push"));
             return actions.get(title)!();
         };
     }, [navigation]);
