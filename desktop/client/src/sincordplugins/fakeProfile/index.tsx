@@ -648,6 +648,17 @@ function shouldReplaceBadges(data: CustomProfileData | undefined): boolean {
 const NITRO_LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_LEVEL_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
+// Discord picks the Nitro tier from the "subscriber since" date, so a saved date
+// only counts when it lands inside the chosen tier; otherwise use the tier's start.
+function nitroSinceFor(level: number, savedDate?: string): Date {
+    const months = NITRO_LEVEL_MONTHS[level] ?? 0;
+    const next = NITRO_LEVEL_MONTHS[level + 1];
+    const saved = monthsAgo(months, savedDate);
+    const age = (Date.now() - saved.getTime()) / (30.44 * 86400_000);
+    if (age >= months && (next === undefined || age < next)) return saved;
+    return monthsAgo(months);
+}
+
 function monthsAgo(months: number, explicitDate?: string): Date {
     if (typeof explicitDate === "string") {
         const day = explicitDate.trim().slice(0, 10);
@@ -693,7 +704,7 @@ function applyNativeProfileMetadata(target: any, data: CustomProfileData, includ
     const nitroLevel = Number(data.nitroLevel ?? -1);
     const hasNitro = data.nitro === true && Number.isInteger(nitroLevel) && nitroLevel >= 0 && nitroLevel < NITRO_LEVEL_MONTHS.length;
     if (hasNitro || replace) {
-        const nitroSince = hasNitro ? monthsAgo(NITRO_LEVEL_MONTHS[nitroLevel], data.nitroSince) : null;
+        const nitroSince = hasNitro ? nitroSinceFor(nitroLevel, data.nitroSince) : null;
         target.premiumType = hasNitro ? 2 : 0;
         target.premium_type = target.premiumType;
         target.premiumSince = nitroSince;
@@ -2055,7 +2066,7 @@ fakeObfuscatedEmail(real: string | null) {
             if (hasNitroFake) badges.push({
                 id: nativeNitroBadgeId(nl),
                 key: NITRO_LEVELS[nl].name,
-                description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
+                description: `Subscriber since ${shortProfileDate(nitroSinceFor(nl, profileData.nitroSince))}`,
                 iconSrc: NITRO_LEVELS[nl].icon,
                 link: "https://discord.com/settings/premium",
                 props: { style },
