@@ -1,4 +1,7 @@
 name: Build CloudCord Runtime
+concurrency:
+  group: cloudcord-runtime-${{ github.ref }}
+  cancel-in-progress: true
 
 "on":
   workflow_dispatch:
@@ -48,6 +51,8 @@ jobs:
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-sync-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-load-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-settings-route.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-account-isolation.cjs
+          CLOUDCORD_NETWORK_SOURCE=ios/runtime/src/lib/utils/profileSyncNetwork.ts NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node desktop/client/scripts/test-profile-network-timeout.cjs
           for test in profile-local profile-identity-render published-badges message-identity message-previews profile-device-only profile-billing-isolation profile-refresh-budget profile-editor-tabs; do
             NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node "ios/scripts/test-$test.cjs"
           done
@@ -92,6 +97,7 @@ jobs:
           mkdir -p src/core/ui/settings/pages/Plugins/models
           mkdir -p src/core/ui/settings/components
           cp "../ios/runtime/src/lib/utils/asyncTimeout.ts" "src/lib/utils/asyncTimeout.ts"
+          cp "../ios/runtime/src/lib/utils/profileSyncNetwork.ts" "src/lib/utils/profileSyncNetwork.ts"
           cp "../ios/runtime/src/core/ui/settings/components/FakeProfileGlass.tsx" "src/core/ui/settings/components/FakeProfileGlass.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/ProfileEditorKit.tsx" "src/core/ui/settings/components/ProfileEditorKit.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/CustomSocial.tsx" "src/core/ui/settings/components/CustomSocial.tsx"
@@ -352,6 +358,7 @@ jobs:
           import { showToast } from "@lib/ui/toasts";
           import { onJsxCreate } from "@lib/api/react/jsx";
           import { withTimeout } from "@lib/utils/asyncTimeout";
+          import { fetchProfileResponse } from "@lib/utils/profileSyncNetwork";
           import { ACTIVITY_TYPES, appearanceOptions, availableServerTags, createNativeSocialFriendsReader, customDiscordMediaURL, customSocialValidationErrors, nameplateAssetURL, nativeActivities, nativeCollectibles, nativeSocialFriends, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, parseCatalog, parseServerTagIcon, PRESENCE_STATUSES, serverTagIconURL, streamURL } from "@lib/api/profileAppearance";
           import type { Catalog, ProfileActivity, ProfileNameplate } from "@lib/api/profileAppearance";
           import type { CustomFriendPreview, CustomConnectionPreview, ProfileAppearance } from "@lib/api/profileAppearance";
@@ -1000,6 +1007,34 @@ jobs:
           let suppressOwnPullUntil = 0;
           const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
 
+          function adoptProfileAccount(user: any) {
+              const nextId = user?.id ? String(user.id) : null;
+              realCurrentUser = user || null;
+              const previousId = rootSettings.fakeProfileOwnerId || currentUserId;
+              currentUserId = nextId;
+              if (!configReady || previousId === nextId) return;
+              if (!previousId && nextId && rootSettings.fakeProfileOwnerId === undefined) {
+                  // Adopt an existing single-account installation once.
+                  rootSettings.fakeProfileOwnerId = nextId;
+                  if (rootSettings.fakeProfileShare && !rootSettings.fakeProfileShare.ownerId) rootSettings.fakeProfileShare = { ...rootSettings.fakeProfileShare, ownerId: nextId };
+                  return;
+              }
+              const accounts = { ...(rootSettings.fakeProfileAccounts || {}) };
+              if (previousId) accounts[previousId] = { profile: rootSettings.fakeProfile || preview, localOnly: !!rootSettings.fakeProfileLocalOnly, mediaCleared: { ...(rootSettings.fakeProfileMediaCleared || {}) } };
+              rootSettings.fakeProfileAccounts = accounts;
+              const next = nextId ? accounts[nextId] : null;
+              rootSettings.fakeProfileOwnerId = nextId;
+              rootSettings.fakeProfile = next?.profile || defaultPreview();
+              // A clean account can pull its own shared profile, but its disabled
+              // empty preview cannot publish anything until explicitly enabled.
+              rootSettings.fakeProfileLocalOnly = next?.localOnly ?? !nextId;
+              rootSettings.fakeProfileMediaCleared = next?.mediaCleared || {};
+              configReady = false; bindSavedPreview();
+              if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
+              suppressOwnPullUntil = 0;
+              userCache = new WeakMap(); profileCache = new WeakMap();
+          }
+
           function mediaClearPending(key: "avatarMedia" | "bannerMedia") {
               return Number(rootSettings.fakeProfileMediaCleared?.[key] || 0) > 0;
           }
@@ -1099,15 +1134,37 @@ jobs:
           }
 
           async function publishSharedProfile() {
+              if (rootSettings.fakeProfileLocalOnly || !preview.enabled || !currentUserId) return;
+              const queue = publishSharedProfile as typeof publishSharedProfile & { pending?: Promise<void>; queued?: boolean };
+              if (queue.pending) { queue.queued = true; return queue.pending; }
+              queue.pending = (async () => {
+                  try {
+                      do {
+                          queue.queued = false;
+                          try { await publishSharedProfileSnapshot(); }
+                          catch (error) { if (!queue.queued) throw error; }
+                      } while (queue.queued && !rootSettings.fakeProfileLocalOnly && preview.enabled && currentUserId);
+                  } finally { queue.pending = undefined; }
+              })();
+              return queue.pending;
+          }
+
+          async function publishSharedProfileSnapshot(allowRetry = true) {
               if (rootSettings.fakeProfileLocalOnly) return;
               if (!preview.enabled || !currentUserId) return;
               const ownerId = currentUserId;
               const socialErrors = customSocialValidationErrors(preview);
               if (socialErrors.length) throw new Error(socialErrors[0]);
-              const saved = rootSettings.fakeProfileShare || {};
+              const legacy = rootSettings.fakeProfileShare;
+              if (legacy?.id && (!legacy.ownerId || legacy.ownerId === ownerId) && !rootSettings.fakeProfileShares?.[ownerId] && allowRetry) {
+                  rootSettings.fakeProfileShares = { ...(rootSettings.fakeProfileShares || {}), [ownerId]: { ...legacy, ownerId } };
+                  delete rootSettings.fakeProfileShare;
+              }
+              const saved = rootSettings.fakeProfileShares?.[ownerId] || {};
               const path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
               const profileSnapshot = await ownSharedProfile();
-              const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
+              if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly) return;
+              const latestResponse = await fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
               if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly) return;
               if (latestResponse.ok) {
                   const latest = await latestResponse.json() as any;
@@ -1130,7 +1187,7 @@ jobs:
               else if (latestResponse.status !== 404) throw new Error(`Couldn't load your latest shared profile (${latestResponse.status}). Your local changes are saved; try syncing again shortly.`);
               const clearSnapshot = { ...(rootSettings.fakeProfileMediaCleared || {}) };
               if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly) return;
-              const response = await fetch(`${SHARED_PROFILE_API}${path}`, {
+              const response = await fetchProfileResponse(`${SHARED_PROFILE_API}${path}`, {
                   method: saved.id ? "PUT" : "POST",
                   headers: {
                       "Content-Type": "application/json",
@@ -1150,17 +1207,21 @@ jobs:
                       return;
                   }
                   if (response.status === 409) {
+                      if (allowRetry) return publishSharedProfileSnapshot(false);
                       throw new Error("Your shared profile changed. Try saving again.");
                   }
                   if (saved.id && (response.status === 401 || response.status === 404)) {
-                      delete rootSettings.fakeProfileShare;
-                      return publishSharedProfile();
+                      const credentials = { ...(rootSettings.fakeProfileShares || {}) };
+                      delete credentials[ownerId];
+                      rootSettings.fakeProfileShares = credentials;
+                      if (allowRetry) return publishSharedProfileSnapshot(false);
+                      throw new Error("Your sharing credentials expired. Save your profile again.");
                   }
                   throw new Error(`CloudCord sharing failed (${response.status})`);
               }
               const result = await response.json() as any;
               if (currentUserId !== ownerId) return;
-              if (!saved.id) rootSettings.fakeProfileShare = { id: result.id, editToken: result.editToken };
+              if (!saved.id) rootSettings.fakeProfileShares = { ...(rootSettings.fakeProfileShares || {}), [ownerId]: { id: result.id, editToken: result.editToken, ownerId } };
               // A successful complete-snapshot update makes a local media
               // tombstone authoritative. Only clear it after the server has
               // accepted the null value; an earlier pull must not resurrect a
@@ -1201,7 +1262,7 @@ jobs:
               const requestedUserId = currentUserId;
               const localSnapshot = JSON.stringify(preview);
               try {
-                  const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
+                  const response = await fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
                   if (response.status === 404) {
                       if (preview.enabled) queueSharedPublish();
                       return;
@@ -1263,7 +1324,7 @@ jobs:
               sharedRenderTimer = setTimeout(() => {
                   sharedRenderTimer = null;
                   if (AppState.currentState !== "active") return;
-                  for (const refresh of identityRefreshers) refresh();
+                  for (const refresh of identityRefreshers) { try { refresh(); } catch {} }
                   try { safeStore("UserStore")?.emitChange?.(); } catch {}
                   try { safeStore("UserProfileStore")?.emitChange?.(); } catch {}
                   try { safeStore("MessageStore")?.emitChange?.(); } catch {}
@@ -1280,7 +1341,7 @@ jobs:
               if (AppState.currentState !== "active" || !/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || Date.now() - fetchedAt < ttl || sharedRequests.size >= 4) return;
               sharedRequests.add(id);
               sharedProfileFetchedAt.set(id, Date.now());
-              void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, { cache: "no-store" })
+              void fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, { cache: "no-store" })
                   .then(response => {
                       if (response.ok) return response.json();
                       if (response.status === 404) return null;
@@ -1951,7 +2012,7 @@ jobs:
               publishedBadgeRequest = true;
               publishedBadgeFetchedAt = Date.now();
               try {
-                  const response = await fetch("https://getcloudcord.com/v1/custom-badges", { cache: "no-store" });
+                  const response = await fetchProfileResponse("https://getcloudcord.com/v1/custom-badges", { cache: "no-store" });
                   if (!response.ok) return;
                   const payload = await response.json();
                   if (!Array.isArray(payload?.badges)) return;
@@ -2508,14 +2569,12 @@ jobs:
               const userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
               diagnostics.userStore = !!userStore;
               try {
-                  realCurrentUser = userStore?.getCurrentUser?.() || null;
-                  currentUserId = realCurrentUser?.id || null;
+                  adoptProfileAccount(userStore?.getCurrentUser?.() || null);
               } catch {}
 
               addPatch("getCurrentUser", userStore, (args, original) => {
                   const user = original(...args);
-                  realCurrentUser = user || realCurrentUser;
-                  currentUserId = user?.id || currentUserId;
+                  adoptProfileAccount(user);
                   return cloneObject(user, "user");
               });
               addPatch("getUser", userStore, (args, original) => {
@@ -3204,6 +3263,7 @@ jobs:
           }
 
           export default function FakeProfile() {
+              const editorOwner = useRef(currentUserId);
               const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
               const [showDetails, setShowDetails] = useState(false);
               useProxy(settings);
@@ -3212,9 +3272,9 @@ jobs:
 
               useEffect(() => {
                   fakeProfileEditorOpen = true;
-                  initializeFakeProfile();
-                  redraw();
-                  return () => { fakeProfileEditorOpen = false; };
+                  let active = true;
+                  void initializeFakeProfile().then(() => { if (active) { if (editorOwner.current == null) editorOwner.current = currentUserId; redraw(); } });
+                  return () => { active = false; fakeProfileEditorOpen = false; };
               }, []);
 
               const update = (key: keyof PreviewSettings, value: any, refresh = false) => {
@@ -3395,6 +3455,7 @@ jobs:
                   return () => { active = false; };
               }, [activeTab]);
 
+              if (editorOwner.current !== currentUserId) return <Text style={{ padding: 24 }}>Your Discord account changed. Go back and reopen the profile editor before making changes.</Text>;
               return (
                   <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 12, paddingTop: 24, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
                       <View style={{ width: "100%", gap: 24 }}>
@@ -4290,7 +4351,15 @@ jobs:
             exit 0
           fi
           git commit -m "build: publish CloudCord runtime [skip ci]"
-          git push origin HEAD:main
+          if ! git push origin HEAD:main; then
+            git fetch --no-auto-maintenance origin main
+            if git diff --quiet HEAD origin/main -- cc.js cloudcord.js cloudcord.min.js dist/cc.js dist/cloudcord.js dist/cloudcord.min.js dist/runtime-manifest.json; then
+              echo "The identical runtime was already published by another job"
+            else
+              echo "::error::Runtime publication conflicted with a newer change; refusing to overwrite it"
+              exit 1
+            fi
+          fi
 
       - name: Upload runtime artifact
         uses: actions/upload-artifact@v4

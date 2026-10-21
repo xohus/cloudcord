@@ -1,6 +1,6 @@
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
 const esbuild = require('esbuild');
-const source = fs.readFileSync('src/utils/profileSyncNetwork.ts', 'utf8');
+const source = fs.readFileSync(process.env.CLOUDCORD_NETWORK_SOURCE || 'src/utils/profileSyncNetwork.ts', 'utf8');
 const timers = new Map(); let nextTimer = 0, signal;
 const ctx = vm.createContext({ module: { exports: {} }, AbortController, Error, Promise,
     setTimeout: fn => { timers.set(++nextTimer, fn); return nextTimer; }, clearTimeout: id => timers.delete(id),

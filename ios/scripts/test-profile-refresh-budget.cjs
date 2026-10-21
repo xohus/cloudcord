@@ -8,6 +8,7 @@ let calls = 0;
 const state = { currentState: 'active' };
 const ctx = { AppState: state, currentUserId: '999999999999999', sharedProfileFetchedAt: new Map(), sharedProfiles: new Map(), sharedRequests: new Set(),
     SHARED_PROFILE_API: 'https://example.test', fetch: () => { calls++; return new Promise(() => {}); }, setTimeout, clearTimeout, Date };
+ctx.fetchProfileResponse = (...args) => ctx.fetch(...args);
 vm.runInNewContext(esbuild.transformSync(source, { loader: 'ts' }).code, ctx);
 const id = '123456789012345';
 state.currentState = 'background';
@@ -31,6 +32,7 @@ const recentlyViewed = { AppState: { currentState: 'active' }, currentUserId: '9
     setTimeout: () => 1, clearTimeout() {},
     fetch: async () => { lookups++; return { ok: !missing, status: missing ? 404 : 200,
         json: async () => ({ profile: { badgeFlags: 8 } }) }; } };
+recentlyViewed.fetchProfileResponse = (...args) => recentlyViewed.fetch(...args);
 vm.runInNewContext(esbuild.transformSync(source, { loader: 'ts' }).code, recentlyViewed);
 (async () => {
     const settle = async () => { for (let turn = 0; turn < 8; turn++) await Promise.resolve(); };

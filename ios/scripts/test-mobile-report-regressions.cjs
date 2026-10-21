@@ -69,6 +69,7 @@ const app = { currentState: 'active' };
 const refreshContext = vm.createContext({ AppState: app, Date, JSON,
     fetch: async () => { fetches++; return { ok: true, json: async () => payload }; },
     safeStore: () => ({ emitChange: () => emits++ }) });
+refreshContext.fetchProfileResponse = (...args) => refreshContext.fetch(...args);
 const publishedSource = source.slice(source.indexOf('let publishedBadges:'), source.indexOf('const nativeBadgeRows'));
 vm.runInContext(compile(publishedSource), refreshContext);
 (async () => {
@@ -96,6 +97,7 @@ vm.runInContext(compile(publishedSource), refreshContext);
         colorHex: (value, fallback) => value ?? fallback, diagnostics: {},
         clearCache: () => clears++
     });
+    own.fetchProfileResponse = (...args) => own.fetch(...args);
     vm.runInContext(compile(source.slice(source.indexOf('async function pullOwnSharedProfile('), source.indexOf('const sharedProfileSeenAt'))), own);
     await own.pullOwnSharedProfile();
     assert.equal(clears, 1);

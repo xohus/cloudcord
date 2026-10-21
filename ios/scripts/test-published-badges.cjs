@@ -7,6 +7,7 @@ const helper = workflow.slice(workflow.indexOf('          let publishedBadges:')
 let rows = [{ id: 'badge-1', userId: '123', name: 'My Badge', icon: 'https://getcloudcord.com/v1/custom-badges/badge-1.png' }];
 let calls = 0, changes = 0;
 const context = vm.createContext({ Date, JSON, fetch: async () => { calls++; return { ok: true, json: async () => ({ badges: rows }) }; }, safeStore: () => ({ emitChange: () => changes++ }), addRenderedBadge: (result, id, description, icon) => result.push({ id, description, icon }) });
+context.fetchProfileResponse = (...args) => context.fetch(...args);
 Object.assign(context, { AppState: { currentState: 'active' }, isRealProfileView: () => false, applyBadgeLayout: rows => rows });
 Object.assign(context, { isCurrentUser: () => false, getProfileOverride: () => null, defaultBadgeOrder: () => [] });
 context.localBadgesHidden = () => false;
