@@ -12661,6 +12661,20 @@
         hiddenBadgeIds: [
           ...snapshot2.hiddenBadgeIds
         ],
+        nativeBadgeOrder: (() => {
+          try {
+            return rootSettings.fakeProfileNativeOrder || [];
+          } catch (e) {
+            return [];
+          }
+        })(),
+        nativeHiddenBadges: (() => {
+          try {
+            return rootSettings.fakeProfileNativeHidden || [];
+          } catch (e) {
+            return [];
+          }
+        })(),
         badgeOrder: [
           ...snapshot2.badgeOrder
         ],
@@ -13117,8 +13131,17 @@
       checkingPrivacy = false;
     }
   }
-  function getProfileOverride(id, badgesOnly = false) {
-    if (isRealProfileView(id) || !badgesOnly && isPrivateProfile(id))
+  function badgesHiddenFor(id) {
+    if (isCurrentUser(id) || !isPrivateProfile(id))
+      return false;
+    try {
+      return !findByStoreName("RelationshipStore")?.isFriend?.(id);
+    } catch (e) {
+      return true;
+    }
+  }
+  function getProfileOverride(id) {
+    if (isRealProfileView(id))
       return void 0;
     var local = settings.cloudcordLocalProfiles?.[id];
     var shared = sharedProfiles.get(id);
@@ -13203,8 +13226,6 @@
       var sharedFlags = Number(data.badgeFlags || 0);
       setOwnValue(cloned, "publicFlags", sharedFlags);
       setOwnValue(cloned, "public_flags", sharedFlags);
-      setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userIdFromProfile(original), data));
-      setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userIdFromProfile(original), data));
       setOwnValue(cloned, "premiumSince", null);
       setOwnValue(cloned, "premiumGuildSince", null);
       setOwnValue(cloned, "legacyUsername", null);
@@ -13226,8 +13247,6 @@
       setOwnValue(cloned, key, value);
     for (var [key1, value1] of Object.entries(nativeProfileAppearance(data)))
       setOwnValue(cloned, key1, value1);
-    setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userId, data));
-    setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userId, data));
     applyAvatarDecoration(cloned, data);
     if (cloned.user)
       setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
@@ -13827,40 +13846,6 @@
       badgeOrder: preview.badgeOrder?.length ? preview.badgeOrder : defaultBadgeOrder(Array.isArray(existing) ? existing : [])
     });
   }
-  function userIdFromProfile(profile) {
-    return String(profile?.userId || profile?.id || profile?.user?.id || "");
-  }
-  function sharedBadgeObjects(existing, userId, data) {
-    var rows = [];
-    var nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
-    if (remoteNitroEnabled(data))
-      addRenderedBadge(rows, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths, data.nitroSince), milestoneIcon(nitroMonths, NITRO_ICONS));
-    if (Number(data.boostMonths) >= 0) {
-      var months = [
-        1,
-        2,
-        3,
-        6,
-        9,
-        12,
-        15,
-        18,
-        24
-      ][Number(data.boostMonths)] || 0;
-      addRenderedBadge(rows, "cloudcord-shared-boost", serverBoostingLabel(months), boosterIcon(months));
-    }
-    var gift = GIFT_LEVELS[Number(data.giftLevel)];
-    if (gift)
-      addRenderedBadge(rows, "cloudcord-shared-gifting", gift.name, gift.icon);
-    var ids = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
-    for (var [id, description, flag, icon2, customId] of BADGES) {
-      if (customId ? ids.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0)
-        addRenderedBadge(rows, `cloudcord-shared-${customId || id}`, description, icon2);
-    }
-    if (!shouldReplaceSharedBadges(data) && Array.isArray(existing))
-      rows.push(...existing.filter((badge) => !rows.some((row) => badgeLayoutKey(row) === badgeLayoutKey(badge))));
-    return applyBadgeLayout(rows, data);
-  }
   function cloneObject(original, kind) {
     if (!original || !preview.enabled)
       return original;
@@ -13925,8 +13910,6 @@
       setOwnValue(cloned, "memberSince", joinedAt);
     }
     setOwnValue(cloned, "publicFlags", flags);
-    setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
-    setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
     applyAvatarDecoration(cloned, preview);
     applyCollectibles(cloned, preview);
     if (primaryColor != null)
@@ -14121,6 +14104,282 @@
       badgeOrder: layout?.badgeOrder?.length ? layout.badgeOrder : defaultBadgeOrder(nativeBadgeRows.get(userId) || [])
     });
   }
+  function directoryBadgeId(id) {
+    if (id === "premium" || id.startsWith("premium_tenure_"))
+      return 1;
+    if (id.startsWith("guild_booster_lvl"))
+      return 12;
+    return DIRECTORY_BADGE_IDS[id];
+  }
+  function badgeSourceFor(id) {
+    if (isCurrentUser(id)) {
+      if (!preview.enabled || rootSettings.fakeProfileLocalOnly && preview.hideBadgesWhenSyncOff)
+        return void 0;
+      return {
+        nitroMonths: preview.nitroEnabled ? preview.nitroMonths : -1,
+        nitroSince: preview.nitroSince,
+        boostIndex: preview.boostMonths > 0 ? BOOST_MONTHS.indexOf(preview.boostMonths) : -1,
+        giftLevel: Number(preview.giftLevel ?? -1),
+        selected: ([rowId]) => !!preview.selectedBadges?.[rowId],
+        oldName: preview.oldName,
+        replace: shouldReplaceLocalBadges(),
+        order: rootSettings.fakeProfileNativeOrder || [],
+        hidden: rootSettings.fakeProfileNativeHidden || []
+      };
+    }
+    if (badgesHiddenFor(id))
+      return void 0;
+    var data = getProfileOverride(id, true);
+    if (!data)
+      return void 0;
+    var ids = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
+    return {
+      nitroMonths: remoteNitroEnabled(data) ? NITRO_DURATIONS[Number(data.nitroLevel)] || 0 : -1,
+      nitroSince: data.nitroSince,
+      boostIndex: Number(data.boostMonths ?? -1),
+      giftLevel: Number(data.giftLevel ?? -1),
+      selected: ([, , flag, , customId]) => customId ? ids.includes(customId) : (Number(data.badgeFlags || 0) & Number(flag)) !== 0,
+      oldName: data.oldName,
+      replace: shouldReplaceSharedBadges(data),
+      order: Array.isArray(data.nativeBadgeOrder) ? data.nativeBadgeOrder : [],
+      hidden: Array.isArray(data.nativeHiddenBadges) ? data.nativeHiddenBadges : []
+    };
+  }
+  function addMonths(date, months) {
+    var next = new Date(date);
+    next.setMonth(next.getMonth() + months);
+    return next;
+  }
+  function nitroSinceFor(months, saved) {
+    var next = NITRO_DURATIONS[NITRO_DURATIONS.indexOf(months) + 1];
+    var date = typeof saved === "string" && /^\d{4}-\d{2}-\d{2}/.test(saved) ? /* @__PURE__ */ new Date(saved.slice(0, 10) + "T12:00:00Z") : null;
+    if (date && Number.isFinite(date.getTime())) {
+      var age = (Date.now() - date.getTime()) / (30.44 * 864e5);
+      if (age >= months && (next === void 0 || age < next))
+        return date;
+    }
+    return monthsAgo(months);
+  }
+  function nativeBadgesFor(src) {
+    var out = [];
+    var hash = (url2) => (String(url2).match(/badge-icons\/([a-f0-9]{32})\.png/) || [])[1];
+    var push = (id, description2, icon3) => out.push({
+      id,
+      description: description2,
+      icon: hash(icon3) ?? icon3
+    });
+    if (src.nitroMonths >= 0)
+      push(nitroBadgeId(src.nitroMonths), "Subscriber since " + shortDate(nitroSinceFor(src.nitroMonths, src.nitroSince)), milestoneIcon(src.nitroMonths, NITRO_ICONS));
+    if (src.boostIndex >= 0 && src.boostIndex < BOOST_MONTHS.length)
+      push("guild_booster_lvl" + (src.boostIndex + 1), "Server boosting since " + shortDate(monthsAgo(BOOST_MONTHS[src.boostIndex])), boosterIcon(BOOST_MONTHS[src.boostIndex]));
+    var gift = GIFT_LEVELS[src.giftLevel];
+    if (gift)
+      push("cloudcord-gifting", gift.name, gift.icon);
+    for (var row of BADGES) {
+      if (!src.selected(row))
+        continue;
+      var [rowId, description, , icon2] = row;
+      push(NATIVE_BADGE_IDS[rowId] ?? "cloudcord-" + rowId, rowId === "oldname" && src.oldName ? `Originally Known As: ${src.oldName}` : description, icon2);
+    }
+    return out;
+  }
+  function discordBadgesFor(src, real) {
+    var fake = nativeBadgesFor(src);
+    var taken = new Set(fake.map(badgeLayoutKey));
+    var list = src.replace || !Array.isArray(real) ? fake : [
+      ...real.filter((badge) => !taken.has(badgeLayoutKey(badge))),
+      ...fake
+    ];
+    var rank = (badge) => {
+      var i = src.order.indexOf(directoryBadgeId(String(badge.id)) ?? -1);
+      return i < 0 ? src.order.length : i;
+    };
+    return list.filter((badge) => !src.hidden.includes(directoryBadgeId(String(badge.id)) ?? -1)).map((badge, i) => ({
+      badge,
+      i
+    })).sort((a, b3) => rank(a.badge) - rank(b3.badge) || a.i - b3.i).map((item) => item.badge);
+  }
+  function rewriteFetchedProfile(action) {
+    if (action?.type !== "USER_PROFILE_FETCH_SUCCESS")
+      return false;
+    var raw = action.userProfile, id = String(raw?.user?.id || "");
+    var src = id ? badgeSourceFor(id) : void 0;
+    if (!src)
+      return false;
+    try {
+      raw.badges = discordBadgesFor(src, raw.badges);
+      if (src.nitroMonths >= 0) {
+        raw.premium_type = 2;
+        raw.premium_since = nitroSinceFor(src.nitroMonths, src.nitroSince).toISOString();
+      }
+      if (src.boostIndex >= 0 && src.boostIndex < BOOST_MONTHS.length)
+        raw.premium_guild_since = monthsAgo(BOOST_MONTHS[src.boostIndex]).toISOString();
+    } catch (e) {
+    }
+    return false;
+  }
+  function learnBadgeInfo(entries) {
+    var learned = {
+      ...rootSettings.cloudcordBadgeInfo || {}
+    };
+    var changed = false;
+    for (var entry of entries) {
+      if (!entry?.owned || !entry.info_label || entry.tiers?.length || DIRECTORY_ONLY_BADGES.has(entry.badge_id) || learned[entry.badge_id] === entry.info_label)
+        continue;
+      learned[entry.badge_id] = entry.info_label;
+      changed = true;
+    }
+    if (changed)
+      rootSettings.cloudcordBadgeInfo = learned;
+  }
+  function fakeTierProgress(tiers, index, since) {
+    var next = tiers[index + 1];
+    if (!next)
+      return [];
+    var start = (tier) => {
+      var req = tier?.requirements?.[0];
+      var amount = Number(req?.threshold ?? 0);
+      return addMonths(since, req?.unit === "years" ? amount * 12 : amount);
+    };
+    var days = (date) => Math.max(0, Math.round((date.getTime() - since.getTime()) / 864e5));
+    var current = days(/* @__PURE__ */ new Date()), floor = days(start(tiers[index])), threshold = Math.max(current, days(start(next)));
+    var left = threshold - current, months = Math.round(left / 30.44);
+    return [
+      {
+        progress_type: 1,
+        current,
+        floor,
+        threshold,
+        unit: "days",
+        window: null,
+        progress_helper_text: left < 31 ? `${left} more day${left === 1 ? "" : "s"}` : `${months} more month${months === 1 ? "" : "s"}`
+      }
+    ];
+  }
+  function tieredEntry(entry, index, since, label, hidden) {
+    var tiers = Array.isArray(entry.tiers) ? entry.tiers : [];
+    var i = Math.max(0, Math.min(tiers.length - 1, index));
+    var tier = tiers[i] || {};
+    var art = {};
+    for (var key of [
+      "simple_icon_url",
+      "simple_icon_raster_url",
+      "complex_icon_static_url",
+      "complex_icon_animated_url"
+    ])
+      if (tier[key])
+        art[key] = tier[key];
+    var obtained = {};
+    for (var k = 0; k <= i; k++) {
+      var req = tiers[k]?.requirements?.[0];
+      var amount = Number(req?.threshold ?? 0);
+      obtained[tiers[k].key] = addMonths(since, req?.unit === "years" ? amount * 12 : amount).toISOString();
+    }
+    return {
+      ...entry,
+      ...art,
+      tiers: tiers.map((item, k2) => ({
+        ...item,
+        owned: k2 <= i
+      })),
+      progress: fakeTierProgress(tiers, i, since),
+      owned: true,
+      hidden,
+      obtained_at: since.toISOString(),
+      current_tier: tier.key,
+      next_tier: tiers[i + 1]?.key ?? null,
+      tier_obtained_at: obtained,
+      info_label: label
+    };
+  }
+  function fakeDirectoryEntry(entry, src, owned) {
+    if (!entry)
+      return entry;
+    var hidden = src.hidden.includes(entry.badge_id);
+    if (DIRECTORY_ONLY_BADGES.has(entry.badge_id))
+      return src.replace ? {
+        ...entry,
+        owned: false
+      } : entry;
+    var fake = owned.get(entry.badge_id);
+    if (!fake)
+      return src.replace ? {
+        ...entry,
+        owned: false,
+        current_tier: void 0,
+        next_tier: void 0,
+        info_label: void 0
+      } : entry;
+    if (entry.badge_id === 1) {
+      var since = nitroSinceFor(src.nitroMonths, src.nitroSince);
+      return tieredEntry(entry, NITRO_DURATIONS.indexOf(src.nitroMonths), since, "Subscriber since " + shortDate(since), hidden);
+    }
+    if (entry.badge_id === 12) {
+      var since1 = monthsAgo(BOOST_MONTHS[src.boostIndex] || 1);
+      return tieredEntry(entry, src.boostIndex, since1, "Boosting since " + shortDate(since1), hidden);
+    }
+    if (entry.badge_id === 17)
+      return tieredEntry(entry, src.giftLevel, monthsAgo(1), fake.description, hidden);
+    return {
+      ...entry,
+      owned: true,
+      hidden,
+      info_label: entry.info_label ?? rootSettings.cloudcordBadgeInfo?.[entry.badge_id] ?? KNOWN_BADGE_INFO[entry.badge_id]
+    };
+  }
+  function rewriteBadgeDirectory(action) {
+    var type = action?.type;
+    if (type !== "BADGE_DIRECTORY_FETCH_SUCCESS" && type !== "BADGE_FETCH_SUCCESS" && type !== "BADGE_SUMMARY_FETCH_SUCCESS")
+      return false;
+    try {
+      learnBadgeInfo(Array.isArray(action.badges) ? action.badges : action.badge ? [
+        action.badge
+      ] : []);
+    } catch (e) {
+    }
+    var id = String(action.userId || "");
+    var src = id ? badgeSourceFor(id) : void 0;
+    if (!src)
+      return false;
+    try {
+      var owned = /* @__PURE__ */ new Map();
+      for (var badge of nativeBadgesFor(src)) {
+        var badgeId = directoryBadgeId(badge.id);
+        if (badgeId != null)
+          owned.set(badgeId, badge);
+      }
+      if (Array.isArray(action.badges))
+        action.badges = action.badges.map((entry) => fakeDirectoryEntry(entry, src, owned));
+      if (action.badge)
+        action.badge = fakeDirectoryEntry(action.badge, src, owned);
+    } catch (e) {
+    }
+    return false;
+  }
+  function onBadgeCustomiserChange(action) {
+    if (action?.guildId || !preview.enabled)
+      return;
+    if (Array.isArray(action.pendingBadgeDisplayOrder))
+      rootSettings.fakeProfileNativeOrder = action.pendingBadgeDisplayOrder.map(Number);
+    if (Array.isArray(action.pendingBadgeHiddenBadges))
+      rootSettings.fakeProfileNativeHidden = action.pendingBadgeHiddenBadges.map(Number);
+    if (Array.isArray(action.pendingBadgeDisplayOrder) || Array.isArray(action.pendingBadgeHiddenBadges))
+      queueSharedPublish();
+  }
+  function installNativeBadgeHooks() {
+    if (nativeBadgeHooksInstalled)
+      return;
+    var dispatcher2 = FluxDispatcher;
+    if (typeof dispatcher2?.addInterceptor !== "function")
+      return;
+    nativeBadgeHooksInstalled = true;
+    dispatcher2.addInterceptor(rewriteFetchedProfile);
+    dispatcher2.addInterceptor(rewriteBadgeDirectory);
+    try {
+      FluxDispatcher.subscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onBadgeCustomiserChange);
+    } catch (e) {
+    }
+  }
   function connectBadgeRenderer() {
     try {
       after("default", useBadgesModule2, ([user], result) => {
@@ -14137,86 +14396,18 @@
             nativeBadgeRows.delete(nativeBadgeRows.keys().next().value);
         }
         void refreshPublishedBadges();
-        if (!isCurrentUser(id)) {
+        if (!isCurrentUser(id))
           requestSharedProfile(id);
-          var data = getProfileOverride(id, true);
-          var staffBadge = cloudCordStaffBadge(id);
-          if (!data && !staffBadge)
-            return appendPublishedBadges(result, id);
-          var ordered = [];
-          if (staffBadge)
-            addOfficialBadge(ordered, staffBadge, user, data);
-          if (data) {
-            var nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
-            var boostMonths = [
-              1,
-              2,
-              3,
-              6,
-              9,
-              12,
-              15,
-              18,
-              24
-            ][Number(data.boostMonths)] || 0;
-            if (remoteNitroEnabled(data))
-              addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths, data.nitroSince), milestoneIcon(nitroMonths, NITRO_ICONS));
-            addRenderedBadge(ordered, "cloudcord-shared-boost", serverBoostingLabel(boostMonths), boosterIcon(boostMonths));
-            var gift = GIFT_LEVELS[Number(data.giftLevel)];
-            if (gift)
-              addRenderedBadge(ordered, "cloudcord-shared-gifting", gift.name, gift.icon);
-            var customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
-            for (var [id1, description, flag, icon2, customId] of BADGES) {
-              var selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
-              var label = id1 === "oldname" && data.oldName ? `Originally Known As: ${data.oldName}` : description;
-              if (selected)
-                addRenderedBadge(ordered, `cloudcord-shared-${customId || id1}`, label, icon2);
-            }
-          }
-          var existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter((item) => {
-            var badgeId2 = String(item?.id || "");
-            return !badgeId2.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeLayoutKey(item) === "nitro");
-          });
-          return appendPublishedBadges([
-            ...ordered,
-            ...existing
-          ], id);
-        }
-        var staffBadge1 = cloudCordStaffBadge(id);
-        if (!preview.enabled || localBadgesHidden()) {
-          if (!staffBadge1)
-            return appendPublishedBadges(result, id);
-          var existing1 = result.filter((item) => !String(item?.id || "").startsWith("cloudcord-"));
-          var ordered1 = [];
-          addOfficialBadge(ordered1, staffBadge1, user, null);
-          return appendPublishedBadges([
-            ...ordered1,
-            ...existing1
-          ], id);
-        }
-        var existing2 = shouldReplaceLocalBadges() ? [] : result.filter((item) => {
-          var badgeId2 = String(item?.id || "");
-          return !badgeId2.startsWith("cloudcord-") && !badgeId2.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeLayoutKey(item) === "nitro");
-        });
-        var ordered2 = [];
-        if (staffBadge1)
-          addOfficialBadge(ordered2, staffBadge1, user, preview);
-        if (preview.nitroEnabled)
-          addRenderedBadge(ordered2, nitroBadgeId(preview.nitroMonths), nitroSubscriberLabel(preview.nitroMonths, preview.nitroSince), milestoneIcon(preview.nitroMonths, NITRO_ICONS));
-        var gift1 = GIFT_LEVELS[preview.giftLevel];
-        if (gift1)
-          addRenderedBadge(ordered2, "fakeprofile-gifting", gift1.name, gift1.icon);
-        addRenderedBadge(ordered2, "fakeprofile-boost", serverBoostingLabel(preview.boostMonths), boosterIcon(preview.boostMonths));
-        for (var [badgeId, description1, , icon1] of BADGES) {
-          if (!preview.selectedBadges?.[badgeId])
-            continue;
-          var id2 = `fakeprofile-${badgeId}`;
-          var label1 = badgeId === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description1;
-          addRenderedBadge(ordered2, id2, label1, icon1);
-        }
+        if (badgesHiddenFor(id))
+          return result;
+        var staffBadge = cloudCordStaffBadge(id);
+        var ordered = [];
+        if (staffBadge)
+          addOfficialBadge(ordered, staffBadge, user, isCurrentUser(id) ? preview.enabled ? preview : null : getProfileOverride(id) ?? null);
+        var existing = result.filter((item) => !String(item?.id || "").startsWith("cloudcord-official"));
         return appendPublishedBadges([
-          ...ordered2,
-          ...existing2
+          ...ordered,
+          ...existing
         ], id);
       });
       diagnostics.patches += 1;
@@ -14815,6 +15006,10 @@
       diagnostics.last = error?.message || "Could not connect profile banner";
     }
     connectBadgeRenderer();
+    try {
+      installNativeBadgeHooks();
+    } catch (e) {
+    }
     var avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
     var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
     diagnostics.avatarResolver = !!avatarResolver;
@@ -17725,7 +17920,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -18419,6 +18614,71 @@
       publishedBadgeRequest = false;
       publishedBadgeFetchedAt = 0;
       nativeBadgeRows = /* @__PURE__ */ new Map();
+      NATIVE_BADGE_IDS = {
+        staff: "staff",
+        partner: "partner",
+        hypesquad: "hypesquad",
+        bug1: "bug_hunter_level_1",
+        bravery: "hypesquad_house_1",
+        brilliance: "hypesquad_house_2",
+        balance: "hypesquad_house_3",
+        early: "early_supporter",
+        bug2: "bug_hunter_level_2",
+        vdev: "verified_developer",
+        mod: "certified_moderator",
+        active: "active_developer",
+        oldname: "legacy_username",
+        quest: "quest_completed",
+        orbs: "orb_profile_badge"
+      };
+      DIRECTORY_BADGE_IDS = {
+        staff: 22,
+        partner: 2,
+        certified_moderator: 3,
+        hypesquad: 4,
+        hypesquad_house_1: 5,
+        hypesquad_house_2: 6,
+        hypesquad_house_3: 7,
+        bug_hunter_level_1: 8,
+        bug_hunter_level_2: 9,
+        verified_developer: 10,
+        early_supporter: 11,
+        legacy_username: 13,
+        quest_completed: 14,
+        orb_profile_badge: 16,
+        "cloudcord-gifting": 17
+      };
+      BOOST_MONTHS = [
+        1,
+        2,
+        3,
+        6,
+        9,
+        12,
+        15,
+        18,
+        24
+      ];
+      DIRECTORY_ONLY_BADGES = /* @__PURE__ */ new Set([
+        18,
+        19,
+        20,
+        21
+      ]);
+      shortDate = (date) => date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric"
+      });
+      KNOWN_BADGE_INFO = {
+        5: "First in, no hesitation",
+        6: "Patience meets discipline",
+        7: "Calm in the chaos",
+        11: "A Nitro original",
+        14: "1 Quest completed",
+        16: "This is just the beginning..."
+      };
+      nativeBadgeHooksInstalled = false;
       identityRefreshers = /* @__PURE__ */ new Set();
       identityRenderers = /* @__PURE__ */ new WeakMap();
       socialRenderers = /* @__PURE__ */ new WeakMap();
