@@ -78,6 +78,7 @@ jobs:
         run: |
           node scripts/test-cloudcord-badge-sync.cjs
           node scripts/test-pc-nitro-override.cjs
+          node scripts/test-profile-hook-lifecycle.cjs
 
       - name: Check shared custom friend and connection previews
         env:

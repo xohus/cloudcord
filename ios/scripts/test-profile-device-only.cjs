@@ -5,13 +5,17 @@ const desktop = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/i
 const mobile = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
 for (const [source, flag] of [[desktop, 'storedData.localOnly'], [mobile, 'rootSettings.fakeProfileLocalOnly']]) {
     const publish = source.slice(source.indexOf('async function publishSharedProfile('));
-    assert(publish.indexOf(`if (${flag}) return;`) < publish.indexOf('fetch('));
+    const guard = new RegExp(`if \\([^\\n]*${flag.replace(/\./g, '\\.')}[^\\n]*\\) return;`);
+    const publishGuard = publish.match(guard);
+    assert(publishGuard && publishGuard.index < publish.indexOf('fetch('));
     const pull = source.slice(source.indexOf('async function pullOwnSharedProfile('));
-    assert(pull.indexOf(`if (${flag}) return;`) < pull.indexOf('fetch('));
+    const pullGuard = pull.match(guard);
+    assert(pullGuard && pullGuard.index < pull.indexOf('fetch('));
     const queue = source.slice(source.indexOf('function queueSharedPublish()'), source.indexOf('async function pullOwnSharedProfile('));
     let scheduled = 0;
     vm.runInNewContext(queue.replace(/catch\(error => \{[\s\S]*?\}\)/, 'catch(() => {})') + '\nqueueSharedPublish();', {
         storedData: { localOnly: true }, rootSettings: { fakeProfileLocalOnly: true },
+        profileRuntimeActive: true,
         publishTimer: null, preview: { enabled: true }, clearTimeout() {},
         setTimeout() { scheduled++; }, publishSharedProfile() {},
     });

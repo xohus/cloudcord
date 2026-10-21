@@ -7,7 +7,7 @@ const catalog = JSON.parse(fs.readFileSync('src/sincordplugins/fakeProfile/decor
 assert.doesNotMatch(source, /(?:clone|merged)\.avatarDecoration = null/);
 assert.match(source, /find: "getAvatarDecorationURL:"/);
 const decorationResolver = source.slice(source.indexOf('    patchDecorationUrl(input:'), source.indexOf('    patchBannerUrl('));
-const decorationContext = vm.createContext({ ALL_DECORATIONS: [{ id: 'a_test', url: 'https://cdn.discordapp.com/avatar-decoration-presets/a_test.png' }], sharedDecorationAsset: value => String(value || '') });
+const decorationContext = vm.createContext({ profileRuntimeActive: true, ALL_DECORATIONS: [{ id: 'a_test', url: 'https://cdn.discordapp.com/avatar-decoration-presets/a_test.png' }], sharedDecorationAsset: value => String(value || '') });
 vm.runInContext(esbuild.transformSync(`const decorationPlugin = { ${decorationResolver} }; globalThis.resolveDecoration = decorationPlugin.patchDecorationUrl;`, { loader: 'ts' }).code, decorationContext);
 assert.equal(decorationContext.resolveDecoration({ avatarDecoration: { asset: 'a_test' } }), 'https://cdn.discordapp.com/avatar-decoration-presets/a_test.png');
 assert.equal(decorationContext.resolveDecoration({ avatarDecorationData: { asset: 'a_test' } }), 'https://cdn.discordapp.com/avatar-decoration-presets/a_test.png');

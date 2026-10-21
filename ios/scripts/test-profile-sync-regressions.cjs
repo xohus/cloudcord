@@ -4,7 +4,15 @@ const desktop = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/i
 const workflow = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
 const mobile = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'")[1].split('\n          TSX')[0].replace(/^          /gm, '');
 const compile = text => esbuild.transformSync(text, { loader: 'ts' }).code;
+const runtime = { profileRuntimeActive: true, profileRuntimeGeneration: 1 };
 const block = (text, start, end) => text.slice(text.indexOf(start), text.indexOf(end, text.indexOf(start)));
+const accountLookup = vm.createContext({ AuthenticationStore: { getId: () => null },
+    UserStore: { getCurrentUser: () => { throw Error('recursive wrapped lookup'); } },
+    realGetCurrentUser: () => ({ id: 'native-account' }), _cachedMyId: 'previous-account' });
+vm.runInContext(compile(block(desktop, 'function activeUserId(', 'function fromSharedProfile(')), accountLookup);
+assert.equal(accountLookup.activeUserId(), 'native-account');
+accountLookup.realGetCurrentUser = () => null;
+assert.equal(accountLookup.activeUserId(), null, 'logout cannot reuse a cached account ID for profile publishing');
 const ctx = vm.createContext({ normalizeProfileAppearance: () => ({}), sharedDecorationAsset: value => value || '',
     REPLACE_BADGES_SYNC_ID: '__cc_replace_real_badges', getDecorationUrl: value => value, ALL_DECORATIONS: [] });
 vm.runInContext(compile(block(desktop, 'function fromSharedProfile(', 'const NITRO_LEVEL_MONTHS') + block(desktop, 'function toSharedProfile(', 'async function publishSharedProfile(')), ctx);
@@ -50,9 +58,10 @@ const accountFlags = Object.freeze({ has: bit => bit === 1 });
 const nativeUser = Object.create({ isProvisional() { return this.flags.has(1); } });
 Object.assign(nativeUser, { id: '123456789012345', username: 'real', globalName: 'Real' });
 Object.defineProperty(nativeUser, 'flags', { value: accountFlags });
-const identity = vm.createContext({ nativeProfileAppearance: () => ({}), nativeCollectibles: value => value,
+const sharedIdentity = { username: 'shared', badgeFlags: 8, replaceRealBadges: true };
+const identity = vm.createContext({ ...runtime, otherUserCache: new WeakMap(), nativeProfileAppearance: () => ({}), nativeCollectibles: value => value,
     isEnabled: true, storedData: { username: 'custom', badgeFlags: 8, replaceRealBadges: true },
-    viewedSharedProfile: () => ({ username: 'shared', badgeFlags: 8, replaceRealBadges: true }),
+    viewedSharedProfile: () => sharedIdentity,
     isRealProfileView: () => false, isMe: () => false,
     cachedOriginalUser: null, cachedFakeUser: null, cachedDataHash: -1, _dataVersion: 0, _trueOriginalUser: null,
     GIFT_LEVELS: [], Date, Object, Reflect });
@@ -68,6 +77,16 @@ for (const [decorate, mine] of [[identity.ownUser, true], [identity.otherUser, f
 }
 assert.equal(nativeUser.flags, accountFlags);
 assert.equal(nativeUser.username, 'real');
+identity.isMe = () => false;
+const stableOther = identity.otherUser(nativeUser);
+assert.equal(identity.otherUser(nativeUser), stableOther, 'unchanged native/shared user reads retain object identity');
+identity.otherUserCache = new WeakMap();
+assert.notEqual(identity.otherUser(nativeUser), stableOther, 'native store changes can invalidate cached presentation users');
+for (const invalid of ['bad-date', '2026-02-31', '2026-13-01', '999999999999999']) {
+    const value = {};
+    identity.applyNativeProfileMetadata(value, { nitro: true, nitroLevel: 0, nitroSince: invalid });
+    assert(Number.isFinite(value.premiumSince.getTime()), 'malformed Nitro dates must fall back without crashing profile rendering');
+}
 const paidProfile = { premiumType: 2, premium_type: 2, premiumSince: 'paid-since', premium_since: 'paid-since',
     premiumGuildSince: 'boost-since', premium_guild_since: 'boost-since', giftCount: 12, gift_count: 12, giftingBadgeTier: 2 };
 const biographyOnly = { ...paidProfile };
@@ -109,7 +128,7 @@ let resolveResponse;
 let activeId = '123456789012345';
 let payload = { bio: 'remote', syncRevision: 3 };
 let writes = 0;
-const host = vm.createContext({ storedData: { bio: 'local', syncRevision: 2, hideOtherProfiles: true }, isEnabled: true,
+const host = vm.createContext({ ...runtime, storedData: { bio: 'local', syncRevision: 2, hideOtherProfiles: true }, isEnabled: true,
     activeUserId: () => activeId, profileEditorOpen: false, suppressOwnPullUntil: 0, Date, JSON,
     SHARED_PROFILE_API: 'https://example.test', LOCAL_ONLY_FIELDS: ['hideOtherProfiles', 'nativeEditorImages'],
     fetch: () => new Promise(resolve => { resolveResponse = () => resolve({ ok: true, json: async () => ({ profile: payload }) }); }),
@@ -120,10 +139,21 @@ const host = vm.createContext({ storedData: { bio: 'local', syncRevision: 2, hid
 });
 vm.runInContext(compile(pull), host);
 (async () => {
+    let modalError = '', modalWrites = 0;
+    const modal = vm.createContext({ myId: 'old-account', activeUserId: () => 'new-account',
+        setSaveError: message => { modalError = message; }, setSaving: () => modalWrites++,
+        resetProfileAccount: () => modalWrites++ });
+    vm.runInContext(compile(block(desktop, '    async function save(useEverywhere', '    const [tab, setTab]')), modal);
+    await modal.save(true);
+    assert.equal(modalWrites, 0, 'an editor opened on another account cannot save into the current account');
+    assert(modalError.includes('account changed'));
+    modalError = ''; await modal.reset();
+    assert.equal(modalWrites, 0);
+    assert(modalError.includes('account changed'));
     let resetFetches = 0, canceledTimers = 0;
     const resetStorage = new Map();
     const untouched = { bio: 'other account' };
-    const resetHost = vm.createContext({ activeUserId: () => 'owner', storedData: { nitro: true, bio: 'old' }, isEnabled: true,
+    const resetHost = vm.createContext({ ...runtime, activeUserId: () => 'owner', storedData: { nitro: true, bio: 'old' }, isEnabled: true,
         allAccountsData: { owner: { nitro: true }, other: untouched }, allAccountsEnabled: { owner: true, other: true },
         publishTimer: 123, clearTimeout: () => canceledTimers++, saveDataSync() {}, saveAllDataSync() {},
         DataStore: { set: async (key, value) => resetStorage.set(key, value) }, DS_KEY: 'profile', DS_ENABLED: 'enabled', DS_ALL_DATA: 'accounts', DS_ALL_ENABLED: 'accountEnabled',
@@ -143,7 +173,7 @@ vm.runInContext(compile(pull), host);
     let responseStatus = 503;
     let refreshes = 0;
     const otherId = '987654321098765';
-    const viewer = vm.createContext({ Date, JSON, isMe: () => false,
+    const viewer = vm.createContext({ ...runtime, Date, JSON, isMe: () => false,
         sharedRequests: new Set(), sharedQueued: new Set(), sharedMissingUntil: new Map(),
         sharedProfiles: new Map([[otherId, { badgeFlags: 8 }]]), sharedProfileFetchedAt: new Map(),
         sharedBackoffUntil: 0, SHARED_MAX_IN_FLIGHT: 4, SHARED_MISSING_TTL_MS: 900000, SHARED_PROFILE_TTL_MS: 120000,
@@ -161,6 +191,9 @@ vm.runInContext(compile(pull), host);
     viewer.sharedMissingUntil.clear(); responseStatus = 200;
     viewer.requestSharedProfile(otherId); await settle();
     assert.equal(viewer.sharedProfiles.get(otherId).badgeFlags, 2, 'republished profiles load again');
+    const unchangedProfile = viewer.sharedProfiles.get(otherId);
+    viewer.sharedProfileFetchedAt.clear(); viewer.requestSharedProfile(otherId); await settle();
+    assert.equal(viewer.sharedProfiles.get(otherId), unchangedProfile, 'unchanged server responses preserve shared snapshot identity');
     let pending = host.pullOwnSharedProfile();
     host.storedData = { bio: 'edited during request', syncRevision: 4 };
     resolveResponse(); await pending;
@@ -177,9 +210,14 @@ vm.runInContext(compile(pull), host);
     assert.equal(host.storedData.bio, 'remote');
     pending = host.pullOwnSharedProfile(); activeId = '999999999999999'; resolveResponse(); await pending;
     assert.equal(writes, 1, 'account switches discard in-flight responses');
+    activeId = '123456789012345';
+    pending = host.pullOwnSharedProfile();
+    host.profileRuntimeGeneration += 2;
+    resolveResponse(); await pending;
+    assert.equal(writes, 1, 'a quick disable/re-enable rejects responses from the previous runtime');
     assert(mobile.includes('replaceRealBadges: preview.replaceBadges === true'));
     let published;
-    const publisher = vm.createContext({ activeUserId: () => 'owner', isEnabled: true,
+    const publisher = vm.createContext({ ...runtime, activeUserId: () => 'owner', isEnabled: true,
         storedData: { replaceRealBadges: false, customBadgeIds: [], hideBadgesWhenSyncOff: true },
         allAccountsData: {}, lastRemoteProfile: { mobileOnly: 'stale', replaceRealBadges: true },
         SHARED_PROFILE_API: 'https://example.test', LS_SHARE: 'share', Date, JSON,
@@ -212,10 +250,16 @@ vm.runInContext(compile(pull), host);
     publisher.fetch = async () => ({ ok: false, status: 503 });
     await assert.rejects(publisher.publishSharedProfile(), /latest shared profile \(503\)/);
     assert.equal(published, null, 'a failed latest-profile read must not publish a stale or cross-account snapshot');
+    publisher.fetch = async () => ({ ok: true, json: async () => {
+        publisher.profileRuntimeGeneration += 2;
+        return { profile: { syncRevision: 5 } };
+    } });
+    await publisher.publishSharedProfile();
+    assert.equal(published, null, 'stopped/restarted runtimes cannot resume an old upload');
 
     const credentials = new Map(), uploads = [];
     let serverProfile = { mobileOnly: 'keep', syncRevision: 100 };
-    const concurrent = vm.createContext({ activeUserId: () => 'owner', isEnabled: true,
+    const concurrent = vm.createContext({ ...runtime, activeUserId: () => 'owner', isEnabled: true,
         storedData: { bio: 'first', customBadgeIds: [] }, allAccountsData: {}, lastRemoteProfile: null,
         SHARED_PROFILE_API: 'https://example.test', LS_SHARE: 'share', Date, JSON,
         REPLACE_BADGES_SYNC_ID: '__cc_replace_real_badges', ALL_DECORATIONS: [], getDecorationUrl: value => value,

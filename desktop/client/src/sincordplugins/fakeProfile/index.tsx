@@ -530,6 +530,7 @@ let isEnabled = false;
 let domObserver: MutationObserver | null = null;
 let cachedOriginalUser: any = null;
 let cachedFakeUser: any = null;
+let otherUserCache = new WeakMap<object, { profile: CustomProfileData; user: any; }>();
 let cachedDataHash = 0;
 let _trueOriginalUser: any = null;
 let _dataVersion = 0;
@@ -557,6 +558,7 @@ const sharedViewedAt = new Map<string, number>();
 let sharedBackoffUntil = 0;
 const sharedProfiles = new Map<string, CustomProfileData>();
 let realGetUserProfile: ((...args: any[]) => any) | null = null;
+let realGetCurrentUser: (() => any) | null = null;
 /** Discord marks profiles the viewer isn't allowed to see as private; show those exactly as Discord does. */
 function isPrivateProfile(userId: string): boolean {
     try { return realGetUserProfile?.(userId)?.private === true; } catch { return false; }
@@ -598,8 +600,13 @@ let suppressOwnPullUntil = 0;
 
 function activeUserId(): string | null {
     try {
-        return String(AuthenticationStore?.getId?.() || UserStore?.getCurrentUser?.()?.id || _cachedMyId || "") || null;
-    } catch { return _cachedMyId; }
+        const authenticated = AuthenticationStore?.getId?.();
+        if (authenticated) return String(authenticated);
+        // Do not recurse through our own UserStore wrapper during startup, and
+        // never publish as the previous account after Discord has logged out.
+        const user = realGetCurrentUser ? realGetCurrentUser() : UserStore?.getCurrentUser?.();
+        return user?.id ? String(user.id) : null;
+    } catch { return null; }
 }
 
 function fromSharedProfile(data: any): CustomProfileData {
@@ -633,7 +640,13 @@ const NITRO_LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_LEVEL_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 
 function monthsAgo(months: number, explicitDate?: string): Date {
-    if (explicitDate) return new Date(`${explicitDate}T12:00:00Z`);
+    if (typeof explicitDate === "string") {
+        const day = explicitDate.trim().slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}$/.test(day)) {
+            const parsed = new Date(`${day}T12:00:00Z`);
+            if (Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day) return parsed;
+        }
+    }
     const date = new Date();
     date.setMonth(date.getMonth() - months);
     return date;
@@ -699,6 +712,8 @@ function applyNativeProfileMetadata(target: any, data: CustomProfileData, includ
 
 // Last profile pulled from the server for this account (any device's format).
 let lastRemoteProfile: Record<string, any> | null = null;
+let profileRuntimeActive = false;
+let profileRuntimeGeneration = 0;
 // Device-only settings that never belong in the shared profile.
 const LOCAL_ONLY_FIELDS = ["localOnly", "hideOtherProfiles", "nativeEditorImages", "hideBadgesWhenSyncOff", "copiedUserId"];
 function remoteOnlyFields() {
@@ -728,7 +743,7 @@ function toSharedProfile(data: CustomProfileData) {
 }
 
 async function publishSharedProfile(): Promise<void> {
-    if (storedData.localOnly) return;
+    if (!profileRuntimeActive || storedData.localOnly) return;
     const queue = publishSharedProfile as typeof publishSharedProfile & { pending?: Promise<void>; queued?: boolean; };
     if (queue.pending) {
         queue.queued = true;
@@ -744,23 +759,24 @@ async function publishSharedProfile(): Promise<void> {
                     // fresh attempt; every caller waits for the final saved state.
                     if (!queue.queued) throw error;
                 }
-            } while (queue.queued && !storedData.localOnly);
+            } while (queue.queued && profileRuntimeActive && !storedData.localOnly);
         } finally { queue.pending = undefined; }
     })();
     return queue.pending;
 }
 
 async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
-    if (storedData.localOnly) return;
+    if (!profileRuntimeActive || storedData.localOnly) return;
+    const generation = profileRuntimeGeneration;
     const ownerId = activeUserId();
     if (!ownerId || !isEnabled) throw new Error("Sign in to Discord before syncing your profile.");
     let remoteRevision = 0;
     // Advance the revision without pulling old fields into the open editor.
     const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
-    if (activeUserId() !== ownerId || storedData.localOnly) return;
+    if (!profileRuntimeActive || generation !== profileRuntimeGeneration || activeUserId() !== ownerId || storedData.localOnly) return;
     if (latestResponse.ok) {
         const latest = await latestResponse.json();
-        if (activeUserId() !== ownerId || storedData.localOnly) return;
+        if (!profileRuntimeActive || generation !== profileRuntimeGeneration || activeUserId() !== ownerId || storedData.localOnly) return;
         lastRemoteProfile = latest?.profile && typeof latest.profile === "object" ? latest.profile : lastRemoteProfile;
         remoteRevision = Number(latest?.profile?.syncRevision || 0);
     }
@@ -779,7 +795,7 @@ async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
             await DataStore.set(shareKey, { ...saved, ownerId });
         }
     }
-    if (storedData.localOnly || activeUserId() !== ownerId) return;
+    if (!profileRuntimeActive || generation !== profileRuntimeGeneration || storedData.localOnly || activeUserId() !== ownerId) return;
     // Reading credentials can yield to a newer edit. Stamp the actual snapshot
     // being uploaded, not the object that existed before that await.
     storedData.syncRevision = Math.max(Date.now(), Number(storedData.syncRevision || 0) + 1, remoteRevision + 1);
@@ -791,7 +807,7 @@ async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
         // Keep fields only the phone app knows about, so saving here never wipes them.
         body: JSON.stringify({ ownerId, profile: { ...remoteOnlyFields(), ...toSharedProfile(storedData) } })
     });
-    if (activeUserId() !== ownerId) return;
+    if (!profileRuntimeActive || generation !== profileRuntimeGeneration || activeUserId() !== ownerId) return;
     if (!response.ok) {
         if (response.status === 409) {
             if (allowRetry) return publishSharedProfileSnapshot(false);
@@ -806,7 +822,7 @@ async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
         throw new Error(response.status === 413 ? "Your profile images are too large to sync. Use Upload to crop and resize them." : response.status === 429 ? "Too many saves. Wait a moment and try again." : response.status === 503 ? "Profile sync is unavailable right now. Your changes are saved on this device." : `Couldn't sync your profile (${response.status}). ${String(details?.error || "Try again shortly.").slice(0, 160)}`);
     }
     const result = await response.json();
-    if (activeUserId() !== ownerId) return;
+    if (!profileRuntimeActive || generation !== profileRuntimeGeneration || activeUserId() !== ownerId) return;
     if (!saved.id && result?.id) await DataStore.set(shareKey, { id: result.id, editToken: result.editToken, ownerId });
 }
 
@@ -843,6 +859,78 @@ function resetProfileAccount(accountId: string) {
     forceAccountPanelRerender();
 }
 
+const profileStoreCleanups: (() => void)[] = [];
+function installProfileReadHook(store: any, method: string, handler: (original: Function, args: any[]) => any) {
+    const original = store?.[method];
+    if (typeof original !== "function") return;
+    const generation = profileRuntimeGeneration;
+    const wrapped = function (this: any, ...args: any[]) {
+        if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return original.apply(this, args);
+        return handler(original.bind(this), args);
+    };
+    store[method] = wrapped;
+    profileStoreCleanups.push(() => { if (store[method] === wrapped) store[method] = original; });
+}
+function uninstallProfileStoreHooks() {
+    for (const cleanup of profileStoreCleanups.splice(0).reverse()) cleanup();
+    realGetUserProfile = null;
+    realGetCurrentUser = null;
+}
+function installProfileStoreHooks(plugin: any) {
+    const owner = {};
+    try {
+        const US: any = UserStore || (Vencord as any).Webpack?.findByStoreName?.("UserStore");
+        if (US && !US._cp_hook) {
+            if (typeof US.getCurrentUser === "function") realGetCurrentUser = US.getCurrentUser.bind(US);
+            let lastReal: any = null, lastFake: any = null, lastVersion = -1;
+            installProfileReadHook(US, "getCurrentUser", original => {
+                const real = original();
+                if (!real) return real;
+                if (real !== lastReal) {
+                    if (real.username) _realUsername = real.username;
+                    if (real.globalName) _realGlobalName = real.globalName;
+                }
+                if (!isEnabled) return real;
+                if (real === lastReal && lastVersion === _dataVersion && lastFake) return lastFake;
+                lastReal = real; lastVersion = _dataVersion;
+                return lastFake = plugin.fakeCurrentUser(real);
+            });
+            installProfileReadHook(US, "getUser", (original, args) => {
+                const real = original(...args);
+                return isEnabled && isMe(args[0]) ? plugin.fakeCurrentUser(real) : plugin.fakeOtherUser(real);
+            });
+            US._cp_hook = owner;
+            profileStoreCleanups.push(() => { if (US._cp_hook === owner) delete US._cp_hook; });
+            if (typeof US.addChangeListener === "function" && typeof US.removeChangeListener === "function") {
+                const invalidate = () => {
+                    otherUserCache = new WeakMap();
+                    cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+                };
+                US.addChangeListener(invalidate);
+                profileStoreCleanups.push(() => US.removeChangeListener(invalidate));
+            }
+        }
+    } catch { }
+    try {
+        const UPS = (Vencord as any).Webpack?.findByProps?.("getUserProfile", "getGuildMemberProfile");
+        if (UPS && !UPS._cp_hook) {
+            if (typeof UPS.getUserProfile === "function") realGetUserProfile = UPS.getUserProfile.bind(UPS);
+            for (const method of ["getUserProfile", "getGuildMemberProfile"]) installProfileReadHook(UPS, method, (original, args) => {
+                const profile = original(...args);
+                try {
+                    const id = resolveProfileUserId(args[0], profile);
+                    if (isMe(id)) return isEnabled && profile ? plugin.hookUserProfile(profile) : profile;
+                    requestSharedProfile(id);
+                    const shared = viewedSharedProfile(id);
+                    return shared && profile ? decorateSharedProfile(profile, shared) : profile;
+                } catch { return profile; }
+            });
+            UPS._cp_hook = owner;
+            profileStoreCleanups.push(() => { if (UPS._cp_hook === owner) delete UPS._cp_hook; });
+        }
+    } catch { }
+}
+
 const isImageUri = (value: unknown): value is string => typeof value === "string" && /^(data:image\/(png|jpe?g|gif|webp);base64,|https:\/\/)/i.test(value);
 // Discord's Edit Profile writes avatar and banner picks as pending changes. While the
 // custom profile is on, keep them as the CloudCord picture and banner instead, so they
@@ -865,12 +953,13 @@ function onPendingProfileChange(action: any) {
 
 function queueSharedPublish() {
     if (publishTimer) clearTimeout(publishTimer);
-    if (storedData.localOnly) return;
+    if (!profileRuntimeActive || storedData.localOnly) return;
     publishTimer = setTimeout(() => void publishSharedProfile().catch(() => { }), 800);
 }
 
 async function pullOwnSharedProfile() {
-    if (storedData.localOnly) return;
+    if (!profileRuntimeActive || storedData.localOnly) return;
+    const generation = profileRuntimeGeneration;
     // Never replace local form state with the last server snapshot while the
     // profile editor is open or immediately after saving a newer revision.
     if (profileEditorOpen || Date.now() < suppressOwnPullUntil) return;
@@ -888,7 +977,7 @@ async function pullOwnSharedProfile() {
         }
         if (!response.ok) return;
         const payload = await response.json();
-        if (activeUserId() !== id || storedData.localOnly || profileEditorOpen || Date.now() < suppressOwnPullUntil || JSON.stringify(storedData) !== localSnapshot) return;
+        if (!profileRuntimeActive || generation !== profileRuntimeGeneration || activeUserId() !== id || storedData.localOnly || profileEditorOpen || Date.now() < suppressOwnPullUntil || JSON.stringify(storedData) !== localSnapshot) return;
         const remote = payload?.profile ?? payload;
         if (Number(remote?.syncRevision || 0) < Number(storedData.syncRevision || 0)) return;
         lastRemoteProfile = payload?.profile ?? payload ?? null;
@@ -904,7 +993,8 @@ async function pullOwnSharedProfile() {
 }
 
 function requestSharedProfile(userId: string, force = false) {
-    if (!/^\d{15,22}$/.test(userId) || isMe(userId) || sharedRequests.has(userId)) return;
+    if (!profileRuntimeActive || !/^\d{15,22}$/.test(userId) || isMe(userId) || sharedRequests.has(userId)) return;
+    const generation = profileRuntimeGeneration;
     const now = Date.now();
     if (now < sharedBackoffUntil) return;
     // Busy: queue it instead of dropping it, so the profile still loads (and its badges replace the real ones).
@@ -918,6 +1008,7 @@ function requestSharedProfile(userId: string, force = false) {
     sharedRequests.add(userId);
     void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`)
         .then(r => {
+            if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return null;
             if (r.status === 404) {
                 // No CloudCord profile: remember that instead of asking again.
                 sharedMissingUntil.set(userId, Date.now() + SHARED_MISSING_TTL_MS);
@@ -941,13 +1032,14 @@ function requestSharedProfile(userId: string, force = false) {
             }
             return r.ok ? r.json() : null;
         }).then(payload => {
+            if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
             const data = payload?.profile ?? payload;
             if (!data) return;
             const next = fromSharedProfile(data);
             const previous = sharedProfiles.get(userId);
             const changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
             sharedMissingUntil.delete(userId);
-            sharedProfiles.set(userId, next);
+            if (changed) sharedProfiles.set(userId, next);
             sharedProfileFetchedAt.set(userId, Date.now());
             if (!changed) return;
             try {
@@ -1087,6 +1179,7 @@ function loadDataSync() {
 }
 function onAccountSwitch() {
     lastRemoteProfile = null;
+    _cachedMyId = null;
     updateCachedRealData(); syncCurrentUserData();
     cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
     _realUsername = ""; _realGlobalName = ""; _cachedRealDateVariants = null;
@@ -1252,7 +1345,6 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                 <Menu.MenuItem id="copy-user-profile" label="Copy this profile" action={async () => {
                     try {
                         const targetUser = UserStore.getUser(user.id) as any; if (!targetUser) return;
-                        const { findByProps } = await import("@webpack") as any;
                         const UPS = findByProps("getUserProfile", "getGuildMemberProfile") as any;
                         const profile = UPS?.getUserProfile?.(user.id) ?? {};
                         const newData: CustomProfileData = {
@@ -1477,6 +1569,10 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     const tag = data.serverTag || { tag: "", guildId: "", badge: "" };
 
     async function save(useEverywhere = false) {
+        if (!myId || activeUserId() !== myId) {
+            setSaveError("Your Discord account changed. Close and reopen the profile editor before saving.");
+            return;
+        }
         setSaving(true);
         setSaveError("");
         try {
@@ -1508,6 +1604,10 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     }
 
     async function reset() {
+        if (!myId || activeUserId() !== myId) {
+            setSaveError("Your Discord account changed. Close and reopen the profile editor before resetting.");
+            return;
+        }
         resetProfileAccount(selectedAccountId);
         rootProps.onClose();
     }
@@ -1711,6 +1811,7 @@ export default definePlugin({
     ],
 
     getBadgeLayout(userId: string) {
+        if (!profileRuntimeActive) return null;
         if (isMe(userId)) return isEnabled && !(storedData.localOnly && storedData.hideBadgesWhenSyncOff) ? storedData : null;
         requestSharedProfile(userId, true);
         return viewedSharedProfile(userId, true);
@@ -1726,11 +1827,12 @@ export default definePlugin({
     },
 
     fakeGiftCode(code: string) {
+        if (!profileRuntimeActive) return null;
         return fakeGiftFor(code);
     },
 
     fakeCurrentUser(user: any) {
-        if (!user || !isMe(user.id) || !isEnabled) return user;
+        if (!profileRuntimeActive || !user || !isMe(user.id) || !isEnabled) return user;
         if (cachedOriginalUser === user && cachedFakeUser && cachedDataHash === _dataVersion) return cachedFakeUser;
         const realUser = (user as any).__cp_isClone ? _trueOriginalUser || user : user;
         if (!realUser.__cp_isClone) _trueOriginalUser = realUser;
@@ -1765,6 +1867,7 @@ export default definePlugin({
     },
 
     fakeOtherUser(user: any) {
+        if (!profileRuntimeActive) return user?.__cp_original || user;
         if (isRealProfileView(user?.id)) return user?.__cp_original || user;
         if (!user || isMe(user.id)) return user;
         const shared = viewedSharedProfile(user.id);
@@ -1773,6 +1876,8 @@ export default definePlugin({
             return user;
         }
         const realUser = user.__cp_isClone ? (user.__cp_original || user) : user;
+        const cached = otherUserCache.get(realUser);
+        if (cached?.profile === shared) return cached.user;
         const clone = Object.create(Object.getPrototypeOf(realUser));
         for (const key of Reflect.ownKeys(realUser)) {
             if (key === "username" || key === "globalName" || key === "displayName" || key === "__cp_isClone" || key === "__cp_original") continue;
@@ -1800,6 +1905,7 @@ export default definePlugin({
             clone.publicFlags = wantedFlags;
         }
         applyNativeProfileMetadata(clone, shared, false, false);
+        otherUserCache.set(realUser, { profile: shared, user: clone });
         return clone;
     },
 
@@ -1835,17 +1941,18 @@ export default definePlugin({
     },
 
 fakeObfuscatedEmail(real: string | null) {
-        if (!isEnabled || !storedData.email || !real) return real;
+        if (!profileRuntimeActive || !isEnabled || !storedData.email || !real) return real;
         const fake = storedData.email; const atIdx = fake.indexOf("@");
         if (atIdx <= 1) return fake;
         return fake[0] + "***" + fake.slice(atIdx - 1);
     },
     fakeObfuscatedPhone(real: string | null) {
-        if (!isEnabled || !storedData.phone || !real) return real;
+        if (!profileRuntimeActive || !isEnabled || !storedData.phone || !real) return real;
         const fake = storedData.phone;
         return fake.length < 4 ? fake : "***-***-" + fake.slice(-4);
     },
     patchDecorationUrl(input: any) {
+        if (!profileRuntimeActive) return undefined;
         const user = input?.user ?? input;
         const asset = sharedDecorationAsset(input?.avatarDecoration?.asset || input?.avatarDecorationData?.asset || user?.avatarDecoration?.asset || user?.avatarDecorationData?.asset);
         const item = ALL_DECORATIONS.find(decoration => decoration.id === asset);
@@ -1853,7 +1960,7 @@ fakeObfuscatedEmail(real: string | null) {
     },
 
     patchBannerUrl({ displayProfile }: any) {
-        if (!isEnabled || !storedData.banner) return null;
+        if (!profileRuntimeActive || !isEnabled || !storedData.banner) return null;
         try { return isMe(displayProfile?.userId) ? storedData.banner : null; } catch { return null; }
     },
 
@@ -1940,6 +2047,8 @@ fakeObfuscatedEmail(real: string | null) {
     } as ProfileBadge] as ProfileBadge[],
 
     async start() {
+        profileRuntimeActive = true;
+        const generation = ++profileRuntimeGeneration;
         installPresenceHooks(userId => isMe(userId) ? (isEnabled ? storedData : undefined) : isRealProfileView(userId) ? undefined : viewedSharedProfile(userId));
         installTagIconSwap();
         this._catalogListener = onCatalogLoaded(() => { cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++; forceAccountPanelRerender(); });
@@ -1958,64 +2067,7 @@ fakeObfuscatedEmail(real: string | null) {
         startExtras();
         FluxDispatcher.subscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange);
 
-        // Keep Discord's stored user immutable, but return the configured profile
-        // to desktop surfaces which read the current user directly.
-        try {
-            const US: any = UserStore || (Vencord as any).Webpack?.findByStoreName?.("UserStore") || (Vencord as any).Webpack?.findByProps?.("getCurrentUser", "getUser");
-            if (US && !US._cp_hook) {
-                let lastReal: any = null, lastFake: any = null, lastVersion = -1;
-                const originalCurrent = US.getCurrentUser.bind(US);
-                US.getCurrentUser = () => {
-                    const real = originalCurrent();
-                    if (!real) return real;
-                    if (real !== lastReal) {
-                        if (real.username) _realUsername = real.username;
-                        if (real.globalName) _realGlobalName = real.globalName;
-                    }
-                    if (!isEnabled) return real;
-                    if (real === lastReal && lastVersion === _dataVersion && lastFake) return lastFake;
-                    lastReal = real;
-                    lastVersion = _dataVersion;
-                    lastFake = this.fakeCurrentUser(real);
-                    return lastFake;
-                };
-                const originalGet = US.getUser.bind(US);
-                US.getUser = (id: string) => {
-                    const real = originalGet(id);
-                    return isEnabled && isMe(id) ? this.fakeCurrentUser(real) : this.fakeOtherUser(real);
-                };
-                US._cp_hook = true;
-            }
-        } catch { }
-        try {
-            const UPS = (Vencord as any).Webpack?.findByProps?.("getUserProfile", "getGuildMemberProfile");
-            if (UPS && !UPS._cp_hook) {
-                const origGet = UPS.getUserProfile.bind(UPS);
-                realGetUserProfile = origGet;
-                UPS.getUserProfile = (...args: any[]) => {
-                    try {
-                        const p = origGet(...args);
-                        const uid = resolveProfileUserId(args[0], p);
-                        if (isMe(uid)) return (isEnabled && p) ? this.hookUserProfile(p) : p;
-                        requestSharedProfile(uid);
-                        const shared = viewedSharedProfile(uid);
-                        return shared && p ? decorateSharedProfile(p, shared) : p;
-                    } catch { return origGet(...args); }
-                };
-                const origGuild = UPS.getGuildMemberProfile.bind(UPS);
-                UPS.getGuildMemberProfile = (...args: any[]) => {
-                    try {
-                        const p = origGuild(...args);
-                        const uid = resolveProfileUserId(args[0], p);
-                        if (isMe(uid)) return (isEnabled && p) ? this.hookUserProfile(p) : p;
-                        requestSharedProfile(uid);
-                        const shared = viewedSharedProfile(uid);
-                        return shared && p ? decorateSharedProfile(p, shared) : p;
-                    } catch { return origGuild(...args); }
-                };
-                UPS._cp_hook = true;
-            }
-        } catch { }
+        installProfileStoreHooks(this);
 
         if (IconUtils?.getUserAvatarURL && !_avatarPatchApplied) {
             this._origGetUserAvatarURL = IconUtils.getUserAvatarURL;
@@ -2045,6 +2097,7 @@ fakeObfuscatedEmail(real: string | null) {
         }
 
         await loadData();
+        if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
         this._nativeSocial = installNativeSocialHooks({
             ownId: () => UserStore.getCurrentUser()?.id || "",
             ownData: () => isEnabled ? storedData : null,
@@ -2062,6 +2115,7 @@ fakeObfuscatedEmail(real: string | null) {
         // Pull the canonical snapshot before publishing. Publishing first made a
         // stale desktop installation overwrite changes made on mobile.
         await pullOwnSharedProfile();
+        if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
         void refreshUploadedBadges(true);
         window.addEventListener("focus", refreshBadgesOnFocus);
         if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => {
@@ -2074,6 +2128,14 @@ fakeObfuscatedEmail(real: string | null) {
     },
 
     stop() {
+        profileRuntimeActive = false;
+        profileRuntimeGeneration++;
+        otherUserCache = new WeakMap();
+        cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
+        uninstallProfileStoreHooks();
+        if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
+        (publishSharedProfile as any).queued = false;
+        profileEditorOpen = false;
         uninstallPresenceHooks(); uninstallTagIconSwap(); this._catalogListener?.(); this._catalogListener = null;
         document.removeEventListener("click", this._socialClick, true);
         this._nativeSocial?.stop(); this._nativeSocial = null;
