@@ -1468,9 +1468,15 @@ jobs:
               checkingPrivacy = true;
               try { return (safeStore("UserProfileStore") as any)?.getUserProfile?.(id)?.private === true; } catch { return false; } finally { checkingPrivacy = false; }
           }
+          // Like Discord: a private profile's badges are only visible to their friends.
+          function badgesHiddenFor(id: string) {
+              if (isCurrentUser(id) || !isPrivateProfile(id)) return false;
+              try { return !(findByStoreName("RelationshipStore") as any)?.isFriend?.(id); } catch { return true; }
+          }
+
           function getProfileOverride(id: string) {
-              // New feature: profiles Discord marks private are left alone.
-              if (isRealProfileView(id) || isPrivateProfile(id)) return undefined;
+              // Private profiles still show the person; only badges are limited (see badgesHiddenFor).
+              if (isRealProfileView(id)) return undefined;
               const local = (settings as any).cloudcordLocalProfiles?.[id];
               const shared = sharedProfiles.get(id);
               if (!local) return shared;
@@ -2120,6 +2126,7 @@ jobs:
                       selected: ([rowId]) => !!preview.selectedBadges?.[rowId], oldName: preview.oldName, replace: shouldReplaceLocalBadges(),
                       order: rootSettings.fakeProfileNativeOrder || [], hidden: rootSettings.fakeProfileNativeHidden || [] };
               }
+              if (badgesHiddenFor(id)) return undefined;
               const data = getProfileOverride(id, true);
               if (!data) return undefined;
               const ids = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
@@ -2268,6 +2275,7 @@ jobs:
                       if (!isCurrentUser(id)) requestSharedProfile(id);
                       // Fake Discord badges come with Discord's own profile data (see
                       // rewriteFetchedProfile); only CloudCord's own badges are added here.
+                      if (badgesHiddenFor(id)) return result;
                       const staffBadge = cloudCordStaffBadge(id);
                       const ordered: any[] = [];
                       if (staffBadge) addOfficialBadge(ordered, staffBadge, user, isCurrentUser(id) ? (preview.enabled ? preview : null) : getProfileOverride(id) ?? null);

@@ -264,6 +264,9 @@ export function removeProfileBadge(badge: ProfileBadge) {
  */
 export function _getBadges(args: BadgeUserArgs) {
     if (isRealProfileView(args.userId)) return [];
+    // Private profiles: like Discord, badges are only shown to friends.
+    const profilePlugin = Plugins.ProfileSpoofer as { started?: boolean; badgesHiddenFor?(userId: string): boolean; } | undefined;
+    if (profilePlugin?.started && profilePlugin.badgesHiddenFor?.(args.userId)) return [];
     const badges = [] as ProfileBadge[];
     for (const badge of Badges) {
         if (badge.shouldShow && !badge.shouldShow(args)) {

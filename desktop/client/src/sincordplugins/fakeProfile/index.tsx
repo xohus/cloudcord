@@ -35,7 +35,7 @@ const ModalContent = _ModalContent as any;
 const ModalFooter = _ModalFooter as any;
 import { SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { AuthenticationStore, Button, ChannelActionCreators, FluxDispatcher, FriendsStore, IconUtils, Menu, Popout, React, Select, showToast, SnowflakeUtils, Toasts, UserProfileActions, UserProfileStore, UserStore } from "@webpack/common";
+import { AuthenticationStore, RelationshipStore, Button, ChannelActionCreators, FluxDispatcher, FriendsStore, IconUtils, Menu, Popout, React, Select, showToast, SnowflakeUtils, Toasts, UserProfileActions, UserProfileStore, UserStore } from "@webpack/common";
 
 import nitroBronze from "file://../../../../../assets/NitroMilestones/bronze.png?base64";
 import nitroDiamond from "file://../../../../../assets/NitroMilestones/diamond.png?base64";
@@ -522,9 +522,15 @@ let realGetCurrentUser: (() => any) | null = null;
 function isPrivateProfile(userId: string): boolean {
     try { return realGetUserProfile?.(userId)?.private === true; } catch { return false; }
 }
+// Like Discord: a private profile still shows the person, but its badges are only
+// visible to their friends.
+function badgesHiddenFor(userId: string): boolean {
+    if (isMe(userId) || !isPrivateProfile(userId)) return false;
+    try { return !RelationshipStore.isFriend(userId); } catch { return true; }
+}
 function viewedSharedProfile(userId: string, _forBadges?: boolean) {
-    // New features: Hide other profiles, and leave profiles Discord marks private alone.
-    if (storedData?.hideOtherProfiles || isPrivateProfile(userId)) return undefined;
+    // New feature: Hide other profiles.
+    if (storedData?.hideOtherProfiles) return undefined;
     return isRealProfileView(userId) ? undefined : sharedProfiles.get(userId);
 }
 const sharedProfileFetchedAt = new Map<string, number>();
@@ -1153,6 +1159,7 @@ function discordProfileBadges(userId: string, data: CustomProfileData, real: any
 const fetchUserProfile = findByCodeLazy("USER_PROFILE_FETCH_START");
 function profileDataFor(userId: string): CustomProfileData | undefined {
     if (isMe(userId)) return isEnabled && !(storedData.localOnly && storedData.hideBadgesWhenSyncOff) ? storedData : undefined;
+    if (badgesHiddenFor(userId)) return undefined;
     return viewedSharedProfile(userId);
 }
 function rewriteFetchedProfile(action: any) {
@@ -1999,6 +2006,10 @@ export default definePlugin({
         { find: "UserAccountSettings", replacement: [{ match: /user:([a-zA-Z0-9_]+),/, replace: "user:$self.fakeCurrentUser($1)," }, { match: /email:([^,}]+),/, replace: "email:$self.fakeObfuscatedEmail($1)," }] },
     ],
 
+    badgesHiddenFor(userId: string) {
+        return profileRuntimeActive && badgesHiddenFor(userId);
+    },
+
     getBadgeLayout(userId: string) {
         if (isMe(userId)) return isEnabled ? storedData : null;
         requestSharedProfile(userId);
@@ -2154,7 +2165,7 @@ fakeObfuscatedEmail(real: string | null) {
         // only CloudCord's own uploaded badges still come through the badge API.
         getBadges({ userId }: { userId: string; guildId: string; }) {
             void refreshUploadedBadges();
-            return uploadedUserBadges(userId);
+            return badgesHiddenFor(userId) ? [] : uploadedUserBadges(userId);
         }
     } as ProfileBadge] as ProfileBadge[],
 
