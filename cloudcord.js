@@ -13181,11 +13181,7 @@
       setOwnValue(cloned, "avatarUrl", data.avatar);
       setOwnValue(cloned, "getAvatarURL", () => data.avatar);
     }
-    if (data.avatarDecoration)
-      setOwnValue(cloned, "avatarDecorationData", {
-        asset: decorationAsset(data.avatarDecoration),
-        skuId: data.avatarDecorationSku || "cloudcord-decoration"
-      });
+    applyAvatarDecoration(cloned, data);
     applyCollectibles(cloned, data);
     if (data.profileColorsEnabled === true) {
       if (data.primaryColor != null)
@@ -13931,11 +13927,7 @@
     setOwnValue(cloned, "publicFlags", flags);
     setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
     setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
-    if (preview.avatarDecoration)
-      setOwnValue(cloned, "avatarDecorationData", {
-        asset: decorationAsset(preview.avatarDecoration),
-        skuId: preview.avatarDecorationSku || "cloudcord-decoration"
-      });
+    applyAvatarDecoration(cloned, preview);
     applyCollectibles(cloned, preview);
     if (primaryColor != null)
       setOwnValue(cloned, "primaryColor", primaryColor);
