@@ -276,22 +276,25 @@
   function createRainUpdater(files) {
     var download = () => pending ??= (() => _async_to_generator(function* () {
       var timeout;
-      var response = yield Promise.race([
-        fetch(URL2 + "?t=" + Date.now(), {
-          headers: {
-            "X-CC-Client": "1"
-          },
-          cache: "no-store"
-        }),
+      var code = yield Promise.race([
+        (() => _async_to_generator(function* () {
+          var response = yield fetch(URL2 + "?t=" + Date.now(), {
+            headers: {
+              "X-CC-Client": "1"
+            },
+            cache: "no-store"
+          });
+          if (!response.ok)
+            throw new Error("runtime download failed (" + response.status + ")");
+          var body = yield response.text();
+          if (body.length < 1e4 || !body.includes("CloudCord"))
+            throw new Error("invalid runtime response");
+          return body;
+        })())(),
         new Promise((_2, reject) => {
           timeout = setTimeout(() => reject(new Error("download timed out")), 2e4);
         })
       ]).finally(() => clearTimeout(timeout));
-      if (!response.ok)
-        throw new Error("runtime download failed (" + response.status + ")");
-      var code = yield response.text();
-      if (code.length < 1e4 || !code.includes("CloudCord"))
-        throw new Error("invalid runtime response");
       if (typeof files?.writeFile !== "function")
         throw new Error("runtime file writer unavailable");
       var path = yield files.writeFile("documents", "rain/bundle.js", code, "utf8");
