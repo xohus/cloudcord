@@ -7609,6 +7609,7 @@
 
   // src/lib/ui/components/wrappers/AlertModal.tsx
   function AlertModal2(props) {
+    var _AlertModal = alertComponents.AlertModal;
     var forwardFailedModal = findByFilePath("modules/forwarding/native/ForwardFailedAlertModal.tsx");
     if (!forwardFailedModal && "extraContent" in props) {
       var { extraContent, content, ...rest } = props;
@@ -7636,19 +7637,23 @@
       ...props
     });
   }
-  var import_react_native6, _AlertModal, _AlertActionButton, AlertActionButton2;
+  var import_react_native6, alertComponents, AlertActionButton2;
   var init_AlertModal = __esm({
     "src/lib/ui/components/wrappers/AlertModal.tsx"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_jsxRuntime();
-      init_lazy();
       init_metro();
       init_components();
       import_react_native6 = __toESM(require_react_native());
-      ({ AlertModal: _AlertModal, AlertActionButton: _AlertActionButton } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
-      AlertActionButton2 = _AlertActionButton;
+      alertComponents = findByPropsLazy("AlertModal", "AlertActions");
+      AlertActionButton2 = (props) => {
+        var NativeAction = alertComponents.AlertActionButton;
+        return /* @__PURE__ */ jsx(NativeAction, {
+          ...props
+        });
+      };
     }
   });
 
@@ -18792,7 +18797,7 @@
   });
 
   // src/lib/ui/settings/patches/shared.tsx
-  function wrapOnPress(onPress, navigation2, renderPromise, screenOptions, props) {
+  function wrapOnPress(onPress, navigation2, renderPromise, screenOptions, props, navigationMethod = "navigate") {
     var pending2 = false;
     return () => _async_to_generator(function* () {
       if (pending2)
@@ -18814,9 +18819,9 @@
           };
         }
         navigation2 ??= tabsNavigationRef.getRootNavigationRef();
-        if (!navigation2?.navigate)
+        if (typeof navigation2?.[navigationMethod] !== "function")
           throw new Error("Discord's navigation is still loading. Go back and try again.");
-        navigation2.navigate("PUPU_CUSTOM_PAGE", {
+        navigation2[navigationMethod]("PUPU_CUSTOM_PAGE", {
           ...screenOptions,
           render: () => /* @__PURE__ */ jsx(Component2, {
             ...props
@@ -18831,7 +18836,7 @@
           {
             text: "Retry",
             onPress: () => {
-              void wrapOnPress(onPress, navigation2, renderPromise, screenOptions, props)();
+              void wrapOnPress(onPress, navigation2, renderPromise, screenOptions, props, navigationMethod)();
             }
           }
         ]);
@@ -26243,7 +26248,7 @@
         if (!actions.has(title))
           actions.set(title, wrapOnPress(void 0, navigation2, () => _async_to_generator(function* () {
             return load();
-          })(), title));
+          })(), title, void 0, "push"));
         return actions.get(title)();
       };
     }, [
