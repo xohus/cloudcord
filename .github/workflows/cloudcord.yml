@@ -39,7 +39,9 @@ jobs:
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-theme-compatibility.cjs
 
       - name: Check mobile render recursion
-        run: NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-hook-boundary.cjs
+        run: |
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-hook-boundary.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-jsx.cjs
 
       - name: Check Android confirmation compatibility
         run: NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-toast-compatibility.cjs
@@ -47,6 +49,7 @@ jobs:
       - name: Check mobile badge and refresh regressions
         run: |
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-report-regressions.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-refresh.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-real-profile-view.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-sync-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-load-regressions.cjs
@@ -350,7 +353,7 @@ jobs:
           function Card(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassCard; return <Component {...props} />; }
           function GlassButton(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassButton; return <Component {...props} />; }
           function ProfileTabs(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").ProfileTabs; return <Component {...props} />; }
-          function TextInput(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").DiscordInput; return <Component {...props} />; }
+          function TextInput(props: import("react-native").TextInputProps) { const Component = require("@core/ui/settings/components/FakeProfileGlass").DiscordInput; return <Component {...props} />; }
           function ProfileGlyph() {
               let icon: any;
               try { icon = require("@lib/api/assets").findAssetId("UserIcon"); } catch {}
@@ -1297,8 +1300,8 @@ jobs:
                       username: data.username || preview.username,
                       displayName: data.globalName || data.displayName || preview.displayName,
                       ...normalizeProfileAppearance(data),
-                      avatarMedia: mediaClearPending("avatarMedia") ? null : data.avatar ? { uri: data.avatar } : null,
-                      bannerMedia: mediaClearPending("bannerMedia") ? null : data.banner ? { uri: data.banner } : null,
+                      avatarMedia: mediaClearPending("avatarMedia") ? null : data.avatar ? { uri: String(data.avatar), name: "Synced profile picture", type: "image/*" } : null,
+                      bannerMedia: mediaClearPending("bannerMedia") ? null : data.banner ? { uri: String(data.banner), name: "Synced banner", type: "image/*" } : null,
                       nitroEnabled: remoteNitroEnabled(data),
                       nitroSince: typeof data.nitroSince === "string" ? data.nitroSince : "",
                       nitroMonths: remoteNitroEnabled(data) ? (NITRO_DURATIONS[Number(data.nitroLevel)] || 0) : 0,
@@ -2880,7 +2883,7 @@ jobs:
               showToast("Fake boost message added to the channel.");
           }
           function BoostSection({ refresh }: { refresh: () => void }) {
-              const K = require("@core/ui/settings/components/ProfileEditorKit");
+              const K = require("@core/ui/settings/components/ProfileEditorKit") as typeof import("@core/ui/settings/components/ProfileEditorKit");
               const [times, setTimes] = useState(1);
               const [reached, setReached] = useState(0);
               const guildId = (findByStoreName("SelectedGuildStore") as any)?.getGuildId?.();
@@ -2943,7 +2946,7 @@ jobs:
           }
           function ExtrasCard({ onReset }: { onReset: () => void }) {
               const [, force] = useReducer((x: number) => x + 1, 0);
-              const K = require("@core/ui/settings/components/ProfileEditorKit");
+              const K = require("@core/ui/settings/components/ProfileEditorKit") as typeof import("@core/ui/settings/components/ProfileEditorKit");
               const [friendId, setFriendId] = useState("");
               const [inputKey, setInputKey] = useState(0);
               const add = async () => { if (await addFakeFriendRequest(friendId)) { setFriendId(""); setInputKey(key => key + 1); } force(); };
@@ -3475,7 +3478,7 @@ jobs:
                   }
               };
 
-              const K = require("@core/ui/settings/components/ProfileEditorKit");
+              const K = require("@core/ui/settings/components/ProfileEditorKit") as typeof import("@core/ui/settings/components/ProfileEditorKit");
               const [showPreview, setShowPreview] = useState(false);
               const [catalog, setCatalog] = useState<Catalog | null>(collectiblesCatalog);
               const [catalogStatus, setCatalogStatus] = useState<{ loading?: boolean; error?: string }>({ loading: !collectiblesCatalog });

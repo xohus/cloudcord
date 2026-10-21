@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const esbuild = require(process.env.CLOUDCORD_ESBUILD || 'esbuild');
 const workflow = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
 const page = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'")[1].split('\n          TSX')[0].replace(/^          /gm, '');
-const source = page.slice(page.indexOf('function requestSharedProfile('), page.indexOf('function getProfileOverride('));
+const source = page.slice(page.indexOf('const sharedProfileSeenAt ='), page.indexOf('function getProfileOverride('));
 const id = '123456789012345';
 let response;
 let refreshes = 0;
@@ -14,12 +14,15 @@ const requests = new Set();
 const context = vm.createContext({
     sharedProfiles: profiles, sharedProfileFetchedAt: fetched, sharedRequests: requests,
     currentUserId: '999999999999999', SHARED_PROFILE_API: 'https://example.com',
+    AppState: { currentState: 'active' }, JSON, Date, setTimeout: fn => { fn(); return 0; }, clearTimeout() {},
     identityRefreshers: new Set([() => refreshes++]), safeStore: () => ({ emitChange() {} }),
     fetch: async () => response
 });
+context.fetchProfileResponse = (...args) => context.fetch(...args);
 vm.runInContext(esbuild.transformSync(source, { loader: 'ts' }).code, context);
 async function request(status, profile) {
     response = { ok: status === 200, status, json: async () => ({ profile }) };
+    fetched.delete(id); // Exercise transport results, not the separately tested TTL.
     context.requestSharedProfile(id, true);
     await new Promise(resolve => setImmediate(resolve));
     assert.equal(requests.size, 0);

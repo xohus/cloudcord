@@ -3,6 +3,7 @@ import { findByPropsLazy } from "@metro";
 
 type Callback = (Component: any, ret: JSX.Element) => JSX.Element;
 const callbacks = new Map<string, Callback[]>();
+const warnedCallbacks = new WeakSet<Callback>();
 
 const jsxRuntime = findByPropsLazy("jsx", "jsxs");
 
@@ -14,7 +15,9 @@ export function onJsxCreate(Component: string, callback: Callback) {
 export function deleteJsxCreate(Component: string, callback: Callback) {
     if (!callbacks.has(Component)) return;
     const cbs = callbacks.get(Component)!;
-    cbs.splice(cbs.indexOf(callback), 1);
+    const index = cbs.indexOf(callback);
+    if (index < 0) return;
+    cbs.splice(index, 1);
     if (cbs.length === 0) callbacks.delete(Component);
 }
 
@@ -23,10 +26,10 @@ export function deleteJsxCreate(Component: string, callback: Callback) {
  */
 export function patchJsx() {
     const callback = ([Component]: unknown[], ret: JSX.Element) => {
+        if (!ret || typeof ret !== "object") return;
         // Band-aid fix for iOS invalid element type crashes
         if (typeof ret.type === 'undefined') {
-            ret.type = 'RCTView'
-            return ret
+            return { ...ret, type: "RCTView" };
         }
 
         // React.memo profile headers are objects, and production functions can
@@ -37,9 +40,21 @@ export function patchJsx() {
         const name = [component?.displayName, target?.displayName, target?.name].find(value => typeof value === "string" && callbacks.has(value));
         if (target && name) {
             const cbs = callbacks.get(name)!;
-            for (const cb of cbs) {
-                const _ret = cb(target, ret);
-                if (_ret !== undefined) ret = _ret;
+            for (const cb of [...cbs]) {
+                try {
+                    // Discord/React may freeze these objects. Never write into
+                    // its native element or leak a half-applied hook on failure.
+                    const editable = { ...ret, props: { ...ret.props } };
+                    const changed = cb(target, editable);
+                    const next = changed === undefined ? editable : changed;
+                    if (!next || typeof next !== "object" || next.type == null) throw new Error("Profile hook returned an invalid React element");
+                    ret = next;
+                } catch (error) {
+                    if (!warnedCallbacks.has(cb)) {
+                        warnedCallbacks.add(cb);
+                        console.warn(`[CloudCord] Skipped failed JSX hook for ${name}`, error);
+                    }
+                }
             }
             return ret;
         }
