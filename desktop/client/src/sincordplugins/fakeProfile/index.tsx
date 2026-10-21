@@ -1175,7 +1175,12 @@ function tieredEntry(entry: any, tierIndex: number, since: Date, monthsPerTier: 
     const index = Math.max(0, Math.min(keys.length - 1, tierIndex));
     const obtained: Record<string, string> = {};
     keys.slice(0, index + 1).forEach((key, i) => { obtained[key] = addMonths(since, monthsPerTier[i] ?? 0).toISOString(); });
-    return { ...entry, owned: true, hidden: false, obtained_at: since.toISOString(), current_tier: keys[index], next_tier: keys[index + 1] ?? null, tier_obtained_at: obtained, info_label: label };
+    // The entry carries the current tier's artwork at the top level; use the chosen tier's.
+    const tier = entry.tiers?.[index] ?? {};
+    const art = Object.fromEntries(["simple_icon_url", "simple_icon_raster_url", "complex_icon_static_url", "complex_icon_animated_url"]
+        .filter(key => tier[key]).map(key => [key, tier[key]]));
+    const tiers = (entry.tiers || []).map((item: any, i: number) => ({ ...item, owned: i <= index }));
+    return { ...entry, ...art, tiers, owned: true, hidden: false, obtained_at: since.toISOString(), current_tier: keys[index], next_tier: keys[index + 1] ?? null, tier_obtained_at: obtained, info_label: label };
 }
 function fakeDirectoryEntry(entry: any, userId: string, data: CustomProfileData, owned: Map<number, any>, replace: boolean) {
     if (!entry || DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return entry;
