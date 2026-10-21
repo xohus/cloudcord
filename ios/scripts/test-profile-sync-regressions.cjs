@@ -68,6 +68,34 @@ for (const [decorate, mine] of [[identity.ownUser, true], [identity.otherUser, f
 }
 assert.equal(nativeUser.flags, accountFlags);
 assert.equal(nativeUser.username, 'real');
+const paidProfile = { premiumType: 2, premium_type: 2, premiumSince: 'paid-since', premium_since: 'paid-since',
+    premiumGuildSince: 'boost-since', premium_guild_since: 'boost-since', giftCount: 12, gift_count: 12, giftingBadgeTier: 2 };
+const biographyOnly = { ...paidProfile };
+identity.applyNativeProfileMetadata(biographyOnly, { bio: 'changed', nitro: false, nitroLevel: -1, boostMonths: -1, giftLevel: -1 });
+assert.deepEqual(biographyOnly, paidProfile, 'editing a bio without replacing badges preserves paid Nitro, boost and gifting metadata');
+const malformedTiers = { ...paidProfile };
+identity.applyNativeProfileMetadata(malformedTiers, { nitro: true, nitroLevel: 99, boostMonths: 99, giftLevel: 0.5 });
+assert.deepEqual(malformedTiers, paidProfile, 'invalid shared tier values cannot crash or replace real metadata');
+for (const tier of [0, 1, 2]) {
+    const account = Object.create(Object.getPrototypeOf(nativeUser));
+    Object.assign(account, { id: nativeUser.id, username: 'real', globalName: 'Real', premiumType: tier, premium_type: tier,
+        premiumSince: 'real-since', premium_since: 'real-since', premiumGuildSince: 'real-boost', premium_guild_since: 'real-boost' });
+    Object.defineProperty(account, 'flags', { value: accountFlags });
+    identity.storedData = { username: 'custom', nitro: true, nitroLevel: 4, boostMonths: 3, badgeFlags: 8, replaceRealBadges: true };
+    identity._dataVersion++;
+    identity.isMe = () => true;
+    const own = identity.ownUser(account);
+    identity.isMe = () => false;
+    const other = identity.otherUser(account);
+    for (const field of ['premiumType', 'premium_type', 'premiumSince', 'premium_since', 'premiumGuildSince', 'premium_guild_since']) {
+        assert.equal(own[field], account[field], `own UserStore ${field} must keep real subscription state for tier ${tier}`);
+        assert.equal(other[field], account[field], `other UserStore ${field} must keep real subscription state for tier ${tier}`);
+    }
+    const profile = { premiumType: tier, user: { ...account } };
+    identity.applyNativeProfileMetadata(profile, identity.storedData);
+    assert.equal(profile.premiumType, 2, 'the native profile snapshot still shows selected cosmetic Nitro');
+    assert.equal(profile.user.premiumType, tier, 'nested account identities never inherit cosmetic entitlement state');
+}
 identity.isMe = () => true;
 identity.storedData = { username: 'custom', badgeFlags: 8, replaceRealBadges: true, nitro: true, nitroLevel: 1, localOnly: true, hideBadgesWhenSyncOff: true };
 identity._dataVersion++;
@@ -92,6 +120,26 @@ const host = vm.createContext({ storedData: { bio: 'local', syncRevision: 2, hid
 });
 vm.runInContext(compile(pull), host);
 (async () => {
+    let resetFetches = 0, canceledTimers = 0;
+    const resetStorage = new Map();
+    const untouched = { bio: 'other account' };
+    const resetHost = vm.createContext({ activeUserId: () => 'owner', storedData: { nitro: true, bio: 'old' }, isEnabled: true,
+        allAccountsData: { owner: { nitro: true }, other: untouched }, allAccountsEnabled: { owner: true, other: true },
+        publishTimer: 123, clearTimeout: () => canceledTimers++, saveDataSync() {}, saveAllDataSync() {},
+        DataStore: { set: async (key, value) => resetStorage.set(key, value) }, DS_KEY: 'profile', DS_ENABLED: 'enabled', DS_ALL_DATA: 'accounts', DS_ALL_ENABLED: 'accountEnabled',
+        cachedFakeUser: {}, cachedOriginalUser: {}, _trueOriginalUser: {}, _dataVersion: 0, forceAccountPanelRerender() {},
+        fetch: async () => { resetFetches++; return { ok: true }; } });
+    vm.runInContext(compile(block(desktop, 'function resetProfileAccount(', 'const isImageUri')
+        + block(desktop, 'async function pullOwnSharedProfile(', 'function requestSharedProfile(')), resetHost);
+    resetHost.resetProfileAccount('owner');
+    assert.equal(resetHost.isEnabled, false);
+    assert.equal(resetHost.storedData.localOnly, true);
+    assert.equal(resetHost.storedData.nitro, undefined);
+    assert.equal(resetHost.allAccountsData.other, untouched);
+    assert.equal(canceledTimers, 1);
+    assert.equal(resetStorage.get('profile').localOnly, true, 'the reset opt-out is saved durably');
+    await resetHost.pullOwnSharedProfile();
+    assert.equal(resetFetches, 0, 'polling must not resurrect a reset local profile from the server');
     let responseStatus = 503;
     let refreshes = 0;
     const otherId = '987654321098765';
@@ -164,6 +212,80 @@ vm.runInContext(compile(pull), host);
     publisher.fetch = async () => ({ ok: false, status: 503 });
     await assert.rejects(publisher.publishSharedProfile(), /latest shared profile \(503\)/);
     assert.equal(published, null, 'a failed latest-profile read must not publish a stale or cross-account snapshot');
+
+    const credentials = new Map(), uploads = [];
+    let serverProfile = { mobileOnly: 'keep', syncRevision: 100 };
+    const concurrent = vm.createContext({ activeUserId: () => 'owner', isEnabled: true,
+        storedData: { bio: 'first', customBadgeIds: [] }, allAccountsData: {}, lastRemoteProfile: null,
+        SHARED_PROFILE_API: 'https://example.test', LS_SHARE: 'share', Date, JSON,
+        REPLACE_BADGES_SYNC_ID: '__cc_replace_real_badges', ALL_DECORATIONS: [], getDecorationUrl: value => value,
+        saveDataSync() {}, saveAllDataSync() {}, DataStore: { get: async key => credentials.get(key), set: async (key, value) => credentials.set(key, value) },
+        localStorage: { getItem: () => null }, fetch: async (_url, options) => {
+            if (!options?.method) return { ok: true, json: async () => ({ profile: serverProfile }) };
+            const body = JSON.parse(options.body);
+            return new Promise(resolve => uploads.push({ body, method: options.method, finish() {
+                serverProfile = body.profile;
+                resolve({ ok: true, json: async () => ({ id: 'saved', editToken: 'test' }) });
+            } }));
+        } });
+    vm.runInContext(compile(block(desktop, 'const LOCAL_ONLY_FIELDS', 'async function publishSharedProfile(')
+        + block(desktop, 'async function publishSharedProfile(', '// Save edits made outside the modal')), concurrent);
+    const firstSave = concurrent.publishSharedProfile();
+    for (let turn = 0; turn < 50 && uploads.length < 1; turn++) await settle();
+    assert.equal(uploads.length, 1);
+    concurrent.storedData = { ...concurrent.storedData, bio: 'second' };
+    const secondSave = concurrent.publishSharedProfile();
+    concurrent.storedData = { ...concurrent.storedData, bio: 'latest' };
+    const thirdSave = concurrent.publishSharedProfile();
+    assert.equal(uploads.length, 1, 'only one upload may run at a time');
+    uploads[0].finish();
+    for (let turn = 0; turn < 50 && uploads.length < 2; turn++) await settle();
+    assert.equal(uploads.length, 2, 'overlapping saves coalesce into one fresh snapshot');
+    assert.equal(uploads[1].body.profile.bio, 'latest');
+    assert.equal(uploads[1].body.profile.mobileOnly, 'keep');
+    assert.equal(uploads[1].method, 'PUT', 'the queued upload reuses credentials created by the first upload');
+    assert(uploads[1].body.profile.syncRevision > uploads[0].body.profile.syncRevision);
+    uploads[1].finish(); await Promise.all([firstSave, secondSave, thirdSave]);
+    let attempts = 0;
+    concurrent.fetch = async (_url, options) => {
+        if (!options?.method) return { ok: true, json: async () => ({ profile: serverProfile }) };
+        attempts++;
+        if (attempts === 1) { serverProfile = { ...serverProfile, syncRevision: Date.now() + 100000 }; return { ok: false, status: 409 }; }
+        const body = JSON.parse(options.body);
+        assert(body.profile.syncRevision > serverProfile.syncRevision);
+        return { ok: true, json: async () => ({ id: 'saved' }) };
+    };
+    await concurrent.publishSharedProfile();
+    assert.equal(attempts, 2, 'a single cross-device revision conflict is retried with a fresh server revision');
+    attempts = 0;
+    concurrent.fetch = async (_url, options) => {
+        if (!options?.method) return { ok: true, json: async () => ({ profile: serverProfile }) };
+        attempts++;
+        return attempts === 1 ? { ok: false, status: 401 } : { ok: true, json: async () => ({ id: 'renewed', editToken: 'new-test' }) };
+    };
+    await concurrent.publishSharedProfile();
+    assert.equal(attempts, 2, 'credential renewal must not deadlock behind its own upload queue');
+    const originalCredentials = credentials.get('share:owner');
+    assert.equal(originalCredentials.id, 'renewed');
+    concurrent.activeUserId = () => 'second-owner';
+    concurrent.storedData = { bio: 'second account' };
+    let method, auth, target;
+    concurrent.fetch = async (url, options) => {
+        if (!options?.method) return { ok: false, status: 404 };
+        ({ method, headers: { Authorization: auth } } = options); target = url;
+        return { ok: true, json: async () => ({ id: 'second-profile', editToken: 'second-test' }) };
+    };
+    await concurrent.publishSharedProfile();
+    assert.equal(method, 'POST');
+    assert.equal(auth, undefined, 'a new Discord account cannot reuse the other account edit token');
+    assert.equal(credentials.get('share:owner'), originalCredentials);
+    assert.equal(credentials.get('share:second-owner').id, 'second-profile');
+    concurrent.activeUserId = () => 'owner';
+    concurrent.storedData = { bio: 'first account again' };
+    await concurrent.publishSharedProfile();
+    assert.equal(method, 'PUT');
+    assert(target.endsWith('/renewed'));
+    assert.equal(auth, 'Bearer new-test');
     const phone = vm.createContext({ rootSettings: { fakeProfile: {} }, preview: { enabled: true, syncRevision: 42 },
         currentUserId: 'owner', customSocialValidationErrors: () => [], ownSharedProfile: async () => ({ syncRevision: 42 }),
         SHARED_PROFILE_API: 'https://example.test', Date, JSON,
@@ -177,5 +299,5 @@ vm.runInContext(compile(pull), host);
     phone.currentUserId = 'owner';
     phone.fetch = async () => ({ ok: false, status: 503 });
     await assert.rejects(phone.publishSharedProfile(), /latest shared profile \(503\)/);
-    console.log('PASS explicit badge and Nitro off values, immutable replacement/deduplication, stale and concurrent sync responses, account isolation, local preferences and unchanged polling');
+    console.log('PASS Nitro billing isolation, badge replacement, serialized/coalesced saves, bounded conflict/credential retries, per-account credentials, stale response rejection and local preferences');
 })().catch(error => { console.error(error); process.exitCode = 1; });

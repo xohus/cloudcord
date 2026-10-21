@@ -640,7 +640,7 @@ function monthsAgo(months: number, explicitDate?: string): Date {
 }
 
 /** Populate every field name used by Discord's desktop profile/badge pipelines. */
-function applyNativeProfileMetadata(target: any, data: CustomProfileData, includeNested = true): any {
+function applyNativeProfileMetadata(target: any, data: CustomProfileData, includeNested = true, includeSubscription = true): any {
     if (!target) return target;
     Object.assign(target, nativeProfileAppearance(data));
     if (data.nameplate !== undefined) target.collectibles = nativeCollectibles(target.collectibles, data);
@@ -658,30 +658,41 @@ function applyNativeProfileMetadata(target: any, data: CustomProfileData, includ
         target.publicFlags = flags;
         target.public_flags = flags;
     }
+    // UserStore is consumed by billing, purchases, gifts and upload checks as
+    // well as profiles. Cosmetic Nitro belongs on profile snapshots only.
+    if (!includeSubscription) return target;
 
-    const hasNitro = data.nitro === true && Number(data.nitroLevel ?? -1) >= 0;
-    const nitroSince = hasNitro
-        ? monthsAgo(NITRO_LEVEL_MONTHS[data.nitroLevel ?? 0] ?? 0, data.nitroSince)
-        : null;
-    target.premiumType = hasNitro ? 2 : 0;
-    target.premium_type = target.premiumType;
-    target.premiumSince = nitroSince;
-    target.premium_since = nitroSince?.toISOString() ?? null;
+    const replace = shouldReplaceBadges(data);
+    const nitroLevel = Number(data.nitroLevel ?? -1);
+    const hasNitro = data.nitro === true && Number.isInteger(nitroLevel) && nitroLevel >= 0 && nitroLevel < NITRO_LEVEL_MONTHS.length;
+    if (hasNitro || replace) {
+        const nitroSince = hasNitro ? monthsAgo(NITRO_LEVEL_MONTHS[nitroLevel], data.nitroSince) : null;
+        target.premiumType = hasNitro ? 2 : 0;
+        target.premium_type = target.premiumType;
+        target.premiumSince = nitroSince;
+        target.premium_since = nitroSince?.toISOString() ?? null;
+    }
 
     const gift = Number(data.giftLevel ?? -1);
-    const giftCount = gift >= 0 && gift < GIFT_LEVELS.length ? GIFT_LEVELS[gift].count : 0;
-    target.giftCount = giftCount;
-    target.gift_count = giftCount;
-    target.giftingBadgeTier = gift >= 0 ? gift : null;
-    target.gifting_badge_tier = gift >= 0 ? gift : null;
+    const hasGift = Number.isInteger(gift) && gift >= 0 && gift < GIFT_LEVELS.length;
+    if (hasGift || replace) {
+        const giftCount = hasGift ? GIFT_LEVELS[gift].count : 0;
+        target.giftCount = giftCount;
+        target.gift_count = giftCount;
+        target.giftingBadgeTier = hasGift ? gift : null;
+        target.gifting_badge_tier = hasGift ? gift : null;
+    }
 
     const boost = Number(data.boostMonths ?? -1);
-    const boostSince = boost >= 0 ? monthsAgo(BOOST_LEVEL_MONTHS[boost] ?? 1) : null;
-    target.premiumGuildSince = boostSince;
-    target.premium_guild_since = boostSince?.toISOString() ?? null;
+    const hasBoost = Number.isInteger(boost) && boost >= 0 && boost < BOOST_LEVEL_MONTHS.length;
+    if (hasBoost || replace) {
+        const boostSince = hasBoost ? monthsAgo(BOOST_LEVEL_MONTHS[boost]) : null;
+        target.premiumGuildSince = boostSince;
+        target.premium_guild_since = boostSince?.toISOString() ?? null;
+    }
 
     // Some profile builds read metadata from the nested user/profile object.
-    if (includeNested && target.user && target.user !== target) applyNativeProfileMetadata(target.user, data, false);
+    if (includeNested && target.user && target.user !== target) applyNativeProfileMetadata(target.user, data, false, false);
     if (includeNested && target.userProfile && target.userProfile !== target) applyNativeProfileMetadata(target.userProfile, data, false);
     return target;
 }
@@ -718,8 +729,32 @@ function toSharedProfile(data: CustomProfileData) {
 
 async function publishSharedProfile(): Promise<void> {
     if (storedData.localOnly) return;
+    const queue = publishSharedProfile as typeof publishSharedProfile & { pending?: Promise<void>; queued?: boolean; };
+    if (queue.pending) {
+        queue.queued = true;
+        return queue.pending;
+    }
+    queue.pending = (async () => {
+        try {
+            do {
+                queue.queued = false;
+                try { await publishSharedProfileSnapshot(); }
+                catch (error) {
+                    // A save requested during the failed request still deserves a
+                    // fresh attempt; every caller waits for the final saved state.
+                    if (!queue.queued) throw error;
+                }
+            } while (queue.queued && !storedData.localOnly);
+        } finally { queue.pending = undefined; }
+    })();
+    return queue.pending;
+}
+
+async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
+    if (storedData.localOnly) return;
     const ownerId = activeUserId();
     if (!ownerId || !isEnabled) throw new Error("Sign in to Discord before syncing your profile.");
+    let remoteRevision = 0;
     // Advance the revision without pulling old fields into the open editor.
     const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
     if (activeUserId() !== ownerId || storedData.localOnly) return;
@@ -727,19 +762,29 @@ async function publishSharedProfile(): Promise<void> {
         const latest = await latestResponse.json();
         if (activeUserId() !== ownerId || storedData.localOnly) return;
         lastRemoteProfile = latest?.profile && typeof latest.profile === "object" ? latest.profile : lastRemoteProfile;
-        storedData.syncRevision = Math.max(Date.now(), Number(storedData.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
-        allAccountsData[ownerId] = storedData;
-        saveDataSync(storedData, true); saveAllDataSync();
+        remoteRevision = Number(latest?.profile?.syncRevision || 0);
     }
     else if (latestResponse.status === 404) lastRemoteProfile = null;
     else throw new Error(`Couldn't load your latest shared profile (${latestResponse.status}). Your local changes are saved; try syncing again shortly.`);
+    const shareKey = `${LS_SHARE}:${ownerId}`;
     let saved: any = {};
-    saved = await DataStore.get(LS_SHARE) || {};
-    if (!saved.id) {
-        try { saved = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { }
-        if (saved.id) await DataStore.set(LS_SHARE, saved);
+    saved = await DataStore.get(shareKey) || {};
+    if (!saved.id && allowRetry) {
+        // Migrate old installations once, without sharing one edit token across
+        // Discord accounts or deleting another account's credentials on a 401.
+        let legacy: any = await DataStore.get(LS_SHARE) || {};
+        if (!legacy.id) { try { legacy = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { } }
+        if (legacy.id && (!legacy.ownerId || legacy.ownerId === ownerId)) {
+            saved = legacy;
+            await DataStore.set(shareKey, { ...saved, ownerId });
+        }
     }
     if (storedData.localOnly || activeUserId() !== ownerId) return;
+    // Reading credentials can yield to a newer edit. Stamp the actual snapshot
+    // being uploaded, not the object that existed before that await.
+    storedData.syncRevision = Math.max(Date.now(), Number(storedData.syncRevision || 0) + 1, remoteRevision + 1);
+    allAccountsData[ownerId] = storedData;
+    saveDataSync(storedData, true); saveAllDataSync();
     const response = await fetch(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
         method: saved.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json", ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {}) },
@@ -748,18 +793,21 @@ async function publishSharedProfile(): Promise<void> {
     });
     if (activeUserId() !== ownerId) return;
     if (!response.ok) {
-        if (response.status === 409) throw new Error("Your shared profile changed on another device. Reopen the editor and try again.");
+        if (response.status === 409) {
+            if (allowRetry) return publishSharedProfileSnapshot(false);
+            throw new Error("Your shared profile changed on another device. Reopen the editor and try again.");
+        }
         if (saved.id && (response.status === 401 || response.status === 404)) {
-            await DataStore.set(LS_SHARE, {});
-            try { localStorage.removeItem(LS_SHARE); } catch { }
-            return publishSharedProfile();
+            await DataStore.set(shareKey, {});
+            if (allowRetry) return publishSharedProfileSnapshot(false);
+            throw new Error("Your sharing credentials expired. Try saving your profile again.");
         }
         const details = await response.json().catch(() => null);
         throw new Error(response.status === 413 ? "Your profile images are too large to sync. Use Upload to crop and resize them." : response.status === 429 ? "Too many saves. Wait a moment and try again." : response.status === 503 ? "Profile sync is unavailable right now. Your changes are saved on this device." : `Couldn't sync your profile (${response.status}). ${String(details?.error || "Try again shortly.").slice(0, 160)}`);
     }
     const result = await response.json();
     if (activeUserId() !== ownerId) return;
-    if (!saved.id && result?.id) await DataStore.set(LS_SHARE, { id: result.id, editToken: result.editToken });
+    if (!saved.id && result?.id) await DataStore.set(shareKey, { id: result.id, editToken: result.editToken, ownerId });
 }
 
 // Save edits made outside the modal (menus, Discord's own editor) for the active account.
@@ -771,6 +819,27 @@ function saveOwnData(next: CustomProfileData, enabled = isEnabled) {
     DataStore.set(DS_KEY, next).catch(() => { });
     DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
     cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+    forceAccountPanelRerender();
+}
+
+function resetProfileAccount(accountId: string) {
+    if (!accountId) return;
+    // An explicit local reset is not an invitation to import the same remote
+    // profile again on the next poll. Keep that preference across restarts.
+    const cleared: CustomProfileData = { localOnly: true };
+    allAccountsData[accountId] = cleared;
+    allAccountsEnabled[accountId] = false;
+    if (accountId === activeUserId()) {
+        if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
+        storedData = cleared; isEnabled = false;
+        saveDataSync(cleared, false);
+        DataStore.set(DS_KEY, cleared).catch(() => { });
+        DataStore.set(DS_ENABLED, false).catch(() => { });
+        cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
+    }
+    saveAllDataSync();
+    DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { });
+    DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
     forceAccountPanelRerender();
 }
 
@@ -1177,13 +1246,7 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
         children.push(<Menu.MenuGroup>
             {isCopied ? (
                 <Menu.MenuItem id="remove-copy-profile" label="Remove copied profile" color="danger" action={() => {
-                    const myId = AuthenticationStore?.getId?.();
-                    if (myId) { delete allAccountsData[myId]; delete allAccountsEnabled[myId]; }
-                    storedData = {}; isEnabled = false; saveDataSync({}, false);
-                    cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
-                    saveAllDataSync();
-                    DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
-                    forceAccountPanelRerender();
+                    resetProfileAccount(activeUserId() || "");
                 }} />
             ) : (
                 <Menu.MenuItem id="copy-user-profile" label="Copy this profile" action={async () => {
@@ -1193,6 +1256,7 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                         const UPS = findByProps("getUserProfile", "getGuildMemberProfile") as any;
                         const profile = UPS?.getUserProfile?.(user.id) ?? {};
                         const newData: CustomProfileData = {
+                            localOnly: true,
                             username: targetUser.username || "", globalName: targetUser.globalName || "",
                             bio: profile.bio || targetUser.bio || "", accentColor: profile.accentColor ?? targetUser.accentColor,
                             badgeFlags: targetUser.publicFlags ?? 0, copiedUserId: user.id, nitro: (profile.premiumType ?? 0) > 0,
@@ -1444,15 +1508,8 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     }
 
     async function reset() {
-        delete allAccountsData[selectedAccountId]; delete allAccountsEnabled[selectedAccountId];
-        if (selectedAccountId === myId) {
-            storedData = {}; isEnabled = false; saveDataSync({}, false);
-            cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
-        }
-        saveAllDataSync();
-        DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
-        if (selectedAccountId === myId) { DataStore.set(DS_KEY, {}).catch(() => { }); DataStore.set(DS_ENABLED, false).catch(() => { }); }
-        forceAccountPanelRerender(); rootProps.onClose();
+        resetProfileAccount(selectedAccountId);
+        rootProps.onClose();
     }
 
     const [tab, setTab] = React.useState<TabId>("profile");
@@ -1604,7 +1661,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             {saveError && <div className="cpx-footer-error" role="alert">{saveError}</div>}
             <div className="cpx-footer-left">
                 {confirmReset
-                    ? <><span className="cpx-hint">Reset everything for this account?</span><button type="button" className="cpx-btn cpx-btn-danger" onClick={reset}>Yes, reset</button><button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => setConfirmReset(false)}>Keep</button></>
+                    ? <><span className="cpx-hint">Reset this device? Your shared profile stays unchanged.</span><button type="button" className="cpx-btn cpx-btn-danger" onClick={reset}>Yes, reset</button><button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => setConfirmReset(false)}>Keep</button></>
                     : <button type="button" className="cpx-btn cpx-btn-ghost cpx-btn-danger-text" onClick={() => setConfirmReset(true)}><TrashIcon /><span>Reset</span></button>}
             </div>
             <div className="cpx-footer-right">
@@ -1702,7 +1759,7 @@ export default definePlugin({
         if (shouldReplaceBadges(storedData)) {
             clone.publicFlags = wantedFlags;
         }
-        applyNativeProfileMetadata(clone, storedData);
+        applyNativeProfileMetadata(clone, storedData, false, false);
         cachedOriginalUser = user; cachedFakeUser = clone; cachedDataHash = _dataVersion;
         return clone;
     },
@@ -1742,7 +1799,7 @@ export default definePlugin({
         if (shouldReplaceBadges(shared)) {
             clone.publicFlags = wantedFlags;
         }
-        applyNativeProfileMetadata(clone, shared);
+        applyNativeProfileMetadata(clone, shared, false, false);
         return clone;
     },
 

@@ -51,14 +51,30 @@ function useExtras() {
 }
 
 // ---- Fake Nitro ----
+let ownedNitroOverride: { state: any; ownerId: string; previous: any; } | null = null;
+function restoreFakeNitroOverride(accountChanged = false) {
+    const owned = ownedNitroOverride;
+    ownedNitroOverride = null;
+    if (!owned || owned.state.premiumTypeOverride !== 2) return false;
+    owned.state.premiumTypeOverride = accountChanged ? undefined : owned.previous;
+    return true;
+}
 function applyFakeNitro() {
     try {
         const state = OverridePremiumTypeStore?.getState?.();
         if (!state) return;
-        // Never lower a real subscription; only lift accounts without Nitro.
-        if (extras.fakeNitro) { if (state.premiumTypeActual !== 2) state.premiumTypeOverride = 2; }
-        else if (state.premiumTypeOverride === 2 && state.premiumTypeActual !== 2) state.premiumTypeOverride = undefined;
-        (OverridePremiumTypeStore as any).emitChange?.();
+        const ownerId = UserStore.getCurrentUser()?.id || "";
+        let changed = false;
+        if (ownedNitroOverride && (ownedNitroOverride.state !== state || ownedNitroOverride.ownerId !== ownerId)) {
+            changed = restoreFakeNitroOverride(ownedNitroOverride.state === state);
+        }
+        if (extras.fakeNitro && ownerId && state.premiumTypeActual !== 2) {
+            // Own only the override installed here. Never erase another plugin's
+            // override just because this switch defaults to off.
+            if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
+            if (state.premiumTypeOverride !== 2) { state.premiumTypeOverride = 2; changed = true; }
+        } else changed = restoreFakeNitroOverride() || changed;
+        if (changed) (OverridePremiumTypeStore as any).emitChange?.();
     } catch { }
 }
 

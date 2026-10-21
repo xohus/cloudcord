@@ -125,11 +125,11 @@ assert.match(mobile, /accessibilityLabel=\{direction === -1 \? "Move badge up"/)
         SHARED_PROFILE_API: 'https://example.test', LS_SHARE: 'share',
         saveDataSync() {}, saveAllDataSync() {}, toSharedProfile: data => data, remoteOnlyFields: () => ({}),
         DataStore: { get: async key => saved.get(key), set: async (key, value) => saved.set(key, value) },
-        fetch: async (url, options) => options ? ({ ok: true, json: async () => ({ id: 'profile', editToken: 'test-token' }) }) : ({ ok: false })
+        fetch: async (url, options) => options?.method ? ({ ok: true, json: async () => ({ id: 'profile', editToken: 'test-token' }) }) : ({ ok: false, status: 404 })
     });
     vm.runInContext(esbuild.transformSync(desktop.slice(desktop.indexOf('async function publishSharedProfile('), desktop.indexOf('function queueSharedPublish(')), { loader: 'ts' }).code, publishHost);
     await publishHost.publishSharedProfile();
-    assert.equal(saved.get('share').id, 'profile');
+    assert.equal(saved.get('share:owner').id, 'profile');
     await publishHost.publishSharedProfile();
     console.log('PASS: desktop cloud save without localStorage and persisted sync credentials');
 })().catch(error => { console.error(error); process.exitCode = 1; });

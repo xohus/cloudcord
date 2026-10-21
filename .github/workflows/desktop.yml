@@ -75,7 +75,9 @@ jobs:
 
       - name: Check CloudCord profile sync and tab layout
         working-directory: desktop/client
-        run: node scripts/test-cloudcord-badge-sync.cjs
+        run: |
+          node scripts/test-cloudcord-badge-sync.cjs
+          node scripts/test-pc-nitro-override.cjs
 
       - name: Check shared custom friend and connection previews
         env:
