@@ -22,13 +22,16 @@ export function startAutoUpdates(prefs: any, updater: any) {
 export function createRainUpdater(files: any) {
     const download = () => pending ??= (async () => {
         let timeout: any;
-        const response = await Promise.race([
-            fetch(URL + "?t=" + Date.now(), { headers: { "X-CC-Client": "1" }, cache: "no-store" }),
+        const code = await Promise.race([
+            (async () => {
+                const response = await fetch(URL + "?t=" + Date.now(), { headers: { "X-CC-Client": "1" }, cache: "no-store" });
+                if (!response.ok) throw new Error("runtime download failed (" + response.status + ")");
+                const body = await response.text();
+                if (body.length < 10000 || !body.includes("CloudCord")) throw new Error("invalid runtime response");
+                return body;
+            })(),
             new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("download timed out")), 20000); })
         ]).finally(() => clearTimeout(timeout));
-        if (!response.ok) throw new Error("runtime download failed (" + response.status + ")");
-        const code = await response.text();
-        if (code.length < 10000 || !code.includes("CloudCord")) throw new Error("invalid runtime response");
         if (typeof files?.writeFile !== "function") throw new Error("runtime file writer unavailable");
         const path = await files.writeFile("documents", "rain/bundle.js", code, "utf8");
         if (path && typeof files.readFile === "function" && await files.readFile(path, "utf8") !== code) throw new Error("saved runtime did not match download");
