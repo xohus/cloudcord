@@ -2,6 +2,7 @@
 #import <Foundation/Foundation.h>
 #import <dlfcn.h>
 #import <CommonCrypto/CommonDigest.h>
+#import "CloudCordRuntimeCache.h"
 
 __attribute__((constructor)) static void connectCloudCordToRain(void) {
     @autoreleasepool {
@@ -37,12 +38,9 @@ __attribute__((constructor)) static void connectCloudCordToRain(void) {
         CC_SHA256(data.bytes, (CC_LONG)data.length, digest);
         NSMutableString *hash = [NSMutableString string];
         for (NSUInteger i = 0; i < sizeof(digest); i++) [hash appendFormat:@"%02x", digest[i]];
-        NSURL *marker = [rain URLByAppendingPathComponent:@"cloudcord-build.sha256"];
-        NSString *old = [NSString stringWithContentsOfURL:marker encoding:NSUTF8StringEncoding error:nil];
-        if (![hash isEqualToString:old]) {
-            if (![data writeToURL:[rain URLByAppendingPathComponent:@"bundle.js"] atomically:YES]) return;
-            [hash writeToURL:marker atomically:YES encoding:NSUTF8StringEncoding error:nil];
-            [fm removeItemAtURL:[rain URLByAppendingPathComponent:@"etag.txt"] error:nil];
+        if (!CloudCordEnsureRuntimeCache(fm, rain, data, hash)) {
+            NSLog(@"[CloudCord] Could not prepare runtime cache; leaving Discord unmodified");
+            return;
         }
         NSDictionary *config = @{@"customLoadUrl": @{
             @"enabled": @YES, @"url": @"https://getcloudcord.com/api/proxy/raw/dist/cc.js"

@@ -20,6 +20,7 @@ on:
       - "ios/scripts/package-cloudcord-ipa.py"
       - "ios/scripts/verify-broadcast-ipa.py"
       - "ios/scripts/test-broadcast-capabilities.py"
+      - "ios/scripts/test-runtime-cache.m"
 
 jobs:
   build:
@@ -34,6 +35,8 @@ jobs:
       - name: Verify original Rain loader and CloudCord adapter
         run: |
           node ios/scripts/test-original-rain.cjs
+          clang -fobjc-arc -framework Foundation ios/scripts/test-runtime-cache.m -o "$RUNNER_TEMP/cloudcord-runtime-cache-test"
+          "$RUNNER_TEMP/cloudcord-runtime-cache-test"
 
       - name: Install signing tools
         run: brew install ldid

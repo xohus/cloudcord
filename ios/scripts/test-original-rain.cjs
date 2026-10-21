@@ -9,6 +9,9 @@ assert.equal(crypto.createHash('sha256').update(binary).digest('hex'), 'e43cad3e
 const adapter = fs.readFileSync(path.join(root, 'rain-original/CloudCordBootstrap.m'), 'utf8');
 assert.doesNotMatch(adapter, /%hook|jsi::|evaluateJavaScript|method_exchangeImplementations|RCTHost/);
 assert.ok(adapter.indexOf('@"loader.json"') < adapter.indexOf('dlopen('));
+assert.match(adapter, /#import "CloudCordRuntimeCache\.h"/);
+assert.match(adapter, /if \(!CloudCordEnsureRuntimeCache\(fm, rain, data, hash\)\)/);
+assert.ok(adapter.indexOf('CloudCordEnsureRuntimeCache(fm, rain, data, hash)') < adapter.indexOf('dlopen('), 'cache recovery must finish before Rain loads');
 const entry = fs.readFileSync(path.join(root, 'runtime/src/entry.ts'), 'utf8');
 const bridge = entry.slice(entry.indexOf('const rain ='), entry.indexOf('const { instead }')).replaceAll('(globalThis as any)', 'globalThis');
 for (let i = 0; i < 30; i++) {
