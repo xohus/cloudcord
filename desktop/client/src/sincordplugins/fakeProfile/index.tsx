@@ -418,73 +418,20 @@ function shortProfileDate(date: Date): string {
     return date.toLocaleDateString("en-GB", { month: "2-digit", day: "2-digit", year: "numeric" });
 }
 
-function NativeProfileBadge({ userId, id }: { userId: string; id: string; }) {
-    const data = isMe(userId) ? storedData : viewedSharedProfile(userId);
-    if (!data) return null;
-    if (id === "sp_early") return <NativeBadgeCard title="EARLY SUPPORTER" subtitle="A Nitro original"
-        art="https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"
-        icon="https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png" label="Early Supporter" variant="supporter" />;
-    if (id === "sp_gifting") {
-        const gift = GIFT_LEVELS[data.giftLevel ?? -1];
-        return gift ? <NativeBadgeCard title={gift.name.toUpperCase()} art={gift.icon} icon={gift.icon} label={gift.name} variant="gift" sparkleColor={gift.light} /> : null;
-    }
-    return null;
-}
 
-function NativeBadgeCard({ title, subtitle, art, icon, label, sparkleColor, variant }: {
-    title: string; subtitle?: string; art: string; icon: string; label: string; sparkleColor?: string; variant: "nitro" | "gift" | "supporter";
-}) {
-    const targetRef = React.useRef<HTMLSpanElement>(null);
-    const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-    const [open, setOpen] = React.useState(false);
-
-    const show = () => {
-        if (closeTimer.current) clearTimeout(closeTimer.current);
-        setOpen(true);
-    };
-    const hide = () => {
-        if (closeTimer.current) clearTimeout(closeTimer.current);
-        closeTimer.current = setTimeout(() => setOpen(false), 80);
-    };
-    React.useEffect(() => () => {
-        if (closeTimer.current) clearTimeout(closeTimer.current);
-    }, []);
-
-    return <Popout
-        targetElementRef={targetRef}
-        shouldShow={open}
-        position="top"
-        align="center"
-        autoInvert
-        nudgeAlignIntoViewport
-        renderPopout={({ setPopoutRef }) => <div
-            ref={setPopoutRef}
-            className={`cp-native-nitro-popout cp-native-badge-${variant}`}
-            role="tooltip"
-            onPointerEnter={show}
-            onPointerLeave={hide}
-            style={{
-                "--cp-badge-sparkle": sparkleColor || "transparent"
-            } as React.CSSProperties}
-        >
-            {sparkleColor && <div className="cp-native-badge-sparkles" aria-hidden="true">{[0, 1, 2, 3, 4, 5].map(index => <i key={index} />)}</div>}
-            <img src={art} alt="" />
-            <strong>{title}</strong>
-            {subtitle && <span>{subtitle}</span>}
-        </div>}
-    >
-        {popoutProps => <span
-            {...popoutProps}
-            ref={targetRef}
-            className="cp-native-nitro-trigger"
-            aria-label={label}
-            tabIndex={0}
-            onPointerEnter={show}
-            onPointerLeave={hide}
-            onFocus={show}
-            onBlur={hide}
-        ><img src={icon} alt="" /></span>}
-    </Popout>;
+// Discord's own badge IDs, so fake badges are handled exactly like real ones
+// (native tooltips, ordering and click actions). Gifting has no native ID.
+const NATIVE_BADGE_IDS: Record<string, string> = {
+    sp_staff: "staff", sp_partner: "partner", sp_hypesquad: "hypesquad", sp_bh1: "bug_hunter_level_1",
+    sp_bravery: "hypesquad_house_1", sp_brilliance: "hypesquad_house_2", sp_balance: "hypesquad_house_3",
+    sp_early: "early_supporter", sp_bh2: "bug_hunter_level_2", sp_dev: "verified_developer",
+    sp_mod: "certified_moderator", sp_activedev: "active_developer", sp_oldname: "legacy_username",
+    sp_quest: "quest_completed", sp_orbs: "orb_profile_badge"
+};
+function nativeBadge(badge: ProfileBadge, boostLevel: number): ProfileBadge {
+    if (badge.id === "sp_boost" && boostLevel >= 0) return { ...badge, id: `guild_booster_lvl${Math.min(9, boostLevel + 1)}` };
+    const id = NATIVE_BADGE_IDS[badge.id];
+    return id ? { ...badge, id } : badge;
 }
 
 function nativeNitroBadgeId(level: number): string {
@@ -2042,7 +1989,7 @@ fakeObfuscatedEmail(real: string | null) {
                 const ai = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedA);
                 const bi = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedB);
                 return (ai < 0 ? Number.MAX_SAFE_INTEGER : ai) - (bi < 0 ? Number.MAX_SAFE_INTEGER : bi);
-            });
+            }).map(badge => nativeBadge(badge, bm));
         }
     } as ProfileBadge] as ProfileBadge[],
 
