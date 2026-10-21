@@ -1135,6 +1135,8 @@ jobs:
                   oldName: preview.oldName,
                   badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && preview.selectedBadges?.[id] ? flags | flag : flags, 0),
                   hiddenBadgeIds: [...preview.hiddenBadgeIds],
+                  nativeBadgeOrder: rootSettings.fakeProfileNativeOrder || [],
+                  nativeHiddenBadges: rootSettings.fakeProfileNativeHidden || [],
                   badgeOrder: [...preview.badgeOrder],
                   customBadgeIds: [
                       ...BADGES.filter(([id, , , , customId]) => customId && preview.selectedBadges?.[id]).map(([, , , , customId]) => customId as string),
@@ -1524,8 +1526,6 @@ jobs:
                   const sharedFlags = Number(data.badgeFlags || 0);
                   setOwnValue(cloned, "publicFlags", sharedFlags);
                   setOwnValue(cloned, "public_flags", sharedFlags);
-                  setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userIdFromProfile(original), data));
-                  setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userIdFromProfile(original), data));
                   setOwnValue(cloned, "premiumSince", null);
                   setOwnValue(cloned, "premiumGuildSince", null);
                   setOwnValue(cloned, "legacyUsername", null);
@@ -1545,8 +1545,6 @@ jobs:
               const cloned = Object.assign(Object.create(Object.getPrototypeOf(original) || Object.prototype), original);
               for (const [key, value] of Object.entries(nativeSocialProfile(original, data))) setOwnValue(cloned, key, value);
               for (const [key, value] of Object.entries(nativeProfileAppearance(data))) setOwnValue(cloned, key, value);
-              setOwnValue(cloned, "badges", sharedBadgeObjects(original.badges, userId, data));
-              setOwnValue(cloned, "profileBadges", sharedBadgeObjects(original.profileBadges, userId, data));
               applyAvatarDecoration(cloned, data);
               if (cloned.user) setOwnValue(cloned, "user", cloneSharedUser(cloned.user, data));
               // Mobile profile hooks return nested snapshots. Updating only the
@@ -1978,8 +1976,6 @@ jobs:
               if (createdAt) setOwnValue(cloned, "createdAt", createdAt);
               if (joinedAt) { setOwnValue(cloned, "joinedAt", joinedAt); setOwnValue(cloned, "memberSince", joinedAt); }
               setOwnValue(cloned, "publicFlags", flags);
-              setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
-              setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
               applyAvatarDecoration(cloned, preview);
               applyCollectibles(cloned, preview);
               if (primaryColor != null) setOwnValue(cloned, "primaryColor", primaryColor);
@@ -2105,6 +2101,159 @@ jobs:
               const layout = isCurrentUser(userId) ? (preview.enabled ? preview : null) : getProfileOverride(userId);
               return applyBadgeLayout(next, { ...layout, badgeOrder: layout?.badgeOrder?.length ? layout.badgeOrder : defaultBadgeOrder(nativeBadgeRows.get(userId) || []) });
           }
+          // ---- Native badges: delivered the same way Discord delivers real ones ----
+          const NATIVE_BADGE_IDS: Record<string, string> = { staff: "staff", partner: "partner", hypesquad: "hypesquad", bug1: "bug_hunter_level_1", bravery: "hypesquad_house_1", brilliance: "hypesquad_house_2", balance: "hypesquad_house_3", early: "early_supporter", bug2: "bug_hunter_level_2", vdev: "verified_developer", mod: "certified_moderator", active: "active_developer", oldname: "legacy_username", quest: "quest_completed", orbs: "orb_profile_badge" };
+          const DIRECTORY_BADGE_IDS: Record<string, number> = { staff: 22, partner: 2, certified_moderator: 3, hypesquad: 4, hypesquad_house_1: 5, hypesquad_house_2: 6, hypesquad_house_3: 7, bug_hunter_level_1: 8, bug_hunter_level_2: 9, verified_developer: 10, early_supporter: 11, legacy_username: 13, quest_completed: 14, orb_profile_badge: 16, "cloudcord-gifting": 17 };
+          const BOOST_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
+          // Activity badges Discord derives itself (account age, game time...).
+          const DIRECTORY_ONLY_BADGES = new Set([18, 19, 20, 21]);
+          function directoryBadgeId(id: string): number | undefined {
+              if (id === "premium" || id.startsWith("premium_tenure_")) return 1;
+              if (id.startsWith("guild_booster_lvl")) return 12;
+              return DIRECTORY_BADGE_IDS[id];
+          }
+          type BadgeSource = { nitroMonths: number; nitroSince?: string; boostIndex: number; giftLevel: number; selected: (row: any[]) => boolean; oldName?: string; replace: boolean; order: number[]; hidden: number[] };
+          function badgeSourceFor(id: string): BadgeSource | undefined {
+              if (isCurrentUser(id)) {
+                  if (!preview.enabled || rootSettings.fakeProfileLocalOnly && preview.hideBadgesWhenSyncOff) return undefined;
+                  return { nitroMonths: preview.nitroEnabled ? preview.nitroMonths : -1, nitroSince: (preview as any).nitroSince, boostIndex: preview.boostMonths > 0 ? BOOST_MONTHS.indexOf(preview.boostMonths) : -1, giftLevel: Number(preview.giftLevel ?? -1),
+                      selected: ([rowId]) => !!preview.selectedBadges?.[rowId], oldName: preview.oldName, replace: shouldReplaceLocalBadges(),
+                      order: rootSettings.fakeProfileNativeOrder || [], hidden: rootSettings.fakeProfileNativeHidden || [] };
+              }
+              const data = getProfileOverride(id, true);
+              if (!data) return undefined;
+              const ids = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
+              return { nitroMonths: remoteNitroEnabled(data) ? NITRO_DURATIONS[Number(data.nitroLevel)] || 0 : -1, nitroSince: data.nitroSince, boostIndex: Number(data.boostMonths ?? -1), giftLevel: Number(data.giftLevel ?? -1),
+                  selected: ([, , flag, , customId]) => customId ? ids.includes(customId) : (Number(data.badgeFlags || 0) & Number(flag)) !== 0, oldName: data.oldName, replace: shouldReplaceSharedBadges(data),
+                  order: Array.isArray(data.nativeBadgeOrder) ? data.nativeBadgeOrder : [], hidden: Array.isArray(data.nativeHiddenBadges) ? data.nativeHiddenBadges : [] };
+          }
+          const shortDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+          function addMonths(date: Date, months: number) { const next = new Date(date); next.setMonth(next.getMonth() + months); return next; }
+          // Discord picks the Nitro tier from the "since" date, so a saved date only counts inside the chosen tier.
+          function nitroSinceFor(months: number, saved?: string) {
+              const next = NITRO_DURATIONS[NITRO_DURATIONS.indexOf(months) + 1];
+              const date = typeof saved === "string" && /^\d{4}-\d{2}-\d{2}/.test(saved) ? new Date(saved.slice(0, 10) + "T12:00:00Z") : null;
+              if (date && Number.isFinite(date.getTime())) {
+                  const age = (Date.now() - date.getTime()) / (30.44 * 86400000);
+                  if (age >= months && (next === undefined || age < next)) return date;
+              }
+              return monthsAgo(months);
+          }
+          function nativeBadgesFor(src: BadgeSource) {
+              const out: any[] = [];
+              const hash = (url: string) => (String(url).match(/badge-icons\/([a-f0-9]{32})\.png/) || [])[1];
+              const push = (id: string, description: string, icon: string) => out.push({ id, description, icon: hash(icon) ?? icon });
+              if (src.nitroMonths >= 0) push(nitroBadgeId(src.nitroMonths), "Subscriber since " + shortDate(nitroSinceFor(src.nitroMonths, src.nitroSince)), milestoneIcon(src.nitroMonths, NITRO_ICONS));
+              if (src.boostIndex >= 0 && src.boostIndex < BOOST_MONTHS.length) push("guild_booster_lvl" + (src.boostIndex + 1), "Server boosting since " + shortDate(monthsAgo(BOOST_MONTHS[src.boostIndex])), boosterIcon(BOOST_MONTHS[src.boostIndex]));
+              const gift = GIFT_LEVELS[src.giftLevel];
+              if (gift) push("cloudcord-gifting", gift.name, gift.icon);
+              for (const row of BADGES) {
+                  if (!src.selected(row as any[])) continue;
+                  const [rowId, description, , icon] = row;
+                  push(NATIVE_BADGE_IDS[rowId] ?? "cloudcord-" + rowId, rowId === "oldname" && src.oldName ? `Originally Known As: ${src.oldName}` : description, icon);
+              }
+              return out;
+          }
+          function discordBadgesFor(src: BadgeSource, real: any) {
+              const fake = nativeBadgesFor(src);
+              const taken = new Set(fake.map(badgeLayoutKey));
+              const list = src.replace || !Array.isArray(real) ? fake : [...real.filter((badge: any) => !taken.has(badgeLayoutKey(badge))), ...fake];
+              const rank = (badge: any) => { const i = src.order.indexOf(directoryBadgeId(String(badge.id)) ?? -1); return i < 0 ? src.order.length : i; };
+              return list.filter((badge: any) => !src.hidden.includes(directoryBadgeId(String(badge.id)) ?? -1)).map((badge: any, i: number) => ({ badge, i }))
+                  .sort((a: any, b: any) => rank(a.badge) - rank(b.badge) || a.i - b.i).map((item: any) => item.badge);
+          }
+          // Discord loads every profile through USER_PROFILE_FETCH_SUCCESS with the raw API body:
+          // edit it the way Discord's server would have sent it.
+          function rewriteFetchedProfile(action: any) {
+              if (action?.type !== "USER_PROFILE_FETCH_SUCCESS") return false;
+              const raw = action.userProfile, id = String(raw?.user?.id || "");
+              const src = id ? badgeSourceFor(id) : undefined;
+              if (!src) return false;
+              try {
+                  raw.badges = discordBadgesFor(src, raw.badges);
+                  if (src.nitroMonths >= 0) { raw.premium_type = 2; raw.premium_since = nitroSinceFor(src.nitroMonths, src.nitroSince).toISOString(); }
+                  if (src.boostIndex >= 0 && src.boostIndex < BOOST_MONTHS.length) raw.premium_guild_since = monthsAgo(BOOST_MONTHS[src.boostIndex]).toISOString();
+              } catch {}
+              return false;
+          }
+          // The line under a badge's title ("A Nitro original") is only sent to owners: known
+          // ones are listed, others are learned from any real owner's badges we see.
+          const KNOWN_BADGE_INFO: Record<number, string> = { 5: "First in, no hesitation", 6: "Patience meets discipline", 7: "Calm in the chaos", 11: "A Nitro original", 14: "1 Quest completed", 16: "This is just the beginning..." };
+          function learnBadgeInfo(entries: any[]) {
+              const learned = { ...(rootSettings.cloudcordBadgeInfo || {}) };
+              let changed = false;
+              for (const entry of entries) {
+                  if (!entry?.owned || !entry.info_label || entry.tiers?.length || DIRECTORY_ONLY_BADGES.has(entry.badge_id) || learned[entry.badge_id] === entry.info_label) continue;
+                  learned[entry.badge_id] = entry.info_label; changed = true;
+              }
+              if (changed) rootSettings.cloudcordBadgeInfo = learned;
+          }
+          function fakeTierProgress(tiers: any[], index: number, since: Date) {
+              const next = tiers[index + 1];
+              if (!next) return [];
+              const start = (tier: any) => { const req = tier?.requirements?.[0]; const amount = Number(req?.threshold ?? 0); return addMonths(since, req?.unit === "years" ? amount * 12 : amount); };
+              const days = (date: Date) => Math.max(0, Math.round((date.getTime() - since.getTime()) / 86400000));
+              const current = days(new Date()), floor = days(start(tiers[index])), threshold = Math.max(current, days(start(next)));
+              const left = threshold - current, months = Math.round(left / 30.44);
+              return [{ progress_type: 1, current, floor, threshold, unit: "days", window: null, progress_helper_text: left < 31 ? `${left} more day${left === 1 ? "" : "s"}` : `${months} more month${months === 1 ? "" : "s"}` }];
+          }
+          function tieredEntry(entry: any, index: number, since: Date, label: string, hidden: boolean) {
+              const tiers = Array.isArray(entry.tiers) ? entry.tiers : [];
+              const i = Math.max(0, Math.min(tiers.length - 1, index));
+              const tier = tiers[i] || {};
+              const art: any = {};
+              for (const key of ["simple_icon_url", "simple_icon_raster_url", "complex_icon_static_url", "complex_icon_animated_url"]) if (tier[key]) art[key] = tier[key];
+              const obtained: Record<string, string> = {};
+              for (let k = 0; k <= i; k++) { const req = tiers[k]?.requirements?.[0]; const amount = Number(req?.threshold ?? 0); obtained[tiers[k].key] = addMonths(since, req?.unit === "years" ? amount * 12 : amount).toISOString(); }
+              return { ...entry, ...art, tiers: tiers.map((item: any, k: number) => ({ ...item, owned: k <= i })), progress: fakeTierProgress(tiers, i, since), owned: true, hidden,
+                  obtained_at: since.toISOString(), current_tier: tier.key, next_tier: tiers[i + 1]?.key ?? null, tier_obtained_at: obtained, info_label: label };
+          }
+          function fakeDirectoryEntry(entry: any, src: BadgeSource, owned: Map<number, any>) {
+              if (!entry) return entry;
+              const hidden = src.hidden.includes(entry.badge_id);
+              if (DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return src.replace ? { ...entry, owned: false } : entry;
+              const fake = owned.get(entry.badge_id);
+              if (!fake) return src.replace ? { ...entry, owned: false, current_tier: undefined, next_tier: undefined, info_label: undefined } : entry;
+              if (entry.badge_id === 1) { const since = nitroSinceFor(src.nitroMonths, src.nitroSince); return tieredEntry(entry, NITRO_DURATIONS.indexOf(src.nitroMonths), since, "Subscriber since " + shortDate(since), hidden); }
+              if (entry.badge_id === 12) { const since = monthsAgo(BOOST_MONTHS[src.boostIndex] || 1); return tieredEntry(entry, src.boostIndex, since, "Boosting since " + shortDate(since), hidden); }
+              if (entry.badge_id === 17) return tieredEntry(entry, src.giftLevel, monthsAgo(1), fake.description, hidden);
+              return { ...entry, owned: true, hidden, info_label: entry.info_label ?? rootSettings.cloudcordBadgeInfo?.[entry.badge_id] ?? KNOWN_BADGE_INFO[entry.badge_id] };
+          }
+          // Discord's badge directory (owned badges, tiers, "since" labels) loads separately.
+          function rewriteBadgeDirectory(action: any) {
+              const type = action?.type;
+              if (type !== "BADGE_DIRECTORY_FETCH_SUCCESS" && type !== "BADGE_FETCH_SUCCESS" && type !== "BADGE_SUMMARY_FETCH_SUCCESS") return false;
+              try { learnBadgeInfo(Array.isArray(action.badges) ? action.badges : action.badge ? [action.badge] : []); } catch {}
+              const id = String(action.userId || "");
+              const src = id ? badgeSourceFor(id) : undefined;
+              if (!src) return false;
+              try {
+                  const owned = new Map<number, any>();
+                  for (const badge of nativeBadgesFor(src)) { const badgeId = directoryBadgeId(badge.id); if (badgeId != null) owned.set(badgeId, badge); }
+                  if (Array.isArray(action.badges)) action.badges = action.badges.map((entry: any) => fakeDirectoryEntry(entry, src, owned));
+                  if (action.badge) action.badge = fakeDirectoryEntry(action.badge, src, owned);
+              } catch {}
+              return false;
+          }
+          // Discord's badge customiser saves to Discord's server, which doesn't know fake badges:
+          // keep the chosen order and hidden badges here so they apply to the fake ones.
+          function onBadgeCustomiserChange(action: any) {
+              if (action?.guildId || !preview.enabled) return;
+              if (Array.isArray(action.pendingBadgeDisplayOrder)) rootSettings.fakeProfileNativeOrder = action.pendingBadgeDisplayOrder.map(Number);
+              if (Array.isArray(action.pendingBadgeHiddenBadges)) rootSettings.fakeProfileNativeHidden = action.pendingBadgeHiddenBadges.map(Number);
+              if (Array.isArray(action.pendingBadgeDisplayOrder) || Array.isArray(action.pendingBadgeHiddenBadges)) queueSharedPublish();
+          }
+          let nativeBadgeHooksInstalled = false;
+          function installNativeBadgeHooks() {
+              if (nativeBadgeHooksInstalled) return;
+              const dispatcher = FluxDispatcher as any;
+              if (typeof dispatcher?.addInterceptor !== "function") return;
+              nativeBadgeHooksInstalled = true;
+              dispatcher.addInterceptor(rewriteFetchedProfile);
+              dispatcher.addInterceptor(rewriteBadgeDirectory);
+              try { FluxDispatcher.subscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onBadgeCustomiserChange); } catch {}
+          }
+
           function connectBadgeRenderer() {
               try {
                   after("default", useBadgesModule as any, ([user], result) => {
@@ -2116,69 +2265,13 @@ jobs:
                           if (nativeBadgeRows.size > 100) nativeBadgeRows.delete(nativeBadgeRows.keys().next().value!);
                       }
                       void refreshPublishedBadges();
-                      if (!isCurrentUser(id)) {
-                          requestSharedProfile(id);
-                          const data = getProfileOverride(id);
-                          const staffBadge = cloudCordStaffBadge(id);
-                          if (!data && !staffBadge) return appendPublishedBadges(result, id);
-                          const ordered: any[] = [];
-                          if (staffBadge) addOfficialBadge(ordered, staffBadge, user, data);
-                          if (data) {
-                              const nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
-                              const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
-                              if (remoteNitroEnabled(data)) addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
-                              addRenderedBadge(ordered, "cloudcord-shared-boost", serverBoostingLabel(boostMonths), boosterIcon(boostMonths));
-                              const gift = GIFT_LEVELS[Number(data.giftLevel)];
-                              if (gift) addRenderedBadge(ordered, "cloudcord-shared-gifting", gift.name, gift.icon);
-                              const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
-                              for (const [id, description, flag, icon, customId] of BADGES) {
-                                  const selected = customId ? customBadgeIds.includes(customId) : (Number(data.badgeFlags || 0) & flag) !== 0;
-                                  const label = id === "oldname" && data.oldName ? `Originally Known As: ${data.oldName}` : description;
-                                  if (selected) addRenderedBadge(ordered, `cloudcord-shared-${customId || id}`, label, icon);
-                              }
-                          }
-                          const existing = data && shouldReplaceSharedBadges(data) ? [] : result.filter(item => {
-                              const badgeId = String(item?.id || "");
-                              return !badgeId.startsWith("cloudcord-") && !(remoteNitroEnabled(data) && badgeLayoutKey(item) === "nitro");
-                          });
-                          return appendPublishedBadges([...ordered, ...existing], id);
-                      }
-
+                      if (!isCurrentUser(id)) requestSharedProfile(id);
+                      // Fake Discord badges come with Discord's own profile data (see
+                      // rewriteFetchedProfile); only CloudCord's own badges are added here.
                       const staffBadge = cloudCordStaffBadge(id);
-                      if (!preview.enabled) {
-                          if (!staffBadge) return appendPublishedBadges(result, id);
-                          const existing = result.filter(item => !String(item?.id || "").startsWith("cloudcord-"));
-                          const ordered: any[] = [];
-                          addOfficialBadge(ordered, staffBadge, user, null);
-                          return appendPublishedBadges([...ordered, ...existing], id);
-                      }
-
-                      const existing = shouldReplaceLocalBadges() ? [] : result.filter(item => {
-                          const badgeId = String(item?.id || "");
-                          return !badgeId.startsWith("cloudcord-") && !badgeId.startsWith("fakeprofile-") && !(preview.nitroEnabled && badgeLayoutKey(item) === "nitro");
-                      });
                       const ordered: any[] = [];
-                      if (staffBadge) addOfficialBadge(ordered, staffBadge, user, preview);
-                      if (preview.nitroEnabled) addRenderedBadge(
-                          ordered,
-                          nitroBadgeId(preview.nitroMonths),
-                          nitroSubscriberLabel(preview.nitroMonths),
-                          milestoneIcon(preview.nitroMonths, NITRO_ICONS)
-                      );
-                      const gift = GIFT_LEVELS[preview.giftLevel];
-                      if (gift) addRenderedBadge(ordered, "fakeprofile-gifting", gift.name, gift.icon);
-                      addRenderedBadge(
-                          ordered,
-                          "fakeprofile-boost",
-                          serverBoostingLabel(preview.boostMonths),
-                          boosterIcon(preview.boostMonths)
-                      );
-                      for (const [badgeId, description, , icon] of BADGES) {
-                          if (!preview.selectedBadges?.[badgeId]) continue;
-                          const id = `fakeprofile-${badgeId}`;
-                          const label = badgeId === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description;
-                          addRenderedBadge(ordered, id, label, icon);
-                      }
+                      if (staffBadge) addOfficialBadge(ordered, staffBadge, user, isCurrentUser(id) ? (preview.enabled ? preview : null) : getProfileOverride(id) ?? null);
+                      const existing = result.filter(item => !String(item?.id || "").startsWith("cloudcord-official"));
                       return appendPublishedBadges([...ordered, ...existing], id);
                   });
                   diagnostics.patches += 1;
@@ -2674,6 +2767,7 @@ jobs:
               // above but never initialized, so shared colors rendered while
               // Nitro, gifting and custom badges silently remained native.
               connectBadgeRenderer();
+              try { installNativeBadgeHooks(); } catch {}
 
               const avatarResolver = findByProps("getUserAvatarURL") || findByProps("getAvatarURL", "getDefaultAvatarURL");
               const bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
