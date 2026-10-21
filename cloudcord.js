@@ -26443,11 +26443,12 @@
         ...row,
         usePredicate: () => {
           var state2 = useProxy(settings);
+          var originalVisible = originalPredicate?.() ?? true;
           if (state2.cloudcordSectionHidden ?? false)
             return false;
           if (configurableKeys.has(row.key) && (state2.cloudcordHiddenTabs ?? []).includes(row.key))
             return false;
-          return originalPredicate?.() ?? true;
+          return originalVisible;
         }
       };
     }).sort((a, b3) => {
