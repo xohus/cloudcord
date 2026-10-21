@@ -14652,16 +14652,39 @@
         return candidate;
     return null;
   }
+  function restoreFakeNitroOverride(accountChanged = false) {
+    var owned = ownedNitroOverride;
+    ownedNitroOverride = null;
+    if (!owned || owned.state.premiumTypeOverride !== 2)
+      return false;
+    owned.state.premiumTypeOverride = accountChanged ? void 0 : owned.previous;
+    return true;
+  }
   function applyFakeNitro() {
     try {
-      var state2 = findByStoreName("OverridePremiumTypeStore")?.getState?.();
+      var store = findByStoreName("OverridePremiumTypeStore");
+      var state2 = store?.getState?.();
       if (!state2)
         return;
-      if (extrasState().fakeNitro) {
-        if (state2.premiumTypeActual !== 2)
+      var ownerId = findByStoreName("UserStore")?.getCurrentUser?.()?.id || "";
+      var changed = false;
+      if (ownedNitroOverride && (ownedNitroOverride.state !== state2 || ownedNitroOverride.ownerId !== ownerId))
+        changed = restoreFakeNitroOverride(ownedNitroOverride.state === state2);
+      if (extrasState().fakeNitro && ownerId && state2.premiumTypeActual !== 2) {
+        if (!ownedNitroOverride && state2.premiumTypeOverride !== 2)
+          ownedNitroOverride = {
+            state: state2,
+            ownerId,
+            previous: state2.premiumTypeOverride
+          };
+        if (state2.premiumTypeOverride !== 2) {
           state2.premiumTypeOverride = 2;
-      } else if (state2.premiumTypeOverride === 2 && state2.premiumTypeActual !== 2)
-        state2.premiumTypeOverride = void 0;
+          changed = true;
+        }
+      } else
+        changed = restoreFakeNitroOverride() || changed;
+      if (changed)
+        store.emitChange?.();
     } catch (e) {
     }
   }
@@ -17379,7 +17402,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -18194,6 +18217,7 @@
         }
       ];
       fakeRequestIds = /* @__PURE__ */ new Set();
+      ownedNitroOverride = null;
       giftHookInstalled = false;
       rawUser = (user) => ({
         id: user.id,
