@@ -11,7 +11,7 @@ for (const dir of fs.readdirSync(path.join(root, res)).filter(dir => dir.startsW
     const name = fs.readFileSync(file, 'utf8').match(/<string name="app_name">([^<]*)<\/string>/);
     if (name) assert.equal(name[1], 'CloudCord Manager', `consistent application name in ${dir}`);
 }
-assert.deepEqual(fs.readFileSync(path.join(root, res, 'drawable/cloudcord_mark_source.png')), fs.readFileSync(path.join(root, '../cloudcord-favicon.png')), 'reuse the canonical CloudCord logo, not a replacement illustration');
+assert.deepEqual(fs.readFileSync(path.join(root, res, 'drawable-nodpi/cloudcord_mark_source.png')), fs.readFileSync(path.join(root, '../cloudcord-favicon.png')), 'reuse the canonical CloudCord logo without density-upscaling its memory footprint');
 assert.match(read('app/src/main/AndroidManifest.xml'), /android:icon="@drawable\/ic_cloudcord_launcher"/);
 assert.match(read(res + 'values/themes.xml'), /windowSplashScreenAnimatedIcon">@drawable\/cloudcord_launcher_foreground/);
 assert.match(read(res + 'drawable/cloudcord_brand_mark.xml'), /android:tint="#FFFFFFFF"/);
