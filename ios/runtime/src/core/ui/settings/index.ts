@@ -108,9 +108,12 @@ export default function initSettings() {
                 ...row,
                 usePredicate: () => {
                     const state = useProxy(settings);
+                    // Predicates may use hooks themselves. Visibility changes
+                    // must not alter their call order on an existing row.
+                    const originalVisible = originalPredicate?.() ?? true;
                     if (state.cloudcordSectionHidden ?? false) return false;
                     if (configurableKeys.has(row.key) && (state.cloudcordHiddenTabs ?? []).includes(row.key)) return false;
-                    return originalPredicate?.() ?? true;
+                    return originalVisible;
                 },
             };
         })

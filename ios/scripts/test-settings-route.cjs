@@ -29,6 +29,36 @@ assert.equal(rendererModule.SETTING_RENDERER_CONFIG.ACCOUNT, nativeConfig.ACCOUN
 assert.equal(rendererModule.SETTING_RENDERER_CONFIG.PROFILE, undefined);
 cleanups.forEach(cleanup => cleanup());
 assert.equal(rendererModule.SETTING_RENDERER_CONFIG, nativeConfig);
+const coreSettings = {};
+const coreSections = {};
+let proxyHooks = 0;
+const coreModule = { exports: {} };
+vm.runInNewContext(esbuild.transformSync(fs.readFileSync('ios/runtime/src/core/ui/settings/index.ts', 'utf8'), { loader: 'ts', format: 'cjs' }).code, {
+    module: coreModule, exports: coreModule.exports,
+    require(name) {
+        if (name === '@lib/api/settings') return { settings: coreSettings };
+        if (name === '@core/vendetta/storage') return { useProxy: value => { proxyHooks++; return value; } };
+        if (name === '@ui/settings') return { registerSection: section => { coreSections[section.name] = section.items; } };
+        if (name === '@lib/api/assets') return { findAssetId: () => 1 };
+        if (name === '@core/i18n') return { Strings: {} };
+        return {};
+    }
+});
+coreModule.exports.default();
+const diagnosticsRow = coreSections.CloudCord.find(row => row.key === 'CLOUDCORD_DIAGNOSTICS');
+coreSettings.cloudcordDiagnosticsEnabled = true;
+proxyHooks = 0;
+assert.equal(diagnosticsRow.usePredicate(), true);
+const visibleHookCount = proxyHooks;
+coreSettings.cloudcordSectionHidden = true;
+proxyHooks = 0;
+assert.equal(diagnosticsRow.usePredicate(), false);
+assert.equal(proxyHooks, visibleHookCount, 'hiding a section must not skip the native row predicate hooks');
+coreSettings.cloudcordSectionHidden = false;
+coreSettings.cloudcordHiddenTabs = ['CLOUDCORD_DIAGNOSTICS'];
+proxyHooks = 0;
+assert.equal(diagnosticsRow.usePredicate(), false);
+assert.equal(proxyHooks, visibleHookCount, 'hiding a tab must keep the same hook count');
 const source = fs.readFileSync('ios/runtime/src/lib/ui/settings/patches/shared.tsx', 'utf8');
 let route;
 const effects = [];
