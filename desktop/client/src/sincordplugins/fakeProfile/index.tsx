@@ -719,7 +719,7 @@ function applyNativeProfileMetadata(target: any, data: CustomProfileData, includ
     }
 
     // Some profile builds read metadata from the nested user/profile object.
-    if (includeNested && target.user && target.user !== target) applyNativeProfileMetadata(target.user, data, false, false);
+    if (includeNested && target.user && target.user !== target) applyNativeProfileMetadata(target.user, data, false);
     if (includeNested && target.userProfile && target.userProfile !== target) applyNativeProfileMetadata(target.userProfile, data, false);
     return target;
 }
@@ -1900,7 +1900,7 @@ export default definePlugin({
         if (shouldReplaceBadges(storedData)) {
             clone.publicFlags = wantedFlags;
         }
-        applyNativeProfileMetadata(clone, storedData, false, false);
+        applyNativeProfileMetadata(clone, storedData, false);
         cachedOriginalUser = user; cachedFakeUser = clone; cachedDataHash = _dataVersion;
         return clone;
     },
@@ -1943,7 +1943,7 @@ export default definePlugin({
         if (shouldReplaceBadges(shared)) {
             clone.publicFlags = wantedFlags;
         }
-        applyNativeProfileMetadata(clone, shared, false, false);
+        applyNativeProfileMetadata(clone, shared, false);
         otherUserCache.set(realUser, { profile: shared, user: clone });
         return clone;
     },
