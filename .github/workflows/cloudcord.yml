@@ -55,6 +55,7 @@ jobs:
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-compatibility.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-media-load-races.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-media-sync-snapshot.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-nitro-date-sync.cjs
           CLOUDCORD_NETWORK_SOURCE=ios/runtime/src/lib/utils/profileSyncNetwork.ts NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node desktop/client/scripts/test-profile-network-timeout.cjs
           for test in profile-local profile-identity-render published-badges message-identity message-previews profile-device-only profile-billing-isolation profile-refresh-budget profile-editor-tabs; do
             NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node "ios/scripts/test-$test.cjs"
@@ -398,6 +399,7 @@ jobs:
               bannerMedia: MediaValue;
               nitroEnabled: boolean;
               nitroMonths: number;
+              nitroSince?: string;
               boostMonths: number;
               giftLevel: number;
               avatarDecoration: string;
@@ -836,8 +838,8 @@ jobs:
               return months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
           }
 
-          function nitroSubscriberLabel(months: number) {
-              const date = monthsAgo(months);
+          function nitroSubscriberLabel(months: number, explicitDate?: string) {
+              const date = profileDate(explicitDate) || monthsAgo(months);
               return `Subscriber since ${date.getMonth() + 1}/${date.getDate()}/${String(date.getFullYear()).slice(-2)}`;
           }
 
@@ -1112,7 +1114,7 @@ jobs:
                   banner: await shareableMedia("bannerMedia", snapshot),
                   nitro: snapshot.nitroEnabled,
                   nitroLevel: snapshot.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(snapshot.nitroMonths)) : -1,
-                  nitroSince: snapshot.nitroEnabled ? monthsAgo(snapshot.nitroMonths).toISOString().slice(0, 10) : null,
+                  nitroSince: snapshot.nitroEnabled ? (profileDate(snapshot.nitroSince) || monthsAgo(snapshot.nitroMonths)).toISOString().slice(0, 10) : null,
                   boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(snapshot.boostMonths) - 1),
                   giftLevel: snapshot.giftLevel,
                   avatarDecoration: snapshot.avatarDecoration || null,
@@ -1298,6 +1300,7 @@ jobs:
                       avatarMedia: mediaClearPending("avatarMedia") ? null : data.avatar ? { uri: data.avatar } : null,
                       bannerMedia: mediaClearPending("bannerMedia") ? null : data.banner ? { uri: data.banner } : null,
                       nitroEnabled: remoteNitroEnabled(data),
+                      nitroSince: typeof data.nitroSince === "string" ? data.nitroSince : "",
                       nitroMonths: remoteNitroEnabled(data) ? (NITRO_DURATIONS[Number(data.nitroLevel)] || 0) : 0,
                       boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
                       giftLevel: Number.isInteger(data.giftLevel) ? data.giftLevel : -1,
@@ -1593,14 +1596,21 @@ jobs:
 
           function monthsAgo(months: number) {
               const date = new Date();
-              date.setMonth(date.getMonth() - months);
+              const count = Number.isFinite(Number(months)) ? Math.max(0, Math.min(1200, Math.trunc(Number(months)))) : 0;
+              const day = date.getDate();
+              date.setDate(1);
+              date.setMonth(date.getMonth() - count);
+              const last = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+              date.setDate(Math.min(day, last));
               return date;
           }
 
           function profileDate(value: unknown) {
-              if (!value) return null;
-              const date = new Date(`${String(value).slice(0, 10)}T12:00:00Z`);
-              return Number.isNaN(date.getTime()) ? null : date;
+              if (typeof value !== "string") return null;
+              const day = value.slice(0, 10);
+              if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+              const date = new Date(`${day}T12:00:00Z`);
+              return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== day ? null : date;
           }
 
           function durationLabel(months: number) {
@@ -1839,7 +1849,7 @@ jobs:
               if (!forEditor && rootSettings.fakeProfileLocalOnly && preview.hideBadgesWhenSyncOff) return Array.isArray(existing) ? existing : result;
               if (preview.nitroEnabled) {
                   const icon = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
-                  result.push({ id: nitroBadgeId(preview.nitroMonths), description: nitroSubscriberLabel(preview.nitroMonths), icon: " _", iconSrc: icon, source: { uri: icon } });
+                  result.push({ id: nitroBadgeId(preview.nitroMonths), description: nitroSubscriberLabel(preview.nitroMonths, preview.nitroSince), icon: " _", iconSrc: icon, source: { uri: icon } });
               }
               const gift = GIFT_LEVELS[preview.giftLevel];
               if (gift) result.push({ id: "fakeprofile-gifting", description: gift.name, icon: gift.icon, iconSrc: gift.icon, source: { uri: gift.icon } });
@@ -1877,7 +1887,7 @@ jobs:
           function sharedBadgeObjects(existing: any, userId: string, data: any) {
               const rows: any[] = [];
               const nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
-              if (remoteNitroEnabled(data)) addRenderedBadge(rows, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
+              if (remoteNitroEnabled(data)) addRenderedBadge(rows, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths, data.nitroSince), milestoneIcon(nitroMonths, NITRO_ICONS));
               if (Number(data.boostMonths) >= 0) {
                   const months = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
                   addRenderedBadge(rows, "cloudcord-shared-boost", serverBoostingLabel(months), boosterIcon(months));
@@ -1950,7 +1960,7 @@ jobs:
                   for (const key of ["premiumSince", "premium_since", "premiumGuildSince", "premium_guild_since"]) setOwnValue(cloned, key, null);
               }
               if (preview.nitroEnabled && kind === "profile" && !localBadgesHidden()) {
-                  const premiumSince = monthsAgo(preview.nitroMonths);
+                  const premiumSince = profileDate(preview.nitroSince) || monthsAgo(preview.nitroMonths);
                   setOwnValue(cloned, "premiumType", 2);
                   setOwnValue(cloned, "premium_type", 2);
                   setOwnValue(cloned, "premiumSince", premiumSince);
@@ -2096,7 +2106,7 @@ jobs:
                           if (data) {
                               const nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
                               const boostMonths = [1, 2, 3, 6, 9, 12, 15, 18, 24][Number(data.boostMonths)] || 0;
-                              if (remoteNitroEnabled(data)) addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
+                              if (remoteNitroEnabled(data)) addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths, data.nitroSince), milestoneIcon(nitroMonths, NITRO_ICONS));
                               addRenderedBadge(ordered, "cloudcord-shared-boost", serverBoostingLabel(boostMonths), boosterIcon(boostMonths));
                               const gift = GIFT_LEVELS[Number(data.giftLevel)];
                               if (gift) addRenderedBadge(ordered, "cloudcord-shared-gifting", gift.name, gift.icon);
@@ -2132,7 +2142,7 @@ jobs:
                       if (preview.nitroEnabled) addRenderedBadge(
                           ordered,
                           nitroBadgeId(preview.nitroMonths),
-                          nitroSubscriberLabel(preview.nitroMonths),
+                          nitroSubscriberLabel(preview.nitroMonths, preview.nitroSince),
                           milestoneIcon(preview.nitroMonths, NITRO_ICONS)
                       );
                       const gift = GIFT_LEVELS[preview.giftLevel];
@@ -3305,6 +3315,7 @@ jobs:
               }, []);
 
               const update = (key: keyof PreviewSettings, value: any, refresh = false) => {
+                  if (key === "nitroMonths" && value !== preview.nitroMonths) preview = { ...preview, nitroSince: "" };
                   rootSettings.fakeProfile = { ...preview, selectedBadges: { ...(preview.selectedBadges || {}) }, [key]: value, syncRevision: Date.now() };
                   preview = rootSettings.fakeProfile as PreviewSettings;
                   queueSharedPublish();

@@ -665,7 +665,12 @@ function monthsAgo(months: number, explicitDate?: string): Date {
         }
     }
     const date = new Date();
-    date.setMonth(date.getMonth() - months);
+    const count = Number.isFinite(Number(months)) ? Math.max(0, Math.min(1200, Math.trunc(Number(months)))) : 0;
+    const day = date.getDate();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - count);
+    const last = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    date.setDate(Math.min(day, last));
     return date;
 }
 
