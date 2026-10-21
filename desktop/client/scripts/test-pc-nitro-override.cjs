@@ -1,6 +1,16 @@
 const fs = require('node:fs'), vm = require('node:vm'), assert = require('node:assert/strict');
 const esbuild = require('esbuild');
 const source = fs.readFileSync('src/sincordplugins/fakeProfile/extras.tsx', 'utf8');
+const profileSource = fs.readFileSync('src/sincordplugins/fakeProfile/index.tsx', 'utf8');
+const css = fs.readFileSync('src/sincordplugins/fakeProfile/style.css', 'utf8');
+const tooltip = css.match(/\.cp-native-nitro-popout\s*\{([^}]+)\}/)[1];
+assert.match(tooltip, /\bwidth:\s*200px;/, 'PC Nitro tooltip keeps the compact reference width');
+assert.match(tooltip, /min-height:\s*150px;/);
+assert.doesNotMatch(tooltip, /(?:radial|linear)-gradient/, 'the tooltip uses the neutral Discord surface, not profile gradients');
+assert.match(css, /\.cp-native-nitro-popout > img\s*\{[^}]*width:\s*64px;/);
+const dates = vm.createContext({ Date });
+vm.runInContext(esbuild.transformSync(profileSource.slice(profileSource.indexOf('function shortProfileDate('), profileSource.indexOf('function NativeNitroBadge(')), { loader: 'ts' }).code, dates);
+assert.equal(dates.shortProfileDate(new Date(2026, 3, 20)), '20/04/2026', 'subscriber date matches the reference format');
 let owner = 'account-a', emits = 0;
 let state = { premiumTypeActual: 0, premiumTypeOverride: 2 };
 const ctx = vm.createContext({ extras: { fakeNitro: false }, UserStore: { getCurrentUser: () => ({ id: owner }) },

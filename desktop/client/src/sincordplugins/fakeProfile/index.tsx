@@ -415,7 +415,7 @@ function isLightProfileColor(value: number | undefined): boolean {
 }
 
 function shortProfileDate(date: Date): string {
-    return date.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
+    return date.toLocaleDateString("en-GB", { month: "2-digit", day: "2-digit", year: "numeric" });
 }
 
 function NativeNitroBadge({ nitroLevel, nitroSince, accentColor, accentColor2 }: { nitroLevel: number; nitroSince?: string; accentColor?: number; accentColor2?: number; }) {

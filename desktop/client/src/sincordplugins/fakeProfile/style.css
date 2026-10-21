@@ -478,18 +478,16 @@
 .cp-native-nitro-popout {
     position: relative;
     box-sizing: border-box;
-    width: 286px;
-    height: 192px;
-    min-height: 192px;
-    padding: 13px 16px 14px;
+    width: 200px;
+    max-width: calc(100vw - 24px);
+    min-height: 150px;
+    padding: 16px 10px 14px;
     overflow: visible;
-    border: 1px solid rgb(255 255 255 / 7%);
-    border-radius: 12px;
-    background:
-        radial-gradient(ellipse 70% 44% at 12% 0%, rgb(255 255 255 / 18%) 0%, transparent 72%),
-        linear-gradient(145deg, var(--cp-profile-primary) 0%, var(--cp-profile-secondary) 100%);
-    box-shadow: 0 12px 32px rgb(0 0 0 / 53%), inset 0 1px rgb(255 255 255 / 3%);
-    color: var(--cp-profile-text);
+    border: 0;
+    border-radius: 8px;
+    background: #232428;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 24%);
+    color: #f4f4f5;
     text-align: center;
     font-family: var(--font-primary, "gg sans", sans-serif);
     transform-origin: 50% 100%;
@@ -498,52 +496,41 @@
 
 .cp-native-nitro-popout::after {
     position: absolute;
-    bottom: -10px;
+    bottom: -6px;
     left: 50%;
-    width: 20px;
-    height: 20px;
+    width: 12px;
+    height: 12px;
     content: "";
-    width: 0;
-    height: 0;
-    width: 20px;
-    height: 20px;
-    background: var(--cp-profile-secondary);
+    background: #232428;
     transform: translateX(-50%) rotate(45deg);
     border-radius: 0 0 4px;
 }
 
 .cp-native-nitro-light {
-    position: absolute;
-    top: 10px;
-    left: 58px;
-    width: 124px;
-    height: 108px;
-    pointer-events: none;
-    background: radial-gradient(circle, color-mix(in srgb, var(--cp-nitro-light) 13%, transparent) 0%, color-mix(in srgb, var(--cp-nitro-dark) 7%, transparent) 48%, transparent 74%);
-    filter: blur(8px);
+    display: none;
 }
 
 .cp-native-nitro-popout > img {
     position: relative;
     z-index: 1;
     display: block;
-    width: 118px;
-    height: 118px;
-    margin: 0 auto 2px;
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 12px;
     object-fit: contain;
-    filter: drop-shadow(0 0 7px color-mix(in srgb, var(--cp-nitro-dark) 27%, transparent)) drop-shadow(0 6px 7px rgb(0 0 0 / 47%));
+    filter: none;
 }
 
 .cp-native-nitro-popout > strong {
     position: relative;
     z-index: 1;
     display: block;
-    color: var(--cp-profile-text);
+    color: #f4f4f5;
     font-family: var(--font-headline, var(--font-display, var(--font-primary)));
-    font-size: 22px;
+    font-size: 18px;
     font-style: italic;
     font-weight: 900;
-    line-height: 24px;
+    line-height: 20px;
     letter-spacing: -.35px;
     text-transform: uppercase;
     white-space: nowrap;
@@ -568,8 +555,8 @@
     position: relative;
     z-index: 1;
     display: block;
-    margin-top: 0;
-    color: var(--cp-profile-muted);
+    margin-top: 4px;
+    color: #b5bac1;
     font-size: 14px;
     font-weight: 500;
     line-height: 18px;
