@@ -96,6 +96,7 @@ jobs:
         run: |
           node scripts/test-staff-badge-surface.cjs
           node scripts/test-badge-provider-isolation.cjs
+          node scripts/test-profile-restore-races.cjs
 
       - name: Check cross-platform badge catalog and tier selection
         # Reuse desktop's esbuild to compile the generated mobile editor too.

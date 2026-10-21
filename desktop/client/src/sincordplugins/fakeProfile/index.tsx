@@ -1316,16 +1316,23 @@ function forceAccountPanelRerender() {
 }
 async function loadData() {
     try {
+        const generation = profileRuntimeGeneration;
+        const ownerId = activeUserId();
+        const snapshot = JSON.stringify([allAccountsData, allAccountsEnabled, storedData, isEnabled]);
+        const canRestore = () => profileRuntimeActive && generation === profileRuntimeGeneration && activeUserId() === ownerId
+            && JSON.stringify([allAccountsData, allAccountsEnabled, storedData, isEnabled]) === snapshot;
         const allData = await DataStore.get(DS_ALL_DATA) as Record<string, CustomProfileData> | null;
         const allEnabledDs = await DataStore.get(DS_ALL_ENABLED) as Record<string, boolean> | null;
+        if (!canRestore()) return;
         if (allData && typeof allData === "object" && Object.keys(allData).length > 0) {
             allAccountsData = allData; allAccountsEnabled = allEnabledDs || {};
             syncCurrentUserData(); saveAllDataSync(); saveDataSync(storedData, isEnabled); return;
         }
         const d = await DataStore.get(DS_KEY) as CustomProfileData | null;
         const e = await DataStore.get(DS_ENABLED) as boolean | null;
+        if (!canRestore()) return;
         if (d !== null) storedData = d; if (e !== null) isEnabled = e === true;
-        const myId = AuthenticationStore?.getId?.();
+        const myId = ownerId;
         if (myId && storedData && Object.keys(storedData).length > 0) {
             allAccountsData[myId] = storedData; allAccountsEnabled[myId] = isEnabled;
             DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
