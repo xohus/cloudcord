@@ -53,8 +53,10 @@ for (const replaceRealBadges of [false, true]) {
     profiles.storedData = { replaceRealBadges, nitro: true, nitroLevel: 0 };
     const sharedProfile = profiles.decorateSharedProfile(nativeProfile, profiles.storedData);
     const ownProfile = profiles.ownProfile(nativeProfile);
-    assert.equal(sharedProfile.badges.length, replaceRealBadges ? 0 : 1, 'shared profiles respect the native badge toggle');
-    assert.equal(ownProfile.badges.length, replaceRealBadges ? 0 : 1, 'own profiles respect the native badge toggle');
+    // Fake badges arrive in Discord's own fetched profile data (rewriteFetchedProfile),
+    // so reading a profile leaves Discord's badge list as it is.
+    assert.equal(sharedProfile.badges.length, 1, 'shared profile reads keep Discord badge data');
+    assert.equal(ownProfile.badges.length, 1, 'own profile reads keep Discord badge data');
 }
 assert.equal(nativeProfile.badges, nativeRows);
 assert.equal(nativeRows.length, 1, 'decorating profiles must not erase Discord cached badges');

@@ -36,7 +36,7 @@ const context = vm.createContext({
     getProfileOverride: () => ({ nitro: enabled, nitroLevel: 1, giftLevel: -1 }),
     cloudCordStaffBadge: () => null, shouldReplaceSharedBadges: () => false,
     shouldReplaceLocalBadges: () => false, remoteNitroEnabled: data => data?.nitro,
-    localBadgesHidden: () => false,
+    localBadgesHidden: () => false, badgesHiddenFor: () => false, addOfficialBadge() {},
     preview: { enabled: true, nitroEnabled: true, nitroMonths: 12, giftLevel: -1 },
     NITRO_DURATIONS: [0, 12], NITRO_ICONS: [], BADGES: [], GIFT_LEVELS: [],
     nitroBadgeId: months => `premium_tenure_${months}_month_v2`,
@@ -49,7 +49,8 @@ vm.runInContext(compile(badgeHelper + renderer), context);
 const native = [{ id: 'premium' }, { id: 'premium_tenure_1_month_v2' }, { id: 'premium_early_supporter' }, { id: 'active_developer' }];
 for (remote of [false, true]) {
     const result = callback([{ id: '123456789012345' }], native);
-    assert.deepEqual(Array.from(result, row => row.id), ['premium_tenure_12_month_v2', 'premium_early_supporter', 'active_developer']);
+    // Fake badges now arrive in Discord's own profile data; the renderer leaves them as they are.
+    assert.deepEqual(Array.from(result, row => row.id), native.map(row => row.id));
 }
 enabled = false;
 context.preview.nitroEnabled = false;
