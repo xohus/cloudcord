@@ -475,6 +475,9 @@ interface CustomProfileData extends ProfileAppearance {
     boostMonths?: number; email?: string; phone?: string; customBadgeIds?: string[];
     hideBadgesWhenSyncOff?: boolean;
     hideOtherProfiles?: boolean;
+    // Order and hidden badges chosen in Discord's own badge customiser (Discord badge_ids).
+    nativeBadgeOrder?: number[];
+    nativeHiddenBadges?: number[];
     nativeEditorImages?: boolean;
     oldName?: string; decorationAsset?: string; decorationSkuId?: string; copiedUserId?: string; signupDate?: string; replaceRealBadges?: boolean; giftLevel?: number;
     syncRevision?: number;
@@ -910,7 +913,16 @@ const isImageUri = (value: unknown): value is string => typeof value === "string
 // custom profile is on, keep them as the CloudCord picture and banner instead, so they
 // work without Nitro (GIFs included) and Discord never tries to upload them.
 function onPendingProfileChange(action: any) {
-    if (action?.guildId || !isEnabled || storedData.nativeEditorImages === false) return;
+    if (action?.guildId || !isEnabled) return;
+    // Discord's badge customiser saves to Discord's server, which doesn't know fake badges.
+    // Keep the chosen order and hidden badges here instead, so they apply to fake badges.
+    const order = action.pendingBadgeDisplayOrder, hiddenBadges = action.pendingBadgeHiddenBadges;
+    if (Array.isArray(order) || Array.isArray(hiddenBadges)) {
+        saveOwnData({ ...storedData, ...(Array.isArray(order) ? { nativeBadgeOrder: order.map(Number) } : {}), ...(Array.isArray(hiddenBadges) ? { nativeHiddenBadges: hiddenBadges.map(Number) } : {}) });
+        queueSharedPublish();
+        setTimeout(() => reloadDiscordProfile(activeUserId()), 300);
+    }
+    if (storedData.nativeEditorImages === false) return;
     const avatar = action.pendingAvatar?.imageUri ?? (typeof action.pendingAvatar === "string" ? action.pendingAvatar : undefined);
     const banner = action.pendingBanner?.imageUri ?? (typeof action.pendingBanner === "string" ? action.pendingBanner : undefined);
     if (!isImageUri(avatar) && !isImageUri(banner)) return;
@@ -1125,9 +1137,14 @@ function toDiscordBadge(badge: ProfileBadge): any {
 function discordProfileBadges(userId: string, data: CustomProfileData, real: any[] | undefined): any[] {
     const published = new Set(uploadedUserBadges(userId).map(badge => badge.id));
     const fake = buildProfileBadges(userId).filter(badge => !published.has(badge.id)).map(toDiscordBadge);
-    if (shouldReplaceBadges(data) || !Array.isArray(real)) return fake;
     const taken = new Set(fake.map(badgeLayoutKey));
-    return [...real.filter(badge => !taken.has(badgeLayoutKey(badge))), ...fake];
+    const list = shouldReplaceBadges(data) || !Array.isArray(real) ? fake : [...real.filter(badge => !taken.has(badgeLayoutKey(badge))), ...fake];
+    // Apply the order and hidden badges chosen in Discord's badge customiser.
+    const hidden = new Set(data.nativeHiddenBadges ?? []);
+    const order = data.nativeBadgeOrder ?? [];
+    const rank = (badge: any) => { const i = order.indexOf(directoryBadgeId(badge.id) ?? -1); return i < 0 ? order.length : i; };
+    return list.filter(badge => !hidden.has(directoryBadgeId(badge.id) ?? -1)).map((badge, i) => ({ badge, i }))
+        .sort((a, b) => rank(a.badge) - rank(b.badge) || a.i - b.i).map(item => item.badge);
 }
 
 // Discord loads every profile (badges included) through USER_PROFILE_FETCH_SUCCESS with
@@ -1170,6 +1187,26 @@ function directoryBadgeId(id: string): number | undefined {
 // Badges Discord derives from activity, not ones CloudCord lets you pick.
 const DIRECTORY_ONLY_BADGES = new Set([18, 19, 20, 21]);
 function addMonths(date: Date, months: number) { const next = new Date(date); next.setMonth(next.getMonth() + months); return next; }
+// Progress toward the next tier, worked out from the fake start date the same way
+// Discord reports it: days since the start, the current tier's day and the next one's.
+function tierStartDate(tier: any, since: Date): Date {
+    const req = tier?.requirements?.[0];
+    const amount = Number(req?.threshold ?? 0);
+    return addMonths(since, req?.unit === "years" ? amount * 12 : amount);
+}
+function fakeTierProgress(tiers: any[], index: number, since: Date) {
+    const next = tiers[index + 1];
+    if (!next) return [];
+    const day = 86400_000;
+    const days = (date: Date) => Math.max(0, Math.round((date.getTime() - since.getTime()) / day));
+    const current = days(new Date());
+    const floor = days(tierStartDate(tiers[index], since));
+    const threshold = Math.max(current, days(tierStartDate(next, since)));
+    const left = threshold - current;
+    const months = Math.round(left / 30.44);
+    const helper = left < 31 ? `${left} more day${left === 1 ? "" : "s"}` : `${months} more month${months === 1 ? "" : "s"}`;
+    return [{ progress_type: 1, current, floor, threshold, unit: "days", window: null, progress_helper_text: helper }];
+}
 function tieredEntry(entry: any, tierIndex: number, since: Date, monthsPerTier: number[], label: string) {
     const keys: string[] = (entry.tiers || []).map((tier: any) => tier.key);
     const index = Math.max(0, Math.min(keys.length - 1, tierIndex));
@@ -1180,7 +1217,7 @@ function tieredEntry(entry: any, tierIndex: number, since: Date, monthsPerTier: 
     const art = Object.fromEntries(["simple_icon_url", "simple_icon_raster_url", "complex_icon_static_url", "complex_icon_animated_url"]
         .filter(key => tier[key]).map(key => [key, tier[key]]));
     const tiers = (entry.tiers || []).map((item: any, i: number) => ({ ...item, owned: i <= index }));
-    return { ...entry, ...art, tiers, owned: true, hidden: false, obtained_at: since.toISOString(), current_tier: keys[index], next_tier: keys[index + 1] ?? null, tier_obtained_at: obtained, info_label: label };
+    return { ...entry, ...art, tiers, progress: fakeTierProgress(entry.tiers || [], index, since), owned: true, hidden: !!entry.__ccHidden, obtained_at: since.toISOString(), current_tier: keys[index], next_tier: keys[index + 1] ?? null, tier_obtained_at: obtained, info_label: label };
 }
 // The line under a badge's title ("A Nitro original") is only sent to owners. Known
 // ones are listed here; others are learned from any real owner's badges we see.
@@ -1198,6 +1235,7 @@ function learnBadgeInfo(entries: any[]) {
 
 function fakeDirectoryEntry(entry: any, userId: string, data: CustomProfileData, owned: Map<number, any>, replace: boolean) {
     if (!entry) return entry;
+    entry = { ...entry, __ccHidden: (data.nativeHiddenBadges ?? []).includes(entry.badge_id) };
     // Activity badges (account age, game time...) stay real, unless real badges are hidden.
     if (DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return replace ? { ...entry, owned: false } : entry;
     const fake = owned.get(entry.badge_id);
@@ -1216,7 +1254,7 @@ function fakeDirectoryEntry(entry: any, userId: string, data: CustomProfileData,
         const level = Number(data.giftLevel ?? 0);
         return tieredEntry(entry, level, monthsAgo(1), [], fake.description);
     }
-    return { ...entry, owned: true, hidden: false, info_label: entry.info_label ?? learnedBadgeInfo[entry.badge_id] ?? KNOWN_BADGE_INFO[entry.badge_id] };
+    return { ...entry, owned: true, hidden: (data.nativeHiddenBadges ?? []).includes(entry.badge_id), info_label: entry.info_label ?? learnedBadgeInfo[entry.badge_id] ?? KNOWN_BADGE_INFO[entry.badge_id] };
 }
 function rewriteBadgeDirectory(action: any) {
     if (!profileRuntimeActive) return false;
