@@ -2,6 +2,33 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const esbuild = require('esbuild');
+// Native settings may read the table before registration, or after a plugin
+// unregisters its last section. Neither case may break Discord's settings.
+const sections = {};
+const nativeConfig = { ACCOUNT: { type: 'route' } };
+const rendererModule = { SETTING_RENDERER_CONFIG: nativeConfig };
+const tabsModule = { exports: {} };
+vm.runInNewContext(esbuild.transformSync(fs.readFileSync('ios/runtime/src/lib/ui/settings/patches/tabs.tsx', 'utf8'), { loader: 'tsx', format: 'cjs' }).code, {
+    module: tabsModule, exports: tabsModule.exports,
+    require(name) {
+        if (name === '@ui/settings') return { registeredSections: sections };
+        if (name === '@lib/api/settings') return { settings: {} };
+        if (name === '@metro/wrappers') return { findByPropsLazy: () => rendererModule, findByNameLazy: () => ({}), findByFilePathLazy: () => ({}) };
+        if (name === '@lib/api/patcher') return { after: () => () => {} };
+        if (name === './shared') return { wrapOnPress: () => () => {}, CustomPageRenderer: () => null };
+        return {};
+    }
+});
+const cleanups = [];
+tabsModule.exports.patchTabsUI(cleanups);
+assert.equal(rendererModule.SETTING_RENDERER_CONFIG.ACCOUNT, nativeConfig.ACCOUNT);
+sections.CloudCord = [{ key: 'PROFILE', title: () => 'Profile' }];
+assert.equal(rendererModule.SETTING_RENDERER_CONFIG.PROFILE.key, 'PROFILE');
+delete sections.CloudCord;
+assert.equal(rendererModule.SETTING_RENDERER_CONFIG.ACCOUNT, nativeConfig.ACCOUNT);
+assert.equal(rendererModule.SETTING_RENDERER_CONFIG.PROFILE, undefined);
+cleanups.forEach(cleanup => cleanup());
+assert.equal(rendererModule.SETTING_RENDERER_CONFIG, nativeConfig);
 const source = fs.readFileSync('ios/runtime/src/lib/ui/settings/patches/shared.tsx', 'utf8');
 let route;
 const effects = [];

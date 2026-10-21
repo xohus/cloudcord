@@ -70,7 +70,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
                 withArrow: true
             }
         })))
-        .reduce((a, c) => Object.assign(a, c));
+        .reduce((a, c) => Object.assign(a, c), {});
 
     const isDeveloperSection = (section: any) => {
         const label = `${section?.label ?? ""} ${section?.title ?? ""}`.toLowerCase();
