@@ -7,6 +7,7 @@ const page = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/index.
 const user = Object.freeze({ id: '123456789012345', username: 'original' });
 let synced = { username: 'first' };
 const context = vm.createContext({
+    URL,
     diagnostics: {},
     identityRenderers: new WeakMap(), identityRefreshers: new Set(),
     useReducer: () => [0, () => {}], useEffect: fn => fn(),
@@ -20,6 +21,7 @@ const context = vm.createContext({
     createElement: (type, props) => ({ type, props }),
 });
 Object.assign(context, require('./load-profile-appearance.cjs'));
+vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function decorationAsset('), page.indexOf('function applyCollectibles(')), { loader: 'ts' }).code, context);
 vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function applyCollectibles('), page.indexOf('async function findDecorationCatalog(')), { loader: 'ts' }).code, context);
 vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function cloneSharedUser('), page.indexOf('function decorateSharedProfile(')), { loader: 'ts' }).code, context);
 vm.runInContext(esbuild.transformSync(page.slice(page.indexOf('function identityRenderer('), page.indexOf('function connectIdentityRenderer(')), { loader: 'ts' }).code, context);
@@ -55,6 +57,13 @@ assert.equal(presentationUser.hasFlag(1), true);
 assert.equal(presentationUser.publicFlags, 8);
 assert.equal(nativeUser.username, 'original');
 const blackGradient = context.cloneSharedUser(user, { profileColorsEnabled: true, primaryColor: 0, accentColor: 0xffffff });
+const originalDecoration = Object.freeze({ asset: 'native' });
+const decorationUser = Object.freeze({ ...user, avatar_decoration_data: originalDecoration });
+const decorated = context.cloneSharedUser(decorationUser, { avatarDecoration: 'https://cdn.discordapp.com/avatar-decoration-presets/a_custom.png', avatarDecorationSku: 'sku' });
+assert.equal(decorated.avatar_decoration_data.asset, 'a_custom');
+assert.equal(decorated.avatar_decoration_data.sku_id, 'sku');
+assert.equal(decorated.avatarDecorationData, decorated.avatar_decoration_data);
+assert.equal(decorationUser.avatar_decoration_data, originalDecoration);
 assert.deepEqual(Array.from(blackGradient.themeColors), [0, 0xffffff], 'black is a valid synced color, not a missing value');
 assert(!page.includes('setOwnValue(cloned, "flags",'), 'Badge editing must not replace account-status flags');
 assert(!page.includes('setOwnValue(cloned, "hasFlag",'), 'Badge editing must not replace account-status methods');
