@@ -1197,7 +1197,9 @@ function learnBadgeInfo(entries: any[]) {
 }
 
 function fakeDirectoryEntry(entry: any, userId: string, data: CustomProfileData, owned: Map<number, any>, replace: boolean) {
-    if (!entry || DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return entry;
+    if (!entry) return entry;
+    // Activity badges (account age, game time...) stay real, unless real badges are hidden.
+    if (DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return replace ? { ...entry, owned: false } : entry;
     const fake = owned.get(entry.badge_id);
     if (!fake) return replace ? { ...entry, owned: false, current_tier: undefined, next_tier: undefined, info_label: undefined } : entry;
     if (entry.badge_id === 1) {
