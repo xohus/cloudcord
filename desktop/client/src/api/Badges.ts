@@ -67,6 +67,19 @@ export interface ProfileBadge {
 
 const Badges = new Set<ProfileBadge>();
 const failedBadgeSources = new WeakSet<object>();
+type BadgeComponent = NonNullable<ProfileBadge["component"]>;
+const guardedBadgeComponents = new WeakMap<BadgeComponent, BadgeComponent>();
+
+function guardBadgeComponent(component: BadgeComponent): BadgeComponent {
+    const cached = guardedBadgeComponents.get(component);
+    if (cached) return cached;
+    const wrapped = ErrorBoundary.wrap(component, { noop: true });
+    guardedBadgeComponents.set(component, wrapped);
+    // Static providers are guarded at registration; don't nest another wrapper
+    // around that same component when their rows are later collected.
+    guardedBadgeComponents.set(wrapped, wrapped);
+    return wrapped;
+}
 
 function readBadgeSource(source: object, load: () => unknown): ProfileBadge[] {
     try {
@@ -265,7 +278,7 @@ function showStaffRole(label: string) {
  * @param badge The badge to register
  */
 export function addProfileBadge(badge: ProfileBadge) {
-    badge.component &&= ErrorBoundary.wrap(badge.component, { noop: true });
+    badge.component &&= guardBadgeComponent(badge.component);
     Badges.add(badge);
 }
 
@@ -291,7 +304,7 @@ export function _getBadges(args: BadgeUserArgs) {
         }).map(badge => ({
             ...args,
             ...badge,
-            component: badge.component && ErrorBoundary.wrap(badge.component, { noop: true })
+            component: badge.component && guardBadgeComponent(badge.component)
         }));
 
         if (badge.position === BadgePosition.START) {
