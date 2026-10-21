@@ -11,6 +11,21 @@ assert.match(css, /\.cp-native-nitro-popout > img\s*\{[^}]*width:\s*64px;/);
 const dates = vm.createContext({ Date });
 vm.runInContext(esbuild.transformSync(profileSource.slice(profileSource.indexOf('function shortProfileDate('), profileSource.indexOf('function NativeNitroBadge(')), { loader: 'ts' }).code, dates);
 assert.equal(dates.shortProfileDate(new Date(2026, 3, 20)), '20/04/2026', 'subscriber date matches the reference format');
+assert.match(css, /prefers-reduced-motion:\s*reduce/);
+assert.match(css, /background:\s*var\(--cp-badge-sparkle\)/);
+assert.match(profileSource, /sparkleColor=\{level.light\}/, 'Nitro sparkles use the selected milestone color');
+assert.match(profileSource, /sparkleColor=\{gift.light\}/, 'gift sparkles use the selected gifting tier color');
+assert.equal((profileSource.match(/component: NativeProfileBadge/g) || []).length, 3, 'Nitro, gifting and Early Supporter actually use the custom tooltip renderer');
+let cosmetic = { nitroLevel: 4, nitroSince: '2025-07-28', giftLevel: 0 };
+const cards = vm.createContext({ React: { createElement: (type, props) => ({ type, props }) },
+    isMe: id => id === 'own', storedData: cosmetic, viewedSharedProfile: () => cosmetic,
+    GIFT_LEVELS: [{ name: 'Legend', icon: 'gift.png' }], NativeBadgeCard() {}, NativeNitroBadge() {} });
+vm.runInContext(esbuild.transformSync(profileSource.slice(profileSource.indexOf('function NativeProfileBadge('), profileSource.indexOf('function NativeBadgeCard(')), { loader: 'tsx' }).code, cards);
+assert.equal(cards.NativeProfileBadge({ userId: 'own', id: 'sp_early' }).props.subtitle, 'A Nitro original');
+assert.equal(cards.NativeProfileBadge({ userId: 'other', id: 'sp_gifting' }).props.title, 'LEGEND');
+assert.equal(cards.NativeProfileBadge({ userId: 'other', id: 'premium' }).props.nitroLevel, 4);
+cards.viewedSharedProfile = () => null;
+assert.equal(cards.NativeProfileBadge({ userId: 'missing', id: 'premium' }), null, 'missing remote profiles cannot crash tooltip rendering');
 let owner = 'account-a', emits = 0;
 let state = { premiumTypeActual: 0, premiumTypeOverride: 2 };
 const ctx = vm.createContext({ extras: { fakeNitro: false }, UserStore: { getCurrentUser: () => ({ id: owner }) },

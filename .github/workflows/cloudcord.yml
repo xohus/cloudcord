@@ -2644,12 +2644,27 @@ jobs:
           function extrasState(): ExtrasState { const value = (settings as any)[EXTRAS_KEY]; return value && typeof value === "object" ? value : {}; }
           function setExtras(next: ExtrasState) { (settings as any)[EXTRAS_KEY] = next; }
           function extrasHttp() { for (const candidate of [findByProps("getAPIBaseURL", "get"), (findByProps("HTTP") as any)?.HTTP, findByProps("get", "post", "put", "del")]) if (typeof (candidate as any)?.get === "function") return candidate as any; return null; }
+          let ownedNitroOverride: { state: any; ownerId: string; previous: any } | null = null;
+          function restoreFakeNitroOverride(accountChanged = false) {
+              const owned = ownedNitroOverride;
+              ownedNitroOverride = null;
+              if (!owned || owned.state.premiumTypeOverride !== 2) return false;
+              owned.state.premiumTypeOverride = accountChanged ? undefined : owned.previous;
+              return true;
+          }
           function applyFakeNitro() {
               try {
-                  const state = (findByStoreName("OverridePremiumTypeStore") as any)?.getState?.();
+                  const store = findByStoreName("OverridePremiumTypeStore") as any;
+                  const state = store?.getState?.();
                   if (!state) return;
-                  if (extrasState().fakeNitro) { if (state.premiumTypeActual !== 2) state.premiumTypeOverride = 2; }
-                  else if (state.premiumTypeOverride === 2 && state.premiumTypeActual !== 2) state.premiumTypeOverride = undefined;
+                  const ownerId = (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id || "";
+                  let changed = false;
+                  if (ownedNitroOverride && (ownedNitroOverride.state !== state || ownedNitroOverride.ownerId !== ownerId)) changed = restoreFakeNitroOverride(ownedNitroOverride.state === state);
+                  if (extrasState().fakeNitro && ownerId && state.premiumTypeActual !== 2) {
+                      if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
+                      if (state.premiumTypeOverride !== 2) { state.premiumTypeOverride = 2; changed = true; }
+                  } else changed = restoreFakeNitroOverride() || changed;
+                  if (changed) store.emitChange?.();
               } catch {}
           }
           function newGiftCode() {

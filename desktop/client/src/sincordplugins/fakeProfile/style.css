@@ -485,7 +485,7 @@
     overflow: visible;
     border: 0;
     border-radius: 8px;
-    background: #232428;
+    background: #38383e;
     box-shadow: 0 4px 12px rgb(0 0 0 / 24%);
     color: #f4f4f5;
     text-align: center;
@@ -501,13 +501,55 @@
     width: 12px;
     height: 12px;
     content: "";
-    background: #232428;
+    background: #38383e;
     transform: translateX(-50%) rotate(45deg);
     border-radius: 0 0 4px;
 }
 
-.cp-native-nitro-light {
-    display: none;
+.cp-native-badge-sparkles {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    border-radius: inherit;
+    pointer-events: none;
+}
+
+.cp-native-badge-sparkles > i {
+    position: absolute;
+    width: 7px;
+    height: 7px;
+    background: var(--cp-badge-sparkle);
+    clip-path: polygon(50% 0, 62% 38%, 100% 50%, 62% 62%, 50% 100%, 38% 62%, 0 50%, 38% 38%);
+    opacity: 0;
+    animation: cp-badge-twinkle 2.8s ease-in-out infinite;
+}
+
+.cp-native-badge-sparkles > i:nth-child(1) { left: 26%; top: 16%; animation-delay: -.3s; }
+.cp-native-badge-sparkles > i:nth-child(2) { left: 70%; top: 28%; animation-delay: -1.6s; }
+.cp-native-badge-sparkles > i:nth-child(3) { left: 31%; top: 48%; animation-delay: -2.2s; }
+.cp-native-badge-sparkles > i:nth-child(4) { left: 64%; top: 9%; animation-delay: -.9s; }
+.cp-native-badge-sparkles > i:nth-child(5) { left: 20%; top: 35%; animation-delay: -1.9s; }
+.cp-native-badge-sparkles > i:nth-child(6) { left: 76%; top: 44%; animation-delay: -.1s; }
+
+@keyframes cp-badge-twinkle {
+    0%, 65%, 100% { opacity: 0; transform: scale(.2) rotate(-20deg); }
+    28% { opacity: .85; transform: scale(1) rotate(15deg); }
+}
+
+.cp-native-badge-supporter > strong,
+.cp-native-badge-gift > strong {
+    font-style: normal;
+    white-space: normal;
+}
+
+.cp-native-badge-supporter > strong {
+    max-width: 140px;
+    margin: 0 auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cp-native-nitro-popout,
+    .cp-native-badge-sparkles > i { animation: none; }
 }
 
 .cp-native-nitro-popout > img {

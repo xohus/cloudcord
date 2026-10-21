@@ -5,6 +5,24 @@ const esbuild = require('esbuild');
 const workflow = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
 const source = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/index.tsx <<'TSX'")[1].split('\n          TSX')[0].replace(/^          /gm, '');
 const compile = text => esbuild.transformSync(text, { loader: 'tsx' }).code;
+let nitroState = { premiumTypeActual: 0, premiumTypeOverride: 2 }, nitroOwner = 'a', nitroEmits = 0;
+const mobileExtras = { fakeNitro: false };
+const nitro = vm.createContext({ extrasState: () => mobileExtras, findByStoreName: name => name === 'UserStore'
+    ? { getCurrentUser: () => ({ id: nitroOwner }) }
+    : { getState: () => nitroState, emitChange: () => nitroEmits++ } });
+vm.runInContext(compile(source.slice(source.indexOf('let ownedNitroOverride:'), source.indexOf('function newGiftCode('))), nitro);
+nitro.applyFakeNitro();
+assert.equal(nitroState.premiumTypeOverride, 2, 'mobile off switch cannot erase another plugin override');
+nitroState = { premiumTypeActual: 1, premiumTypeOverride: undefined };
+mobileExtras.fakeNitro = true; nitro.applyFakeNitro(); nitro.applyFakeNitro();
+assert.equal(nitroEmits, 1, 'unchanged mobile Nitro state does not create refresh loops');
+mobileExtras.fakeNitro = false; nitro.applyFakeNitro();
+assert.equal(nitroState.premiumTypeOverride, undefined, 'mobile switch restores its own prior state');
+mobileExtras.fakeNitro = true; nitro.applyFakeNitro(); nitroState.premiumTypeActual = 2; nitro.applyFakeNitro();
+assert.equal(nitroState.premiumTypeOverride, undefined, 'real Nitro acquisition removes the cosmetic mobile override');
+nitroState = { premiumTypeActual: 0, premiumTypeOverride: 1 }; nitro.applyFakeNitro();
+nitroOwner = 'b'; nitro.applyFakeNitro(); mobileExtras.fakeNitro = false; nitro.applyFakeNitro();
+assert.equal(nitroState.premiumTypeOverride, undefined, 'account changes do not restore another account override');
 const badgeHelper = source.slice(source.indexOf('function badgeLayoutKey('), source.indexOf('function applyBadgeLayout'));
 const renderer = source.slice(source.indexOf('after("default", useBadgesModule'), source.indexOf('diagnostics.patches += 1;', source.indexOf('function connectBadgeRenderer')));
 let callback;

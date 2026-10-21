@@ -419,7 +419,29 @@ function shortProfileDate(date: Date): string {
 }
 
 function NativeNitroBadge({ nitroLevel, nitroSince, accentColor, accentColor2 }: { nitroLevel: number; nitroSince?: string; accentColor?: number; accentColor2?: number; }) {
-    const level = NITRO_LEVELS[Math.max(0, Math.min(NITRO_LEVELS.length - 1, nitroLevel))];
+    const index = Number.isInteger(nitroLevel) && nitroLevel >= 0 && nitroLevel < NITRO_LEVELS.length ? nitroLevel : 0;
+    const level = NITRO_LEVELS[index];
+    return <NativeBadgeCard title={index ? `NITRO ${level.name.toUpperCase()}` : "NITRO"}
+        subtitle={`Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[index] ?? 0, nitroSince))}`}
+        art={level.art} icon={level.icon} label={level.label} sparkleColor={level.light} variant="nitro" />;
+}
+
+function NativeProfileBadge({ userId, id }: { userId: string; id: string; }) {
+    const data = isMe(userId) ? storedData : viewedSharedProfile(userId);
+    if (!data) return null;
+    if (id === "sp_early") return <NativeBadgeCard title="EARLY SUPPORTER" subtitle="A Nitro original"
+        art="https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png"
+        icon="https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png" label="Early Supporter" variant="supporter" />;
+    if (id === "sp_gifting") {
+        const gift = GIFT_LEVELS[data.giftLevel ?? -1];
+        return gift ? <NativeBadgeCard title={gift.name.toUpperCase()} art={gift.icon} icon={gift.icon} label={gift.name} variant="gift" sparkleColor={gift.light} /> : null;
+    }
+    return <NativeNitroBadge nitroLevel={data.nitroLevel ?? 0} nitroSince={data.nitroSince} />;
+}
+
+function NativeBadgeCard({ title, subtitle, art, icon, label, sparkleColor, variant }: {
+    title: string; subtitle?: string; art: string; icon: string; label: string; sparkleColor?: string; variant: "nitro" | "gift" | "supporter";
+}) {
     const targetRef = React.useRef<HTMLSpanElement>(null);
     const closeTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
     const [open, setOpen] = React.useState(false);
@@ -435,9 +457,6 @@ function NativeNitroBadge({ nitroLevel, nitroSince, accentColor, accentColor2 }:
     React.useEffect(() => () => {
         if (closeTimer.current) clearTimeout(closeTimer.current);
     }, []);
-    const since = monthsAgo(NITRO_LEVEL_MONTHS[nitroLevel] ?? 0, nitroSince);
-    const subscriberDate = shortProfileDate(since);
-    const lightProfile = isLightProfileColor(accentColor) || isLightProfileColor(accentColor2);
 
     return <Popout
         targetElementRef={targetRef}
@@ -448,34 +467,31 @@ function NativeNitroBadge({ nitroLevel, nitroSince, accentColor, accentColor2 }:
         nudgeAlignIntoViewport
         renderPopout={({ setPopoutRef }) => <div
             ref={setPopoutRef}
-            className="cp-native-nitro-popout"
+            className={`cp-native-nitro-popout cp-native-badge-${variant}`}
+            role="tooltip"
             onPointerEnter={show}
             onPointerLeave={hide}
             style={{
-                "--cp-nitro-light": level.light,
-                "--cp-nitro-dark": level.dark,
-                "--cp-profile-primary": profileColor(accentColor, "#29292f"),
-                "--cp-profile-secondary": profileColor(accentColor2 ?? accentColor, "#212126"),
-                "--cp-profile-text": lightProfile ? "#15161a" : "#f4f4f5",
-                "--cp-profile-muted": lightProfile ? "#4f555d" : "#b7b8bf"
+                "--cp-badge-sparkle": sparkleColor || "transparent"
             } as React.CSSProperties}
         >
-            <div className="cp-native-nitro-light" />
-            <img src={level.art} alt="" />
-            <strong>NITRO {level.name.toUpperCase()}</strong>
-            <span>Subscriber since {subscriberDate}</span>
+            {sparkleColor && <div className="cp-native-badge-sparkles" aria-hidden="true">{[0, 1, 2, 3, 4, 5].map(index => <i key={index} />)}</div>}
+            <img src={art} alt="" />
+            <strong>{title}</strong>
+            {subtitle && <span>{subtitle}</span>}
         </div>}
     >
         {popoutProps => <span
             {...popoutProps}
             ref={targetRef}
             className="cp-native-nitro-trigger"
-            aria-label={level.label}
+            aria-label={label}
+            tabIndex={0}
             onPointerEnter={show}
             onPointerLeave={hide}
             onFocus={show}
             onBlur={hide}
-        ><img src={level.icon} alt="" /></span>}
+        ><img src={icon} alt="" /></span>}
     </Popout>;
 }
 
@@ -2027,7 +2043,7 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.BRAVERY) badges.push({ id: "sp_bravery", description: "HypeSquad Bravery", iconSrc: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png", position: 0, props: { style } });
             if (f & FLAG.BRILLIANCE) badges.push({ id: "sp_brilliance", description: "HypeSquad Brilliance", iconSrc: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png", position: 0, props: { style } });
             if (f & FLAG.BALANCE) badges.push({ id: "sp_balance", description: "HypeSquad Balance", iconSrc: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png", position: 0, props: { style } });
-            if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", position: 0, props: { style } });
+            if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", component: NativeProfileBadge, position: 0, props: { style } });
             if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Golden Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
             if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Early Verified Bot Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
@@ -2037,13 +2053,14 @@ fakeObfuscatedEmail(real: string | null) {
                 key: NITRO_LEVELS[nl].name,
                 description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
                 iconSrc: NITRO_LEVELS[nl].icon,
+                component: NativeProfileBadge,
                 link: "https://discord.com/settings/premium",
                 props: { style },
                 position: 0
             });
             if (gl >= 0 && gl < GIFT_LEVELS.length) {
                 const gift = GIFT_LEVELS[gl];
-                badges.push({ id: "sp_gifting", description: gift.name, iconSrc: gift.icon, position: 0, props: { style } });
+                badges.push({ id: "sp_gifting", description: gift.name, iconSrc: gift.icon, component: NativeProfileBadge, position: 0, props: { style } });
             }
             if (hasBoostFake) {
                 const boostSince = monthsAgo(BOOST_LEVEL_MONTHS[bm] ?? 1);
