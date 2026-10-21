@@ -1182,6 +1182,20 @@ function tieredEntry(entry: any, tierIndex: number, since: Date, monthsPerTier: 
     const tiers = (entry.tiers || []).map((item: any, i: number) => ({ ...item, owned: i <= index }));
     return { ...entry, ...art, tiers, owned: true, hidden: false, obtained_at: since.toISOString(), current_tier: keys[index], next_tier: keys[index + 1] ?? null, tier_obtained_at: obtained, info_label: label };
 }
+// The line under a badge's title ("A Nitro original") is only sent to owners. Known
+// ones are listed here; others are learned from any real owner's badges we see.
+const KNOWN_BADGE_INFO: Record<number, string> = { 5: "First in, no hesitation", 6: "Patience meets discipline", 7: "Calm in the chaos", 11: "A Nitro original", 14: "1 Quest completed", 16: "This is just the beginning..." };
+const LS_BADGE_INFO = "cloudcord_badge_info";
+let learnedBadgeInfo: Record<number, string> = (() => { try { return JSON.parse(localStorage.getItem(LS_BADGE_INFO) || "{}") || {}; } catch { return {}; } })();
+function learnBadgeInfo(entries: any[]) {
+    let changed = false;
+    for (const entry of entries) {
+        if (!entry?.owned || !entry.info_label || entry.tiers?.length || DIRECTORY_ONLY_BADGES.has(entry.badge_id)) continue;
+        if (learnedBadgeInfo[entry.badge_id] !== entry.info_label) { learnedBadgeInfo = { ...learnedBadgeInfo, [entry.badge_id]: entry.info_label }; changed = true; }
+    }
+    if (changed) try { localStorage.setItem(LS_BADGE_INFO, JSON.stringify(learnedBadgeInfo)); } catch { }
+}
+
 function fakeDirectoryEntry(entry: any, userId: string, data: CustomProfileData, owned: Map<number, any>, replace: boolean) {
     if (!entry || DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return entry;
     const fake = owned.get(entry.badge_id);
@@ -1200,13 +1214,14 @@ function fakeDirectoryEntry(entry: any, userId: string, data: CustomProfileData,
         const level = Number(data.giftLevel ?? 0);
         return tieredEntry(entry, level, monthsAgo(1), [], fake.description);
     }
-    return { ...entry, owned: true, hidden: false };
+    return { ...entry, owned: true, hidden: false, info_label: entry.info_label ?? learnedBadgeInfo[entry.badge_id] ?? KNOWN_BADGE_INFO[entry.badge_id] };
 }
 function rewriteBadgeDirectory(action: any) {
     if (!profileRuntimeActive) return false;
     const type = action?.type;
     if (type !== "BADGE_DIRECTORY_FETCH_SUCCESS" && type !== "BADGE_FETCH_SUCCESS" && type !== "BADGE_SUMMARY_FETCH_SUCCESS") return false;
     const userId = action.userId;
+    try { learnBadgeInfo(Array.isArray(action.badges) ? action.badges : action.badge ? [action.badge] : []); } catch { }
     const data = userId ? profileDataFor(userId) : undefined;
     if (!data) return false;
     try {
@@ -2123,7 +2138,10 @@ fakeObfuscatedEmail(real: string | null) {
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
         (FluxDispatcher as any).addInterceptor?.(rewriteFetchedProfile);
         (FluxDispatcher as any).addInterceptor?.(rewriteBadgeDirectory);
+        // Discord loads your profile and badge info at startup, possibly before these
+        // hooks exist; load them again once Discord has settled so the fake data applies.
         reloadDiscordProfile(activeUserId());
+        for (const delay of [3000, 12000]) setTimeout(() => { if (profileRuntimeActive) reloadDiscordProfile(activeUserId()); }, delay);
         startExtras();
         FluxDispatcher.subscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange);
 
