@@ -53,6 +53,7 @@ jobs:
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-settings-route.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-account-isolation.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-compatibility.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-media-load-races.cjs
           CLOUDCORD_NETWORK_SOURCE=ios/runtime/src/lib/utils/profileSyncNetwork.ts NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node desktop/client/scripts/test-profile-network-timeout.cjs
           for test in profile-local profile-identity-render published-badges message-identity message-previews profile-device-only profile-billing-isolation profile-refresh-budget profile-editor-tabs; do
             NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node "ios/scripts/test-$test.cjs"
@@ -1003,6 +1004,7 @@ jobs:
           let sharedSyncTimer: ReturnType<typeof setInterval> | null = null;
           let fakeProfileEditorOpen = false;
           let suppressOwnPullUntil = 0;
+          const mediaSelections = new Map<string, object>();
           const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
 
           function adoptProfileAccount(user: any) {
@@ -1018,6 +1020,7 @@ jobs:
                   return;
               }
               const accounts = { ...(rootSettings.fakeProfileAccounts || {}) };
+              mediaSelections.clear();
               if (previousId) accounts[previousId] = { profile: rootSettings.fakeProfile || preview, localOnly: !!rootSettings.fakeProfileLocalOnly, mediaCleared: { ...(rootSettings.fakeProfileMediaCleared || {}) } };
               rootSettings.fakeProfileAccounts = accounts;
               const next = nextId ? accounts[nextId] : null;
@@ -1038,6 +1041,7 @@ jobs:
           }
 
           function markMediaCleared(key: "avatarMedia" | "bannerMedia") {
+              mediaSelections.delete(key);
               rootSettings.fakeProfileMediaCleared = {
                   ...(rootSettings.fakeProfileMediaCleared || {}),
                   [key]: Date.now()
@@ -3006,9 +3010,9 @@ jobs:
 
           async function getImageSize(uri: string, asset: any) {
               if (asset?.width && asset?.height) return { width: Number(asset.width), height: Number(asset.height) };
-              return await new Promise<{ width: number; height: number }>((resolve, reject) => {
+              return await withTimeout(new Promise<{ width: number; height: number }>((resolve, reject) => {
                   Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
-              });
+              }), 8000);
           }
 
           async function normalizeMedia(key: "avatarMedia" | "bannerMedia", asset: any) {
@@ -3034,7 +3038,7 @@ jobs:
                       : { offset: { x: 0, y: Math.round((size.height - size.width / targetRatio) / 2) }, size: { width: size.width, height: Math.round(size.width / targetRatio) } };
                   try {
                       const editor = findByProps("cropImage") as any;
-                      const result = await editor?.cropImage?.(sourceUri, { ...crop, displaySize: target, resizeMode: "cover" });
+                      const result = await withTimeout(Promise.resolve().then(() => editor?.cropImage?.(sourceUri, { ...crop, displaySize: target, resizeMode: "cover" })), 8000);
                       const output = typeof result === "string" ? result : result?.uri;
                       if (output) { uri = output; normalized = true; }
                   } catch {}
@@ -3042,10 +3046,10 @@ jobs:
                   if (!normalized) {
                       try {
                           const manipulator = findByProps("manipulateAsync") as any;
-                          const result = await manipulator?.manipulateAsync?.(sourceUri, [
+                          const result = await withTimeout(Promise.resolve().then(() => manipulator?.manipulateAsync?.(sourceUri, [
                               { crop: { originX: crop.offset.x, originY: crop.offset.y, width: crop.size.width, height: crop.size.height } },
                               { resize: target }
-                          ]);
+                          ])), 8000);
                           if (result?.uri) { uri = result.uri; normalized = true; }
                       } catch {}
                   }
@@ -3058,15 +3062,27 @@ jobs:
               return { uri, name, type, width: target.width, height: target.height, normalized };
           }
 
-          async function saveMedia(key: "avatarMedia" | "bannerMedia", asset: any) {
-              preview[key] = await normalizeMedia(key, asset);
+          function beginMediaSelection(key: "avatarMedia" | "bannerMedia") {
+              const token = { ownerId: currentUserId };
+              mediaSelections.set(key, token);
+              return token;
+          }
+          async function saveMedia(key: "avatarMedia" | "bannerMedia", asset: any, token = beginMediaSelection(key)) {
+              const media = await normalizeMedia(key, asset);
+              if (!token.ownerId || currentUserId !== token.ownerId || mediaSelections.get(key) !== token) return false;
+              preview[key] = media;
+              preview.syncRevision = Math.max(Date.now(), Number(preview.syncRevision || 0) + 1);
+              rootSettings.fakeProfile = { ...preview, selectedBadges: { ...(preview.selectedBadges || {}) } };
+              preview = rootSettings.fakeProfile as PreviewSettings;
               unmarkMediaCleared(key);
               suppressOwnPullUntil = Date.now() + 15_000;
               refreshPreview();
               queueSharedPublish();
+              return true;
           }
 
           async function pickFile(key: "avatarMedia" | "bannerMedia") {
+              const token = beginMediaSelection(key);
               const picker = findByProps("pickSingle", "isCancel") as any;
               if (!picker?.pickSingle) throw new Error("The system file picker is unavailable.");
               try {
@@ -3075,8 +3091,7 @@ jobs:
                       mode: "import",
                       copyTo: "documentDirectory"
                   });
-                  if (asset) await saveMedia(key, asset);
-                  return !!asset;
+                  return asset ? await saveMedia(key, asset, token) : false;
               } catch (error) {
                   if (picker.isCancel?.(error)) return false;
                   throw error;
@@ -3086,6 +3101,7 @@ jobs:
           async function pickPhoto(key: "avatarMedia" | "bannerMedia") {
               const picker = findByProps("launchImageLibrary") as any;
               if (!picker?.launchImageLibrary) return pickFile(key);
+              const token = beginMediaSelection(key);
               const result: any = await new Promise((resolve, reject) => {
                   try {
                       const returned = picker.launchImageLibrary({
@@ -3100,8 +3116,7 @@ jobs:
               if (result?.didCancel) return false;
               if (result?.errorCode) throw new Error(result.errorMessage || "The photo picker failed.");
               const asset = result?.assets?.[0];
-              if (asset) await saveMedia(key, asset);
-              return !!asset;
+              return asset ? await saveMedia(key, asset, token) : false;
           }
 
           class NamePreviewBoundary extends Component<any, { failed: boolean }> {

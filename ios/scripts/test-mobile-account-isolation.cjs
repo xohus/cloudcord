@@ -9,7 +9,7 @@ const original = { enabled: true, bio: 'Account A', selectedBadges: { staff: tru
 const account = vm.createContext({ rootSettings: { fakeProfile: original, fakeProfileLocalOnly: true, fakeProfileShare: { id: 'legacy', editToken: 'test-only' } },
     preview: original, configReady: true, currentUserId: null, realCurrentUser: null,
     defaultPreview: () => ({ enabled: false, selectedBadges: {} }), publishTimer: 1, clearTimeout: () => canceled++,
-    suppressOwnPullUntil: 1, userCache: new WeakMap(), profileCache: new WeakMap(),
+    suppressOwnPullUntil: 1, mediaSelections: new Map(), userCache: new WeakMap(), profileCache: new WeakMap(),
     bindSavedPreview: () => { account.preview = account.rootSettings.fakeProfile; account.configReady = true; } });
 vm.runInContext(compile(block('function adoptProfileAccount(', 'function mediaClearPending(')), account);
 account.adoptProfileAccount({ id: 'a' });
