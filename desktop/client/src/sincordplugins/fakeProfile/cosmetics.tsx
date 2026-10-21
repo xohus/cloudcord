@@ -6,6 +6,7 @@
 
 import { Settings } from "@api/Settings";
 import { openPluginModal } from "@components/settings/tabs/plugins/PluginModal";
+import { withTimeout } from "@utils/asyncTimeout";
 import { ACTIVITY_TYPES, Catalog, customServerTagIcon, nameplateAssetURL, nativeActivities, normalizeProfileAppearance, parseCatalog, PRESENCE_STATUSES, ProfileAppearance, serverTagCustomIcon, streamURL, TAG_ICON_MAX_LENGTH } from "@utils/profileAppearance";
 import { findByCode, findStore } from "@webpack";
 import { PresenceStore, React, RestAPI, UserStore } from "@webpack/common";
@@ -19,7 +20,7 @@ let catalogPromise: Promise<Catalog> | null = null;
 let catalogFailedAt = 0;
 const listeners = new Set<() => void>();
 async function get(url: string, query?: Record<string, any>): Promise<any> {
-    const response: any = await RestAPI.get({ url, query, retries: 1 } as any);
+    const response: any = await withTimeout(RestAPI.get({ url, query, retries: 1 } as any), 8000);
     return response?.body;
 }
 
@@ -33,7 +34,7 @@ async function fromDiscordStore(effects: any): Promise<Catalog | null> {
     if (!store.products?.size) {
         try {
             const fetchCategories: any = findByCode('"COLLECTIBLES_CATEGORIES_FETCH"', "CATEGORIES_FETCH_STARTED");
-            if (typeof fetchCategories === "function") await fetchCategories();
+            if (typeof fetchCategories === "function") await withTimeout(Promise.resolve(fetchCategories()), 8000);
         } catch { }
     }
     const products = store.products ? [...store.products.values()] : [];
@@ -55,7 +56,7 @@ export function loadCatalog(force = false): Promise<Catalog> {
         }
         if (!parsed.decorations.length && !parsed.nameplates.length && !parsed.effects.length && !parsed.frames.length) throw new Error("Discord returned an empty catalog.");
         catalog = parsed;
-        listeners.forEach(listener => listener());
+        listeners.forEach(listener => { try { listener(); } catch { /* A closed editor cannot invalidate a loaded catalog. */ } });
         return parsed;
     })().catch(error => {
         catalogFailedAt = Date.now();
@@ -205,12 +206,20 @@ export function readTagIcon(file: File): Promise<string> {
 type Setter = <K extends keyof ProfileAppearance>(key: K, value: ProfileAppearance[K]) => void;
 
 function useCatalog() {
+    const mounted = React.useRef(false);
+    const request = React.useRef(0);
     const [state, setState] = React.useState<{ catalog: Catalog | null; error: string; loading: boolean; }>({ catalog, error: "", loading: !catalog });
     const load = React.useCallback((force = false) => {
+        if (!mounted.current) return;
+        const revision = ++request.current;
         setState(previous => ({ ...previous, loading: true, error: "" }));
-        loadCatalog(force).then(result => setState({ catalog: result, error: "", loading: false }), error => setState(previous => ({ ...previous, error: error.message, loading: false })));
+        loadCatalog(force).then(result => {
+            if (mounted.current && request.current === revision) setState({ catalog: result, error: "", loading: false });
+        }, error => {
+            if (mounted.current && request.current === revision) setState(previous => ({ ...previous, error: error?.message || "Couldn't load Discord's catalog. Retry when connected.", loading: false }));
+        });
     }, []);
-    React.useEffect(() => { if (!catalog) load(); }, []);
+    React.useEffect(() => { mounted.current = true; if (!catalog) load(); return () => { mounted.current = false; request.current++; }; }, []);
     return { ...state, retry: () => load(true) };
 }
 

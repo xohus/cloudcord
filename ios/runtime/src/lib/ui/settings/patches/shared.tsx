@@ -1,4 +1,5 @@
 import { NavigationNative, ReactNative } from "@metro/common";
+import { withTimeout } from "@lib/utils/asyncTimeout";
 import { findByPropsLazy } from "@metro/wrappers";
 import { ErrorBoundary } from "@ui/components";
 import { RowConfig } from "@ui/settings";
@@ -29,23 +30,35 @@ export function wrapOnPress(
     screenOptions?: string | Record<string, any>,
     props?: any,
 ) {
+    let pending = false;
     return async () => {
-        if (onPress) return void onPress();
+        if (pending) return;
+        pending = true;
+        try {
+            if (onPress) return void await withTimeout(Promise.resolve().then(onPress));
 
-        if (typeof renderPromise !== "function") return;
+            if (typeof renderPromise !== "function") return;
 
-        const Component = await renderPromise().then(m => m.default);
-        if (!Component) return;
+            const Component = await withTimeout(Promise.resolve().then(() => renderPromise()).then(m => m.default));
+            if (!Component) throw new Error("This page is unavailable in this build. Update CloudCord and try again.");
+            if (navigation?.isFocused && !navigation.isFocused()) return;
 
-        if (typeof screenOptions === "string") {
-            screenOptions = { title: screenOptions };
-        }
+            if (typeof screenOptions === "string") {
+                screenOptions = { title: screenOptions };
+            }
 
-        navigation ??= tabsNavigationRef.getRootNavigationRef();
-        navigation.navigate("PUPU_CUSTOM_PAGE", {
-            ...screenOptions,
-            render: () => <Component {...props} />
-        });
+            navigation ??= tabsNavigationRef.getRootNavigationRef();
+            if (!navigation?.navigate) throw new Error("Discord's navigation is still loading. Go back and try again.");
+            navigation.navigate("PUPU_CUSTOM_PAGE", {
+                ...screenOptions,
+                render: () => <Component {...props} />
+            });
+        } catch (error) {
+            ReactNative.Alert.alert("Couldn't open CloudCord page", error instanceof Error ? error.message : "Loading failed. Check your connection and try again.", [
+                { text: "Close", style: "cancel" },
+                { text: "Retry", onPress: () => { void wrapOnPress(onPress, navigation, renderPromise, screenOptions, props)(); } }
+            ]);
+        } finally { pending = false; }
     };
 }
 
