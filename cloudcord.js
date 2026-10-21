@@ -19038,7 +19038,7 @@
         onPress: wrapOnPress(row.onPress, null, row.render, row.title()),
         withArrow: true
       }
-    }))).reduce((a, c2) => Object.assign(a, c2));
+    }))).reduce((a, c2) => Object.assign(a, c2), {});
     var isDeveloperSection = (section) => {
       var label = `${section?.label ?? ""} ${section?.title ?? ""}`.toLowerCase();
       return label.includes("developer") || section?.settings?.some?.((key) => /developer/i.test(key));
