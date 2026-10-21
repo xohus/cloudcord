@@ -572,11 +572,10 @@ let realGetCurrentUser: (() => any) | null = null;
 function isPrivateProfile(userId: string): boolean {
     try { return realGetUserProfile?.(userId)?.private === true; } catch { return false; }
 }
-function viewedSharedProfile(userId: string) {
-    if (isRealProfileView(userId) || isPrivateProfile(userId)) return undefined;
-    const profile = sharedProfiles.get(userId);
-    if (profile) sharedViewedAt.set(userId, Date.now());
-    return profile;
+function viewedSharedProfile(userId: string, _forBadges?: boolean) {
+    // New features: Hide other profiles, and leave profiles Discord marks private alone.
+    if (storedData?.hideOtherProfiles || isPrivateProfile(userId)) return undefined;
+    return isRealProfileView(userId) ? undefined : sharedProfiles.get(userId);
 }
 const sharedProfileFetchedAt = new Map<string, number>();
 const sharedRequests = new Set<string>();
@@ -586,11 +585,10 @@ let uploadedBadges: { id: string; userId: string; name: string; icon: string; }[
 let badgeFetchPending = false;
 let badgeFetchedAt = 0;
 async function refreshUploadedBadges(force = false) {
-    // One list for everyone: refresh every 2 minutes; forced refreshes (focus, after uploads) skip the wait.
-    if (badgeFetchPending || !force && Date.now() - badgeFetchedAt < 2 * 60_000) return;
+    if (badgeFetchPending || (!force && Date.now() - badgeFetchedAt < 5000)) return;
     badgeFetchPending = true; badgeFetchedAt = Date.now();
     try {
-        const response = await fetch("https://getcloudcord.com/v1/custom-badges");
+        const response = await fetch("https://getcloudcord.com/v1/custom-badges", { cache: "no-store" });
         if (!response.ok) return;
         const payload = await response.json();
         if (!Array.isArray(payload?.badges)) return;
@@ -676,16 +674,16 @@ function monthsAgo(months: number, explicitDate?: string): Date {
 }
 
 /** Populate every field name used by Discord's desktop profile/badge pipelines. */
-function applyNativeProfileMetadata(target: any, data: CustomProfileData, includeNested = true): any {
+function applyNativeProfileMetadata(target: any, data: CustomProfileData, includeNested = true, _includeSubscription = true): any {
     if (!target) return target;
     Object.assign(target, nativeProfileAppearance(data));
+    // New features: nameplate, profile effect and profile frame.
     if (data.nameplate !== undefined) target.collectibles = nativeCollectibles(target.collectibles, data);
     if (data.profileEffect !== undefined) {
         const effect = data.profileEffect ? profileEffectFor(data.profileEffect.skuId) : null;
         target.profileEffect = effect; target.profile_effect = effect;
         target.profileEffectId = effect?.skuId ?? null; target.profile_effect_id = target.profileEffectId;
     }
-    // Discord loads the frame artwork itself from the SKU (profile.profileFrame).
     if (data.profileFrame !== undefined) target.profileFrame = data.profileFrame ? { skuId: data.profileFrame.skuId, type: 3, expiresAt: undefined } : undefined;
 
     const flags = Number(data.badgeFlags ?? 0);
@@ -1016,28 +1014,11 @@ async function pullOwnSharedProfile() {
 
 function requestSharedProfile(userId: string, force = false) {
     if (!/^\d{15,22}$/.test(userId) || isMe(userId) || sharedRequests.has(userId)) return;
-    const now = Date.now();
-    if (now < sharedBackoffUntil || sharedRequests.size >= SHARED_MAX_IN_FLIGHT) return;
-    if ((sharedMissingUntil.get(userId) ?? 0) > now) return;
     const fetchedAt = sharedProfileFetchedAt.get(userId) ?? 0;
-    // Even forced refreshes wait a little, so one user is never fetched in a loop.
-    if (sharedProfiles.has(userId) && now - fetchedAt < (force ? 30_000 : SHARED_PROFILE_TTL_MS)) return;
+    if (!force && sharedProfiles.has(userId) && Date.now() - fetchedAt < SHARED_PROFILE_TTL_MS) return;
     sharedRequests.add(userId);
-    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`)
-        .then(r => {
-            if (r.status === 404) {
-                // No CloudCord profile: remember that instead of asking again.
-                sharedMissingUntil.set(userId, Date.now() + SHARED_MISSING_TTL_MS);
-                if (sharedMissingUntil.size > 5000) sharedMissingUntil.delete(sharedMissingUntil.keys().next().value!);
-                return null;
-            }
-            if (r.status === 429 || r.status >= 500) {
-                const retryAfter = Number(r.headers.get("retry-after")) * 1000;
-                sharedBackoffUntil = Date.now() + (Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 5 * 60_000) : 60_000);
-                return null;
-            }
-            return r.ok ? r.json() : null;
-        }).then(payload => {
+    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}?v=${Date.now()}`)
+        .then(r => r.ok ? r.json() : null).then(payload => {
             const data = payload?.profile ?? payload;
             if (!data) return;
             const next = fromSharedProfile(data);
@@ -1050,21 +1031,15 @@ function requestSharedProfile(userId: string, force = false) {
                 const UPS = (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore");
                 UPS?.emitChange?.();
                 (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
-                refreshPresence();
             } catch { }
         }).catch(() => { }).finally(() => sharedRequests.delete(userId));
 }
 
 function refreshVisibleSharedProfiles() {
-    // Keep recently viewed CloudCord profiles fresh (so changes made on another
-    // device appear), a few per tick, oldest first. Nobody else is re-fetched.
-    const now = Date.now();
-    const due = [...sharedViewedAt]
-        .filter(([userId, viewedAt]) => now - viewedAt < SHARED_VIEWED_WINDOW_MS && now - (sharedProfileFetchedAt.get(userId) ?? 0) > 30_000)
-        .sort((a, b) => (sharedProfileFetchedAt.get(a[0]) ?? 0) - (sharedProfileFetchedAt.get(b[0]) ?? 0))
-        .slice(0, SHARED_REFRESH_PER_TICK);
-    for (const [userId] of due) requestSharedProfile(userId, true);
-    for (const [userId, viewedAt] of sharedViewedAt) if (now - viewedAt > SHARED_VIEWED_WINDOW_MS) sharedViewedAt.delete(userId);
+    // Any remote user encountered by a profile, member list, DM or badge surface
+    // is retained in this small cache. Refresh those users automatically so two
+    // desktop clients can test sync without reopening Discord or the profile.
+    for (const userId of sharedProfiles.keys()) requestSharedProfile(userId, true);
 }
 
 const socialLookupAt = new Map<string, number>();
@@ -1976,7 +1951,7 @@ fakeObfuscatedEmail(real: string | null) {
             let profileData: CustomProfileData | undefined;
             if (userIsMe) {
                 if (!isEnabled) return published;
-                // Optional: no CloudCord badges while syncing is switched off for this account.
+                // New feature: no CloudCord badges while sync is switched off, if chosen.
                 if (storedData.localOnly && storedData.hideBadgesWhenSyncOff) return [];
                 profileData = storedData;
             } else {

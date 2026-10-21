@@ -1393,10 +1393,7 @@ jobs:
               const id = String(userId || "");
               if (!force) sharedProfileSeenAt.set(id, Date.now());
               const fetchedAt = sharedProfileFetchedAt.get(id) || 0;
-              // Users without a CloudCord profile are cached as {}: ask again after 15 minutes.
-              const cached = sharedProfiles.get(id);
-              const ttl = cached && !Object.keys(cached).length ? 15 * 60_000 : force ? 30_000 : 2 * 60_000;
-              if (AppState.currentState !== "active" || !/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || Date.now() - fetchedAt < ttl || sharedRequests.size >= 4) return;
+              if (AppState.currentState !== "active" || !/^\d{15,22}$/.test(id) || id === currentUserId || sharedRequests.has(id) || Date.now() - fetchedAt < 30_000 || sharedRequests.size >= 4) return;
               sharedRequests.add(id);
               sharedProfileFetchedAt.set(id, Date.now());
               void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}?v=${Date.now()}`, { cache: "no-store" })
@@ -1470,6 +1467,7 @@ jobs:
               try { return (safeStore("UserProfileStore") as any)?.getUserProfile?.(id)?.private === true; } catch { return false; } finally { checkingPrivacy = false; }
           }
           function getProfileOverride(id: string) {
+              // New feature: profiles Discord marks private are left alone.
               if (isRealProfileView(id) || isPrivateProfile(id)) return undefined;
               const local = (settings as any).cloudcordLocalProfiles?.[id];
               const shared = sharedProfiles.get(id);
@@ -1514,7 +1512,8 @@ jobs:
               }
               if (data.avatar) { setOwnValue(cloned, "avatarURL", data.avatar); setOwnValue(cloned, "avatarUrl", data.avatar); setOwnValue(cloned, "getAvatarURL", () => data.avatar); }
               if (data.avatarDecoration) setOwnValue(cloned, "avatarDecorationData", { asset: decorationAsset(data.avatarDecoration), skuId: data.avatarDecorationSku || "cloudcord-decoration" });
-              applyCollectibles(cloned, data);
+              // New feature: nameplate, profile effect and frame for other CloudCord users.
+              try { applyCollectibles(cloned, data); } catch {}
               if (data.profileColorsEnabled === true) {
                   if (data.primaryColor != null) setOwnValue(cloned, "primaryColor", Number(data.primaryColor));
                   if (data.accentColor != null) setOwnValue(cloned, "accentColor", Number(data.accentColor));
@@ -1880,8 +1879,6 @@ jobs:
 
           function selectedBadgeObjects(existing: any, forEditor = false) {
               const result: any[] = [];
-              // Optional: no CloudCord badges while this profile stays on this device only.
-              if (!forEditor && rootSettings.fakeProfileLocalOnly && preview.hideBadgesWhenSyncOff) return Array.isArray(existing) ? existing : result;
               if (preview.nitroEnabled) {
                   const icon = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
                   result.push({ id: nitroBadgeId(preview.nitroMonths), description: nitroSubscriberLabel(preview.nitroMonths), icon: " _", iconSrc: icon, source: { uri: icon } });
