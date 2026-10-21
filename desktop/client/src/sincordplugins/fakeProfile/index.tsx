@@ -15,7 +15,7 @@ import { ColorField, Grid2, ImageField, ProfilePreview, Section, SelectField, Sw
 import { Current, installPresenceHooks, installTagIconSwap, loadCatalog, NameplateEditor, PickerGrid, onCatalogLoaded, ProfileEffectEditor, profileEffectFor, ProfileFrameEditor, refreshPresence, StatusEditor, TagIconEditor, uninstallPresenceHooks, uninstallTagIconSwap } from "./cosmetics";
 import { installNativeSocialHooks } from "@utils/nativeSocialHooks";
 import { appearanceOptions, availableServerTags, Catalog, customDiscordMediaURL, nameplateAssetURL, nativeCollectibles, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, ProfileAppearance } from "@utils/profileAppearance";
-import { findByProps } from "@webpack";
+import { findByCodeLazy, findByProps } from "@webpack";
 import { fetchProfileResponse } from "@utils/profileSyncNetwork";
 
 import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
@@ -974,6 +974,8 @@ function requestSharedProfile(userId: string, force = false) {
             sharedProfiles.set(userId, next);
             sharedProfileFetchedAt.set(userId, Date.now());
             if (!changed) return;
+            // Have Discord load this profile again so the badges arrive in its own data.
+            reloadDiscordProfile(userId);
             try {
                 const UPS = (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore");
                 UPS?.emitChange?.();
@@ -1128,6 +1130,38 @@ function discordProfileBadges(userId: string, data: CustomProfileData, real: any
     return [...real.filter(badge => !taken.has(badgeLayoutKey(badge))), ...fake];
 }
 
+// Discord loads every profile (badges included) through USER_PROFILE_FETCH_SUCCESS with
+// the raw API body. Edit that body the way Discord's server would have sent it, so the
+// fake badges and Nitro/boost dates are Discord's own data from the start.
+const fetchUserProfile = findByCodeLazy("USER_PROFILE_FETCH_START");
+function profileDataFor(userId: string): CustomProfileData | undefined {
+    if (isMe(userId)) return isEnabled && !(storedData.localOnly && storedData.hideBadgesWhenSyncOff) ? storedData : undefined;
+    return viewedSharedProfile(userId);
+}
+function rewriteFetchedProfile(action: any) {
+    if (action?.type !== "USER_PROFILE_FETCH_SUCCESS" || !profileRuntimeActive) return false;
+    const raw = action.userProfile;
+    const userId = raw?.user?.id;
+    const data = userId ? profileDataFor(userId) : undefined;
+    if (!data) return false;
+    try {
+        raw.badges = discordProfileBadges(userId, data, raw.badges);
+        const level = Number(data.nitroLevel ?? -1);
+        if (data.nitro === true && level >= 0 && level < NITRO_LEVEL_MONTHS.length) {
+            raw.premium_type = 2;
+            raw.premium_since = nitroSinceFor(level, data.nitroSince).toISOString();
+        }
+        const boost = Number(data.boostMonths ?? -1);
+        if (boost >= 0 && boost < BOOST_LEVEL_MONTHS.length) raw.premium_guild_since = monthsAgo(BOOST_LEVEL_MONTHS[boost]).toISOString();
+    } catch { }
+    return false;
+}
+// Ask Discord to load a profile again so the edited data replaces what it cached.
+function reloadDiscordProfile(userId: string | null | undefined) {
+    if (!userId) return;
+    try { void Promise.resolve(fetchUserProfile(userId, { withMutualGuilds: false, withMutualFriends: false })).catch(() => { }); } catch { }
+}
+
 function decorateSharedProfile(profile: any, data: CustomProfileData, userId?: string) {
     if (!profile || !data) return profile;
     const merged: any = nativeSocialProfile(profile, data);
@@ -1161,8 +1195,6 @@ function decorateSharedProfile(profile: any, data: CustomProfileData, userId?: s
     if (data.accentColor != null) merged.accentColor = data.accentColor;
     if (data.accentColor != null) merged.themeColors = [data.accentColor, data.accentColor2 ?? data.accentColor];
     applyNativeProfileMetadata(merged, data);
-    const id = userId ?? profile.userId ?? profile.user?.id;
-    if (id) try { merged.badges = discordProfileBadges(id, data, profile.badges); } catch { }
     return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
 }
 
@@ -1624,6 +1656,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             saveAllDataSync();
             DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
             updateCachedRealData(); forceAccountPanelRerender();
+            reloadDiscordProfile(selectedAccountId);
             if (selectedAccountId === myId && useEverywhere) {
                 // Keep the just-saved local revision authoritative while the
                 // website receives it; the polling loop must not restore the
@@ -1975,8 +2008,6 @@ export default definePlugin({
             if (storedData.decorationAsset) { merged.avatarDecoration = nativeDecoration(storedData); merged.avatarDecorationData = merged.avatarDecoration; }
             if (storedData.nitro && storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
             applyNativeProfileMetadata(merged, storedData);
-            const myId = profile.userId ?? profile.user?.id ?? activeUserId();
-            if (myId) try { merged.badges = storedData.localOnly && storedData.hideBadgesWhenSyncOff ? profile.badges : discordProfileBadges(myId, storedData, profile.badges); } catch { }
             return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
         } catch { return profile; }
     },
@@ -2038,6 +2069,8 @@ fakeObfuscatedEmail(real: string | null) {
         addContextMenuPatch("user-context", userContextMenuPatch);
         addContextMenuPatch(["user-profile-actions", "user-profile-overflow-menu"], profileOverflowPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
+        (FluxDispatcher as any).addInterceptor?.(rewriteFetchedProfile);
+        reloadDiscordProfile(activeUserId());
         startExtras();
         FluxDispatcher.subscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange);
 
@@ -2103,6 +2136,8 @@ fakeObfuscatedEmail(real: string | null) {
 
     stop() {
         profileRuntimeActive = false;
+        try { const d = FluxDispatcher as any; if (Array.isArray(d._interceptors)) d._interceptors = d._interceptors.filter((fn: any) => fn !== rewriteFetchedProfile); } catch { }
+        reloadDiscordProfile(activeUserId());
         profileRuntimeGeneration++;
         otherUserCache = new WeakMap();
         sharedRequests.clear(); sharedQueued.clear();
