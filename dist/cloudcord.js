@@ -24861,7 +24861,7 @@
       init_lazy();
       init_metro();
       ({ showSimpleActionSheet: showSimpleActionSheet3 } = lazyDestructure(() => findByProps("showSimpleActionSheet")));
-      ({ hideActionSheet: hideActionSheet2 } = findByProps("hideActionSheet"));
+      ({ hideActionSheet: hideActionSheet2 } = lazyDestructure(() => findByProps("hideActionSheet")));
       PLUGIN_URL2 = "https://raw.githubusercontent.com/Purple-EyeZ/Plugins-List/refs/heads/main/src/plugins-data.json";
       THEME_URL = "https://raw.githubusercontent.com/kmmiio99o/theme-marketplace/refs/heads/main/themes.json";
       Sort = /* @__PURE__ */ function(Sort2) {
@@ -26237,13 +26237,18 @@
   }
   function Addons() {
     var navigation2 = NavigationNative.useNavigation();
-    var open = (title, load) => navigation2.push("PUPU_CUSTOM_PAGE", {
-      title,
-      render: () => {
-        var Page = load().default;
-        return /* @__PURE__ */ jsx(Page, {});
-      }
-    });
+    var open = React2.useMemo(() => {
+      var actions = /* @__PURE__ */ new Map();
+      return (title, load) => {
+        if (!actions.has(title))
+          actions.set(title, wrapOnPress(void 0, navigation2, () => _async_to_generator(function* () {
+            return load();
+          })(), title));
+        return actions.get(title)();
+      };
+    }, [
+      navigation2
+    ]);
     return /* @__PURE__ */ jsx(import_react_native41.ScrollView, {
       contentContainerStyle: {
         paddingBottom: 38
@@ -26312,12 +26317,14 @@
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      init_async_to_generator();
       init_jsxRuntime();
       import_react_native41 = __toESM(require_react_native());
       init_common();
       init_components();
       init_loader();
       init_assets();
+      init_shared();
     }
   });
 
