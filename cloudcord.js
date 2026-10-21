@@ -7577,22 +7577,26 @@
   function AlertModal2(props) {
     var forwardFailedModal = findByFilePath("modules/forwarding/native/ForwardFailedAlertModal.tsx");
     if (!forwardFailedModal && "extraContent" in props) {
-      props.content = /* @__PURE__ */ jsxs(import_react_native6.View, {
+      var { extraContent, content, ...rest } = props;
+      var combinedContent = /* @__PURE__ */ jsxs(import_react_native6.View, {
         style: {
           gap: 16
         },
         children: [
-          /* @__PURE__ */ jsx(Text, {
+          typeof content === "string" || typeof content === "number" ? /* @__PURE__ */ jsx(Text, {
             variant: "text-md/medium",
             color: "text-muted",
-            children: props.content
-          }),
+            children: content
+          }) : content,
           /* @__PURE__ */ jsx(import_react_native6.View, {
-            children: props.extraContent
+            children: extraContent
           })
         ]
       });
-      delete props.extraContent;
+      return /* @__PURE__ */ jsx(_AlertModal, {
+        ...rest,
+        content: combinedContent
+      });
     }
     return /* @__PURE__ */ jsx(_AlertModal, {
       ...props
@@ -13716,6 +13720,17 @@
         }
       });
     }
+    var gift = GIFT_LEVELS[preview.giftLevel];
+    if (gift)
+      result.push({
+        id: "fakeprofile-gifting",
+        description: gift.name,
+        icon: gift.icon,
+        iconSrc: gift.icon,
+        source: {
+          uri: gift.icon
+        }
+      });
     if (preview.boostMonths > 0) {
       var icon1 = boosterIcon(preview.boostMonths);
       result.push({
@@ -13732,7 +13747,7 @@
       _loop2(id, description, icon22);
     if (!shouldReplaceLocalBadges() && Array.isArray(existing)) {
       var _loop1 = function(badge2) {
-        if (!badge2 || result.some((item) => item?.id && item.id === badge2?.id))
+        if (!badge2 || result.some((item) => badgeLayoutKey(item) === badgeLayoutKey(badge2)))
           return "continue";
         result.push(badge2);
       };
@@ -13802,12 +13817,15 @@
     try {
       cloned = Object.create(Object.getPrototypeOf(original));
       for (var key of Reflect.ownKeys(original)) {
-        var billingField = /^(premiumType|premium_type|premiumSince|premium_since|premiumGuildSince|premium_guild_since)$/.test(String(key));
-        if (overriddenKeys.has(String(key)) && !((kind === "user" || localBadgesHidden()) && billingField))
-          continue;
         var descriptor = Object.getOwnPropertyDescriptor(original, key);
         if (descriptor)
-          Object.defineProperty(cloned, key, descriptor);
+          Object.defineProperty(cloned, key, {
+            ...descriptor,
+            configurable: true,
+            ..."value" in descriptor ? {
+              writable: true
+            } : {}
+          });
       }
     } catch (e) {
       try {
@@ -13851,10 +13869,11 @@
     setOwnValue(cloned, "publicFlags", flags);
     setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
     setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
-    setOwnValue(cloned, "avatarDecorationData", preview.avatarDecoration ? {
-      asset: decorationAsset(preview.avatarDecoration),
-      skuId: preview.avatarDecorationSku || "cloudcord-decoration"
-    } : null);
+    if (preview.avatarDecoration)
+      setOwnValue(cloned, "avatarDecorationData", {
+        asset: decorationAsset(preview.avatarDecoration),
+        skuId: preview.avatarDecorationSku || "cloudcord-decoration"
+      });
     applyCollectibles(cloned, preview);
     if (primaryColor != null)
       setOwnValue(cloned, "primaryColor", primaryColor);
@@ -13865,6 +13884,20 @@
         primaryColor ?? accentColor,
         accentColor ?? primaryColor
       ]);
+    if (kind === "profile" && shouldReplaceLocalBadges() && !localBadgesHidden()) {
+      for (var key3 of [
+        "premiumType",
+        "premium_type"
+      ])
+        setOwnValue(cloned, key3, 0);
+      for (var key4 of [
+        "premiumSince",
+        "premium_since",
+        "premiumGuildSince",
+        "premium_guild_since"
+      ])
+        setOwnValue(cloned, key4, null);
+    }
     if (preview.nitroEnabled && kind === "profile" && !localBadgesHidden()) {
       var premiumSince = monthsAgo(preview.nitroMonths);
       setOwnValue(cloned, "premiumType", 2);
@@ -17616,7 +17649,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -18090,39 +18123,6 @@
       simpleSheets = findByProps("showSimpleActionSheet");
       openGiftingBadgeInfoActionSheet = findByNameLazy("openGiftingBadgeInfoActionSheet", false);
       LinearGradient = findByProps("LinearGradient")?.LinearGradient;
-      overriddenKeys = /* @__PURE__ */ new Set([
-        "username",
-        "globalName",
-        "displayName",
-        "publicFlags",
-        "badges",
-        "profileBadges",
-        "avatarURL",
-        "avatarUrl",
-        "getAvatarURL",
-        "banner",
-        "bannerURL",
-        "bannerUrl",
-        "getBannerURL",
-        "getPreviewBanner",
-        "premiumType",
-        "premiumSince",
-        "premiumGuildSince",
-        "avatarDecorationData",
-        "primaryColor",
-        "accentColor",
-        "themeColors",
-        "bio",
-        "pronouns",
-        "createdAt",
-        "joinedAt",
-        "memberSince",
-        "user",
-        "userProfile",
-        "guildMemberProfile",
-        "displayProfile",
-        "profile"
-      ]);
       NITRO_DURATIONS = [
         0,
         1,
