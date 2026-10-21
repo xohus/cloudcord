@@ -21,18 +21,17 @@ export default function AlertModal(props: Record<string, unknown>) {
 
     // ponyfill for extraContent
     if (!forwardFailedModal && "extraContent" in props) {
-        props.content = (
+        const { extraContent, content, ...rest } = props;
+        const combinedContent = (
             <View style={{ gap: 16 }}>
-                <Text variant="text-md/medium" color="text-muted">
-                    {props.content as string}
-                </Text>
+                {typeof content === "string" || typeof content === "number" ? <Text variant="text-md/medium" color="text-muted">{content}</Text> : content as ReactNode}
                 <View>
-                    {props.extraContent as ReactNode}
+                    {extraContent as ReactNode}
                 </View>
             </View>
         );
 
-        delete props.extraContent;
+        return <_AlertModal {...rest} content={combinedContent} />;
     }
 
     return <_AlertModal {...props} />;

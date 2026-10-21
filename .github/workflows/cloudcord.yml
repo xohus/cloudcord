@@ -52,6 +52,7 @@ jobs:
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-load-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-settings-route.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-account-isolation.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-compatibility.cjs
           CLOUDCORD_NETWORK_SOURCE=ios/runtime/src/lib/utils/profileSyncNetwork.ts NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node desktop/client/scripts/test-profile-network-timeout.cjs
           for test in profile-local profile-identity-render published-badges message-identity message-previews profile-device-only profile-billing-isolation profile-refresh-budget profile-editor-tabs; do
             NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node "ios/scripts/test-$test.cjs"
@@ -136,6 +137,8 @@ jobs:
           cp "../ios/runtime/src/lib/ui/settings/patches/tabs.tsx" "src/lib/ui/settings/patches/tabs.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/panel.tsx" "src/lib/ui/settings/patches/panel.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/shared.tsx" "src/lib/ui/settings/patches/shared.tsx"
+          mkdir -p src/lib/ui/components/wrappers
+          cp "../ios/runtime/src/lib/ui/components/wrappers/AlertModal.tsx" "src/lib/ui/components/wrappers/AlertModal.tsx"
           cp "../ios/runtime/src/lib/api/native/loader.ts" "src/lib/api/native/loader.ts"
           cp "../ios/runtime/src/lib/api/native/fs.ts" "src/lib/api/native/fs.ts"
           cp "../ios/runtime/src/lib/api/native/modules/index.ts" "src/lib/api/native/modules/index.ts"
@@ -808,11 +811,6 @@ jobs:
           // important because the premium module is split-loaded on mobile.
           const openGiftingBadgeInfoActionSheet = findByNameLazy("openGiftingBadgeInfoActionSheet", false) as any;
           const LinearGradient = (findByProps("LinearGradient") as any)?.LinearGradient as any;
-          const overriddenKeys = new Set([
-              "username", "globalName", "displayName", "publicFlags", "badges", "profileBadges",
-              "avatarURL", "avatarUrl", "getAvatarURL", "banner", "bannerURL", "bannerUrl", "getBannerURL", "getPreviewBanner",
-              "premiumType", "premiumSince", "premiumGuildSince", "avatarDecorationData", "primaryColor", "accentColor", "themeColors", "bio", "pronouns", "createdAt", "joinedAt", "memberSince", "user", "userProfile", "guildMemberProfile", "displayProfile", "profile"
-          ]);
 
           const NITRO_DURATIONS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
           const BOOST_DURATIONS = [0, 1, 2, 3, 6, 9, 12, 15, 18, 24];
@@ -1830,6 +1828,8 @@ jobs:
                   const icon = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
                   result.push({ id: nitroBadgeId(preview.nitroMonths), description: nitroSubscriberLabel(preview.nitroMonths), icon: " _", iconSrc: icon, source: { uri: icon } });
               }
+              const gift = GIFT_LEVELS[preview.giftLevel];
+              if (gift) result.push({ id: "fakeprofile-gifting", description: gift.name, icon: gift.icon, iconSrc: gift.icon, source: { uri: gift.icon } });
               if (preview.boostMonths > 0) {
                   const icon = boosterIcon(preview.boostMonths);
                   result.push({ id: "fakeprofile-boost", description: serverBoostingLabel(preview.boostMonths), icon: " _", iconSrc: icon, source: { uri: icon } });
@@ -1844,7 +1844,7 @@ jobs:
               }
               if (!shouldReplaceLocalBadges() && Array.isArray(existing)) {
                   for (const badge of existing) {
-                      if (!badge || result.some(item => item?.id && item.id === badge?.id)) continue;
+                      if (!badge || result.some(item => badgeLayoutKey(item) === badgeLayoutKey(badge))) continue;
                       result.push(badge);
                   }
               }
@@ -1891,12 +1891,11 @@ jobs:
               try {
                   cloned = Object.create(Object.getPrototypeOf(original));
                   for (const key of Reflect.ownKeys(original)) {
-                      // UserStore is also consumed by billing. Cosmetic Nitro must
-                      // not change the signed-in account's entitlement/discount state.
-                      const billingField = /^(premiumType|premium_type|premiumSince|premium_since|premiumGuildSince|premium_guild_since)$/.test(String(key));
-                      if (overriddenKeys.has(String(key)) && !((kind === "user" || localBadgesHidden()) && billingField)) continue;
+                      // Keep native fields/methods when no custom value was chosen.
+                      // Only the presentation clone becomes writable; never change
+                      // descriptors or entitlement data on Discord's cached object.
                       const descriptor = Object.getOwnPropertyDescriptor(original, key);
-                      if (descriptor) Object.defineProperty(cloned, key, descriptor);
+                      if (descriptor) Object.defineProperty(cloned, key, { ...descriptor, configurable: true, ...("value" in descriptor ? { writable: true } : {}) });
                   }
               } catch {
                   try { cloned = { ...original }; }
@@ -1928,11 +1927,15 @@ jobs:
               setOwnValue(cloned, "publicFlags", flags);
               setOwnValue(cloned, "badges", selectedBadgeObjects(original.badges));
               setOwnValue(cloned, "profileBadges", selectedBadgeObjects(original.profileBadges));
-              setOwnValue(cloned, "avatarDecorationData", preview.avatarDecoration ? { asset: decorationAsset(preview.avatarDecoration), skuId: preview.avatarDecorationSku || "cloudcord-decoration" } : null);
+              if (preview.avatarDecoration) setOwnValue(cloned, "avatarDecorationData", { asset: decorationAsset(preview.avatarDecoration), skuId: preview.avatarDecorationSku || "cloudcord-decoration" });
               applyCollectibles(cloned, preview);
               if (primaryColor != null) setOwnValue(cloned, "primaryColor", primaryColor);
               if (accentColor != null) setOwnValue(cloned, "accentColor", accentColor);
               if (primaryColor != null || accentColor != null) setOwnValue(cloned, "themeColors", [primaryColor ?? accentColor, accentColor ?? primaryColor]);
+              if (kind === "profile" && shouldReplaceLocalBadges() && !localBadgesHidden()) {
+                  for (const key of ["premiumType", "premium_type"]) setOwnValue(cloned, key, 0);
+                  for (const key of ["premiumSince", "premium_since", "premiumGuildSince", "premium_guild_since"]) setOwnValue(cloned, key, null);
+              }
               if (preview.nitroEnabled && kind === "profile" && !localBadgesHidden()) {
                   const premiumSince = monthsAgo(preview.nitroMonths);
                   setOwnValue(cloned, "premiumType", 2);
