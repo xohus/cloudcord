@@ -7102,14 +7102,20 @@
   function parseCatalog(categoriesBody, effectsBody) {
     var categories = Array.isArray(categoriesBody) ? categoriesBody : Array.isArray(categoriesBody?.categories) ? categoriesBody.categories : [];
     var configs = /* @__PURE__ */ new Map();
-    for (var config of camel(effectsBody?.profile_effect_configs ?? effectsBody?.profileEffectConfigs ?? (Array.isArray(effectsBody) ? effectsBody : []))) {
-      if (config?.skuId)
+    var effectConfigs = effectsBody?.profile_effect_configs ?? effectsBody?.profileEffectConfigs ?? effectsBody;
+    for (var rawConfig of Array.isArray(effectConfigs) ? effectConfigs : []) {
+      if (!rawConfig || typeof rawConfig !== "object" || Array.isArray(rawConfig))
+        continue;
+      var config = camel(rawConfig);
+      if (/^\d{15,22}$/.test(String(config.skuId ?? "")))
         configs.set(String(config.skuId), config);
     }
     var decorations = /* @__PURE__ */ new Map(), nameplates = /* @__PURE__ */ new Map(), effects = /* @__PURE__ */ new Map(), frames = /* @__PURE__ */ new Map();
     for (var category of categories) {
-      for (var product of category?.products || []) {
-        for (var item of product?.items || []) {
+      for (var product of Array.isArray(category?.products) ? category.products : []) {
+        for (var item of Array.isArray(product?.items) ? product.items : []) {
+          if (!item || typeof item !== "object" || Array.isArray(item))
+            continue;
           var skuId = String(item?.sku_id || item?.skuId || product?.sku_id || product?.skuId || "");
           if (!/^\d{15,22}$/.test(skuId))
             continue;
