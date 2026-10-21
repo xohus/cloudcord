@@ -6383,15 +6383,22 @@
     if (!callbacks.has(Component2))
       return;
     var cbs = callbacks.get(Component2);
-    cbs.splice(cbs.indexOf(callback), 1);
+    var index = cbs.indexOf(callback);
+    if (index < 0)
+      return;
+    cbs.splice(index, 1);
     if (cbs.length === 0)
       callbacks.delete(Component2);
   }
   function patchJsx() {
     var callback = ([Component2], ret) => {
+      if (!ret || typeof ret !== "object")
+        return;
       if (typeof ret.type === "undefined") {
-        ret.type = "RCTView";
-        return ret;
+        return {
+          ...ret,
+          type: "RCTView"
+        };
       }
       var component = Component2;
       var target = typeof component === "function" ? component : component?.$$typeof === Symbol.for("react.memo") && typeof component.type === "function" ? component.type : null;
@@ -6402,10 +6409,27 @@
       ].find((value) => typeof value === "string" && callbacks.has(value));
       if (target && name) {
         var cbs = callbacks.get(name);
-        for (var cb of cbs) {
-          var _ret = cb(target, ret);
-          if (_ret !== void 0)
-            ret = _ret;
+        for (var cb of [
+          ...cbs
+        ]) {
+          try {
+            var editable = {
+              ...ret,
+              props: {
+                ...ret.props
+              }
+            };
+            var changed = cb(target, editable);
+            var next = changed === void 0 ? editable : changed;
+            if (!next || typeof next !== "object" || next.type == null)
+              throw new Error("Profile hook returned an invalid React element");
+            ret = next;
+          } catch (error) {
+            if (!warnedCallbacks.has(cb)) {
+              warnedCallbacks.add(cb);
+              console.warn(`[CloudCord] Skipped failed JSX hook for ${name}`, error);
+            }
+          }
         }
         return ret;
       }
@@ -6416,7 +6440,7 @@
     ];
     return () => patches3.forEach((unpatch) => unpatch());
   }
-  var callbacks, jsxRuntime2;
+  var callbacks, warnedCallbacks, jsxRuntime2;
   var init_jsx = __esm({
     "src/lib/api/react/jsx.ts"() {
       "use strict";
@@ -6425,6 +6449,7 @@
       init_patcher();
       init_metro();
       callbacks = /* @__PURE__ */ new Map();
+      warnedCallbacks = /* @__PURE__ */ new WeakSet();
       jsxRuntime2 = findByPropsLazy("jsx", "jsxs");
     }
   });
@@ -12872,10 +12897,14 @@
           displayName: data.globalName || data.displayName || preview.displayName,
           ...normalizeProfileAppearance(data),
           avatarMedia: mediaClearPending("avatarMedia") ? null : data.avatar ? {
-            uri: data.avatar
+            uri: String(data.avatar),
+            name: "Synced profile picture",
+            type: "image/*"
           } : null,
           bannerMedia: mediaClearPending("bannerMedia") ? null : data.banner ? {
-            uri: data.banner
+            uri: String(data.banner),
+            name: "Synced banner",
+            type: "image/*"
           } : null,
           nitroEnabled: remoteNitroEnabled(data),
           nitroSince: typeof data.nitroSince === "string" ? data.nitroSince : "",
