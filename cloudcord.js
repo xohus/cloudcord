@@ -12567,68 +12567,71 @@
   function shouldReplaceSharedBadges(data) {
     return data?.__localBadges === true || remoteReplaceBadges(data) && remoteHasFakeBadges(data);
   }
-  function shareableMedia(key) {
-    return _async_to_generator(function* () {
-      var uri = mediaUri(key);
+  function shareableMedia(_0) {
+    return _async_to_generator(function* (key, data = preview) {
+      var uri = String(data[key]?.uri || "");
       if (!uri || /^(?:https?:|data:)/i.test(uri))
         return uri || null;
       try {
-        var blob = yield (yield fetch(uri)).blob();
+        var blob = yield withTimeout((() => _async_to_generator(function* () {
+          return (yield fetch(uri)).blob();
+        })())(), 8e3);
         if (blob.size > 125e4)
           return null;
         var Reader = globalThis.FileReader;
         if (!Reader)
           return null;
-        return yield new Promise((resolve) => {
+        return yield withTimeout(new Promise((resolve) => {
           var reader = new Reader();
           reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
           reader.onerror = () => resolve(null);
           reader.readAsDataURL(blob);
-        });
+        }), 8e3);
       } catch (e) {
         return null;
       }
-    })();
+    }).apply(this, arguments);
   }
   function ownSharedProfile() {
     return _async_to_generator(function* () {
+      var snapshot2 = JSON.parse(JSON.stringify(preview));
       return {
-        username: preview.username,
-        globalName: preview.displayName,
-        avatar: yield shareableMedia("avatarMedia"),
-        banner: yield shareableMedia("bannerMedia"),
-        nitro: preview.nitroEnabled,
-        nitroLevel: preview.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(preview.nitroMonths)) : -1,
-        nitroSince: preview.nitroEnabled ? monthsAgo(preview.nitroMonths).toISOString().slice(0, 10) : null,
-        boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
-        giftLevel: preview.giftLevel,
-        avatarDecoration: preview.avatarDecoration || null,
-        avatarDecorationSku: preview.avatarDecorationSku || null,
-        profileColorsEnabled: preview.profileColorsEnabled,
-        ...normalizeProfileAppearance(preview),
-        primaryColor: preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null,
-        accentColor: preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null,
-        bio: preview.bio,
-        pronouns: preview.pronouns,
-        createdAt: preview.createdAt || null,
-        signupDate: preview.signupDate || null,
-        joinedSince: preview.signupDate || null,
-        oldName: preview.oldName,
-        badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && preview.selectedBadges?.[id] ? flags | flag : flags, 0),
-        replaceRealBadges: preview.replaceBadges === true,
+        username: snapshot2.username,
+        globalName: snapshot2.displayName,
+        avatar: yield shareableMedia("avatarMedia", snapshot2),
+        banner: yield shareableMedia("bannerMedia", snapshot2),
+        nitro: snapshot2.nitroEnabled,
+        nitroLevel: snapshot2.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(snapshot2.nitroMonths)) : -1,
+        nitroSince: snapshot2.nitroEnabled ? monthsAgo(snapshot2.nitroMonths).toISOString().slice(0, 10) : null,
+        boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(snapshot2.boostMonths) - 1),
+        giftLevel: snapshot2.giftLevel,
+        avatarDecoration: snapshot2.avatarDecoration || null,
+        avatarDecorationSku: snapshot2.avatarDecorationSku || null,
+        profileColorsEnabled: snapshot2.profileColorsEnabled,
+        ...normalizeProfileAppearance(snapshot2),
+        primaryColor: snapshot2.profileColorsEnabled ? colorNumber(snapshot2.primaryColor) : null,
+        accentColor: snapshot2.profileColorsEnabled ? colorNumber(snapshot2.accentColor) : null,
+        bio: snapshot2.bio,
+        pronouns: snapshot2.pronouns,
+        createdAt: snapshot2.createdAt || null,
+        signupDate: snapshot2.signupDate || null,
+        joinedSince: snapshot2.signupDate || null,
+        oldName: snapshot2.oldName,
+        badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && snapshot2.selectedBadges?.[id] ? flags | flag : flags, 0),
+        replaceRealBadges: snapshot2.replaceBadges === true,
         hiddenBadgeIds: [
-          ...preview.hiddenBadgeIds
+          ...snapshot2.hiddenBadgeIds
         ],
         badgeOrder: [
-          ...preview.badgeOrder
+          ...snapshot2.badgeOrder
         ],
         customBadgeIds: [
-          ...BADGES.filter(([id, , , , customId]) => customId && preview.selectedBadges?.[id]).map(([, , , , customId]) => customId),
-          ...preview.replaceBadges ? [
+          ...BADGES.filter(([id, , , , customId]) => customId && snapshot2.selectedBadges?.[id]).map(([, , , , customId]) => customId),
+          ...snapshot2.replaceBadges ? [
             REPLACE_BADGES_SYNC_ID
           ] : []
         ],
-        syncRevision: Number(preview.syncRevision || 0)
+        syncRevision: Number(snapshot2.syncRevision || 0)
       };
     })();
   }
@@ -12682,6 +12685,7 @@
       }
       var saved = rootSettings.fakeProfileShares?.[ownerId] || {};
       var path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
+      var localFingerprint = JSON.stringify(preview);
       var profileSnapshot = yield ownSharedProfile();
       if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly)
         return;
@@ -12690,6 +12694,10 @@
       });
       if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly)
         return;
+      if (JSON.stringify(preview) !== localFingerprint) {
+        publishSharedProfile.queued = true;
+        return;
+      }
       if (latestResponse.ok) {
         var latest = yield latestResponse.json();
         if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly)
