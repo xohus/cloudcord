@@ -129,5 +129,26 @@ cosmetics.uninstallPresenceHooks();
 assert.equal(presenceStore.getStatus('real'), 'online', 'uninstall restores the original store');
 assert.equal(selfPresence.getStatus(), 'online', 'uninstall restores SelfPresenceStore too');
 
+// Another plugin may wrap a presence method after CloudCord has installed.
+// Disabling CloudCord must preserve that wrapper and deactivate its old closure.
+const nativeActivities = presenceStore.getActivities;
+cosmetics.installPresenceHooks(userId => profiles[userId]);
+const oldCloudCordActivities = presenceStore.getActivities;
+let thirdPartyCalls = 0;
+const thirdPartyActivities = function (...args) {
+    thirdPartyCalls++;
+    return oldCloudCordActivities.apply(this, args);
+};
+presenceStore.getActivities = thirdPartyActivities;
+cosmetics.uninstallPresenceHooks();
+assert.equal(presenceStore.getActivities, thirdPartyActivities, 'uninstall preserves a later plugin wrapper');
+assert.equal(presenceStore.getActivities('real')[0].name, 'Real game', 'retained CloudCord closures no longer apply custom activities');
+cosmetics.installPresenceHooks(userId => profiles[userId]);
+assert.equal(presenceStore.getActivities('real').filter(item => item.name === 'Fortnite').length, 1, 'reenabling adds the custom activity only once');
+cosmetics.uninstallPresenceHooks();
+assert.equal(presenceStore.getActivities, thirdPartyActivities);
+assert.equal(thirdPartyCalls, 2, 'the other plugin remains active across disable and reenable');
+presenceStore.getActivities = nativeActivities;
+
 console.log('Profile cosmetics: schema safety, native mapping, catalog parsing and presence overrides passed');
 })().catch(error => { console.error(error); process.exit(1); });

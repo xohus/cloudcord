@@ -85,7 +85,7 @@ export { nameplateAssetURL, parseCatalog };
 // ---------- presence: custom status, activity and status dot ----------
 
 type DataLookup = (userId: string) => ProfileAppearance | undefined;
-type Patched = { store: any; originals: Record<string, Function>; };
+type Patched = { store: any; originals: Record<string, Function>; wrappers: Record<string, Function>; state: { active: boolean; }; };
 let patchedStores: Patched[] | null = null;
 
 const selfStore = (): any => { try { return findStore("SelfPresenceStore"); } catch { return null; } };
@@ -110,13 +110,16 @@ function restyleStatus(data: ProfileAppearance | undefined, real: string) {
 function hookStore(store: any, userArg: boolean, lookup: DataLookup): Patched | null {
     if (!store) return null;
     const originals: Record<string, Function> = {};
+    const wrappers: Record<string, Function> = {};
+    const state = { active: true };
     const user = (args: any[]) => userArg ? String(args[0] ?? "") : myId();
     const wrap = (name: string, fn: (data: ProfileAppearance | undefined, real: any, args: any[]) => any) => {
         if (typeof store[name] !== "function") return;
         const original = store[name];
         originals[name] = original;
-        store[name] = function (...args: any[]) {
+        store[name] = wrappers[name] = function (...args: any[]) {
             const real = original.apply(this, args);
+            if (!state.active) return real;
             try { const id = user(args); return id ? fn(lookup(id), real, args) : real; } catch { return real; }
         };
     };
@@ -127,7 +130,7 @@ function hookStore(store: any, userArg: boolean, lookup: DataLookup): Patched | 
         return (data && typeof predicate === "function" && nativeActivities(data).find(predicate)) || real;
     });
     wrap("getStatus", (data, real) => restyleStatus(data, real));
-    return { store, originals };
+    return { store, originals, wrappers, state };
 }
 
 export function installPresenceHooks(lookup: DataLookup) {
@@ -136,7 +139,12 @@ export function installPresenceHooks(lookup: DataLookup) {
 }
 
 export function uninstallPresenceHooks() {
-    for (const { store, originals } of patchedStores || []) Object.assign(store, originals);
+    for (const { store, originals, wrappers, state } of patchedStores || []) {
+        // A later plugin may retain our wrapper. Make that closure inert without
+        // deleting the other plugin's method or retaining stale profile overrides.
+        state.active = false;
+        for (const name of Object.keys(originals)) if (store[name] === wrappers[name]) store[name] = originals[name];
+    }
     patchedStores = null;
 }
 
