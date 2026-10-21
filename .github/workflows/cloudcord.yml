@@ -54,6 +54,7 @@ jobs:
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-account-isolation.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-compatibility.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-media-load-races.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-media-sync-snapshot.cjs
           CLOUDCORD_NETWORK_SOURCE=ios/runtime/src/lib/utils/profileSyncNetwork.ts NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node desktop/client/scripts/test-profile-network-timeout.cjs
           for test in profile-local profile-identity-render published-badges message-identity message-previews profile-device-only profile-billing-isolation profile-refresh-budget profile-editor-tabs; do
             NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node "ios/scripts/test-$test.cjs"
@@ -1083,55 +1084,58 @@ jobs:
               return data?.__localBadges === true || remoteReplaceBadges(data) && remoteHasFakeBadges(data);
           }
 
-          async function shareableMedia(key: "avatarMedia" | "bannerMedia") {
-              const uri = mediaUri(key);
+          async function shareableMedia(key: "avatarMedia" | "bannerMedia", data = preview) {
+              const uri = String(data[key]?.uri || "");
               if (!uri || /^(?:https?:|data:)/i.test(uri)) return uri || null;
               try {
-                  const blob = await (await fetch(uri)).blob();
+                  const blob = await withTimeout((async () => (await fetch(uri)).blob())(), 8000);
                   if (blob.size > 1_250_000) return null;
                   const Reader = (globalThis as any).FileReader;
                   if (!Reader) return null;
-                  return await new Promise<string | null>(resolve => {
+                  return await withTimeout(new Promise<string | null>(resolve => {
                       const reader = new Reader();
                       reader.onload = () => resolve(typeof reader.result === "string" ? reader.result : null);
                       reader.onerror = () => resolve(null);
                       reader.readAsDataURL(blob);
-                  });
+                  }), 8000);
               } catch { return null; }
           }
 
           async function ownSharedProfile() {
+              // Freeze one logical edit before yielding to native file decoding.
+              // Reading the global preview between awaits can mix accounts/edits.
+              const snapshot = JSON.parse(JSON.stringify(preview)) as PreviewSettings;
               return {
-                  username: preview.username,
-                  globalName: preview.displayName,
-                  avatar: await shareableMedia("avatarMedia"),
-                  banner: await shareableMedia("bannerMedia"),
-                  nitro: preview.nitroEnabled,
-                  nitroLevel: preview.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(preview.nitroMonths)) : -1,
-                  nitroSince: preview.nitroEnabled ? monthsAgo(preview.nitroMonths).toISOString().slice(0, 10) : null,
-                  boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(preview.boostMonths) - 1),
-                  giftLevel: preview.giftLevel,
-                  avatarDecoration: preview.avatarDecoration || null,
-                  avatarDecorationSku: preview.avatarDecorationSku || null,
-                  profileColorsEnabled: preview.profileColorsEnabled,
-                  ...normalizeProfileAppearance(preview),
-                  primaryColor: preview.profileColorsEnabled ? colorNumber(preview.primaryColor) : null,
-                  accentColor: preview.profileColorsEnabled ? colorNumber(preview.accentColor) : null,
-                  bio: preview.bio,
-                  pronouns: preview.pronouns,
-                  createdAt: preview.createdAt || null,
-                  signupDate: preview.signupDate || null,
-                  joinedSince: preview.signupDate || null,
-                  oldName: preview.oldName,
-                  badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && preview.selectedBadges?.[id] ? flags | flag : flags, 0),
-                  replaceRealBadges: preview.replaceBadges === true,
-                  hiddenBadgeIds: [...preview.hiddenBadgeIds],
-                  badgeOrder: [...preview.badgeOrder],
+                  username: snapshot.username,
+                  globalName: snapshot.displayName,
+                  avatar: await shareableMedia("avatarMedia", snapshot),
+                  banner: await shareableMedia("bannerMedia", snapshot),
+                  nitro: snapshot.nitroEnabled,
+                  nitroLevel: snapshot.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(snapshot.nitroMonths)) : -1,
+                  nitroSince: snapshot.nitroEnabled ? monthsAgo(snapshot.nitroMonths).toISOString().slice(0, 10) : null,
+                  boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(snapshot.boostMonths) - 1),
+                  giftLevel: snapshot.giftLevel,
+                  avatarDecoration: snapshot.avatarDecoration || null,
+                  avatarDecorationSku: snapshot.avatarDecorationSku || null,
+                  profileColorsEnabled: snapshot.profileColorsEnabled,
+                  ...normalizeProfileAppearance(snapshot),
+                  primaryColor: snapshot.profileColorsEnabled ? colorNumber(snapshot.primaryColor) : null,
+                  accentColor: snapshot.profileColorsEnabled ? colorNumber(snapshot.accentColor) : null,
+                  bio: snapshot.bio,
+                  pronouns: snapshot.pronouns,
+                  createdAt: snapshot.createdAt || null,
+                  signupDate: snapshot.signupDate || null,
+                  joinedSince: snapshot.signupDate || null,
+                  oldName: snapshot.oldName,
+                  badgeFlags: BADGES.reduce((flags, [id, , flag]) => flag && snapshot.selectedBadges?.[id] ? flags | flag : flags, 0),
+                  replaceRealBadges: snapshot.replaceBadges === true,
+                  hiddenBadgeIds: [...snapshot.hiddenBadgeIds],
+                  badgeOrder: [...snapshot.badgeOrder],
                   customBadgeIds: [
-                      ...BADGES.filter(([id, , , , customId]) => customId && preview.selectedBadges?.[id]).map(([, , , , customId]) => customId as string),
-                      ...(preview.replaceBadges ? [REPLACE_BADGES_SYNC_ID] : [])
+                      ...BADGES.filter(([id, , , , customId]) => customId && snapshot.selectedBadges?.[id]).map(([, , , , customId]) => customId as string),
+                      ...(snapshot.replaceBadges ? [REPLACE_BADGES_SYNC_ID] : [])
                   ],
-                  syncRevision: Number(preview.syncRevision || 0)
+                  syncRevision: Number(snapshot.syncRevision || 0)
               };
           }
 
@@ -1164,10 +1168,15 @@ jobs:
               }
               const saved = rootSettings.fakeProfileShares?.[ownerId] || {};
               const path = saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles";
+              const localFingerprint = JSON.stringify(preview);
               const profileSnapshot = await ownSharedProfile();
               if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly) return;
               const latestResponse = await fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
               if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly) return;
+              if (JSON.stringify(preview) !== localFingerprint) {
+                  (publishSharedProfile as any).queued = true;
+                  return;
+              }
               if (latestResponse.ok) {
                   const latest = await latestResponse.json() as any;
                   if (currentUserId !== ownerId || rootSettings.fakeProfileLocalOnly) return;

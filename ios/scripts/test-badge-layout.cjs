@@ -79,8 +79,8 @@ vm.runInContext(esbuild.transformSync(serializer, { loader: 'ts' }).code, serial
 const payload = serializerHost.toSharedProfile({ hiddenBadgeIds: ['nitro'], badgeOrder: ['boost', 'staff'] });
 assert.deepEqual(result(payload.hiddenBadgeIds), ['nitro']);
 assert.deepEqual(result(payload.badgeOrder), ['boost', 'staff']);
-assert.match(mobile, /hiddenBadgeIds: \[\.\.\.preview\.hiddenBadgeIds\]/);
-assert.match(mobile, /badgeOrder: \[\.\.\.preview\.badgeOrder\]/);
+assert.match(mobile, /hiddenBadgeIds: \[\.\.\.snapshot\.hiddenBadgeIds\]/);
+assert.match(mobile, /badgeOrder: \[\.\.\.snapshot\.badgeOrder\]/);
 assert.match(mobile, /return applyBadgeLayout\(next,/);
 const css = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/style.css', 'utf8');
 assert.match(css, /\.cp-badge-layout-label\s*\{\s*color: var\(--text-normal/);

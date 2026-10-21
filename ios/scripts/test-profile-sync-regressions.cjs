@@ -253,7 +253,7 @@ assert.equal(nativeSave.storedData.syncRevision, undefined, 'device-only saves n
     host.profileRuntimeGeneration += 2;
     resolveResponse(); await pending;
     assert.equal(writes, 1, 'a quick disable/re-enable rejects responses from the previous runtime');
-    assert(mobile.includes('replaceRealBadges: preview.replaceBadges === true'));
+    assert(mobile.includes('replaceRealBadges: snapshot.replaceBadges === true'));
     let published;
     const publisher = testContext({ ...runtime, activeUserId: () => 'owner', isEnabled: true,
         storedData: { replaceRealBadges: false, customBadgeIds: [], hideBadgesWhenSyncOff: true },
