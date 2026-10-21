@@ -12503,6 +12503,7 @@
     var accounts = {
       ...rootSettings.fakeProfileAccounts || {}
     };
+    mediaSelections.clear();
     if (previousId)
       accounts[previousId] = {
         profile: rootSettings.fakeProfile || preview,
@@ -12531,6 +12532,7 @@
     return Number(rootSettings.fakeProfileMediaCleared?.[key] || 0) > 0;
   }
   function markMediaCleared(key) {
+    mediaSelections.delete(key);
     rootSettings.fakeProfileMediaCleared = {
       ...rootSettings.fakeProfileMediaCleared || {},
       [key]: Date.now()
@@ -15687,12 +15689,12 @@
           width: Number(asset.width),
           height: Number(asset.height)
         };
-      return yield new Promise((resolve, reject) => {
+      return yield withTimeout(new Promise((resolve, reject) => {
         import_react_native21.Image.getSize(uri, (width, height) => resolve({
           width,
           height
         }), reject);
-      });
+      }), 8e3);
     })();
   }
   function normalizeMedia(key, asset) {
@@ -15746,11 +15748,11 @@
         };
         try {
           var editor = findByProps("cropImage");
-          var result = yield editor?.cropImage?.(sourceUri, {
+          var result = yield withTimeout(Promise.resolve().then(() => editor?.cropImage?.(sourceUri, {
             ...crop,
             displaySize: target,
             resizeMode: "cover"
-          });
+          })), 8e3);
           var output = typeof result === "string" ? result : result?.uri;
           if (output) {
             uri = output;
@@ -15761,7 +15763,7 @@
         if (!normalized) {
           try {
             var manipulator = findByProps("manipulateAsync");
-            var result1 = yield manipulator?.manipulateAsync?.(sourceUri, [
+            var result1 = yield withTimeout(Promise.resolve().then(() => manipulator?.manipulateAsync?.(sourceUri, [
               {
                 crop: {
                   originX: crop.offset.x,
@@ -15773,7 +15775,7 @@
               {
                 resize: target
               }
-            ]);
+            ])), 8e3);
             if (result1?.uri) {
               uri = result1.uri;
               normalized = true;
@@ -15794,17 +15796,37 @@
       };
     })();
   }
-  function saveMedia(key, asset) {
-    return _async_to_generator(function* () {
-      preview[key] = yield normalizeMedia(key, asset);
+  function beginMediaSelection(key) {
+    var token = {
+      ownerId: currentUserId
+    };
+    mediaSelections.set(key, token);
+    return token;
+  }
+  function saveMedia(_0, _1) {
+    return _async_to_generator(function* (key, asset, token = beginMediaSelection(key)) {
+      var media = yield normalizeMedia(key, asset);
+      if (!token.ownerId || currentUserId !== token.ownerId || mediaSelections.get(key) !== token)
+        return false;
+      preview[key] = media;
+      preview.syncRevision = Math.max(Date.now(), Number(preview.syncRevision || 0) + 1);
+      rootSettings.fakeProfile = {
+        ...preview,
+        selectedBadges: {
+          ...preview.selectedBadges || {}
+        }
+      };
+      preview = rootSettings.fakeProfile;
       unmarkMediaCleared(key);
       suppressOwnPullUntil = Date.now() + 15e3;
       refreshPreview();
       queueSharedPublish();
-    })();
+      return true;
+    }).apply(this, arguments);
   }
   function pickFile(key) {
     return _async_to_generator(function* () {
+      var token = beginMediaSelection(key);
       var picker = findByProps("pickSingle", "isCancel");
       if (!picker?.pickSingle)
         throw new Error("The system file picker is unavailable.");
@@ -15814,9 +15836,7 @@
           mode: "import",
           copyTo: "documentDirectory"
         });
-        if (asset)
-          yield saveMedia(key, asset);
-        return !!asset;
+        return asset ? yield saveMedia(key, asset, token) : false;
       } catch (error) {
         if (picker.isCancel?.(error))
           return false;
@@ -15829,6 +15849,7 @@
       var picker = findByProps("launchImageLibrary");
       if (!picker?.launchImageLibrary)
         return pickFile(key);
+      var token = beginMediaSelection(key);
       var result = yield new Promise((resolve, reject) => {
         try {
           var returned = picker.launchImageLibrary({
@@ -15848,9 +15869,7 @@
       if (result?.errorCode)
         throw new Error(result.errorMessage || "The photo picker failed.");
       var asset = result?.assets?.[0];
-      if (asset)
-        yield saveMedia(key, asset);
-      return !!asset;
+      return asset ? yield saveMedia(key, asset, token) : false;
     })();
   }
   function ServerTagPicker({ onSelect }) {
@@ -17649,7 +17668,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -18329,6 +18348,7 @@
       sharedSyncTimer = null;
       fakeProfileEditorOpen = false;
       suppressOwnPullUntil = 0;
+      mediaSelections = /* @__PURE__ */ new Map();
       REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
       sharedProfileSeenAt = /* @__PURE__ */ new Map();
       sharedRenderTimer = null;
