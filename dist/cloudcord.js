@@ -12380,8 +12380,8 @@
   function nitroBadgeId(months) {
     return months > 0 ? `premium_tenure_${months}_month_v2` : "premium";
   }
-  function nitroSubscriberLabel(months) {
-    var date = monthsAgo(months);
+  function nitroSubscriberLabel(months, explicitDate) {
+    var date = profileDate(explicitDate) || monthsAgo(months);
     return `Subscriber since ${date.getMonth() + 1}/${date.getDate()}/${String(date.getFullYear()).slice(-2)}`;
   }
   function serverBoostingLabel(months) {
@@ -12602,7 +12602,7 @@
         banner: yield shareableMedia("bannerMedia", snapshot2),
         nitro: snapshot2.nitroEnabled,
         nitroLevel: snapshot2.nitroEnabled ? Math.max(0, NITRO_DURATIONS.indexOf(snapshot2.nitroMonths)) : -1,
-        nitroSince: snapshot2.nitroEnabled ? monthsAgo(snapshot2.nitroMonths).toISOString().slice(0, 10) : null,
+        nitroSince: snapshot2.nitroEnabled ? (profileDate(snapshot2.nitroSince) || monthsAgo(snapshot2.nitroMonths)).toISOString().slice(0, 10) : null,
         boostMonths: Math.max(-1, BOOST_DURATIONS.indexOf(snapshot2.boostMonths) - 1),
         giftLevel: snapshot2.giftLevel,
         avatarDecoration: snapshot2.avatarDecoration || null,
@@ -12878,6 +12878,7 @@
             uri: data.banner
           } : null,
           nitroEnabled: remoteNitroEnabled(data),
+          nitroSince: typeof data.nitroSince === "string" ? data.nitroSince : "",
           nitroMonths: remoteNitroEnabled(data) ? NITRO_DURATIONS[Number(data.nitroLevel)] || 0 : 0,
           boostMonths: data.boostMonths >= 0 ? BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0 : 0,
           giftLevel: Number.isInteger(data.giftLevel) ? data.giftLevel : -1,
@@ -13303,14 +13304,22 @@
   }
   function monthsAgo(months) {
     var date = /* @__PURE__ */ new Date();
-    date.setMonth(date.getMonth() - months);
+    var count = Number.isFinite(Number(months)) ? Math.max(0, Math.min(1200, Math.trunc(Number(months)))) : 0;
+    var day = date.getDate();
+    date.setDate(1);
+    date.setMonth(date.getMonth() - count);
+    var last = new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+    date.setDate(Math.min(day, last));
     return date;
   }
   function profileDate(value) {
-    if (!value)
+    if (typeof value !== "string")
       return null;
-    var date = /* @__PURE__ */ new Date(`${String(value).slice(0, 10)}T12:00:00Z`);
-    return Number.isNaN(date.getTime()) ? null : date;
+    var day = value.slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day))
+      return null;
+    var date = /* @__PURE__ */ new Date(`${day}T12:00:00Z`);
+    return Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== day ? null : date;
   }
   function durationLabel(months) {
     if (!months)
@@ -13722,7 +13731,7 @@
       var icon2 = milestoneIcon(preview.nitroMonths, NITRO_ICONS);
       result.push({
         id: nitroBadgeId(preview.nitroMonths),
-        description: nitroSubscriberLabel(preview.nitroMonths),
+        description: nitroSubscriberLabel(preview.nitroMonths, preview.nitroSince),
         icon: " _",
         iconSrc: icon2,
         source: {
@@ -13786,7 +13795,7 @@
     var rows = [];
     var nitroMonths = NITRO_DURATIONS[Number(data.nitroLevel)] || 0;
     if (remoteNitroEnabled(data))
-      addRenderedBadge(rows, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
+      addRenderedBadge(rows, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths, data.nitroSince), milestoneIcon(nitroMonths, NITRO_ICONS));
     if (Number(data.boostMonths) >= 0) {
       var months = [
         1,
@@ -13909,7 +13918,7 @@
         setOwnValue(cloned, key4, null);
     }
     if (preview.nitroEnabled && kind === "profile" && !localBadgesHidden()) {
-      var premiumSince = monthsAgo(preview.nitroMonths);
+      var premiumSince = profileDate(preview.nitroSince) || monthsAgo(preview.nitroMonths);
       setOwnValue(cloned, "premiumType", 2);
       setOwnValue(cloned, "premium_type", 2);
       setOwnValue(cloned, "premiumSince", premiumSince);
@@ -14116,7 +14125,7 @@
               24
             ][Number(data.boostMonths)] || 0;
             if (remoteNitroEnabled(data))
-              addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths), milestoneIcon(nitroMonths, NITRO_ICONS));
+              addRenderedBadge(ordered, nitroBadgeId(nitroMonths), nitroSubscriberLabel(nitroMonths, data.nitroSince), milestoneIcon(nitroMonths, NITRO_ICONS));
             addRenderedBadge(ordered, "cloudcord-shared-boost", serverBoostingLabel(boostMonths), boosterIcon(boostMonths));
             var gift = GIFT_LEVELS[Number(data.giftLevel)];
             if (gift)
@@ -14158,7 +14167,7 @@
         if (staffBadge1)
           addOfficialBadge(ordered2, staffBadge1, user, preview);
         if (preview.nitroEnabled)
-          addRenderedBadge(ordered2, nitroBadgeId(preview.nitroMonths), nitroSubscriberLabel(preview.nitroMonths), milestoneIcon(preview.nitroMonths, NITRO_ICONS));
+          addRenderedBadge(ordered2, nitroBadgeId(preview.nitroMonths), nitroSubscriberLabel(preview.nitroMonths, preview.nitroSince), milestoneIcon(preview.nitroMonths, NITRO_ICONS));
         var gift1 = GIFT_LEVELS[preview.giftLevel];
         if (gift1)
           addRenderedBadge(ordered2, "fakeprofile-gifting", gift1.name, gift1.icon);
@@ -16152,6 +16161,11 @@
       };
     }, []);
     var update = (key, value, refresh = false) => {
+      if (key === "nitroMonths" && value !== preview.nitroMonths)
+        preview = {
+          ...preview,
+          nitroSince: ""
+        };
       rootSettings.fakeProfile = {
         ...preview,
         selectedBadges: {
