@@ -79,8 +79,8 @@ vm.runInContext(esbuild.transformSync(serializer, { loader: 'ts' }).code, serial
 const payload = serializerHost.toSharedProfile({ hiddenBadgeIds: ['nitro'], badgeOrder: ['boost', 'staff'] });
 assert.deepEqual(result(payload.hiddenBadgeIds), ['nitro']);
 assert.deepEqual(result(payload.badgeOrder), ['boost', 'staff']);
-assert.match(mobile, /hiddenBadgeIds: \[\.\.\.snapshot\.hiddenBadgeIds\]/);
-assert.match(mobile, /badgeOrder: \[\.\.\.snapshot\.badgeOrder\]/);
+assert.match(mobile, /hiddenBadgeIds: \[\.\.\.preview\.hiddenBadgeIds\]/);
+assert.match(mobile, /badgeOrder: \[\.\.\.preview\.badgeOrder\]/);
 assert.match(mobile, /return applyBadgeLayout\(next,/);
 const css = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/style.css', 'utf8');
 assert.match(css, /\.cp-badge-layout-label\s*\{\s*color: var\(--text-normal/);
@@ -97,7 +97,7 @@ esbuild.transformSync(mobile, { loader: 'tsx' });
 const profileHost = host(mobileHelper);
 Object.assign(profileHost, {
     preview: { nitroEnabled: false, boostMonths: 0, selectedBadges: {}, hiddenBadgeIds: ['staff'], badgeOrder: ['boost', 'nitro'] },
-    BADGES: [], GIFT_LEVELS: [], badgeRenderProps: new Map(), shouldReplaceLocalBadges: () => false, rootSettings: {}
+    BADGES: [], badgeRenderProps: new Map(), shouldReplaceLocalBadges: () => false, rootSettings: {}
 });
 vm.runInContext(esbuild.transformSync(mobile.slice(mobile.indexOf('function selectedBadgeObjects('), mobile.indexOf('function cloneObject(')), { loader: 'ts' }).code, profileHost);
 const nativeRows = [{ id: 'premium' }, { id: 'staff' }, { id: 'premium_guild_subscriber' }];
@@ -109,18 +109,6 @@ profileHost.preview.hiddenBadgeIds = [];
 const selectedRows = profileHost.selectedBadgeObjects([]);
 assert.equal(selectedRows[0].icon, 'https://example.test/staff.png');
 assert.equal(profileHost.badgeRenderProps.get('fakeprofile-staff').label, 'Discord Staff');
-profileHost.GIFT_LEVELS = [{ name: 'Patron', icon: 'gift.png' }];
-profileHost.preview.giftLevel = 0;
-const giftingRows = profileHost.selectedBadgeObjects([{ id: 'premium_gifting' }]);
-assert.equal(giftingRows.filter(row => profileHost.badgeLayoutKey(row) === 'gifting').length, 1, 'own profile-store gifting uses the selected tier exactly once');
-assert.equal(giftingRows.find(row => profileHost.badgeLayoutKey(row) === 'gifting').description, 'Patron');
-profileHost.preview.giftLevel = -1;
-Object.assign(profileHost, { NITRO_ICONS: [], milestoneIcon: () => 'nitro.png', nitroBadgeId: () => 'premium_tenure_12_month_v2', nitroSubscriberLabel: () => 'Nitro' });
-profileHost.preview.nitroEnabled = true;
-profileHost.preview.nitroMonths = 12;
-const nitroRows = profileHost.selectedBadgeObjects([{ id: 'premium' }, { id: 'premium_tenure_1_month_v2' }]);
-assert.equal(nitroRows.filter(row => profileHost.badgeLayoutKey(row) === 'nitro').length, 1, 'profile-store paths deduplicate cosmetic and native Nitro by logical identity');
-profileHost.preview.nitroEnabled = false;
 Object.assign(profileHost, { NITRO_DURATIONS: [], GIFT_LEVELS: [], remoteNitroEnabled: () => false, shouldReplaceSharedBadges: data => data.replaceRealBadges === true,
     addRenderedBadge: (rows, id, description, icon) => rows.push({ id, description, icon }) });
 const remoteRows = profileHost.sharedBadgeObjects([{ id: 'partner' }], 'other', { badgeFlags: 1, boostMonths: -1, giftLevel: -1, replaceRealBadges: true });
@@ -133,17 +121,15 @@ assert.match(mobile, /accessibilityLabel=\{direction === -1 \? "Move badge up"/)
 (async () => {
     const saved = new Map();
     const publishHost = vm.createContext({
-        profileRuntimeActive: true, profileRuntimeGeneration: 1,
-        activeUserId: () => 'owner', isEnabled: true, storedData: {}, allAccountsData: {}, lastRemoteProfile: null,
+        activeUserId: () => 'owner', isEnabled: true, storedData: {}, allAccountsData: {},
         SHARED_PROFILE_API: 'https://example.test', LS_SHARE: 'share',
-        saveDataSync() {}, saveAllDataSync() {}, toSharedProfile: data => data, remoteOnlyFields: () => ({}),
+        saveDataSync() {}, saveAllDataSync() {}, toSharedProfile: data => data,
         DataStore: { get: async key => saved.get(key), set: async (key, value) => saved.set(key, value) },
-        fetch: async (url, options) => options?.method ? ({ ok: true, json: async () => ({ id: 'profile', editToken: 'test-token' }) }) : ({ ok: false, status: 404 })
+        fetch: async (url, options) => options ? ({ ok: true, json: async () => ({ id: 'profile', editToken: 'test-token' }) }) : ({ ok: false })
     });
-    publishHost.fetchProfileResponse = (...args) => publishHost.fetch(...args);
     vm.runInContext(esbuild.transformSync(desktop.slice(desktop.indexOf('async function publishSharedProfile('), desktop.indexOf('function queueSharedPublish(')), { loader: 'ts' }).code, publishHost);
     await publishHost.publishSharedProfile();
-    assert.equal(saved.get('share:owner').id, 'profile');
+    assert.equal(saved.get('share').id, 'profile');
     await publishHost.publishSharedProfile();
     console.log('PASS: desktop cloud save without localStorage and persisted sync credentials');
 })().catch(error => { console.error(error); process.exitCode = 1; });

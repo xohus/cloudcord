@@ -24,7 +24,6 @@ import { React, Toasts, UserProfileStore } from "@webpack/common";
 import { ComponentType, HTMLProps } from "react";
 import Plugins from "~plugins";
 import { isRealProfileView } from "@utils/realProfileView";
-import { Logger } from "@utils/Logger";
 
 import { isPluginEnabled } from "./PluginManager";
 
@@ -66,35 +65,6 @@ export interface ProfileBadge {
 }
 
 const Badges = new Set<ProfileBadge>();
-const failedBadgeSources = new WeakSet<object>();
-type BadgeComponent = NonNullable<ProfileBadge["component"]>;
-const guardedBadgeComponents = new WeakMap<BadgeComponent, BadgeComponent>();
-
-function guardBadgeComponent(component: BadgeComponent): BadgeComponent {
-    const cached = guardedBadgeComponents.get(component);
-    if (cached) return cached;
-    const wrapped = ErrorBoundary.wrap(component, { noop: true });
-    guardedBadgeComponents.set(component, wrapped);
-    // Static providers are guarded at registration; don't nest another wrapper
-    // around that same component when their rows are later collected.
-    guardedBadgeComponents.set(wrapped, wrapped);
-    return wrapped;
-}
-
-function readBadgeSource(source: object, load: () => unknown): ProfileBadge[] {
-    try {
-        const rows = load();
-        if (rows == null || rows === false) return [];
-        if (!Array.isArray(rows)) throw new Error("Badge source did not return an array");
-        return rows.filter((row): row is ProfileBadge => row && typeof row === "object" && !Array.isArray(row) && typeof row.id === "string" && row.id.length > 0);
-    } catch (error) {
-        if (!failedBadgeSources.has(source)) {
-            failedBadgeSources.add(source);
-            new Logger("BadgeAPI").warn("Skipped a failed badge source; other profile badges remain available", error);
-        }
-        return [];
-    }
-}
 
 export const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
     "1465007041390317579": "Administrator",
@@ -170,10 +140,8 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             // Read the same per-user data that FakeProfile actually renders.
             const profilePlugin = Plugins.ProfileSpoofer as { started?: boolean; getActiveProfileColors?(userId: string): number[] | null; } | undefined;
             const editedColors: number[] | null = profilePlugin?.started ? (profilePlugin.getActiveProfileColors?.(badge.userId) ?? null) : null;
-            // Edited profiles decide from their primary color; others from the surface Discord actually rendered.
-            const toRgb = (color: number) => [(color >> 16) & 255, (color >> 8) & 255, color & 255];
             if (editedColors?.length) {
-                apply(useBlack([toRgb(editedColors[0])]));
+                apply(useBlack(editedColors.map(color => [(color >> 16) & 255, (color >> 8) & 255, color & 255])));
                 return;
             }
             // Prefer the rendered surface near the badge, not globally inherited
@@ -278,7 +246,7 @@ function showStaffRole(label: string) {
  * @param badge The badge to register
  */
 export function addProfileBadge(badge: ProfileBadge) {
-    badge.component &&= guardBadgeComponent(badge.component);
+    badge.component &&= ErrorBoundary.wrap(badge.component, { noop: true });
     Badges.add(badge);
 }
 
@@ -298,14 +266,17 @@ export function _getBadges(args: BadgeUserArgs) {
     if (isRealProfileView(args.userId)) return [];
     const badges = [] as ProfileBadge[];
     for (const badge of Badges) {
-        const b = readBadgeSource(badge, () => {
-            if (badge.shouldShow && !badge.shouldShow(args)) return [];
-            return badge.getBadges ? badge.getBadges(args) : [badge];
-        }).map(badge => ({
-            ...args,
-            ...badge,
-            component: badge.component && guardBadgeComponent(badge.component)
-        }));
+        if (badge.shouldShow && !badge.shouldShow(args)) {
+            continue;
+        }
+
+        const b = badge.getBadges
+            ? badge.getBadges(args).map(badge => ({
+                ...args,
+                ...badge,
+                component: badge.component && ErrorBoundary.wrap(badge.component, { noop: true })
+            }))
+            : [{ ...args, ...badge }];
 
         if (badge.position === BadgePosition.START) {
             badges.unshift(...b);
@@ -330,9 +301,9 @@ export function _getBadges(args: BadgeUserArgs) {
         });
     }
 
-    const donorBadges = readBadgeSource(BadgeAPIPlugin, () => BadgeAPIPlugin.getDonorBadges(args.userId));
-    const sincordDonorBadges = readBadgeSource(BadgeAPIPlugin, () => BadgeAPIPlugin.getSincordDonorBadges(args.userId));
-    const GlobalBadges = readBadgeSource(globalBadges, () => isPluginEnabled(globalBadges.name) ? globalBadges.getGlobalBadges(args.userId) : []);
+    const donorBadges = BadgeAPIPlugin.getDonorBadges(args.userId);
+    const sincordDonorBadges = BadgeAPIPlugin.getSincordDonorBadges(args.userId);
+    const GlobalBadges = isPluginEnabled(globalBadges.name) ? globalBadges.getGlobalBadges(args.userId) : false;
 
     // do globalbadges first so it shows before the contrib badges but after donor badges
     if (GlobalBadges) {

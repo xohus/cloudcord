@@ -228,10 +228,8 @@ export default definePlugin({
         try {
             const plugin = Plugins.ProfileSpoofer as typeof Plugins.ProfileSpoofer & {
                 getBadgeLayout?(userId: string): { hiddenBadgeIds?: string[]; badgeOrder?: string[] } | null | undefined;
-                filterNativeBadges?(userId: string, badges: ProfileBadge[]): ProfileBadge[];
             };
             const layout = plugin?.started ? plugin.getBadgeLayout?.(profile.userId) : null;
-            if (plugin?.started && plugin.filterNativeBadges) badges = plugin.filterNativeBadges(profile.userId, badges);
             return applyBadgeLayout(badges, { ...layout, badgeOrder: layout?.badgeOrder?.length ? layout.badgeOrder : defaultBadgeOrder(badges) });
         } catch (error) {
             new Logger("BadgeAPI#applyBadgeLayout").error(error);

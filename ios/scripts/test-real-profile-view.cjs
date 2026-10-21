@@ -68,23 +68,4 @@ for (const hook of hooks.values()) {
     assert.equal(hook(null, modified), modified, 'menu option must not duplicate');
     assert.equal(menu.props.options.length, 0);
 }
-mobile.safeStore = () => ({ getUserProfile: () => ({ private: true }) });
-assert.equal(mobile.getProfileOverride(id), undefined, 'private Discord profile details remain untouched');
-assert.equal(mobile.getProfileOverride(id, true), profile, 'public CloudCord badges do not depend on Discord friendship/privacy');
-root.cloudcordRealProfileUsers = [id];
-assert.equal(mobile.getProfileOverride(id, true), undefined, 'real-profile viewer choice also hides public cosmetic badges');
-
-const desktopSource = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/index.tsx', 'utf8');
-const badgeViewer = vm.createContext({ realGetUserProfile: () => ({ private: true }), storedData: {},
-    isRealProfileView: () => false, sharedProfiles: new Map([[id, profile]]), sharedViewedAt: new Map(), Date });
-vm.runInContext(compile(desktopSource.slice(desktopSource.indexOf('function isPrivateProfile('), desktopSource.indexOf('const sharedProfileFetchedAt'))), badgeViewer);
-assert.equal(badgeViewer.viewedSharedProfile(id), undefined);
-assert.equal(badgeViewer.viewedSharedProfile(id, true), profile);
-badgeViewer.isRealProfileView = () => true;
-assert.equal(badgeViewer.viewedSharedProfile(id, true), undefined);
-badgeViewer.isRealProfileView = () => false;
-badgeViewer.storedData.hideOtherProfiles = true;
-assert.equal(badgeViewer.viewedSharedProfile(id, true), undefined);
-assert.match(source, /const data = getProfileOverride\(id, true\)/);
-assert.match(desktopSource, /profileData = viewedSharedProfile\(userId, true\)/);
-console.log('PASS real-profile preference persistence, per-user isolation, reversible mobile menu actions, private Discord details separated from public CloudCord badges and native menu immutability');
+console.log('PASS real-profile preference persistence, per-user isolation, reversible mobile menu actions, unchanged shared snapshots and native menu immutability');

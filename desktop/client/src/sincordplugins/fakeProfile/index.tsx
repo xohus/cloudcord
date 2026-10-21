@@ -572,10 +572,8 @@ let realGetCurrentUser: (() => any) | null = null;
 function isPrivateProfile(userId: string): boolean {
     try { return realGetUserProfile?.(userId)?.private === true; } catch { return false; }
 }
-function viewedSharedProfile(userId: string, badgesOnly = false) {
-    // CloudCord's published badge selections are public; Discord's private
-    // profile flag only controls the native profile details, not that publication.
-    if (storedData?.hideOtherProfiles || isRealProfileView(userId) || !badgesOnly && isPrivateProfile(userId)) return undefined;
+function viewedSharedProfile(userId: string) {
+    if (isRealProfileView(userId) || isPrivateProfile(userId)) return undefined;
     const profile = sharedProfiles.get(userId);
     if (profile) sharedViewedAt.set(userId, Date.now());
     return profile;
@@ -592,7 +590,7 @@ async function refreshUploadedBadges(force = false) {
     if (badgeFetchPending || !force && Date.now() - badgeFetchedAt < 2 * 60_000) return;
     badgeFetchPending = true; badgeFetchedAt = Date.now();
     try {
-        const response = await fetchProfileResponse("https://getcloudcord.com/v1/custom-badges");
+        const response = await fetch("https://getcloudcord.com/v1/custom-badges");
         if (!response.ok) return;
         const payload = await response.json();
         if (!Array.isArray(payload?.badges)) return;
@@ -625,7 +623,7 @@ function fromSharedProfile(data: any): CustomProfileData {
         avatar: data?.avatar || "", banner: data?.banner || "", bio: data?.bio || "",
         pronouns: data?.pronouns || "", accentColor: data?.primaryColor ?? data?.accentColor,
         accentColor2: data?.primaryColor != null ? data?.accentColor : data?.accentColor2, badgeFlags: data?.badgeFlags || 0,
-        nitro: data?.nitro === true || data?.nitro == null && Number(data?.nitroLevel ?? -1) >= 0, nitroLevel: data?.nitroLevel, nitroSince: data?.nitroSince || "",
+        nitro: !!(data?.nitro || data?.nitroLevel >= 0), nitroLevel: data?.nitroLevel, nitroSince: data?.nitroSince || "",
         boostMonths: data?.boostMonths, giftLevel: Number.isInteger(data?.giftLevel) ? data.giftLevel : undefined, customBadgeIds: Array.isArray(data?.customBadgeIds) ? data.customBadgeIds.filter((id: string) => id !== REPLACE_BADGES_SYNC_ID) : [],
         oldName: data?.oldName || "", createdAt: data?.createdAt || "", signupDate: data?.signupDate || data?.joinedSince || "",
         decorationAsset: sharedDecorationAsset(data?.decorationAsset || data?.avatarDecoration), replaceRealBadges: data?.replaceRealBadges === true || Array.isArray(data?.customBadgeIds) && data.customBadgeIds.includes(REPLACE_BADGES_SYNC_ID),
@@ -642,7 +640,7 @@ function hasFakeBadges(data: CustomProfileData | undefined): boolean {
 }
 
 function shouldReplaceBadges(data: CustomProfileData | undefined): boolean {
-    return !(data?.localOnly && data.hideBadgesWhenSyncOff) && !!data?.replaceRealBadges && hasFakeBadges(data);
+    return !!data?.replaceRealBadges && hasFakeBadges(data);
 }
 
 const NITRO_LEVEL_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
@@ -678,7 +676,7 @@ function monthsAgo(months: number, explicitDate?: string): Date {
 }
 
 /** Populate every field name used by Discord's desktop profile/badge pipelines. */
-function applyNativeProfileMetadata(target: any, data: CustomProfileData, includeNested = true, includeSubscription = true): any {
+function applyNativeProfileMetadata(target: any, data: CustomProfileData, includeNested = true): any {
     if (!target) return target;
     Object.assign(target, nativeProfileAppearance(data));
     if (data.nameplate !== undefined) target.collectibles = nativeCollectibles(target.collectibles, data);
@@ -690,44 +688,33 @@ function applyNativeProfileMetadata(target: any, data: CustomProfileData, includ
     // Discord loads the frame artwork itself from the SKU (profile.profileFrame).
     if (data.profileFrame !== undefined) target.profileFrame = data.profileFrame ? { skuId: data.profileFrame.skuId, type: 3, expiresAt: undefined } : undefined;
 
-    if (data.localOnly && data.hideBadgesWhenSyncOff) return target;
     const flags = Number(data.badgeFlags ?? 0);
     if (shouldReplaceBadges(data)) {
         target.publicFlags = flags;
         target.public_flags = flags;
+        target.flags = flags;
     }
-    // UserStore is consumed by billing, purchases, gifts and upload checks as
-    // well as profiles. Cosmetic Nitro belongs on profile snapshots only.
-    if (!includeSubscription) return target;
 
-    const replace = shouldReplaceBadges(data);
-    const nitroLevel = Number(data.nitroLevel ?? -1);
-    const hasNitro = data.nitro === true && Number.isInteger(nitroLevel) && nitroLevel >= 0 && nitroLevel < NITRO_LEVEL_MONTHS.length;
-    if (hasNitro || replace) {
-        const nitroSince = hasNitro ? nitroSinceFor(nitroLevel, data.nitroSince) : null;
-        target.premiumType = hasNitro ? 2 : 0;
-        target.premium_type = target.premiumType;
-        target.premiumSince = nitroSince;
-        target.premium_since = nitroSince?.toISOString() ?? null;
-    }
+    const hasNitro = data.nitro === true && Number(data.nitroLevel ?? -1) >= 0;
+    const nitroSince = hasNitro
+        ? monthsAgo(NITRO_LEVEL_MONTHS[data.nitroLevel ?? 0] ?? 0, data.nitroSince)
+        : null;
+    target.premiumType = hasNitro ? 2 : 0;
+    target.premium_type = target.premiumType;
+    target.premiumSince = nitroSince;
+    target.premium_since = nitroSince?.toISOString() ?? null;
 
     const gift = Number(data.giftLevel ?? -1);
-    const hasGift = Number.isInteger(gift) && gift >= 0 && gift < GIFT_LEVELS.length;
-    if (hasGift || replace) {
-        const giftCount = hasGift ? GIFT_LEVELS[gift].count : 0;
-        target.giftCount = giftCount;
-        target.gift_count = giftCount;
-        target.giftingBadgeTier = hasGift ? gift : null;
-        target.gifting_badge_tier = hasGift ? gift : null;
-    }
+    const giftCount = gift >= 0 && gift < GIFT_LEVELS.length ? GIFT_LEVELS[gift].count : 0;
+    target.giftCount = giftCount;
+    target.gift_count = giftCount;
+    target.giftingBadgeTier = gift >= 0 ? gift : null;
+    target.gifting_badge_tier = gift >= 0 ? gift : null;
 
     const boost = Number(data.boostMonths ?? -1);
-    const hasBoost = Number.isInteger(boost) && boost >= 0 && boost < BOOST_LEVEL_MONTHS.length;
-    if (hasBoost || replace) {
-        const boostSince = hasBoost ? monthsAgo(BOOST_LEVEL_MONTHS[boost]) : null;
-        target.premiumGuildSince = boostSince;
-        target.premium_guild_since = boostSince?.toISOString() ?? null;
-    }
+    const boostSince = boost >= 0 ? monthsAgo(BOOST_LEVEL_MONTHS[boost] ?? 1) : null;
+    target.premiumGuildSince = boostSince;
+    target.premium_guild_since = boostSince?.toISOString() ?? null;
 
     // Some profile builds read metadata from the nested user/profile object.
     if (includeNested && target.user && target.user !== target) applyNativeProfileMetadata(target.user, data, false);
@@ -751,10 +738,9 @@ function remoteOnlyFields() {
 function toSharedProfile(data: CustomProfileData) {
     const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds.filter(id => id !== REPLACE_BADGES_SYNC_ID) : [];
     if (data.replaceRealBadges === true) customBadgeIds.push(REPLACE_BADGES_SYNC_ID);
-    const { replaceRealBadges, localOnly, hideOtherProfiles, nativeEditorImages, hideBadgesWhenSyncOff, copiedUserId, ...rest } = data as any;
+    const { replaceRealBadges, ...rest } = data;
     return {
         ...rest,
-        replaceRealBadges: data.replaceRealBadges === true,
         customBadgeIds,
         displayName: data.globalName,
         joinedSince: data.signupDate,
@@ -768,26 +754,41 @@ function toSharedProfile(data: CustomProfileData) {
 }
 
 async function publishSharedProfile(): Promise<void> {
-    if (!profileRuntimeActive || storedData.localOnly) return;
-    const queue = publishSharedProfile as typeof publishSharedProfile & { pending?: Promise<void>; queued?: boolean; };
-    if (queue.pending) {
-        queue.queued = true;
-        return queue.pending;
+    if (storedData.localOnly) return;
+    const ownerId = activeUserId();
+    if (!ownerId || !isEnabled) throw new Error("Sign in to Discord before syncing your profile.");
+    // Advance the revision without pulling old fields into the open editor.
+    const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
+    if (latestResponse.ok) {
+        const latest = await latestResponse.json();
+        storedData.syncRevision = Math.max(Date.now(), Number(storedData.syncRevision || 0), Number(latest?.profile?.syncRevision || 0) + 1);
+        allAccountsData[ownerId] = storedData;
+        saveDataSync(storedData, true); saveAllDataSync();
     }
-    queue.pending = (async () => {
-        try {
-            do {
-                queue.queued = false;
-                try { await publishSharedProfileSnapshot(); }
-                catch (error) {
-                    // A save requested during the failed request still deserves a
-                    // fresh attempt; every caller waits for the final saved state.
-                    if (!queue.queued) throw error;
-                }
-            } while (queue.queued && profileRuntimeActive && !storedData.localOnly);
-        } finally { queue.pending = undefined; }
-    })();
-    return queue.pending;
+    let saved: any = {};
+    saved = await DataStore.get(LS_SHARE) || {};
+    if (!saved.id) {
+        try { saved = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { }
+        if (saved.id) await DataStore.set(LS_SHARE, saved);
+    }
+    if (storedData.localOnly) return;
+    const response = await fetch(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
+        method: saved.id ? "PUT" : "POST",
+        headers: { "Content-Type": "application/json", ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {}) },
+        body: JSON.stringify({ ownerId, profile: toSharedProfile(storedData) })
+    });
+    if (!response.ok) {
+        if (response.status === 409) throw new Error("Your shared profile changed on another device. Reopen the editor and try again.");
+        if (saved.id && (response.status === 401 || response.status === 404)) {
+            await DataStore.set(LS_SHARE, {});
+            try { localStorage.removeItem(LS_SHARE); } catch { }
+            return publishSharedProfile();
+        }
+        const details = await response.json().catch(() => null);
+        throw new Error(response.status === 413 ? "Your profile images are too large to sync. Use Upload to crop and resize them." : response.status === 429 ? "Too many saves. Wait a moment and try again." : response.status === 503 ? "Profile sync is unavailable right now. Your changes are saved on this device." : `Couldn't sync your profile (${response.status}). ${String(details?.error || "Try again shortly.").slice(0, 160)}`);
+    }
+    const result = await response.json();
+    if (!saved.id && result?.id) await DataStore.set(LS_SHARE, { id: result.id, editToken: result.editToken });
 }
 
 async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
@@ -981,21 +982,19 @@ function onPendingProfileChange(action: any) {
 
 function queueSharedPublish() {
     if (publishTimer) clearTimeout(publishTimer);
-    if (!profileRuntimeActive || storedData.localOnly) return;
+    if (storedData.localOnly) return;
     publishTimer = setTimeout(() => void publishSharedProfile().catch(() => { }), 800);
 }
 
 async function pullOwnSharedProfile() {
-    if (!profileRuntimeActive || storedData.localOnly) return;
-    const generation = profileRuntimeGeneration;
+    if (storedData.localOnly) return;
     // Never replace local form state with the last server snapshot while the
     // profile editor is open or immediately after saving a newer revision.
     if (profileEditorOpen || Date.now() < suppressOwnPullUntil) return;
     const id = activeUserId();
     if (!id) return;
-    const localSnapshot = JSON.stringify(storedData);
     try {
-        const response = await fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`);
+        const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`);
         // Existing installations may have local profile data but no row in the
         // website-backed sync database yet. Seed it automatically instead of
         // waiting for the user to edit a field.
@@ -1005,14 +1004,9 @@ async function pullOwnSharedProfile() {
         }
         if (!response.ok) return;
         const payload = await response.json();
-        if (!profileRuntimeActive || generation !== profileRuntimeGeneration || activeUserId() !== id || storedData.localOnly || profileEditorOpen || Date.now() < suppressOwnPullUntil || JSON.stringify(storedData) !== localSnapshot) return;
-        const remote = payload?.profile ?? payload;
-        if (Number(remote?.syncRevision || 0) < Number(storedData.syncRevision || 0)) return;
-        lastRemoteProfile = payload?.profile ?? payload ?? null;
-        const pulled = fromSharedProfile(lastRemoteProfile);
-        for (const key of LOCAL_ONLY_FIELDS) if (Object.prototype.hasOwnProperty.call(storedData, key)) (pulled as any)[key] = (storedData as any)[key];
+        if (storedData.localOnly) return;
+        const pulled = fromSharedProfile(payload?.profile ?? payload);
         if (!Object.keys(pulled).length) return;
-        if (JSON.stringify(pulled) === JSON.stringify(storedData) && isEnabled) return;
         storedData = pulled; isEnabled = true; allAccountsData[id] = pulled; allAccountsEnabled[id] = true;
         saveDataSync(pulled, true); saveAllDataSync();
         await Promise.all([DataStore.set(DS_ALL_DATA, allAccountsData), DataStore.set(DS_ALL_ENABLED, allAccountsEnabled)]);
@@ -1021,56 +1015,35 @@ async function pullOwnSharedProfile() {
 }
 
 function requestSharedProfile(userId: string, force = false) {
-    if (!profileRuntimeActive || !/^\d{15,22}$/.test(userId) || isMe(userId) || sharedRequests.has(userId)) return;
-    const generation = profileRuntimeGeneration;
+    if (!/^\d{15,22}$/.test(userId) || isMe(userId) || sharedRequests.has(userId)) return;
     const now = Date.now();
-    if (now < sharedBackoffUntil) { if (sharedQueued.size < 200) sharedQueued.add(userId); return; }
-    // Busy: queue it instead of dropping it, so the profile still loads (and its badges replace the real ones).
-    if (sharedRequests.size >= SHARED_MAX_IN_FLIGHT) { if (sharedQueued.size < 200) sharedQueued.add(userId); return; }
-    // "No profile" is remembered, but only for a minute when the profile is actually opened.
-    const missingUntil = sharedMissingUntil.get(userId) ?? 0;
-    if (missingUntil > now && (!force || missingUntil - SHARED_MISSING_TTL_MS + 60_000 > now)) return;
+    if (now < sharedBackoffUntil || sharedRequests.size >= SHARED_MAX_IN_FLIGHT) return;
+    if ((sharedMissingUntil.get(userId) ?? 0) > now) return;
     const fetchedAt = sharedProfileFetchedAt.get(userId) ?? 0;
     // Even forced refreshes wait a little, so one user is never fetched in a loop.
     if (sharedProfiles.has(userId) && now - fetchedAt < (force ? 30_000 : SHARED_PROFILE_TTL_MS)) return;
     sharedRequests.add(userId);
-    void fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`)
+    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`)
         .then(r => {
-            if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return null;
             if (r.status === 404) {
-                sharedQueued.delete(userId);
                 // No CloudCord profile: remember that instead of asking again.
                 sharedMissingUntil.set(userId, Date.now() + SHARED_MISSING_TTL_MS);
                 if (sharedMissingUntil.size > 5000) sharedMissingUntil.delete(sharedMissingUntil.keys().next().value!);
-                // A deleted shared profile must restore Discord's original presentation.
-                // Keep transient failures separate: only a confirmed 404 removes it.
-                if (sharedProfiles.delete(userId)) {
-                    sharedProfileFetchedAt.delete(userId);
-                    try {
-                        (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore")?.emitChange?.();
-                        (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
-                        refreshPresence();
-                    } catch { }
-                }
                 return null;
             }
             if (r.status === 429 || r.status >= 500) {
                 const retryAfter = Number(r.headers.get("retry-after")) * 1000;
                 sharedBackoffUntil = Date.now() + (Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 5 * 60_000) : 60_000);
-                if (sharedQueued.size < 200) sharedQueued.add(userId);
                 return null;
             }
             return r.ok ? r.json() : null;
         }).then(payload => {
-            if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
             const data = payload?.profile ?? payload;
             if (!data) return;
             const next = fromSharedProfile(data);
             const previous = sharedProfiles.get(userId);
             const changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
-            sharedMissingUntil.delete(userId);
-            sharedQueued.delete(userId);
-            if (changed) sharedProfiles.set(userId, next);
+            sharedProfiles.set(userId, next);
             sharedProfileFetchedAt.set(userId, Date.now());
             if (!changed) return;
             try {
@@ -1079,29 +1052,13 @@ function requestSharedProfile(userId: string, force = false) {
                 (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
                 refreshPresence();
             } catch { }
-        }).catch(() => {
-            if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
-            sharedBackoffUntil = Math.max(sharedBackoffUntil, Date.now() + 30_000);
-            if (sharedQueued.size < 200) sharedQueued.add(userId);
-        }).finally(() => {
-            if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
-            sharedRequests.delete(userId);
-            if (Date.now() < sharedBackoffUntil) return;
-            const next = sharedQueued.values().next().value;
-            if (next) { sharedQueued.delete(next); requestSharedProfile(next); }
-        });
+        }).catch(() => { }).finally(() => sharedRequests.delete(userId));
 }
 
 function refreshVisibleSharedProfiles() {
     // Keep recently viewed CloudCord profiles fresh (so changes made on another
     // device appear), a few per tick, oldest first. Nobody else is re-fetched.
     const now = Date.now();
-    if (!profileRuntimeActive || now < sharedBackoffUntil) return;
-    for (const userId of [...sharedQueued]) {
-        if (sharedRequests.size >= SHARED_MAX_IN_FLIGHT) break;
-        sharedQueued.delete(userId);
-        requestSharedProfile(userId, true);
-    }
     const due = [...sharedViewedAt]
         .filter(([userId, viewedAt]) => now - viewedAt < SHARED_VIEWED_WINDOW_MS && now - (sharedProfileFetchedAt.get(userId) ?? 0) > 30_000)
         .sort((a, b) => (sharedProfileFetchedAt.get(a[0]) ?? 0) - (sharedProfileFetchedAt.get(b[0]) ?? 0))
@@ -1861,20 +1818,11 @@ export default definePlugin({
     ],
 
     getBadgeLayout(userId: string) {
-        if (!profileRuntimeActive) return null;
-        if (isMe(userId)) return isEnabled && !(storedData.localOnly && storedData.hideBadgesWhenSyncOff) ? storedData : null;
-        requestSharedProfile(userId, true);
-        return viewedSharedProfile(userId, true);
+        if (isMe(userId)) return isEnabled ? storedData : null;
+        requestSharedProfile(userId);
+        return viewedSharedProfile(userId);
     },
 
-    filterNativeBadges(userId: string, badges: ProfileBadge[]) {
-        const data = this.getBadgeLayout(userId);
-        if (!data) return badges;
-        const custom = (badge: ProfileBadge) => (badge as any).cloudcordProfileBadge === true || /^cloudcord-(?:official|custom)-/.test(badge.id);
-        if (shouldReplaceBadges(data)) return badges.filter(custom);
-        const replaced = new Set(badges.filter(badge => (badge as any).cloudcordProfileBadge === true).map(badgeLayoutKey));
-        return badges.filter(badge => custom(badge) || !replaced.has(badgeLayoutKey(badge)));
-    },
 
     fakeGiftCode(code: string) {
         if (!profileRuntimeActive) return null;
@@ -1985,7 +1933,7 @@ export default definePlugin({
             if (storedData.decorationAsset) { merged.avatarDecoration = nativeDecoration(storedData); merged.avatarDecorationData = merged.avatarDecoration; }
             if (storedData.nitro && storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
             applyNativeProfileMetadata(merged, storedData);
-            if (shouldReplaceBadges(storedData)) merged.badges = [];
+            merged.badges = [];
             return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
         } catch { return profile; }
     },
@@ -2036,9 +1984,20 @@ fakeObfuscatedEmail(real: string | null) {
                 // desktop stopped requesting as soon as one response was cached, so later
                 // changes made on mobile could never appear until Discord restarted.
                 requestSharedProfile(userId);
-                profileData = viewedSharedProfile(userId, true);
+                profileData = viewedSharedProfile(userId);
                 if (!profileData) return published;
             }
+
+            // Suppress real Discord badges by zeroing publicFlags on the live user object
+            try {
+                const WP = (Vencord as any).Webpack;
+                const US = WP?.findByStoreName?.("UserStore") || WP?.findByProps?.("getCurrentUser", "getUser");
+                const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
+                if (liveUser && shouldReplaceBadges(profileData)) {
+                    Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
+                    Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
+                }
+            } catch { }
 
             // Let Discord's profile badge renderer determine the icon size.
             // Forcing 26px made CloudCord badges visibly larger than native ones.
@@ -2058,7 +2017,7 @@ fakeObfuscatedEmail(real: string | null) {
             if (f & FLAG.BRAVERY) badges.push({ id: "sp_bravery", description: "HypeSquad Bravery", iconSrc: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png", position: 0, props: { style } });
             if (f & FLAG.BRILLIANCE) badges.push({ id: "sp_brilliance", description: "HypeSquad Brilliance", iconSrc: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png", position: 0, props: { style } });
             if (f & FLAG.BALANCE) badges.push({ id: "sp_balance", description: "HypeSquad Balance", iconSrc: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png", position: 0, props: { style } });
-            if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", component: NativeProfileBadge, position: 0, props: { style } });
+            if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", position: 0, props: { style } });
             if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Golden Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
             if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Early Verified Bot Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
             if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
@@ -2066,7 +2025,7 @@ fakeObfuscatedEmail(real: string | null) {
             if (hasNitroFake) badges.push({
                 id: nativeNitroBadgeId(nl),
                 key: NITRO_LEVELS[nl].name,
-                description: `Subscriber since ${shortProfileDate(nitroSinceFor(nl, profileData.nitroSince))}`,
+                description: `Subscriber since ${shortProfileDate(monthsAgo(NITRO_LEVEL_MONTHS[nl] ?? 0, profileData.nitroSince))}`,
                 iconSrc: NITRO_LEVELS[nl].icon,
                 link: "https://discord.com/settings/premium",
                 props: { style },
@@ -2074,7 +2033,7 @@ fakeObfuscatedEmail(real: string | null) {
             });
             if (gl >= 0 && gl < GIFT_LEVELS.length) {
                 const gift = GIFT_LEVELS[gl];
-                badges.push({ id: "sp_gifting", description: gift.name, iconSrc: gift.icon, component: NativeProfileBadge, position: 0, props: { style } });
+                badges.push({ id: "sp_gifting", description: gift.name, iconSrc: gift.icon, position: 0, props: { style } });
             }
             if (hasBoostFake) {
                 const boostSince = monthsAgo(BOOST_LEVEL_MONTHS[bm] ?? 1);
@@ -2086,7 +2045,7 @@ fakeObfuscatedEmail(real: string | null) {
             for (const badge of EXTRA_BADGES) {
                 if (profileData.customBadgeIds?.includes(badge.id)) badges.push({ id: `sp_${badge.id}`, description: badge.label, iconSrc: badge.icon, position: 0, props: { style } });
             }
-            return [...badges.map(badge => ({ ...badge, cloudcordProfileBadge: true })), ...published].sort((a, b) => {
+            return [...badges, ...published].sort((a, b) => {
                 const normalizedA = a.id.startsWith("premium_tenure_") || a.id === "premium" ? "sp_nitro" : a.id;
                 const normalizedB = b.id.startsWith("premium_tenure_") || b.id === "premium" ? "sp_nitro" : b.id;
                 const ai = DISCORD_PROFILE_BADGE_ORDER.indexOf(normalizedA);
