@@ -33,6 +33,7 @@ const helpers = source.slice(source.indexOf('let uploadedBadges:'), source.index
 let calls = 0, redraws = 0;
 let badges = [{ id: 'one', userId: '123', name: 'My badge', icon: 'https://getcloudcord.com/v1/custom-badges/one.png' }];
 const context = vm.createContext({ Date, JSON, forceAccountPanelRerender: () => redraws++, fetch: async () => { calls++; return { ok: true, json: async () => ({ badges }) }; } });
+context.fetchProfileResponse = (...args) => context.fetch(...args);
 vm.runInContext(esbuild.transformSync(helpers, { loader: 'ts' }).code, context);
 (async () => {
     await context.refreshUploadedBadges(true);

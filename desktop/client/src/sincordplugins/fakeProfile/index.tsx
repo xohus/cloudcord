@@ -16,6 +16,7 @@ import { Current, installPresenceHooks, installTagIconSwap, loadCatalog, Namepla
 import { installNativeSocialHooks } from "@utils/nativeSocialHooks";
 import { appearanceOptions, availableServerTags, Catalog, customDiscordMediaURL, nameplateAssetURL, nativeCollectibles, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, ProfileAppearance } from "@utils/profileAppearance";
 import { findByProps } from "@webpack";
+import { fetchProfileResponse } from "@utils/profileSyncNetwork";
 
 import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
 import { applyBadgeLayout, badgeLayoutKey, defaultBadgeOrder, moveBadgeOrder } from "@api/BadgeLayout";
@@ -583,7 +584,7 @@ async function refreshUploadedBadges(force = false) {
     if (badgeFetchPending || !force && Date.now() - badgeFetchedAt < 2 * 60_000) return;
     badgeFetchPending = true; badgeFetchedAt = Date.now();
     try {
-        const response = await fetch("https://getcloudcord.com/v1/custom-badges");
+        const response = await fetchProfileResponse("https://getcloudcord.com/v1/custom-badges");
         if (!response.ok) return;
         const payload = await response.json();
         if (!Array.isArray(payload?.badges)) return;
@@ -772,7 +773,7 @@ async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
     if (!ownerId || !isEnabled) throw new Error("Sign in to Discord before syncing your profile.");
     let remoteRevision = 0;
     // Advance the revision without pulling old fields into the open editor.
-    const latestResponse = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
+    const latestResponse = await fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(ownerId)}`, { cache: "no-store" });
     if (!profileRuntimeActive || generation !== profileRuntimeGeneration || activeUserId() !== ownerId || storedData.localOnly) return;
     if (latestResponse.ok) {
         const latest = await latestResponse.json();
@@ -801,7 +802,7 @@ async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
     storedData.syncRevision = Math.max(Date.now(), Number(storedData.syncRevision || 0) + 1, remoteRevision + 1);
     allAccountsData[ownerId] = storedData;
     saveDataSync(storedData, true); saveAllDataSync();
-    const response = await fetch(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
+    const response = await fetchProfileResponse(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
         method: saved.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json", ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {}) },
         // Keep fields only the phone app knows about, so saving here never wipes them.
@@ -967,7 +968,7 @@ async function pullOwnSharedProfile() {
     if (!id) return;
     const localSnapshot = JSON.stringify(storedData);
     try {
-        const response = await fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`);
+        const response = await fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(id)}`);
         // Existing installations may have local profile data but no row in the
         // website-backed sync database yet. Seed it automatically instead of
         // waiting for the user to edit a field.
@@ -996,7 +997,7 @@ function requestSharedProfile(userId: string, force = false) {
     if (!profileRuntimeActive || !/^\d{15,22}$/.test(userId) || isMe(userId) || sharedRequests.has(userId)) return;
     const generation = profileRuntimeGeneration;
     const now = Date.now();
-    if (now < sharedBackoffUntil) return;
+    if (now < sharedBackoffUntil) { if (sharedQueued.size < 200) sharedQueued.add(userId); return; }
     // Busy: queue it instead of dropping it, so the profile still loads (and its badges replace the real ones).
     if (sharedRequests.size >= SHARED_MAX_IN_FLIGHT) { if (sharedQueued.size < 200) sharedQueued.add(userId); return; }
     // "No profile" is remembered, but only for a minute when the profile is actually opened.
@@ -1006,10 +1007,11 @@ function requestSharedProfile(userId: string, force = false) {
     // Even forced refreshes wait a little, so one user is never fetched in a loop.
     if (sharedProfiles.has(userId) && now - fetchedAt < (force ? 30_000 : SHARED_PROFILE_TTL_MS)) return;
     sharedRequests.add(userId);
-    void fetch(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`)
+    void fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(userId)}`)
         .then(r => {
             if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return null;
             if (r.status === 404) {
+                sharedQueued.delete(userId);
                 // No CloudCord profile: remember that instead of asking again.
                 sharedMissingUntil.set(userId, Date.now() + SHARED_MISSING_TTL_MS);
                 if (sharedMissingUntil.size > 5000) sharedMissingUntil.delete(sharedMissingUntil.keys().next().value!);
@@ -1028,6 +1030,7 @@ function requestSharedProfile(userId: string, force = false) {
             if (r.status === 429 || r.status >= 500) {
                 const retryAfter = Number(r.headers.get("retry-after")) * 1000;
                 sharedBackoffUntil = Date.now() + (Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(retryAfter, 5 * 60_000) : 60_000);
+                if (sharedQueued.size < 200) sharedQueued.add(userId);
                 return null;
             }
             return r.ok ? r.json() : null;
@@ -1039,6 +1042,7 @@ function requestSharedProfile(userId: string, force = false) {
             const previous = sharedProfiles.get(userId);
             const changed = JSON.stringify(previous ?? null) !== JSON.stringify(next);
             sharedMissingUntil.delete(userId);
+            sharedQueued.delete(userId);
             if (changed) sharedProfiles.set(userId, next);
             sharedProfileFetchedAt.set(userId, Date.now());
             if (!changed) return;
@@ -1048,8 +1052,14 @@ function requestSharedProfile(userId: string, force = false) {
                 (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
                 refreshPresence();
             } catch { }
-        }).catch(() => { }).finally(() => {
+        }).catch(() => {
+            if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
+            sharedBackoffUntil = Math.max(sharedBackoffUntil, Date.now() + 30_000);
+            if (sharedQueued.size < 200) sharedQueued.add(userId);
+        }).finally(() => {
+            if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
             sharedRequests.delete(userId);
+            if (Date.now() < sharedBackoffUntil) return;
             const next = sharedQueued.values().next().value;
             if (next) { sharedQueued.delete(next); requestSharedProfile(next); }
         });
@@ -1059,6 +1069,12 @@ function refreshVisibleSharedProfiles() {
     // Keep recently viewed CloudCord profiles fresh (so changes made on another
     // device appear), a few per tick, oldest first. Nobody else is re-fetched.
     const now = Date.now();
+    if (!profileRuntimeActive || now < sharedBackoffUntil) return;
+    for (const userId of [...sharedQueued]) {
+        if (sharedRequests.size >= SHARED_MAX_IN_FLIGHT) break;
+        sharedQueued.delete(userId);
+        requestSharedProfile(userId, true);
+    }
     const due = [...sharedViewedAt]
         .filter(([userId, viewedAt]) => now - viewedAt < SHARED_VIEWED_WINDOW_MS && now - (sharedProfileFetchedAt.get(userId) ?? 0) > 30_000)
         .sort((a, b) => (sharedProfileFetchedAt.get(a[0]) ?? 0) - (sharedProfileFetchedAt.get(b[0]) ?? 0))
@@ -2131,6 +2147,7 @@ fakeObfuscatedEmail(real: string | null) {
         profileRuntimeActive = false;
         profileRuntimeGeneration++;
         otherUserCache = new WeakMap();
+        sharedRequests.clear(); sharedQueued.clear();
         cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
         uninstallProfileStoreHooks();
         if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }

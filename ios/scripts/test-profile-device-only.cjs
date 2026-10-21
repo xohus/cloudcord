@@ -7,10 +7,10 @@ for (const [source, flag] of [[desktop, 'storedData.localOnly'], [mobile, 'rootS
     const publish = source.slice(source.indexOf('async function publishSharedProfile('));
     const guard = new RegExp(`if \\([^\\n]*${flag.replace(/\./g, '\\.')}[^\\n]*\\) return;`);
     const publishGuard = publish.match(guard);
-    assert(publishGuard && publishGuard.index < publish.indexOf('fetch('));
+    assert(publishGuard && publishGuard.index < publish.search(/fetch(?:ProfileResponse)?\(/));
     const pull = source.slice(source.indexOf('async function pullOwnSharedProfile('));
     const pullGuard = pull.match(guard);
-    assert(pullGuard && pullGuard.index < pull.indexOf('fetch('));
+    assert(pullGuard && pullGuard.index < pull.search(/fetch(?:ProfileResponse)?\(/));
     const queue = source.slice(source.indexOf('function queueSharedPublish()'), source.indexOf('async function pullOwnSharedProfile('));
     let scheduled = 0;
     vm.runInNewContext(queue.replace(/catch\(error => \{[\s\S]*?\}\)/, 'catch(() => {})') + '\nqueueSharedPublish();', {
