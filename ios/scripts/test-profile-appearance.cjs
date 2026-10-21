@@ -20,4 +20,14 @@ assert.equal(api.nativeProfileAppearance({ serverTag: null }).primaryGuild, null
 assert.equal(api.nativeProfileAppearance({ displayNameStyles: null }).displayNameStyles, null);
 assert.equal(api.normalizeProfileAppearance({ serverTag: { ...input.serverTag, tag: 'TOOLONG' } }).serverTag, undefined);
 assert.equal(api.normalizeProfileAppearance({ displayNameStyles: { fontId: -1, effectId: 0, colors: [] } }).displayNameStyles, undefined);
+// One malformed server row must not prevent the remaining picker entries loading.
+const validProduct = { sku_id: '1000000000000000001', name: 'Valid', items: [null, { type: 0, asset: 'valid-decoration' }] };
+for (const effects of [{ profile_effect_configs: {} }, { profileEffectConfigs: 'invalid' }, null]) {
+    const catalog = api.parseCatalog([null, { products: {} }, { products: [null, { items: {} }, validProduct] }], effects);
+    assert.equal(catalog.decorations.length, 1);
+    assert.equal(catalog.decorations[0].id, 'valid-decoration');
+}
+const effects = api.parseCatalog([], { profile_effect_configs: [null, { sku_id: 'invalid' }, { sku_id: '1000000000000000002', title: 'Valid effect' }] });
+assert.equal(effects.effects.length, 1);
+assert.equal(effects.effects[0].title, 'Valid effect');
 console.log('PASS: shared appearance validation, native aliases, black colors, reset and immutable sync round-trip.');

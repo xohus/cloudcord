@@ -466,13 +466,17 @@ export function nameplateAssetURL(asset: string, animated = false): string {
 export function parseCatalog(categoriesBody: any, effectsBody: any): Catalog {
     const categories = Array.isArray(categoriesBody) ? categoriesBody : Array.isArray(categoriesBody?.categories) ? categoriesBody.categories : [];
     const configs = new Map<string, any>();
-    for (const config of camel(effectsBody?.profile_effect_configs ?? effectsBody?.profileEffectConfigs ?? (Array.isArray(effectsBody) ? effectsBody : []))) {
-        if (config?.skuId) configs.set(String(config.skuId), config);
+    const effectConfigs = effectsBody?.profile_effect_configs ?? effectsBody?.profileEffectConfigs ?? effectsBody;
+    for (const rawConfig of Array.isArray(effectConfigs) ? effectConfigs : []) {
+        if (!rawConfig || typeof rawConfig !== "object" || Array.isArray(rawConfig)) continue;
+        const config = camel(rawConfig);
+        if (/^\d{15,22}$/.test(String(config.skuId ?? ""))) configs.set(String(config.skuId), config);
     }
     const decorations = new Map<string, CatalogDecoration>(), nameplates = new Map<string, CatalogNameplate>(), effects = new Map<string, CatalogEffect>(), frames = new Map<string, CatalogFrame>();
     for (const category of categories) {
-        for (const product of category?.products || []) {
-            for (const item of product?.items || []) {
+        for (const product of Array.isArray(category?.products) ? category.products : []) {
+            for (const item of Array.isArray(product?.items) ? product.items : []) {
+                if (!item || typeof item !== "object" || Array.isArray(item)) continue;
                 const skuId = String(item?.sku_id || item?.skuId || product?.sku_id || product?.skuId || "");
                 if (!/^\d{15,22}$/.test(skuId)) continue;
                 const label = String(item?.label || product?.name || "").slice(0, 80);
