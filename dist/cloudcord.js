@@ -6429,6 +6429,27 @@
     }
   });
 
+  // src/lib/utils/asyncTimeout.ts
+  function withTimeout(promise, ms = 12e3, message = "Loading took too long. Check your connection and retry.") {
+    var timer;
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), ms);
+      })
+    ]).finally(() => {
+      if (timer !== void 0)
+        clearTimeout(timer);
+    });
+  }
+  var init_asyncTimeout = __esm({
+    "src/lib/utils/asyncTimeout.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+    }
+  });
+
   // src/lib/api/profileAppearance.ts
   function mergeCustomSocialLookup(before3, current, incoming) {
     if (!current || before3.id !== current.id || ("service" in before3 ? before3.service : before3.userId) !== ("service" in current ? current.service : current.userId))
@@ -13188,16 +13209,7 @@
       return Promise.resolve(collectiblesCatalog);
     if (collectiblesRequest)
       return collectiblesRequest;
-    var withTimeout = (promise, ms) => new Promise((resolve, reject) => {
-      var timer = setTimeout(() => reject(new Error("Discord took too long to answer. Check your connection and try again.")), ms);
-      promise.then((value) => {
-        clearTimeout(timer);
-        resolve(value);
-      }, (error) => {
-        clearTimeout(timer);
-        reject(error);
-      });
-    });
+    var generation = ++collectiblesGeneration;
     var store = () => {
       try {
         return safeStore("CollectiblesCategoryStore");
@@ -13228,10 +13240,10 @@
     var get = (url2) => _async_to_generator(function* () {
       if (!http)
         throw new Error("Discord's network helper isn't available in this version.");
-      return (yield http.get({
+      return (yield withTimeout(Promise.resolve().then(() => http.get({
         url: url2,
         oldFormErrors: true
-      }))?.body;
+      })), 8e3))?.body;
     })();
     collectiblesRequest = withTimeout((() => _async_to_generator(function* () {
       if (!shopProducts().length) {
@@ -13256,6 +13268,8 @@
       ] : categories, effects);
       if (!parsed.nameplates.length && !parsed.effects.length && !parsed.decorations.length && !parsed.frames.length)
         throw new Error("Discord's shop didn't return any items. Open the Shop once, then try again.");
+      if (generation !== collectiblesGeneration)
+        throw new Error("This catalog load was superseded. Retry the current view.");
       collectiblesCatalog = parsed;
       identityRefreshers.forEach((refresh) => {
         try {
@@ -13264,7 +13278,11 @@
         }
       });
       return parsed;
-    })())(), 25e3).finally(() => {
+    })())(), 25e3).catch((error) => {
+      if (generation === collectiblesGeneration)
+        collectiblesGeneration++;
+      throw error;
+    }).finally(() => {
       collectiblesRequest = null;
     });
     return collectiblesRequest;
@@ -13301,6 +13319,16 @@
   }
   function findDecorationCatalog() {
     return _async_to_generator(function* () {
+      if (decorationRequest)
+        return decorationRequest;
+      decorationRequest = readDecorationCatalog().finally(() => {
+        decorationRequest = null;
+      });
+      return decorationRequest;
+    })();
+  }
+  function readDecorationCatalog() {
+    return _async_to_generator(function* () {
       var roots = [];
       for (var name of [
         "CollectiblesStore",
@@ -13313,20 +13341,20 @@
       }
       try {
         var module = findByProps("getCollectiblesCategories");
-        roots.push(yield module?.getCollectiblesCategories?.(), module);
+        roots.push(yield withTimeout(Promise.resolve().then(() => module?.getCollectiblesCategories?.()), 4e3), module);
       } catch (e) {
       }
       try {
         var module1 = findByProps("fetchCollectiblesCategories");
-        roots.push(yield module1?.fetchCollectiblesCategories?.(), module1);
+        roots.push(yield withTimeout(Promise.resolve().then(() => module1?.fetchCollectiblesCategories?.()), 4e3), module1);
       } catch (e) {
       }
       try {
         var api = findByProps("getAPIBaseURL", "get");
-        var response = yield api?.get?.({
+        var response = yield withTimeout(Promise.resolve().then(() => api?.get?.({
           url: "/collectibles-categories",
           oldFormErrors: true
-        });
+        })), 4e3);
         roots.push(response?.body, response);
       } catch (e) {
       }
@@ -13348,7 +13376,7 @@
       }
       var seen = /* @__PURE__ */ new Set();
       var visit = (value, depth = 0) => {
-        if (value == null || depth > 7 || seen.has(value))
+        if (value == null || depth > 7 || seen.size >= 2e3 || seen.has(value))
           return;
         if (typeof value !== "object")
           return;
@@ -13378,7 +13406,10 @@
               visit(child, depth + 1);
       };
       for (var root of roots) {
-        visit(root);
+        try {
+          visit(root);
+        } catch (e) {
+        }
         for (var getter of [
           "getCategories",
           "getProducts",
@@ -16189,16 +16220,33 @@
     var [catalogStatus, setCatalogStatus] = (0, import_react7.useState)({
       loading: !collectiblesCatalog
     });
+    var catalogMounted = (0, import_react7.useRef)(false);
+    var catalogRevision = (0, import_react7.useRef)(0);
+    (0, import_react7.useEffect)(() => {
+      catalogMounted.current = true;
+      return () => {
+        catalogMounted.current = false;
+        catalogRevision.current++;
+      };
+    }, []);
     var loadCatalog = (force = false) => {
+      if (!catalogMounted.current)
+        return;
+      var revision = ++catalogRevision.current;
       setCatalogStatus({
         loading: true
       });
       loadCollectiblesCatalog(force).then((result) => {
-        setCatalog(result);
-        setCatalogStatus({});
-      }, (problem) => setCatalogStatus({
-        error: problem?.message || "Couldn't load Discord's catalog."
-      }));
+        if (catalogMounted.current && catalogRevision.current === revision) {
+          setCatalog(result);
+          setCatalogStatus({});
+        }
+      }, (problem) => {
+        if (catalogMounted.current && catalogRevision.current === revision)
+          setCatalogStatus({
+            error: problem?.message || "Couldn't load Discord's catalog."
+          });
+      });
     };
     var [decorations, setDecorations] = (0, import_react7.useState)([]);
     var [decorationsLoading, setDecorationsLoading] = (0, import_react7.useState)(true);
@@ -16213,6 +16261,9 @@
           setDecorations(result);
           setDecorationsLoading(false);
         }
+      }, () => {
+        if (active)
+          setDecorationsLoading(false);
       });
       return () => {
         active = false;
@@ -17402,7 +17453,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, overriddenKeys, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -17420,6 +17471,7 @@
       init_patcher();
       init_toasts();
       init_jsx();
+      init_asyncTimeout();
       init_profileAppearance();
       init_profileIdentity();
       init_settings();
@@ -18120,6 +18172,8 @@
       checkingPrivacy = false;
       collectiblesCatalog = null;
       collectiblesRequest = null;
+      collectiblesGeneration = 0;
+      decorationRequest = null;
       publishedBadges = [];
       publishedBadgeRequest = false;
       publishedBadgeFetchedAt = 0;
@@ -18495,26 +18549,51 @@
 
   // src/lib/ui/settings/patches/shared.tsx
   function wrapOnPress(onPress, navigation2, renderPromise, screenOptions, props) {
+    var pending2 = false;
     return () => _async_to_generator(function* () {
-      if (onPress)
-        return void onPress();
-      if (typeof renderPromise !== "function")
+      if (pending2)
         return;
-      var Component2 = yield renderPromise().then((m2) => m2.default);
-      if (!Component2)
-        return;
-      if (typeof screenOptions === "string") {
-        screenOptions = {
-          title: screenOptions
-        };
+      pending2 = true;
+      try {
+        if (onPress)
+          return void (yield withTimeout(Promise.resolve().then(onPress)));
+        if (typeof renderPromise !== "function")
+          return;
+        var Component2 = yield withTimeout(Promise.resolve().then(() => renderPromise()).then((m2) => m2.default));
+        if (!Component2)
+          throw new Error("This page is unavailable in this build. Update CloudCord and try again.");
+        if (navigation2?.isFocused && !navigation2.isFocused())
+          return;
+        if (typeof screenOptions === "string") {
+          screenOptions = {
+            title: screenOptions
+          };
+        }
+        navigation2 ??= tabsNavigationRef.getRootNavigationRef();
+        if (!navigation2?.navigate)
+          throw new Error("Discord's navigation is still loading. Go back and try again.");
+        navigation2.navigate("PUPU_CUSTOM_PAGE", {
+          ...screenOptions,
+          render: () => /* @__PURE__ */ jsx(Component2, {
+            ...props
+          })
+        });
+      } catch (error) {
+        ReactNative.Alert.alert("Couldn't open CloudCord page", error instanceof Error ? error.message : "Loading failed. Check your connection and try again.", [
+          {
+            text: "Close",
+            style: "cancel"
+          },
+          {
+            text: "Retry",
+            onPress: () => {
+              void wrapOnPress(onPress, navigation2, renderPromise, screenOptions, props)();
+            }
+          }
+        ]);
+      } finally {
+        pending2 = false;
       }
-      navigation2 ??= tabsNavigationRef.getRootNavigationRef();
-      navigation2.navigate("PUPU_CUSTOM_PAGE", {
-        ...screenOptions,
-        render: () => /* @__PURE__ */ jsx(Component2, {
-          ...props
-        })
-      });
     })();
   }
   var tabsNavigationRef, CustomPageRenderer;
@@ -18526,6 +18605,7 @@
       init_async_to_generator();
       init_jsxRuntime();
       init_common();
+      init_asyncTimeout();
       init_wrappers();
       init_components2();
       tabsNavigationRef = findByPropsLazy("getRootNavigationRef");
