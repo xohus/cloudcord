@@ -2355,7 +2355,19 @@ function rewriteBadgeDirectory(action: any) {
         const owned = new Map<number, any>();
         for (const badge of buildProfileBadges(userId)) { const id = directoryBadgeId(badge.id); if (id != null) owned.set(id, badge); }
         const replace = shouldReplaceBadges(data);
-        if (Array.isArray(action.badges)) action.badges = action.badges.map((entry: any) => fakeDirectoryEntry(entry, userId, data, owned, replace));
+        if (Array.isArray(action.badges)) {
+            const entries = action.badges.map((entry: any) => fakeDirectoryEntry(entry, userId, data, owned, replace));
+            // Other people's badge info only lists badges they really own, so fake ones have
+            // no entry. Build them from the full badge list Discord keeps for your account.
+            const listed = new Set(entries.map((entry: any) => entry?.badge_id));
+            const myId = activeUserId();
+            for (const badgeId of owned.keys()) {
+                if (listed.has(badgeId) || !myId || myId === userId) continue;
+                const template = badgeDirectoryStore?.getBadgeById?.(badgeId, myId);
+                if (template) entries.push(fakeDirectoryEntry({ ...template, owned: false, info_label: undefined, progress: undefined }, userId, data, owned, replace));
+            }
+            action.badges = entries;
+        }
         if (action.badge) action.badge = fakeDirectoryEntry(action.badge, userId, data, owned, replace);
     } catch { }
     return false;
