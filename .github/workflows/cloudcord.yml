@@ -2183,10 +2183,12 @@ jobs:
                   const tier = activityTier(src, badge.key);
                   if (tier < 0) continue;
                   const hash = ACTIVITY_ICON_HASHES[badge.key]?.[tier];
-                  if (hash) { out.push({ id: badge.key, description: badge.title, icon: hash }); continue; }
+                  // Mobile shows only the badge text, so include the tier and amount like Discord's card: "Account Age · Stromatolite · 9 years".
+                  const text = badge.title + " · " + badge.tiers[tier][0] + " · " + badge.label(badge.tiers[tier][1]);
+                  if (hash) { out.push({ id: badge.key, description: text, icon: hash }); continue; }
                   const fallback = EXPERIMENTAL_BADGE_GROUPS.find((group: any) => group.id === badge.key)?.tiers.find((item: any) => item.name === badge.tiers[tier][0])?.icon;
                   const icon = fallback ?? (currentUserId ? store?.getBadgeById?.(badge.badgeId, currentUserId)?.tiers?.[tier]?.simple_icon_raster_url : undefined);
-                  out.push({ id: badge.key, description: badge.title, icon: icon ?? "", iconSrc: icon });
+                  out.push({ id: badge.key, description: text, icon: icon ?? "", iconSrc: icon });
               }
               for (const row of BADGES) {
                   if (!src.selected(row as any[]) || /^(?:account_age|streaming|game_time|game_variety)_\d+$/.test(String(row[0]))) continue;
