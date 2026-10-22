@@ -14510,7 +14510,8 @@
         onJsxCreate(component, (_component, rendered) => {
           if (!rendered?.props)
             return;
-          var props = badgeRenderProps.get(rendered.props.id);
+          var renderedId = String(rendered.props.id || "");
+          var props = /^(?:cloudcord-|fakeprofile-)/.test(renderedId) ? badgeRenderProps.get(rendered.props.id) : void 0;
           if (props) {
             if (String(props.id || "").startsWith("cloudcord-official-")) {
               return /* @__PURE__ */ jsx(import_react_native21.Pressable, {
