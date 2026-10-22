@@ -164,6 +164,8 @@ const BOOST_SINCE = new Date(Date.now() - 90 * 86400_000);
 let boostOriginals: { getGuild: any; getMember: any; } | null = null;
 const guildOverlays = new WeakMap<object, any>();
 const memberOverlays = new WeakMap<object, any>();
+// Our own overlays, so a guild that comes back through getGuild is never wrapped twice.
+const overlaySet = new WeakSet<object>();
 function boostFor(guildId?: string | null) { return guildId ? extras.boosts?.[guildId] : undefined; }
 // Read-only overlays: Discord's stores keep their real data, we only change what's returned.
 function installBoostHooks() {
@@ -172,9 +174,10 @@ function installBoostHooks() {
     const { getGuild, getMember } = boostOriginals;
     (GuildStore as any).getGuild = function (guildId: string, ...rest: any[]) {
         const guild = getGuild.call(this, guildId, ...rest);
-        if (!guild || !boostFor(guildId)?.level) return guild;
+        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !boostFor(guildId)?.level) return guild;
         let overlay = guildOverlays.get(guild);
         if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, { get: (target, key) => key === "premiumTier" ? 3 : key === "premiumSubscriberCount" ? Math.max(14, target.premiumSubscriberCount ?? 0) : Reflect.get(target, key, target) }));
+        overlaySet.add(overlay);
         return overlay;
     };
     (GuildMemberStore as any).getMember = function (guildId: string, userId: string, ...rest: any[]) {

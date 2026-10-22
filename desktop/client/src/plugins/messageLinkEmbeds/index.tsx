@@ -213,6 +213,7 @@ function computeWidthAndHeight(width: number, height: number) {
 }
 
 function withEmbeddedBy(message: Message, embeddedBy: string[]) {
+    if (!message || typeof message !== "object") return message;
     return new Proxy(message, {
         get(_, prop) {
             if (prop === "vencordEmbeddedBy") return embeddedBy;

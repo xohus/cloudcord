@@ -3066,6 +3066,8 @@ jobs:
           function boostFor(guildId?: string | null): BoostFake | undefined { return guildId ? (extrasState() as any).boosts?.[guildId] : undefined; }
           const guildOverlays = new WeakMap<object, any>();
           const memberOverlays = new WeakMap<object, any>();
+          // Our own overlays, so a guild that comes back through getGuild is never wrapped twice.
+          const overlaySet = new WeakSet<object>();
           let boostHooksInstalled = false;
           function installBoostHooks() {
               if (boostHooksInstalled) return;
@@ -3074,15 +3076,20 @@ jobs:
               if (!guilds || !members) return;
               boostHooksInstalled = true;
               after("getGuild", guilds, (args: any[], guild: any) => {
-                  if (!guild || !boostFor(args[0])?.level) return guild;
+                  try {
+                  if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !boostFor(args[0])?.level) return guild;
                   let overlay = guildOverlays.get(guild);
                   if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, { get: (target: any, key) => key === "premiumTier" ? 3 : key === "premiumSubscriberCount" ? Math.max(14, target.premiumSubscriberCount ?? 0) : Reflect.get(target, key, target) }));
+                  overlaySet.add(overlay);
                   return overlay;
+                  } catch { return guild; }
               });
               after("getMember", members, (args: any[], member: any) => {
                   // Called constantly: bail out early unless this server has a fake boost.
-                  if (!member || member.premiumSince || !boostFor(args[0])?.booster) return member;
-                  if (args[1] !== (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id) return member;
+                  if (!member || typeof member !== "object" || member.premiumSince || !boostFor(args[0])?.booster) return member;
+                  let me: string | undefined;
+                  try { me = (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id; } catch {}
+                  if (!me || args[1] !== me) return member;
                   let overlay = memberOverlays.get(member);
                   if (!overlay) memberOverlays.set(member, overlay = { ...member, premiumSince: new Date(Date.now() - 90 * 86400000).toISOString() });
                   return overlay;
