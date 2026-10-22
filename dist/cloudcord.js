@@ -10268,26 +10268,32 @@
       profile: [
         "UserIcon"
       ],
-      style: [
-        "PaintPaletteIcon",
-        "SparklesIcon",
-        "StarIcon"
+      name: [
+        "TagIcon",
+        "TagsIcon",
+        "PencilIcon"
       ],
-      dates: [
-        "CalendarIcon",
-        "ClockIcon"
+      cosmetics: [
+        "SparklesIcon",
+        "SparkleIcon",
+        "StarIcon"
       ],
       status: [
         "CircleIcon",
         "StatusIcon",
         "UserIcon"
       ],
+      badges: [
+        "BadgeIcon",
+        "StarIcon"
+      ],
       social: [
         "LinkIcon",
         "PeopleIcon"
       ],
-      badges: [
-        "StarIcon"
+      dates: [
+        "CalendarIcon",
+        "ClockIcon"
       ],
       custom: [
         "ImageIcon",
@@ -10483,9 +10489,14 @@
           "Names, pictures, banner, bio and colors"
         ],
         [
-          "style",
-          "Style",
-          "Frames, effects, nameplates, decorations, name style and server tag"
+          "name",
+          "Name & tag",
+          "Name style, font, colors and server tag"
+        ],
+        [
+          "cosmetics",
+          "Cosmetics",
+          "Decorations, frames, effects and nameplates"
         ],
         [
           "status",
@@ -16845,7 +16856,7 @@
     var [decorations, setDecorations] = (0, import_react7.useState)([]);
     var [decorationsLoading, setDecorationsLoading] = (0, import_react7.useState)(true);
     (0, import_react7.useEffect)(() => {
-      if (activeTab !== "style")
+      if (activeTab !== "cosmetics")
         return;
       if (!catalog)
         loadCatalog();
@@ -17176,7 +17187,7 @@
               ]
             })
           }) : null,
-          activeTab === "style" ? /* @__PURE__ */ jsx(Card2, {
+          activeTab === "cosmetics" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native21.View, {
               style: {
@@ -17311,7 +17322,7 @@
               ]
             })
           }) : null,
-          activeTab === "style" ? /* @__PURE__ */ jsx(Card2, {
+          activeTab === "name" ? /* @__PURE__ */ jsx(Card2, {
             border: "strong",
             children: /* @__PURE__ */ jsxs(import_react_native21.View, {
               style: {
@@ -17890,7 +17901,8 @@
           }) : null,
           [
             "profile",
-            "style",
+            "name",
+            "cosmetics",
             "status",
             "badges",
             "dates"
