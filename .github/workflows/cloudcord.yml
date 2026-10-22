@@ -982,7 +982,7 @@ jobs:
                   ...(saved && typeof saved === "object" ? saved : {}),
                   nitroEnabled: saved?.nitroEnabled ?? Number(saved?.nitroMonths || 0) > 0,
                   hiddenBadgeIds: Array.isArray(saved?.hiddenBadgeIds) ? [...saved.hiddenBadgeIds] : [],
-                  badgeOrder: Array.isArray(saved?.badgeOrder) ? [...saved.badgeOrder] : [],
+                      badgeOrder: Array.isArray(saved?.badgeOrder) ? [...saved.badgeOrder] : [],
                   selectedBadges: { ...(saved?.selectedBadges || {}) }
               } satisfies PreviewSettings;
               preview = rootSettings.fakeProfile as PreviewSettings;
@@ -2097,7 +2097,7 @@ jobs:
           }
           // ---- Native badges: delivered the same way Discord delivers real ones ----
           const NATIVE_BADGE_IDS: Record<string, string> = { staff: "staff", partner: "partner", hypesquad: "hypesquad", bug1: "bug_hunter_level_1", bravery: "hypesquad_house_1", brilliance: "hypesquad_house_2", balance: "hypesquad_house_3", early: "early_supporter", bug2: "bug_hunter_level_2", vdev: "verified_developer", mod: "certified_moderator", active: "active_developer", oldname: "legacy_username", quest: "quest_completed", orbs: "orb_profile_badge" };
-          const DIRECTORY_BADGE_IDS: Record<string, number> = { staff: 22, partner: 2, certified_moderator: 3, hypesquad: 4, hypesquad_house_1: 5, hypesquad_house_2: 6, hypesquad_house_3: 7, bug_hunter_level_1: 8, bug_hunter_level_2: 9, verified_developer: 10, early_supporter: 11, legacy_username: 13, quest_completed: 14, orb_profile_badge: 16, gifting: 17 };
+          const DIRECTORY_BADGE_IDS: Record<string, number> = { staff: 22, partner: 2, certified_moderator: 3, hypesquad: 4, hypesquad_house_1: 5, hypesquad_house_2: 6, hypesquad_house_3: 7, bug_hunter_level_1: 8, bug_hunter_level_2: 9, verified_developer: 10, early_supporter: 11, legacy_username: 13, quest_completed: 14, orb_profile_badge: 16, gifting: 17, account_age: 18, streaming: 19, game_time: 20, game_variety: 21 };
           const BOOST_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
           // Activity badges Discord derives itself (account age, game time...).
           const DIRECTORY_ONLY_BADGES = new Set([18, 19, 20, 21]);
@@ -2106,13 +2106,13 @@ jobs:
               if (id.startsWith("guild_booster_lvl")) return 12;
               return DIRECTORY_BADGE_IDS[id];
           }
-          type BadgeSource = { nitroMonths: number; nitroSince?: string; boostIndex: number; giftLevel: number; selected: (row: any[]) => boolean; oldName?: string; replace: boolean; order: number[]; hidden: number[] };
+          type BadgeSource = { nitroMonths: number; nitroSince?: string; boostIndex: number; giftLevel: number; selected: (row: any[]) => boolean; activity: Record<string, number>; oldName?: string; replace: boolean; order: number[]; hidden: number[] };
           function badgeSourceFor(id: string): BadgeSource | undefined {
               if (isCurrentUser(id)) {
                   if (!preview.enabled || rootSettings.fakeProfileLocalOnly && preview.hideBadgesWhenSyncOff) return undefined;
                   return { nitroMonths: preview.nitroEnabled ? preview.nitroMonths : -1, nitroSince: (preview as any).nitroSince, boostIndex: preview.boostMonths > 0 ? BOOST_MONTHS.indexOf(preview.boostMonths) : -1, giftLevel: Number(preview.giftLevel ?? -1),
                       selected: ([rowId]) => !!preview.selectedBadges?.[rowId], oldName: preview.oldName, replace: shouldReplaceLocalBadges(),
-                      order: rootSettings.fakeProfileNativeOrder || [], hidden: rootSettings.fakeProfileNativeHidden || [] };
+                      order: rootSettings.fakeProfileNativeOrder || [], hidden: rootSettings.fakeProfileNativeHidden || [], activity: activityFromIds(Object.keys(preview.selectedBadges || {}).filter(id => preview.selectedBadges?.[id])) };
               }
               if (badgesHiddenFor(id)) return undefined;
               const data = getProfileOverride(id, true);
@@ -2120,7 +2120,7 @@ jobs:
               const ids = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
               return { nitroMonths: remoteNitroEnabled(data) ? NITRO_DURATIONS[Number(data.nitroLevel)] || 0 : -1, nitroSince: data.nitroSince, boostIndex: Number(data.boostMonths ?? -1), giftLevel: Number(data.giftLevel ?? -1),
                   selected: ([, , flag, , customId]) => customId ? ids.includes(customId) : (Number(data.badgeFlags || 0) & Number(flag)) !== 0, oldName: data.oldName, replace: shouldReplaceSharedBadges(data),
-                  order: Array.isArray(data.nativeBadgeOrder) ? data.nativeBadgeOrder : [], hidden: Array.isArray(data.nativeHiddenBadges) ? data.nativeHiddenBadges : [] };
+                  order: Array.isArray(data.nativeBadgeOrder) ? data.nativeBadgeOrder : [], hidden: Array.isArray(data.nativeHiddenBadges) ? data.nativeHiddenBadges : [], activity: activityFromIds(ids) };
           }
           const shortDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
           function addMonths(date: Date, months: number) { const next = new Date(date); next.setMonth(next.getMonth() + months); return next; }
@@ -2134,6 +2134,39 @@ jobs:
               }
               return monthsAgo(months);
           }
+          // Discord's tiered activity badges, with tier names and thresholds from its badge directory.
+          const ACTIVITY_BADGES: { key: string; badgeId: number; title: string; tiers: [string, number][]; label: (amount: number) => string }[] = [
+              { key: "account_age", badgeId: 18, title: "Account Age", label: years => years + (years === 1 ? " year" : " years"),
+                  tiers: [["Seed", 1], ["Sprout", 2], ["Sapling", 3], ["Bud", 4], ["Blossom", 5], ["Redwood", 6], ["Sequoia", 7], ["Bristlecone", 8], ["Stromatolite", 9], ["Primordial", 10]] },
+              { key: "streaming", badgeId: 19, title: "Streaming", label: hours => hours.toLocaleString("en-US") + (hours === 1 ? " hour streamed to others" : " hours streamed to others"),
+                  tiers: [["Newcomer", 1], ["Fledgling", 5], ["Breakout", 20], ["Standout", 75], ["Trendsetter", 150], ["Headliner", 300], ["Star", 500], ["Sensation", 1000], ["Visionary", 2000], ["Phenomenon", 5000]] },
+              { key: "game_time", badgeId: 20, title: "Game Time", label: hours => hours.toLocaleString("en-US") + (hours === 1 ? " hour of games played" : " hours of games played"),
+                  tiers: [["Casual", 1], ["Recreational", 5], ["Dedicated", 20], ["Committed", 75], ["Serious", 150], ["Devoted", 300], ["Seasoned", 500], ["Ironclad", 1000], ["Unshakeable", 2000], ["Eternal", 5000]] },
+              { key: "game_variety", badgeId: 21, title: "Game Variety", label: games => games + " games played",
+                  tiers: [["Sampler", 2], ["Dabbler", 5], ["Enthusiast", 10], ["Ranger", 15], ["Explorer", 20], ["Adventurer", 30], ["Voyager", 40], ["Maverick", 60], ["Polymath", 80], ["Universalist", 100]] }
+          ];
+          // The badge editor stores these picks as "game_time_3" etc.; match Discord's tier by name.
+          function activityFromIds(ids: string[]) {
+              const out: Record<string, number> = {};
+              for (const group of EXPERIMENTAL_BADGE_GROUPS) {
+                  const picked = group.tiers.find((tier: any) => ids.includes(tier.id));
+                  const badge = ACTIVITY_BADGES.find(item => item.key === group.id);
+                  if (picked && badge) { const index = badge.tiers.findIndex(([name]) => name === picked.name); if (index >= 0) out[group.id] = index; }
+              }
+              return out;
+          }
+          function activityTier(src: BadgeSource, key: string) {
+              const tier = Number(src.activity?.[key] ?? -1);
+              return Number.isInteger(tier) && tier >= 0 && tier < 10 ? tier : -1;
+          }
+          function activityDirectoryEntry(entry: any, src: BadgeSource) {
+              const badge = ACTIVITY_BADGES.find(item => item.badgeId === entry.badge_id);
+              const tier = badge ? activityTier(src, badge.key) : -1;
+              if (!badge || tier < 0) return null;
+              const amount = badge.tiers[tier][1];
+              return { ...tieredEntry(entry, tier, badge.key === "account_age" ? monthsAgo(amount * 12) : monthsAgo(1), badge.label(amount), src.hidden.includes(entry.badge_id)), progress: [] };
+          }
+
           function nativeBadgesFor(src: BadgeSource) {
               const out: any[] = [];
               const hash = (url: string) => (String(url).match(/badge-icons\/([a-f0-9]{32})\.png/) || [])[1];
@@ -2142,8 +2175,15 @@ jobs:
               if (src.boostIndex >= 0 && src.boostIndex < BOOST_MONTHS.length) push("guild_booster_lvl" + (src.boostIndex + 1), "Server boosting since " + shortDate(monthsAgo(BOOST_MONTHS[src.boostIndex])), boosterIcon(BOOST_MONTHS[src.boostIndex]));
               const gift = GIFT_LEVELS[src.giftLevel];
               if (gift) push("gifting", gift.name, gift.icon);
+              const store = findByStoreName("BadgeDirectoryStore") as any;
+              for (const badge of ACTIVITY_BADGES) {
+                  const tier = activityTier(src, badge.key);
+                  if (tier < 0) continue;
+                  const icon = currentUserId ? store?.getBadgeById?.(badge.badgeId, currentUserId)?.tiers?.[tier]?.simple_icon_raster_url : undefined;
+                  out.push({ id: badge.key, description: badge.title + ": " + badge.tiers[tier][0], icon: icon ?? "", iconSrc: icon });
+              }
               for (const row of BADGES) {
-                  if (!src.selected(row as any[])) continue;
+                  if (!src.selected(row as any[]) || /^(?:account_age|streaming|game_time|game_variety)_\d+$/.test(String(row[0]))) continue;
                   const [rowId, description, , icon] = row;
                   push(NATIVE_BADGE_IDS[rowId] ?? "cloudcord-" + rowId, rowId === "oldname" && src.oldName ? `Originally Known As: ${src.oldName}` : description, icon);
               }
@@ -2206,7 +2246,7 @@ jobs:
           function fakeDirectoryEntry(entry: any, src: BadgeSource, owned: Map<number, any>) {
               if (!entry) return entry;
               const hidden = src.hidden.includes(entry.badge_id);
-              if (DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return src.replace ? { ...entry, owned: false } : entry;
+              if (DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return activityDirectoryEntry(entry, src) ?? (src.replace ? { ...entry, owned: false } : entry);
               const fake = owned.get(entry.badge_id);
               if (!fake) return src.replace ? { ...entry, owned: false, current_tier: undefined, next_tier: undefined, info_label: undefined } : entry;
               if (entry.badge_id === 1) { const since = nitroSinceFor(src.nitroMonths, src.nitroSince); return tieredEntry(entry, NITRO_DURATIONS.indexOf(src.nitroMonths), since, "Subscriber since " + shortDate(since), hidden); }

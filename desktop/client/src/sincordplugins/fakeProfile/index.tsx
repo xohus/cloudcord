@@ -2222,7 +2222,7 @@ function toDiscordBadge(badge: ProfileBadge): any {
 // or all real ones when "Hide my real badges" is on.
 function discordProfileBadges(userId: string, data: CustomProfileData, real: any[] | undefined): any[] {
     const published = new Set(uploadedUserBadges(userId).map(badge => badge.id));
-    const fake = buildProfileBadges(userId).filter(badge => !published.has(badge.id)).map(toDiscordBadge);
+    const fake = [...buildProfileBadges(userId).filter(badge => !isLegacyActivityBadge(badge.id)), ...activityProfileBadges(data)].filter(badge => !published.has(badge.id)).map(toDiscordBadge);
     const taken = new Set(fake.map(badgeLayoutKey));
     const list = shouldReplaceBadges(data) || !Array.isArray(real) ? fake : [...real.filter(badge => !taken.has(badgeLayoutKey(badge))), ...fake];
     // Apply the order and hidden badges chosen in Discord's badge customiser.
@@ -2269,7 +2269,7 @@ function directoryBadgeId(id: string): number | undefined {
     if (id.startsWith("guild_booster_lvl")) return 12;
     return ({ staff: 22, partner: 2, certified_moderator: 3, hypesquad: 4, hypesquad_house_1: 5, hypesquad_house_2: 6, hypesquad_house_3: 7,
         bug_hunter_level_1: 8, bug_hunter_level_2: 9, verified_developer: 10, early_supporter: 11, legacy_username: 13,
-        quest_completed: 14, orb_profile_badge: 16, gifting: 17 } as Record<string, number>)[id];
+        quest_completed: 14, orb_profile_badge: 16, gifting: 17, account_age: 18, streaming: 19, game_time: 20, game_variety: 21 } as Record<string, number>)[id];
 }
 // Badges Discord derives from activity, not ones CloudCord lets you pick.
 const DIRECTORY_ONLY_BADGES = new Set([18, 19, 20, 21]);
@@ -2323,8 +2323,8 @@ function learnBadgeInfo(entries: any[]) {
 function fakeDirectoryEntry(entry: any, userId: string, data: CustomProfileData, owned: Map<number, any>, replace: boolean) {
     if (!entry) return entry;
     entry = { ...entry, __ccHidden: (data.nativeHiddenBadges ?? []).includes(entry.badge_id) };
-    // Activity badges (account age, game time...) stay real, unless real badges are hidden.
-    if (DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return replace ? { ...entry, owned: false } : entry;
+    // Activity badges (account age, game time...): the chosen tier, else real unless real badges are hidden.
+    if (DIRECTORY_ONLY_BADGES.has(entry.badge_id)) return activityDirectoryEntry(entry, data) ?? (replace ? { ...entry, owned: false } : entry);
     const fake = owned.get(entry.badge_id);
     if (!fake) return replace ? { ...entry, owned: false, current_tier: undefined, next_tier: undefined, info_label: undefined } : entry;
     if (entry.badge_id === 1) {
@@ -2354,6 +2354,7 @@ function rewriteBadgeDirectory(action: any) {
     try {
         const owned = new Map<number, any>();
         for (const badge of buildProfileBadges(userId)) { const id = directoryBadgeId(badge.id); if (id != null) owned.set(id, badge); }
+        for (const item of ACTIVITY_BADGES) if (activityTier(data, item.key) >= 0) owned.set(item.badgeId, { id: item.key });
         const replace = shouldReplaceBadges(data);
         if (Array.isArray(action.badges)) {
             const entries = action.badges.map((entry: any) => fakeDirectoryEntry(entry, userId, data, owned, replace));
@@ -2394,4 +2395,45 @@ function reloadDiscordProfile(userId: string | null | undefined) {
     if (!userId) return;
     try { void Promise.resolve(fetchUserProfile(userId, { withMutualGuilds: false, withMutualFriends: false })).catch(() => { }); } catch { }
     reloadBadgeDirectory(userId);
+}
+
+// ---- Discord's tiered activity badges ----
+type ActivityBadgeKey = "account_age" | "streaming" | "game_time" | "game_variety";
+// Tier names and thresholds as Discord lists them in its badge directory.
+const ACTIVITY_BADGES: { key: ActivityBadgeKey; badgeId: number; title: string; tiers: [string, number][]; label: (amount: number) => string; }[] = [
+    { key: "account_age", badgeId: 18, title: "Account Age", label: years => `${years} year${years === 1 ? "" : "s"}`,
+        tiers: [["Seed", 1], ["Sprout", 2], ["Sapling", 3], ["Bud", 4], ["Blossom", 5], ["Redwood", 6], ["Sequoia", 7], ["Bristlecone", 8], ["Stromatolite", 9], ["Primordial", 10]] },
+    { key: "streaming", badgeId: 19, title: "Streaming", label: hours => `${hours.toLocaleString("en-US")} hour${hours === 1 ? "" : "s"} streamed to others`,
+        tiers: [["Newcomer", 1], ["Fledgling", 5], ["Breakout", 20], ["Standout", 75], ["Trendsetter", 150], ["Headliner", 300], ["Star", 500], ["Sensation", 1000], ["Visionary", 2000], ["Phenomenon", 5000]] },
+    { key: "game_time", badgeId: 20, title: "Game Time", label: hours => `${hours.toLocaleString("en-US")} hour${hours === 1 ? "" : "s"} of games played`,
+        tiers: [["Casual", 1], ["Recreational", 5], ["Dedicated", 20], ["Committed", 75], ["Serious", 150], ["Devoted", 300], ["Seasoned", 500], ["Ironclad", 1000], ["Unshakeable", 2000], ["Eternal", 5000]] },
+    { key: "game_variety", badgeId: 21, title: "Game Variety", label: games => `${games} games played`,
+        tiers: [["Sampler", 2], ["Dabbler", 5], ["Enthusiast", 10], ["Ranger", 15], ["Explorer", 20], ["Adventurer", 30], ["Voyager", 40], ["Maverick", 60], ["Polymath", 80], ["Universalist", 100]] }
+];
+// The badge editor stores these picks in customBadgeIds ("game_time_3"); match the
+// picked tier to Discord's by name (CloudCord's Account Age list orders Bud/Sapling differently).
+function activityTier(data: CustomProfileData, key: ActivityBadgeKey): number {
+    const group = EXPERIMENTAL_BADGE_GROUPS.find(item => item.id === key);
+    const picked = group?.tiers.find(tier => data.customBadgeIds?.includes(tier.id));
+    if (!picked) return -1;
+    return ACTIVITY_BADGES.find(item => item.key === key)!.tiers.findIndex(([name]) => name === picked.name);
+}
+// CloudCord's own copies of these badges, replaced by Discord's native ones.
+const isLegacyActivityBadge = (id: string) => /^sp_(?:account_age|streaming|game_time|game_variety)_\d+$/.test(id);
+// Profile badge rows for the chosen activity badges; Discord draws the tier icon itself.
+function activityProfileBadges(data: CustomProfileData): ProfileBadge[] {
+    const myId = activeUserId();
+    return ACTIVITY_BADGES.filter(badge => activityTier(data, badge.key) >= 0).map(badge => {
+        const tier = activityTier(data, badge.key);
+        const icon = myId ? badgeDirectoryStore?.getBadgeById?.(badge.badgeId, myId)?.tiers?.[tier]?.simple_icon_raster_url : undefined;
+        return { id: badge.key, description: `${badge.title}: ${badge.tiers[tier][0]}`, iconSrc: icon ?? "", position: 0 } as ProfileBadge;
+    });
+}
+function activityDirectoryEntry(entry: any, data: CustomProfileData) {
+    const badge = ACTIVITY_BADGES.find(item => item.badgeId === entry.badge_id);
+    const tier = badge ? activityTier(data, badge.key) : -1;
+    if (!badge || tier < 0) return null;
+    const amount = badge.tiers[tier][1];
+    const since = badge.key === "account_age" ? monthsAgo(amount * 12) : monthsAgo(1);
+    return { ...tieredEntry(entry, tier, since, [], badge.label(amount)), progress: [] };
 }
