@@ -14128,7 +14128,8 @@
         oldName: preview.oldName,
         replace: shouldReplaceLocalBadges(),
         order: rootSettings.fakeProfileNativeOrder || [],
-        hidden: rootSettings.fakeProfileNativeHidden || []
+        hidden: rootSettings.fakeProfileNativeHidden || [],
+        activity: activityFromIds(Object.keys(preview.selectedBadges || {}).filter((id2) => preview.selectedBadges?.[id2]))
       };
     }
     if (badgesHiddenFor(id))
@@ -14146,7 +14147,8 @@
       oldName: data.oldName,
       replace: shouldReplaceSharedBadges(data),
       order: Array.isArray(data.nativeBadgeOrder) ? data.nativeBadgeOrder : [],
-      hidden: Array.isArray(data.nativeHiddenBadges) ? data.nativeHiddenBadges : []
+      hidden: Array.isArray(data.nativeHiddenBadges) ? data.nativeHiddenBadges : [],
+      activity: activityFromIds(ids)
     };
   }
   function addMonths(date, months) {
@@ -14164,6 +14166,36 @@
     }
     return monthsAgo(months);
   }
+  function activityFromIds(ids) {
+    var _loop2 = function(group2) {
+      var picked = group2.tiers.find((tier) => ids.includes(tier.id));
+      var badge = ACTIVITY_BADGES.find((item) => item.key === group2.id);
+      if (picked && badge) {
+        var index = badge.tiers.findIndex(([name]) => name === picked.name);
+        if (index >= 0)
+          out[group2.id] = index;
+      }
+    };
+    var out = {};
+    for (var group of EXPERIMENTAL_BADGE_GROUPS)
+      _loop2(group);
+    return out;
+  }
+  function activityTier(src, key) {
+    var tier = Number(src.activity?.[key] ?? -1);
+    return Number.isInteger(tier) && tier >= 0 && tier < 10 ? tier : -1;
+  }
+  function activityDirectoryEntry(entry, src) {
+    var badge = ACTIVITY_BADGES.find((item) => item.badgeId === entry.badge_id);
+    var tier = badge ? activityTier(src, badge.key) : -1;
+    if (!badge || tier < 0)
+      return null;
+    var amount = badge.tiers[tier][1];
+    return {
+      ...tieredEntry(entry, tier, badge.key === "account_age" ? monthsAgo(amount * 12) : monthsAgo(1), badge.label(amount), src.hidden.includes(entry.badge_id)),
+      progress: []
+    };
+  }
   function nativeBadgesFor(src) {
     var out = [];
     var hash = (url2) => (String(url2).match(/badge-icons\/([a-f0-9]{32})\.png/) || [])[1];
@@ -14179,11 +14211,24 @@
     var gift = GIFT_LEVELS[src.giftLevel];
     if (gift)
       push("gifting", gift.name, gift.icon);
-    for (var row of BADGES) {
-      if (!src.selected(row))
+    var store = findByStoreName("BadgeDirectoryStore");
+    for (var badge of ACTIVITY_BADGES) {
+      var tier = activityTier(src, badge.key);
+      if (tier < 0)
         continue;
-      var [rowId, description, , icon2] = row;
-      push(NATIVE_BADGE_IDS[rowId] ?? "cloudcord-" + rowId, rowId === "oldname" && src.oldName ? `Originally Known As: ${src.oldName}` : description, icon2);
+      var icon2 = currentUserId ? store?.getBadgeById?.(badge.badgeId, currentUserId)?.tiers?.[tier]?.simple_icon_raster_url : void 0;
+      out.push({
+        id: badge.key,
+        description: badge.title + ": " + badge.tiers[tier][0],
+        icon: icon2 ?? "",
+        iconSrc: icon2
+      });
+    }
+    for (var row of BADGES) {
+      if (!src.selected(row) || /^(?:account_age|streaming|game_time|game_variety)_\d+$/.test(String(row[0])))
+        continue;
+      var [rowId, description, , icon1] = row;
+      push(NATIVE_BADGE_IDS[rowId] ?? "cloudcord-" + rowId, rowId === "oldname" && src.oldName ? `Originally Known As: ${src.oldName}` : description, icon1);
     }
     return out;
   }
@@ -14301,10 +14346,10 @@
       return entry;
     var hidden = src.hidden.includes(entry.badge_id);
     if (DIRECTORY_ONLY_BADGES.has(entry.badge_id))
-      return src.replace ? {
+      return activityDirectoryEntry(entry, src) ?? (src.replace ? {
         ...entry,
         owned: false
-      } : entry;
+      } : entry);
     var fake = owned.get(entry.badge_id);
     if (!fake)
       return src.replace ? {
@@ -17963,7 +18008,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -18689,7 +18734,11 @@
         legacy_username: 13,
         quest_completed: 14,
         orb_profile_badge: 16,
-        gifting: 17
+        gifting: 17,
+        account_age: 18,
+        streaming: 19,
+        game_time: 20,
+        game_variety: 21
       };
       BOOST_MONTHS = [
         1,
@@ -18713,6 +18762,200 @@
         month: "2-digit",
         year: "numeric"
       });
+      ACTIVITY_BADGES = [
+        {
+          key: "account_age",
+          badgeId: 18,
+          title: "Account Age",
+          label: (years) => years + (years === 1 ? " year" : " years"),
+          tiers: [
+            [
+              "Seed",
+              1
+            ],
+            [
+              "Sprout",
+              2
+            ],
+            [
+              "Sapling",
+              3
+            ],
+            [
+              "Bud",
+              4
+            ],
+            [
+              "Blossom",
+              5
+            ],
+            [
+              "Redwood",
+              6
+            ],
+            [
+              "Sequoia",
+              7
+            ],
+            [
+              "Bristlecone",
+              8
+            ],
+            [
+              "Stromatolite",
+              9
+            ],
+            [
+              "Primordial",
+              10
+            ]
+          ]
+        },
+        {
+          key: "streaming",
+          badgeId: 19,
+          title: "Streaming",
+          label: (hours) => hours.toLocaleString("en-US") + (hours === 1 ? " hour streamed to others" : " hours streamed to others"),
+          tiers: [
+            [
+              "Newcomer",
+              1
+            ],
+            [
+              "Fledgling",
+              5
+            ],
+            [
+              "Breakout",
+              20
+            ],
+            [
+              "Standout",
+              75
+            ],
+            [
+              "Trendsetter",
+              150
+            ],
+            [
+              "Headliner",
+              300
+            ],
+            [
+              "Star",
+              500
+            ],
+            [
+              "Sensation",
+              1e3
+            ],
+            [
+              "Visionary",
+              2e3
+            ],
+            [
+              "Phenomenon",
+              5e3
+            ]
+          ]
+        },
+        {
+          key: "game_time",
+          badgeId: 20,
+          title: "Game Time",
+          label: (hours) => hours.toLocaleString("en-US") + (hours === 1 ? " hour of games played" : " hours of games played"),
+          tiers: [
+            [
+              "Casual",
+              1
+            ],
+            [
+              "Recreational",
+              5
+            ],
+            [
+              "Dedicated",
+              20
+            ],
+            [
+              "Committed",
+              75
+            ],
+            [
+              "Serious",
+              150
+            ],
+            [
+              "Devoted",
+              300
+            ],
+            [
+              "Seasoned",
+              500
+            ],
+            [
+              "Ironclad",
+              1e3
+            ],
+            [
+              "Unshakeable",
+              2e3
+            ],
+            [
+              "Eternal",
+              5e3
+            ]
+          ]
+        },
+        {
+          key: "game_variety",
+          badgeId: 21,
+          title: "Game Variety",
+          label: (games) => games + " games played",
+          tiers: [
+            [
+              "Sampler",
+              2
+            ],
+            [
+              "Dabbler",
+              5
+            ],
+            [
+              "Enthusiast",
+              10
+            ],
+            [
+              "Ranger",
+              15
+            ],
+            [
+              "Explorer",
+              20
+            ],
+            [
+              "Adventurer",
+              30
+            ],
+            [
+              "Voyager",
+              40
+            ],
+            [
+              "Maverick",
+              60
+            ],
+            [
+              "Polymath",
+              80
+            ],
+            [
+              "Universalist",
+              100
+            ]
+          ]
+        }
+      ];
       KNOWN_BADGE_INFO = {
         5: "First in, no hesitation",
         6: "Patience meets discipline",
