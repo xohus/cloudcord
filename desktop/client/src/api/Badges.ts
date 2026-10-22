@@ -75,7 +75,7 @@ export const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
     "1457121276748365989": "Mod Admin",
     "1465007041390317579": "Mod Admin",
     "1470732628461359251": "Support Admin",
-    "1417880742502994042": "Senior Mod",
+    "1417880742502994042": "Supervisor",
     "1169999011642605628": "Senior Mod",
     "1394648991223779328": "Senior Mod",
     "1312331817818394665": "Senior Mod",
