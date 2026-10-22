@@ -13021,6 +13021,10 @@
       sharedProfileFetchedAt.set(id, Date.now());
       if (!changed)
         return;
+      try {
+        reapplyBadgeDirectory(id);
+      } catch (e) {
+      }
       queueSharedRenderRefresh();
     }).catch(() => {
     }).finally(() => sharedRequests.delete(id));
@@ -14365,6 +14369,28 @@
       rootSettings.fakeProfileNativeHidden = action.pendingBadgeHiddenBadges.map(Number);
     if (Array.isArray(action.pendingBadgeDisplayOrder) || Array.isArray(action.pendingBadgeHiddenBadges))
       queueSharedPublish();
+  }
+  function reapplyBadgeDirectory(id) {
+    try {
+      var store = findByStoreName("BadgeDirectoryStore");
+      if (!store?.hasCatalogFor?.(id))
+        return;
+      var badges = (store.getBadges(id) || []).map((entry) => ({
+        ...entry
+      }));
+      if (badges.length)
+        setTimeout(() => {
+          try {
+            FluxDispatcher.dispatch({
+              type: "BADGE_DIRECTORY_FETCH_SUCCESS",
+              userId: id,
+              badges
+            });
+          } catch (e) {
+          }
+        }, 0);
+    } catch (e) {
+    }
   }
   function installNativeBadgeHooks() {
     if (nativeBadgeHooksInstalled)
