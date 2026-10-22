@@ -158,7 +158,8 @@ export function refreshPresence() {
 // Discord builds for that key are swapped for the uploaded icon.
 
 let tagObserver: MutationObserver | null = null;
-const TAG_IMAGE = /\/guild-tag-badges\/\d{15,22}\/(cc[a-f0-9]{30})\./;
+// Discord serves tag badges from /clan-badges/ now (older builds: /guild-tag-badges/).
+const TAG_IMAGE = /\/(?:clan-badges|guild-tag-badges)\/\d{15,22}\/(cc[a-f0-9]{30})\./;
 
 function swapTagImage(image: HTMLImageElement) {
     const key = image.src.match(TAG_IMAGE)?.[1];
@@ -168,7 +169,7 @@ function swapTagImage(image: HTMLImageElement) {
 
 export function installTagIconSwap() {
     if (tagObserver || typeof MutationObserver === "undefined") return;
-    const scan = (root: ParentNode) => root.querySelectorAll?.<HTMLImageElement>('img[src*="/guild-tag-badges/"]').forEach(swapTagImage);
+    const scan = (root: ParentNode) => root.querySelectorAll?.<HTMLImageElement>('img[src*="/clan-badges/"], img[src*="/guild-tag-badges/"]').forEach(swapTagImage);
     tagObserver = new MutationObserver(records => {
         for (const record of records) {
             if (record.type === "attributes" && record.target instanceof HTMLImageElement) swapTagImage(record.target);

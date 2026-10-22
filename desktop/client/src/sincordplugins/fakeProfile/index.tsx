@@ -1297,7 +1297,6 @@ function forceAccountPanelRerender() {
         const US = WP?.findByStoreName?.("UserStore"); if (US?.emitChange) US.emitChange();
         const UPS = WP?.findByStoreName?.("UserProfileStore"); if (UPS?.emitChange) UPS.emitChange();
         refreshPresence();
-        FluxDispatcher.dispatch({ type: "USER_SETTINGS_PROTO_UPDATE", settings: { type: 1, proto: {} } });
         if (isEnabled) startDomObserver(); else stopDomObserver();
     } catch { }
 }

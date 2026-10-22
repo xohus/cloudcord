@@ -374,7 +374,7 @@ jobs:
           import { onJsxCreate } from "@lib/api/react/jsx";
           import { withTimeout } from "@lib/utils/asyncTimeout";
           import { fetchProfileResponse } from "@lib/utils/profileSyncNetwork";
-          import { ACTIVITY_TYPES, appearanceOptions, availableServerTags, createNativeSocialFriendsReader, customDiscordMediaURL, customSocialValidationErrors, nameplateAssetURL, nativeActivities, nativeCollectibles, nativeSocialFriends, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, parseCatalog, parseServerTagIcon, PRESENCE_STATUSES, serverTagIconURL, streamURL } from "@lib/api/profileAppearance";
+          import { ACTIVITY_TYPES, appearanceOptions, availableServerTags, customServerTagIcon, createNativeSocialFriendsReader, customDiscordMediaURL, customSocialValidationErrors, nameplateAssetURL, nativeActivities, nativeCollectibles, nativeSocialFriends, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, parseCatalog, parseServerTagIcon, PRESENCE_STATUSES, serverTagIconURL, streamURL } from "@lib/api/profileAppearance";
           import type { Catalog, ProfileActivity, ProfileNameplate } from "@lib/api/profileAppearance";
           import type { CustomFriendPreview, CustomConnectionPreview, ProfileAppearance } from "@lib/api/profileAppearance";
           function CustomSocialEditor(props: any) { const Component = require("@core/ui/settings/components/CustomSocial").CustomSocialEditor; return <Component {...props} />; }
@@ -2346,6 +2346,19 @@ jobs:
                   diagnostics.last = error?.message || "Could not connect badge list";
               }
 
+              // Custom server tag icons travel as a "cc..." badge key; Discord draws them from
+              // /clan-badges/{guild}/{key}.png, so swap that image for the uploaded icon.
+              for (const component of ["Image", "FastImage"]) {
+                  try {
+                      onJsxCreate(component, (_component, rendered) => {
+                          const uri = rendered?.props?.source?.uri;
+                          if (typeof uri !== "string" || !uri.includes("-badges/")) return;
+                          const key = uri.match(/\/(?:clan-badges|guild-tag-badges)\/\d{15,22}\/(cc[a-f0-9]{30})\./)?.[1];
+                          const icon = key ? customServerTagIcon(key) : undefined;
+                          if (icon) rendered.props.source = { ...rendered.props.source, uri: icon };
+                      });
+                  } catch {}
+              }
               for (const component of ["ProfileBadge", "RenderedBadge"]) {
                   try {
                       onJsxCreate(component, (_component, rendered) => {

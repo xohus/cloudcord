@@ -170,13 +170,13 @@ export function normalizeCustomSocial(data: any): Pick<ProfileAppearance, "custo
 
 export function serverTagIconURL(tag: ProfileAppearance["serverTag"]): string {
     if (!tag?.badge || !/^\d{15,22}$/.test(tag.guildId) || !/^[a-f0-9]{32}$/.test(tag.badge)) return "";
-    return `https://cdn.discordapp.com/guild-tag-badges/${tag.guildId}/${tag.badge}.png?size=64`;
+    return `https://cdn.discordapp.com/clan-badges/${tag.guildId}/${tag.badge}.png?size=64`;
 }
 
 export function parseServerTagIcon(value: string): { guildId: string; badge: string } | null {
     try {
         const url = new URL(value);
-        const match = url.pathname.match(/^\/guild-tag-badges\/(\d{15,22})\/([a-f0-9]{32})\.(?:png|webp|jpe?g)$/);
+        const match = url.pathname.match(/^\/(?:clan-badges|guild-tag-badges)\/(\d{15,22})\/([a-f0-9]{32})\.(?:png|webp|jpe?g)$/);
         return url.protocol === "https:" && url.hostname === "cdn.discordapp.com" && match ? { guildId: match[1], badge: match[2] } : null;
     } catch { return null; }
 }
