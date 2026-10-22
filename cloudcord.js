@@ -6830,8 +6830,9 @@
       result.displayNameStyles = null;
     else if (data?.displayNameStyles && typeof data.displayNameStyles === "object") {
       var style = data.displayNameStyles;
-      var fontId = style.fontId ?? style.font_id;
-      var effectId = style.effectId ?? style.effect_id;
+      var rawFont = style.fontId ?? style.font_id, rawEffect = style.effectId ?? style.effect_id;
+      var fontId = rawFont === 0 ? 11 : rawFont;
+      var effectId = rawEffect === 0 ? 1 : rawEffect;
       var colors = Array.isArray(style.colors) ? style.colors : [];
       if (Number.isInteger(fontId) && fontId >= 0 && Number.isInteger(effectId) && effectId >= 0 && colors.length <= 3 && colors.every((color3) => Number.isInteger(color3) && color3 >= 0 && color3 <= 16777215)) {
         result.displayNameStyles = {
@@ -16373,8 +16374,8 @@
   }
   function NameStylePicker({ field, onSelect }) {
     var [selected, setSelected] = (0, import_react7.useState)(preview.displayNameStyles || {
-      fontId: 0,
-      effectId: 0,
+      fontId: 11,
+      effectId: 1,
       colors: [
         16777215
       ]
@@ -17365,8 +17366,8 @@
                           var value = `#${(preview.displayNameStyles?.colors[index] ?? 16777215).toString(16).padStart(6, "0")}`;
                           var apply = (color3) => {
                             var style = preview.displayNameStyles || {
-                              fontId: 0,
-                              effectId: 0,
+                              fontId: 11,
+                              effectId: 1,
                               colors: [
                                 16777215
                               ]
