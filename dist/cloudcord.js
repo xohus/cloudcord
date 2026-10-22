@@ -6782,12 +6782,12 @@
   function serverTagIconURL(tag) {
     if (!tag?.badge || !/^\d{15,22}$/.test(tag.guildId) || !/^[a-f0-9]{32}$/.test(tag.badge))
       return "";
-    return `https://cdn.discordapp.com/guild-tag-badges/${tag.guildId}/${tag.badge}.png?size=64`;
+    return `https://cdn.discordapp.com/clan-badges/${tag.guildId}/${tag.badge}.png?size=64`;
   }
   function parseServerTagIcon(value) {
     try {
       var url2 = new URL(value);
-      var match = url2.pathname.match(/^\/guild-tag-badges\/(\d{15,22})\/([a-f0-9]{32})\.(?:png|webp|jpe?g)$/);
+      var match = url2.pathname.match(/^\/(?:clan-badges|guild-tag-badges)\/(\d{15,22})\/([a-f0-9]{32})\.(?:png|webp|jpe?g)$/);
       return url2.protocol === "https:" && url2.hostname === "cdn.discordapp.com" && match ? {
         guildId: match[1],
         badge: match[2]
@@ -6965,6 +6965,9 @@
       h3,
       h4
     ].map((value) => (value >>> 0).toString(16).padStart(8, "0")).join("").slice(0, 30);
+  }
+  function customServerTagIcon(badge) {
+    return customTagIcons.get(badge);
   }
   function nativeActivities(data) {
     var appearance = normalizeProfileAppearance(data);
@@ -15051,11 +15054,31 @@
       diagnostics.last = error?.message || "Could not connect badge list";
     }
     for (var component of [
+      "Image",
+      "FastImage"
+    ]) {
+      try {
+        onJsxCreate(component, (_component, rendered) => {
+          var uri = rendered?.props?.source?.uri;
+          if (typeof uri !== "string" || !uri.includes("-badges/"))
+            return;
+          var key = uri.match(/\/(?:clan-badges|guild-tag-badges)\/\d{15,22}\/(cc[a-f0-9]{30})\./)?.[1];
+          var icon2 = key ? customServerTagIcon(key) : void 0;
+          if (icon2)
+            rendered.props.source = {
+              ...rendered.props.source,
+              uri: icon2
+            };
+        });
+      } catch (e) {
+      }
+    }
+    for (var component1 of [
       "ProfileBadge",
       "RenderedBadge"
     ]) {
       try {
-        onJsxCreate(component, (_component, rendered) => {
+        onJsxCreate(component1, (_component, rendered) => {
           if (!rendered?.props)
             return;
           var renderedId = String(rendered.props.id || "");
