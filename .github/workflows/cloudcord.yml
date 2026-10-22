@@ -3361,7 +3361,7 @@ jobs:
           }
 
           function NameStylePicker({ field, onSelect }: { field: "fontId" | "effectId"; onSelect: (style: NonNullable<PreviewSettings["displayNameStyles"]>) => void }) {
-              const [selected, setSelected] = useState(preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] });
+              const [selected, setSelected] = useState(preview.displayNameStyles || { fontId: 11, effectId: 1, colors: [0xffffff] });
               const NativeName = (findByProps("AVERAGE_FONT_WIDTH_RATIO") as any)?.default;
               const name = preview.displayName || preview.username || realCurrentUser?.globalName || realCurrentUser?.username || "Your name";
               return <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
@@ -3780,7 +3780,7 @@ jobs:
                                           <TableRow arrow label="Effect" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("effectId").find(option => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"} />} onPress={() => chooseNameStyle("effectId")} />
                                           {[0, 1, 2].slice(0, Math.max(1, Math.min(3, Number((findByProps("getEffectColorCount") as any)?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map(index => {
                                           const value = `#${(preview.displayNameStyles?.colors[index] ?? 0xffffff).toString(16).padStart(6, "0")}`;
-                                          const apply = (color: string) => { const style = preview.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] }; const colors = [0, 1, 2].map(i => style.colors[i] ?? style.colors[0] ?? 0xffffff); colors[index] = parseInt(color.replace("#", ""), 16); update("displayNameStyles", { ...style, colors }, true); navigation.goBack(); };
+                                          const apply = (color: string) => { const style = preview.displayNameStyles || { fontId: 11, effectId: 1, colors: [0xffffff] }; const colors = [0, 1, 2].map(i => style.colors[i] ?? style.colors[0] ?? 0xffffff); colors[index] = parseInt(color.replace("#", ""), 16); update("displayNameStyles", { ...style, colors }, true); navigation.goBack(); };
                                           return <ColorPickerRow key={`name-color-${index}`} label={`Color ${index + 1}`} value={value} onSelect={apply} onOpen={() => navigation.push("PUPU_CUSTOM_PAGE", { title: `Username Color ${index + 1}`, render: () => <CustomColorPicker title={`Username Color ${index + 1}`} initialColor={value} onApply={apply} /> })} />;
                                       })}
                                       </View>

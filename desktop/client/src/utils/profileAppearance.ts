@@ -204,8 +204,11 @@ export function normalizeProfileAppearance(data: any): ProfileAppearance {
     if (data?.displayNameStyles === null) result.displayNameStyles = null;
     else if (data?.displayNameStyles && typeof data.displayNameStyles === "object") {
         const style = data.displayNameStyles;
-        const fontId = style.fontId ?? style.font_id;
-        const effectId = style.effectId ?? style.effect_id;
+        // 0 is not a Discord font or effect; Discord's own name-style picker crashes on it.
+        // Map it to Discord's defaults (font 11 = Default, effect 1 = Solid).
+        const rawFont = style.fontId ?? style.font_id, rawEffect = style.effectId ?? style.effect_id;
+        const fontId = rawFont === 0 ? 11 : rawFont;
+        const effectId = rawEffect === 0 ? 1 : rawEffect;
         const colors = Array.isArray(style.colors) ? style.colors : [];
         if (Number.isInteger(fontId) && fontId >= 0 && Number.isInteger(effectId) && effectId >= 0
             && colors.length <= 3 && colors.every((color: any) => Number.isInteger(color) && color >= 0 && color <= 0xffffff)) {
