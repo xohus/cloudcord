@@ -10361,63 +10361,89 @@
       variant: "secondary"
     });
   }
-  function ProfileTabs({ selected, onSelect }) {
-    var inMore = MORE_TABS.some(([tab]) => tab === selected);
-    var [moreOpen, setMoreOpen] = (0, import_react3.useState)(inMore);
-    return /* @__PURE__ */ jsxs(import_react_native16.View, {
+  function MenuIcon({ color: color3 }) {
+    return /* @__PURE__ */ jsx(import_react_native16.View, {
       style: {
-        gap: 12
+        width: 20,
+        gap: 4
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native16.View, {
-          accessibilityRole: "tablist",
+        0,
+        1,
+        2
+      ].map((line) => /* @__PURE__ */ jsx(import_react_native16.View, {
+        style: {
+          height: 2.5,
+          borderRadius: 2,
+          backgroundColor: color3
+        }
+      }, line))
+    });
+  }
+  function ProfileTabs({ selected, onSelect }) {
+    var [open, setOpen] = (0, import_react3.useState)(false);
+    var current = SECTIONS.find(([tab]) => tab === selected) ?? SECTIONS[0];
+    return /* @__PURE__ */ jsxs(import_react_native16.View, {
+      style: {
+        gap: 8
+      },
+      children: [
+        /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
+          accessibilityRole: "button",
+          accessibilityLabel: open ? "Close sections menu" : "Open sections menu",
+          accessibilityState: {
+            expanded: open
+          },
+          onPress: () => setOpen(!open),
           style: {
             flexDirection: "row",
-            padding: 4,
-            gap: 4,
+            alignItems: "center",
+            gap: 14,
+            paddingVertical: 12,
+            paddingHorizontal: 14,
             borderRadius: 14,
             backgroundColor: tokens.colors.BACKGROUND_TERTIARY
           },
-          children: MAIN_TABS.map(([tab, label]) => {
-            var on = tab === selected;
-            return /* @__PURE__ */ jsx(import_react_native16.Pressable, {
-              accessibilityRole: "tab",
-              accessibilityState: {
-                selected: on
-              },
-              onPress: () => onSelect(tab),
+          children: [
+            /* @__PURE__ */ jsx(MenuIcon, {
+              color: open ? "#5865F2" : "#B5BAC1"
+            }),
+            /* @__PURE__ */ jsxs(import_react_native16.View, {
               style: {
-                flex: 1,
-                alignItems: "center",
-                paddingVertical: 10,
-                borderRadius: 10,
-                backgroundColor: on ? "#5865F2" : "transparent"
+                flex: 1
               },
-              children: /* @__PURE__ */ jsx(Text, {
-                variant: on ? "text-sm/bold" : "text-sm/semibold",
-                color: on ? void 0 : "text-muted",
-                style: on ? {
-                  color: "#FFFFFF"
-                } : void 0,
-                children: label
-              })
-            }, tab);
-          })
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-md/bold",
+                  children: current[1]
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  numberOfLines: 1,
+                  children: open ? "Choose a section" : current[2]
+                })
+              ]
+            }),
+            /* @__PURE__ */ jsxs(Text, {
+              variant: "text-xs/semibold",
+              color: "text-muted",
+              children: [
+                SECTIONS.findIndex(([tab]) => tab === current[0]) + 1,
+                "/",
+                SECTIONS.length
+              ]
+            })
+          ]
         }),
-        /* @__PURE__ */ jsxs(import_react_native16.View, {
+        open ? /* @__PURE__ */ jsx(import_react_native16.View, {
+          accessibilityRole: "menu",
           style: {
             borderRadius: 16,
             overflow: "hidden"
           },
-          children: [
-            /* @__PURE__ */ jsx(TableRow, {
-              arrow: true,
-              label: moreOpen ? "Hide more options" : "More options",
-              subLabel: inMore && !moreOpen ? MORE_TABS.find(([tab]) => tab === selected)?.[1] : "Connections, dates, custom badges, other profiles",
-              icon: tabIcon("others"),
-              onPress: () => setMoreOpen(!moreOpen)
-            }),
-            moreOpen ? MORE_TABS.map(([tab, label, sub]) => /* @__PURE__ */ jsx(import_react_native16.View, {
+          children: /* @__PURE__ */ jsx(TableRowGroup, {
+            children: SECTIONS.map(([tab, label, sub]) => /* @__PURE__ */ jsx(import_react_native16.View, {
               style: {
                 borderLeftWidth: 3,
                 borderLeftColor: tab === selected ? "#5865F2" : "transparent"
@@ -10426,15 +10452,19 @@
                 label,
                 subLabel: sub,
                 icon: tabIcon(tab),
-                onPress: () => onSelect(tab)
+                arrow: true,
+                onPress: () => {
+                  onSelect(tab);
+                  setOpen(false);
+                }
               })
-            }, tab)) : null
-          ]
-        })
+            }, tab))
+          })
+        }) : null
       ]
     });
   }
-  var import_react3, import_react_native16, MAIN_TABS, MORE_TABS;
+  var import_react3, import_react_native16, SECTIONS;
   var init_FakeProfileGlass = __esm({
     "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
       "use strict";
@@ -10446,25 +10476,27 @@
       init_components();
       init_assets();
       init_common();
-      MAIN_TABS = [
+      SECTIONS = [
         [
           "profile",
-          "Profile"
+          "Profile",
+          "Names, pictures, banner, bio and colors"
         ],
         [
           "style",
-          "Style"
+          "Style",
+          "Frames, effects, nameplates, decorations, name style and server tag"
         ],
         [
           "status",
-          "Status"
+          "Status",
+          "Online status, custom status and activity"
         ],
         [
           "badges",
-          "Badges"
-        ]
-      ];
-      MORE_TABS = [
+          "Badges",
+          "Badges, Nitro, boosting, activity badges and order"
+        ],
         [
           "social",
           "Connections",
