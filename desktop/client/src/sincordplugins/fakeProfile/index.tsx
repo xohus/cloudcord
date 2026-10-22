@@ -1587,7 +1587,12 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
 
     function set<K extends keyof CustomProfileData>(key: K, val: CustomProfileData[K]) { setData(d => ({ ...d, [key]: val })); }
     const appearanceEnums = React.useMemo(() => {
-        try { return findByProps("DisplayNameFont", "DisplayNameEffect") || {}; } catch { return {}; }
+        // Discord now ships the font and effect lists as separate plain enums.
+        const find = (filter: (m: any) => boolean) => { try { return (Vencord as any).Webpack.find(filter, { isIndirect: true }); } catch { return undefined; } };
+        return {
+            DisplayNameFont: find(m => m?.BANGERS === 1 && m?.DEFAULT === 11),
+            DisplayNameEffect: find(m => m && typeof m === "object" && "SOLID" in m && "GRADIENT" in m && "NEON" in m)
+        };
     }, []);
     const fonts = appearanceOptions(appearanceEnums.DisplayNameFont);
     const effects = appearanceOptions(appearanceEnums.DisplayNameEffect);
