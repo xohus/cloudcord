@@ -22,7 +22,7 @@ let description = 'Before sync';
 api.addProfileBadge({ id: 'mixed', getBadges: () => [null, {}, { id: 'valid-custom', description, component: BadgeComponent }] });
 api.addProfileBadge({ id: 'static', component: BadgeComponent });
 const first = api._getBadges(args);
-for (const id of ['valid-custom', 'static', 'donor', 'global', 'cloudcord-official-mod admin']) assert(first.some(b => b.id === id), `${id} survives a failed badge source`);
+for (const id of ['valid-custom', 'static', 'donor', 'global', 'cloudcord-official-admin']) assert(first.some(b => b.id === id), `${id} survives a failed badge source`);
 assert(first.every(b => b.userId === args.userId && typeof b.id === 'string'));
 const firstWarnings = warnings;
 assert.equal(firstWarnings, 3, 'each failing registered source is reported once');
@@ -37,6 +37,6 @@ const other = api._getBadges({ ...args, userId: 'other-user' }).find(b => b.id =
 assert.equal(other.userId, 'other-user', 'the component cache never retains the previous profile owner');
 donorFails = true; globalFails = true;
 const next = api._getBadges(args);
-for (const id of ['valid-custom', 'static', 'cloudcord-official-mod admin']) assert(next.some(b => b.id === id), `${id} survives failed donor/global sources`);
+for (const id of ['valid-custom', 'static', 'cloudcord-official-admin']) assert(next.some(b => b.id === id), `${id} survives failed donor/global sources`);
 assert(!next.some(b => b.id === 'donor' || b.id === 'global'));
 console.log('PASS real badge API provider, predicate, invalid-row and donor/global failure isolation; staff badges preserved');
