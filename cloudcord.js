@@ -15708,8 +15708,17 @@
     }
     var snowflakeUtils = findByProps("extractTimestamp");
     addPatch("extractTimestamp", snowflakeUtils, (args, original) => {
-      var createdAt = profileDate(preview.createdAt);
-      return preview.enabled && createdAt && String(args?.[0] || "") === currentUserId ? createdAt.getTime() : original(...args);
+      var id = String(args?.[0] || "");
+      if (id === currentUserId) {
+        var createdAt = profileDate(preview.createdAt);
+        return preview.enabled && createdAt ? createdAt.getTime() : original(...args);
+      }
+      if (/^\d{15,22}$/.test(id) && sharedProfiles.has(id)) {
+        var createdAt1 = profileDate(getProfileOverride(id)?.createdAt);
+        if (createdAt1)
+          return createdAt1.getTime();
+      }
+      return original(...args);
     });
     connectMediaRenderer();
     connectIdentityRenderer();
@@ -15791,7 +15800,7 @@
       var changed = false;
       if (ownedNitroOverride && (ownedNitroOverride.state !== state2 || ownedNitroOverride.ownerId !== ownerId))
         changed = restoreFakeNitroOverride(ownedNitroOverride.state === state2);
-      if (extrasState().fakeNitro && ownerId && state2.premiumTypeActual !== 2) {
+      if (extrasState().fakeNitro && !shopPaused && ownerId && state2.premiumTypeActual !== 2) {
         if (!ownedNitroOverride && state2.premiumTypeOverride !== 2)
           ownedNitroOverride = {
             state: state2,
@@ -16562,6 +16571,29 @@
           });
         } catch (e) {
         }
+        for (var type of [
+          "COLLECTIBLES_SHOP_OPEN",
+          "COLLECTIBLES_PRODUCT_DETAILS_OPEN",
+          "COLLECTIBLES_SHOP_HOME_FETCH",
+          "SKU_PURCHASE_MODAL_OPEN",
+          "PREMIUM_PAYMENT_MODAL_OPEN"
+        ]) {
+          try {
+            FluxDispatcher.subscribe(type, pauseForShop);
+          } catch (e) {
+          }
+        }
+        for (var type1 of [
+          "SKU_PURCHASE_MODAL_CLOSE",
+          "SKU_PURCHASE_SUCCESS",
+          "PREMIUM_PAYMENT_MODAL_CLOSED",
+          "CHANNEL_SELECT"
+        ]) {
+          try {
+            FluxDispatcher.subscribe(type1, resumeAfterShop);
+          } catch (e) {
+          }
+        }
         connectRealProfileMenu();
         yield pullOwnSharedProfile();
         void refreshPublishedBadges(true);
@@ -16945,6 +16977,51 @@
       label,
       onPress,
       muted
+    });
+  }
+  function normalizeDateInput(value) {
+    var text = value.trim();
+    var match = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+    var iso = match ? `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}` : null;
+    if (!iso && (match = text.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/)))
+      iso = `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+    if (!iso || !profileDate(iso))
+      return null;
+    return (/* @__PURE__ */ new Date(iso + "T12:00:00Z")).getTime() <= Date.now() ? iso : null;
+  }
+  function DateInput({ label, value, onSave }) {
+    var K2 = (init_ProfileEditorKit(), __toCommonJS(ProfileEditorKit_exports));
+    var [draft, setDraft] = (0, import_react7.useState)(value || "");
+    var [error, setError] = (0, import_react7.useState)("");
+    var commit = (text) => {
+      setDraft(text);
+      if (!text.trim()) {
+        setError("");
+        if (value)
+          onSave("");
+        return;
+      }
+      var iso = normalizeDateInput(text);
+      if (!iso) {
+        setError(text.trim().length >= 8 ? "Use a real past date, like 2016-05-21 or 21/05/2016." : "");
+        return;
+      }
+      setError("");
+      if (iso !== value)
+        onSave(iso);
+    };
+    return /* @__PURE__ */ jsx(K2.Field, {
+      label,
+      hint: error || "YYYY-MM-DD or DD/MM/YYYY, empty for your real date",
+      children: /* @__PURE__ */ jsx(TextInput3, {
+        value: draft,
+        placeholder: "2016-05-21",
+        autoCapitalize: "none",
+        autoCorrect: false,
+        keyboardType: "numbers-and-punctuation",
+        onChangeText: commit,
+        placeholderTextColor: "#777"
+      })
     });
   }
   function ToggleRow({ label, subLabel, value, onPress }) {
@@ -18237,29 +18314,15 @@
                 title: "Dates",
                 description: "Leave empty to use your real dates.",
                 children: [
-                  /* @__PURE__ */ jsx(K2.Field, {
+                  /* @__PURE__ */ jsx(DateInput, {
                     label: "Account created",
-                    hint: "YYYY-MM-DD",
-                    children: /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.createdAt,
-                      placeholder: "2016-05-21",
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("createdAt", value, true),
-                      placeholderTextColor: "#777"
-                    })
+                    value: preview.createdAt,
+                    onSave: (value) => update("createdAt", value, true)
                   }),
-                  /* @__PURE__ */ jsx(K2.Field, {
+                  /* @__PURE__ */ jsx(DateInput, {
                     label: "Member since",
-                    hint: "YYYY-MM-DD",
-                    children: /* @__PURE__ */ jsx(TextInput3, {
-                      defaultValue: preview.signupDate,
-                      placeholder: "2016-05-21",
-                      autoCapitalize: "none",
-                      autoCorrect: false,
-                      onChangeText: (value) => update("signupDate", value, true),
-                      placeholderTextColor: "#777"
-                    })
+                    value: preview.signupDate,
+                    onSave: (value) => update("signupDate", value, true)
                   })
                 ]
               })
@@ -18646,7 +18709,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -19747,6 +19810,29 @@
       ];
       fakeRequestIds = /* @__PURE__ */ new Set();
       ownedNitroOverride = null;
+      shopPaused = false;
+      pauseForShop = () => {
+        if (!shopPaused) {
+          shopPaused = true;
+          setTimeout(() => {
+            try {
+              applyFakeNitro();
+            } catch (e) {
+            }
+          }, 0);
+        }
+      };
+      resumeAfterShop = () => {
+        if (shopPaused) {
+          shopPaused = false;
+          setTimeout(() => {
+            try {
+              applyFakeNitro();
+            } catch (e) {
+            }
+          }, 0);
+        }
+      };
       giftHookInstalled = false;
       rawUser = (user) => ({
         id: user.id,
