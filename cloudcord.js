@@ -14197,6 +14197,28 @@
     };
   }
   function nativeBadgesFor(src) {
+    var _loop2 = function(badge2) {
+      var tier = activityTier(src, badge2.key);
+      if (tier < 0)
+        return "continue";
+      var hash2 = ACTIVITY_ICON_HASHES[badge2.key]?.[tier];
+      if (hash2) {
+        out.push({
+          id: badge2.key,
+          description: badge2.title,
+          icon: hash2
+        });
+        return "continue";
+      }
+      var fallback = EXPERIMENTAL_BADGE_GROUPS.find((group) => group.id === badge2.key)?.tiers.find((item) => item.name === badge2.tiers[tier][0])?.icon;
+      var icon3 = fallback ?? (currentUserId ? store?.getBadgeById?.(badge2.badgeId, currentUserId)?.tiers?.[tier]?.simple_icon_raster_url : void 0);
+      out.push({
+        id: badge2.key,
+        description: badge2.title,
+        icon: icon3 ?? "",
+        iconSrc: icon3
+      });
+    };
     var out = [];
     var hash = (url2) => (String(url2).match(/badge-icons\/([a-f0-9]{32})\.png/) || [])[1];
     var push = (id, description2, icon3) => out.push({
@@ -14212,23 +14234,13 @@
     if (gift)
       push("gifting", gift.name, gift.icon);
     var store = findByStoreName("BadgeDirectoryStore");
-    for (var badge of ACTIVITY_BADGES) {
-      var tier = activityTier(src, badge.key);
-      if (tier < 0)
-        continue;
-      var icon2 = currentUserId ? store?.getBadgeById?.(badge.badgeId, currentUserId)?.tiers?.[tier]?.simple_icon_raster_url : void 0;
-      out.push({
-        id: badge.key,
-        description: badge.title + ": " + badge.tiers[tier][0],
-        icon: icon2 ?? "",
-        iconSrc: icon2
-      });
-    }
+    for (var badge of ACTIVITY_BADGES)
+      _loop2(badge);
     for (var row of BADGES) {
       if (!src.selected(row) || /^(?:account_age|streaming|game_time|game_variety)_\d+$/.test(String(row[0])))
         continue;
-      var [rowId, description, , icon1] = row;
-      push(NATIVE_BADGE_IDS[rowId] ?? "cloudcord-" + rowId, rowId === "oldname" && src.oldName ? `Originally Known As: ${src.oldName}` : description, icon1);
+      var [rowId, description, , icon2] = row;
+      push(NATIVE_BADGE_IDS[rowId] ?? "cloudcord-" + rowId, rowId === "oldname" && src.oldName ? `Originally Known As: ${src.oldName}` : description, icon2);
     }
     return out;
   }
@@ -18009,7 +18021,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -18957,6 +18969,56 @@
           ]
         }
       ];
+      ACTIVITY_ICON_HASHES = {
+        account_age: [
+          "b5716cca77a6e24b20eabe4d008479a9",
+          "d7648c523cf6322e650b4f7ea718b8a3",
+          "73d2776a9c6d93a7e041e6fd90da86f6",
+          "bce1cb27ae581e866dc86f9f16e4046e",
+          "c2ff7d8d6285305f969be81c3c92dd78",
+          "813d80b654901205a69da56b5e5ff2e4",
+          "e9cdafeb9234bd7262e733e6072d1739",
+          "2f766b95be1f0bfcc69404ab898cf71a",
+          "7c078b2e82d6010fe46268ff204927de",
+          "c478f85138cb30158637442110ab33b7"
+        ],
+        streaming: [
+          "30670da18925260946379b7fe10def26",
+          "046ddc05551d3b91d269460956d81188",
+          "dac8be3f227ad66655e402814c366f64",
+          "852c0e2f5d2d73e75b1eabb286417acf",
+          "f5e5b1a2820da1981084e4b719be72e7",
+          "0b06966b175dc72c9b5eaea61003d530",
+          "3ba1b4e528fdebfe49cd7021550e9826",
+          "063ec3175b47664507d30feaf83dfa99",
+          null,
+          null
+        ],
+        game_time: [
+          "3efa50b9d9eff04c04a0bdd6e78b8dc0",
+          "7f60a090de6cfe230bbc32c482fbaf2c",
+          "054c89b927c8c8907ab652fb458fb97f",
+          "452bbe19d924544ab70cfd8f3cc0e446",
+          "269355d438e62bd1f45e127b34459caf",
+          "feb9939317a21090e6dcdf410e3c3000",
+          "db259eb9f31a389ff0aff009b704babb",
+          "208e1bb66e311286cae364bc6f19277a",
+          "be98f2d9a07ba288bf271b0757fbce6a",
+          "7c57adf7939dd1132e02cb273ac07b96"
+        ],
+        game_variety: [
+          "f2e95dea497883ba979fbb7262df4fb1",
+          "5df9e6c933a4255e2edd6030719da8c6",
+          "1043a575492403efe4ec42efa451050c",
+          "5816a47693a62f0529e53ed2fbc7f41c",
+          "ce9ae4ae128db559173a0a29c49becd2",
+          "b27e9974811d0c4e420724fc0e54b4b2",
+          "68af20428336f8c018bab39206644d60",
+          null,
+          "33e5593de1a98a7b12aba93174357031",
+          null
+        ]
+      };
       KNOWN_BADGE_INFO = {
         5: "First in, no hesitation",
         6: "Patience meets discipline",
