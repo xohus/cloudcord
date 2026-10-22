@@ -426,7 +426,7 @@ const NATIVE_BADGE_IDS: Record<string, string> = {
     sp_bravery: "hypesquad_house_1", sp_brilliance: "hypesquad_house_2", sp_balance: "hypesquad_house_3",
     sp_early: "early_supporter", sp_bh2: "bug_hunter_level_2", sp_dev: "verified_developer",
     sp_mod: "certified_moderator", sp_activedev: "active_developer", sp_oldname: "legacy_username",
-    sp_quest: "quest_completed", sp_orbs: "orb_profile_badge"
+    sp_quest: "quest_completed", sp_orbs: "orb_profile_badge", sp_gifting: "gifting"
 };
 function nativeBadge(badge: ProfileBadge, boostLevel: number): ProfileBadge {
     if (badge.id === "sp_boost" && boostLevel >= 0) return { ...badge, id: `guild_booster_lvl${Math.min(9, boostLevel + 1)}` };
@@ -2269,7 +2269,7 @@ function directoryBadgeId(id: string): number | undefined {
     if (id.startsWith("guild_booster_lvl")) return 12;
     return ({ staff: 22, partner: 2, certified_moderator: 3, hypesquad: 4, hypesquad_house_1: 5, hypesquad_house_2: 6, hypesquad_house_3: 7,
         bug_hunter_level_1: 8, bug_hunter_level_2: 9, verified_developer: 10, early_supporter: 11, legacy_username: 13,
-        quest_completed: 14, orb_profile_badge: 16, sp_gifting: 17 } as Record<string, number>)[id];
+        quest_completed: 14, orb_profile_badge: 16, gifting: 17 } as Record<string, number>)[id];
 }
 // Badges Discord derives from activity, not ones CloudCord lets you pick.
 const DIRECTORY_ONLY_BADGES = new Set([18, 19, 20, 21]);

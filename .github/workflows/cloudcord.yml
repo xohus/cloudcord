@@ -2097,7 +2097,7 @@ jobs:
           }
           // ---- Native badges: delivered the same way Discord delivers real ones ----
           const NATIVE_BADGE_IDS: Record<string, string> = { staff: "staff", partner: "partner", hypesquad: "hypesquad", bug1: "bug_hunter_level_1", bravery: "hypesquad_house_1", brilliance: "hypesquad_house_2", balance: "hypesquad_house_3", early: "early_supporter", bug2: "bug_hunter_level_2", vdev: "verified_developer", mod: "certified_moderator", active: "active_developer", oldname: "legacy_username", quest: "quest_completed", orbs: "orb_profile_badge" };
-          const DIRECTORY_BADGE_IDS: Record<string, number> = { staff: 22, partner: 2, certified_moderator: 3, hypesquad: 4, hypesquad_house_1: 5, hypesquad_house_2: 6, hypesquad_house_3: 7, bug_hunter_level_1: 8, bug_hunter_level_2: 9, verified_developer: 10, early_supporter: 11, legacy_username: 13, quest_completed: 14, orb_profile_badge: 16, "cloudcord-gifting": 17 };
+          const DIRECTORY_BADGE_IDS: Record<string, number> = { staff: 22, partner: 2, certified_moderator: 3, hypesquad: 4, hypesquad_house_1: 5, hypesquad_house_2: 6, hypesquad_house_3: 7, bug_hunter_level_1: 8, bug_hunter_level_2: 9, verified_developer: 10, early_supporter: 11, legacy_username: 13, quest_completed: 14, orb_profile_badge: 16, gifting: 17 };
           const BOOST_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
           // Activity badges Discord derives itself (account age, game time...).
           const DIRECTORY_ONLY_BADGES = new Set([18, 19, 20, 21]);
@@ -2141,7 +2141,7 @@ jobs:
               if (src.nitroMonths >= 0) push(nitroBadgeId(src.nitroMonths), "Subscriber since " + shortDate(nitroSinceFor(src.nitroMonths, src.nitroSince)), milestoneIcon(src.nitroMonths, NITRO_ICONS));
               if (src.boostIndex >= 0 && src.boostIndex < BOOST_MONTHS.length) push("guild_booster_lvl" + (src.boostIndex + 1), "Server boosting since " + shortDate(monthsAgo(BOOST_MONTHS[src.boostIndex])), boosterIcon(BOOST_MONTHS[src.boostIndex]));
               const gift = GIFT_LEVELS[src.giftLevel];
-              if (gift) push("cloudcord-gifting", gift.name, gift.icon);
+              if (gift) push("gifting", gift.name, gift.icon);
               for (const row of BADGES) {
                   if (!src.selected(row as any[])) continue;
                   const [rowId, description, , icon] = row;
