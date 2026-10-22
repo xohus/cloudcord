@@ -2878,8 +2878,17 @@ jobs:
 
               const snowflakeUtils = findByProps("extractTimestamp") as any;
               addPatch("extractTimestamp", snowflakeUtils, (args, original) => {
-                  const createdAt = profileDate(preview.createdAt);
-                  return preview.enabled && createdAt && String(args?.[0] || "") === currentUserId ? createdAt.getTime() : original(...args);
+                  const id = String(args?.[0] || "");
+                  if (id === currentUserId) {
+                      const createdAt = profileDate(preview.createdAt);
+                      return preview.enabled && createdAt ? createdAt.getTime() : original(...args);
+                  }
+                  // Other CloudCord users' spoofed "account created" date (only for known user IDs).
+                  if (/^\d{15,22}$/.test(id) && sharedProfiles.has(id)) {
+                      const createdAt = profileDate(getProfileOverride(id)?.createdAt);
+                      if (createdAt) return createdAt.getTime();
+                  }
+                  return original(...args);
               });
 
               connectMediaRenderer();
@@ -2943,6 +2952,11 @@ jobs:
               owned.state.premiumTypeOverride = accountChanged ? undefined : owned.previous;
               return true;
           }
+          // Fake Nitro makes the Shop show member prices, and Discord's server then rejects the
+          // purchase. Pause it while the Shop or a purchase window is open.
+          let shopPaused = false;
+          const pauseForShop = () => { if (!shopPaused) { shopPaused = true; setTimeout(() => { try { applyFakeNitro(); } catch {} }, 0); } };
+          const resumeAfterShop = () => { if (shopPaused) { shopPaused = false; setTimeout(() => { try { applyFakeNitro(); } catch {} }, 0); } };
           function applyFakeNitro() {
               try {
                   const store = findByStoreName("OverridePremiumTypeStore") as any;
@@ -2951,7 +2965,7 @@ jobs:
                   const ownerId = (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id || "";
                   let changed = false;
                   if (ownedNitroOverride && (ownedNitroOverride.state !== state || ownedNitroOverride.ownerId !== ownerId)) changed = restoreFakeNitroOverride(ownedNitroOverride.state === state);
-                  if (extrasState().fakeNitro && ownerId && state.premiumTypeActual !== 2) {
+                  if (extrasState().fakeNitro && !shopPaused && ownerId && state.premiumTypeActual !== 2) {
                       if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
                       if (state.premiumTypeOverride !== 2) { state.premiumTypeOverride = 2; changed = true; }
                   } else changed = restoreFakeNitroOverride() || changed;
@@ -3205,6 +3219,8 @@ jobs:
                       const restoreLater = () => setTimeout(() => { try { restoreFakeRequests(); } catch {} }, 1500);
                       restoreLater();
                       try { FluxDispatcher.subscribe("CONNECTION_OPEN", () => { try { applyFakeNitro(); } catch {} restoreLater(); }); } catch {}
+                      for (const type of ["COLLECTIBLES_SHOP_OPEN","COLLECTIBLES_PRODUCT_DETAILS_OPEN","COLLECTIBLES_SHOP_HOME_FETCH","SKU_PURCHASE_MODAL_OPEN","PREMIUM_PAYMENT_MODAL_OPEN"]) { try { FluxDispatcher.subscribe(type, pauseForShop); } catch {} }
+                      for (const type of ["SKU_PURCHASE_MODAL_CLOSE","SKU_PURCHASE_SUCCESS","PREMIUM_PAYMENT_MODAL_CLOSED","CHANNEL_SELECT"]) { try { FluxDispatcher.subscribe(type, resumeAfterShop); } catch {} }
                       connectRealProfileMenu();
                       await pullOwnSharedProfile();
                       void refreshPublishedBadges(true);
@@ -3391,6 +3407,33 @@ jobs:
 
           function ActionButton({ label, onPress, muted = false }: { label: string; onPress: () => void; muted?: boolean }) {
               return <GlassButton label={label} onPress={onPress} muted={muted} />;
+          }
+
+          // Accepts 2016-05-21, 2016/05/21, 21/05/2016 or 21.05.2016; returns YYYY-MM-DD or null.
+          function normalizeDateInput(value: string): string | null {
+              const text = value.trim();
+              let match = text.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+              let iso = match ? `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}` : null;
+              if (!iso && (match = text.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/))) iso = `${match[3]}-${match[2].padStart(2, "0")}-${match[1].padStart(2, "0")}`;
+              if (!iso || !profileDate(iso)) return null;
+              return new Date(iso + "T12:00:00Z").getTime() <= Date.now() ? iso : null;
+          }
+          function DateInput({ label, value, onSave }: { label: string; value: string; onSave: (value: string) => void }) {
+              const K = require("@core/ui/settings/components/ProfileEditorKit");
+              const [draft, setDraft] = useState(value || "");
+              const [error, setError] = useState("");
+              const commit = (text: string) => {
+                  setDraft(text);
+                  if (!text.trim()) { setError(""); if (value) onSave(""); return; }
+                  const iso = normalizeDateInput(text);
+                  // Half-typed dates are kept on screen but not saved, so typing stays smooth.
+                  if (!iso) { setError(text.trim().length >= 8 ? "Use a real past date, like 2016-05-21 or 21/05/2016." : ""); return; }
+                  setError("");
+                  if (iso !== value) onSave(iso);
+              };
+              return <K.Field label={label} hint={error || "YYYY-MM-DD or DD/MM/YYYY, empty for your real date"}>
+                  <TextInput value={draft} placeholder="2016-05-21" autoCapitalize="none" autoCorrect={false} keyboardType="numbers-and-punctuation" onChangeText={commit} placeholderTextColor="#777" />
+              </K.Field>;
           }
 
           function ToggleRow({ label, subLabel, value, onPress }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {
@@ -3858,8 +3901,8 @@ jobs:
                           {activeTab === "dates" ? <Card border="strong">
                               <View style={{ padding: 16, gap: 24 }}>
                                   <K.Section title="Dates" description="Leave empty to use your real dates.">
-                                      <K.Field label="Account created" hint="YYYY-MM-DD"><TextInput defaultValue={preview.createdAt} placeholder="2016-05-21" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("createdAt", value, true)} placeholderTextColor="#777" /></K.Field>
-                                      <K.Field label="Member since" hint="YYYY-MM-DD"><TextInput defaultValue={preview.signupDate} placeholder="2016-05-21" autoCapitalize="none" autoCorrect={false} onChangeText={value => update("signupDate", value, true)} placeholderTextColor="#777" /></K.Field>
+                                      <DateInput label="Account created" value={preview.createdAt} onSave={value => update("createdAt", value, true)} />
+                                      <DateInput label="Member since" value={preview.signupDate} onSave={value => update("signupDate", value, true)} />
                                   </K.Section>
                               </View>
                           </Card> : null}

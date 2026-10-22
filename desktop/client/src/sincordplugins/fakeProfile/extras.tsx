@@ -59,6 +59,14 @@ function restoreFakeNitroOverride(accountChanged = false) {
     owned.state.premiumTypeOverride = accountChanged ? undefined : owned.previous;
     return true;
 }
+// Fake Nitro makes the Shop show member prices, and Discord's server then rejects the
+// purchase. Pause it while the Shop or a purchase window is open.
+let shopPaused = false;
+const SHOP_OPEN = ["COLLECTIBLES_SHOP_OPEN","COLLECTIBLES_PRODUCT_DETAILS_OPEN","COLLECTIBLES_SHOP_HOME_FETCH","SKU_PURCHASE_MODAL_OPEN","PREMIUM_PAYMENT_MODAL_OPEN"];
+const SHOP_CLOSE = ["SKU_PURCHASE_MODAL_CLOSE","SKU_PURCHASE_SUCCESS","PREMIUM_PAYMENT_MODAL_CLOSED","CHANNEL_SELECT"];
+function pauseForShop() { if (!shopPaused) { shopPaused = true; applyFakeNitro(); } }
+function resumeAfterShop() { if (shopPaused) { shopPaused = false; applyFakeNitro(); } }
+
 function applyFakeNitro() {
     try {
         const state = OverridePremiumTypeStore?.getState?.();
@@ -68,7 +76,7 @@ function applyFakeNitro() {
         if (ownedNitroOverride && (ownedNitroOverride.state !== state || ownedNitroOverride.ownerId !== ownerId)) {
             changed = restoreFakeNitroOverride(ownedNitroOverride.state === state);
         }
-        if (extras.fakeNitro && ownerId && state.premiumTypeActual !== 2) {
+        if (extras.fakeNitro && !shopPaused && ownerId && state.premiumTypeActual !== 2) {
             // Own only the override installed here. Never erase another plugin's
             // override just because this switch defaults to off.
             if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
@@ -312,8 +320,13 @@ export function startExtras() {
     restoreFakeRequests();
     FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro);
     FluxDispatcher.subscribe("CONNECTION_OPEN", restoreSoon);
+    for (const type of SHOP_OPEN) FluxDispatcher.subscribe(type, pauseForShop);
+    for (const type of SHOP_CLOSE) FluxDispatcher.subscribe(type, resumeAfterShop);
 }
 export function stopExtras() {
+    for (const type of SHOP_OPEN) FluxDispatcher.unsubscribe(type, pauseForShop);
+    for (const type of SHOP_CLOSE) FluxDispatcher.unsubscribe(type, resumeAfterShop);
+    shopPaused = false;
     uninstallGiftHook();
     uninstallBoostHooks();
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", applyFakeNitro);
