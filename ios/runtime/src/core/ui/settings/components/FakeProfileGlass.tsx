@@ -6,7 +6,8 @@ import { findAssetId } from "@lib/api/assets";
 import { tokens } from "@metro/common";
 
 function tabIcon(tab: ProfileTab) {
-    const names = { profile: ["UserIcon"], style: ["PaintPaletteIcon", "SparklesIcon", "StarIcon"], dates: ["CalendarIcon", "ClockIcon"], status: ["CircleIcon", "StatusIcon", "UserIcon"], social: ["LinkIcon", "PeopleIcon"], badges: ["StarIcon"], custom: ["ImageIcon", "StarIcon"], others: ["PeopleIcon", "UserIcon"] }[tab];
+    // Same icons as the desktop editor's sidebar (person, tag, sparkle, status ring, badge, link).
+    const names = { profile: ["UserIcon"], name: ["TagIcon", "TagsIcon", "PencilIcon"], cosmetics: ["SparklesIcon", "SparkleIcon", "StarIcon"], status: ["CircleIcon", "StatusIcon", "UserIcon"], badges: ["BadgeIcon", "StarIcon"], social: ["LinkIcon", "PeopleIcon"], dates: ["CalendarIcon", "ClockIcon"], custom: ["ImageIcon", "StarIcon"], others: ["PeopleIcon", "UserIcon"] }[tab];
     for (const name of [...names, "SettingsIcon"]) {
         try { const id = findAssetId(name); if (id) return <TableRow.Icon source={id} />; } catch {}
     }
@@ -30,11 +31,12 @@ export function GlassCard({ children }: { children: ReactNode; border?: string }
 export function GlassButton({ label, onPress, muted = false, disabled = false }: { label: string; onPress: () => void; muted?: boolean; disabled?: boolean }) {
     return <Button text={label} onPress={onPress} disabled={disabled} variant="secondary" />;
 }
-export type ProfileTab = "profile" | "style" | "status" | "badges" | "social" | "dates" | "custom" | "others";
+export type ProfileTab = "profile" | "name" | "cosmetics" | "status" | "badges" | "social" | "dates" | "custom" | "others";
 // Every editor section, in the same order as the desktop sidebar.
 const SECTIONS: [ProfileTab, string, string][] = [
     ["profile", "Profile", "Names, pictures, banner, bio and colors"],
-    ["style", "Style", "Frames, effects, nameplates, decorations, name style and server tag"],
+    ["name", "Name & tag", "Name style, font, colors and server tag"],
+    ["cosmetics", "Cosmetics", "Decorations, frames, effects and nameplates"],
     ["status", "Status", "Online status, custom status and activity"],
     ["badges", "Badges", "Badges, Nitro, boosting, activity badges and order"],
     ["social", "Connections", "Accounts and domains on your profile"],

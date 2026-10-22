@@ -45,11 +45,11 @@ assert.equal(renderInput({ value: 'controlled', defaultValue: 'ignored' }).props
 (async () => {
     vm.runInContext(code, ctx);
     assert.equal(decorationLoads, 0, 'opening the Profile tab does not download the cosmetics catalog');
-    ctx.activeTab = 'style';
+    ctx.activeTab = 'cosmetics';
     vm.runInContext(code, ctx);
     await Promise.resolve();
     assert.equal(catalogLoads, 1);
-    assert.equal(decorationLoads, 1, 'the visible Style tab loads decorations');
+    assert.equal(decorationLoads, 1, 'the visible Cosmetics tab loads decorations');
     assert.equal(result, rows);
-    console.log('PASS every mobile editor branch uses a real tab; Style loads the catalog and decoration picker');
+    console.log('PASS every mobile editor branch uses a real tab; Cosmetics loads the catalog and decoration picker');
 })().catch(error => { console.error(error); process.exitCode = 1; });

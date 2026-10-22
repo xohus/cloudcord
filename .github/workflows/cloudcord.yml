@@ -3669,7 +3669,7 @@ jobs:
               const [decorations, setDecorations] = useState<Array<{ asset: string; skuId: string; label: string; uri: string }>>([]);
               const [decorationsLoading, setDecorationsLoading] = useState(true);
               useEffect(() => {
-                  if (activeTab !== "style") return;
+                  if (activeTab !== "cosmetics") return;
                   if (!catalog) loadCatalog();
                   let active = true;
                   void findDecorationCatalog().then(result => { if (active) { setDecorations(result); setDecorationsLoading(false); } }, () => { if (active) setDecorationsLoading(false); });
@@ -3740,7 +3740,7 @@ jobs:
                                   </K.Section>
                               </View>
                           </Card> : null}
-                          {activeTab === "style" ? <Card border="strong">
+                          {activeTab === "cosmetics" ? <Card border="strong">
                               <View style={{ padding: 16, gap: 24 }}>
                                   <K.Section title="Avatar decoration" description="The frame around your profile picture.">
                                       <K.CurrentRow label={preview.avatarDecoration ? decorations.find(item => item.uri === preview.avatarDecoration)?.label || "Decoration" : null} image={preview.avatarDecoration || undefined} onRemove={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} />
@@ -3771,7 +3771,7 @@ jobs:
                                   </K.Section>
                               </View>
                           </Card> : null}
-                          {activeTab === "style" ? <Card border="strong">
+                          {activeTab === "name" ? <Card border="strong">
                               <View style={{ padding: 16, gap: 24 }}>
                                   <K.Section title="Name style" description="Font, effect and colors for your display name.">
                                       <NameStylePreview />
@@ -3863,7 +3863,7 @@ jobs:
                                   </K.Section>
                               </View>
                           </Card> : null}
-                          {["profile", "style", "status", "badges", "dates"].includes(activeTab) ? <Card border="strong">
+                          {["profile", "name", "cosmetics", "status", "badges", "dates"].includes(activeTab) ? <Card border="strong">
                               <View style={{ padding: 16, gap: 12 }}>
                                   <ActionButton label="Apply preview" onPress={() => { diagnostics.last = "Preview refreshed"; refreshPreview(); redraw(); }} />
                                   <ToggleRow label="Keep this profile on this device only" value={Boolean(rootSettings.fakeProfileLocalOnly)} onPress={() => {
