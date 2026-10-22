@@ -358,6 +358,7 @@ jobs:
           function Card(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassCard; return <Component {...props} />; }
           function GlassButton(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassButton; return <Component {...props} />; }
           function ProfileTabs(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").ProfileTabs; return <Component {...props} />; }
+          function OverviewPanel(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").ProfileOverview; return <Component {...props} />; }
           function TextInput(props: import("react-native").TextInputProps) { const Component = require("@core/ui/settings/components/FakeProfileGlass").DiscordInput; return <Component {...props} />; }
           function ProfileGlyph() {
               let icon: any;
@@ -3484,7 +3485,7 @@ jobs:
 
           export default function FakeProfile() {
               const editorOwner = useRef(currentUserId);
-              const [activeTab, setActiveTab] = useState<ProfileTab>("profile");
+              const [activeTab, setActiveTab] = useState<ProfileTab>("overview");
               const [showDetails, setShowDetails] = useState(false);
               useProxy(settings);
               const [, redraw] = useReducer(value => value + 1, 0);
@@ -3697,6 +3698,28 @@ jobs:
                                   effect={preview.profileEffect ? catalog?.effects.find(item => item.skuId === preview.profileEffect?.skuId)?.title || "Selected" : undefined} />
                           </View></Card> : null}
                           <ProfileTabs selected={activeTab} onSelect={setActiveTab} />
+                          {activeTab === "overview" ? (() => {
+                              // Dashboard home: profile stats, a completion checklist and quick actions.
+                              const badgeCount = Object.values(preview.selectedBadges || {}).filter(Boolean).length + (preview.nitroEnabled ? 1 : 0) + (preview.boostMonths > 0 ? 1 : 0) + (preview.giftLevel >= 0 ? 1 : 0);
+                              const connections = (preview.customConnections || []).length;
+                              const name = preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "there";
+                              return <OverviewPanel name={name} subtitle={preview.enabled ? (rootSettings.fakeProfileLocalOnly ? "Your custom profile is on, on this device only" : "Your custom profile is on and synced everywhere") : "Your custom profile is off"}
+                                  stats={[
+                                      { label: "Username", value: preview.username || realCurrentUser?.username || "-", hint: "Your public name" },
+                                      { label: "Badges", value: String(badgeCount), hint: preview.replaceBadges ? "Real badges hidden" : "Shown with your real ones" },
+                                      { label: "Connections", value: String(connections), hint: "Accounts and domains" },
+                                      { label: "Sync", value: rootSettings.fakeProfileLocalOnly ? "Device" : "Everywhere", hint: rootSettings.fakeProfileLocalOnly ? "Only you see it" : "Other CloudCord users see it" }
+                                  ]}
+                                  tasks={[
+                                      { label: "Upload a profile picture", done: !!preview.avatarMedia, tab: "profile" },
+                                      { label: "Add your name", done: !!preview.displayName, tab: "profile" },
+                                      { label: "Write a bio", done: !!preview.bio, tab: "profile" },
+                                      { label: "Pick a decoration, frame or nameplate", done: !!(preview.avatarDecoration || preview.profileFrame || preview.nameplate), tab: "cosmetics" },
+                                      { label: "Choose badges", done: badgeCount > 0, tab: "badges" },
+                                      { label: "Add a connection", done: connections > 0, tab: "social" }
+                                  ]}
+                                  onSelect={setActiveTab} />;
+                          })() : null}
                           {activeTab === "social" ? <Card><CustomSocialEditor data={preview} onChange={(value: ProfileAppearance) => { rootSettings.fakeProfile = { ...preview, ...value, syncRevision: Date.now() }; preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw(); }} resolveUser={async (id: string) => {
                               let shared = sharedProfiles.get(id);
                               if (!shared && !isCurrentUser(id)) {
