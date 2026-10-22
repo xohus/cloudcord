@@ -14352,8 +14352,25 @@
         if (badgeId != null)
           owned.set(badgeId, badge);
       }
-      if (Array.isArray(action.badges))
-        action.badges = action.badges.map((entry) => fakeDirectoryEntry(entry, src, owned));
+      if (Array.isArray(action.badges)) {
+        var entries = action.badges.map((entry) => fakeDirectoryEntry(entry, src, owned));
+        var listed = new Set(entries.map((entry) => entry?.badge_id));
+        var store = findByStoreName("BadgeDirectoryStore");
+        if (!isCurrentUser(id) && currentUserId)
+          for (var badgeId1 of owned.keys()) {
+            if (listed.has(badgeId1))
+              continue;
+            var template = store?.getBadgeById?.(badgeId1, currentUserId);
+            if (template)
+              entries.push(fakeDirectoryEntry({
+                ...template,
+                owned: false,
+                info_label: void 0,
+                progress: void 0
+              }, src, owned));
+          }
+        action.badges = entries;
+      }
       if (action.badge)
         action.badge = fakeDirectoryEntry(action.badge, src, owned);
     } catch (e) {
