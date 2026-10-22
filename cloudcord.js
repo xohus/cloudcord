@@ -14178,7 +14178,7 @@
       push("guild_booster_lvl" + (src.boostIndex + 1), "Server boosting since " + shortDate(monthsAgo(BOOST_MONTHS[src.boostIndex])), boosterIcon(BOOST_MONTHS[src.boostIndex]));
     var gift = GIFT_LEVELS[src.giftLevel];
     if (gift)
-      push("cloudcord-gifting", gift.name, gift.icon);
+      push("gifting", gift.name, gift.icon);
     for (var row of BADGES) {
       if (!src.selected(row))
         continue;
@@ -18689,7 +18689,7 @@
         legacy_username: 13,
         quest_completed: 14,
         orb_profile_badge: 16,
-        "cloudcord-gifting": 17
+        gifting: 17
       };
       BOOST_MONTHS = [
         1,
