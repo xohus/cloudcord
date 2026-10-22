@@ -1381,6 +1381,7 @@ jobs:
                       sharedProfiles.set(id, next);
                       sharedProfileFetchedAt.set(id, Date.now());
                       if (!changed) return;
+                      try { reapplyBadgeDirectory(id); } catch {}
                       queueSharedRenderRefresh();
                   })
                   .catch(() => {})
@@ -2236,6 +2237,16 @@ jobs:
               if (Array.isArray(action.pendingBadgeDisplayOrder)) rootSettings.fakeProfileNativeOrder = action.pendingBadgeDisplayOrder.map(Number);
               if (Array.isArray(action.pendingBadgeHiddenBadges)) rootSettings.fakeProfileNativeHidden = action.pendingBadgeHiddenBadges.map(Number);
               if (Array.isArray(action.pendingBadgeDisplayOrder) || Array.isArray(action.pendingBadgeHiddenBadges)) queueSharedPublish();
+          }
+          // Re-run the badge rewrite on badge info Discord already has (no network): a fetch can
+          // be skipped while Discord's copy is fresh, which left badges without fake data.
+          function reapplyBadgeDirectory(id: string) {
+              try {
+                  const store = findByStoreName("BadgeDirectoryStore") as any;
+                  if (!store?.hasCatalogFor?.(id)) return;
+                  const badges = (store.getBadges(id) || []).map((entry: any) => ({ ...entry }));
+                  if (badges.length) setTimeout(() => { try { FluxDispatcher.dispatch({ type: "BADGE_DIRECTORY_FETCH_SUCCESS", userId: id, badges }); } catch {} }, 0);
+              } catch {}
           }
           let nativeBadgeHooksInstalled = false;
           function installNativeBadgeHooks() {

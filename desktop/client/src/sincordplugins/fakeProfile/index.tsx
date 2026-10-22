@@ -15,7 +15,7 @@ import { ColorField, Grid2, ImageField, ProfilePreview, Section, SelectField, Sw
 import { Current, installPresenceHooks, installTagIconSwap, loadCatalog, NameplateEditor, PickerGrid, onCatalogLoaded, ProfileEffectEditor, profileEffectFor, ProfileFrameEditor, refreshPresence, StatusEditor, TagIconEditor, uninstallPresenceHooks, uninstallTagIconSwap } from "./cosmetics";
 import { installNativeSocialHooks } from "@utils/nativeSocialHooks";
 import { appearanceOptions, availableServerTags, Catalog, customDiscordMediaURL, nameplateAssetURL, nativeCollectibles, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, ProfileAppearance } from "@utils/profileAppearance";
-import { findByCodeLazy, findByProps } from "@webpack";
+import { findByCodeLazy, findByProps, findStoreLazy } from "@webpack";
 import { fetchProfileResponse } from "@utils/profileSyncNetwork";
 
 import { CLOUDCORD_STAFF_ROLES, ProfileBadge } from "@api/Badges";
@@ -1041,6 +1041,8 @@ function requestSharedProfile(userId: string, force = false) {
             if (changed) sharedProfiles.set(userId, next);
             sharedProfileFetchedAt.set(userId, Date.now());
             if (!changed) return;
+            // Discord may already hold this user's badge info: apply the fake data to it now.
+            reapplyBadgeDirectory(userId);
             // If Discord already loaded this profile, have it load once more so the
             // badges arrive in its own data (at most every 5 minutes per user).
             if (Date.now() - (discordReloadedAt.get(userId) ?? 0) > 5 * 60_000 && realGetUserProfile?.(userId)) {
@@ -2360,7 +2362,19 @@ function rewriteBadgeDirectory(action: any) {
 }
 function reloadBadgeDirectory(userId: string | null | undefined) {
     if (!userId) return;
+    reapplyBadgeDirectory(userId);
     try { void Promise.resolve(fetchBadgeDirectory(userId)).catch(() => { }); } catch { }
+}
+// Re-run the badge rewrite on the badge info Discord already has (no network). A fetch
+// can be skipped while Discord's copy is fresh, which left badges without fake data.
+const badgeDirectoryStore = findStoreLazy("BadgeDirectoryStore");
+function reapplyBadgeDirectory(userId: string | null | undefined) {
+    if (!userId) return;
+    try {
+        if (!badgeDirectoryStore?.hasCatalogFor?.(userId)) return;
+        const badges = (badgeDirectoryStore.getBadges(userId) || []).map((entry: any) => ({ ...entry }));
+        if (badges.length) FluxDispatcher.dispatch({ type: "BADGE_DIRECTORY_FETCH_SUCCESS", userId, badges });
+    } catch { }
 }
 
 // Ask Discord to load a profile again so the edited data replaces what it cached.
