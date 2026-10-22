@@ -1,20 +1,12 @@
 const fs = require('node:fs');
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
-const expected = {
-    '1465007041390317579': 'Administrator',
-    '1457121276748365989': 'Administrator',
-    '1497588725788442637': 'Management',
-    '1453130879537905734': 'Management',
-    '1191456523763859558': 'Moderator',
-    '1394648991223779328': 'Manager',
-    '1417880742502994042': 'Management',
-    '553936745058664458': 'Moderator',
-    '463515440606609419': 'Founder',
-    '1121228881425354832': 'Management',
-    '1540350369232850995': 'Manager',
-    '1169999011642605628': 'Manager'
-};
+const roster = JSON.parse(fs.readFileSync('config/staff-roster.json', 'utf8'));
+assert.deepEqual(roster.roles.map(role => role.userIds.length), [1, 2, 3, 1, 4, 6, 2, 4]);
+const entries = roster.roles.flatMap(role => role.userIds.map(id => [id, role.name]));
+assert.equal(new Set(entries.map(([id]) => id)).size, 23, 'each staff account has exactly one rank');
+assert(!entries.some(([id]) => id === roster.owner), 'owner is outside the 23 staff slots');
+const expected = { [roster.owner]: 'Founder', ...Object.fromEntries(entries) };
 for (const path of ['desktop/client/src/api/Badges.ts', '.github/workflows/cloudcord.yml']) {
     const source = fs.readFileSync(path, 'utf8');
     const object = source.match(/const CLOUDCORD_STAFF_ROLES: Record<string, string> = (\{[\s\S]*?\});/)[1];
@@ -22,4 +14,4 @@ for (const path of ['desktop/client/src/api/Badges.ts', '.github/workflows/cloud
     assert.deepEqual(actual, expected);
     assert.equal(actual['unknown-user'], undefined);
 }
-console.log('all eleven staff roles match on desktop/browser and mobile, including Administrator and Manager; unlisted users have no staff badge');
+console.log('PASS exact 23-slot staff roster, unique assignments and matching desktop/browser/mobile badges; owner preserved');

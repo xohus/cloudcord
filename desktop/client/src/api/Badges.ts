@@ -67,18 +67,30 @@ export interface ProfileBadge {
 const Badges = new Set<ProfileBadge>();
 
 export const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
-    "1465007041390317579": "Administrator",
-    "1457121276748365989": "Administrator",
-    "1497588725788442637": "Management",
-    "1453130879537905734": "Management",
-    "1191456523763859558": "Moderator",
-    "1394648991223779328": "Manager",
-    "1417880742502994042": "Management",
-    "553936745058664458": "Moderator",
     "463515440606609419": "Founder",
-    "1121228881425354832": "Management",
+    "1526004298020950075": "Head Staff",
     "1540350369232850995": "Manager",
-    "1169999011642605628": "Manager"
+    "1497588725788442637": "Manager",
+    "1191456523763859558": "Mod Admin",
+    "1457121276748365989": "Mod Admin",
+    "1465007041390317579": "Mod Admin",
+    "1470732628461359251": "Support Admin",
+    "1417880742502994042": "Senior Mod",
+    "1169999011642605628": "Senior Mod",
+    "1394648991223779328": "Senior Mod",
+    "1312331817818394665": "Senior Mod",
+    "318501167741272066": "Mod",
+    "553936745058664458": "Mod",
+    "1073445426025480202": "Mod",
+    "1121228881425354832": "Mod",
+    "1141922991622586418": "Mod",
+    "1453130879537905734": "Mod",
+    "551069589983854603": "Senior Support",
+    "1330236504198611029": "Senior Support",
+    "1186647886608478260": "Support",
+    "1416192374895542455": "Support",
+    "1541881462914023501": "Support",
+    "1560496375710613514": "Support"
 };
 const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
 
