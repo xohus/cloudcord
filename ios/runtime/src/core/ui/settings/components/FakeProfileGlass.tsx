@@ -1,17 +1,9 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { Pressable, View } from "react-native";
-import { Button, Card, TableRow, TableRowGroup, Text, TextInput } from "@metro/common/components";
+import { Image, Modal, Pressable, ScrollView, View } from "react-native";
+import { Button, Card, Text, TextInput } from "@metro/common/components";
 import { findAssetId } from "@lib/api/assets";
 import { tokens } from "@metro/common";
-
-function tabIcon(tab: ProfileTab) {
-    // Same icons as the desktop editor's sidebar (person, tag, sparkle, status ring, badge, link).
-    const names = { overview: ["GridSquareIcon", "DashboardIcon", "HomeIcon", "AppsIcon"], profile: ["UserIcon"], name: ["TagIcon", "TagsIcon", "PencilIcon"], cosmetics: ["SparklesIcon", "SparkleIcon", "StarIcon"], status: ["CircleIcon", "StatusIcon", "UserIcon"], badges: ["BadgeIcon", "StarIcon"], social: ["LinkIcon", "PeopleIcon"], dates: ["CalendarIcon", "ClockIcon"], custom: ["ImageIcon", "StarIcon"], others: ["PeopleIcon", "UserIcon"] }[tab];
-    for (const name of [...names, "SettingsIcon"]) {
-        try { const id = findAssetId(name); if (id) return <TableRow.Icon source={id} />; } catch {}
-    }
-}
 
 export function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }: any) {
     const [draft, setDraft] = useState(defaultValue ?? "");
@@ -46,96 +38,163 @@ const SECTIONS: [ProfileTab, string, string][] = [
     ["others", "Other profiles", "Changes visible only on this device"]
 ];
 
-// The three-line menu icon, drawn with plain views so it works on every Discord build.
-function MenuIcon({ color }: { color: string }) {
-    return <View style={{ width: 20, gap: 4 }}>
-        {[0, 1, 2].map(line => <View key={line} style={{ height: 2.5, borderRadius: 2, backgroundColor: color }} />)}
+// ---- Dashboard UI: top bar + slide-in drawer + overview, built from plain views ----
+const UI = {
+    accent: "#5865F2",
+    accentSoft: "rgba(88, 101, 242, 0.16)",
+    green: "#23A55A",
+    radius: 16,
+    gap: 12
+};
+const surface = () => tokens.colors.BACKGROUND_SECONDARY;
+const surfaceAlt = () => tokens.colors.BACKGROUND_TERTIARY;
+const border = () => tokens.colors.BORDER_SUBTLE ?? "rgba(255,255,255,0.06)";
+
+const ICONS: Record<ProfileTab, string[]> = {
+    overview: ["GridSquareIcon", "DashboardIcon", "HomeIcon", "AppsIcon"], profile: ["UserIcon"], name: ["TagIcon", "TagsIcon", "PencilIcon"],
+    cosmetics: ["SparklesIcon", "SparkleIcon", "StarIcon"], status: ["CircleIcon", "StatusIcon", "UserIcon"], badges: ["BadgeIcon", "StarIcon"],
+    social: ["LinkIcon", "PeopleIcon"], dates: ["CalendarIcon", "ClockIcon"], custom: ["ImageIcon", "StarIcon"], others: ["PeopleIcon", "UserIcon"]
+};
+function iconSource(tab: ProfileTab) {
+    for (const name of [...ICONS[tab], "SettingsIcon"]) { try { const id = findAssetId(name); if (id) return id; } catch {} }
+    return undefined;
+}
+/** A square icon tile, tinted like a dashboard nav icon. */
+function IconTile({ tab, active = false, size = 36 }: { tab: ProfileTab; active?: boolean; size?: number }) {
+    const source = iconSource(tab);
+    return <View style={{ width: size, height: size, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: active ? UI.accent : UI.accentSoft }}>
+        {source ? <Image source={source} style={{ width: size * 0.5, height: size * 0.5, tintColor: active ? "#FFFFFF" : "#C9CDFB" }} resizeMode="contain" /> : null}
+    </View>;
+}
+/** Three-line menu button, drawn with views so it works on every Discord build. */
+function MenuButton({ onPress }: { onPress: () => void }) {
+    return <Pressable accessibilityRole="button" accessibilityLabel="Open menu" onPress={onPress} hitSlop={8}
+        style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: surfaceAlt() }}>
+        <View style={{ width: 18, gap: 4 }}>{[0, 1, 2].map(line => <View key={line} style={{ height: 2, borderRadius: 1, backgroundColor: tokens.colors.TEXT_NORMAL ?? "#DBDEE1" }} />)}</View>
+    </Pressable>;
+}
+/** Lays children out two per row so every card has the same width. */
+function Grid2({ items }: { items: ReactNode[] }) {
+    const rows: ReactNode[][] = [];
+    for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
+    return <View style={{ gap: UI.gap }}>
+        {rows.map((row, index) => <View key={index} style={{ flexDirection: "row", gap: UI.gap }}>
+            {row.map((item, i) => <View key={i} style={{ flex: 1 }}>{item}</View>)}
+            {row.length === 1 ? <View style={{ flex: 1 }} /> : null}
+        </View>)}
     </View>;
 }
 
-// Menu groups, like the desktop dashboard's sidebar.
 const GROUPS: [string, ProfileTab[]][] = [
     ["Account", ["overview"]],
     ["Customize", ["profile", "name", "cosmetics", "status"]],
     ["Badges & links", ["badges", "social", "dates"]],
     ["More", ["custom", "others"]]
 ];
-const section = (tab: ProfileTab) => SECTIONS.find(([id]) => id === tab) ?? SECTIONS[0];
+const sectionOf = (tab: ProfileTab) => SECTIONS.find(([id]) => id === tab) ?? SECTIONS[0];
 
-/** Dashboard-style menu: a ☰ bar shows where you are and opens the grouped section list. */
-export function ProfileTabs({ selected, onSelect }: { selected: ProfileTab; onSelect: (tab: ProfileTab) => void }) {
+/** Top bar with the menu on the left, plus a left drawer with every section in groups. */
+export function ProfileTabs({ selected, onSelect, status }: { selected: ProfileTab; onSelect: (tab: ProfileTab) => void; status?: string }) {
     const [open, setOpen] = useState(false);
-    const current = section(selected);
-    return <View style={{ gap: 8 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={open ? "Close menu" : "Open menu"} accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)}
-            style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, backgroundColor: tokens.colors.BACKGROUND_TERTIARY }}>
-            <MenuIcon color={open ? "#5865F2" : "#B5BAC1"} />
+    const [, label, sub] = sectionOf(selected);
+    const choose = (tab: ProfileTab) => { onSelect(tab); setOpen(false); };
+    return <View style={{ gap: UI.gap }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: UI.radius, backgroundColor: surface(), borderWidth: 1, borderColor: border() }}>
+            <MenuButton onPress={() => setOpen(true)} />
             <View style={{ flex: 1 }}>
-                <Text variant="text-xs/medium" color="text-muted">Custom Profile / {current[1]}</Text>
-                <Text variant="text-md/bold">{current[1]}</Text>
+                <Text variant="text-xs/medium" color="text-muted" numberOfLines={1}>Custom Profile</Text>
+                <Text variant="text-lg/bold" numberOfLines={1}>{label}</Text>
             </View>
-        </Pressable>
-        {open ? <View accessibilityRole="menu" style={{ gap: 10 }}>
-            {GROUPS.map(([title, tabs]) => <View key={title} style={{ gap: 4 }}>
-                <Text variant="text-xs/semibold" color="text-muted" style={{ paddingHorizontal: 6 }}>{title}</Text>
-                <View style={{ borderRadius: 14, overflow: "hidden" }}>
-                    <TableRowGroup>
-                        {tabs.map(tab => { const [, label, sub] = section(tab); return <View key={tab} style={{ borderLeftWidth: 3, borderLeftColor: tab === selected ? "#5865F2" : "transparent" }}>
-                            <TableRow label={label} subLabel={sub} icon={tabIcon(tab)} onPress={() => { onSelect(tab); setOpen(false); }} />
-                        </View>; })}
-                    </TableRowGroup>
-                </View>
-            </View>)}
+            {status ? <View style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, backgroundColor: surfaceAlt() }}>
+                <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: UI.green }} />
+                <Text variant="text-xs/semibold" color="text-muted">{status}</Text>
+            </View> : null}
+        </View>
+        {selected !== "overview" ? <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 4 }}>
+            <IconTile tab={selected} active size={40} />
+            <View style={{ flex: 1 }}>
+                <Text variant="heading-lg/bold">{label}</Text>
+                <Text variant="text-sm/medium" color="text-muted">{sub}</Text>
+            </View>
         </View> : null}
+        <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+            <View style={{ flex: 1, flexDirection: "row" }}>
+                <View style={{ width: "78%", maxWidth: 340, height: "100%", paddingTop: 54, paddingHorizontal: 14, paddingBottom: 24, gap: 18, backgroundColor: surface(), borderRightWidth: 1, borderColor: border() }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 4 }}>
+                        <IconTile tab="overview" active size={34} />
+                        <Text variant="heading-md/bold" style={{ flex: 1 }}>Custom Profile</Text>
+                    </View>
+                    <ScrollView contentContainerStyle={{ gap: 18 }}>
+                        {GROUPS.map(([title, tabs]) => <View key={title} style={{ gap: 4 }}>
+                            <Text variant="text-xs/semibold" color="text-muted" style={{ paddingHorizontal: 8, marginBottom: 2 }}>{title}</Text>
+                            {tabs.map(tab => {
+                                const on = tab === selected;
+                                return <Pressable key={tab} accessibilityRole="button" accessibilityState={{ selected: on }} onPress={() => choose(tab)}
+                                    style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8, paddingHorizontal: 8, borderRadius: 12, backgroundColor: on ? UI.accentSoft : "transparent" }}>
+                                    <IconTile tab={tab} active={on} size={32} />
+                                    <Text variant={on ? "text-md/bold" : "text-md/medium"} style={{ flex: 1 }}>{sectionOf(tab)[1]}</Text>
+                                </Pressable>;
+                            })}
+                        </View>)}
+                    </ScrollView>
+                </View>
+                <Pressable accessibilityRole="button" accessibilityLabel="Close menu" onPress={() => setOpen(false)} style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.55)" }} />
+            </View>
+        </Modal>
     </View>;
 }
 
 type OverviewStat = { label: string; value: string; hint: string };
 type OverviewTask = { label: string; done: boolean; tab: ProfileTab };
+function Panel({ children, style }: { children: ReactNode; style?: any }) {
+    return <View style={[{ borderRadius: UI.radius, padding: 14, backgroundColor: surface(), borderWidth: 1, borderColor: border() }, style]}>{children}</View>;
+}
 /** Dashboard home: welcome, stat cards, completion checklist and quick actions. */
 export function ProfileOverview({ name, subtitle, stats, tasks, onSelect }: { name: string; subtitle: string; stats: OverviewStat[]; tasks: OverviewTask[]; onSelect: (tab: ProfileTab) => void }) {
     const done = tasks.filter(task => task.done).length;
     const percent = tasks.length ? Math.round(done / tasks.length * 100) : 100;
-    const card = { borderRadius: 14, padding: 14, gap: 4, backgroundColor: tokens.colors.BACKGROUND_SECONDARY } as const;
-    return <View style={{ gap: 14 }}>
-        <View style={{ gap: 2, paddingHorizontal: 4 }}>
-            <Text variant="heading-xl/bold">Welcome back, {name}</Text>
+    return <View style={{ gap: UI.gap + 4 }}>
+        <View style={{ gap: 4, paddingHorizontal: 4 }}>
+            <Text variant="heading-xl/bold" numberOfLines={1}>Welcome back, {name}</Text>
             <Text variant="text-sm/medium" color="text-muted">{subtitle}</Text>
         </View>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-            {stats.map(stat => <View key={stat.label} style={{ ...card, width: "48%", flexGrow: 1 }}>
-                <Text variant="text-xs/semibold" color="text-muted">{stat.label}</Text>
-                <Text variant="heading-lg/bold" numberOfLines={1}>{stat.value}</Text>
-                <Text variant="text-xs/medium" color="text-muted" numberOfLines={1}>{stat.hint}</Text>
-            </View>)}
-        </View>
-        <View style={{ ...card, gap: 10 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                <Text variant="text-md/bold">Profile completion</Text>
-                <Text variant="text-xs/bold" style={{ color: "#5865F2" }}>{percent}%</Text>
-            </View>
-            <View style={{ height: 6, borderRadius: 3, backgroundColor: tokens.colors.BACKGROUND_TERTIARY, overflow: "hidden" }}>
-                <View style={{ width: `${percent}%`, height: 6, borderRadius: 3, backgroundColor: "#5865F2" }} />
-            </View>
-            {tasks.map(task => <Pressable key={task.label} accessibilityRole="button" onPress={() => onSelect(task.tab)} style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 }}>
-                <View style={{ width: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", backgroundColor: task.done ? "#23A55A" : "transparent", borderWidth: task.done ? 0 : 2, borderColor: "#80848E" }}>
-                    {task.done ? <Text variant="text-xs/bold" style={{ color: "#FFFFFF" }}>✓</Text> : null}
+        <Grid2 items={stats.map(stat => <Panel key={stat.label} style={{ gap: 6, minHeight: 96 }}>
+            <Text variant="text-xs/semibold" color="text-muted" numberOfLines={1}>{stat.label}</Text>
+            <Text variant="heading-xl/bold" numberOfLines={1}>{stat.value}</Text>
+            <Text variant="text-xs/medium" color="text-muted" numberOfLines={1}>{stat.hint}</Text>
+        </Panel>)} />
+        <Panel style={{ gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text variant="text-md/bold" style={{ flex: 1 }}>Profile completion</Text>
+                <View style={{ paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: UI.accentSoft }}>
+                    <Text variant="text-xs/bold" style={{ color: "#C9CDFB" }}>{percent}%</Text>
                 </View>
-                <Text variant="text-sm/medium" color={task.done ? "text-muted" : undefined} style={{ flex: 1 }}>{task.label}</Text>
-                <Text variant="text-sm/medium" color="text-muted">›</Text>
-            </Pressable>)}
-        </View>
-        <View style={{ gap: 8 }}>
+            </View>
+            <View style={{ height: 6, borderRadius: 3, backgroundColor: surfaceAlt(), overflow: "hidden" }}>
+                <View style={{ width: `${percent}%`, height: 6, borderRadius: 3, backgroundColor: UI.accent }} />
+            </View>
+            <View style={{ gap: 2 }}>
+                {tasks.map(task => <Pressable key={task.label} accessibilityRole="button" onPress={() => onSelect(task.tab)}
+                    style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 8 }}>
+                    <View style={{ width: 22, height: 22, borderRadius: 11, alignItems: "center", justifyContent: "center", backgroundColor: task.done ? UI.green : "transparent", borderWidth: task.done ? 0 : 2, borderColor: "#80848E" }}>
+                        {task.done ? <Text variant="text-xs/bold" style={{ color: "#FFFFFF" }}>✓</Text> : null}
+                    </View>
+                    <Text variant="text-sm/medium" color={task.done ? "text-muted" : undefined} style={{ flex: 1 }}>{task.label}</Text>
+                    <Text variant="text-md/medium" color="text-muted">↗</Text>
+                </Pressable>)}
+            </View>
+        </Panel>
+        <View style={{ gap: UI.gap }}>
             <Text variant="text-md/bold" style={{ paddingHorizontal: 4 }}>Quick actions</Text>
-            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10 }}>
-                {SECTIONS.filter(([tab]) => tab !== "overview").map(([tab, label, sub]) => <Pressable key={tab} accessibilityRole="button" onPress={() => onSelect(tab)} style={{ ...card, width: "48%", flexGrow: 1, flexDirection: "row", alignItems: "center", gap: 10 }}>
-                    <View style={{ width: 32, alignItems: "center" }}>{tabIcon(tab)}</View>
-                    <View style={{ flex: 1 }}>
+            <Grid2 items={SECTIONS.filter(([tab]) => tab !== "overview").map(([tab, label, sub]) => <Pressable key={tab} accessibilityRole="button" onPress={() => onSelect(tab)}>
+                <Panel style={{ gap: 10, minHeight: 112 }}>
+                    <IconTile tab={tab} />
+                    <View style={{ gap: 2 }}>
                         <Text variant="text-sm/bold" numberOfLines={1}>{label}</Text>
                         <Text variant="text-xs/medium" color="text-muted" numberOfLines={2}>{sub}</Text>
                     </View>
-                </Pressable>)}
-            </View>
+                </Panel>
+            </Pressable>)} />
         </View>
     </View>;
 }

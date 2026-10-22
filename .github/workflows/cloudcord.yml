@@ -3697,7 +3697,7 @@ jobs:
                                   bio={preview.bio} frame={preview.profileFrame ? catalog?.frames.find(item => item.skuId === preview.profileFrame?.skuId)?.label || "Selected" : undefined}
                                   effect={preview.profileEffect ? catalog?.effects.find(item => item.skuId === preview.profileEffect?.skuId)?.title || "Selected" : undefined} />
                           </View></Card> : null}
-                          <ProfileTabs selected={activeTab} onSelect={setActiveTab} />
+                          <ProfileTabs selected={activeTab} onSelect={setActiveTab} status={!preview.enabled ? "Off" : rootSettings.fakeProfileLocalOnly ? "This device" : "Synced"} />
                           {activeTab === "overview" ? (() => {
                               // Dashboard home: profile stats, a completion checklist and quick actions.
                               const badgeCount = Object.values(preview.selectedBadges || {}).filter(Boolean).length + (preview.nitroEnabled ? 1 : 0) + (preview.boostMonths > 0 ? 1 : 0) + (preview.giftLevel >= 0 ? 1 : 0);
