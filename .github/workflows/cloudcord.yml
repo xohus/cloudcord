@@ -2341,7 +2341,10 @@ jobs:
                   try {
                       onJsxCreate(component, (_component, rendered) => {
                           if (!rendered?.props) return;
-                          const props = badgeRenderProps.get(rendered.props.id);
+                          // Discord-native badge IDs (fake ones included) use Discord's own badge sheets;
+                          // only CloudCord's own badges and the editor preview are drawn here.
+                          const renderedId = String(rendered.props.id || "");
+                          const props = /^(?:cloudcord-|fakeprofile-)/.test(renderedId) ? badgeRenderProps.get(rendered.props.id) : undefined;
                           if (props) {
                               // The native badge wrapper does not consistently
                               // forward tintColor to its inner image. Render the
