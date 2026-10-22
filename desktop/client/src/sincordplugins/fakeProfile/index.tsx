@@ -1595,7 +1595,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         };
     }, []);
     const fonts = appearanceOptions(appearanceEnums.DisplayNameFont);
-    const effects = appearanceOptions(appearanceEnums.DisplayNameEffect);
+    const effects = appearanceOptions(appearanceEnums.DisplayNameEffect).filter(option => !/^test/i.test(String(option.label)));
     const nameStyle = data.displayNameStyles || { fontId: 0, effectId: 0, colors: [0xffffff] };
     const tag = data.serverTag || { tag: "", guildId: "", badge: "" };
 

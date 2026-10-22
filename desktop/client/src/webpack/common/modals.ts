@@ -5,9 +5,11 @@
  */
 
 import * as t from "@vencord/discord-types";
-import { filters, findByCodeLazy, findExportedComponentLazy, mapMangledModuleLazy } from "@webpack";
+import { filters, findByCodeLazy, findComponentByCodeLazy, findExportedComponentLazy, mapMangledModuleLazy } from "@webpack";
 
-export const Modal: t.Modal = findExportedComponentLazy("Modal");
+// Discord no longer exports this under the name "Modal"; it is the only component
+// with an action-bar input layout, so match it by code.
+export const Modal: t.Modal = findComponentByCodeLazy("actionBarInputLayout");
 export const ConfirmModal: t.ConfirmModal = findExportedComponentLazy("ConfirmModal");
 
 // Modal key: "Media Viewer Modal"
