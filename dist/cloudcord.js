@@ -10265,67 +10265,6 @@
     ProfileOverview: () => ProfileOverview,
     ProfileTabs: () => ProfileTabs
   });
-  function tabIcon(tab) {
-    var names = {
-      overview: [
-        "GridSquareIcon",
-        "DashboardIcon",
-        "HomeIcon",
-        "AppsIcon"
-      ],
-      profile: [
-        "UserIcon"
-      ],
-      name: [
-        "TagIcon",
-        "TagsIcon",
-        "PencilIcon"
-      ],
-      cosmetics: [
-        "SparklesIcon",
-        "SparkleIcon",
-        "StarIcon"
-      ],
-      status: [
-        "CircleIcon",
-        "StatusIcon",
-        "UserIcon"
-      ],
-      badges: [
-        "BadgeIcon",
-        "StarIcon"
-      ],
-      social: [
-        "LinkIcon",
-        "PeopleIcon"
-      ],
-      dates: [
-        "CalendarIcon",
-        "ClockIcon"
-      ],
-      custom: [
-        "ImageIcon",
-        "StarIcon"
-      ],
-      others: [
-        "PeopleIcon",
-        "UserIcon"
-      ]
-    }[tab];
-    for (var name of [
-      ...names,
-      "SettingsIcon"
-    ]) {
-      try {
-        var id = findAssetId(name);
-        if (id)
-          return /* @__PURE__ */ jsx(TableRow.Icon, {
-            source: id
-          });
-      } catch (e) {
-      }
-    }
-  }
   function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }) {
     var [draft, setDraft] = (0, import_react3.useState)(defaultValue ?? "");
     (0, import_react3.useEffect)(() => {
@@ -10375,146 +10314,358 @@
       variant: "secondary"
     });
   }
-  function MenuIcon({ color: color3 }) {
+  function iconSource(tab) {
+    for (var name of [
+      ...ICONS[tab],
+      "SettingsIcon"
+    ]) {
+      try {
+        var id = findAssetId(name);
+        if (id)
+          return id;
+      } catch (e) {
+      }
+    }
+    return void 0;
+  }
+  function IconTile({ tab, active = false, size = 36 }) {
+    var source = iconSource(tab);
     return /* @__PURE__ */ jsx(import_react_native16.View, {
       style: {
-        width: 20,
-        gap: 4
+        width: size,
+        height: size,
+        borderRadius: 10,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: active ? UI.accent : UI.accentSoft
       },
-      children: [
-        0,
-        1,
-        2
-      ].map((line) => /* @__PURE__ */ jsx(import_react_native16.View, {
+      children: source ? /* @__PURE__ */ jsx(import_react_native16.Image, {
+        source,
         style: {
-          height: 2.5,
-          borderRadius: 2,
-          backgroundColor: color3
-        }
-      }, line))
+          width: size * 0.5,
+          height: size * 0.5,
+          tintColor: active ? "#FFFFFF" : "#C9CDFB"
+        },
+        resizeMode: "contain"
+      }) : null
     });
   }
-  function ProfileTabs({ selected, onSelect }) {
+  function MenuButton({ onPress }) {
+    return /* @__PURE__ */ jsx(import_react_native16.Pressable, {
+      accessibilityRole: "button",
+      accessibilityLabel: "Open menu",
+      onPress,
+      hitSlop: 8,
+      style: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: surfaceAlt()
+      },
+      children: /* @__PURE__ */ jsx(import_react_native16.View, {
+        style: {
+          width: 18,
+          gap: 4
+        },
+        children: [
+          0,
+          1,
+          2
+        ].map((line) => /* @__PURE__ */ jsx(import_react_native16.View, {
+          style: {
+            height: 2,
+            borderRadius: 1,
+            backgroundColor: tokens.colors.TEXT_NORMAL ?? "#DBDEE1"
+          }
+        }, line))
+      })
+    });
+  }
+  function Grid2({ items }) {
+    var rows = [];
+    for (var i = 0; i < items.length; i += 2)
+      rows.push(items.slice(i, i + 2));
+    return /* @__PURE__ */ jsx(import_react_native16.View, {
+      style: {
+        gap: UI.gap
+      },
+      children: rows.map((row, index) => /* @__PURE__ */ jsxs(import_react_native16.View, {
+        style: {
+          flexDirection: "row",
+          gap: UI.gap
+        },
+        children: [
+          row.map((item, i2) => /* @__PURE__ */ jsx(import_react_native16.View, {
+            style: {
+              flex: 1
+            },
+            children: item
+          }, i2)),
+          row.length === 1 ? /* @__PURE__ */ jsx(import_react_native16.View, {
+            style: {
+              flex: 1
+            }
+          }) : null
+        ]
+      }, index))
+    });
+  }
+  function ProfileTabs({ selected, onSelect, status }) {
     var [open, setOpen] = (0, import_react3.useState)(false);
-    var current = section(selected);
+    var [, label, sub] = sectionOf(selected);
+    var choose = (tab) => {
+      onSelect(tab);
+      setOpen(false);
+    };
     return /* @__PURE__ */ jsxs(import_react_native16.View, {
       style: {
-        gap: 8
+        gap: UI.gap
       },
       children: [
-        /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
-          accessibilityRole: "button",
-          accessibilityLabel: open ? "Close menu" : "Open menu",
-          accessibilityState: {
-            expanded: open
-          },
-          onPress: () => setOpen(!open),
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
           style: {
             flexDirection: "row",
             alignItems: "center",
-            gap: 14,
-            paddingVertical: 12,
-            paddingHorizontal: 14,
-            borderRadius: 14,
-            backgroundColor: tokens.colors.BACKGROUND_TERTIARY
+            gap: 12,
+            padding: 10,
+            borderRadius: UI.radius,
+            backgroundColor: surface(),
+            borderWidth: 1,
+            borderColor: border()
           },
           children: [
-            /* @__PURE__ */ jsx(MenuIcon, {
-              color: open ? "#5865F2" : "#B5BAC1"
+            /* @__PURE__ */ jsx(MenuButton, {
+              onPress: () => setOpen(true)
             }),
             /* @__PURE__ */ jsxs(import_react_native16.View, {
               style: {
                 flex: 1
               },
               children: [
-                /* @__PURE__ */ jsxs(Text, {
+                /* @__PURE__ */ jsx(Text, {
                   variant: "text-xs/medium",
                   color: "text-muted",
-                  children: [
-                    "Custom Profile / ",
-                    current[1]
-                  ]
+                  numberOfLines: 1,
+                  children: "Custom Profile"
                 }),
                 /* @__PURE__ */ jsx(Text, {
-                  variant: "text-md/bold",
-                  children: current[1]
+                  variant: "text-lg/bold",
+                  numberOfLines: 1,
+                  children: label
+                })
+              ]
+            }),
+            status ? /* @__PURE__ */ jsxs(import_react_native16.View, {
+              style: {
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 6,
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 999,
+                backgroundColor: surfaceAlt()
+              },
+              children: [
+                /* @__PURE__ */ jsx(import_react_native16.View, {
+                  style: {
+                    width: 7,
+                    height: 7,
+                    borderRadius: 4,
+                    backgroundColor: UI.green
+                  }
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-xs/semibold",
+                  color: "text-muted",
+                  children: status
+                })
+              ]
+            }) : null
+          ]
+        }),
+        selected !== "overview" ? /* @__PURE__ */ jsxs(import_react_native16.View, {
+          style: {
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
+            paddingHorizontal: 4
+          },
+          children: [
+            /* @__PURE__ */ jsx(IconTile, {
+              tab: selected,
+              active: true,
+              size: 40
+            }),
+            /* @__PURE__ */ jsxs(import_react_native16.View, {
+              style: {
+                flex: 1
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-lg/bold",
+                  children: label
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-muted",
+                  children: sub
                 })
               ]
             })
           ]
-        }),
-        open ? /* @__PURE__ */ jsx(import_react_native16.View, {
-          accessibilityRole: "menu",
-          style: {
-            gap: 10
-          },
-          children: GROUPS.map(([title, tabs2]) => /* @__PURE__ */ jsxs(import_react_native16.View, {
+        }) : null,
+        /* @__PURE__ */ jsx(import_react_native16.Modal, {
+          visible: open,
+          transparent: true,
+          animationType: "fade",
+          onRequestClose: () => setOpen(false),
+          children: /* @__PURE__ */ jsxs(import_react_native16.View, {
             style: {
-              gap: 4
+              flex: 1,
+              flexDirection: "row"
             },
             children: [
-              /* @__PURE__ */ jsx(Text, {
-                variant: "text-xs/semibold",
-                color: "text-muted",
+              /* @__PURE__ */ jsxs(import_react_native16.View, {
                 style: {
-                  paddingHorizontal: 6
+                  width: "78%",
+                  maxWidth: 340,
+                  height: "100%",
+                  paddingTop: 54,
+                  paddingHorizontal: 14,
+                  paddingBottom: 24,
+                  gap: 18,
+                  backgroundColor: surface(),
+                  borderRightWidth: 1,
+                  borderColor: border()
                 },
-                children: title
-              }),
-              /* @__PURE__ */ jsx(import_react_native16.View, {
-                style: {
-                  borderRadius: 14,
-                  overflow: "hidden"
-                },
-                children: /* @__PURE__ */ jsx(TableRowGroup, {
-                  children: tabs2.map((tab) => {
-                    var [, label, sub] = section(tab);
-                    return /* @__PURE__ */ jsx(import_react_native16.View, {
-                      style: {
-                        borderLeftWidth: 3,
-                        borderLeftColor: tab === selected ? "#5865F2" : "transparent"
-                      },
-                      children: /* @__PURE__ */ jsx(TableRow, {
-                        label,
-                        subLabel: sub,
-                        icon: tabIcon(tab),
-                        onPress: () => {
-                          onSelect(tab);
-                          setOpen(false);
-                        }
+                children: [
+                  /* @__PURE__ */ jsxs(import_react_native16.View, {
+                    style: {
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 10,
+                      paddingHorizontal: 4
+                    },
+                    children: [
+                      /* @__PURE__ */ jsx(IconTile, {
+                        tab: "overview",
+                        active: true,
+                        size: 34
+                      }),
+                      /* @__PURE__ */ jsx(Text, {
+                        variant: "heading-md/bold",
+                        style: {
+                          flex: 1
+                        },
+                        children: "Custom Profile"
                       })
-                    }, tab);
+                    ]
+                  }),
+                  /* @__PURE__ */ jsx(import_react_native16.ScrollView, {
+                    contentContainerStyle: {
+                      gap: 18
+                    },
+                    children: GROUPS.map(([title, tabs2]) => /* @__PURE__ */ jsxs(import_react_native16.View, {
+                      style: {
+                        gap: 4
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx(Text, {
+                          variant: "text-xs/semibold",
+                          color: "text-muted",
+                          style: {
+                            paddingHorizontal: 8,
+                            marginBottom: 2
+                          },
+                          children: title
+                        }),
+                        tabs2.map((tab) => {
+                          var on = tab === selected;
+                          return /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
+                            accessibilityRole: "button",
+                            accessibilityState: {
+                              selected: on
+                            },
+                            onPress: () => choose(tab),
+                            style: {
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 12,
+                              paddingVertical: 8,
+                              paddingHorizontal: 8,
+                              borderRadius: 12,
+                              backgroundColor: on ? UI.accentSoft : "transparent"
+                            },
+                            children: [
+                              /* @__PURE__ */ jsx(IconTile, {
+                                tab,
+                                active: on,
+                                size: 32
+                              }),
+                              /* @__PURE__ */ jsx(Text, {
+                                variant: on ? "text-md/bold" : "text-md/medium",
+                                style: {
+                                  flex: 1
+                                },
+                                children: sectionOf(tab)[1]
+                              })
+                            ]
+                          }, tab);
+                        })
+                      ]
+                    }, title))
                   })
-                })
+                ]
+              }),
+              /* @__PURE__ */ jsx(import_react_native16.Pressable, {
+                accessibilityRole: "button",
+                accessibilityLabel: "Close menu",
+                onPress: () => setOpen(false),
+                style: {
+                  flex: 1,
+                  backgroundColor: "rgba(0,0,0,0.55)"
+                }
               })
             ]
-          }, title))
-        }) : null
+          })
+        })
       ]
+    });
+  }
+  function Panel({ children, style }) {
+    return /* @__PURE__ */ jsx(import_react_native16.View, {
+      style: [
+        {
+          borderRadius: UI.radius,
+          padding: 14,
+          backgroundColor: surface(),
+          borderWidth: 1,
+          borderColor: border()
+        },
+        style
+      ],
+      children
     });
   }
   function ProfileOverview({ name, subtitle, stats, tasks, onSelect }) {
     var done = tasks.filter((task) => task.done).length;
     var percent = tasks.length ? Math.round(done / tasks.length * 100) : 100;
-    var card = {
-      borderRadius: 14,
-      padding: 14,
-      gap: 4,
-      backgroundColor: tokens.colors.BACKGROUND_SECONDARY
-    };
     return /* @__PURE__ */ jsxs(import_react_native16.View, {
       style: {
-        gap: 14
+        gap: UI.gap + 4
       },
       children: [
         /* @__PURE__ */ jsxs(import_react_native16.View, {
           style: {
-            gap: 2,
+            gap: 4,
             paddingHorizontal: 4
           },
           children: [
             /* @__PURE__ */ jsxs(Text, {
               variant: "heading-xl/bold",
+              numberOfLines: 1,
               children: [
                 "Welcome back, ",
                 name
@@ -10527,26 +10678,21 @@
             })
           ]
         }),
-        /* @__PURE__ */ jsx(import_react_native16.View, {
-          style: {
-            flexDirection: "row",
-            flexWrap: "wrap",
-            gap: 10
-          },
-          children: stats.map((stat) => /* @__PURE__ */ jsxs(import_react_native16.View, {
+        /* @__PURE__ */ jsx(Grid2, {
+          items: stats.map((stat) => /* @__PURE__ */ jsxs(Panel, {
             style: {
-              ...card,
-              width: "48%",
-              flexGrow: 1
+              gap: 6,
+              minHeight: 96
             },
             children: [
               /* @__PURE__ */ jsx(Text, {
                 variant: "text-xs/semibold",
                 color: "text-muted",
+                numberOfLines: 1,
                 children: stat.label
               }),
               /* @__PURE__ */ jsx(Text, {
-                variant: "heading-lg/bold",
+                variant: "heading-xl/bold",
                 numberOfLines: 1,
                 children: stat.value
               }),
@@ -10559,32 +10705,41 @@
             ]
           }, stat.label))
         }),
-        /* @__PURE__ */ jsxs(import_react_native16.View, {
+        /* @__PURE__ */ jsxs(Panel, {
           style: {
-            ...card,
-            gap: 10
+            gap: 12
           },
           children: [
             /* @__PURE__ */ jsxs(import_react_native16.View, {
               style: {
                 flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "space-between"
+                alignItems: "center"
               },
               children: [
                 /* @__PURE__ */ jsx(Text, {
                   variant: "text-md/bold",
+                  style: {
+                    flex: 1
+                  },
                   children: "Profile completion"
                 }),
-                /* @__PURE__ */ jsxs(Text, {
-                  variant: "text-xs/bold",
+                /* @__PURE__ */ jsx(import_react_native16.View, {
                   style: {
-                    color: "#5865F2"
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 8,
+                    backgroundColor: UI.accentSoft
                   },
-                  children: [
-                    percent,
-                    "%"
-                  ]
+                  children: /* @__PURE__ */ jsxs(Text, {
+                    variant: "text-xs/bold",
+                    style: {
+                      color: "#C9CDFB"
+                    },
+                    children: [
+                      percent,
+                      "%"
+                    ]
+                  })
                 })
               ]
             }),
@@ -10592,7 +10747,7 @@
               style: {
                 height: 6,
                 borderRadius: 3,
-                backgroundColor: tokens.colors.BACKGROUND_TERTIARY,
+                backgroundColor: surfaceAlt(),
                 overflow: "hidden"
               },
               children: /* @__PURE__ */ jsx(import_react_native16.View, {
@@ -10600,59 +10755,64 @@
                   width: `${percent}%`,
                   height: 6,
                   borderRadius: 3,
-                  backgroundColor: "#5865F2"
+                  backgroundColor: UI.accent
                 }
               })
             }),
-            tasks.map((task) => /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
-              accessibilityRole: "button",
-              onPress: () => onSelect(task.tab),
+            /* @__PURE__ */ jsx(import_react_native16.View, {
               style: {
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 10,
-                paddingVertical: 4
+                gap: 2
               },
-              children: [
-                /* @__PURE__ */ jsx(import_react_native16.View, {
-                  style: {
-                    width: 20,
-                    height: 20,
-                    borderRadius: 10,
-                    alignItems: "center",
-                    justifyContent: "center",
-                    backgroundColor: task.done ? "#23A55A" : "transparent",
-                    borderWidth: task.done ? 0 : 2,
-                    borderColor: "#80848E"
-                  },
-                  children: task.done ? /* @__PURE__ */ jsx(Text, {
-                    variant: "text-xs/bold",
+              children: tasks.map((task) => /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
+                accessibilityRole: "button",
+                onPress: () => onSelect(task.tab),
+                style: {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  paddingVertical: 8
+                },
+                children: [
+                  /* @__PURE__ */ jsx(import_react_native16.View, {
                     style: {
-                      color: "#FFFFFF"
+                      width: 22,
+                      height: 22,
+                      borderRadius: 11,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: task.done ? UI.green : "transparent",
+                      borderWidth: task.done ? 0 : 2,
+                      borderColor: "#80848E"
                     },
-                    children: "\u2713"
-                  }) : null
-                }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "text-sm/medium",
-                  color: task.done ? "text-muted" : void 0,
-                  style: {
-                    flex: 1
-                  },
-                  children: task.label
-                }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "text-sm/medium",
-                  color: "text-muted",
-                  children: "\u203A"
-                })
-              ]
-            }, task.label))
+                    children: task.done ? /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/bold",
+                      style: {
+                        color: "#FFFFFF"
+                      },
+                      children: "\u2713"
+                    }) : null
+                  }),
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "text-sm/medium",
+                    color: task.done ? "text-muted" : void 0,
+                    style: {
+                      flex: 1
+                    },
+                    children: task.label
+                  }),
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "text-md/medium",
+                    color: "text-muted",
+                    children: "\u2197"
+                  })
+                ]
+              }, task.label))
+            })
           ]
         }),
         /* @__PURE__ */ jsxs(import_react_native16.View, {
           style: {
-            gap: 8
+            gap: UI.gap
           },
           children: [
             /* @__PURE__ */ jsx(Text, {
@@ -10662,50 +10822,39 @@
               },
               children: "Quick actions"
             }),
-            /* @__PURE__ */ jsx(import_react_native16.View, {
-              style: {
-                flexDirection: "row",
-                flexWrap: "wrap",
-                gap: 10
-              },
-              children: SECTIONS.filter(([tab]) => tab !== "overview").map(([tab, label, sub]) => /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
+            /* @__PURE__ */ jsx(Grid2, {
+              items: SECTIONS.filter(([tab]) => tab !== "overview").map(([tab, label, sub]) => /* @__PURE__ */ jsx(import_react_native16.Pressable, {
                 accessibilityRole: "button",
                 onPress: () => onSelect(tab),
-                style: {
-                  ...card,
-                  width: "48%",
-                  flexGrow: 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 10
-                },
-                children: [
-                  /* @__PURE__ */ jsx(import_react_native16.View, {
-                    style: {
-                      width: 32,
-                      alignItems: "center"
-                    },
-                    children: tabIcon(tab)
-                  }),
-                  /* @__PURE__ */ jsxs(import_react_native16.View, {
-                    style: {
-                      flex: 1
-                    },
-                    children: [
-                      /* @__PURE__ */ jsx(Text, {
-                        variant: "text-sm/bold",
-                        numberOfLines: 1,
-                        children: label
-                      }),
-                      /* @__PURE__ */ jsx(Text, {
-                        variant: "text-xs/medium",
-                        color: "text-muted",
-                        numberOfLines: 2,
-                        children: sub
-                      })
-                    ]
-                  })
-                ]
+                children: /* @__PURE__ */ jsxs(Panel, {
+                  style: {
+                    gap: 10,
+                    minHeight: 112
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(IconTile, {
+                      tab
+                    }),
+                    /* @__PURE__ */ jsxs(import_react_native16.View, {
+                      style: {
+                        gap: 2
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx(Text, {
+                          variant: "text-sm/bold",
+                          numberOfLines: 1,
+                          children: label
+                        }),
+                        /* @__PURE__ */ jsx(Text, {
+                          variant: "text-xs/medium",
+                          color: "text-muted",
+                          numberOfLines: 2,
+                          children: sub
+                        })
+                      ]
+                    })
+                  ]
+                })
               }, tab))
             })
           ]
@@ -10713,7 +10862,7 @@
       ]
     });
   }
-  var import_react3, import_react_native16, SECTIONS, GROUPS, section;
+  var import_react3, import_react_native16, SECTIONS, UI, surface, surfaceAlt, border, ICONS, GROUPS, sectionOf;
   var init_FakeProfileGlass = __esm({
     "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
       "use strict";
@@ -10777,6 +10926,62 @@
           "Changes visible only on this device"
         ]
       ];
+      UI = {
+        accent: "#5865F2",
+        accentSoft: "rgba(88, 101, 242, 0.16)",
+        green: "#23A55A",
+        radius: 16,
+        gap: 12
+      };
+      surface = () => tokens.colors.BACKGROUND_SECONDARY;
+      surfaceAlt = () => tokens.colors.BACKGROUND_TERTIARY;
+      border = () => tokens.colors.BORDER_SUBTLE ?? "rgba(255,255,255,0.06)";
+      ICONS = {
+        overview: [
+          "GridSquareIcon",
+          "DashboardIcon",
+          "HomeIcon",
+          "AppsIcon"
+        ],
+        profile: [
+          "UserIcon"
+        ],
+        name: [
+          "TagIcon",
+          "TagsIcon",
+          "PencilIcon"
+        ],
+        cosmetics: [
+          "SparklesIcon",
+          "SparkleIcon",
+          "StarIcon"
+        ],
+        status: [
+          "CircleIcon",
+          "StatusIcon",
+          "UserIcon"
+        ],
+        badges: [
+          "BadgeIcon",
+          "StarIcon"
+        ],
+        social: [
+          "LinkIcon",
+          "PeopleIcon"
+        ],
+        dates: [
+          "CalendarIcon",
+          "ClockIcon"
+        ],
+        custom: [
+          "ImageIcon",
+          "StarIcon"
+        ],
+        others: [
+          "PeopleIcon",
+          "UserIcon"
+        ]
+      };
       GROUPS = [
         [
           "Account",
@@ -10809,7 +11014,7 @@
           ]
         ]
       ];
-      section = (tab) => SECTIONS.find(([id]) => id === tab) ?? SECTIONS[0];
+      sectionOf = (tab) => SECTIONS.find(([id]) => id === tab) ?? SECTIONS[0];
     }
   });
 
@@ -11982,7 +12187,7 @@
             borderRadius: 10,
             borderWidth: 2,
             borderColor: on ? BRAND : "transparent",
-            backgroundColor: on ? "rgba(88,101,242,0.16)" : surfaceAlt()
+            backgroundColor: on ? "rgba(88,101,242,0.16)" : surfaceAlt2()
           },
           children: [
             option.dot ? /* @__PURE__ */ jsx(import_react_native20.View, {
@@ -12033,7 +12238,7 @@
         gap: SPACE.md,
         padding: SPACE.sm + 2,
         borderRadius: 12,
-        backgroundColor: surfaceAlt(),
+        backgroundColor: surfaceAlt2(),
         minHeight: 52
       },
       children: [
@@ -12098,7 +12303,7 @@
         borderRadius: 12,
         borderWidth: 2,
         borderColor: selected ? BRAND : "transparent",
-        backgroundColor: selected ? "rgba(88,101,242,0.14)" : surfaceAlt(),
+        backgroundColor: selected ? "rgba(88,101,242,0.14)" : surfaceAlt2(),
         gap: 6
       },
       children: [
@@ -12207,7 +12412,7 @@
             paddingVertical: 10,
             paddingHorizontal: 16,
             borderRadius: 10,
-            backgroundColor: surfaceAlt()
+            backgroundColor: surfaceAlt2()
           },
           children: /* @__PURE__ */ jsxs(Text, {
             variant: "text-sm/semibold",
@@ -12246,7 +12451,7 @@
           borderRadius: 10,
           borderWidth: 2,
           borderColor: item.active ? BRAND : "transparent",
-          backgroundColor: item.active ? "rgba(88,101,242,0.16)" : surfaceAlt()
+          backgroundColor: item.active ? "rgba(88,101,242,0.16)" : surfaceAlt2()
         },
         children: [
           item.icon ? /* @__PURE__ */ jsx(import_react_native20.Image, {
@@ -12321,7 +12526,7 @@
             }),
             /* @__PURE__ */ jsxs(import_react_native20.View, {
               style: {
-                backgroundColor: surfaceAlt(),
+                backgroundColor: surfaceAlt2(),
                 borderBottomLeftRadius: 13,
                 borderBottomRightRadius: 13,
                 padding: SPACE.md,
@@ -12347,7 +12552,7 @@
                         height: 80,
                         borderRadius: 40,
                         borderWidth: 6,
-                        borderColor: surfaceAlt()
+                        borderColor: surfaceAlt2()
                       }
                     }),
                     decoration ? /* @__PURE__ */ jsx(import_react_native20.Image, {
@@ -12372,7 +12577,7 @@
                         height: 20,
                         borderRadius: 10,
                         borderWidth: 4,
-                        borderColor: surfaceAlt(),
+                        borderColor: surfaceAlt2(),
                         backgroundColor: STATUS_COLORS[status || "online"] || STATUS_COLORS.online
                       }
                     })
@@ -12457,7 +12662,7 @@
                   style: {
                     padding: 8,
                     borderRadius: 8,
-                    backgroundColor: surface(),
+                    backgroundColor: surface2(),
                     gap: 2
                   },
                   children: [
@@ -12498,7 +12703,7 @@
                         paddingHorizontal: 8,
                         paddingVertical: 2,
                         borderRadius: 99,
-                        backgroundColor: surface()
+                        backgroundColor: surface2()
                       },
                       children: /* @__PURE__ */ jsxs(Text, {
                         variant: "text-xs/medium",
@@ -12514,7 +12719,7 @@
                         paddingHorizontal: 8,
                         paddingVertical: 2,
                         borderRadius: 99,
-                        backgroundColor: surface()
+                        backgroundColor: surface2()
                       },
                       children: /* @__PURE__ */ jsxs(Text, {
                         variant: "text-xs/medium",
@@ -12539,7 +12744,7 @@
       ]
     });
   }
-  var import_react6, import_react_native20, SPACE, color2, BRAND, surface, surfaceAlt, STATUS_COLORS;
+  var import_react6, import_react_native20, SPACE, color2, BRAND, surface2, surfaceAlt2, STATUS_COLORS;
   var init_ProfileEditorKit = __esm({
     "src/core/ui/settings/components/ProfileEditorKit.tsx"() {
       "use strict";
@@ -12565,8 +12770,8 @@
         }
       };
       BRAND = "#5865F2";
-      surface = () => color2("BACKGROUND_SECONDARY", "#2b2d31");
-      surfaceAlt = () => color2("BACKGROUND_TERTIARY", "#1e1f22");
+      surface2 = () => color2("BACKGROUND_SECONDARY", "#2b2d31");
+      surfaceAlt2 = () => color2("BACKGROUND_TERTIARY", "#1e1f22");
       STATUS_COLORS = {
         online: "#23a55a",
         idle: "#f0b232",
@@ -17256,7 +17461,8 @@
           }) : null,
           /* @__PURE__ */ jsx(ProfileTabs2, {
             selected: activeTab,
-            onSelect: setActiveTab
+            onSelect: setActiveTab,
+            status: !preview.enabled ? "Off" : rootSettings.fakeProfileLocalOnly ? "This device" : "Synced"
           }),
           activeTab === "overview" ? (() => {
             var badgeCount = Object.values(preview.selectedBadges || {}).filter(Boolean).length + (preview.nitroEnabled ? 1 : 0) + (preview.boostMonths > 0 ? 1 : 0) + (preview.giftLevel >= 0 ? 1 : 0);
@@ -19953,7 +20159,7 @@
           ];
           var sections = findInReactTree(res.props.children, (n) => n?.children?.[1]?.type === LegacyFormSection)?.children || res.props.children;
           if (sections) {
-            var index = sections.findIndex((section2) => titles.includes(section2?.props?.label));
+            var index = sections.findIndex((section) => titles.includes(section?.props?.label));
             sections.splice(-~index || 4, 0, /* @__PURE__ */ jsx(SettingsSection, {}, "CLOUDCORD_SETTINGS_SECTION"));
           }
         }));
@@ -20044,9 +20250,9 @@
         withArrow: true
       }
     }))).reduce((a, c2) => Object.assign(a, c2), {});
-    var isDeveloperSection = (section2) => {
-      var label = `${section2?.label ?? ""} ${section2?.title ?? ""}`.toLowerCase();
-      return label.includes("developer") || section2?.settings?.some?.((key) => /developer/i.test(key));
+    var isDeveloperSection = (section) => {
+      var label = `${section?.label ?? ""} ${section?.title ?? ""}`.toLowerCase();
+      return label.includes("developer") || section?.settings?.some?.((key) => /developer/i.test(key));
     };
     var insertNativeRows = (sections) => {
       var rows = Object.values(registeredSections).flat().filter((row2) => row2.nativeSection === "developer");
@@ -20114,7 +20320,7 @@
           if (sectionName2 === "CloudCord" && settings.cloudcordSectionHidden)
             return "continue";
           var rows = registeredSections[sectionName2].filter((row) => !row.nativeSection);
-          if (!rows.length || sections.some((section2) => section2?.label === sectionName2))
+          if (!rows.length || sections.some((section) => section?.label === sectionName2))
             return "continue";
           sections.splice(index++, 0, {
             label: sectionName2,
@@ -20126,7 +20332,7 @@
         if (!Array.isArray(sections))
           return;
         insertNativeRows(sections);
-        var accountIndex = sections.findIndex((section2) => section2?.settings?.includes?.("ACCOUNT"));
+        var accountIndex = sections.findIndex((section) => section?.settings?.includes?.("ACCOUNT"));
         if (accountIndex < 0)
           return;
         var index = accountIndex + 1;
@@ -20150,7 +20356,7 @@
         if (!rows.length)
           return;
         var rowKeys = new Set(rows.map((row) => row.key));
-        var alreadyExists = sections.some((section2) => section2?.label === sectionName || section2?.title === sectionName || section2?.settings?.some?.((key) => rowKeys.has(key)));
+        var alreadyExists = sections.some((section) => section?.label === sectionName || section?.title === sectionName || section?.settings?.some?.((key) => rowKeys.has(key)));
         if (!alreadyExists) {
           sections.push({
             label: sectionName,
@@ -20315,9 +20521,9 @@
     registerSection: () => registerSection,
     registeredSections: () => registeredSections
   });
-  function registerSection(section2) {
-    registeredSections[section2.name] = section2.items;
-    return () => delete registeredSections[section2.name];
+  function registerSection(section) {
+    registeredSections[section.name] = section.items;
+    return () => delete registeredSections[section.name];
   }
   function patchSettings() {
     var unpatches = new Array();
