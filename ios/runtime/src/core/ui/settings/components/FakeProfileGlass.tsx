@@ -31,32 +31,45 @@ export function GlassButton({ label, onPress, muted = false, disabled = false }:
     return <Button text={label} onPress={onPress} disabled={disabled} variant="secondary" />;
 }
 export type ProfileTab = "profile" | "style" | "status" | "badges" | "social" | "dates" | "custom" | "others";
-const MAIN_TABS: [ProfileTab, string][] = [["profile", "Profile"], ["style", "Style"], ["status", "Status"], ["badges", "Badges"]];
-const MORE_TABS: [ProfileTab, string, string][] = [
+// Every editor section, in the same order as the desktop sidebar.
+const SECTIONS: [ProfileTab, string, string][] = [
+    ["profile", "Profile", "Names, pictures, banner, bio and colors"],
+    ["style", "Style", "Frames, effects, nameplates, decorations, name style and server tag"],
+    ["status", "Status", "Online status, custom status and activity"],
+    ["badges", "Badges", "Badges, Nitro, boosting, activity badges and order"],
     ["social", "Connections", "Accounts and domains on your profile"],
     ["dates", "Dates", "Account created and member-since dates"],
     ["custom", "Custom badges · beta", "Upload a badge name and PNG"],
     ["others", "Other profiles", "Changes visible only on this device"]
 ];
-/** Four main tabs in one compact row; everything else lives under a collapsible More. */
+
+// The three-line menu icon, drawn with plain views so it works on every Discord build.
+function MenuIcon({ color }: { color: string }) {
+    return <View style={{ width: 20, gap: 4 }}>
+        {[0, 1, 2].map(line => <View key={line} style={{ height: 2.5, borderRadius: 2, backgroundColor: color }} />)}
+    </View>;
+}
+
+/** Desktop-style section menu, stacked vertically: a ☰ bar shows where you are and opens the full list. */
 export function ProfileTabs({ selected, onSelect }: { selected: ProfileTab; onSelect: (tab: ProfileTab) => void }) {
-    const inMore = MORE_TABS.some(([tab]) => tab === selected);
-    const [moreOpen, setMoreOpen] = useState(inMore);
-    return <View style={{ gap: 12 }}>
-        <View accessibilityRole="tablist" style={{ flexDirection: "row", padding: 4, gap: 4, borderRadius: 14, backgroundColor: tokens.colors.BACKGROUND_TERTIARY }}>
-            {MAIN_TABS.map(([tab, label]) => {
-                const on = tab === selected;
-                return <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected: on }} onPress={() => onSelect(tab)}
-                    style={{ flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 10, backgroundColor: on ? "#5865F2" : "transparent" }}>
-                    <Text variant={on ? "text-sm/bold" : "text-sm/semibold"} color={on ? undefined : "text-muted"} style={on ? { color: "#FFFFFF" } : undefined}>{label}</Text>
-                </Pressable>;
-            })}
-        </View>
-        <View style={{ borderRadius: 16, overflow: "hidden" }}>
-            <TableRow arrow label={moreOpen ? "Hide more options" : "More options"} subLabel={inMore && !moreOpen ? MORE_TABS.find(([tab]) => tab === selected)?.[1] : "Connections, dates, custom badges, other profiles"} icon={tabIcon("others")} onPress={() => setMoreOpen(!moreOpen)} />
-            {moreOpen ? MORE_TABS.map(([tab, label, sub]) => <View key={tab} style={{ borderLeftWidth: 3, borderLeftColor: tab === selected ? "#5865F2" : "transparent" }}>
-                <TableRow label={label} subLabel={sub} icon={tabIcon(tab)} onPress={() => onSelect(tab)} />
-            </View>) : null}
-        </View>
+    const [open, setOpen] = useState(false);
+    const current = SECTIONS.find(([tab]) => tab === selected) ?? SECTIONS[0];
+    return <View style={{ gap: 8 }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={open ? "Close sections menu" : "Open sections menu"} accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)}
+            style={{ flexDirection: "row", alignItems: "center", gap: 14, paddingVertical: 12, paddingHorizontal: 14, borderRadius: 14, backgroundColor: tokens.colors.BACKGROUND_TERTIARY }}>
+            <MenuIcon color={open ? "#5865F2" : "#B5BAC1"} />
+            <View style={{ flex: 1 }}>
+                <Text variant="text-md/bold">{current[1]}</Text>
+                <Text variant="text-xs/medium" color="text-muted" numberOfLines={1}>{open ? "Choose a section" : current[2]}</Text>
+            </View>
+            <Text variant="text-xs/semibold" color="text-muted">{SECTIONS.findIndex(([tab]) => tab === current[0]) + 1}/{SECTIONS.length}</Text>
+        </Pressable>
+        {open ? <View accessibilityRole="menu" style={{ borderRadius: 16, overflow: "hidden" }}>
+            <TableRowGroup>
+                {SECTIONS.map(([tab, label, sub]) => <View key={tab} style={{ borderLeftWidth: 3, borderLeftColor: tab === selected ? "#5865F2" : "transparent" }}>
+                    <TableRow label={label} subLabel={sub} icon={tabIcon(tab)} arrow onPress={() => { onSelect(tab); setOpen(false); }} />
+                </View>)}
+            </TableRowGroup>
+        </View> : null}
     </View>;
 }
