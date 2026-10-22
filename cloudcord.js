@@ -10262,10 +10262,17 @@
     DiscordInput: () => DiscordInput,
     GlassButton: () => GlassButton,
     GlassCard: () => GlassCard,
+    ProfileOverview: () => ProfileOverview,
     ProfileTabs: () => ProfileTabs
   });
   function tabIcon(tab) {
     var names = {
+      overview: [
+        "GridSquareIcon",
+        "DashboardIcon",
+        "HomeIcon",
+        "AppsIcon"
+      ],
       profile: [
         "UserIcon"
       ],
@@ -10389,7 +10396,7 @@
   }
   function ProfileTabs({ selected, onSelect }) {
     var [open, setOpen] = (0, import_react3.useState)(false);
-    var current = SECTIONS.find(([tab]) => tab === selected) ?? SECTIONS[0];
+    var current = section(selected);
     return /* @__PURE__ */ jsxs(import_react_native16.View, {
       style: {
         gap: 8
@@ -10397,7 +10404,7 @@
       children: [
         /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
           accessibilityRole: "button",
-          accessibilityLabel: open ? "Close sections menu" : "Open sections menu",
+          accessibilityLabel: open ? "Close menu" : "Open menu",
           accessibilityState: {
             expanded: open
           },
@@ -10420,25 +10427,18 @@
                 flex: 1
               },
               children: [
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/medium",
+                  color: "text-muted",
+                  children: [
+                    "Custom Profile / ",
+                    current[1]
+                  ]
+                }),
                 /* @__PURE__ */ jsx(Text, {
                   variant: "text-md/bold",
                   children: current[1]
-                }),
-                /* @__PURE__ */ jsx(Text, {
-                  variant: "text-xs/medium",
-                  color: "text-muted",
-                  numberOfLines: 1,
-                  children: open ? "Choose a section" : current[2]
                 })
-              ]
-            }),
-            /* @__PURE__ */ jsxs(Text, {
-              variant: "text-xs/semibold",
-              color: "text-muted",
-              children: [
-                SECTIONS.findIndex(([tab]) => tab === current[0]) + 1,
-                "/",
-                SECTIONS.length
               ]
             })
           ]
@@ -10446,32 +10446,274 @@
         open ? /* @__PURE__ */ jsx(import_react_native16.View, {
           accessibilityRole: "menu",
           style: {
-            borderRadius: 16,
-            overflow: "hidden"
+            gap: 10
           },
-          children: /* @__PURE__ */ jsx(TableRowGroup, {
-            children: SECTIONS.map(([tab, label, sub]) => /* @__PURE__ */ jsx(import_react_native16.View, {
-              style: {
-                borderLeftWidth: 3,
-                borderLeftColor: tab === selected ? "#5865F2" : "transparent"
-              },
-              children: /* @__PURE__ */ jsx(TableRow, {
-                label,
-                subLabel: sub,
-                icon: tabIcon(tab),
-                arrow: true,
-                onPress: () => {
-                  onSelect(tab);
-                  setOpen(false);
-                }
+          children: GROUPS.map(([title, tabs2]) => /* @__PURE__ */ jsxs(import_react_native16.View, {
+            style: {
+              gap: 4
+            },
+            children: [
+              /* @__PURE__ */ jsx(Text, {
+                variant: "text-xs/semibold",
+                color: "text-muted",
+                style: {
+                  paddingHorizontal: 6
+                },
+                children: title
+              }),
+              /* @__PURE__ */ jsx(import_react_native16.View, {
+                style: {
+                  borderRadius: 14,
+                  overflow: "hidden"
+                },
+                children: /* @__PURE__ */ jsx(TableRowGroup, {
+                  children: tabs2.map((tab) => {
+                    var [, label, sub] = section(tab);
+                    return /* @__PURE__ */ jsx(import_react_native16.View, {
+                      style: {
+                        borderLeftWidth: 3,
+                        borderLeftColor: tab === selected ? "#5865F2" : "transparent"
+                      },
+                      children: /* @__PURE__ */ jsx(TableRow, {
+                        label,
+                        subLabel: sub,
+                        icon: tabIcon(tab),
+                        onPress: () => {
+                          onSelect(tab);
+                          setOpen(false);
+                        }
+                      })
+                    }, tab);
+                  })
+                })
               })
-            }, tab))
-          })
+            ]
+          }, title))
         }) : null
       ]
     });
   }
-  var import_react3, import_react_native16, SECTIONS;
+  function ProfileOverview({ name, subtitle, stats, tasks, onSelect }) {
+    var done = tasks.filter((task) => task.done).length;
+    var percent = tasks.length ? Math.round(done / tasks.length * 100) : 100;
+    var card = {
+      borderRadius: 14,
+      padding: 14,
+      gap: 4,
+      backgroundColor: tokens.colors.BACKGROUND_SECONDARY
+    };
+    return /* @__PURE__ */ jsxs(import_react_native16.View, {
+      style: {
+        gap: 14
+      },
+      children: [
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
+          style: {
+            gap: 2,
+            paddingHorizontal: 4
+          },
+          children: [
+            /* @__PURE__ */ jsxs(Text, {
+              variant: "heading-xl/bold",
+              children: [
+                "Welcome back, ",
+                name
+              ]
+            }),
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/medium",
+              color: "text-muted",
+              children: subtitle
+            })
+          ]
+        }),
+        /* @__PURE__ */ jsx(import_react_native16.View, {
+          style: {
+            flexDirection: "row",
+            flexWrap: "wrap",
+            gap: 10
+          },
+          children: stats.map((stat) => /* @__PURE__ */ jsxs(import_react_native16.View, {
+            style: {
+              ...card,
+              width: "48%",
+              flexGrow: 1
+            },
+            children: [
+              /* @__PURE__ */ jsx(Text, {
+                variant: "text-xs/semibold",
+                color: "text-muted",
+                children: stat.label
+              }),
+              /* @__PURE__ */ jsx(Text, {
+                variant: "heading-lg/bold",
+                numberOfLines: 1,
+                children: stat.value
+              }),
+              /* @__PURE__ */ jsx(Text, {
+                variant: "text-xs/medium",
+                color: "text-muted",
+                numberOfLines: 1,
+                children: stat.hint
+              })
+            ]
+          }, stat.label))
+        }),
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
+          style: {
+            ...card,
+            gap: 10
+          },
+          children: [
+            /* @__PURE__ */ jsxs(import_react_native16.View, {
+              style: {
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between"
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-md/bold",
+                  children: "Profile completion"
+                }),
+                /* @__PURE__ */ jsxs(Text, {
+                  variant: "text-xs/bold",
+                  style: {
+                    color: "#5865F2"
+                  },
+                  children: [
+                    percent,
+                    "%"
+                  ]
+                })
+              ]
+            }),
+            /* @__PURE__ */ jsx(import_react_native16.View, {
+              style: {
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: tokens.colors.BACKGROUND_TERTIARY,
+                overflow: "hidden"
+              },
+              children: /* @__PURE__ */ jsx(import_react_native16.View, {
+                style: {
+                  width: `${percent}%`,
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: "#5865F2"
+                }
+              })
+            }),
+            tasks.map((task) => /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
+              accessibilityRole: "button",
+              onPress: () => onSelect(task.tab),
+              style: {
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 10,
+                paddingVertical: 4
+              },
+              children: [
+                /* @__PURE__ */ jsx(import_react_native16.View, {
+                  style: {
+                    width: 20,
+                    height: 20,
+                    borderRadius: 10,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: task.done ? "#23A55A" : "transparent",
+                    borderWidth: task.done ? 0 : 2,
+                    borderColor: "#80848E"
+                  },
+                  children: task.done ? /* @__PURE__ */ jsx(Text, {
+                    variant: "text-xs/bold",
+                    style: {
+                      color: "#FFFFFF"
+                    },
+                    children: "\u2713"
+                  }) : null
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: task.done ? "text-muted" : void 0,
+                  style: {
+                    flex: 1
+                  },
+                  children: task.label
+                }),
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-muted",
+                  children: "\u203A"
+                })
+              ]
+            }, task.label))
+          ]
+        }),
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
+          style: {
+            gap: 8
+          },
+          children: [
+            /* @__PURE__ */ jsx(Text, {
+              variant: "text-md/bold",
+              style: {
+                paddingHorizontal: 4
+              },
+              children: "Quick actions"
+            }),
+            /* @__PURE__ */ jsx(import_react_native16.View, {
+              style: {
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 10
+              },
+              children: SECTIONS.filter(([tab]) => tab !== "overview").map(([tab, label, sub]) => /* @__PURE__ */ jsxs(import_react_native16.Pressable, {
+                accessibilityRole: "button",
+                onPress: () => onSelect(tab),
+                style: {
+                  ...card,
+                  width: "48%",
+                  flexGrow: 1,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10
+                },
+                children: [
+                  /* @__PURE__ */ jsx(import_react_native16.View, {
+                    style: {
+                      width: 32,
+                      alignItems: "center"
+                    },
+                    children: tabIcon(tab)
+                  }),
+                  /* @__PURE__ */ jsxs(import_react_native16.View, {
+                    style: {
+                      flex: 1
+                    },
+                    children: [
+                      /* @__PURE__ */ jsx(Text, {
+                        variant: "text-sm/bold",
+                        numberOfLines: 1,
+                        children: label
+                      }),
+                      /* @__PURE__ */ jsx(Text, {
+                        variant: "text-xs/medium",
+                        color: "text-muted",
+                        numberOfLines: 2,
+                        children: sub
+                      })
+                    ]
+                  })
+                ]
+              }, tab))
+            })
+          ]
+        })
+      ]
+    });
+  }
+  var import_react3, import_react_native16, SECTIONS, GROUPS, section;
   var init_FakeProfileGlass = __esm({
     "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
       "use strict";
@@ -10484,6 +10726,11 @@
       init_assets();
       init_common();
       SECTIONS = [
+        [
+          "overview",
+          "Overview",
+          "Your profile at a glance"
+        ],
         [
           "profile",
           "Profile",
@@ -10530,6 +10777,39 @@
           "Changes visible only on this device"
         ]
       ];
+      GROUPS = [
+        [
+          "Account",
+          [
+            "overview"
+          ]
+        ],
+        [
+          "Customize",
+          [
+            "profile",
+            "name",
+            "cosmetics",
+            "status"
+          ]
+        ],
+        [
+          "Badges & links",
+          [
+            "badges",
+            "social",
+            "dates"
+          ]
+        ],
+        [
+          "More",
+          [
+            "custom",
+            "others"
+          ]
+        ]
+      ];
+      section = (tab) => SECTIONS.find(([id]) => id === tab) ?? SECTIONS[0];
     }
   });
 
@@ -12318,6 +12598,12 @@
   }
   function ProfileTabs2(props) {
     var _$Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).ProfileTabs;
+    return /* @__PURE__ */ jsx(_$Component, {
+      ...props
+    });
+  }
+  function OverviewPanel(props) {
+    var _$Component = (init_FakeProfileGlass(), __toCommonJS(FakeProfileGlass_exports)).ProfileOverview;
     return /* @__PURE__ */ jsx(_$Component, {
       ...props
     });
@@ -16516,7 +16802,7 @@
   }
   function FakeProfile() {
     var editorOwner = (0, import_react7.useRef)(currentUserId);
-    var [activeTab, setActiveTab] = (0, import_react7.useState)("profile");
+    var [activeTab, setActiveTab] = (0, import_react7.useState)("overview");
     var [showDetails, setShowDetails] = (0, import_react7.useState)(false);
     useProxy(settings);
     var [, redraw] = (0, import_react7.useReducer)((value) => value + 1, 0);
@@ -16972,6 +17258,70 @@
             selected: activeTab,
             onSelect: setActiveTab
           }),
+          activeTab === "overview" ? (() => {
+            var badgeCount = Object.values(preview.selectedBadges || {}).filter(Boolean).length + (preview.nitroEnabled ? 1 : 0) + (preview.boostMonths > 0 ? 1 : 0) + (preview.giftLevel >= 0 ? 1 : 0);
+            var connections = (preview.customConnections || []).length;
+            var name = preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "there";
+            return /* @__PURE__ */ jsx(OverviewPanel, {
+              name,
+              subtitle: preview.enabled ? rootSettings.fakeProfileLocalOnly ? "Your custom profile is on, on this device only" : "Your custom profile is on and synced everywhere" : "Your custom profile is off",
+              stats: [
+                {
+                  label: "Username",
+                  value: preview.username || realCurrentUser?.username || "-",
+                  hint: "Your public name"
+                },
+                {
+                  label: "Badges",
+                  value: String(badgeCount),
+                  hint: preview.replaceBadges ? "Real badges hidden" : "Shown with your real ones"
+                },
+                {
+                  label: "Connections",
+                  value: String(connections),
+                  hint: "Accounts and domains"
+                },
+                {
+                  label: "Sync",
+                  value: rootSettings.fakeProfileLocalOnly ? "Device" : "Everywhere",
+                  hint: rootSettings.fakeProfileLocalOnly ? "Only you see it" : "Other CloudCord users see it"
+                }
+              ],
+              tasks: [
+                {
+                  label: "Upload a profile picture",
+                  done: !!preview.avatarMedia,
+                  tab: "profile"
+                },
+                {
+                  label: "Add your name",
+                  done: !!preview.displayName,
+                  tab: "profile"
+                },
+                {
+                  label: "Write a bio",
+                  done: !!preview.bio,
+                  tab: "profile"
+                },
+                {
+                  label: "Pick a decoration, frame or nameplate",
+                  done: !!(preview.avatarDecoration || preview.profileFrame || preview.nameplate),
+                  tab: "cosmetics"
+                },
+                {
+                  label: "Choose badges",
+                  done: badgeCount > 0,
+                  tab: "badges"
+                },
+                {
+                  label: "Add a connection",
+                  done: connections > 0,
+                  tab: "social"
+                }
+              ],
+              onSelect: setActiveTab
+            });
+          })() : null,
           activeTab === "social" ? /* @__PURE__ */ jsx(Card2, {
             children: /* @__PURE__ */ jsx(CustomSocialEditor2, {
               data: preview,
@@ -19603,7 +19953,7 @@
           ];
           var sections = findInReactTree(res.props.children, (n) => n?.children?.[1]?.type === LegacyFormSection)?.children || res.props.children;
           if (sections) {
-            var index = sections.findIndex((section) => titles.includes(section?.props?.label));
+            var index = sections.findIndex((section2) => titles.includes(section2?.props?.label));
             sections.splice(-~index || 4, 0, /* @__PURE__ */ jsx(SettingsSection, {}, "CLOUDCORD_SETTINGS_SECTION"));
           }
         }));
@@ -19694,9 +20044,9 @@
         withArrow: true
       }
     }))).reduce((a, c2) => Object.assign(a, c2), {});
-    var isDeveloperSection = (section) => {
-      var label = `${section?.label ?? ""} ${section?.title ?? ""}`.toLowerCase();
-      return label.includes("developer") || section?.settings?.some?.((key) => /developer/i.test(key));
+    var isDeveloperSection = (section2) => {
+      var label = `${section2?.label ?? ""} ${section2?.title ?? ""}`.toLowerCase();
+      return label.includes("developer") || section2?.settings?.some?.((key) => /developer/i.test(key));
     };
     var insertNativeRows = (sections) => {
       var rows = Object.values(registeredSections).flat().filter((row2) => row2.nativeSection === "developer");
@@ -19764,7 +20114,7 @@
           if (sectionName2 === "CloudCord" && settings.cloudcordSectionHidden)
             return "continue";
           var rows = registeredSections[sectionName2].filter((row) => !row.nativeSection);
-          if (!rows.length || sections.some((section) => section?.label === sectionName2))
+          if (!rows.length || sections.some((section2) => section2?.label === sectionName2))
             return "continue";
           sections.splice(index++, 0, {
             label: sectionName2,
@@ -19776,7 +20126,7 @@
         if (!Array.isArray(sections))
           return;
         insertNativeRows(sections);
-        var accountIndex = sections.findIndex((section) => section?.settings?.includes?.("ACCOUNT"));
+        var accountIndex = sections.findIndex((section2) => section2?.settings?.includes?.("ACCOUNT"));
         if (accountIndex < 0)
           return;
         var index = accountIndex + 1;
@@ -19800,7 +20150,7 @@
         if (!rows.length)
           return;
         var rowKeys = new Set(rows.map((row) => row.key));
-        var alreadyExists = sections.some((section) => section?.label === sectionName || section?.title === sectionName || section?.settings?.some?.((key) => rowKeys.has(key)));
+        var alreadyExists = sections.some((section2) => section2?.label === sectionName || section2?.title === sectionName || section2?.settings?.some?.((key) => rowKeys.has(key)));
         if (!alreadyExists) {
           sections.push({
             label: sectionName,
@@ -19965,9 +20315,9 @@
     registerSection: () => registerSection,
     registeredSections: () => registeredSections
   });
-  function registerSection(section) {
-    registeredSections[section.name] = section.items;
-    return () => delete registeredSections[section.name];
+  function registerSection(section2) {
+    registeredSections[section2.name] = section2.items;
+    return () => delete registeredSections[section2.name];
   }
   function patchSettings() {
     var unpatches = new Array();
