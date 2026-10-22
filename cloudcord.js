@@ -14202,10 +14202,11 @@
       if (tier < 0)
         return "continue";
       var hash2 = ACTIVITY_ICON_HASHES[badge2.key]?.[tier];
+      var text = badge2.title + " \xB7 " + badge2.tiers[tier][0] + " \xB7 " + badge2.label(badge2.tiers[tier][1]);
       if (hash2) {
         out.push({
           id: badge2.key,
-          description: badge2.title,
+          description: text,
           icon: hash2
         });
         return "continue";
@@ -14214,7 +14215,7 @@
       var icon3 = fallback ?? (currentUserId ? store?.getBadgeById?.(badge2.badgeId, currentUserId)?.tiers?.[tier]?.simple_icon_raster_url : void 0);
       out.push({
         id: badge2.key,
-        description: badge2.title,
+        description: text,
         icon: icon3 ?? "",
         iconSrc: icon3
       });
