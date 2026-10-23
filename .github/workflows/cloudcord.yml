@@ -1699,11 +1699,15 @@ jobs:
               return `https://cdn.discordapp.com/avatar-decoration-presets/${encodeURIComponent(raw)}.png?size=160&passthrough=true`;
           }
 
+          function decorationSkuFor(asset: string) {
+              try { return collectiblesCatalog?.decorations?.find((item: any) => item.id === asset)?.skuId || ""; } catch { return ""; }
+          }
           function applyAvatarDecoration(target: any, data: any) {
               if (!target || !data?.avatarDecoration) return;
               const asset = decorationAsset(data.avatarDecoration);
               if (!asset) return;
-              const skuId = data.avatarDecorationSku || "cloudcord-decoration";
+              // Discord's renderer wants the decoration's real SKU; look it up when we saved without one.
+              const skuId = data.avatarDecorationSku || decorationSkuFor(asset) || "cloudcord-decoration";
               const decoration = { asset, skuId, sku_id: skuId };
               setOwnValue(target, "avatarDecorationData", decoration);
               setOwnValue(target, "avatar_decoration_data", decoration);
@@ -1817,7 +1821,18 @@ jobs:
                       try { visit(root?.[getter]?.()); } catch {}
                   }
               }
-              return [...found.values()];
+              // Discord's own catalog has the real SKU for each decoration.
+              try {
+                  const catalog = collectiblesCatalog ?? await withTimeout(loadCollectiblesCatalog(), 6000);
+                  for (const item of catalog?.decorations ?? []) found.set(item.id + ":" + item.skuId, { asset: item.id, skuId: item.skuId, label: item.label, uri: item.url });
+              } catch {}
+              // One entry per decoration, keeping the one that has a SKU.
+              const byAsset = new Map<string, { asset: string; skuId: string; label: string; uri: string }>();
+              for (const item of found.values()) {
+                  const have = byAsset.get(item.asset);
+                  if (!have || (!have.skuId && item.skuId)) byAsset.set(item.asset, have && !item.label ? { ...item, label: have.label } : item);
+              }
+              return [...byAsset.values()];
           }
 
           function boosterIcon(months: number) {
@@ -4051,7 +4066,7 @@ jobs:
                                   <K.Section title="Avatar decoration" description="The frame around your profile picture.">
                                       <K.CurrentRow label={preview.avatarDecoration ? decorations.find(item => item.uri === preview.avatarDecoration)?.label || "Decoration" : null} image={preview.avatarDecoration || undefined} onRemove={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} />
                                       <K.ChoiceGrid SearchInput={TextInput} items={decorations} keyOf={item => `${item.asset}:${item.skuId}`} labelOf={item => item.label} imageOf={item => item.uri}
-                                          isSelected={item => item.uri === preview.avatarDecoration} onPick={item => { update("avatarDecoration", item.uri, true); update("avatarDecorationSku", item.skuId, true); }}
+                                          isSelected={item => item.uri === preview.avatarDecoration || (!!preview.avatarDecoration && decorationAsset(preview.avatarDecoration) === item.asset)} onPick={item => { update("avatarDecoration", item.uri, true); update("avatarDecorationSku", item.skuId || decorationSkuFor(item.asset), true); }}
                                           noneLabel="No decoration" noneSelected={!preview.avatarDecoration} onNone={() => { update("avatarDecoration", "", true); update("avatarDecorationSku", "", true); }} status={{ loading: decorationsLoading && !decorations.length }} />
                                   </K.Section>
                                   <K.Divider />
