@@ -4,6 +4,7 @@ import { Image, Modal, Pressable, ScrollView, View } from "react-native";
 import { Button, Card, Text, TextInput } from "@metro/common/components";
 import { findAssetId } from "@lib/api/assets";
 import { tokens } from "@metro/common";
+import { resolveSemanticColor } from "@ui/color";
 
 export function DiscordInput({ value, defaultValue, onChangeText, style, placeholderTextColor, ...props }: any) {
     const [draft, setDraft] = useState(defaultValue ?? "");
@@ -46,9 +47,17 @@ const UI = {
     radius: 16,
     gap: 12
 };
-const surface = () => tokens.colors.BACKGROUND_SECONDARY;
-const surfaceAlt = () => tokens.colors.BACKGROUND_TERTIARY;
-const border = () => tokens.colors.BORDER_SUBTLE ?? "rgba(255,255,255,0.06)";
+// Discord tokens are semantic colour objects; RN needs a real colour string or it draws nothing.
+function solid(token: any, fallback: string) {
+    try {
+        const value = typeof token === "string" ? token : token ? resolveSemanticColor(token) : null;
+        return typeof value === "string" && value && !/^(transparent|#0000|#00000000)$/i.test(value) ? value : fallback;
+    } catch { return fallback; }
+}
+const surface = () => solid(tokens.colors.BACKGROUND_SECONDARY ?? tokens.colors.BACKGROUND_BASE_LOW, "#2B2D31");
+const surfaceAlt = () => solid(tokens.colors.BACKGROUND_TERTIARY ?? tokens.colors.BACKGROUND_BASE_LOWEST, "#1E1F22");
+const border = () => solid(tokens.colors.BORDER_SUBTLE, "rgba(255,255,255,0.08)");
+const textColor = () => solid(tokens.colors.TEXT_NORMAL, "#DBDEE1");
 
 const ICONS: Record<ProfileTab, string[]> = {
     overview: ["GridSquareIcon", "DashboardIcon", "HomeIcon", "AppsIcon"], profile: ["UserIcon"], name: ["TagIcon", "TagsIcon", "PencilIcon"],
@@ -70,7 +79,7 @@ function IconTile({ tab, active = false, size = 36 }: { tab: ProfileTab; active?
 function MenuButton({ onPress }: { onPress: () => void }) {
     return <Pressable accessibilityRole="button" accessibilityLabel="Open menu" onPress={onPress} hitSlop={8}
         style={{ width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", backgroundColor: surfaceAlt() }}>
-        <View style={{ width: 18, gap: 4 }}>{[0, 1, 2].map(line => <View key={line} style={{ height: 2, borderRadius: 1, backgroundColor: tokens.colors.TEXT_NORMAL ?? "#DBDEE1" }} />)}</View>
+        <View style={{ width: 18, gap: 4 }}>{[0, 1, 2].map(line => <View key={line} style={{ height: 2, borderRadius: 1, backgroundColor: textColor() }} />)}</View>
     </Pressable>;
 }
 /** Lays children out two per row so every card has the same width. */

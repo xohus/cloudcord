@@ -6,6 +6,7 @@ const emitterSymbol = Symbol.for("vendetta.storage.emitter");
 const syncAwaitSymbol = Symbol.for("vendetta.storage.accessor");
 
 export function createProxy(target: any = {}): { proxy: any; emitter: Emitter; } {
+    if (!target || typeof target !== "object") target = {};
     const emitter = new Emitter();
 
     const childrens = new WeakMap<any, any>();
@@ -120,7 +121,9 @@ export function useProxy<T>(storage: T): T {
 }
 
 export async function createStorage<T>(backend: StorageBackend): Promise<Awaited<T>> {
-    const data = await backend.get();
+    let data: any = await backend.get();
+    // A wiped store (logout, account switch) can read back as null; Proxy needs an object.
+    if (!data || typeof data !== "object") data = {};
     const { proxy, emitter } = createProxy(data);
 
     const handler = () => backend.set(proxy);

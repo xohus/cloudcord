@@ -72,6 +72,7 @@ export function createStorageAndCallback<T extends object = {}>(
     let emitter: Emitter;
 
     const callback = (data: any) => {
+        if (!data || typeof data !== "object") data = {};
         const proxy = new Proxy(Observable.from(data), {
             get(target, prop, receiver) {
                 if (prop === Symbol.for("vendetta.storage.emitter")) {
