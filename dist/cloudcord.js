@@ -1442,7 +1442,7 @@
           return value;
         },
         set(target3, prop, value) {
-          if (typeof value === "object") {
+          if (value !== null && typeof value === "object") {
             if (childrens.has(value)) {
               target3[prop] = childrens.get(value);
             } else {
@@ -1467,7 +1467,7 @@
           return true;
         },
         deleteProperty(target3, prop) {
-          var value = typeof target3[prop] === "object" ? childrens.get(target3[prop]) : target3[prop];
+          var value = target3[prop] !== null && typeof target3[prop] === "object" ? childrens.get(target3[prop]) ?? target3[prop] : target3[prop];
           var success = delete target3[prop];
           if (success)
             emitter.emit("DEL", {
@@ -1509,6 +1509,8 @@
   function createStorage(backend) {
     return _async_to_generator(function* () {
       var data = yield backend.get();
+      if (!data || typeof data !== "object")
+        data = {};
       var { proxy, emitter } = createProxy(data);
       var handler = () => backend.set(proxy);
       emitter.on("SET", handler);
