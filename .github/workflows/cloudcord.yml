@@ -144,6 +144,7 @@ jobs:
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
           mkdir -p src/lib/api/native
           cp "../ios/runtime/src/lib/api/native/legacyRuntimeRefresh.ts" "src/lib/api/native/legacyRuntimeRefresh.ts"
+          node ../ios/scripts/patch-kettu-storage.cjs src/core/vendetta/storage.ts
           cp "../ios/runtime/src/lib/ui/settings/index.tsx" "src/lib/ui/settings/index.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/tabs.tsx" "src/lib/ui/settings/patches/tabs.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/panel.tsx" "src/lib/ui/settings/patches/panel.tsx"
