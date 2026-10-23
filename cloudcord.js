@@ -16070,6 +16070,8 @@
     return value;
   }
   function installOrbHooks() {
+    if (orbHooked.currency && orbHooked.wallet || orbSearches++ > 1)
+      return;
     var currency = orbHooked.currency ? null : findByStoreName("VirtualCurrencyStore");
     var real = currency && Object.getOwnPropertyDescriptor(Object.getPrototypeOf(currency), "balance")?.get;
     if (real) {
@@ -16091,8 +16093,10 @@
     }
   }
   function installSwitcherHook() {
+    if (switcherHooked || switcherSearches++ > 1)
+      return;
     var store = findByStoreName("MultiAccountStore");
-    if (switcherHooked || typeof store?.getUsers !== "function")
+    if (typeof store?.getUsers !== "function")
       return;
     switcherHooked = true;
     var cache = /* @__PURE__ */ new WeakMap();
@@ -16768,8 +16772,6 @@
         for (var step of [
           installGiftHook,
           installBoostHooks,
-          installOrbHooks,
-          installSwitcherHook,
           applyFakeNitro
         ]) {
           try {
@@ -16777,15 +16779,17 @@
           } catch (e) {
           }
         }
-        var orbTries = 0;
-        var orbTimer = setInterval(() => {
-          try {
-            installOrbHooks();
-          } catch (e) {
+        setTimeout(() => {
+          for (var step2 of [
+            installOrbHooks,
+            installSwitcherHook
+          ]) {
+            try {
+              step2();
+            } catch (e) {
+            }
           }
-          if (orbHooked.currency && orbHooked.wallet || ++orbTries > 20)
-            clearInterval(orbTimer);
-        }, 3e3);
+        }, 15e3);
         var restoreLater = () => setTimeout(() => {
           try {
             restoreFakeRequests();
@@ -18941,7 +18945,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, memberOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, switcherHooked, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, memberOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -20097,7 +20101,9 @@
         var value = extrasState().fakeOrbs;
         return typeof value === "number" && value >= 0 ? value : null;
       };
+      orbSearches = 0;
       switcherHooked = false;
+      switcherSearches = 0;
       leavingServers = false;
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
