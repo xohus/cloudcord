@@ -42,10 +42,11 @@ console.log('official badge contrast: light, dark, zero-valued colors and native
 for (const pair of [[0xffffff, 0], [0xff0000, 0x0000ff], [0x111111, 0x333333], [0xdddddd, 0xffffff]]) {
     const result = [];
     context.addOfficialBadge(result, { id: 'official' }, {}, { profileColorsEnabled: true, primaryColor: pair[0], accentColor: pair[1] });
-    const l = pair.map(color => {
+    // Discord themes the profile from the primary colour, so only that one counts.
+    const l = pair.slice(0, 1).map(color => {
         const c = [(color >> 16) & 255, (color >> 8) & 255, color & 255].map(v => { const n = v / 255; return n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4; });
         return c[0] * .2126 + c[1] * .7152 + c[2] * .0722;
-    }).reduce((a,b) => a+b) / 2;
+    })[0];
     assert.equal(result[0].tintColor, (l+.05)/.05 >= 1.05/(l+.05) ? '#000000' : '#ffffff');
 }
 assert.match(source, /<Image source=\{props.source\} resizeMode="contain" style=\{\{ width: 20, height: 20, tintColor: props.tintColor \}\}/);

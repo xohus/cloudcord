@@ -153,7 +153,8 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             const profilePlugin = Plugins.ProfileSpoofer as { started?: boolean; getActiveProfileColors?(userId: string): number[] | null; } | undefined;
             const editedColors: number[] | null = profilePlugin?.started ? (profilePlugin.getActiveProfileColors?.(badge.userId) ?? null) : null;
             if (editedColors?.length) {
-                apply(useBlack(editedColors.map(color => [(color >> 16) & 255, (color >> 8) & 255, color & 255])));
+                // Discord themes the profile from the primary colour, so contrast with that one.
+                apply(useBlack(editedColors.slice(0, 1).map(color => [(color >> 16) & 255, (color >> 8) & 255, color & 255])));
                 return;
             }
             // Prefer the rendered surface near the badge, not globally inherited
@@ -163,7 +164,7 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
                 const style = getComputedStyle(surface);
                 const gradientColors = [...(style.backgroundImage || "").matchAll(/(?:rgba?|color|oklab|oklch|lab|lch)\([^)]*\)/g)].map(match => parseColor(match[0])).filter((color): color is number[] => color !== null);
                 if (gradientColors.length) {
-                    apply(useBlack(gradientColors));
+                    apply(useBlack(gradientColors.slice(0, 1)));
                     return;
                 }
                 const background = parseColor(style.backgroundColor);
