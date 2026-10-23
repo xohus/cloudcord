@@ -16557,6 +16557,98 @@
     });
     return value;
   }
+  function regroupMemberList(guildId, props) {
+    var fake = boostFor(guildId);
+    var me = currentUserId;
+    if (!fake?.roles?.length || !me || !props || !Array.isArray(props.rows))
+      return props;
+    var byId = new Map(rolesOf(guildId).map((role) => [
+      role.id,
+      role
+    ]));
+    var hoist = fake.roles.map((id2) => byId.get(id2)).filter((role) => role?.hoist).sort((a, b3) => (b3.position ?? 0) - (a.position ?? 0))[0];
+    var rowIndex = props.rows.findIndex((row2) => row2?.type === "MEMBER" && String(row2.userId) === me);
+    if (!hoist || rowIndex < 0)
+      return props;
+    var mineRow = props.rows[rowIndex];
+    var current = byId.get(mineRow.hoistRoleId);
+    if (current && (current.position ?? 0) >= (hoist.position ?? 0))
+      return props;
+    var key = hoist.id + "|" + props.rows.length + "|" + rowIndex;
+    var hit = listCache.get(props);
+    if (hit && hit.key === key)
+      return hit.value;
+    var rows = props.rows.slice();
+    rows.splice(rowIndex, 1);
+    var oldHeader = -1;
+    for (var i = rowIndex - 1; i >= 0; i--)
+      if (rows[i]?.type === "GROUP") {
+        oldHeader = i;
+        break;
+      }
+    var counts = new Map((props.groups ?? []).map((group) => [
+      String(group.id),
+      group.count ?? 0
+    ]));
+    if (oldHeader >= 0) {
+      var id = String(rows[oldHeader].id);
+      counts.set(id, Math.max(0, (counts.get(id) ?? 1) - 1));
+      if (!counts.get(id) && rows[oldHeader + 1]?.type !== "MEMBER")
+        rows.splice(oldHeader, 1);
+    }
+    var row = {
+      ...mineRow,
+      hoistRoleId: hoist.id,
+      roles: [
+        .../* @__PURE__ */ new Set([
+          ...mineRow.roles ?? [],
+          ...fake.roles
+        ])
+      ]
+    };
+    try {
+      var member = fakeMember(guildId, mineRow);
+      Object.assign(row, {
+        colorString: member.colorString,
+        colorStrings: member.colorStrings,
+        colorRoleId: member.colorRoleId,
+        iconRoleId: member.iconRoleId,
+        highestRoleId: member.highestRoleId,
+        hoistRoleId: hoist.id
+      });
+    } catch (e) {
+    }
+    var header = rows.findIndex((entry) => entry?.type === "GROUP" && String(entry.id) === hoist.id);
+    if (header < 0) {
+      header = rows.findIndex((entry) => entry?.type === "GROUP" && (byId.has(String(entry.id)) ? (byId.get(String(entry.id)).position ?? 0) < (hoist.position ?? 0) : true));
+      if (header < 0)
+        header = rows.length;
+      rows.splice(header, 0, {
+        type: "GROUP",
+        key: hoist.id,
+        id: hoist.id,
+        title: hoist.name
+      });
+    }
+    rows.splice(header + 1, 0, row);
+    counts.set(hoist.id, (counts.get(hoist.id) ?? 0) + 1);
+    var groups = rows.map((entry, index) => entry?.type === "GROUP" ? {
+      ...entry,
+      count: counts.get(String(entry.id)) ?? 0,
+      index
+    } : null).filter(Boolean);
+    var value = {
+      ...props,
+      rows,
+      groups,
+      version: (props.version ?? 0) + 0.5
+    };
+    listCache.set(props, {
+      key,
+      value
+    });
+    return value;
+  }
   function installBoostHooks() {
     if (boostHooksInstalled)
       return;
@@ -16597,6 +16689,15 @@
         return guild;
       }
     });
+    var list = findByStoreName("ChannelMemberStore");
+    if (typeof list?.getProps === "function")
+      after("getProps", list, (args, props) => {
+        try {
+          return boostFor(args[0])?.roles?.length ? regroupMemberList(args[0], props) : props;
+        } catch (e) {
+          return props;
+        }
+      });
     var counts = findByStoreName("GuildMemberCountStore");
     if (typeof counts?.getMemberCount === "function")
       after("getMemberCount", counts, (args, count) => boostFor(args[0])?.members ?? count);
@@ -16693,6 +16794,7 @@
       try {
         findByStoreName("GuildStore")?.emitChange?.();
         findByStoreName("GuildMemberStore")?.emitChange?.();
+        findByStoreName("ChannelMemberStore")?.emitChange?.();
       } catch (e) {
       }
       refresh();
@@ -16844,7 +16946,7 @@
             }),
             /* @__PURE__ */ jsx(K2.Field, {
               label: "Fake roles" + (chosenRoles.size ? " (" + chosenRoles.size + ")" : ""),
-              hint: "Name colour and role icon follow your highest role. Only on this device.",
+              hint: "Name colour, role icon and member list group follow your highest role. Only on this device.",
               children: /* @__PURE__ */ jsx(TextInput4, {
                 value: roleQuery,
                 placeholder: "Search roles",
@@ -19440,7 +19542,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -20611,6 +20713,7 @@
       switcherHooked = false;
       switcherSearches = 0;
       fakeMemberCache = /* @__PURE__ */ new WeakMap();
+      listCache = /* @__PURE__ */ new WeakMap();
       leavingServers = false;
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
