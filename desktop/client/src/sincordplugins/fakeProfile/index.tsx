@@ -530,12 +530,12 @@ function badgesHiddenFor(userId: string): boolean {
     try { return !RelationshipStore.isFriend(userId); } catch { return true; }
 }
 function viewedSharedProfile(userId: string, _forBadges?: boolean) {
-    // New feature: Hide other profiles.
-    if (storedData?.hideOtherProfiles) return undefined;
     if (isRealProfileView(userId)) return undefined;
-    const profile = sharedProfiles.get(userId);
+    const local = localProfileFor(userId);
+    // Hide other profiles hides synced ones; your own local edits still show.
+    const profile = storedData?.hideOtherProfiles ? undefined : sharedProfiles.get(userId);
     if (profile) sharedViewedAt.set(userId, Date.now());
-    return profile;
+    return local ? { ...(profile || {}), ...local } : profile;
 }
 const sharedProfileFetchedAt = new Map<string, number>();
 const sharedRequests = new Set<string>();
@@ -1738,6 +1738,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                 <BadgeLayoutEditor data={data} userId={selectedAccountId} onChange={layout => setData(previous => ({ ...previous, ...layout }))} />
             </Section>
         </>,
+        others: <OtherProfilesPanel />,
         connections: <>
             <Section title="Connections" description="Accounts shown on your profile. These are previews, not verified connections.">
                 <CustomSocialEditor data={data} onChange={value => setData(current => ({ ...current, ...value }))} resolveUser={async userId => {
@@ -2477,4 +2478,119 @@ function activityDirectoryEntry(entry: any, data: CustomProfileData) {
     const amount = badge.tiers[tier][1];
     const since = badge.key === "account_age" ? monthsAgo(amount * 12) : monthsAgo(1);
     return { ...tieredEntry(entry, tier, since, [], badge.label(amount)), progress: [] };
+}
+
+
+// ---- Other profiles: edits to other people's profiles, only on this device ----
+const LS_LOCAL_PROFILES = "cloudcord_local_profiles";
+let localProfiles: Record<string, CustomProfileData> = (() => {
+    try { const value = JSON.parse(localStorage.getItem(LS_LOCAL_PROFILES) || "{}"); return value && typeof value === "object" ? value : {}; } catch { return {}; }
+})();
+function localProfileFor(userId: string): CustomProfileData | undefined {
+    return /^\d{15,22}$/.test(userId) && !isMe(userId) ? localProfiles[userId] : undefined;
+}
+function writeLocalProfiles(next: Record<string, CustomProfileData>, changedId?: string) {
+    localProfiles = next;
+    try { localStorage.setItem(LS_LOCAL_PROFILES, JSON.stringify(next)); } catch { }
+    otherUserCache = new WeakMap();
+    _dataVersion++;
+    forceAccountPanelRerender();
+    if (changedId) reloadDiscordProfile(changedId);
+}
+function localUserLabel(userId: string, data?: CustomProfileData) {
+    const user = UserStore.getUser(userId) as any;
+    return { name: data?.globalName || user?.globalName || user?.username || "Unknown user", username: data?.username || user?.username || userId, avatar: data?.avatar || (user ? IconUtils.getUserAvatarURL(user, false, 40) : "") };
+}
+
+function OtherProfilesPanel() {
+    const [, force] = React.useReducer((x: number) => x + 1, 0);
+    const [userId, setUserId] = React.useState("");
+    const [draft, setDraft] = React.useState<CustomProfileData | null>(null);
+    const [query, setQuery] = React.useState("");
+    const ids = Object.keys(localProfiles);
+    const validId = /^\d{15,22}$/.test(userId.trim());
+    const set = <K extends keyof CustomProfileData>(key: K, value: CustomProfileData[K]) => setDraft(previous => ({ ...(previous || {}), [key]: value }));
+    const open = (id: string) => {
+        const clean = id.trim();
+        setUserId(clean);
+        setDraft({ ...(localProfiles[clean] || {}) });
+        if (/^\d{15,22}$/.test(clean) && !UserStore.getUser(clean)) { try { void Promise.resolve(fetchUserProfile(clean, { withMutualGuilds: false, withMutualFriends: false })).then(force, () => { }); } catch { } }
+    };
+    const save = () => {
+        if (!validId || !draft) return;
+        if (isMe(userId.trim())) { showToast("Edit your own profile in the other tabs.", Toasts.Type.FAILURE); return; }
+        const clean = Object.fromEntries(Object.entries(draft).filter(([, value]) => value !== "" && value !== undefined && value !== null)) as CustomProfileData;
+        writeLocalProfiles({ ...localProfiles, [userId.trim()]: clean }, userId.trim());
+        showToast("Saved on this device. Only you see this.", Toasts.Type.SUCCESS);
+        force();
+    };
+    const remove = (id: string) => {
+        const next = { ...localProfiles };
+        delete next[id];
+        writeLocalProfiles(next, id);
+        if (id === userId.trim()) { setDraft(null); setUserId(""); }
+        force();
+    };
+    const filtered = ids.filter(id => { const label = localUserLabel(id, localProfiles[id]); const needle = query.trim().toLowerCase(); return !needle || id.includes(needle) || label.name.toLowerCase().includes(needle) || label.username.toLowerCase().includes(needle); });
+    const nitroLevel = Number(draft?.nitroLevel ?? -1);
+    const target = validId ? localUserLabel(userId.trim(), draft || undefined) : null;
+    return <>
+        <Section title="Other profiles" description="Change how other people's profiles look, only on this device. Nobody else sees it, and their Discord account doesn't change.">
+            <div className="cpx-inline">
+                <input className="cpx-input" value={userId} placeholder="Discord user ID (right-click someone → Copy User ID)" onChange={event => setUserId(event.currentTarget.value)} />
+                <button type="button" className="cpx-btn" disabled={!validId} onClick={() => open(userId)}>{validId && localProfiles[userId.trim()] ? "Edit" : "Add"}</button>
+            </div>
+        </Section>
+        <Section title={`People you edited (${ids.length})`}>
+            {ids.length > 4 && <input className="cpx-input" value={query} placeholder="Search" onChange={event => setQuery(event.currentTarget.value)} />}
+            {!ids.length && <span className="cpx-hint">Nobody yet. Add someone's user ID above.</span>}
+            {filtered.map(id => {
+                const label = localUserLabel(id, localProfiles[id]);
+                const data = localProfiles[id];
+                const extras = [data.nitro && Number(data.nitroLevel ?? -1) >= 0 ? "Nitro" : "", Number(data.boostMonths ?? -1) >= 0 ? "Booster" : "", data.badgeFlags ? "Badges" : "", data.avatar ? "Picture" : "", data.bio ? "Bio" : ""].filter(Boolean).join(" · ");
+                return <div key={id} className="cpx-order-row" style={{ gap: 12, outline: id === userId.trim() && draft ? "2px solid var(--cpx-brand)" : undefined }}>
+                    {label.avatar ? <img src={label.avatar} alt="" width={32} height={32} style={{ borderRadius: "50%", objectFit: "cover" }} /> : <span style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--cpx-surface)" }} />}
+                    <span style={{ display: "flex", flexDirection: "column", minWidth: 0, flex: 1 }}>
+                        <strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label.name}</strong>
+                        <span className="cpx-hint" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>@{label.username}{extras ? ` · ${extras}` : ""}</span>
+                    </span>
+                    <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => open(id)}>Edit</button>
+                    <button type="button" className="cpx-btn cpx-btn-ghost cpx-btn-danger-text" onClick={() => remove(id)}>Restore</button>
+                </div>;
+            })}
+        </Section>
+        {draft && target && <>
+            <Section title={`Editing ${target.name}`} description={`User ID ${userId.trim()}. Empty fields keep their real (or synced) value.`}>
+                <Grid2>
+                    <TextField label="Display name" maxLength={32} value={draft.globalName ?? ""} placeholder={target.name} onChange={value => set("globalName", value)} />
+                    <TextField label="Username" maxLength={32} value={draft.username ?? ""} placeholder={target.username} onChange={value => set("username", value)} />
+                </Grid2>
+                <Grid2>
+                    <ImageField label="Profile picture" value={draft.avatar ?? ""} onChange={value => set("avatar", value)} />
+                    <ImageField label="Banner" shape="banner" value={draft.banner ?? ""} onChange={value => set("banner", value)} />
+                </Grid2>
+                <TextField label="Pronouns" maxLength={40} value={draft.pronouns ?? ""} onChange={value => set("pronouns", value)} />
+                <TextField label="About me" maxLength={190} multiline value={draft.bio ?? ""} onChange={value => set("bio", value)} />
+                <Grid2>
+                    <ColorField label="Profile colour" optional fallback="#5865f2" value={draft.accentColor} onChange={value => set("accentColor", value)} />
+                    <ColorField label="Second colour" optional fallback="#5865f2" value={draft.accentColor2} onChange={value => set("accentColor2", value)} />
+                </Grid2>
+                <Grid2>
+                    <TextField label="Account created" value={draft.createdAt ?? ""} placeholder="YYYY-MM-DD" onChange={value => set("createdAt", value)} />
+                    <TextField label="Nitro since" value={draft.nitroSince ?? ""} placeholder="YYYY-MM-DD" onChange={value => set("nitroSince", value)} />
+                </Grid2>
+            </Section>
+            <Section title="Badges, Nitro and boosting" description="Shown on their profile on this device.">
+                <BadgePicker selected={draft.badgeFlags ?? 0} onChange={value => set("badgeFlags", value)} nitroType={nitroLevel} onNitroType={value => { set("nitroLevel", value); set("nitro", value >= 0); }}
+                    giftLevel={Number(draft.giftLevel ?? -1)} onGiftLevel={value => set("giftLevel", value)} boostLevel={Number(draft.boostMonths ?? -1)} onBoostLevel={value => set("boostMonths", value)}
+                    customIds={draft.customBadgeIds ?? []} onCustomIds={value => set("customBadgeIds", value)} oldName={draft.oldName ?? ""} onOldName={value => set("oldName", value)}
+                    replaceRealBadges={draft.replaceRealBadges === true} onReplaceRealBadges={value => set("replaceRealBadges", value)} />
+            </Section>
+            <div className="cpx-inline">
+                <button type="button" className="cpx-btn cpx-btn-primary" onClick={save}>Save for {target.name}</button>
+                <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => { setDraft(null); }}>Close</button>
+                {localProfiles[userId.trim()] && <button type="button" className="cpx-btn cpx-btn-ghost cpx-btn-danger-text" onClick={() => remove(userId.trim())}>Restore original</button>}
+            </div>
+        </>}
+    </>;
 }

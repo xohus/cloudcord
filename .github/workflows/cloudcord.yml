@@ -4036,7 +4036,10 @@ jobs:
                               try { nativeAvatar = user?.getAvatarURL?.() || nativeAvatar; } catch {}
                               return { username: shared?.username || user?.username || "", displayName: shared?.globalName || shared?.displayName || user?.globalName || user?.global_name || "", avatar: shared?.avatar || nativeAvatar, banner: shared?.banner || customDiscordMediaURL("banners", id, profile?.banner ?? user?.banner), bio: shared?.bio || profile?.bio || "", badges: BADGES.filter(([, , flag, , customId]) => customId ? customIds.includes(customId) : flag && (flags & flag) !== 0).map(([,name,,icon]) => ({name,icon})) };
                           }} /></Card> : null}
-                          {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }} /></Card> : null}
+                          {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }}
+                              nitroOptions={NITRO_DURATIONS.map((months, index) => ({ value: index, label: NITRO_LABELS.get(months) || durationLabel(months) }))}
+                              boostOptions={BOOST_MONTHS.map((months, index) => ({ value: index, label: boosterLabel(months) }))}
+                              giftOptions={GIFT_LEVELS.map((gift, index) => ({ value: index, label: gift.name }))} /></Card> : null}
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
                           {activeTab === "profile" ? <Card border="strong">
                               <View style={{ padding: 16, gap: 24 }}>

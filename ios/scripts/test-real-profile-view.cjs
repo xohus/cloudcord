@@ -77,7 +77,7 @@ assert.equal(mobile.getProfileOverride(id, true), undefined, 'real-profile viewe
 
 const desktopSource = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/index.tsx', 'utf8');
 const badgeViewer = vm.createContext({ realGetUserProfile: () => ({ private: true }), storedData: {},
-    isRealProfileView: () => false, sharedProfiles: new Map([[id, profile]]), sharedViewedAt: new Map(), Date });
+    isRealProfileView: () => false, localProfileFor: () => undefined, sharedProfiles: new Map([[id, profile]]), sharedViewedAt: new Map(), Date });
 vm.runInContext(compile(desktopSource.slice(desktopSource.indexOf('function isPrivateProfile('), desktopSource.indexOf('const sharedProfileFetchedAt'))), badgeViewer);
 assert.equal(badgeViewer.viewedSharedProfile(id), profile, 'private profiles still show the CloudCord identity');
 assert.equal(badgeViewer.viewedSharedProfile(id, true), profile);
