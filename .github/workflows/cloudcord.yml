@@ -3185,6 +3185,50 @@ jobs:
               fakeMemberCache.set(member, { key, value });
               return value;
           }
+          // Member list: move you under your highest hoisted fake role, like Discord would.
+          // Discord builds the list on its servers; this rewrites the rows it hands the list.
+          const listCache = new WeakMap<object, { key: string; value: any }>();
+          function regroupMemberList(guildId: string, props: any) {
+              const fake = boostFor(guildId);
+              const me = currentUserId;
+              if (!fake?.roles?.length || !me || !props || !Array.isArray(props.rows)) return props;
+              const byId = new Map(rolesOf(guildId).map((role: any) => [role.id, role]));
+              const hoist = fake.roles.map((id: string) => byId.get(id)).filter((role: any) => role?.hoist).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0))[0];
+              const rowIndex = props.rows.findIndex((row: any) => row?.type === "MEMBER" && String(row.userId) === me);
+              if (!hoist || rowIndex < 0) return props;
+              const mineRow = props.rows[rowIndex];
+              const current = byId.get(mineRow.hoistRoleId);
+              if (current && (current.position ?? 0) >= (hoist.position ?? 0)) return props;
+              const key = hoist.id + "|" + props.rows.length + "|" + rowIndex;
+              const hit = listCache.get(props);
+              if (hit && hit.key === key) return hit.value;
+              const rows = props.rows.slice();
+              rows.splice(rowIndex, 1);
+              // Old group loses one; drop its header if it is now empty.
+              let oldHeader = -1;
+              for (let i = rowIndex - 1; i >= 0; i--) if (rows[i]?.type === "GROUP") { oldHeader = i; break; }
+              const counts = new Map<string, number>((props.groups ?? []).map((group: any) => [String(group.id), group.count ?? 0]));
+              if (oldHeader >= 0) {
+                  const id = String(rows[oldHeader].id);
+                  counts.set(id, Math.max(0, (counts.get(id) ?? 1) - 1));
+                  if (!counts.get(id) && rows[oldHeader + 1]?.type !== "MEMBER") rows.splice(oldHeader, 1);
+              }
+              const row = { ...mineRow, hoistRoleId: hoist.id, roles: [...new Set([...(mineRow.roles ?? []), ...fake.roles])] };
+              try { const member = fakeMember(guildId, mineRow); Object.assign(row, { colorString: member.colorString, colorStrings: member.colorStrings, colorRoleId: member.colorRoleId, iconRoleId: member.iconRoleId, highestRoleId: member.highestRoleId, hoistRoleId: hoist.id }); } catch {}
+              let header = rows.findIndex((entry: any) => entry?.type === "GROUP" && String(entry.id) === hoist.id);
+              if (header < 0) {
+                  // New header above the first role group that sits lower than this role (or above "Online").
+                  header = rows.findIndex((entry: any) => entry?.type === "GROUP" && (byId.has(String(entry.id)) ? (byId.get(String(entry.id)).position ?? 0) < (hoist.position ?? 0) : true));
+                  if (header < 0) header = rows.length;
+                  rows.splice(header, 0, { type: "GROUP", key: hoist.id, id: hoist.id, title: hoist.name });
+              }
+              rows.splice(header + 1, 0, row);
+              counts.set(hoist.id, (counts.get(hoist.id) ?? 0) + 1);
+              const groups = rows.map((entry: any, index: number) => entry?.type === "GROUP" ? { ...entry, count: counts.get(String(entry.id)) ?? 0, index } : null).filter(Boolean);
+              const value = { ...props, rows, groups, version: (props.version ?? 0) + 0.5 };
+              listCache.set(props, { key, value });
+              return value;
+          }
           function installBoostHooks() {
               if (boostHooksInstalled) return;
               const guilds = findByStoreName("GuildStore") as any;
@@ -3211,6 +3255,8 @@ jobs:
                   return overlay;
                   } catch { return guild; }
               });
+              const list = findByStoreName("ChannelMemberStore") as any;
+              if (typeof list?.getProps === "function") after("getProps", list, (args: any[], props: any) => { try { return boostFor(args[0])?.roles?.length ? regroupMemberList(args[0], props) : props; } catch { return props; } });
               const counts = findByStoreName("GuildMemberCountStore") as any;
               if (typeof counts?.getMemberCount === "function") after("getMemberCount", counts, (args: any[], count: any) => boostFor(args[0])?.members ?? count);
               if (typeof counts?.getOnlineCount === "function") after("getOnlineCount", counts, (args: any[], count: any) => boostFor(args[0])?.online ?? count);
@@ -3252,7 +3298,7 @@ jobs:
                   if (!guildId) return;
                   const state: any = extrasState();
                   setExtras({ ...state, boosts: { ...state.boosts, [guildId]: { ...fake, ...patch } } });
-                  try { (findByStoreName("GuildStore") as any)?.emitChange?.(); (findByStoreName("GuildMemberStore") as any)?.emitChange?.(); } catch {}
+                  try { (findByStoreName("GuildStore") as any)?.emitChange?.(); (findByStoreName("GuildMemberStore") as any)?.emitChange?.(); (findByStoreName("ChannelMemberStore") as any)?.emitChange?.(); } catch {}
                   refresh();
               };
               const roles = guild ? rolesOf(guild.id) : [];
@@ -3272,7 +3318,7 @@ jobs:
                       <K.Field label="Members" hint="Leave empty for the real count"><TextInput defaultValue={fake.members == null ? "" : String(fake.members)} placeholder="25000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/\D/g, ""); set({ members: clean ? Number(clean) : undefined }); }} placeholderTextColor="#777" /></K.Field>
                       <K.Field label="Online" hint="Leave empty for the real count"><TextInput defaultValue={fake.online == null ? "" : String(fake.online)} placeholder="4000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/\D/g, ""); set({ online: clean ? Number(clean) : undefined }); }} placeholderTextColor="#777" /></K.Field>
                       <ToggleRow label="Show me as a booster here" subLabel="Boosting icon by your name in this server" value={fake.booster === true} onPress={() => set({ booster: !fake.booster })} />
-                      <K.Field label={"Fake roles" + (chosenRoles.size ? " (" + chosenRoles.size + ")" : "")} hint="Name colour and role icon follow your highest role. Only on this device.">
+                      <K.Field label={"Fake roles" + (chosenRoles.size ? " (" + chosenRoles.size + ")" : "")} hint="Name colour, role icon and member list group follow your highest role. Only on this device.">
                           <TextInput value={roleQuery} placeholder="Search roles" autoCapitalize="none" autoCorrect={false} onChangeText={setRoleQuery} placeholderTextColor="#777" />
                       </K.Field>
                       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
