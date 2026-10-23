@@ -14666,7 +14666,7 @@
     ] : native?.themeColors ?? native?.theme_colors ?? [
       native?.primaryColor ?? native?.primary_color ?? native?.accentColor ?? native?.accent_color
     ];
-    var values = colors.filter((value) => value != null).map((value) => typeof value === "string" ? parseInt(value.replace("#", ""), 16) : Number(value)).filter(Number.isFinite);
+    var values = colors.filter((value) => value != null).map((value) => typeof value === "string" ? parseInt(value.replace("#", ""), 16) : Number(value)).filter(Number.isFinite).slice(0, 1);
     var luminance = values.length ? values.reduce((sum, value) => {
       var channels2 = [
         value >> 16 & 255,
