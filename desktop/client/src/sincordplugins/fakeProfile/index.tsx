@@ -2391,9 +2391,17 @@ const badgeDirectoryStore = findStoreLazy("BadgeDirectoryStore");
 // Switch Accounts list: show the spoofed username for the signed-in account.
 const multiAccountStore = findStoreLazy("MultiAccountStore");
 let switcherOriginals: { getUsers: any; getValidUsers: any; } | null = null;
+// Same array back for the same input, or Discord's store hooks re-render forever.
+const switcherCache = new WeakMap<object, { name: string; result: any[]; }>();
 function spoofSwitcherUsers(users: any) {
     if (!profileRuntimeActive || !isEnabled || !storedData.username || !Array.isArray(users)) return users;
-    return users.map(user => user && isMe(user.id) ? { ...user, username: storedData.username } : user);
+    const name = storedData.username;
+    const hit = switcherCache.get(users);
+    if (hit && hit.name === name) return hit.result;
+    if (!users.some(user => user && isMe(user.id) && user.username !== name)) return users;
+    const result = users.map(user => user && isMe(user.id) ? { ...user, username: name } : user);
+    switcherCache.set(users, { name, result });
+    return result;
 }
 function installSwitcherHook() {
     if (switcherOriginals || !multiAccountStore?.getUsers) return;

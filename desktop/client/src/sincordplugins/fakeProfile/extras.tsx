@@ -168,6 +168,19 @@ const guildOverlays = new WeakMap<object, any>();
 const memberOverlays = new WeakMap<object, any>();
 // Our own overlays, so a guild that comes back through getGuild is never wrapped twice.
 const overlaySet = new WeakSet<object>();
+// Same Set back for the same inputs, so screens that compare features don't re-render forever.
+const featureCache = new WeakMap<object, { key: string; value: Set<string>; }>();
+function fakeFeatures(real: any, partner: boolean, verified: boolean) {
+    const base = real && typeof real === "object" ? real : {};
+    const key = (partner ? "P" : "") + (verified ? "V" : "");
+    const hit = featureCache.get(base);
+    if (hit && hit.key === key) return hit.value;
+    const value = new Set<string>(real ?? []);
+    if (partner) value.add("PARTNERED");
+    if (verified) value.add("VERIFIED");
+    featureCache.set(base, { key, value });
+    return value;
+}
 function boostFor(guildId?: string | null) { return guildId ? extras.boosts?.[guildId] : undefined; }
 // Read-only overlays: Discord's stores keep their real data, we only change what's returned.
 function installBoostHooks() {
@@ -178,19 +191,16 @@ function installBoostHooks() {
     (GuildStore as any).getGuild = function (guildId: string, ...rest: any[]) {
         const guild = getGuild.call(this, guildId, ...rest);
         const fake = boostFor(guildId);
-        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified)) return guild;
+        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified || fake?.members != null || fake?.online != null)) return guild;
         let overlay = guildOverlays.get(guild);
         if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, {
             get: (target, key) => {
                 const now = boostFor(guildId);
                 if (now?.level && key === "premiumTier") return 3;
                 if (now?.level && key === "premiumSubscriberCount") return Math.max(14, target.premiumSubscriberCount ?? 0);
-                if (key === "features" && (now?.partner || now?.verified)) {
-                    const features = new Set<string>(target.features ?? []);
-                    if (now.partner) features.add("PARTNERED");
-                    if (now.verified) features.add("VERIFIED");
-                    return features;
-                }
+                if (now?.members != null && (key === "memberCount" || key === "approximateMemberCount")) return now.members;
+                if (now?.online != null && (key === "presenceCount" || key === "approximatePresenceCount")) return now.online;
+                if (key === "features" && (now?.partner || now?.verified)) return fakeFeatures(target.features, !!now.partner, !!now.verified);
                 if (key === "hasFeature" && (now?.partner || now?.verified)) return (feature: string) => (now.partner && feature === "PARTNERED") || (now.verified && feature === "VERIFIED") || target.hasFeature?.(feature);
                 return Reflect.get(target, key, target);
             }
