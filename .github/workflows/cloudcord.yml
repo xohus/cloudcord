@@ -3678,6 +3678,71 @@ jobs:
               </K.Field>;
           }
 
+          // Saved profiles: named copies of your custom profile, shown like Discord's profile cards.
+          type SavedProfile = { id: string; name: string; savedAt: number; data: any };
+          function savedSnapshot(data: any) {
+              const { syncRevision: _revision, enabled: _enabled, ...rest } = data || {};
+              return JSON.parse(JSON.stringify(rest));
+          }
+          function SavedProfiles({ current, realUser, onUse }: { current: any; realUser: any; onUse: (data: any) => void }) {
+              const S = require("@core/ui/settings/components/ProfileStudio");
+              const [, redraw] = useReducer((x: number) => x + 1, 0);
+              const [name, setName] = useState("");
+              const items: SavedProfile[] = Array.isArray((rootSettings as any).fakeProfileSaved) ? (rootSettings as any).fakeProfileSaved : [];
+              const commit = (next: SavedProfile[]) => { (rootSettings as any).fakeProfileSaved = next; redraw(); };
+              const currentJson = JSON.stringify(savedSnapshot(current));
+              const realAvatar = (() => { try { return realUser?.getAvatarURL?.(undefined, 128) || undefined; } catch { return undefined; } })();
+              const saveCurrent = () => {
+                  const label = (name.trim() || "Profile " + (items.length + 1)).slice(0, 40);
+                  commit([{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: label, savedAt: Date.now(), data: savedSnapshot(current) }, ...items]);
+                  setName("");
+                  showToast("Saved \u201c" + label + "\u201d");
+              };
+              const remove = (item: SavedProfile) => Alert.alert("Delete \u201c" + item.name + "\u201d?", "This saved copy is removed. Your current profile stays as it is.", [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Delete", style: "destructive", onPress: () => commit(items.filter(other => other.id !== item.id)) }
+              ]);
+              const rename = (item: SavedProfile) => {
+                  const prompt = (Alert as any).prompt;
+                  if (typeof prompt !== "function") return;
+                  prompt("Rename", undefined, (text: string) => { if (text?.trim()) commit(items.map(other => other.id === item.id ? { ...other, name: text.trim().slice(0, 40) } : other)); }, "plain-text", item.name);
+              };
+              const hex = (value: any) => typeof value === "string" && value ? value : typeof value === "number" ? "#" + value.toString(16).padStart(6, "0") : undefined;
+              return <View style={{ gap: 20 }}>
+                  <S.Panel>
+                      <S.Section title="Save your profile" description="Keep copies of your custom profile and switch between them. Saved on this device.">
+                          <S.Field label="Name"><TextInput value={name} placeholder={"Main, Alt or Profile " + (items.length + 1)} maxLength={40} onChangeText={setName} /></S.Field>
+                          <S.Button label="Save current profile" primary onPress={saveCurrent} />
+                      </S.Section>
+                  </S.Panel>
+                  {!items.length ? <Text variant="text-sm/medium" color="text-muted">No saved profiles yet. Set up your profile, then save it here to come back to it later.</Text> : null}
+                  {items.map(item => {
+                      const data = item.data || {};
+                      const active = JSON.stringify(data) === currentJson;
+                      const colors = data.profileColorsEnabled;
+                      const badges = BADGES.filter(([key]) => data.selectedBadges?.[key]).map(([, , , icon]) => icon).filter(Boolean);
+                      return <View key={item.id} style={{ gap: 10 }}>
+                          <S.DiscordProfileCard name={data.displayName || realUser?.globalName || realUser?.username || "You"} username={data.username || realUser?.username || "username"} pronouns={data.pronouns}
+                              avatar={data.avatarMedia?.uri || realAvatar} banner={data.bannerMedia?.uri} primary={colors ? hex(data.primaryColor) : undefined} secondary={colors ? hex(data.accentColor) : undefined}
+                              decoration={data.avatarDecoration || undefined} status={data.presenceStatus || "online"} tagText={data.serverTag?.tag} badges={badges}
+                              customStatus={data.customStatus ? `${data.customStatus.emoji || ""} ${data.customStatus.text || ""}`.trim() : undefined} bio={data.bio}
+                              activity={data.customActivity ? { verb: ACTIVITY_TYPES.find(type => type.value === data.customActivity?.type)?.label || "", name: data.customActivity.name, details: data.customActivity.details } : null} />
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingHorizontal: 2 }}>
+                              <Pressable style={{ flex: 1, gap: 2 }} onLongPress={() => rename(item)} accessibilityHint="Long-press to rename">
+                                  <Text variant="text-md/bold" color="text-normal" numberOfLines={1}>{item.name}</Text>
+                                  {active ? <Text variant="text-xs/bold" style={{ color: "#23A55A" }}>● In use</Text> : <Text variant="text-xs/medium" color="text-muted">Saved {new Date(item.savedAt).toLocaleDateString()}</Text>}
+                              </Pressable>
+                          </View>
+                          <View style={{ flexDirection: "row", gap: 8 }}>
+                              <S.Button label={active ? "In use" : "Use profile"} primary disabled={active} grow onPress={() => { onUse(item.data); redraw(); showToast("Now using \u201c" + item.name + "\u201d"); }} />
+                              <S.Button label="Update" onPress={() => { commit(items.map(other => other.id === item.id ? { ...other, data: savedSnapshot(current), savedAt: Date.now() } : other)); showToast("Updated \u201c" + item.name + "\u201d"); }} />
+                              <S.Button label="Delete" danger onPress={() => remove(item)} />
+                          </View>
+                      </View>;
+                  })}
+              </View>;
+          }
+
           function ToggleRow({ label, subLabel, value, onPress }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {
               const { Toggle } = require("@core/ui/settings/components/ProfileStudio");
               return <Toggle label={label} subLabel={subLabel} value={value} onPress={onPress} />;
@@ -4036,6 +4101,10 @@ jobs:
                               try { nativeAvatar = user?.getAvatarURL?.() || nativeAvatar; } catch {}
                               return { username: shared?.username || user?.username || "", displayName: shared?.globalName || shared?.displayName || user?.globalName || user?.global_name || "", avatar: shared?.avatar || nativeAvatar, banner: shared?.banner || customDiscordMediaURL("banners", id, profile?.banner ?? user?.banner), bio: shared?.bio || profile?.bio || "", badges: BADGES.filter(([, , flag, , customId]) => customId ? customIds.includes(customId) : flag && (flags & flag) !== 0).map(([,name,,icon]) => ({name,icon})) };
                           }} /></Card> : null}
+                          {(activeTab as string) === "saved" ? <SavedProfiles current={preview} realUser={realCurrentUser} onUse={(data: any) => {
+                              rootSettings.fakeProfile = { ...preview, ...data, enabled: preview.enabled, syncRevision: Date.now() };
+                              preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw();
+                          }} /> : null}
                           {activeTab === "others" ? <Card><LocalProfiles badges={BADGES} refresh={() => { clearCache(); refreshPreview(); redraw(); }}
                               nitroOptions={NITRO_DURATIONS.map((months, index) => ({ value: index, label: NITRO_LABELS.get(months) || durationLabel(months) }))}
                               boostOptions={BOOST_MONTHS.map((months, index) => ({ value: index, label: boosterLabel(months) }))}

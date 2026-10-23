@@ -41,7 +41,7 @@ function icon(names: string[]) {
 }
 
 // ---- Sections ----
-export type StudioTab = "overview" | "profile" | "name" | "cosmetics" | "status" | "badges" | "social" | "dates" | "custom" | "others";
+export type StudioTab = "overview" | "profile" | "name" | "cosmetics" | "status" | "badges" | "social" | "dates" | "custom" | "saved" | "others";
 export const STUDIO_TABS: { id: StudioTab; label: string; blurb: string; icons: string[] }[] = [
     { id: "overview", label: "Home", blurb: "Your profile at a glance", icons: ["HomeIcon", "GridSquareIcon"] },
     { id: "profile", label: "Profile", blurb: "Names, pictures, banner, bio and colours", icons: ["UserIcon"] },
@@ -52,6 +52,7 @@ export const STUDIO_TABS: { id: StudioTab; label: string; blurb: string; icons: 
     { id: "social", label: "Connections", blurb: "Accounts and domains on your profile", icons: ["LinkIcon"] },
     { id: "dates", label: "Dates", blurb: "Account created and member since", icons: ["CalendarIcon", "ClockIcon"] },
     { id: "custom", label: "Custom badges", blurb: "Upload your own badge (beta)", icons: ["ImageIcon", "StarIcon"] },
+    { id: "saved", label: "Saved", blurb: "Switch between saved copies of your profile", icons: ["BookmarkIcon", "FolderIcon", "StarIcon"] },
     { id: "others", label: "Others", blurb: "Other profiles, fake server and extras", icons: ["PeopleIcon", "UserIcon"] }
 ];
 const tabInfo = (tab: StudioTab) => STUDIO_TABS.find(item => item.id === tab) ?? STUDIO_TABS[0];
@@ -433,3 +434,56 @@ export function TableRow(props: any) { return <Row {...props} />; }
 TableRow.Icon = RowIcon;
 TableRow.TrailingText = RowText;
 export { Input as DiscordInput };
+
+
+/** A card drawn like Discord's profile popout: banner, ringed avatar, badge pill, names, status and bio. */
+export function DiscordProfileCard({ name, username, pronouns, avatar, banner, primary, secondary, decoration, status, customStatus, bio, activity, tagText, badges = [] }: {
+    name: string; username: string; pronouns?: string; avatar?: string; banner?: string; primary?: string; secondary?: string; decoration?: string; status?: string;
+    customStatus?: string; bio?: string; activity?: { verb: string; name: string; details?: string } | null; tagText?: string; badges?: string[];
+}) {
+    const themed = !!primary;
+    const base = "#111214";
+    const ring = themed ? "#1A1B1E" : base;
+    const inner = <View style={{ borderRadius: themed ? 6 : 10, overflow: "hidden", backgroundColor: themed ? "rgba(0,0,0,0.5)" : base }}>
+        <View style={{ height: 96, backgroundColor: primary || C.brand }}>
+            {banner ? <Image source={{ uri: banner }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : null}
+        </View>
+        <View style={{ position: "absolute", top: 54, left: 14, width: 84, height: 84 }}>
+            <View style={{ width: 84, height: 84, borderRadius: 42, borderWidth: 6, borderColor: ring, backgroundColor: ring, overflow: "hidden" }}>
+                {avatar ? <Image source={{ uri: avatar }} style={{ width: "100%", height: "100%" }} /> : null}
+            </View>
+            {decoration ? <Image source={{ uri: decoration }} style={{ position: "absolute", top: -6, left: -6, width: 96, height: 96 }} resizeMode="contain" /> : null}
+            <View style={{ position: "absolute", right: 2, bottom: 4, width: 22, height: 22, borderRadius: 11, borderWidth: 5, borderColor: ring, backgroundColor: STATUS_COLORS[status || "online"] || STATUS_COLORS.online }} />
+        </View>
+        {badges.length ? <View style={{ alignSelf: "flex-end", flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-end", gap: 2, maxWidth: "58%", marginTop: 8, marginRight: 10, paddingHorizontal: 4, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(0,0,0,0.35)" }}>
+            {badges.slice(0, 8).map((icon, index) => <Image key={index} source={{ uri: icon }} style={{ width: 20, height: 20 }} resizeMode="contain" />)}
+        </View> : null}
+        <View style={{ paddingHorizontal: 14, paddingBottom: 14, paddingTop: badges.length ? 22 : 46, gap: 10 }}>
+            <View style={{ gap: 2 }}>
+                <Text variant="heading-lg/extrabold" numberOfLines={1} style={{ color: "#FFFFFF" }}>{name}</Text>
+                <View style={{ flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+                    <Text variant="text-sm/medium" numberOfLines={1} style={{ color: "#DBDEE1" }}>{username}</Text>
+                    {tagText ? <View style={{ paddingHorizontal: 5, borderRadius: 4, backgroundColor: "rgba(0,0,0,0.35)" }}><Text variant="text-xs/bold" style={{ color: "#DBDEE1" }}>{tagText}</Text></View> : null}
+                    {pronouns ? <Text variant="text-sm/medium" numberOfLines={1} style={{ color: "#DBDEE1", opacity: 0.8 }}>• {pronouns}</Text> : null}
+                </View>
+            </View>
+            {customStatus ? <View style={{ alignSelf: "flex-start", maxWidth: "100%", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, backgroundColor: "rgba(255,255,255,0.08)" }}>
+                <Text variant="text-sm/medium" numberOfLines={1} style={{ color: "#DBDEE1" }}>{customStatus}</Text>
+            </View> : null}
+            {bio || activity?.name ? <View style={{ gap: 8, padding: 10, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.05)" }}>
+                {bio ? <Text variant="text-sm/medium" numberOfLines={3} style={{ color: "#DBDEE1" }}>{bio}</Text> : null}
+                {activity?.name ? <View style={{ gap: 1 }}>
+                    <Text variant="text-xs/bold" style={{ color: "#B5BAC1" }}>{(activity.verb || "Playing").toUpperCase()}</Text>
+                    <Text variant="text-sm/bold" numberOfLines={1} style={{ color: "#F2F3F5" }}>{activity.name}</Text>
+                    {activity.details ? <Text variant="text-xs/medium" numberOfLines={1} style={{ color: "#B5BAC1" }}>{activity.details}</Text> : null}
+                </View> : null}
+            </View> : null}
+        </View>
+    </View>;
+    if (!themed) return <View style={{ borderRadius: 10, overflow: "hidden" }}>{inner}</View>;
+    // Themed profiles: a two-colour frame like Discord's (top colour, bottom colour).
+    return <View style={{ borderRadius: 10, overflow: "hidden", padding: 4, backgroundColor: primary }}>
+        <View style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "55%", backgroundColor: secondary || primary }} />
+        {inner}
+    </View>;
+}

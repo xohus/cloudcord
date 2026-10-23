@@ -137,7 +137,7 @@ export function Grid2({ children }: { children: React.ReactNode; }) {
     return <div className="cpx-grid2">{children}</div>;
 }
 
-export type TabId = "profile" | "name" | "cosmetics" | "status" | "badges" | "connections" | "others";
+export type TabId = "profile" | "name" | "cosmetics" | "status" | "badges" | "connections" | "saved" | "others";
 export const TABS: { id: TabId; label: string; }[] = [
     { id: "profile", label: "Profile" },
     { id: "name", label: "Name & tag" },
@@ -145,10 +145,11 @@ export const TABS: { id: TabId; label: string; }[] = [
     { id: "status", label: "Status" },
     { id: "badges", label: "Badges" },
     { id: "connections", label: "Connections" },
+    { id: "saved", label: "Saved profiles" },
     { id: "others", label: "Other profiles" }
 ];
 
-const TAB_ICONS: Record<TabId, string> = { "profile":"<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21c0-4 4-6 8-6s8 2 8 6\"/>","name":"<path d=\"M3 12V4h8l10 10-8 8L3 12z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>","cosmetics":"<path d=\"M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z\"/>","status":"<circle cx=\"12\" cy=\"12\" r=\"8\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>","badges":"<circle cx=\"12\" cy=\"9\" r=\"6\"/><path d=\"M8.5 14 7 22l5-3 5 3-1.5-8\"/>","connections":"<path d=\"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1\"/><path d=\"M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1\"/>","others":"<circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5\"/><circle cx=\"17\" cy=\"9\" r=\"2.5\"/><path d=\"M17 14.5c2.5 0 4.5 1.5 4.5 4\"/>" };
+const TAB_ICONS: Record<TabId, string> = { "profile":"<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21c0-4 4-6 8-6s8 2 8 6\"/>","name":"<path d=\"M3 12V4h8l10 10-8 8L3 12z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>","cosmetics":"<path d=\"M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z\"/>","status":"<circle cx=\"12\" cy=\"12\" r=\"8\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>","badges":"<circle cx=\"12\" cy=\"9\" r=\"6\"/><path d=\"M8.5 14 7 22l5-3 5 3-1.5-8\"/>","connections":"<path d=\"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1\"/><path d=\"M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1\"/>","saved":"<rect x=\"4\" y=\"3\" width=\"13\" height=\"17\" rx=\"2\"/><path d=\"M8 3v6l2.5-1.5L13 9V3\"/><path d=\"M20 7v12a2 2 0 0 1-2 2H8\"/>","others":"<circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5\"/><circle cx=\"17\" cy=\"9\" r=\"2.5\"/><path d=\"M17 14.5c2.5 0 4.5 1.5 4.5 4\"/>" };
 
 function TabIcon({ id }: { id: TabId; }) {
     return <svg className="cpx-tab-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: TAB_ICONS[id] }} />;
@@ -173,9 +174,9 @@ export function TabList({ value, onChange }: { value: TabId; onChange: (tab: Tab
 const STATUS_COLORS: Record<string, string> = { online: "#23a55a", idle: "#f0b232", dnd: "#f23f43", invisible: "#80848e" };
 
 /** Approximation of how the profile will look; Discord draws the real thing. */
-export function ProfilePreview({ data, fallbackName, fallbackUsername, fallbackAvatar, decorationUrl, nameplateUrl, effectName, frameName }: {
+export function ProfilePreview({ data, fallbackName, fallbackUsername, fallbackAvatar, decorationUrl, nameplateUrl, effectName, frameName, bare }: {
     data: any; fallbackName: string; fallbackUsername: string; fallbackAvatar: string;
-    decorationUrl?: string; nameplateUrl?: string; effectName?: string; frameName?: string;
+    decorationUrl?: string; nameplateUrl?: string; effectName?: string; frameName?: string; bare?: boolean;
 }) {
     const name = data.globalName || fallbackName;
     const username = data.username || fallbackUsername;
@@ -188,8 +189,8 @@ export function ProfilePreview({ data, fallbackName, fallbackUsername, fallbackA
     const status = data.presenceStatus || "online";
     const activity = data.customActivity;
     const activityVerb = activity ? ACTIVITY_TYPES.find(type => type.value === activity.type)?.label : "";
-    return <aside className="cpx-preview" aria-label="Preview">
-        <div className="cpx-preview-title">Preview</div>
+    return <aside className={bare ? "cpx-preview cpx-preview-bare" : "cpx-preview"} aria-label="Preview">
+        {!bare && <div className="cpx-preview-title">Preview</div>}
         <div className={`cpx-card ${frameName ? "cpx-card-framed" : ""}`} style={{ "--cpx-accent": color, "--cpx-accent2": color2 } as any}>
             <div className="cpx-card-banner" style={banner ? { backgroundImage: `url("${banner.replace(/"/g, "%22")}")` } : undefined} />
             <div className="cpx-card-avatar">
@@ -212,6 +213,48 @@ export function ProfilePreview({ data, fallbackName, fallbackUsername, fallbackA
                 </div>}
             </div>
         </div>
-        <p className="cpx-hint">A rough preview. Frames and effects are drawn by Discord on your real profile.</p>
+        {!bare && <p className="cpx-hint">A rough preview. Frames and effects are drawn by Discord on your real profile.</p>}
     </aside>;
+}
+
+/** A card drawn like Discord's profile popout: banner, ringed avatar, badge pill, names, status and bio. */
+export function DiscordProfileCard({ data, fallbackName, fallbackUsername, fallbackAvatar, decorationUrl, badges = [] }: {
+    data: any; fallbackName: string; fallbackUsername: string; fallbackAvatar: string; decorationUrl?: string; badges?: { id: string; icon: string; label: string; }[];
+}) {
+    const hexOf = (value: any) => value != null ? `#${Number(value).toString(16).padStart(6, "0")}` : null;
+    const primary = hexOf(data.accentColor);
+    const secondary = hexOf(data.accentColor2) || primary;
+    const themed = !!primary;
+    const banner = data.banner || "";
+    const status = data.customActivity?.type === 1 && data.customActivity?.url ? "streaming" : data.presenceStatus || "online";
+    const tag = data.serverTag;
+    const tagIcon = tag ? serverTagCustomIcon(tag.icon) || serverTagIconURL(tag) : "";
+    const activity = data.customActivity;
+    return <div className={`cpx-dc ${themed ? "cpx-dc-themed" : ""}`} style={themed ? { "--dc-primary": primary, "--dc-secondary": secondary } as any : undefined}>
+        <div className="cpx-dc-inner">
+            <div className="cpx-dc-banner" style={banner ? { backgroundImage: `url("${banner.replace(/"/g, "%22")}")` } : { background: primary || "#5865f2" }} />
+            <div className="cpx-dc-avatar">
+                <img className="cpx-dc-avatar-img" src={data.avatar || fallbackAvatar} alt="" />
+                {decorationUrl && <img className="cpx-dc-decoration" src={decorationUrl} alt="" />}
+                <span className={`cpx-dc-status cpx-dc-status-${status}`} />
+            </div>
+            {badges.length > 0 && <div className="cpx-dc-badges">{badges.slice(0, 8).map(badge => <img key={badge.id} src={badge.icon} alt={badge.label} title={badge.label} />)}</div>}
+            <div className="cpx-dc-body">
+                <div className="cpx-dc-names">
+                    <div className="cpx-dc-display">{data.globalName || fallbackName}</div>
+                    <div className="cpx-dc-username">
+                        <span>{data.username || fallbackUsername}</span>
+                        {tag?.tag && <span className="cpx-dc-tag">{tagIcon && <img src={tagIcon} alt="" />}{tag.tag}</span>}
+                        {data.pronouns && <span className="cpx-dc-dot">•</span>}
+                        {data.pronouns && <span>{data.pronouns}</span>}
+                    </div>
+                </div>
+                {data.customStatus?.text || data.customStatus?.emoji ? <div className="cpx-dc-bubble">{data.customStatus.emoji} {data.customStatus.text}</div> : null}
+                {(data.bio || activity?.name) && <div className="cpx-dc-section">
+                    {data.bio && <div className="cpx-dc-bio">{data.bio}</div>}
+                    {activity?.name && <div className="cpx-dc-activity"><span className="cpx-dc-activity-verb">{ACTIVITY_TYPES.find(type => type.value === activity.type)?.label || "Playing"}</span><strong>{activity.name}</strong>{activity.details && <span>{activity.details}</span>}</div>}
+                </div>}
+            </div>
+        </div>
+    </div>;
 }

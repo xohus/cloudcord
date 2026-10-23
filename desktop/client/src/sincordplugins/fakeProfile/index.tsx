@@ -11,7 +11,7 @@ import "./style.css";
 import "./editor.css";
 import decorationCatalog from "./decorations.json";
 import { CustomSocialEditor, openSocialDetail } from "./CustomSocial";
-import { ColorField, Grid2, ImageField, ProfilePreview, Section, SelectField, Switch, TabId, TabList, TextField } from "./editorUi";
+import { ColorField, DiscordProfileCard, Grid2, ImageField, ProfilePreview, Section, SelectField, Switch, TabId, TabList, TextField } from "./editorUi";
 import { Current, installPresenceHooks, installTagIconSwap, loadCatalog, NameplateEditor, PickerGrid, onCatalogLoaded, ProfileEffectEditor, profileEffectFor, ProfileFrameEditor, refreshPresence, StatusEditor, TagIconEditor, uninstallPresenceHooks, uninstallTagIconSwap } from "./cosmetics";
 import { installNativeSocialHooks } from "@utils/nativeSocialHooks";
 import { appearanceOptions, availableServerTags, Catalog, customDiscordMediaURL, nameplateAssetURL, nativeCollectibles, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, ProfileAppearance } from "@utils/profileAppearance";
@@ -1739,6 +1739,9 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             </Section>
         </>,
         others: <OtherProfilesPanel />,
+        saved: <SavedProfilesPanel current={data} onLoad={value => setData({ ...value })} fallbackName={selectedUser?.globalName || selectedUser?.username || "You"} fallbackUsername={selectedUser?.username || "username"} fallbackAvatar={fallbackAvatar}
+            decorationFor={asset => (decorations.find(item => item.id === asset) || ALL_DECORATIONS.find(item => item.id === asset) || liveDecorations.find(item => item.id === asset))?.url}
+            effectFor={skuId => catalogData?.effects.find(item => item.skuId === skuId)?.title} frameFor={skuId => catalogData?.frames.find(item => item.skuId === skuId)?.label} />,
         connections: <>
             <Section title="Connections" description="Accounts shown on your profile. These are previews, not verified connections.">
                 <CustomSocialEditor data={data} onChange={value => setData(current => ({ ...current, ...value }))} resolveUser={async userId => {
@@ -2592,5 +2595,80 @@ function OtherProfilesPanel() {
                 {localProfiles[userId.trim()] && <button type="button" className="cpx-btn cpx-btn-ghost cpx-btn-danger-text" onClick={() => remove(userId.trim())}>Restore original</button>}
             </div>
         </>}
+    </>;
+}
+
+
+// ---- Saved profiles: named copies of your custom profile you can switch between ----
+interface SavedProfile { id: string; name: string; savedAt: number; data: CustomProfileData; }
+const LS_SAVED_PROFILES = "cloudcord_saved_profiles";
+function readSavedProfiles(): SavedProfile[] {
+    try { const value = JSON.parse(localStorage.getItem(LS_SAVED_PROFILES) || "[]"); return Array.isArray(value) ? value.filter(item => item?.id && item?.data) : []; } catch { return []; }
+}
+function writeSavedProfiles(next: SavedProfile[]) {
+    try { localStorage.setItem(LS_SAVED_PROFILES, JSON.stringify(next)); return true; }
+    catch { showToast("Couldn't save: storage is full. Remove a saved profile or use image links instead of uploads.", Toasts.Type.FAILURE); return false; }
+}
+// Only the look is saved; sync bookkeeping stays with the live profile.
+function savedSnapshot(data: CustomProfileData): CustomProfileData {
+    const { syncRevision: _revision, localOnly: _localOnly, ...rest } = data as any;
+    return JSON.parse(JSON.stringify(rest));
+}
+
+function SavedProfilesPanel({ current, onLoad, fallbackName, fallbackUsername, fallbackAvatar, decorationFor, effectFor, frameFor }: {
+    current: CustomProfileData; onLoad: (data: CustomProfileData) => void; fallbackName: string; fallbackUsername: string; fallbackAvatar: string;
+    decorationFor: (asset: string) => string | undefined; effectFor: (skuId: string) => string | undefined; frameFor: (skuId: string) => string | undefined;
+}) {
+    const [items, setItems] = React.useState<SavedProfile[]>(readSavedProfiles);
+    const [name, setName] = React.useState("");
+    const [renaming, setRenaming] = React.useState<string | null>(null);
+    const [renameText, setRenameText] = React.useState("");
+    const commit = (next: SavedProfile[]) => { if (writeSavedProfiles(next)) setItems(next); };
+    const currentJson = JSON.stringify(savedSnapshot(current));
+    const saveCurrent = () => {
+        const label = name.trim() || `Profile ${items.length + 1}`;
+        commit([{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: label.slice(0, 40), savedAt: Date.now(), data: savedSnapshot(current) }, ...items]);
+        setName("");
+        showToast(`Saved "${label}".`, Toasts.Type.SUCCESS);
+    };
+    const load = (item: SavedProfile) => { onLoad({ ...current, ...item.data }); showToast(`Loaded "${item.name}". Press Save to use it.`, Toasts.Type.SUCCESS); };
+    const date = (time: number) => new Date(time).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
+    return <>
+        <Section title="Saved profiles" description="Keep copies of your custom profile and switch between them. Saved on this device.">
+            <div className="cpx-inline">
+                <input className="cpx-input" value={name} maxLength={40} placeholder={`Name, like "Main" or "Profile ${items.length + 1}"`} onChange={event => setName(event.currentTarget.value)} onKeyDown={event => { if (event.key === "Enter") saveCurrent(); }} />
+                <button type="button" className="cpx-btn cpx-btn-primary" onClick={saveCurrent}>Save current profile</button>
+            </div>
+        </Section>
+        {!items.length && <span className="cpx-hint">No saved profiles yet. Set up your profile, then save it here to come back to it later.</span>}
+        <div className="cpx-saved-grid">
+            {items.map(item => {
+                const data = item.data;
+                const active = JSON.stringify(data) === currentJson;
+                const badges = (() => { try { return badgeLayoutRows(data, UserStore.getCurrentUser()?.id ?? "").filter(badge => badge.iconSrc).map(badge => ({ id: String(badge.id), icon: String(badge.iconSrc), label: String(badge.description || "") })); } catch { return []; } })();
+                const rename = () => { commit(items.map(other => other.id === item.id ? { ...other, name: renameText.trim() || other.name } : other)); setRenaming(null); };
+                return <div key={item.id} className="cpx-saved-item">
+                    <DiscordProfileCard data={data} fallbackName={fallbackName} fallbackUsername={fallbackUsername} fallbackAvatar={fallbackAvatar}
+                        decorationUrl={data.decorationAsset ? decorationFor(data.decorationAsset) : undefined} badges={badges} />
+                    <div className="cpx-saved-foot">
+                        <div className="cpx-saved-meta">
+                            {renaming === item.id
+                                ? <input className="cpx-input" autoFocus value={renameText} maxLength={40} onChange={event => setRenameText(event.currentTarget.value)} onKeyDown={event => { if (event.key === "Enter") rename(); if (event.key === "Escape") setRenaming(null); }} onBlur={rename} />
+                                : <span className="cpx-saved-name" title="Click to rename" onClick={() => { setRenaming(item.id); setRenameText(item.name); }}>{item.name}</span>}
+                            <span className="cpx-saved-sub">{active ? <span className="cpx-saved-live">In use</span> : <span>Saved {date(item.savedAt)}</span>}</span>
+                        </div>
+                    </div>
+                    <div className="cpx-saved-actions">
+                        <button type="button" className="cpx-btn cpx-btn-primary" disabled={active} onClick={() => load(item)}>{active ? "In use" : "Use profile"}</button>
+                        <button type="button" className="cpx-icon-btn" aria-label="Update with current profile" title="Replace with your current profile" onClick={() => { commit(items.map(other => other.id === item.id ? { ...other, data: savedSnapshot(current), savedAt: Date.now() } : other)); showToast(`Updated "${item.name}".`, Toasts.Type.SUCCESS); }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/></svg>
+                        </button>
+                        <button type="button" className="cpx-icon-btn cpx-danger" aria-label="Delete saved profile" title="Delete" onClick={() => commit(items.filter(other => other.id !== item.id))}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>
+                        </button>
+                    </div>
+                </div>;
+            })}
+        </div>
     </>;
 }
