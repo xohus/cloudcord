@@ -852,7 +852,19 @@
     default: () => patcher_default,
     instead: () => instead
   });
-  function create(fn) {
+  function patchable(args) {
+    var parent = args[1];
+    if (!parent || typeof parent !== "object" && typeof parent !== "function")
+      return false;
+    var value = parent[args[0]];
+    return typeof value === "function" || value !== null && typeof value === "object";
+  }
+  function create(rawFn) {
+    var fn = function fn2(...args) {
+      if (!patchable(args))
+        return () => false;
+      return rawFn.apply(this, args);
+    };
     function patchFn(...args) {
       if (typeof args[1][_patcherDelaySymbol] === "function") {
         var delayCallback = args[1][_patcherDelaySymbol];
@@ -2181,7 +2193,7 @@
   function createStorageAndCallback(path, cb, { dflt = {}, nullIfEmpty = false } = {}) {
     var emitter;
     var callback = (data) => {
-      var proxy = new Proxy(v.from(data), {
+      var proxy = new Proxy(v.from(data && typeof data === "object" ? data : {}), {
         get(target, prop, receiver) {
           if (prop === Symbol.for("vendetta.storage.emitter")) {
             if (emitter)
