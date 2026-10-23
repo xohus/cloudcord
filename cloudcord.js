@@ -16141,6 +16141,66 @@
       }
     }
   }
+  function rolesOf(guildId) {
+    var roles = null;
+    try {
+      var store = findByStoreName("GuildRoleStore");
+      roles = store?.getUnsafeMutableRoles?.(guildId) ?? store?.getRolesSnapshot?.(guildId) ?? store?.getRoles?.(guildId);
+    } catch (e) {
+    }
+    if (!roles)
+      try {
+        roles = findByStoreName("GuildStore")?.getGuild?.(guildId)?.roles;
+      } catch (e) {
+      }
+    return Object.values(roles ?? {}).filter((role) => role?.id && role.id !== guildId).sort((a, b3) => (b3.position ?? 0) - (a.position ?? 0));
+  }
+  function fakeMember(guildId, member) {
+    var fake = boostFor(guildId);
+    var extraRoles = (fake?.roles ?? []).filter((id) => !member.roles?.includes(id));
+    var booster = fake?.booster && !member.premiumSince;
+    if (!extraRoles.length && !booster)
+      return member;
+    var key = extraRoles.join(",") + (booster ? "|b" : "");
+    var hit = fakeMemberCache.get(member);
+    if (hit && hit.key === key)
+      return hit.value;
+    var value = {
+      ...member
+    };
+    if (booster)
+      value.premiumSince = new Date(Date.now() - 90 * 864e5).toISOString();
+    if (extraRoles.length) {
+      value.roles = [
+        ...member.roles ?? [],
+        ...extraRoles
+      ];
+      var byId = new Map(rolesOf(guildId).map((role) => [
+        role.id,
+        role
+      ]));
+      var mine = value.roles.map((id) => byId.get(id)).filter(Boolean).sort((a, b3) => (b3.position ?? 0) - (a.position ?? 0));
+      var colored = mine.find((role) => role.colorString || role.color);
+      if (colored) {
+        value.colorString = colored.colorString ?? value.colorString;
+        value.colorStrings = colored.colorStrings ?? value.colorStrings;
+        value.colorRoleId = colored.id;
+      }
+      var hoisted = mine.find((role) => role.hoist);
+      if (hoisted)
+        value.hoistRoleId = hoisted.id;
+      var icon2 = mine.find((role) => role.icon || role.unicodeEmoji);
+      if (icon2)
+        value.iconRoleId = icon2.id;
+      if (mine[0])
+        value.highestRoleId = mine[0].id;
+    }
+    fakeMemberCache.set(member, {
+      key,
+      value
+    });
+    return value;
+  }
   function installBoostHooks() {
     if (boostHooksInstalled)
       return;
@@ -16187,23 +16247,26 @@
     if (typeof counts?.getOnlineCount === "function")
       after("getOnlineCount", counts, (args, count) => boostFor(args[0])?.online ?? count);
     after("getMember", members, (args, member) => {
-      if (!member || typeof member !== "object" || member.premiumSince || !boostFor(args[0])?.booster)
+      if (!member || typeof member !== "object" || !boostFor(args[0]))
         return member;
-      var me;
+      if (!currentUserId || String(args[1]) !== currentUserId)
+        return member;
       try {
-        me = findByStoreName("UserStore")?.getCurrentUser?.()?.id;
+        return fakeMember(args[0], member);
       } catch (e) {
-      }
-      if (!me || args[1] !== me)
         return member;
-      var overlay = memberOverlays.get(member);
-      if (!overlay)
-        memberOverlays.set(member, overlay = {
-          ...member,
-          premiumSince: new Date(Date.now() - 90 * 864e5).toISOString()
-        });
-      return overlay;
+      }
     });
+    if (typeof members.getSelfMember === "function")
+      after("getSelfMember", members, (args, member) => {
+        if (!member || typeof member !== "object" || !boostFor(args[0]))
+          return member;
+        try {
+          return fakeMember(args[0], member);
+        } catch (e) {
+          return member;
+        }
+      });
   }
   function sendFakeBoostMessage(times, reachedLevel) {
     var channelId = findByStoreName("SelectedChannelStore")?.getChannelId?.();
@@ -16252,7 +16315,9 @@
     var K2 = (init_ProfileEditorKit(), __toCommonJS(ProfileEditorKit_exports));
     var [times, setTimes] = (0, import_react7.useState)(1);
     var [reached, setReached] = (0, import_react7.useState)(0);
-    var guildId = findByStoreName("SelectedGuildStore")?.getGuildId?.();
+    var [chosenId, setChosenId] = (0, import_react7.useState)(() => String(findByStoreName("SelectedGuildStore")?.getGuildId?.() ?? ""));
+    var [roleQuery, setRoleQuery] = (0, import_react7.useState)("");
+    var guildId = /^\d{15,22}$/.test(chosenId.trim()) ? chosenId.trim() : null;
     var guild = guildId ? findByStoreName("GuildStore")?.getGuild?.(guildId) : null;
     var fake = boostFor(guildId) ?? {};
     var set = (patch) => {
@@ -16276,125 +16341,220 @@
       }
       refresh();
     };
-    return /* @__PURE__ */ jsx(K2.Section, {
-      title: "Fake boost",
-      description: guild ? "For " + guild.name + ". Only on this device." : "Open a server first, then come back here.",
-      children: guild ? /* @__PURE__ */ jsxs(Fragment, {
-        children: [
-          /* @__PURE__ */ jsx(K2.Field, {
-            label: "Boosts",
-            children: /* @__PURE__ */ jsx(K2.Chips, {
-              options: [
-                1,
-                2,
-                3,
-                5,
-                10
-              ].map((value) => ({
-                value,
-                label: value + "x"
-              })),
-              value: times,
-              onChange: (value) => setTimes(value)
-            })
-          }),
-          /* @__PURE__ */ jsx(K2.Field, {
-            label: "Message",
-            children: /* @__PURE__ */ jsx(K2.Chips, {
-              options: [
-                {
-                  value: 0,
-                  label: "Just boosted"
-                },
-                {
-                  value: 1,
-                  label: "Level 1"
-                },
-                {
-                  value: 2,
-                  label: "Level 2"
-                },
-                {
-                  value: 3,
-                  label: "Level 3"
-                }
-              ],
-              value: reached,
-              onChange: (value) => setReached(value)
-            })
-          }),
-          /* @__PURE__ */ jsx(Button, {
-            text: "Send fake boost message",
-            variant: "primary",
-            size: "sm",
-            onPress: () => sendFakeBoostMessage(times, reached)
-          }),
-          /* @__PURE__ */ jsx(ToggleRow, {
-            label: "Show this server as Level 3",
-            subLabel: "Perks look unlocked here. Real limits don't change",
-            value: fake.level === true,
-            onPress: () => set({
-              level: !fake.level
-            })
-          }),
-          /* @__PURE__ */ jsx(ToggleRow, {
-            label: "Show as a Partner server",
-            subLabel: "Partner badge next to the server name",
-            value: fake.partner === true,
-            onPress: () => set({
-              partner: !fake.partner
-            })
-          }),
-          /* @__PURE__ */ jsx(ToggleRow, {
-            label: "Show as a Verified server",
-            subLabel: "Verified check next to the server name",
-            value: fake.verified === true,
-            onPress: () => set({
-              verified: !fake.verified
-            })
-          }),
-          /* @__PURE__ */ jsx(K2.Field, {
-            label: "Members",
-            hint: "Leave empty for the real count",
-            children: /* @__PURE__ */ jsx(TextInput3, {
-              defaultValue: fake.members == null ? "" : String(fake.members),
-              placeholder: "25000",
-              keyboardType: "number-pad",
-              onChangeText: (text) => {
-                var clean = text.replace(/D/g, "");
-                set({
-                  members: clean ? Number(clean) : void 0
-                });
-              },
-              placeholderTextColor: "#777"
-            })
-          }),
-          /* @__PURE__ */ jsx(K2.Field, {
-            label: "Online",
-            hint: "Leave empty for the real count",
-            children: /* @__PURE__ */ jsx(TextInput3, {
-              defaultValue: fake.online == null ? "" : String(fake.online),
-              placeholder: "4000",
-              keyboardType: "number-pad",
-              onChangeText: (text) => {
-                var clean = text.replace(/D/g, "");
-                set({
-                  online: clean ? Number(clean) : void 0
-                });
-              },
-              placeholderTextColor: "#777"
-            })
-          }),
-          /* @__PURE__ */ jsx(ToggleRow, {
-            label: "Show me as a booster here",
-            subLabel: "Boosting icon by your name in this server",
-            value: fake.booster === true,
-            onPress: () => set({
-              booster: !fake.booster
-            })
-          })
+    var roles = guild ? rolesOf(guild.id) : [];
+    var chosenRoles = new Set(fake.roles ?? []);
+    var query = roleQuery.trim().toLowerCase();
+    var shownRoles = roles.filter((role) => !role.managed && (!query || String(role.name).toLowerCase().includes(query))).slice(0, 40);
+    var toggleRole = (id) => {
+      var next = new Set(chosenRoles);
+      if (next.has(id))
+        next.delete(id);
+      else
+        next.add(id);
+      set({
+        roles: [
+          ...next
         ]
-      }) : null
+      });
+    };
+    return /* @__PURE__ */ jsxs(K2.Section, {
+      title: "Fake server",
+      description: guild ? "For " + guild.name + ". Only on this device." : guildId ? "You're not in a server with that ID." : "Enter a server ID, or open a server first.",
+      children: [
+        /* @__PURE__ */ jsx(K2.Field, {
+          label: "Server ID",
+          hint: "Long-press a server \u2192 Copy Server ID",
+          children: /* @__PURE__ */ jsx(TextInput3, {
+            value: chosenId,
+            placeholder: "123456789012345678",
+            keyboardType: "number-pad",
+            onChangeText: (text) => setChosenId(text.replace(/\D/g, "")),
+            placeholderTextColor: "#777"
+          })
+        }),
+        guild ? /* @__PURE__ */ jsxs(Fragment, {
+          children: [
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "Boosts",
+              children: /* @__PURE__ */ jsx(K2.Chips, {
+                options: [
+                  1,
+                  2,
+                  3,
+                  5,
+                  10
+                ].map((value) => ({
+                  value,
+                  label: value + "x"
+                })),
+                value: times,
+                onChange: (value) => setTimes(value)
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "Message",
+              children: /* @__PURE__ */ jsx(K2.Chips, {
+                options: [
+                  {
+                    value: 0,
+                    label: "Just boosted"
+                  },
+                  {
+                    value: 1,
+                    label: "Level 1"
+                  },
+                  {
+                    value: 2,
+                    label: "Level 2"
+                  },
+                  {
+                    value: 3,
+                    label: "Level 3"
+                  }
+                ],
+                value: reached,
+                onChange: (value) => setReached(value)
+              })
+            }),
+            /* @__PURE__ */ jsx(Button, {
+              text: "Send fake boost message",
+              variant: "primary",
+              size: "sm",
+              onPress: () => sendFakeBoostMessage(times, reached)
+            }),
+            /* @__PURE__ */ jsx(ToggleRow, {
+              label: "Show this server as Level 3",
+              subLabel: "Perks look unlocked here. Real limits don't change",
+              value: fake.level === true,
+              onPress: () => set({
+                level: !fake.level
+              })
+            }),
+            /* @__PURE__ */ jsx(ToggleRow, {
+              label: "Show as a Partner server",
+              subLabel: "Partner badge next to the server name",
+              value: fake.partner === true,
+              onPress: () => set({
+                partner: !fake.partner
+              })
+            }),
+            /* @__PURE__ */ jsx(ToggleRow, {
+              label: "Show as a Verified server",
+              subLabel: "Verified check next to the server name",
+              value: fake.verified === true,
+              onPress: () => set({
+                verified: !fake.verified
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "Members",
+              hint: "Leave empty for the real count",
+              children: /* @__PURE__ */ jsx(TextInput3, {
+                defaultValue: fake.members == null ? "" : String(fake.members),
+                placeholder: "25000",
+                keyboardType: "number-pad",
+                onChangeText: (text) => {
+                  var clean = text.replace(/\D/g, "");
+                  set({
+                    members: clean ? Number(clean) : void 0
+                  });
+                },
+                placeholderTextColor: "#777"
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "Online",
+              hint: "Leave empty for the real count",
+              children: /* @__PURE__ */ jsx(TextInput3, {
+                defaultValue: fake.online == null ? "" : String(fake.online),
+                placeholder: "4000",
+                keyboardType: "number-pad",
+                onChangeText: (text) => {
+                  var clean = text.replace(/\D/g, "");
+                  set({
+                    online: clean ? Number(clean) : void 0
+                  });
+                },
+                placeholderTextColor: "#777"
+              })
+            }),
+            /* @__PURE__ */ jsx(ToggleRow, {
+              label: "Show me as a booster here",
+              subLabel: "Boosting icon by your name in this server",
+              value: fake.booster === true,
+              onPress: () => set({
+                booster: !fake.booster
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "Fake roles" + (chosenRoles.size ? " (" + chosenRoles.size + ")" : ""),
+              hint: "Name colour and role icon follow your highest role. Only on this device.",
+              children: /* @__PURE__ */ jsx(TextInput3, {
+                value: roleQuery,
+                placeholder: "Search roles",
+                autoCapitalize: "none",
+                autoCorrect: false,
+                onChangeText: setRoleQuery,
+                placeholderTextColor: "#777"
+              })
+            }),
+            /* @__PURE__ */ jsxs(import_react_native21.View, {
+              style: {
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8
+              },
+              children: [
+                shownRoles.map((role) => {
+                  var on = chosenRoles.has(role.id);
+                  return /* @__PURE__ */ jsxs(import_react_native21.Pressable, {
+                    onPress: () => toggleRole(role.id),
+                    style: {
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      paddingHorizontal: 10,
+                      paddingVertical: 6,
+                      borderRadius: 999,
+                      borderWidth: 2,
+                      borderColor: on ? "#5865F2" : "transparent",
+                      backgroundColor: on ? "rgba(88,101,242,0.18)" : "#1E1F22"
+                    },
+                    children: [
+                      /* @__PURE__ */ jsx(import_react_native21.View, {
+                        style: {
+                          width: 10,
+                          height: 10,
+                          borderRadius: 5,
+                          backgroundColor: role.colorString || "#99AAB5"
+                        }
+                      }),
+                      /* @__PURE__ */ jsx(Text, {
+                        variant: "text-sm/medium",
+                        color: "text-normal",
+                        children: role.name
+                      })
+                    ]
+                  }, role.id);
+                }),
+                !shownRoles.length ? /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  color: "text-muted",
+                  children: "No roles found."
+                }) : null
+              ]
+            }),
+            chosenRoles.size ? /* @__PURE__ */ jsx(Button, {
+              text: "Remove all fake roles",
+              variant: "secondary",
+              size: "sm",
+              onPress: () => set({
+                roles: []
+              })
+            }) : null
+          ]
+        }) : null
+      ]
     });
   }
   function confirmLeaveAllServers() {
@@ -18945,7 +19105,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, memberOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -20092,7 +20252,6 @@
         bot: user.bot ?? false
       });
       guildOverlays = /* @__PURE__ */ new WeakMap();
-      memberOverlays = /* @__PURE__ */ new WeakMap();
       overlaySet = /* @__PURE__ */ new WeakSet();
       featureCache = /* @__PURE__ */ new WeakMap();
       boostHooksInstalled = false;
@@ -20104,6 +20263,7 @@
       orbSearches = 0;
       switcherHooked = false;
       switcherSearches = 0;
+      fakeMemberCache = /* @__PURE__ */ new WeakMap();
       leavingServers = false;
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
