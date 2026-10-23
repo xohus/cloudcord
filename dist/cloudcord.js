@@ -6643,6 +6643,8 @@
       spotify: "Spotify",
       x: "X",
       reddit: "Reddit",
+      tiktok: "TikTok",
+      instagram: "Instagram",
       domain: "Domain",
       other: "Other"
     };
@@ -6749,6 +6751,8 @@
       "spotify",
       "x",
       "reddit",
+      "tiktok",
+      "instagram",
       "domain",
       "other"
     ];
@@ -10317,6 +10321,14 @@
       variant: "secondary"
     });
   }
+  function solid(token, fallback) {
+    try {
+      var value = typeof token === "string" ? token : token ? resolveSemanticColor(token) : null;
+      return typeof value === "string" && value && !/^(transparent|#0000|#00000000)$/i.test(value) ? value : fallback;
+    } catch (e) {
+      return fallback;
+    }
+  }
   function iconSource(tab) {
     for (var name of [
       ...ICONS[tab],
@@ -10380,7 +10392,7 @@
           style: {
             height: 2,
             borderRadius: 1,
-            backgroundColor: tokens.colors.TEXT_NORMAL ?? "#DBDEE1"
+            backgroundColor: textColor()
           }
         }, line))
       })
@@ -10865,7 +10877,7 @@
       ]
     });
   }
-  var import_react3, import_react_native16, SECTIONS, UI, surface, surfaceAlt, border, ICONS, GROUPS, sectionOf;
+  var import_react3, import_react_native16, SECTIONS, UI, surface, surfaceAlt, border, textColor, ICONS, GROUPS, sectionOf;
   var init_FakeProfileGlass = __esm({
     "src/core/ui/settings/components/FakeProfileGlass.tsx"() {
       "use strict";
@@ -10877,6 +10889,7 @@
       init_components();
       init_assets();
       init_common();
+      init_color();
       SECTIONS = [
         [
           "overview",
@@ -10936,9 +10949,10 @@
         radius: 16,
         gap: 12
       };
-      surface = () => tokens.colors.BACKGROUND_SECONDARY;
-      surfaceAlt = () => tokens.colors.BACKGROUND_TERTIARY;
-      border = () => tokens.colors.BORDER_SUBTLE ?? "rgba(255,255,255,0.06)";
+      surface = () => solid(tokens.colors.BACKGROUND_SECONDARY ?? tokens.colors.BACKGROUND_BASE_LOW, "#2B2D31");
+      surfaceAlt = () => solid(tokens.colors.BACKGROUND_TERTIARY ?? tokens.colors.BACKGROUND_BASE_LOWEST, "#1E1F22");
+      border = () => solid(tokens.colors.BORDER_SUBTLE, "rgba(255,255,255,0.08)");
+      textColor = () => solid(tokens.colors.TEXT_NORMAL, "#DBDEE1");
       ICONS = {
         overview: [
           "GridSquareIcon",
@@ -11737,6 +11751,8 @@
                         "spotify",
                         "x",
                         "reddit",
+                        "tiktok",
+                        "instagram",
                         "domain",
                         "other"
                       ].map((service) => /* @__PURE__ */ jsx(TableRow, {
@@ -16022,6 +16038,62 @@
   function boostFor(guildId) {
     return guildId ? extrasState().boosts?.[guildId] : void 0;
   }
+  function installOrbHooks() {
+    var currency = orbHooked.currency ? null : findByStoreName("VirtualCurrencyStore");
+    var real = currency && Object.getOwnPropertyDescriptor(Object.getPrototypeOf(currency), "balance")?.get;
+    if (real) {
+      Object.defineProperty(currency, "balance", {
+        configurable: true,
+        get() {
+          return fakeOrbCount() ?? real.call(this);
+        }
+      });
+      orbHooked.currency = currency;
+    }
+    var wallet = orbHooked.wallet ? null : findByStoreName("WalletBalanceStore");
+    if (typeof wallet?.getBalance === "function") {
+      var realGet = wallet.getBalance;
+      wallet.getBalance = function(...args) {
+        return fakeOrbCount() ?? realGet.apply(this, args);
+      };
+      orbHooked.wallet = wallet;
+    }
+  }
+  function installSwitcherHook() {
+    var store = findByStoreName("MultiAccountStore");
+    if (switcherHooked || typeof store?.getUsers !== "function")
+      return;
+    switcherHooked = true;
+    var spoof = (users) => {
+      try {
+        if (!preview.enabled || !preview.username || !currentUserId || !Array.isArray(users))
+          return users;
+        return users.map((user) => user && String(user.id) === currentUserId ? {
+          ...user,
+          username: preview.username
+        } : user);
+      } catch (e) {
+        return users;
+      }
+    };
+    for (var method of [
+      "getUsers",
+      "getValidUsers"
+    ])
+      if (typeof store[method] === "function")
+        after(method, store, (_args, users) => spoof(users));
+  }
+  function refreshOrbs() {
+    for (var store of [
+      orbHooked.currency,
+      orbHooked.wallet
+    ]) {
+      try {
+        store?.emitChange?.();
+      } catch (e) {
+      }
+    }
+  }
   function installBoostHooks() {
     if (boostHooksInstalled)
       return;
@@ -16031,19 +16103,53 @@
       return;
     boostHooksInstalled = true;
     after("getGuild", guilds, (args, guild) => {
-      if (!guild || !boostFor(args[0])?.level)
+      try {
+        var guildId = args[0];
+        var fake = boostFor(guildId);
+        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified))
+          return guild;
+        var overlay = guildOverlays.get(guild);
+        if (!overlay)
+          guildOverlays.set(guild, overlay = new Proxy(guild, {
+            get: (target, key) => {
+              var now = boostFor(guildId);
+              if (now?.level && key === "premiumTier")
+                return 3;
+              if (now?.level && key === "premiumSubscriberCount")
+                return Math.max(14, target.premiumSubscriberCount ?? 0);
+              if (key === "features" && (now?.partner || now?.verified)) {
+                var features = new Set(target.features ?? []);
+                if (now.partner)
+                  features.add("PARTNERED");
+                if (now.verified)
+                  features.add("VERIFIED");
+                return features;
+              }
+              if (key === "hasFeature" && (now?.partner || now?.verified))
+                return (feature) => now.partner && feature === "PARTNERED" || now.verified && feature === "VERIFIED" || target.hasFeature?.(feature);
+              return Reflect.get(target, key, target);
+            }
+          }));
+        overlaySet.add(overlay);
+        return overlay;
+      } catch (e) {
         return guild;
-      var overlay = guildOverlays.get(guild);
-      if (!overlay)
-        guildOverlays.set(guild, overlay = new Proxy(guild, {
-          get: (target, key) => key === "premiumTier" ? 3 : key === "premiumSubscriberCount" ? Math.max(14, target.premiumSubscriberCount ?? 0) : Reflect.get(target, key, target)
-        }));
-      return overlay;
+      }
     });
+    var counts = findByStoreName("GuildMemberCountStore");
+    if (typeof counts?.getMemberCount === "function")
+      after("getMemberCount", counts, (args, count) => boostFor(args[0])?.members ?? count);
+    if (typeof counts?.getOnlineCount === "function")
+      after("getOnlineCount", counts, (args, count) => boostFor(args[0])?.online ?? count);
     after("getMember", members, (args, member) => {
-      if (!member || member.premiumSince || !boostFor(args[0])?.booster)
+      if (!member || typeof member !== "object" || member.premiumSince || !boostFor(args[0])?.booster)
         return member;
-      if (args[1] !== findByStoreName("UserStore")?.getCurrentUser?.()?.id)
+      var me;
+      try {
+        me = findByStoreName("UserStore")?.getCurrentUser?.()?.id;
+      } catch (e) {
+      }
+      if (!me || args[1] !== me)
         return member;
       var overlay = memberOverlays.get(member);
       if (!overlay)
@@ -16187,6 +16293,54 @@
             })
           }),
           /* @__PURE__ */ jsx(ToggleRow, {
+            label: "Show as a Partner server",
+            subLabel: "Partner badge next to the server name",
+            value: fake.partner === true,
+            onPress: () => set({
+              partner: !fake.partner
+            })
+          }),
+          /* @__PURE__ */ jsx(ToggleRow, {
+            label: "Show as a Verified server",
+            subLabel: "Verified check next to the server name",
+            value: fake.verified === true,
+            onPress: () => set({
+              verified: !fake.verified
+            })
+          }),
+          /* @__PURE__ */ jsx(K2.Field, {
+            label: "Members",
+            hint: "Leave empty for the real count",
+            children: /* @__PURE__ */ jsx(TextInput3, {
+              defaultValue: fake.members == null ? "" : String(fake.members),
+              placeholder: "25000",
+              keyboardType: "number-pad",
+              onChangeText: (text) => {
+                var clean = text.replace(/D/g, "");
+                set({
+                  members: clean ? Number(clean) : void 0
+                });
+              },
+              placeholderTextColor: "#777"
+            })
+          }),
+          /* @__PURE__ */ jsx(K2.Field, {
+            label: "Online",
+            hint: "Leave empty for the real count",
+            children: /* @__PURE__ */ jsx(TextInput3, {
+              defaultValue: fake.online == null ? "" : String(fake.online),
+              placeholder: "4000",
+              keyboardType: "number-pad",
+              onChangeText: (text) => {
+                var clean = text.replace(/D/g, "");
+                set({
+                  online: clean ? Number(clean) : void 0
+                });
+              },
+              placeholderTextColor: "#777"
+            })
+          }),
+          /* @__PURE__ */ jsx(ToggleRow, {
             label: "Show me as a booster here",
             subLabel: "Boosting icon by your name in this server",
             value: fake.booster === true,
@@ -16327,6 +16481,32 @@
             onPress: () => save({
               ...state2,
               fakeNitro: !state2.fakeNitro
+            })
+          })
+        }),
+        /* @__PURE__ */ jsx(K2.Section, {
+          title: "Fake orbs",
+          description: "Shows this many orbs in your wallet, only on this device. You can't spend them.",
+          children: /* @__PURE__ */ jsx(K2.Field, {
+            label: "Orbs",
+            hint: "Leave empty for your real balance",
+            children: /* @__PURE__ */ jsx(TextInput3, {
+              defaultValue: state2.fakeOrbs == null ? "" : String(state2.fakeOrbs),
+              placeholder: "1000",
+              keyboardType: "number-pad",
+              onChangeText: (text) => {
+                var clean = text.replace(/\D/g, "");
+                try {
+                  installOrbHooks();
+                } catch (e) {
+                }
+                save({
+                  ...extrasState(),
+                  fakeOrbs: clean ? Math.min(Number(clean), 999999999) : void 0
+                });
+                refreshOrbs();
+              },
+              placeholderTextColor: "#777"
             })
           })
         }),
@@ -16547,6 +16727,8 @@
         for (var step of [
           installGiftHook,
           installBoostHooks,
+          installOrbHooks,
+          installSwitcherHook,
           applyFakeNitro
         ]) {
           try {
@@ -16554,6 +16736,15 @@
           } catch (e) {
           }
         }
+        var orbTries = 0;
+        var orbTimer = setInterval(() => {
+          try {
+            installOrbHooks();
+          } catch (e) {
+          }
+          if (orbHooked.currency && orbHooked.wallet || ++orbTries > 20)
+            clearInterval(orbTimer);
+        }, 3e3);
         var restoreLater = () => setTimeout(() => {
           try {
             restoreFakeRequests();
@@ -18709,7 +18900,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, memberOverlays, boostHooksInstalled, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, memberOverlays, overlaySet, boostHooksInstalled, orbHooked, fakeOrbCount, switcherHooked, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -19163,18 +19354,30 @@
       ];
       CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
       CLOUDCORD_STAFF_ROLES = {
-        "1465007041390317579": "Administrator",
-        "1457121276748365989": "Administrator",
-        "1497588725788442637": "Management",
-        "1453130879537905734": "Management",
-        "1191456523763859558": "Moderator",
-        "1394648991223779328": "Manager",
-        "1417880742502994042": "Management",
-        "553936745058664458": "Moderator",
         "463515440606609419": "Founder",
-        "1121228881425354832": "Management",
+        "1526004298020950075": "Head Staff",
         "1540350369232850995": "Manager",
-        "1169999011642605628": "Manager"
+        "1497588725788442637": "Manager",
+        "1191456523763859558": "Admin",
+        "1457121276748365989": "Admin",
+        "1465007041390317579": "Admin",
+        "1470732628461359251": "Support Lead",
+        "1417880742502994042": "Supervisor",
+        "1169999011642605628": "Senior Mod",
+        "1394648991223779328": "Senior Mod",
+        "1312331817818394665": "Senior Mod",
+        "318501167741272066": "Mod",
+        "553936745058664458": "Mod",
+        "1073445426025480202": "Mod",
+        "1121228881425354832": "Mod",
+        "1141922991622586418": "Mod",
+        "1453130879537905734": "Mod",
+        "551069589983854603": "Senior Support",
+        "1330236504198611029": "Senior Support",
+        "1186647886608478260": "Support",
+        "1416192374895542455": "Support",
+        "1541881462914023501": "Support",
+        "1560496375710613514": "Support"
       };
       useBadgesModule2 = findByNameLazy("useBadges", false);
       useUserProfileModule = findByNameLazy("useUserProfile", false);
@@ -19845,7 +20048,14 @@
       });
       guildOverlays = /* @__PURE__ */ new WeakMap();
       memberOverlays = /* @__PURE__ */ new WeakMap();
+      overlaySet = /* @__PURE__ */ new WeakSet();
       boostHooksInstalled = false;
+      orbHooked = {};
+      fakeOrbCount = () => {
+        var value = extrasState().fakeOrbs;
+        return typeof value === "number" && value >= 0 ? value : null;
+      };
+      switcherHooked = false;
       leavingServers = false;
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
