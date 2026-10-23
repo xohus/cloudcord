@@ -10287,6 +10287,7 @@
     CurrentRow: () => CurrentRow,
     DiscordButton: () => DiscordButton,
     DiscordInput: () => Input,
+    DiscordProfileCard: () => DiscordProfileCard,
     Divider: () => Divider,
     Field: () => Field,
     GlassButton: () => GlassButton,
@@ -11917,6 +11918,283 @@
       ...props
     });
   }
+  function DiscordProfileCard({ name, username, pronouns, avatar, banner, primary, secondary, decoration, status, customStatus, bio, activity, tagText, badges = [] }) {
+    var themed = !!primary;
+    var base = "#111214";
+    var ring = themed ? "#1A1B1E" : base;
+    var inner = /* @__PURE__ */ jsxs(import_react_native16.View, {
+      style: {
+        borderRadius: themed ? 6 : 10,
+        overflow: "hidden",
+        backgroundColor: themed ? "rgba(0,0,0,0.5)" : base
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native16.View, {
+          style: {
+            height: 96,
+            backgroundColor: primary || C3.brand
+          },
+          children: banner ? /* @__PURE__ */ jsx(import_react_native16.Image, {
+            source: {
+              uri: banner
+            },
+            style: {
+              width: "100%",
+              height: "100%"
+            },
+            resizeMode: "cover"
+          }) : null
+        }),
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
+          style: {
+            position: "absolute",
+            top: 54,
+            left: 14,
+            width: 84,
+            height: 84
+          },
+          children: [
+            /* @__PURE__ */ jsx(import_react_native16.View, {
+              style: {
+                width: 84,
+                height: 84,
+                borderRadius: 42,
+                borderWidth: 6,
+                borderColor: ring,
+                backgroundColor: ring,
+                overflow: "hidden"
+              },
+              children: avatar ? /* @__PURE__ */ jsx(import_react_native16.Image, {
+                source: {
+                  uri: avatar
+                },
+                style: {
+                  width: "100%",
+                  height: "100%"
+                }
+              }) : null
+            }),
+            decoration ? /* @__PURE__ */ jsx(import_react_native16.Image, {
+              source: {
+                uri: decoration
+              },
+              style: {
+                position: "absolute",
+                top: -6,
+                left: -6,
+                width: 96,
+                height: 96
+              },
+              resizeMode: "contain"
+            }) : null,
+            /* @__PURE__ */ jsx(import_react_native16.View, {
+              style: {
+                position: "absolute",
+                right: 2,
+                bottom: 4,
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                borderWidth: 5,
+                borderColor: ring,
+                backgroundColor: STATUS_COLORS[status || "online"] || STATUS_COLORS.online
+              }
+            })
+          ]
+        }),
+        badges.length ? /* @__PURE__ */ jsx(import_react_native16.View, {
+          style: {
+            alignSelf: "flex-end",
+            flexDirection: "row",
+            flexWrap: "wrap",
+            justifyContent: "flex-end",
+            gap: 2,
+            maxWidth: "58%",
+            marginTop: 8,
+            marginRight: 10,
+            paddingHorizontal: 4,
+            paddingVertical: 3,
+            borderRadius: 8,
+            backgroundColor: "rgba(0,0,0,0.35)"
+          },
+          children: badges.slice(0, 8).map((icon3, index) => /* @__PURE__ */ jsx(import_react_native16.Image, {
+            source: {
+              uri: icon3
+            },
+            style: {
+              width: 20,
+              height: 20
+            },
+            resizeMode: "contain"
+          }, index))
+        }) : null,
+        /* @__PURE__ */ jsxs(import_react_native16.View, {
+          style: {
+            paddingHorizontal: 14,
+            paddingBottom: 14,
+            paddingTop: badges.length ? 22 : 46,
+            gap: 10
+          },
+          children: [
+            /* @__PURE__ */ jsxs(import_react_native16.View, {
+              style: {
+                gap: 2
+              },
+              children: [
+                /* @__PURE__ */ jsx(Text, {
+                  variant: "heading-lg/extrabold",
+                  numberOfLines: 1,
+                  style: {
+                    color: "#FFFFFF"
+                  },
+                  children: name
+                }),
+                /* @__PURE__ */ jsxs(import_react_native16.View, {
+                  style: {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 4
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/medium",
+                      numberOfLines: 1,
+                      style: {
+                        color: "#DBDEE1"
+                      },
+                      children: username
+                    }),
+                    tagText ? /* @__PURE__ */ jsx(import_react_native16.View, {
+                      style: {
+                        paddingHorizontal: 5,
+                        borderRadius: 4,
+                        backgroundColor: "rgba(0,0,0,0.35)"
+                      },
+                      children: /* @__PURE__ */ jsx(Text, {
+                        variant: "text-xs/bold",
+                        style: {
+                          color: "#DBDEE1"
+                        },
+                        children: tagText
+                      })
+                    }) : null,
+                    pronouns ? /* @__PURE__ */ jsxs(Text, {
+                      variant: "text-sm/medium",
+                      numberOfLines: 1,
+                      style: {
+                        color: "#DBDEE1",
+                        opacity: 0.8
+                      },
+                      children: [
+                        "\u2022 ",
+                        pronouns
+                      ]
+                    }) : null
+                  ]
+                })
+              ]
+            }),
+            customStatus ? /* @__PURE__ */ jsx(import_react_native16.View, {
+              style: {
+                alignSelf: "flex-start",
+                maxWidth: "100%",
+                paddingHorizontal: 10,
+                paddingVertical: 6,
+                borderRadius: 12,
+                backgroundColor: "rgba(255,255,255,0.08)"
+              },
+              children: /* @__PURE__ */ jsx(Text, {
+                variant: "text-sm/medium",
+                numberOfLines: 1,
+                style: {
+                  color: "#DBDEE1"
+                },
+                children: customStatus
+              })
+            }) : null,
+            bio || activity?.name ? /* @__PURE__ */ jsxs(import_react_native16.View, {
+              style: {
+                gap: 8,
+                padding: 10,
+                borderRadius: 8,
+                backgroundColor: "rgba(255,255,255,0.05)"
+              },
+              children: [
+                bio ? /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/medium",
+                  numberOfLines: 3,
+                  style: {
+                    color: "#DBDEE1"
+                  },
+                  children: bio
+                }) : null,
+                activity?.name ? /* @__PURE__ */ jsxs(import_react_native16.View, {
+                  style: {
+                    gap: 1
+                  },
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/bold",
+                      style: {
+                        color: "#B5BAC1"
+                      },
+                      children: (activity.verb || "Playing").toUpperCase()
+                    }),
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-sm/bold",
+                      numberOfLines: 1,
+                      style: {
+                        color: "#F2F3F5"
+                      },
+                      children: activity.name
+                    }),
+                    activity.details ? /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/medium",
+                      numberOfLines: 1,
+                      style: {
+                        color: "#B5BAC1"
+                      },
+                      children: activity.details
+                    }) : null
+                  ]
+                }) : null
+              ]
+            }) : null
+          ]
+        })
+      ]
+    });
+    if (!themed)
+      return /* @__PURE__ */ jsx(import_react_native16.View, {
+        style: {
+          borderRadius: 10,
+          overflow: "hidden"
+        },
+        children: inner
+      });
+    return /* @__PURE__ */ jsxs(import_react_native16.View, {
+      style: {
+        borderRadius: 10,
+        overflow: "hidden",
+        padding: 4,
+        backgroundColor: primary
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native16.View, {
+          style: {
+            position: "absolute",
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: "55%",
+            backgroundColor: secondary || primary
+          }
+        }),
+        inner
+      ]
+    });
+  }
   var import_react3, import_react_native16, C3, R2, GAP, STUDIO_TABS, tabInfo, STATUS_COLORS;
   var init_ProfileStudio = __esm({
     "src/core/ui/settings/components/ProfileStudio.tsx"() {
@@ -12033,6 +12311,16 @@
           blurb: "Upload your own badge (beta)",
           icons: [
             "ImageIcon",
+            "StarIcon"
+          ]
+        },
+        {
+          id: "saved",
+          label: "Saved",
+          blurb: "Switch between saved copies of your profile",
+          icons: [
+            "BookmarkIcon",
+            "FolderIcon",
             "StarIcon"
           ]
         },
@@ -18152,6 +18440,206 @@
       })
     });
   }
+  function savedSnapshot(data) {
+    var { syncRevision: _revision, enabled: _enabled, ...rest } = data || {};
+    return JSON.parse(JSON.stringify(rest));
+  }
+  function SavedProfiles({ current, realUser, onUse }) {
+    var S2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
+    var [, redraw] = (0, import_react6.useReducer)((x2) => x2 + 1, 0);
+    var [name, setName] = (0, import_react6.useState)("");
+    var items = Array.isArray(rootSettings.fakeProfileSaved) ? rootSettings.fakeProfileSaved : [];
+    var commit = (next) => {
+      rootSettings.fakeProfileSaved = next;
+      redraw();
+    };
+    var currentJson = JSON.stringify(savedSnapshot(current));
+    var realAvatar = (() => {
+      try {
+        return realUser?.getAvatarURL?.(void 0, 128) || void 0;
+      } catch (e) {
+        return void 0;
+      }
+    })();
+    var saveCurrent = () => {
+      var label = (name.trim() || "Profile " + (items.length + 1)).slice(0, 40);
+      commit([
+        {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          name: label,
+          savedAt: Date.now(),
+          data: savedSnapshot(current)
+        },
+        ...items
+      ]);
+      setName("");
+      showToast("Saved \u201C" + label + "\u201D");
+    };
+    var remove = (item) => import_react_native20.Alert.alert("Delete \u201C" + item.name + "\u201D?", "This saved copy is removed. Your current profile stays as it is.", [
+      {
+        text: "Cancel",
+        style: "cancel"
+      },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => commit(items.filter((other) => other.id !== item.id))
+      }
+    ]);
+    var rename = (item) => {
+      var prompt = import_react_native20.Alert.prompt;
+      if (typeof prompt !== "function")
+        return;
+      prompt("Rename", void 0, (text) => {
+        if (text?.trim())
+          commit(items.map((other) => other.id === item.id ? {
+            ...other,
+            name: text.trim().slice(0, 40)
+          } : other));
+      }, "plain-text", item.name);
+    };
+    var hex = (value) => typeof value === "string" && value ? value : typeof value === "number" ? "#" + value.toString(16).padStart(6, "0") : void 0;
+    return /* @__PURE__ */ jsxs(import_react_native20.View, {
+      style: {
+        gap: 20
+      },
+      children: [
+        /* @__PURE__ */ jsx(S2.Panel, {
+          children: /* @__PURE__ */ jsxs(S2.Section, {
+            title: "Save your profile",
+            description: "Keep copies of your custom profile and switch between them. Saved on this device.",
+            children: [
+              /* @__PURE__ */ jsx(S2.Field, {
+                label: "Name",
+                children: /* @__PURE__ */ jsx(TextInput4, {
+                  value: name,
+                  placeholder: "Main, Alt or Profile " + (items.length + 1),
+                  maxLength: 40,
+                  onChangeText: setName
+                })
+              }),
+              /* @__PURE__ */ jsx(S2.Button, {
+                label: "Save current profile",
+                primary: true,
+                onPress: saveCurrent
+              })
+            ]
+          })
+        }),
+        !items.length ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-sm/medium",
+          color: "text-muted",
+          children: "No saved profiles yet. Set up your profile, then save it here to come back to it later."
+        }) : null,
+        items.map((item) => {
+          var data = item.data || {};
+          var active = JSON.stringify(data) === currentJson;
+          var colors = data.profileColorsEnabled;
+          var badges = BADGES.filter(([key]) => data.selectedBadges?.[key]).map(([, , , icon3]) => icon3).filter(Boolean);
+          return /* @__PURE__ */ jsxs(import_react_native20.View, {
+            style: {
+              gap: 10
+            },
+            children: [
+              /* @__PURE__ */ jsx(S2.DiscordProfileCard, {
+                name: data.displayName || realUser?.globalName || realUser?.username || "You",
+                username: data.username || realUser?.username || "username",
+                pronouns: data.pronouns,
+                avatar: data.avatarMedia?.uri || realAvatar,
+                banner: data.bannerMedia?.uri,
+                primary: colors ? hex(data.primaryColor) : void 0,
+                secondary: colors ? hex(data.accentColor) : void 0,
+                decoration: data.avatarDecoration || void 0,
+                status: data.presenceStatus || "online",
+                tagText: data.serverTag?.tag,
+                badges,
+                customStatus: data.customStatus ? `${data.customStatus.emoji || ""} ${data.customStatus.text || ""}`.trim() : void 0,
+                bio: data.bio,
+                activity: data.customActivity ? {
+                  verb: ACTIVITY_TYPES.find((type) => type.value === data.customActivity?.type)?.label || "",
+                  name: data.customActivity.name,
+                  details: data.customActivity.details
+                } : null
+              }),
+              /* @__PURE__ */ jsx(import_react_native20.View, {
+                style: {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 10,
+                  paddingHorizontal: 2
+                },
+                children: /* @__PURE__ */ jsxs(import_react_native20.Pressable, {
+                  style: {
+                    flex: 1,
+                    gap: 2
+                  },
+                  onLongPress: () => rename(item),
+                  accessibilityHint: "Long-press to rename",
+                  children: [
+                    /* @__PURE__ */ jsx(Text, {
+                      variant: "text-md/bold",
+                      color: "text-normal",
+                      numberOfLines: 1,
+                      children: item.name
+                    }),
+                    active ? /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/bold",
+                      style: {
+                        color: "#23A55A"
+                      },
+                      children: "\u25CF In use"
+                    }) : /* @__PURE__ */ jsxs(Text, {
+                      variant: "text-xs/medium",
+                      color: "text-muted",
+                      children: [
+                        "Saved ",
+                        new Date(item.savedAt).toLocaleDateString()
+                      ]
+                    })
+                  ]
+                })
+              }),
+              /* @__PURE__ */ jsxs(import_react_native20.View, {
+                style: {
+                  flexDirection: "row",
+                  gap: 8
+                },
+                children: [
+                  /* @__PURE__ */ jsx(S2.Button, {
+                    label: active ? "In use" : "Use profile",
+                    primary: true,
+                    disabled: active,
+                    grow: true,
+                    onPress: () => {
+                      onUse(item.data);
+                      redraw();
+                      showToast("Now using \u201C" + item.name + "\u201D");
+                    }
+                  }),
+                  /* @__PURE__ */ jsx(S2.Button, {
+                    label: "Update",
+                    onPress: () => {
+                      commit(items.map((other) => other.id === item.id ? {
+                        ...other,
+                        data: savedSnapshot(current),
+                        savedAt: Date.now()
+                      } : other));
+                      showToast("Updated \u201C" + item.name + "\u201D");
+                    }
+                  }),
+                  /* @__PURE__ */ jsx(S2.Button, {
+                    label: "Delete",
+                    danger: true,
+                    onPress: () => remove(item)
+                  })
+                ]
+              })
+            ]
+          }, item.id);
+        })
+      ]
+    });
+  }
   function ToggleRow({ label, subLabel, value, onPress }) {
     var { Toggle: Toggle2 } = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
     return /* @__PURE__ */ jsx(Toggle2, {
@@ -18803,6 +19291,24 @@
                 };
               })()
             })
+          }) : null,
+          activeTab === "saved" ? /* @__PURE__ */ jsx(SavedProfiles, {
+            current: preview,
+            realUser: realCurrentUser,
+            onUse: (data) => {
+              rootSettings.fakeProfile = {
+                ...preview,
+                ...data,
+                enabled: preview.enabled,
+                syncRevision: Date.now()
+              };
+              preview = rootSettings.fakeProfile;
+              queueSharedPublish();
+              clearCache();
+              suppressOwnPullUntil = Date.now() + 15e3;
+              refreshPreview();
+              redraw();
+            }
           }) : null,
           activeTab === "others" ? /* @__PURE__ */ jsx(Card2, {
             children: /* @__PURE__ */ jsx(LocalProfiles2, {
