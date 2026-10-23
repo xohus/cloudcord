@@ -3086,7 +3086,10 @@ jobs:
           // Fake orbs: the wallet shows our number instead of the real balance, only on this device.
           const orbHooked: { currency?: any; wallet?: any } = {};
           const fakeOrbCount = () => { const value = extrasState().fakeOrbs; return typeof value === "number" && value >= 0 ? value : null; };
+          // Store lookups that miss scan every module on mobile, so each store is searched at most twice.
+          let orbSearches = 0;
           function installOrbHooks() {
+              if ((orbHooked.currency && orbHooked.wallet) || orbSearches++ > 1) return;
               const currency = orbHooked.currency ? null : findByStoreName("VirtualCurrencyStore") as any;
               const real = currency && Object.getOwnPropertyDescriptor(Object.getPrototypeOf(currency), "balance")?.get;
               if (real) {
@@ -3102,9 +3105,11 @@ jobs:
           }
           // Switch Accounts list: show the spoofed username for the signed-in account.
           let switcherHooked = false;
+          let switcherSearches = 0;
           function installSwitcherHook() {
+              if (switcherHooked || switcherSearches++ > 1) return;
               const store = findByStoreName("MultiAccountStore") as any;
-              if (switcherHooked || typeof store?.getUsers !== "function") return;
+              if (typeof store?.getUsers !== "function") return;
               switcherHooked = true;
               // Return the same array for the same input, or Discord's store hooks re-render forever.
               const cache = new WeakMap<object, { name: string; result: any[] }>();
@@ -3309,10 +3314,9 @@ jobs:
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
-                      for (const step of [installGiftHook, installBoostHooks, installOrbHooks, installSwitcherHook, applyFakeNitro]) { try { step(); } catch {} }
-                      // The wallet store registers late; keep trying for a minute.
-                      let orbTries = 0;
-                      const orbTimer = setInterval(() => { try { installOrbHooks(); } catch {} if ((orbHooked.currency && orbHooked.wallet) || ++orbTries > 20) clearInterval(orbTimer); }, 3000);
+                      for (const step of [installGiftHook, installBoostHooks, applyFakeNitro]) { try { step(); } catch {} }
+                      // One late retry for stores that load after startup. A miss scans every module on mobile, so no polling.
+                      setTimeout(() => { for (const step of [installOrbHooks, installSwitcherHook]) { try { step(); } catch {} } }, 15000);
                       const restoreLater = () => setTimeout(() => { try { restoreFakeRequests(); } catch {} }, 1500);
                       restoreLater();
                       try { FluxDispatcher.subscribe("CONNECTION_OPEN", () => { try { applyFakeNitro(); } catch {} restoreLater(); }); } catch {}
