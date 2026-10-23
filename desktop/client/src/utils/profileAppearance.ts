@@ -28,7 +28,7 @@ export type CustomFriendPreview = {
 };
 
 export type CustomConnectionPreview = {
-    id: string; service: "steam" | "youtube" | "roblox" | "twitch" | "github" | "spotify" | "x" | "reddit" | "domain" | "other";
+    id: string; service: "steam" | "youtube" | "roblox" | "twitch" | "github" | "spotify" | "x" | "reddit" | "tiktok" | "instagram" | "domain" | "other";
     accountId: string; username: string; displayName: string;
     avatar: string; banner: string; bio: string; url: string;
     details: { label: string; value: string }[];
@@ -106,7 +106,7 @@ export function customDiscordMediaURL(kind: "avatars" | "banners", userId: strin
 
 /** Drafts stay editable locally, but invalid entries must not disappear silently on sharing. */
 export function customConnectionServiceName(service: string): string {
-    const names: Record<string, string> = {steam:"Steam",youtube:"YouTube",roblox:"Roblox",github:"GitHub",twitch:"Twitch",spotify:"Spotify",x:"X",reddit:"Reddit",domain:"Domain",other:"Other"};
+    const names: Record<string, string> = {steam:"Steam",youtube:"YouTube",roblox:"Roblox",github:"GitHub",twitch:"Twitch",spotify:"Spotify",x:"X",reddit:"Reddit",tiktok:"TikTok",instagram:"Instagram",domain:"Domain",other:"Other"};
     return names[service] || "Other";
 }
 
@@ -154,7 +154,7 @@ export function normalizeCustomSocial(data: any): Pick<ProfileAppearance, "custo
     const unique = <T extends { id: string }>(items: T[]) => items.filter((item, index) => item.id && items.findIndex(other => other.id === item.id) === index);
     // Retired feature: ignore old/shared friend previews without changing Discord friendships.
     if (data?.customFriends !== undefined) result.customFriends = [];
-    const services = ["steam", "youtube", "roblox", "twitch", "github", "spotify", "x", "reddit", "domain", "other"];
+    const services = ["steam", "youtube", "roblox", "twitch", "github", "spotify", "x", "reddit", "tiktok", "instagram", "domain", "other"];
     if (Array.isArray(data?.customConnections)) result.customConnections = unique(records(data.customConnections).map(item => ({
         id: textField(item.id, 80),
         service: services.includes(item.service) ? item.service as CustomConnectionPreview["service"] : "other" as const,

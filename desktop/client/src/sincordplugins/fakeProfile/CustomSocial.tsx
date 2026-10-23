@@ -61,7 +61,7 @@ export function FriendProfileActions({ userId, data, onRemove }: { userId: strin
 }
 
 const makeId = () => `custom-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
-const SERVICES: CustomConnectionPreview["service"][] = ["steam", "youtube", "roblox", "twitch", "github", "spotify", "x", "reddit", "domain", "other"];
+const SERVICES: CustomConnectionPreview["service"][] = ["steam", "youtube", "roblox", "twitch", "github", "spotify", "x", "reddit", "tiktok", "instagram", "domain", "other"];
 const contentLabel = (service: string) => service === "steam" ? "Search Steam games" : service === "youtube" ? "Search YouTube or paste a video link" : service === "roblox" ? "Roblox game link or universe ID" : service === "github" ? "GitHub repo link or owner/repo" : "Search content";
 
 function SocialField({ label, value, onChange, placeholder, multiline = false }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; multiline?: boolean; }) {

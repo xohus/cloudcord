@@ -8,6 +8,7 @@
 // fake Nitro gift link, local fake friend requests, leave all servers and a full reset.
 
 import * as DataStore from "@api/DataStore";
+import { findStoreLazy } from "@webpack";
 import { Alerts, ChannelStore, Flux, FluxDispatcher, GuildMemberStore, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
 
 import { Grid2, Section, SelectField, Switch } from "./editorUi";
@@ -30,8 +31,9 @@ const GIFT_STYLES = [
     { value: 9, label: "Seasonal cake" }, { value: 10, label: "Seasonal chest" }, { value: 11, label: "Seasonal coffee" }, { value: 12, label: "Nitroween" }
 ];
 const INCOMING_REQUEST = 3;
+const GuildMemberCountStore: any = findStoreLazy("GuildMemberCountStore");
 
-interface BoostFake { level?: boolean; booster?: boolean; }
+interface BoostFake { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; }
 interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; fakeRequests?: { id: string; user: any; since: string; }[]; fakeOrbs?: number; }
 
 function readExtras(): Extras {
@@ -169,14 +171,30 @@ const overlaySet = new WeakSet<object>();
 function boostFor(guildId?: string | null) { return guildId ? extras.boosts?.[guildId] : undefined; }
 // Read-only overlays: Discord's stores keep their real data, we only change what's returned.
 function installBoostHooks() {
+    try { installCountHooks(); } catch { }
     if (boostOriginals || !GuildStore || !GuildMemberStore) return;
     boostOriginals = { getGuild: GuildStore.getGuild, getMember: GuildMemberStore.getMember };
     const { getGuild, getMember } = boostOriginals;
     (GuildStore as any).getGuild = function (guildId: string, ...rest: any[]) {
         const guild = getGuild.call(this, guildId, ...rest);
-        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !boostFor(guildId)?.level) return guild;
+        const fake = boostFor(guildId);
+        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified)) return guild;
         let overlay = guildOverlays.get(guild);
-        if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, { get: (target, key) => key === "premiumTier" ? 3 : key === "premiumSubscriberCount" ? Math.max(14, target.premiumSubscriberCount ?? 0) : Reflect.get(target, key, target) }));
+        if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, {
+            get: (target, key) => {
+                const now = boostFor(guildId);
+                if (now?.level && key === "premiumTier") return 3;
+                if (now?.level && key === "premiumSubscriberCount") return Math.max(14, target.premiumSubscriberCount ?? 0);
+                if (key === "features" && (now?.partner || now?.verified)) {
+                    const features = new Set<string>(target.features ?? []);
+                    if (now.partner) features.add("PARTNERED");
+                    if (now.verified) features.add("VERIFIED");
+                    return features;
+                }
+                if (key === "hasFeature" && (now?.partner || now?.verified)) return (feature: string) => (now.partner && feature === "PARTNERED") || (now.verified && feature === "VERIFIED") || target.hasFeature?.(feature);
+                return Reflect.get(target, key, target);
+            }
+        }));
         overlaySet.add(overlay);
         return overlay;
     };
@@ -188,13 +206,31 @@ function installBoostHooks() {
         return overlay;
     };
 }
+// Fake member and online counts shown in the server header, invites and member list.
+let countOriginals: { getMemberCount: any; getOnlineCount: any; } | null = null;
+function installCountHooks() {
+    if (countOriginals || !GuildMemberCountStore?.getMemberCount) return;
+    const store: any = GuildMemberCountStore;
+    countOriginals = { getMemberCount: store.getMemberCount, getOnlineCount: store.getOnlineCount };
+    const { getMemberCount, getOnlineCount } = countOriginals;
+    store.getMemberCount = function (guildId: string, ...rest: any[]) { return boostFor(guildId)?.members ?? getMemberCount.call(this, guildId, ...rest); };
+    if (getOnlineCount) store.getOnlineCount = function (guildId: string, ...rest: any[]) { return boostFor(guildId)?.online ?? getOnlineCount.call(this, guildId, ...rest); };
+}
+function uninstallCountHooks() {
+    if (!countOriginals) return;
+    const store: any = GuildMemberCountStore;
+    store.getMemberCount = countOriginals.getMemberCount;
+    if (countOriginals.getOnlineCount) store.getOnlineCount = countOriginals.getOnlineCount;
+    countOriginals = null;
+}
 function uninstallBoostHooks() {
+    uninstallCountHooks();
     if (!boostOriginals) return;
     (GuildStore as any).getGuild = boostOriginals.getGuild; (GuildMemberStore as any).getMember = boostOriginals.getMember;
     boostOriginals = null;
 }
 function refreshGuildViews(guildId: string) {
-    try { (GuildStore as any).emitChange?.(); (GuildMemberStore as any).emitChange?.(); } catch { }
+    try { (GuildStore as any).emitChange?.(); (GuildMemberStore as any).emitChange?.(); (GuildMemberCountStore as any)?.emitChange?.(); } catch { }
     try { FluxDispatcher.dispatch({ type: "GUILD_MEMBER_PROFILE_UPDATE", guildId }); } catch { }
 }
 
@@ -205,7 +241,7 @@ function BoostSection() {
     const [reached, setReached] = React.useState(0);
     const fake = boostFor(guildId) ?? {};
     const set = (patch: BoostFake) => { if (!guildId) return; writeExtras({ ...extras, boosts: { ...extras.boosts, [guildId]: { ...fake, ...patch } } }); refreshGuildViews(guildId); };
-    return <Section title="Fake boost" description={guild ? `For ${guild.name}. Only on this device: other people see the real server.` : "Open a server first, then come back here."}>
+    return <Section title="Fake server" description={guild ? `For ${guild.name}. Only on this device: other people see the real server.` : "Open a server first, then come back here."}>
         {guild && <>
             <Grid2>
                 <SelectField label="Boosts" options={[1, 2, 3, 5, 10].map(value => ({ value, label: `${value}x` }))} value={times} onChange={value => setTimes(Number(value))} />
@@ -214,6 +250,12 @@ function BoostSection() {
             <div className="cpx-inline"><button type="button" className="cpx-btn" onClick={() => sendFakeBoostMessage(times, reached)}>Send fake boost message</button></div>
             <span className="cpx-hint">Shows in the channel you have open and disappears when you switch channels or restart.</span>
             <Switch label="Show this server as Level 3" description="Boost bar and perks look unlocked here. Real limits like upload size don't change." checked={fake.level === true} onChange={value => set({ level: value })} />
+            <Switch label="Show as a Partner server" description="Partner badge next to the server name and in invites." checked={fake.partner === true} onChange={value => set({ partner: value })} />
+            <Switch label="Show as a Verified server" description="Verified check next to the server name." checked={fake.verified === true} onChange={value => set({ verified: value })} />
+            <Grid2>
+                <label className="cpx-field"><span className="cpx-label">Members</span><input className="cpx-input" type="number" min={0} placeholder="Real count" value={fake.members ?? ""} onChange={event => { const text = event.currentTarget.value; set({ members: text === "" ? undefined : Math.max(0, Math.floor(Number(text) || 0)) }); }} /></label>
+                <label className="cpx-field"><span className="cpx-label">Online</span><input className="cpx-input" type="number" min={0} placeholder="Real count" value={fake.online ?? ""} onChange={event => { const text = event.currentTarget.value; set({ online: text === "" ? undefined : Math.max(0, Math.floor(Number(text) || 0)) }); }} /></label>
+            </Grid2>
             <Switch label="Show me as a booster here" description="The boosting icon by your name and Server Booster since on your profile." checked={fake.booster === true} onChange={value => set({ booster: value })} />
         </>}
     </Section>;

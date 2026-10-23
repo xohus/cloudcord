@@ -3062,7 +3062,7 @@ jobs:
               setExtras({ ...extrasState(), fakeRequests: [] } as any);
           }
           // ---- Fake boost (device only) ----
-          type BoostFake = { level?: boolean; booster?: boolean };
+          type BoostFake = { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number };
           function boostFor(guildId?: string | null): BoostFake | undefined { return guildId ? (extrasState() as any).boosts?.[guildId] : undefined; }
           const guildOverlays = new WeakMap<object, any>();
           const memberOverlays = new WeakMap<object, any>();
@@ -3086,6 +3086,20 @@ jobs:
                   orbHooked.wallet = wallet;
               }
           }
+          // Switch Accounts list: show the spoofed username for the signed-in account.
+          let switcherHooked = false;
+          function installSwitcherHook() {
+              const store = findByStoreName("MultiAccountStore") as any;
+              if (switcherHooked || typeof store?.getUsers !== "function") return;
+              switcherHooked = true;
+              const spoof = (users: any) => {
+                  try {
+                      if (!preview.enabled || !preview.username || !currentUserId || !Array.isArray(users)) return users;
+                      return users.map((user: any) => user && String(user.id) === currentUserId ? { ...user, username: preview.username } : user);
+                  } catch { return users; }
+              };
+              for (const method of ["getUsers", "getValidUsers"]) if (typeof store[method] === "function") after(method, store, (_args: any[], users: any) => spoof(users));
+          }
           function refreshOrbs() { for (const store of [orbHooked.currency, orbHooked.wallet]) { try { store?.emitChange?.(); } catch {} } }
           function installBoostHooks() {
               if (boostHooksInstalled) return;
@@ -3095,13 +3109,30 @@ jobs:
               boostHooksInstalled = true;
               after("getGuild", guilds, (args: any[], guild: any) => {
                   try {
-                  if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !boostFor(args[0])?.level) return guild;
+                  const guildId = args[0];
+                  const fake = boostFor(guildId);
+                  if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified)) return guild;
                   let overlay = guildOverlays.get(guild);
-                  if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, { get: (target: any, key) => key === "premiumTier" ? 3 : key === "premiumSubscriberCount" ? Math.max(14, target.premiumSubscriberCount ?? 0) : Reflect.get(target, key, target) }));
+                  if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, { get: (target: any, key) => {
+                      const now = boostFor(guildId);
+                      if (now?.level && key === "premiumTier") return 3;
+                      if (now?.level && key === "premiumSubscriberCount") return Math.max(14, target.premiumSubscriberCount ?? 0);
+                      if (key === "features" && (now?.partner || now?.verified)) {
+                          const features = new Set<string>(target.features ?? []);
+                          if (now.partner) features.add("PARTNERED");
+                          if (now.verified) features.add("VERIFIED");
+                          return features;
+                      }
+                      if (key === "hasFeature" && (now?.partner || now?.verified)) return (feature: string) => (now.partner && feature === "PARTNERED") || (now.verified && feature === "VERIFIED") || target.hasFeature?.(feature);
+                      return Reflect.get(target, key, target);
+                  } }));
                   overlaySet.add(overlay);
                   return overlay;
                   } catch { return guild; }
               });
+              const counts = findByStoreName("GuildMemberCountStore") as any;
+              if (typeof counts?.getMemberCount === "function") after("getMemberCount", counts, (args: any[], count: any) => boostFor(args[0])?.members ?? count);
+              if (typeof counts?.getOnlineCount === "function") after("getOnlineCount", counts, (args: any[], count: any) => boostFor(args[0])?.online ?? count);
               after("getMember", members, (args: any[], member: any) => {
                   // Called constantly: bail out early unless this server has a fake boost.
                   if (!member || typeof member !== "object" || member.premiumSince || !boostFor(args[0])?.booster) return member;
@@ -3147,6 +3178,10 @@ jobs:
                       <K.Field label="Message"><K.Chips options={[{ value: 0, label: "Just boosted" }, { value: 1, label: "Level 1" }, { value: 2, label: "Level 2" }, { value: 3, label: "Level 3" }]} value={reached} onChange={(value: number) => setReached(value)} /></K.Field>
                       <Button text="Send fake boost message" variant="primary" size="sm" onPress={() => sendFakeBoostMessage(times, reached)} />
                       <ToggleRow label="Show this server as Level 3" subLabel="Perks look unlocked here. Real limits don't change" value={fake.level === true} onPress={() => set({ level: !fake.level })} />
+                      <ToggleRow label="Show as a Partner server" subLabel="Partner badge next to the server name" value={fake.partner === true} onPress={() => set({ partner: !fake.partner })} />
+                      <ToggleRow label="Show as a Verified server" subLabel="Verified check next to the server name" value={fake.verified === true} onPress={() => set({ verified: !fake.verified })} />
+                      <K.Field label="Members" hint="Leave empty for the real count"><TextInput defaultValue={fake.members == null ? "" : String(fake.members)} placeholder="25000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/D/g, ""); set({ members: clean ? Number(clean) : undefined }); }} placeholderTextColor="#777" /></K.Field>
+                      <K.Field label="Online" hint="Leave empty for the real count"><TextInput defaultValue={fake.online == null ? "" : String(fake.online)} placeholder="4000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/D/g, ""); set({ online: clean ? Number(clean) : undefined }); }} placeholderTextColor="#777" /></K.Field>
                       <ToggleRow label="Show me as a booster here" subLabel="Boosting icon by your name in this server" value={fake.booster === true} onPress={() => set({ booster: !fake.booster })} />
                   </> : null}
               </K.Section>;
@@ -3255,7 +3290,7 @@ jobs:
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
-                      for (const step of [installGiftHook, installBoostHooks, installOrbHooks, applyFakeNitro]) { try { step(); } catch {} }
+                      for (const step of [installGiftHook, installBoostHooks, installOrbHooks, installSwitcherHook, applyFakeNitro]) { try { step(); } catch {} }
                       // The wallet store registers late; keep trying for a minute.
                       let orbTries = 0;
                       const orbTimer = setInterval(() => { try { installOrbHooks(); } catch {} if ((orbHooked.currency && orbHooked.wallet) || ++orbTries > 20) clearInterval(orbTimer); }, 3000);

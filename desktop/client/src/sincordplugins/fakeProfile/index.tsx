@@ -2019,6 +2019,7 @@ fakeObfuscatedEmail(real: string | null) {
         const generation = ++profileRuntimeGeneration;
         installPresenceHooks(userId => isMe(userId) ? (isEnabled ? storedData : undefined) : isRealProfileView(userId) ? undefined : viewedSharedProfile(userId));
         installTagIconSwap();
+        try { installSwitcherHook(); } catch { }
         this._catalogListener = onCatalogLoaded(() => { cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++; forceAccountPanelRerender(); });
         // Also hook the public resolver: a source-text patch alone can miss
         // Discord's newer/minified resolver layout.
@@ -2103,6 +2104,7 @@ fakeObfuscatedEmail(real: string | null) {
 
     stop() {
         profileRuntimeActive = false;
+        try { uninstallSwitcherHook(); } catch { }
         try { const d = FluxDispatcher as any; if (Array.isArray(d._interceptors)) d._interceptors = d._interceptors.filter((fn: any) => fn !== rewriteFetchedProfile && fn !== rewriteBadgeDirectory); } catch { }
         reloadDiscordProfile(activeUserId());
         profileRuntimeGeneration++;
@@ -2385,6 +2387,29 @@ function reloadBadgeDirectory(userId: string | null | undefined) {
 // Re-run the badge rewrite on the badge info Discord already has (no network). A fetch
 // can be skipped while Discord's copy is fresh, which left badges without fake data.
 const badgeDirectoryStore = findStoreLazy("BadgeDirectoryStore");
+
+// Switch Accounts list: show the spoofed username for the signed-in account.
+const multiAccountStore = findStoreLazy("MultiAccountStore");
+let switcherOriginals: { getUsers: any; getValidUsers: any; } | null = null;
+function spoofSwitcherUsers(users: any) {
+    if (!profileRuntimeActive || !isEnabled || !storedData.username || !Array.isArray(users)) return users;
+    return users.map(user => user && isMe(user.id) ? { ...user, username: storedData.username } : user);
+}
+function installSwitcherHook() {
+    if (switcherOriginals || !multiAccountStore?.getUsers) return;
+    const store: any = multiAccountStore;
+    switcherOriginals = { getUsers: store.getUsers, getValidUsers: store.getValidUsers };
+    const { getUsers, getValidUsers } = switcherOriginals;
+    store.getUsers = function (...args: any[]) { return spoofSwitcherUsers(getUsers.apply(this, args)); };
+    if (getValidUsers) store.getValidUsers = function (...args: any[]) { return spoofSwitcherUsers(getValidUsers.apply(this, args)); };
+}
+function uninstallSwitcherHook() {
+    if (!switcherOriginals) return;
+    const store: any = multiAccountStore;
+    store.getUsers = switcherOriginals.getUsers;
+    if (switcherOriginals.getValidUsers) store.getValidUsers = switcherOriginals.getValidUsers;
+    switcherOriginals = null;
+}
 function reapplyBadgeDirectory(userId: string | null | undefined) {
     if (!userId) return;
     try {
