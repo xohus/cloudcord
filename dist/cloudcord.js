@@ -16038,6 +16038,23 @@
   function boostFor(guildId) {
     return guildId ? extrasState().boosts?.[guildId] : void 0;
   }
+  function fakeFeatures(real, partner, verified) {
+    var base = real && typeof real === "object" ? real : {};
+    var key = (partner ? "P" : "") + (verified ? "V" : "");
+    var hit = featureCache.get(base);
+    if (hit && hit.key === key)
+      return hit.value;
+    var value = new Set(real ?? []);
+    if (partner)
+      value.add("PARTNERED");
+    if (verified)
+      value.add("VERIFIED");
+    featureCache.set(base, {
+      key,
+      value
+    });
+    return value;
+  }
   function installOrbHooks() {
     var currency = orbHooked.currency ? null : findByStoreName("VirtualCurrencyStore");
     var real = currency && Object.getOwnPropertyDescriptor(Object.getPrototypeOf(currency), "balance")?.get;
@@ -16064,14 +16081,26 @@
     if (switcherHooked || typeof store?.getUsers !== "function")
       return;
     switcherHooked = true;
+    var cache = /* @__PURE__ */ new WeakMap();
     var spoof = (users) => {
       try {
         if (!preview.enabled || !preview.username || !currentUserId || !Array.isArray(users))
           return users;
-        return users.map((user) => user && String(user.id) === currentUserId ? {
+        var name = preview.username;
+        var hit = cache.get(users);
+        if (hit && hit.name === name)
+          return hit.result;
+        if (!users.some((user) => user && String(user.id) === currentUserId && user.username !== name))
+          return users;
+        var result = users.map((user) => user && String(user.id) === currentUserId ? {
           ...user,
-          username: preview.username
+          username: name
         } : user);
+        cache.set(users, {
+          name,
+          result
+        });
+        return result;
       } catch (e) {
         return users;
       }
@@ -16106,7 +16135,7 @@
       try {
         var guildId = args[0];
         var fake = boostFor(guildId);
-        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified))
+        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified || fake?.members != null || fake?.online != null))
           return guild;
         var overlay = guildOverlays.get(guild);
         if (!overlay)
@@ -16117,14 +16146,12 @@
                 return 3;
               if (now?.level && key === "premiumSubscriberCount")
                 return Math.max(14, target.premiumSubscriberCount ?? 0);
-              if (key === "features" && (now?.partner || now?.verified)) {
-                var features = new Set(target.features ?? []);
-                if (now.partner)
-                  features.add("PARTNERED");
-                if (now.verified)
-                  features.add("VERIFIED");
-                return features;
-              }
+              if (now?.members != null && (key === "memberCount" || key === "approximateMemberCount"))
+                return now.members;
+              if (now?.online != null && (key === "presenceCount" || key === "approximatePresenceCount"))
+                return now.online;
+              if (key === "features" && (now?.partner || now?.verified))
+                return fakeFeatures(target.features, !!now.partner, !!now.verified);
               if (key === "hasFeature" && (now?.partner || now?.verified))
                 return (feature) => now.partner && feature === "PARTNERED" || now.verified && feature === "VERIFIED" || target.hasFeature?.(feature);
               return Reflect.get(target, key, target);
@@ -18900,7 +18927,7 @@
       })
     });
   }
-  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, memberOverlays, overlaySet, boostHooksInstalled, orbHooked, fakeOrbCount, switcherHooked, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react7, import_react_native21, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, memberOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, switcherHooked, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -20049,6 +20076,7 @@
       guildOverlays = /* @__PURE__ */ new WeakMap();
       memberOverlays = /* @__PURE__ */ new WeakMap();
       overlaySet = /* @__PURE__ */ new WeakSet();
+      featureCache = /* @__PURE__ */ new WeakMap();
       boostHooksInstalled = false;
       orbHooked = {};
       fakeOrbCount = () => {
