@@ -110,6 +110,7 @@ jobs:
           cp "../ios/runtime/src/lib/utils/profileSyncNetwork.ts" "src/lib/utils/profileSyncNetwork.ts"
           cp "../ios/runtime/src/core/ui/settings/components/FakeProfileGlass.tsx" "src/core/ui/settings/components/FakeProfileGlass.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/ProfileEditorKit.tsx" "src/core/ui/settings/components/ProfileEditorKit.tsx"
+          cp "../ios/runtime/src/core/ui/settings/components/ProfileStudio.tsx" "src/core/ui/settings/components/ProfileStudio.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/CustomSocial.tsx" "src/core/ui/settings/components/CustomSocial.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/CustomBadgeBeta.tsx" "src/core/ui/settings/components/CustomBadgeBeta.tsx"
           cp "../ios/runtime/src/core/ui/settings/components/LocalProfiles.tsx" "src/core/ui/settings/components/LocalProfiles.tsx"
@@ -356,11 +357,10 @@ jobs:
           import type { ProfileTab } from "@core/ui/settings/components/FakeProfileGlass";
           // FakeProfile is imported for its profile patches during startup.
           // Its new visual/native dependencies must load only when the page renders.
-          function Card(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassCard; return <Component {...props} />; }
-          function GlassButton(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").GlassButton; return <Component {...props} />; }
-          function ProfileTabs(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").ProfileTabs; return <Component {...props} />; }
-          function OverviewPanel(props: any) { const Component = require("@core/ui/settings/components/FakeProfileGlass").ProfileOverview; return <Component {...props} />; }
-          function TextInput(props: import("react-native").TextInputProps) { const Component = require("@core/ui/settings/components/FakeProfileGlass").DiscordInput; return <Component {...props} />; }
+          function Card(props: any) { const Component = require("@core/ui/settings/components/ProfileStudio").Panel; return <Component {...props} />; }
+          function GlassButton({ label, onPress, disabled }: { label: string; onPress: () => void; muted?: boolean; disabled?: boolean }) { const S = require("@core/ui/settings/components/ProfileStudio"); return <S.Button label={label} onPress={onPress} disabled={disabled} />; }
+          function OverviewPanel(props: any) { const Component = require("@core/ui/settings/components/ProfileStudio").StudioHome; return <Component {...props} />; }
+          function TextInput(props: import("react-native").TextInputProps) { const Component = require("@core/ui/settings/components/ProfileStudio").Input; return <Component {...props} />; }
           function ProfileGlyph() {
               let icon: any;
               try { icon = require("@lib/api/assets").findAssetId("UserIcon"); } catch {}
@@ -385,7 +385,26 @@ jobs:
           import { findByName, findByNameLazy, findByProps, findByStoreName } from "@metro";
           import { metroModules } from "@metro/internals/modules";
           import { FluxDispatcher, NavigationNative } from "@metro/common";
-          import { Text, TableRow, TableRadioGroup, TableRadioRow, Button } from "@metro/common/components";
+          import { Text, TableRow as NativeTableRow } from "@metro/common/components";
+          // Profile Studio stand-ins for Discord's table rows and buttons, so the whole editor has one look.
+          function Button({ text, variant, disabled, onPress }: { text: string; variant?: string; size?: string; disabled?: boolean; onPress: () => void }) {
+              const S = require("@core/ui/settings/components/ProfileStudio");
+              return <S.Button label={text} primary={variant === "primary"} danger={variant === "destructive"} disabled={disabled} onPress={onPress} />;
+          }
+          function TableRow(props: any) { const S = require("@core/ui/settings/components/ProfileStudio"); return <S.Row {...props} />; }
+          TableRow.Icon = function TableRowIcon(props: any) { const S = require("@core/ui/settings/components/ProfileStudio"); return <S.RowIcon {...props} />; };
+          TableRow.TrailingText = function TableRowTrailingText(props: any) { const S = require("@core/ui/settings/components/ProfileStudio"); return <S.RowText {...props} />; };
+          function TableRadioGroup({ title, value, onChange, children }: { title?: string; value: any; onChange: (value: any) => void; hasIcons?: boolean; children: any }) {
+              const list = (Array.isArray(children) ? children.flat() : [children]).filter(isValidElement);
+              return <View style={{ gap: 8 }}>
+                  {title ? <Text variant="text-xs/bold" color="text-muted">{String(title).toUpperCase()}</Text> : null}
+                  {list.map((child: any) => cloneElement(child, { selected: child.props.value === value, onPress: () => onChange(child.props.value) }))}
+              </View>;
+          }
+          function TableRadioRow({ label, icon, selected, onPress }: { label: string; value: any; icon?: any; selected?: boolean; onPress?: () => void }) {
+              const S = require("@core/ui/settings/components/ProfileStudio");
+              return <S.Row label={label} icon={icon} selected={selected} onPress={onPress} />;
+          }
           import { Component, cloneElement, createElement, isValidElement, useEffect, useReducer, useRef, useState } from "react";
           import { Alert, AppState, FlatList, Image, NativeModules, Pressable, ScrollView, View } from "react-native";
 
@@ -1439,7 +1458,7 @@ jobs:
                       if (!/^\d{15,22}$/.test(id) || isCurrentUser(id) || props?.__cloudcordRealProfileMenu) return rendered;
                       if (Array.isArray(props?.options)) return cloneElement(rendered, { __cloudcordRealProfileMenu: true, options: [...props.options, option(id)] });
                       if (!props?.children) return rendered;
-                      return cloneElement(rendered, { __cloudcordRealProfileMenu: true, children: [props.children, createElement(TableRow, { key: "cloudcord-profile-view", label: option(id).label, onPress: option(id).onPress })] });
+                      return cloneElement(rendered, { __cloudcordRealProfileMenu: true, children: [props.children, createElement(NativeTableRow, { key: "cloudcord-profile-view", label: option(id).label, onPress: option(id).onPress })] });
                   });
               }
           }
@@ -3221,7 +3240,7 @@ jobs:
               showToast("Fake boost message added to the channel.");
           }
           function BoostSection({ refresh }: { refresh: () => void }) {
-              const K = require("@core/ui/settings/components/ProfileEditorKit") as typeof import("@core/ui/settings/components/ProfileEditorKit");
+              const K = require("@core/ui/settings/components/ProfileStudio") as typeof import("@core/ui/settings/components/ProfileStudio");
               const [times, setTimes] = useState(1);
               const [reached, setReached] = useState(0);
               const [chosenId, setChosenId] = useState(() => String((findByStoreName("SelectedGuildStore") as any)?.getGuildId?.() ?? ""));
@@ -3310,7 +3329,7 @@ jobs:
           }
           function ExtrasCard({ onReset }: { onReset: () => void }) {
               const [, force] = useReducer((x: number) => x + 1, 0);
-              const K = require("@core/ui/settings/components/ProfileEditorKit") as typeof import("@core/ui/settings/components/ProfileEditorKit");
+              const K = require("@core/ui/settings/components/ProfileStudio") as typeof import("@core/ui/settings/components/ProfileStudio");
               const [friendId, setFriendId] = useState("");
               const [inputKey, setInputKey] = useState(0);
               const add = async () => { if (await addFakeFriendRequest(friendId)) { setFriendId(""); setInputKey(key => key + 1); } force(); };
@@ -3580,7 +3599,7 @@ jobs:
               return new Date(iso + "T12:00:00Z").getTime() <= Date.now() ? iso : null;
           }
           function DateInput({ label, value, onSave }: { label: string; value: string; onSave: (value: string) => void }) {
-              const K = require("@core/ui/settings/components/ProfileEditorKit");
+              const K = require("@core/ui/settings/components/ProfileStudio");
               const [draft, setDraft] = useState(value || "");
               const [error, setError] = useState("");
               const commit = (text: string) => {
@@ -3598,14 +3617,14 @@ jobs:
           }
 
           function ToggleRow({ label, subLabel, value, onPress }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {
-              const { TableSwitchRow } = require("@metro/common/components");
-              return <View style={{ borderRadius: 16, overflow: "hidden" }}><TableSwitchRow label={label} subLabel={subLabel} value={value} onValueChange={onPress} /></View>;
+              const { Toggle } = require("@core/ui/settings/components/ProfileStudio");
+              return <Toggle label={label} subLabel={subLabel} value={value} onPress={onPress} />;
           }
 
           function DurationSelect({ label, value, onPress }: { label: string; value: number; onPress: () => void }) {
-              const { TableRow } = require("@metro/common/components");
+              const { PickRow } = require("@core/ui/settings/components/ProfileStudio");
               const selected = label === "Gifting badge" ? (GIFT_LEVELS[value]?.name || "None") : label === "Nitro badge" ? NITRO_LABELS.get(value) : label.includes("booster") ? boosterLabel(value) : durationLabel(value);
-              return <TableRow arrow label={label} trailing={<TableRow.TrailingText text={selected || "None"} />} onPress={onPress} />;
+              return <PickRow label={label} value={selected || "None"} onPress={onPress} />;
           }
 
           const PROFILE_COLORS = [
@@ -3856,7 +3875,7 @@ jobs:
                                   </View>
                                   <View style={{ flexDirection: "row", alignItems: "center", padding: 10, gap: 8 }}>
                                       <Text variant="text-xs/medium" color="text-muted" numberOfLines={1} style={{ flex: 1 }}>{value.name}</Text>
-                                      <Button size="sm" variant="secondary" text="Clear" onPress={() => clearMedia(field)} />
+                                      <K.Button label="Clear" onPress={() => clearMedia(field)} />
                                   </View>
                               </View>
                           )}
@@ -3876,7 +3895,7 @@ jobs:
                   }
               };
 
-              const K = require("@core/ui/settings/components/ProfileEditorKit") as typeof import("@core/ui/settings/components/ProfileEditorKit");
+              const K = require("@core/ui/settings/components/ProfileStudio") as typeof import("@core/ui/settings/components/ProfileStudio");
               const [showPreview, setShowPreview] = useState(false);
               const [catalog, setCatalog] = useState<Catalog | null>(collectiblesCatalog);
               const [catalogStatus, setCatalogStatus] = useState<{ loading?: boolean; error?: string }>({ loading: !collectiblesCatalog });
@@ -3898,11 +3917,11 @@ jobs:
               return (
                   <ScrollView style={{ flex: 1, width: "100%" }} contentContainerStyle={{ width: "100%", maxWidth: 640, alignSelf: "center", paddingHorizontal: 12, paddingTop: 24, paddingBottom: 48 }} keyboardShouldPersistTaps="handled">
                       <View style={{ width: "100%", gap: 24 }}>
-                          <Card>
-                              <ToggleRow label="Use custom profile" subLabel={preview.enabled ? "On: your edits show on this device" : "Off: you see your real profile"} value={preview.enabled} onPress={() => update("enabled", !preview.enabled, true)} />
-                              <TableRow arrow label={showPreview ? "Hide preview" : "Show preview"} subLabel="A quick look at your edits" icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("EyeIcon") || require("@lib/api/assets").findAssetId("UserIcon")} />} onPress={() => setShowPreview(!showPreview)} />
-                              <TableRow arrow label="Preview my profile" subLabel="See your edits in Discord's profile layout" icon={<TableRow.Icon source={require("@lib/api/assets").findAssetId("UserIcon")} />} onPress={openPreview} />
-                          </Card>
+                          <K.StudioHero name={preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You"} username={preview.username || realCurrentUser?.username || "username"}
+                              avatar={preview.avatarMedia?.uri || (() => { try { return realCurrentUser?.getAvatarURL?.() || undefined; } catch { return undefined; } })()} banner={preview.bannerMedia?.uri}
+                              accent={preview.profileColorsEnabled ? preview.primaryColor : undefined} status={preview.presenceStatus || "online"}
+                              enabled={preview.enabled} onToggle={() => update("enabled", !preview.enabled, true)} syncLabel={rootSettings.fakeProfileLocalOnly ? "This device" : "Synced"}
+                              onPreview={openPreview} quickLook={showPreview} onQuickLook={() => setShowPreview(!showPreview)} />
                           {showPreview ? <Card><View style={{ padding: 16 }}>
                               <K.PreviewCard name={preview.displayName || realCurrentUser?.globalName || realCurrentUser?.username || "You"} username={preview.username || realCurrentUser?.username || "username"} pronouns={preview.pronouns}
                                   avatar={preview.avatarMedia?.uri || (() => { try { return realCurrentUser?.getAvatarURL?.() || undefined; } catch { return undefined; } })()} banner={preview.bannerMedia?.uri}
@@ -3914,7 +3933,8 @@ jobs:
                                   bio={preview.bio} frame={preview.profileFrame ? catalog?.frames.find(item => item.skuId === preview.profileFrame?.skuId)?.label || "Selected" : undefined}
                                   effect={preview.profileEffect ? catalog?.effects.find(item => item.skuId === preview.profileEffect?.skuId)?.title || "Selected" : undefined} />
                           </View></Card> : null}
-                          <ProfileTabs selected={activeTab} onSelect={setActiveTab} status={!preview.enabled ? "Off" : rootSettings.fakeProfileLocalOnly ? "This device" : "Synced"} />
+                          <K.StudioNav selected={activeTab} onSelect={setActiveTab} />
+                          {activeTab !== "overview" ? <K.StudioTitle tab={activeTab} /> : null}
                           {activeTab === "overview" ? (() => {
                               // Dashboard home: profile stats, a completion checklist and quick actions.
                               const badgeCount = Object.values(preview.selectedBadges || {}).filter(Boolean).length + (preview.nitroEnabled ? 1 : 0) + (preview.boostMonths > 0 ? 1 : 0) + (preview.giftLevel >= 0 ? 1 : 0);
@@ -4016,8 +4036,8 @@ jobs:
                                   <K.Section title="Name style" description="Font, effect and colors for your display name.">
                                       <NameStylePreview />
                                       <View style={{ borderRadius: 16, overflow: "hidden" }}>
-                                          <TableRow arrow label="Font" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("fontId").find(option => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"} />} onPress={() => chooseNameStyle("fontId")} />
-                                          <TableRow arrow label="Effect" trailing={<TableRow.TrailingText text={nativeNameStyleOptions("effectId").find(option => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"} />} onPress={() => chooseNameStyle("effectId")} />
+                                          <K.PickRow label="Font" value={nativeNameStyleOptions("fontId").find(option => option.value === (preview.displayNameStyles?.fontId ?? 0))?.label || "Default"} onPress={() => chooseNameStyle("fontId")} />
+                                          <K.PickRow label="Effect" value={nativeNameStyleOptions("effectId").find(option => option.value === (preview.displayNameStyles?.effectId ?? 0))?.label || "None"} onPress={() => chooseNameStyle("effectId")} />
                                           {[0, 1, 2].slice(0, Math.max(1, Math.min(3, Number((findByProps("getEffectColorCount") as any)?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map(index => {
                                           const value = `#${(preview.displayNameStyles?.colors[index] ?? 0xffffff).toString(16).padStart(6, "0")}`;
                                           const apply = (color: string) => { const style = preview.displayNameStyles || { fontId: 11, effectId: 1, colors: [0xffffff] }; const colors = [0, 1, 2].map(i => style.colors[i] ?? style.colors[0] ?? 0xffffff); colors[index] = parseInt(color.replace("#", ""), 16); update("displayNameStyles", { ...style, colors }, true); navigation.goBack(); };
@@ -4032,7 +4052,7 @@ jobs:
                                           <K.Field label="Tag text" hint="1–4 characters"><TextInput defaultValue={preview.serverTag?.tag || ""} placeholder="CC" maxLength={4} onChangeText={value => update("serverTag", { ...(preview.serverTag || { guildId: "", badge: "" }), tag: value }, true)} placeholderTextColor="#777" /></K.Field>
                                           <K.Field label="Server ID" error={preview.serverTag?.guildId && !/^\d{15,22}$/.test(preview.serverTag.guildId) ? "Server IDs are 15–22 digits." : undefined}><TextInput defaultValue={preview.serverTag?.guildId || ""} placeholder="123456789012345678" keyboardType="number-pad" onChangeText={value => update("serverTag", { ...(preview.serverTag || { tag: "", badge: "" }), guildId: value.trim() }, true)} placeholderTextColor="#777" /></K.Field>
                                           <View style={{ borderRadius: 16, overflow: "hidden" }}>
-                                              <TableRow arrow label="Tag Icon" subLabel="Choose a Discord server-tag icon" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Server Tag Icon", render: () => <ServerTagPicker onSelect={tag => { update("serverTag", { ...tag, tag: preview.serverTag?.tag || tag.tag }, true); navigation.goBack(); }} /> })} />
+                                              <K.PickRow label="Tag Icon" subLabel="Choose a Discord server-tag icon" onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Server Tag Icon", render: () => <ServerTagPicker onSelect={tag => { update("serverTag", { ...tag, tag: preview.serverTag?.tag || tag.tag }, true); navigation.goBack(); }} /> })} />
                                           </View>
                                           <ActionButton label="Copy my current tag" muted onPress={() => { const user = safeStore("UserStore")?.getCurrentUser?.(); const tag = user?.primaryGuild || user?.primary_guild; if (tag?.tag) update("serverTag", { tag: tag.tag, guildId: tag.identityGuildId || tag.identity_guild_id, badge: tag.badge || "" }, true); }} />
                                       </> : null}

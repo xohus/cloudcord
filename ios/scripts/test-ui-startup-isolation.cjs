@@ -7,7 +7,7 @@ const page = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/index.
 assert.doesNotMatch(page, /import CustomBadgeBeta|import \{ GlassCard/);
 assert.match(page, /function Card\(props: any\) \{ const Component = require/);
 assert.match(page, /function CustomBadgeBeta\(\) \{ const Component = require/);
-assert.match(page, /<ProfileTabs selected=/);
+assert.match(page, /<K.StudioNav selected=/);
 assert.match(page, /function ActionButton/);
 const native = fs.readFileSync(path.join(root, 'ios/native-ios/Sources/Bridgeless.xm'), 'utf8');
 assert.doesNotMatch(native, /initializeThemeColors|current-theme\.json/);

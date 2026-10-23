@@ -2,8 +2,8 @@ import type { CustomConnectionPreview, CustomFriendPreview, ProfileAppearance } 
 import { fetchConnectionPreview, searchConnectionItems, normalizeCustomSocial, mergeCustomSocialLookup, customSocialValidationErrors, customPreviewUsername, customConnectionServiceName } from "@lib/api/profileAppearance";
 import { NavigationNative } from "@metro/common";
 import { findByProps } from "@metro";
-import { Text, Button, TableRow } from "@metro/common/components";
-import { DiscordInput } from "./FakeProfileGlass";
+import { Text } from "@metro/common/components";
+import { DiscordButton as Button, DiscordInput, TableRow } from "./ProfileStudio";
 import { useState, useRef, useEffect } from "react";
 import { Image, Linking, ScrollView, View } from "react-native";
 

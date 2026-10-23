@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Alert, View } from "react-native";
 import { Text } from "@metro/common/components";
 import { settings } from "@lib/api/settings";
-import { GlassButton, DiscordInput as TextInput } from "./FakeProfileGlass";
+import { GlassButton, DiscordInput as TextInput } from "./ProfileStudio";
 
 export default function LocalProfiles({ badges, refresh }: { badges: any[]; refresh: () => void }) {
     const [id, setId] = useState("");

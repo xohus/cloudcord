@@ -1,5 +1,6 @@
 import { Alert, Linking, View } from "react-native";
-import { Button, Text } from "@metro/common/components";
+import { Text } from "@metro/common/components";
+import { DiscordButton as Button } from "./ProfileStudio";
 
 export default function CustomBadgeBeta() {
     const open = async () => {

@@ -70,7 +70,7 @@ const blackProfile = mobileContext.decorateSharedProfile({}, realUser.id, { prof
 assert.deepEqual(Array.from(blackProfile.themeColors), [0, 0xffffff], 'nested shared profile gradients preserve a black endpoint');
 assert.doesNotMatch(page, /backgroundColor: "#111521"|preview\.primaryColor \|\| "#5865f2"/);
 assert.match(page, /showProfile\(\{ userId \}\)/);
-assert.match(page, /label="Preview my profile"/);
+assert.match(page, /onPreview={openPreview}/);
 for (const file of ['components/LocalProfiles.tsx', 'pages/Recovery/index.tsx', 'components/CustomBadgeBeta.tsx', 'components/FakeProfileGlass.tsx', 'pages/Addons/index.tsx', 'pages/Diagnostics/index.tsx', 'pages/General/index.tsx', 'pages/Customization/index.tsx', 'pages/BotCord/index.tsx', 'index.ts']) {
     esbuild.transformSync(fs.readFileSync('ios/runtime/src/core/ui/settings/' + file, 'utf8'), { loader: 'tsx' });
 }
