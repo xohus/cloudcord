@@ -8,7 +8,7 @@
 // fake Nitro gift link, local fake friend requests, leave all servers and a full reset.
 
 import * as DataStore from "@api/DataStore";
-import { Alerts, ChannelStore, FluxDispatcher, GuildMemberStore, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
+import { Alerts, ChannelStore, Flux, FluxDispatcher, GuildMemberStore, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
 
 import { Grid2, Section, SelectField, Switch } from "./editorUi";
 
@@ -32,7 +32,7 @@ const GIFT_STYLES = [
 const INCOMING_REQUEST = 3;
 
 interface BoostFake { level?: boolean; booster?: boolean; }
-interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; fakeRequests?: { id: string; user: any; since: string; }[]; }
+interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; fakeRequests?: { id: string; user: any; since: string; }[]; fakeOrbs?: number; }
 
 function readExtras(): Extras {
     try { return JSON.parse(localStorage.getItem(LS_EXTRAS) || "{}") || {}; } catch { return {}; }
@@ -316,12 +316,50 @@ function confirmReset() {
     });
 }
 
+// Fake orbs: the wallet shows our number instead of the real balance, only on this device.
+const orbStores: { currency?: any; wallet?: any; } = {};
+const fakeOrbCount = () => typeof extras.fakeOrbs === "number" && extras.fakeOrbs >= 0 ? extras.fakeOrbs : null;
+// Stores load lazily, so this is safe to call again; it hooks whatever is new.
+function installOrbHooks() {
+    const all: any[] = (Flux as any)?.Store?.getAll?.() ?? [];
+    const get = (name: string) => all.find((store: any) => store.getName?.() === name);
+    const currency = orbStores.currency ? null : get("VirtualCurrencyStore");
+    const real = currency && Object.getOwnPropertyDescriptor(Object.getPrototypeOf(currency), "balance")?.get;
+    if (real) {
+        Object.defineProperty(currency, "balance", { configurable: true, get() { return fakeOrbCount() ?? real.call(this); } });
+        orbStores.currency = currency;
+    }
+    const wallet = orbStores.wallet ? null : get("WalletBalanceStore");
+    if (wallet?.getBalance) {
+        const realGet = wallet.getBalance;
+        wallet.getBalance = function (...args: any[]) { return fakeOrbCount() ?? realGet.apply(this, args); };
+        wallet.__ccRealGetBalance = realGet;
+        orbStores.wallet = wallet;
+    }
+}
+function uninstallOrbHooks() {
+    const { currency, wallet } = orbStores;
+    if (currency) delete currency.balance;
+    if (wallet?.__ccRealGetBalance) { wallet.getBalance = wallet.__ccRealGetBalance; delete wallet.__ccRealGetBalance; }
+    refreshOrbs();
+    orbStores.currency = orbStores.wallet = undefined;
+}
+function refreshOrbs() {
+    for (const store of [orbStores.currency, orbStores.wallet]) try { store?.emitChange?.(); } catch { }
+}
+
+let orbRetry: ReturnType<typeof setInterval> | undefined;
 export function startExtras() {
+    installOrbHooks();
+    // The wallet store registers late; keep trying for a minute.
+    let tries = 0;
+    orbRetry = setInterval(() => { installOrbHooks(); if ((orbStores.currency && orbStores.wallet) || ++tries > 20) clearInterval(orbRetry); }, 3000);
     installGiftHook();
     installBoostHooks();
     applyFakeNitro();
     restoreFakeRequests();
     FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro);
+    FluxDispatcher.subscribe("CONNECTION_OPEN", installOrbHooks);
     FluxDispatcher.subscribe("CONNECTION_OPEN", restoreSoon);
     for (const type of SHOP_OPEN) FluxDispatcher.subscribe(type, pauseForShop);
     for (const type of SHOP_CLOSE) FluxDispatcher.subscribe(type, resumeAfterShop);
@@ -332,7 +370,10 @@ export function stopExtras() {
     shopPaused = false;
     uninstallGiftHook();
     uninstallBoostHooks();
+    clearInterval(orbRetry);
+    uninstallOrbHooks();
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", applyFakeNitro);
+    FluxDispatcher.unsubscribe("CONNECTION_OPEN", installOrbHooks);
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", restoreSoon);
     if (extras.fakeNitro) { const prev = extras; extras = { ...prev, fakeNitro: false }; applyFakeNitro(); extras = prev; }
     // Hide them while stopped, but keep them saved for next start.
@@ -348,6 +389,9 @@ export function ExtrasPanel() {
     return <>
         <Section title="Fake Nitro" description="Only on this device. Nothing changes for other people.">
             <Switch label="Act like I have Nitro" description="Removes Nitro previews, upsells and Get Nitro prompts. Real Nitro features like big uploads still need real Nitro." checked={state.fakeNitro === true} onChange={value => { writeExtras({ ...extras, fakeNitro: value }); applyFakeNitro(); }} />
+        </Section>
+        <Section title="Fake orbs" description="Shows this many orbs in your wallet, only on this device. You can't spend them.">
+            <input className="cpx-input" type="number" min={0} placeholder="Leave empty for your real balance" value={state.fakeOrbs ?? ""} onChange={event => { const text = event.currentTarget.value; const value = text === "" ? undefined : Math.max(0, Math.floor(Number(text) || 0)); installOrbHooks(); writeExtras({ ...extras, fakeOrbs: value }); refreshOrbs(); }} />
         </Section>
         <Section title="Fake Nitro gift" description="A gift link that shows as a Nitro gift only on your device. Everyone else sees an invalid link, and it can't be redeemed.">
             <Grid2>

@@ -2951,7 +2951,7 @@ jobs:
               { value: 5, label: "Cake" }, { value: 6, label: "Chest" }, { value: 7, label: "Coffee" }, { value: 8, label: "Seasonal box" },
               { value: 9, label: "Seasonal cake" }, { value: 10, label: "Seasonal chest" }, { value: 11, label: "Seasonal coffee" }, { value: 12, label: "Nitroween" }
           ];
-          type ExtrasState = { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, any> };
+          type ExtrasState = { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, any>; fakeOrbs?: number };
           const fakeRequestIds = new Set<string>();
           function extrasState(): ExtrasState { const value = (settings as any)[EXTRAS_KEY]; return value && typeof value === "object" ? value : {}; }
           function setExtras(next: ExtrasState) { (settings as any)[EXTRAS_KEY] = next; }
@@ -3069,6 +3069,24 @@ jobs:
           // Our own overlays, so a guild that comes back through getGuild is never wrapped twice.
           const overlaySet = new WeakSet<object>();
           let boostHooksInstalled = false;
+          // Fake orbs: the wallet shows our number instead of the real balance, only on this device.
+          const orbHooked: { currency?: any; wallet?: any } = {};
+          const fakeOrbCount = () => { const value = extrasState().fakeOrbs; return typeof value === "number" && value >= 0 ? value : null; };
+          function installOrbHooks() {
+              const currency = orbHooked.currency ? null : findByStoreName("VirtualCurrencyStore") as any;
+              const real = currency && Object.getOwnPropertyDescriptor(Object.getPrototypeOf(currency), "balance")?.get;
+              if (real) {
+                  Object.defineProperty(currency, "balance", { configurable: true, get() { return fakeOrbCount() ?? real.call(this); } });
+                  orbHooked.currency = currency;
+              }
+              const wallet = orbHooked.wallet ? null : findByStoreName("WalletBalanceStore") as any;
+              if (typeof wallet?.getBalance === "function") {
+                  const realGet = wallet.getBalance;
+                  wallet.getBalance = function (...args: any[]) { return fakeOrbCount() ?? realGet.apply(this, args); };
+                  orbHooked.wallet = wallet;
+              }
+          }
+          function refreshOrbs() { for (const store of [orbHooked.currency, orbHooked.wallet]) { try { store?.emitChange?.(); } catch {} } }
           function installBoostHooks() {
               if (boostHooksInstalled) return;
               const guilds = findByStoreName("GuildStore") as any;
@@ -3184,6 +3202,9 @@ jobs:
                   <K.Section title="Fake Nitro" description="Only on this device. Nothing changes for other people.">
                       <ToggleRow label="Act like I have Nitro" subLabel="Removes Nitro previews and upsells. Real Nitro features still need Nitro" value={state.fakeNitro === true} onPress={() => save({ ...state, fakeNitro: !state.fakeNitro })} />
                   </K.Section>
+                  <K.Section title="Fake orbs" description="Shows this many orbs in your wallet, only on this device. You can't spend them.">
+                      <K.Field label="Orbs" hint="Leave empty for your real balance"><TextInput defaultValue={state.fakeOrbs == null ? "" : String(state.fakeOrbs)} placeholder="1000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/\D/g, ""); try { installOrbHooks(); } catch {} save({ ...extrasState(), fakeOrbs: clean ? Math.min(Number(clean), 999999999) : undefined }); refreshOrbs(); }} placeholderTextColor="#777" /></K.Field>
+                  </K.Section>
                   <K.Section title="Fake Nitro gift" description="Shows as a Nitro gift only on your device. Everyone else sees an invalid link, and it can't be redeemed.">
                       <K.Field label="Gift"><K.Chips options={GIFT_PLANS.map(item => ({ value: item.id, label: item.label }))} value={state.giftPlan ?? GIFT_PLANS[0].id} onChange={(value: string) => save({ ...state, giftPlan: value, giftCode: state.giftCode && newGiftCode() })} /></K.Field>
                       <K.Field label="Design"><K.Chips options={GIFT_STYLES} value={state.giftStyle ?? 4} onChange={(value: number) => save({ ...state, giftStyle: value, giftCode: state.giftCode && newGiftCode() })} /></K.Field>
@@ -3234,7 +3255,10 @@ jobs:
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
-                      for (const step of [installGiftHook, installBoostHooks, applyFakeNitro]) { try { step(); } catch {} }
+                      for (const step of [installGiftHook, installBoostHooks, installOrbHooks, applyFakeNitro]) { try { step(); } catch {} }
+                      // The wallet store registers late; keep trying for a minute.
+                      let orbTries = 0;
+                      const orbTimer = setInterval(() => { try { installOrbHooks(); } catch {} if ((orbHooked.currency && orbHooked.wallet) || ++orbTries > 20) clearInterval(orbTimer); }, 3000);
                       const restoreLater = () => setTimeout(() => { try { restoreFakeRequests(); } catch {} }, 1500);
                       restoreLater();
                       try { FluxDispatcher.subscribe("CONNECTION_OPEN", () => { try { applyFakeNitro(); } catch {} restoreLater(); }); } catch {}
