@@ -11396,14 +11396,14 @@
       ]
     });
   }
-  function ChoiceGrid({ items, keyOf, labelOf, imageOf, isSelected, onPick, noneLabel, noneSelected, onNone, wide, status, onRetry, SearchInput }) {
+  function ChoiceGrid({ items, keyOf, labelOf: labelOf2, imageOf, isSelected, onPick, noneLabel, noneSelected, onNone, wide, status, onRetry, SearchInput }) {
     var _loop2 = function(item2) {
-      cells.push(cell(keyOf(item2), labelOf(item2), imageOf(item2), isSelected(item2), () => onPick(item2)));
+      cells.push(cell(keyOf(item2), labelOf2(item2), imageOf(item2), isSelected(item2), () => onPick(item2)));
     };
     var [query, setQuery] = (0, import_react3.useState)("");
     var [limit, setLimit] = (0, import_react3.useState)(18);
     var needle = query.trim().toLowerCase();
-    var filtered = (0, import_react3.useMemo)(() => needle ? items.filter((item2) => labelOf(item2).toLowerCase().includes(needle)) : items, [
+    var filtered = (0, import_react3.useMemo)(() => needle ? items.filter((item2) => labelOf2(item2).toLowerCase().includes(needle)) : items, [
       items,
       needle
     ]);
@@ -12064,159 +12064,400 @@
   __export(LocalProfiles_exports, {
     default: () => LocalProfiles
   });
-  function LocalProfiles({ badges, refresh }) {
-    var [id, setId] = (0, import_react4.useState)("");
-    var [draft, setDraft] = (0, import_react4.useState)({});
+  function userStore() {
+    try {
+      return findByStoreName("UserStore");
+    } catch (e) {
+      return null;
+    }
+  }
+  function avatarOf(id, data) {
+    if (data?.avatar)
+      return data.avatar;
+    try {
+      return userStore()?.getUser?.(id)?.getAvatarURL?.(void 0, 64) || void 0;
+    } catch (e) {
+      return void 0;
+    }
+  }
+  function labelOf(id, data) {
+    var user = null;
+    try {
+      user = userStore()?.getUser?.(id);
+    } catch (e) {
+    }
+    return {
+      name: data?.displayName || user?.globalName || user?.username || "Unknown user",
+      username: data?.username || user?.username || id
+    };
+  }
+  function LocalProfiles({ badges, refresh, nitroOptions = [], boostOptions = [], giftOptions = [] }) {
     var state2 = settings;
-    var load = (value) => {
-      setId(value);
+    var [, redraw] = (0, import_react4.useReducer)((x2) => x2 + 1, 0);
+    var [id, setId] = (0, import_react4.useState)("");
+    var [editing, setEditing] = (0, import_react4.useState)(null);
+    var [draft, setDraft] = (0, import_react4.useState)({});
+    var saved = state2.cloudcordLocalProfiles || {};
+    var ids = Object.keys(saved);
+    var validId = /^\d{15,22}$/.test(id.trim());
+    var set = (key, value) => setDraft((previous) => ({
+      ...previous,
+      [key]: value
+    }));
+    var open = (target2) => {
+      var clean = target2.trim();
+      setId(clean);
+      setEditing(clean);
       setDraft({
-        ...state2.cloudcordLocalProfiles?.[value] || {}
+        ...saved[clean] || {}
       });
     };
     var save = () => {
-      if (!/^\d{15,22}$/.test(id))
-        return import_react_native17.Alert.alert("User ID needed", "Paste the Discord user ID.");
+      if (!editing)
+        return;
       for (var field of [
         "avatar",
         "banner"
       ]) {
         if (draft[field] && !/^https:\/\//i.test(draft[field]))
-          return import_react_native17.Alert.alert("Image link needed", "Use an HTTPS image link.");
+          return import_react_native17.Alert.alert("Image link needed", "Use an HTTPS image link for the picture and banner.");
       }
+      var clean = Object.fromEntries(Object.entries(draft).filter(([, value]) => value !== "" && value !== void 0 && value !== null));
       state2.cloudcordLocalProfiles = {
-        ...state2.cloudcordLocalProfiles || {},
-        [id]: {
-          ...draft,
+        ...saved,
+        [editing]: {
+          ...clean,
           __localOnly: true
         }
       };
       refresh();
-      import_react_native17.Alert.alert("Saved on this device", "Reopen their profile to see your changes. Nobody else sees these edits.");
+      redraw();
+      import_react_native17.Alert.alert("Saved on this device", "Open their profile to see it. Nobody else sees these changes.");
     };
-    var remove = () => import_react_native17.Alert.alert("Restore this profile?", "Only your local changes will be removed.", [
+    var restore = (target2) => import_react_native17.Alert.alert("Restore this profile?", "Your changes for this person are removed. Their real profile stays as it is.", [
       {
         text: "Cancel",
         style: "cancel"
       },
       {
         text: "Restore",
+        style: "destructive",
         onPress: () => {
           var next = {
-            ...state2.cloudcordLocalProfiles || {}
+            ...saved
           };
-          delete next[id];
+          delete next[target2];
           state2.cloudcordLocalProfiles = next;
-          setDraft({});
+          if (editing === target2) {
+            setEditing(null);
+            setDraft({});
+          }
           refresh();
+          redraw();
         }
       }
     ]);
-    var input = (label, key, multiline = false) => /* @__PURE__ */ jsxs(import_react_native17.View, {
-      style: {
-        gap: 6
-      },
-      children: [
-        /* @__PURE__ */ jsx(Text, {
-          style: {
-            fontSize: 13
-          },
-          children: label
-        }),
-        /* @__PURE__ */ jsx(Input, {
-          accessibilityLabel: label,
-          value: draft[key] ?? "",
-          onChangeText: (value) => setDraft({
-            ...draft,
-            [key]: value
-          }),
-          multiline,
-          autoCapitalize: "none",
-          maxLength: key === "bio" ? 500 : 2048,
-          style: {
-            padding: 14,
-            borderRadius: 16,
-            backgroundColor: "#1e1f22",
-            minHeight: multiline ? 90 : 48
-          }
-        })
-      ]
+    var input = (label, key, options = {}) => /* @__PURE__ */ jsx(Field, {
+      label,
+      children: /* @__PURE__ */ jsx(Input, {
+        accessibilityLabel: label,
+        value: draft[key] ?? "",
+        placeholder: options.placeholder,
+        onChangeText: (value) => set(key, value),
+        multiline: options.multiline,
+        autoCapitalize: "none",
+        autoCorrect: false,
+        maxLength: options.max ?? 2048
+      })
     });
+    var color2 = (label, key) => /* @__PURE__ */ jsx(Field, {
+      label,
+      hint: "Hex colour, like #5865F2. Empty keeps theirs.",
+      children: /* @__PURE__ */ jsx(Input, {
+        accessibilityLabel: label,
+        defaultValue: numberToHex(draft[key]),
+        placeholder: "#5865F2",
+        autoCapitalize: "characters",
+        autoCorrect: false,
+        maxLength: 7,
+        onChangeText: (value) => set(key, value.trim() ? hexToNumber(value) : void 0)
+      })
+    });
+    var target = editing ? labelOf(editing, draft) : null;
     return /* @__PURE__ */ jsxs(import_react_native17.View, {
       style: {
-        gap: 14,
-        padding: 16
+        gap: 24
       },
       children: [
-        /* @__PURE__ */ jsx(Text, {
-          style: {
-            fontSize: 18,
-            fontWeight: "600"
-          },
-          children: "Other profiles"
+        /* @__PURE__ */ jsxs(Section, {
+          title: "Other profiles",
+          description: "Change how other people's profiles look, only on this device. Nobody else sees it, and their Discord account doesn't change.",
+          children: [
+            /* @__PURE__ */ jsx(Field, {
+              label: "Discord user ID",
+              hint: "Long-press someone \u2192 Copy User ID",
+              children: /* @__PURE__ */ jsx(Input, {
+                accessibilityLabel: "Discord user ID",
+                placeholder: "123456789012345678",
+                keyboardType: "number-pad",
+                value: id,
+                onChangeText: (value) => setId(value.replace(/\D/g, ""))
+              })
+            }),
+            /* @__PURE__ */ jsx(Action, {
+              label: validId && saved[id.trim()] ? "Edit this person" : "Add this person",
+              primary: true,
+              disabled: !validId,
+              onPress: () => open(id)
+            })
+          ]
         }),
-        /* @__PURE__ */ jsx(Text, {
-          children: "Only on this device. This does not change their Discord account or shared profile."
+        /* @__PURE__ */ jsxs(Section, {
+          title: `People you edited (${ids.length})`,
+          children: [
+            !ids.length ? /* @__PURE__ */ jsx(Text, {
+              variant: "text-sm/medium",
+              color: "text-muted",
+              children: "Nobody yet. Add someone's user ID above."
+            }) : null,
+            ids.map((userId) => {
+              var data = saved[userId];
+              var label = labelOf(userId, data);
+              var avatar = avatarOf(userId, data);
+              var extras = [
+                data.nitro && Number(data.nitroLevel ?? -1) >= 0 ? "Nitro" : "",
+                Number(data.boostMonths ?? -1) >= 0 ? "Booster" : "",
+                data.badgeFlags || data.customBadgeIds?.length ? "Badges" : "",
+                data.avatar ? "Picture" : "",
+                data.bio ? "Bio" : ""
+              ].filter(Boolean).join(" \xB7 ");
+              return /* @__PURE__ */ jsxs(import_react_native17.Pressable, {
+                accessibilityRole: "button",
+                onPress: () => open(userId),
+                style: {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: 12,
+                  borderRadius: 14,
+                  borderWidth: 2,
+                  borderColor: editing === userId ? "#5865F2" : "transparent",
+                  backgroundColor: "rgba(0,0,0,0.25)"
+                },
+                children: [
+                  avatar ? /* @__PURE__ */ jsx(import_react_native17.Image, {
+                    source: {
+                      uri: avatar
+                    },
+                    style: {
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20
+                    }
+                  }) : /* @__PURE__ */ jsx(import_react_native17.View, {
+                    style: {
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: "#4E5058"
+                    }
+                  }),
+                  /* @__PURE__ */ jsxs(import_react_native17.View, {
+                    style: {
+                      flex: 1,
+                      gap: 2
+                    },
+                    children: [
+                      /* @__PURE__ */ jsx(Text, {
+                        variant: "text-md/bold",
+                        color: "text-normal",
+                        numberOfLines: 1,
+                        children: label.name
+                      }),
+                      /* @__PURE__ */ jsxs(Text, {
+                        variant: "text-xs/medium",
+                        color: "text-muted",
+                        numberOfLines: 1,
+                        children: [
+                          "@",
+                          label.username,
+                          extras ? " \xB7 " + extras : ""
+                        ]
+                      })
+                    ]
+                  }),
+                  /* @__PURE__ */ jsx(import_react_native17.Pressable, {
+                    accessibilityRole: "button",
+                    accessibilityLabel: "Restore " + label.name,
+                    onPress: () => restore(userId),
+                    hitSlop: 8,
+                    style: {
+                      height: 32,
+                      paddingHorizontal: 12,
+                      borderRadius: 999,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      backgroundColor: "rgba(242,63,67,0.15)"
+                    },
+                    children: /* @__PURE__ */ jsx(Text, {
+                      variant: "text-xs/bold",
+                      style: {
+                        color: "#F23F43"
+                      },
+                      children: "Restore"
+                    })
+                  })
+                ]
+              }, userId);
+            })
+          ]
         }),
-        /* @__PURE__ */ jsx(Input, {
-          accessibilityLabel: "Discord user ID",
-          placeholder: "Discord user ID",
-          placeholderTextColor: "#9faac4",
-          keyboardType: "number-pad",
-          value: id,
-          onChangeText: load,
-          style: {
-            padding: 14,
-            borderRadius: 16,
-            backgroundColor: "#1e1f22"
-          }
-        }),
-        input("Display name", "displayName"),
-        input("Username", "username"),
-        input("Profile picture link", "avatar"),
-        input("Banner link", "banner"),
-        input("Bio", "bio", true),
-        input("Pronouns", "pronouns"),
-        /* @__PURE__ */ jsx(Text, {
-          children: "Badges \xB7 local preview"
-        }),
-        badges.map(([key, label, flag, , customId]) => {
-          var selected = flag ? Boolean((draft.badgeFlags || 0) & flag) : (draft.customBadgeIds || []).includes(customId || key);
-          return /* @__PURE__ */ jsx(GlassButton, {
-            muted: !selected,
-            label: (selected ? "\u2713 " : "") + label,
-            onPress: () => {
-              if (flag)
-                setDraft({
-                  ...draft,
-                  badgeFlags: (draft.badgeFlags || 0) ^ flag
-                });
-              else {
-                var name = customId || key, list = draft.customBadgeIds || [];
-                setDraft({
-                  ...draft,
-                  customBadgeIds: selected ? list.filter((item) => item !== name) : [
-                    ...list,
-                    name
-                  ]
-                });
-              }
-            }
-          }, key);
-        }),
-        /* @__PURE__ */ jsx(GlassButton, {
-          label: "Save locally",
-          onPress: save
-        }),
-        /* @__PURE__ */ jsx(GlassButton, {
-          label: "Restore original",
-          muted: true,
-          onPress: remove
-        })
+        editing && target ? /* @__PURE__ */ jsxs(Fragment, {
+          children: [
+            /* @__PURE__ */ jsxs(Section, {
+              title: "Editing " + target.name,
+              description: "User ID " + editing + ". Empty fields keep their real (or synced) value.",
+              children: [
+                input("Display name", "displayName", {
+                  placeholder: target.name,
+                  max: 32
+                }),
+                input("Username", "username", {
+                  placeholder: target.username,
+                  max: 32
+                }),
+                input("Profile picture link", "avatar", {
+                  placeholder: "https://\u2026"
+                }),
+                input("Banner link", "banner", {
+                  placeholder: "https://\u2026"
+                }),
+                input("Pronouns", "pronouns", {
+                  max: 40
+                }),
+                input("About me", "bio", {
+                  multiline: true,
+                  max: 190
+                }),
+                color2("Profile colour", "primaryColor"),
+                color2("Second colour", "accentColor"),
+                input("Account created", "createdAt", {
+                  placeholder: "YYYY-MM-DD",
+                  max: 10
+                })
+              ]
+            }),
+            /* @__PURE__ */ jsxs(Section, {
+              title: "Nitro, boosting and gifts",
+              description: "Shown on their profile on this device.",
+              children: [
+                /* @__PURE__ */ jsx(Field, {
+                  label: "Nitro",
+                  children: /* @__PURE__ */ jsx(Chips, {
+                    options: [
+                      {
+                        value: -1,
+                        label: "None"
+                      },
+                      ...nitroOptions
+                    ],
+                    value: draft.nitro === false ? -1 : Number(draft.nitroLevel ?? -1),
+                    onChange: (value) => setDraft((previous) => ({
+                      ...previous,
+                      nitroLevel: value,
+                      nitro: value >= 0
+                    }))
+                  })
+                }),
+                Number(draft.nitroLevel ?? -1) >= 0 ? input("Nitro since", "nitroSince", {
+                  placeholder: "YYYY-MM-DD",
+                  max: 10
+                }) : null,
+                /* @__PURE__ */ jsx(Field, {
+                  label: "Server boosting",
+                  children: /* @__PURE__ */ jsx(Chips, {
+                    options: [
+                      {
+                        value: -1,
+                        label: "None"
+                      },
+                      ...boostOptions
+                    ],
+                    value: Number(draft.boostMonths ?? -1),
+                    onChange: (value) => set("boostMonths", value)
+                  })
+                }),
+                /* @__PURE__ */ jsx(Field, {
+                  label: "Gift badge",
+                  children: /* @__PURE__ */ jsx(Chips, {
+                    options: [
+                      {
+                        value: -1,
+                        label: "None"
+                      },
+                      ...giftOptions
+                    ],
+                    value: Number(draft.giftLevel ?? -1),
+                    onChange: (value) => set("giftLevel", value)
+                  })
+                })
+              ]
+            }),
+            /* @__PURE__ */ jsx(Section, {
+              title: "Badges",
+              children: /* @__PURE__ */ jsx(BadgeGrid, {
+                items: badges.map(([key, label, flag, icon3, customId]) => {
+                  var active = flag ? Boolean((draft.badgeFlags || 0) & flag) : (draft.customBadgeIds || []).includes(customId || key);
+                  return {
+                    key,
+                    label,
+                    icon: typeof icon3 === "string" ? icon3 : void 0,
+                    active,
+                    onPress: () => {
+                      if (flag)
+                        set("badgeFlags", (draft.badgeFlags || 0) ^ flag);
+                      else {
+                        var name = customId || key, list = draft.customBadgeIds || [];
+                        set("customBadgeIds", active ? list.filter((item) => item !== name) : [
+                          ...list,
+                          name
+                        ]);
+                      }
+                    }
+                  };
+                })
+              })
+            }),
+            /* @__PURE__ */ jsxs(import_react_native17.View, {
+              style: {
+                gap: 8
+              },
+              children: [
+                /* @__PURE__ */ jsx(Action, {
+                  label: "Save for " + target.name,
+                  primary: true,
+                  onPress: save
+                }),
+                saved[editing] ? /* @__PURE__ */ jsx(Action, {
+                  label: "Restore original",
+                  danger: true,
+                  onPress: () => restore(editing)
+                }) : null,
+                /* @__PURE__ */ jsx(Action, {
+                  label: "Close",
+                  onPress: () => {
+                    setEditing(null);
+                    setDraft({});
+                  }
+                })
+              ]
+            })
+          ]
+        }) : null
       ]
     });
   }
-  var import_react4, import_react_native17;
+  var import_react4, import_react_native17, hexToNumber, numberToHex;
   var init_LocalProfiles = __esm({
     "src/core/ui/settings/components/LocalProfiles.tsx"() {
       "use strict";
@@ -12226,8 +12467,14 @@
       import_react4 = __toESM(require_react());
       import_react_native17 = __toESM(require_react_native());
       init_components();
+      init_metro();
       init_settings();
       init_ProfileStudio();
+      hexToNumber = (text) => {
+        var clean = text.trim().replace(/^#/, "");
+        return /^[0-9a-f]{6}$/i.test(clean) ? parseInt(clean, 16) : void 0;
+      };
+      numberToHex = (value) => typeof value === "number" && Number.isFinite(value) ? "#" + value.toString(16).padStart(6, "0").toUpperCase() : "";
     }
   });
 
@@ -16025,18 +16272,18 @@
         return real;
       return wanted === "invisible" ? "offline" : wanted;
     });
-    var userStore = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
-    diagnostics.userStore = !!userStore;
+    var userStore2 = safeStore("UserStore") || findByProps("getCurrentUser", "getUser");
+    diagnostics.userStore = !!userStore2;
     try {
-      adoptProfileAccount(userStore?.getCurrentUser?.() || null);
+      adoptProfileAccount(userStore2?.getCurrentUser?.() || null);
     } catch (e) {
     }
-    addPatch("getCurrentUser", userStore, (args, original) => {
+    addPatch("getCurrentUser", userStore2, (args, original) => {
       var user = original(...args);
       adoptProfileAccount(user);
       return cloneObject(user, "user");
     });
-    addPatch("getUser", userStore, (args, original) => {
+    addPatch("getUser", userStore2, (args, original) => {
       if (!isCurrentUser(args?.[0]))
         return original(...args);
       var user = original(...args);
@@ -18564,7 +18811,19 @@
                 clearCache();
                 refreshPreview();
                 redraw();
-              }
+              },
+              nitroOptions: NITRO_DURATIONS.map((months, index) => ({
+                value: index,
+                label: NITRO_LABELS.get(months) || durationLabel(months)
+              })),
+              boostOptions: BOOST_MONTHS.map((months, index) => ({
+                value: index,
+                label: boosterLabel(months)
+              })),
+              giftOptions: GIFT_LEVELS.map((gift, index) => ({
+                value: index,
+                label: gift.name
+              }))
             })
           }) : null,
           activeTab === "custom" ? /* @__PURE__ */ jsx(Card2, {
