@@ -14348,13 +14348,20 @@
       return raw;
     return `https://cdn.discordapp.com/avatar-decoration-presets/${encodeURIComponent(raw)}.png?size=160&passthrough=true`;
   }
+  function decorationSkuFor(asset) {
+    try {
+      return collectiblesCatalog?.decorations?.find((item) => item.id === asset)?.skuId || "";
+    } catch (e) {
+      return "";
+    }
+  }
   function applyAvatarDecoration(target, data) {
     if (!target || !data?.avatarDecoration)
       return;
     var asset = decorationAsset(data.avatarDecoration);
     if (!asset)
       return;
-    var skuId = data.avatarDecorationSku || "cloudcord-decoration";
+    var skuId = data.avatarDecorationSku || decorationSkuFor(asset) || "cloudcord-decoration";
     var decoration = {
       asset,
       skuId,
@@ -14554,11 +14561,11 @@
           });
         }
         if (value instanceof Map)
-          for (var item2 of value.values())
-            visit(item2, depth + 1);
+          for (var item3 of value.values())
+            visit(item3, depth + 1);
         else if (Array.isArray(value))
-          for (var item1 of value)
-            visit(item1, depth + 1);
+          for (var item12 of value)
+            visit(item12, depth + 1);
         else
           for (var [key, child] of Object.entries(value))
             if (!/dispatcher|listeners|actionHandlers/i.test(key))
@@ -14581,8 +14588,28 @@
           }
         }
       }
+      try {
+        var catalog = collectiblesCatalog ?? (yield withTimeout(loadCollectiblesCatalog(), 6e3));
+        for (var item1 of catalog?.decorations ?? [])
+          found.set(item1.id + ":" + item1.skuId, {
+            asset: item1.id,
+            skuId: item1.skuId,
+            label: item1.label,
+            uri: item1.url
+          });
+      } catch (e) {
+      }
+      var byAsset = /* @__PURE__ */ new Map();
+      for (var item2 of found.values()) {
+        var have = byAsset.get(item2.asset);
+        if (!have || !have.skuId && item2.skuId)
+          byAsset.set(item2.asset, have && !item2.label ? {
+            ...item2,
+            label: have.label
+          } : item2);
+      }
       return [
-        ...found.values()
+        ...byAsset.values()
       ];
     })();
   }
@@ -18710,10 +18737,10 @@
                       keyOf: (item) => `${item.asset}:${item.skuId}`,
                       labelOf: (item) => item.label,
                       imageOf: (item) => item.uri,
-                      isSelected: (item) => item.uri === preview.avatarDecoration,
+                      isSelected: (item) => item.uri === preview.avatarDecoration || !!preview.avatarDecoration && decorationAsset(preview.avatarDecoration) === item.asset,
                       onPick: (item) => {
                         update("avatarDecoration", item.uri, true);
-                        update("avatarDecorationSku", item.skuId, true);
+                        update("avatarDecorationSku", item.skuId || decorationSkuFor(item.asset), true);
                       },
                       noneLabel: "No decoration",
                       noneSelected: !preview.avatarDecoration,
