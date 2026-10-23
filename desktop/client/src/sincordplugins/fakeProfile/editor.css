@@ -3,8 +3,10 @@
 .cpx-root {
     --cpx-gap: 16px;
     --cpx-radius: 10px;
-    --cpx-surface: var(--background-secondary, #2b2d31);
-    --cpx-surface-2: var(--background-tertiary, #1e1f22);
+    /* Discord renamed its colour variables; try the new names first and keep a solid fallback. */
+    --cpx-bg: var(--modal-background, var(--background-base-low, var(--background-primary, #313338)));
+    --cpx-surface: var(--background-base-lower, var(--background-secondary, #2b2d31));
+    --cpx-surface-2: var(--background-base-lowest, var(--background-tertiary, #1e1f22));
     --cpx-border: var(--border-subtle, rgb(255 255 255 / 8%));
     --cpx-text: var(--text-normal, #f2f3f5);
     --cpx-muted: var(--text-muted, #949ba4);
@@ -15,11 +17,12 @@
     max-width: none !important;
     max-height: min(820px, calc(100vh - 48px)) !important;
     color: var(--cpx-text);
+    background: var(--cpx-bg) !important;
 }
 
 .cpx-root *, .cpx-root *::before, .cpx-root *::after { box-sizing: border-box; }
 
-.cpx-header { display: flex; align-items: center; gap: 12px; padding: 16px 20px !important; border-bottom: 1px solid var(--cpx-border); }
+.cpx-header { background: var(--cpx-bg); display: flex; align-items: center; gap: 12px; padding: 16px 20px !important; border-bottom: 1px solid var(--cpx-border); }
 .cpx-header-title { display: flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 700; color: var(--cpx-text); margin-right: auto; }
 .cpx-account { width: 220px; }
 .cpx-account-option { display: flex; align-items: center; gap: 8px; }
@@ -32,7 +35,7 @@
 .cpx-layout { display: grid; grid-template-columns: 184px minmax(0, 1fr) 288px; height: min(640px, calc(100vh - 220px)); }
 
 /* Tabs */
-.cpx-tabs { display: flex; flex-direction: column; gap: 4px; padding: 16px 12px; border-right: 1px solid var(--cpx-border); overflow-y: auto; }
+.cpx-tabs { background: var(--cpx-surface); display: flex; flex-direction: column; gap: 4px; padding: 16px 12px; border-right: 1px solid var(--cpx-border); overflow-y: auto; }
 .cpx-tab { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border: 0; border-radius: 8px; background: transparent; color: var(--cpx-muted); font: inherit; font-size: 14px; font-weight: 500; text-align: left; cursor: pointer; }
 .cpx-tab:hover { background: var(--background-modifier-hover, rgb(255 255 255 / 6%)); color: var(--cpx-text); }
 .cpx-tab.cpx-on { background: var(--background-modifier-selected, rgb(255 255 255 / 10%)); color: var(--cpx-text); font-weight: 600; }
@@ -101,7 +104,7 @@ textarea.cpx-input { min-height: 96px; resize: vertical; line-height: 1.45; }
 .cpx-image-controls { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 0; }
 
 /* Footer */
-.cpx-footer { display: flex !important; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px !important; border-top: 1px solid var(--cpx-border); }
+.cpx-footer { background: var(--cpx-bg); display: flex !important; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px !important; border-top: 1px solid var(--cpx-border); }
 .cpx-footer-left, .cpx-footer-right { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .cpx-footer-error { flex-basis: 100%; padding: 10px 12px; border-radius: 8px; background: rgb(242 63 67 / 12%); color: var(--cpx-danger); font-size: 13px; line-height: 1.45; }
 
