@@ -3063,7 +3063,7 @@ jobs:
               setExtras({ ...extrasState(), fakeRequests: [] } as any);
           }
           // ---- Fake boost (device only) ----
-          type BoostFake = { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number };
+          type BoostFake = { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[] };
           function boostFor(guildId?: string | null): BoostFake | undefined { return guildId ? (extrasState() as any).boosts?.[guildId] : undefined; }
           const guildOverlays = new WeakMap<object, any>();
           const memberOverlays = new WeakMap<object, any>();
@@ -3128,6 +3128,44 @@ jobs:
               for (const method of ["getUsers", "getValidUsers"]) if (typeof store[method] === "function") after(method, store, (_args: any[], users: any) => spoof(users));
           }
           function refreshOrbs() { for (const store of [orbHooked.currency, orbHooked.wallet]) { try { store?.emitChange?.(); } catch {} } }
+          // Roles of a server, highest first. Discord renamed this getter a few times.
+          function rolesOf(guildId: string): any[] {
+              let roles: any = null;
+              try {
+                  const store = findByStoreName("GuildRoleStore") as any;
+                  roles = store?.getUnsafeMutableRoles?.(guildId) ?? store?.getRolesSnapshot?.(guildId) ?? store?.getRoles?.(guildId);
+              } catch {}
+              if (!roles) try { roles = (findByStoreName("GuildStore") as any)?.getGuild?.(guildId)?.roles; } catch {}
+              return Object.values(roles ?? {}).filter((role: any) => role?.id && role.id !== guildId).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0));
+          }
+          // Fake roles and booster status on your real member record; colour, icon and
+          // hoist follow the highest role like Discord works it out. Cached per input.
+          const fakeMemberCache = new WeakMap<object, { key: string; value: any }>();
+          function fakeMember(guildId: string, member: any) {
+              const fake = boostFor(guildId);
+              const extraRoles = (fake?.roles ?? []).filter((id: string) => !member.roles?.includes(id));
+              const booster = fake?.booster && !member.premiumSince;
+              if (!extraRoles.length && !booster) return member;
+              const key = extraRoles.join(",") + (booster ? "|b" : "");
+              const hit = fakeMemberCache.get(member);
+              if (hit && hit.key === key) return hit.value;
+              const value: any = { ...member };
+              if (booster) value.premiumSince = new Date(Date.now() - 90 * 86400000).toISOString();
+              if (extraRoles.length) {
+                  value.roles = [...(member.roles ?? []), ...extraRoles];
+                  const byId = new Map(rolesOf(guildId).map((role: any) => [role.id, role]));
+                  const mine = value.roles.map((id: string) => byId.get(id)).filter(Boolean).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0)) as any[];
+                  const colored = mine.find(role => role.colorString || role.color);
+                  if (colored) { value.colorString = colored.colorString ?? value.colorString; value.colorStrings = colored.colorStrings ?? value.colorStrings; value.colorRoleId = colored.id; }
+                  const hoisted = mine.find(role => role.hoist);
+                  if (hoisted) value.hoistRoleId = hoisted.id;
+                  const icon = mine.find(role => role.icon || role.unicodeEmoji);
+                  if (icon) value.iconRoleId = icon.id;
+                  if (mine[0]) value.highestRoleId = mine[0].id;
+              }
+              fakeMemberCache.set(member, { key, value });
+              return value;
+          }
           function installBoostHooks() {
               if (boostHooksInstalled) return;
               const guilds = findByStoreName("GuildStore") as any;
@@ -3158,14 +3196,14 @@ jobs:
               if (typeof counts?.getMemberCount === "function") after("getMemberCount", counts, (args: any[], count: any) => boostFor(args[0])?.members ?? count);
               if (typeof counts?.getOnlineCount === "function") after("getOnlineCount", counts, (args: any[], count: any) => boostFor(args[0])?.online ?? count);
               after("getMember", members, (args: any[], member: any) => {
-                  // Called constantly: bail out early unless this server has a fake boost.
-                  if (!member || typeof member !== "object" || member.premiumSince || !boostFor(args[0])?.booster) return member;
-                  let me: string | undefined;
-                  try { me = (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id; } catch {}
-                  if (!me || args[1] !== me) return member;
-                  let overlay = memberOverlays.get(member);
-                  if (!overlay) memberOverlays.set(member, overlay = { ...member, premiumSince: new Date(Date.now() - 90 * 86400000).toISOString() });
-                  return overlay;
+                  // Called constantly: bail out early unless this server has fakes.
+                  if (!member || typeof member !== "object" || !boostFor(args[0])) return member;
+                  if (!currentUserId || String(args[1]) !== currentUserId) return member;
+                  try { return fakeMember(args[0], member); } catch { return member; }
+              });
+              if (typeof members.getSelfMember === "function") after("getSelfMember", members, (args: any[], member: any) => {
+                  if (!member || typeof member !== "object" || !boostFor(args[0])) return member;
+                  try { return fakeMember(args[0], member); } catch { return member; }
               });
           }
           // 8 = boosted, 9/10/11 = boosted and the server reached level 1/2/3.
@@ -3186,7 +3224,9 @@ jobs:
               const K = require("@core/ui/settings/components/ProfileEditorKit") as typeof import("@core/ui/settings/components/ProfileEditorKit");
               const [times, setTimes] = useState(1);
               const [reached, setReached] = useState(0);
-              const guildId = (findByStoreName("SelectedGuildStore") as any)?.getGuildId?.();
+              const [chosenId, setChosenId] = useState(() => String((findByStoreName("SelectedGuildStore") as any)?.getGuildId?.() ?? ""));
+              const [roleQuery, setRoleQuery] = useState("");
+              const guildId = /^\d{15,22}$/.test(chosenId.trim()) ? chosenId.trim() : null;
               const guild = guildId ? (findByStoreName("GuildStore") as any)?.getGuild?.(guildId) : null;
               const fake = boostFor(guildId) ?? {};
               const set = (patch: BoostFake) => {
@@ -3196,7 +3236,13 @@ jobs:
                   try { (findByStoreName("GuildStore") as any)?.emitChange?.(); (findByStoreName("GuildMemberStore") as any)?.emitChange?.(); } catch {}
                   refresh();
               };
-              return <K.Section title="Fake boost" description={guild ? "For " + guild.name + ". Only on this device." : "Open a server first, then come back here."}>
+              const roles = guild ? rolesOf(guild.id) : [];
+              const chosenRoles = new Set<string>(fake.roles ?? []);
+              const query = roleQuery.trim().toLowerCase();
+              const shownRoles = roles.filter((role: any) => !role.managed && (!query || String(role.name).toLowerCase().includes(query))).slice(0, 40);
+              const toggleRole = (id: string) => { const next = new Set(chosenRoles); if (next.has(id)) next.delete(id); else next.add(id); set({ roles: [...next] }); };
+              return <K.Section title="Fake server" description={guild ? "For " + guild.name + ". Only on this device." : guildId ? "You're not in a server with that ID." : "Enter a server ID, or open a server first."}>
+                  <K.Field label="Server ID" hint="Long-press a server → Copy Server ID"><TextInput value={chosenId} placeholder="123456789012345678" keyboardType="number-pad" onChangeText={(text: string) => setChosenId(text.replace(/\D/g, ""))} placeholderTextColor="#777" /></K.Field>
                   {guild ? <>
                       <K.Field label="Boosts"><K.Chips options={[1, 2, 3, 5, 10].map(value => ({ value, label: value + "x" }))} value={times} onChange={(value: number) => setTimes(value)} /></K.Field>
                       <K.Field label="Message"><K.Chips options={[{ value: 0, label: "Just boosted" }, { value: 1, label: "Level 1" }, { value: 2, label: "Level 2" }, { value: 3, label: "Level 3" }]} value={reached} onChange={(value: number) => setReached(value)} /></K.Field>
@@ -3204,9 +3250,23 @@ jobs:
                       <ToggleRow label="Show this server as Level 3" subLabel="Perks look unlocked here. Real limits don't change" value={fake.level === true} onPress={() => set({ level: !fake.level })} />
                       <ToggleRow label="Show as a Partner server" subLabel="Partner badge next to the server name" value={fake.partner === true} onPress={() => set({ partner: !fake.partner })} />
                       <ToggleRow label="Show as a Verified server" subLabel="Verified check next to the server name" value={fake.verified === true} onPress={() => set({ verified: !fake.verified })} />
-                      <K.Field label="Members" hint="Leave empty for the real count"><TextInput defaultValue={fake.members == null ? "" : String(fake.members)} placeholder="25000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/D/g, ""); set({ members: clean ? Number(clean) : undefined }); }} placeholderTextColor="#777" /></K.Field>
-                      <K.Field label="Online" hint="Leave empty for the real count"><TextInput defaultValue={fake.online == null ? "" : String(fake.online)} placeholder="4000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/D/g, ""); set({ online: clean ? Number(clean) : undefined }); }} placeholderTextColor="#777" /></K.Field>
+                      <K.Field label="Members" hint="Leave empty for the real count"><TextInput defaultValue={fake.members == null ? "" : String(fake.members)} placeholder="25000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/\D/g, ""); set({ members: clean ? Number(clean) : undefined }); }} placeholderTextColor="#777" /></K.Field>
+                      <K.Field label="Online" hint="Leave empty for the real count"><TextInput defaultValue={fake.online == null ? "" : String(fake.online)} placeholder="4000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/\D/g, ""); set({ online: clean ? Number(clean) : undefined }); }} placeholderTextColor="#777" /></K.Field>
                       <ToggleRow label="Show me as a booster here" subLabel="Boosting icon by your name in this server" value={fake.booster === true} onPress={() => set({ booster: !fake.booster })} />
+                      <K.Field label={"Fake roles" + (chosenRoles.size ? " (" + chosenRoles.size + ")" : "")} hint="Name colour and role icon follow your highest role. Only on this device.">
+                          <TextInput value={roleQuery} placeholder="Search roles" autoCapitalize="none" autoCorrect={false} onChangeText={setRoleQuery} placeholderTextColor="#777" />
+                      </K.Field>
+                      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                          {shownRoles.map((role: any) => {
+                              const on = chosenRoles.has(role.id);
+                              return <Pressable key={role.id} onPress={() => toggleRole(role.id)} style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: on ? "#5865F2" : "transparent", backgroundColor: on ? "rgba(88,101,242,0.18)" : "#1E1F22" }}>
+                                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: role.colorString || "#99AAB5" }} />
+                                  <Text variant="text-sm/medium" color="text-normal">{role.name}</Text>
+                              </Pressable>;
+                          })}
+                          {!shownRoles.length ? <Text variant="text-sm/medium" color="text-muted">No roles found.</Text> : null}
+                      </View>
+                      {chosenRoles.size ? <Button text="Remove all fake roles" variant="secondary" size="sm" onPress={() => set({ roles: [] })} /> : null}
                   </> : null}
               </K.Section>;
           }

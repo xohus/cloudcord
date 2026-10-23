@@ -32,8 +32,46 @@ const GIFT_STYLES = [
 ];
 const INCOMING_REQUEST = 3;
 const GuildMemberCountStore: any = findStoreLazy("GuildMemberCountStore");
+const GuildRoleStore: any = findStoreLazy("GuildRoleStore");
 
-interface BoostFake { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; }
+// Roles of a server as a list, highest first. Discord renamed this getter a few times.
+function rolesOf(guildId: string): any[] {
+    let roles: any = null;
+    try { roles = GuildRoleStore?.getUnsafeMutableRoles?.(guildId) ?? GuildRoleStore?.getRolesSnapshot?.(guildId) ?? GuildRoleStore?.getRoles?.(guildId); } catch { }
+    if (!roles) roles = (GuildStore.getGuild(guildId) as any)?.roles;
+    return Object.values(roles ?? {}).filter((role: any) => role?.id && role.id !== guildId).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0));
+}
+
+// Fake roles and booster status layered on your real member record. The colour,
+// hoist and icon role follow the highest role, like Discord works it out.
+const memberCache = new WeakMap<object, { key: string; value: any; }>();
+function fakeMember(guildId: string, member: any) {
+    const fake = boostFor(guildId);
+    const extraRoles = (fake?.roles ?? []).filter(id => !member.roles?.includes(id));
+    const booster = fake?.booster && !member.premiumSince;
+    if (!extraRoles.length && !booster) return member;
+    const key = extraRoles.join(",") + (booster ? "|b" : "");
+    const hit = memberCache.get(member);
+    if (hit && hit.key === key) return hit.value;
+    const value: any = { ...member };
+    if (booster) value.premiumSince = BOOST_SINCE.toISOString();
+    if (extraRoles.length) {
+        value.roles = [...(member.roles ?? []), ...extraRoles];
+        const byId = new Map(rolesOf(guildId).map((role: any) => [role.id, role]));
+        const mine = value.roles.map((id: string) => byId.get(id)).filter(Boolean).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0));
+        const colored = mine.find((role: any) => role.colorString || role.color);
+        if (colored) { value.colorString = colored.colorString ?? value.colorString; value.colorStrings = colored.colorStrings ?? value.colorStrings; value.colorRoleId = colored.id; }
+        const hoisted = mine.find((role: any) => role.hoist);
+        if (hoisted) value.hoistRoleId = hoisted.id;
+        const icon = mine.find((role: any) => role.icon || role.unicodeEmoji);
+        if (icon) value.iconRoleId = icon.id;
+        if (mine[0]) value.highestRoleId = mine[0].id;
+    }
+    memberCache.set(member, { key, value });
+    return value;
+}
+
+interface BoostFake { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[]; }
 interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; fakeRequests?: { id: string; user: any; since: string; }[]; fakeOrbs?: number; }
 
 function readExtras(): Extras {
@@ -163,9 +201,8 @@ function sendFakeBoostMessage(times: number, reachedLevel: number) {
 }
 
 const BOOST_SINCE = new Date(Date.now() - 90 * 86400_000);
-let boostOriginals: { getGuild: any; getMember: any; } | null = null;
+let boostOriginals: { getGuild: any; getMember: any; getSelfMember?: any; } | null = null;
 const guildOverlays = new WeakMap<object, any>();
-const memberOverlays = new WeakMap<object, any>();
 // Our own overlays, so a guild that comes back through getGuild is never wrapped twice.
 const overlaySet = new WeakSet<object>();
 // Same Set back for the same inputs, so screens that compare features don't re-render forever.
@@ -186,7 +223,7 @@ function boostFor(guildId?: string | null) { return guildId ? extras.boosts?.[gu
 function installBoostHooks() {
     try { installCountHooks(); } catch { }
     if (boostOriginals || !GuildStore || !GuildMemberStore) return;
-    boostOriginals = { getGuild: GuildStore.getGuild, getMember: GuildMemberStore.getMember };
+    boostOriginals = { getGuild: GuildStore.getGuild, getMember: GuildMemberStore.getMember, getSelfMember: (GuildMemberStore as any).getSelfMember };
     const { getGuild, getMember } = boostOriginals;
     (GuildStore as any).getGuild = function (guildId: string, ...rest: any[]) {
         const guild = getGuild.call(this, guildId, ...rest);
@@ -210,10 +247,13 @@ function installBoostHooks() {
     };
     (GuildMemberStore as any).getMember = function (guildId: string, userId: string, ...rest: any[]) {
         const member = getMember.call(this, guildId, userId, ...rest);
-        if (!member || member.premiumSince || !boostFor(guildId)?.booster || userId !== UserStore.getCurrentUser()?.id) return member;
-        let overlay = memberOverlays.get(member);
-        if (!overlay) memberOverlays.set(member, overlay = { ...member, premiumSince: BOOST_SINCE.toISOString() });
-        return overlay;
+        if (!member || typeof member !== "object" || !boostFor(guildId) || userId !== UserStore.getCurrentUser()?.id) return member;
+        return fakeMember(guildId, member);
+    };
+    const { getSelfMember } = boostOriginals;
+    if (getSelfMember) (GuildMemberStore as any).getSelfMember = function (guildId: string, ...rest: any[]) {
+        const member = getSelfMember.call(this, guildId, ...rest);
+        return member && typeof member === "object" && boostFor(guildId) ? fakeMember(guildId, member) : member;
     };
 }
 // Fake member and online counts shown in the server header, invites and member list.
@@ -237,6 +277,7 @@ function uninstallBoostHooks() {
     uninstallCountHooks();
     if (!boostOriginals) return;
     (GuildStore as any).getGuild = boostOriginals.getGuild; (GuildMemberStore as any).getMember = boostOriginals.getMember;
+    if (boostOriginals.getSelfMember) (GuildMemberStore as any).getSelfMember = boostOriginals.getSelfMember;
     boostOriginals = null;
 }
 function refreshGuildViews(guildId: string) {
@@ -245,13 +286,21 @@ function refreshGuildViews(guildId: string) {
 }
 
 function BoostSection() {
-    const guildId = SelectedGuildStore.getGuildId();
+    const [chosenId, setChosenId] = React.useState(() => SelectedGuildStore.getGuildId() ?? "");
+    const guildId = /^\d{15,22}$/.test(chosenId.trim()) ? chosenId.trim() : null;
     const guild = guildId ? GuildStore.getGuild(guildId) : null;
+    const [roleQuery, setRoleQuery] = React.useState("");
     const [times, setTimes] = React.useState(1);
     const [reached, setReached] = React.useState(0);
     const fake = boostFor(guildId) ?? {};
     const set = (patch: BoostFake) => { if (!guildId) return; writeExtras({ ...extras, boosts: { ...extras.boosts, [guildId]: { ...fake, ...patch } } }); refreshGuildViews(guildId); };
-    return <Section title="Fake server" description={guild ? `For ${guild.name}. Only on this device: other people see the real server.` : "Open a server first, then come back here."}>
+    const roles = guild ? rolesOf(guild.id) : [];
+    const chosenRoles = new Set(fake.roles ?? []);
+    const query = roleQuery.trim().toLowerCase();
+    const shownRoles = roles.filter((role: any) => !role.managed && (!query || role.name.toLowerCase().includes(query))).slice(0, 60);
+    const toggleRole = (id: string) => { const next = new Set(chosenRoles); if (next.has(id)) next.delete(id); else next.add(id); set({ roles: [...next] }); };
+    return <Section title="Fake server" description={guild ? `For ${guild.name}. Only on this device: other people see the real server.` : guildId ? "You're not in a server with that ID." : "Enter a server ID, or open a server first."}>
+        <label className="cpx-field"><span className="cpx-label">Server ID</span><input className="cpx-input" value={chosenId} placeholder="Right-click a server → Copy Server ID" onChange={event => setChosenId(event.currentTarget.value)} /></label>
         {guild && <>
             <Grid2>
                 <SelectField label="Boosts" options={[1, 2, 3, 5, 10].map(value => ({ value, label: `${value}x` }))} value={times} onChange={value => setTimes(Number(value))} />
@@ -267,6 +316,18 @@ function BoostSection() {
                 <label className="cpx-field"><span className="cpx-label">Online</span><input className="cpx-input" type="number" min={0} placeholder="Real count" value={fake.online ?? ""} onChange={event => { const text = event.currentTarget.value; set({ online: text === "" ? undefined : Math.max(0, Math.floor(Number(text) || 0)) }); }} /></label>
             </Grid2>
             <Switch label="Show me as a booster here" description="The boosting icon by your name and Server Booster since on your profile." checked={fake.booster === true} onChange={value => set({ booster: value })} />
+            <div className="cpx-field">
+                <span className="cpx-label">Fake roles {chosenRoles.size ? `(${chosenRoles.size})` : ""}</span>
+                <span className="cpx-hint">Your name colour and role icon follow your highest role, and the roles show on your profile. Only on this device.</span>
+                <input className="cpx-input" value={roleQuery} placeholder="Search roles" onChange={event => setRoleQuery(event.currentTarget.value)} />
+                <div className="cpx-chips" style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 220, overflowY: "auto" }}>
+                    {shownRoles.map((role: any) => <button key={role.id} type="button" className={"cpx-segment" + (chosenRoles.has(role.id) ? " cpx-on" : "")} onClick={() => toggleRole(role.id)}>
+                        <span style={{ width: 10, height: 10, borderRadius: 5, background: role.colorString || "#99aab5", flex: "0 0 10px" }} />{role.name}
+                    </button>)}
+                    {!shownRoles.length && <span className="cpx-hint">No roles found.</span>}
+                </div>
+                {chosenRoles.size > 0 && <div className="cpx-inline"><button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => set({ roles: [] })}>Remove all fake roles</button></div>}
+            </div>
         </>}
     </Section>;
 }
