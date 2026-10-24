@@ -34,6 +34,7 @@ const INCOMING_REQUEST = 3;
 const GuildMemberCountStore: any = findStoreLazy("GuildMemberCountStore");
 const GuildRoleStore: any = findStoreLazy("GuildRoleStore");
 const ChannelMemberStore: any = findStoreLazy("ChannelMemberStore");
+const PresenceStore: any = findStoreLazy("PresenceStore");
 
 // Roles of a server as a list, highest first. Discord renamed this getter a few times.
 function rolesOf(guildId: string): any[] {
@@ -123,7 +124,7 @@ function applyFakeNitro() {
             if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
             if (state.premiumTypeOverride !== 2) { state.premiumTypeOverride = 2; changed = true; }
         } else changed = restoreFakeNitroOverride() || changed;
-        if (changed) (OverridePremiumTypeStore as any).emitChange?.();
+        if (changed) { (OverridePremiumTypeStore as any).emitChange?.(); restoreKeptTheme(); }
     } catch { }
 }
 
@@ -268,19 +269,27 @@ function regroupMemberList(guildId: string, props: any) {
     const byId = new Map(rolesOf(guildId).map((role: any) => [role.id, role]));
     const hoist = fake.roles.map((id: string) => byId.get(id)).filter((role: any) => role?.hoist).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0))[0];
     const rowIndex = props.rows.findIndex((row: any) => row?.type === "MEMBER" && String(row.userId) === me);
-    if (!hoist || rowIndex < 0) return props;
-    const mineRow = props.rows[rowIndex];
+    if (!hoist) return props;
+    // Big lists only load rows near the screen; with no roles you sit deep in "Online", so build your row.
+    const mineRow = rowIndex >= 0 ? props.rows[rowIndex] : selfMemberRow(guildId, me);
+    if (!mineRow) return props;
     const current = byId.get(mineRow.hoistRoleId);
     if (current && (current.position ?? 0) >= (hoist.position ?? 0)) return props;
-    const key = hoist.id + "|" + props.rows.length + "|" + rowIndex;
+    const key = hoist.id + "|" + props.rows.length + "|" + rowIndex + "|" + (mineRow.status || "");
     const hit = listCache.get(props);
     if (hit && hit.key === key) return hit.value;
     const rows = props.rows.slice();
-    rows.splice(rowIndex, 1);
-    // Old group loses one; drop its header if it is now empty.
-    let oldHeader = -1;
-    for (let i = rowIndex - 1; i >= 0; i--) if (rows[i]?.type === "GROUP") { oldHeader = i; break; }
     const counts = new Map<string, number>((props.groups ?? []).map((group: any) => [String(group.id), group.count ?? 0]));
+    let oldHeader = -1;
+    if (rowIndex >= 0) {
+        rows.splice(rowIndex, 1);
+        // Old group loses one; drop its header if it is now empty.
+        for (let i = rowIndex - 1; i >= 0; i--) if (rows[i]?.type === "GROUP") { oldHeader = i; break; }
+    } else {
+        // Not loaded: you are counted in Online or Offline.
+        const statusGroup = mineRow.status === "offline" || mineRow.status === "invisible" ? "offline" : "online";
+        if (counts.has(statusGroup)) counts.set(statusGroup, Math.max(0, (counts.get(statusGroup) ?? 1) - 1));
+    }
     if (oldHeader >= 0) {
         const id = String(rows[oldHeader].id);
         counts.set(id, Math.max(0, (counts.get(id) ?? 1) - 1));
@@ -303,6 +312,16 @@ function regroupMemberList(guildId: string, props: any) {
     return value;
 }
 
+// Your own member-list row, built from the stores when Discord hasn't loaded it.
+function selfMemberRow(guildId: string, me: string) {
+    try {
+        const member = GuildMemberStore.getMember(guildId, me);
+        const user = UserStore.getUser(me);
+        if (!member || !user) return null;
+        const status = PresenceStore?.getStatus?.(me) ?? "online";
+        return { ...member, type: "MEMBER", userId: me, user, status, activities: PresenceStore?.getActivities?.(me) ?? [], applicationStream: null, isOwner: GuildStore.getGuild(guildId)?.ownerId === me, isMobileOnline: false, isVROnline: false };
+    } catch { return null; }
+}
 let listOriginal: any = null;
 function installMemberListHook() {
     if (listOriginal || !ChannelMemberStore?.getProps) return;
@@ -526,7 +545,35 @@ function refreshOrbs() {
 }
 
 let orbRetry: ReturnType<typeof setInterval> | undefined;
+// Nitro gradient themes with Fake Nitro: Discord saves the theme to your account, its servers
+// drop it because the account has no real Nitro, and the next settings sync resets it. Remember
+// the theme you picked here and put it back after each sync.
+const LS_NITRO_THEME = "cloudcord_nitro_theme";
+const ClientThemesBackgroundStore: any = findStoreLazy("ClientThemesBackgroundStore");
+let keptThemePreset: number | null = (() => { try { const value = Number(localStorage.getItem(LS_NITRO_THEME)); return Number.isFinite(value) && value > 0 ? value : null; } catch { return null; } })();
+function rememberTheme(action: any) {
+    const theme = action?.changes?.appearance?.settings?.clientThemeSettings;
+    if (!theme || !("backgroundGradientPresetId" in theme)) return;
+    keptThemePreset = typeof theme.backgroundGradientPresetId === "number" ? theme.backgroundGradientPresetId : null;
+    try { if (keptThemePreset != null) localStorage.setItem(LS_NITRO_THEME, String(keptThemePreset)); else localStorage.removeItem(LS_NITRO_THEME); } catch { }
+}
+let themeTimer: ReturnType<typeof setTimeout> | undefined;
+function restoreKeptTheme() {
+    clearTimeout(themeTimer);
+    themeTimer = setTimeout(() => {
+        if (!extras.fakeNitro || keptThemePreset == null) return;
+        try {
+            if (ClientThemesBackgroundStore?.gradientPreset?.id === keptThemePreset) return;
+            FluxDispatcher.dispatch({ type: "UPDATE_BACKGROUND_GRADIENT_PRESET", presetId: keptThemePreset });
+        } catch { }
+    }, 400);
+}
+const THEME_SYNC_EVENTS = ["USER_SETTINGS_PROTO_UPDATE", "CONNECTION_OPEN", "OVERLAY_INITIALIZE", "CURRENT_USER_UPDATE"];
+
 export function startExtras() {
+    FluxDispatcher.subscribe("SELECTIVELY_SYNCED_USER_SETTINGS_UPDATE", rememberTheme);
+    for (const type of THEME_SYNC_EVENTS) FluxDispatcher.subscribe(type, restoreKeptTheme);
+    restoreKeptTheme();
     installOrbHooks();
     // The wallet store registers late; keep trying for a minute.
     let tries = 0;
@@ -542,6 +589,9 @@ export function startExtras() {
     for (const type of SHOP_CLOSE) FluxDispatcher.subscribe(type, resumeAfterShop);
 }
 export function stopExtras() {
+    FluxDispatcher.unsubscribe("SELECTIVELY_SYNCED_USER_SETTINGS_UPDATE", rememberTheme);
+    for (const type of THEME_SYNC_EVENTS) FluxDispatcher.unsubscribe(type, restoreKeptTheme);
+    clearTimeout(themeTimer);
     for (const type of SHOP_OPEN) FluxDispatcher.unsubscribe(type, pauseForShop);
     for (const type of SHOP_CLOSE) FluxDispatcher.unsubscribe(type, resumeAfterShop);
     shopPaused = false;

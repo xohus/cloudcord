@@ -406,7 +406,7 @@ jobs:
               return <S.Row label={label} icon={icon} selected={selected} onPress={onPress} />;
           }
           import { Component, cloneElement, createElement, isValidElement, useEffect, useReducer, useRef, useState } from "react";
-          import { Alert, AppState, FlatList, Image, NativeModules, Pressable, ScrollView, View } from "react-native";
+          import { Alert, AppState, FlatList, Image, Linking, NativeModules, Pressable, ScrollView, View } from "react-native";
 
           type MediaValue = { uri: string; name: string; type: string; width?: number; height?: number; normalized?: boolean } | null;
           type PreviewSettings = {
@@ -2575,7 +2575,11 @@ jobs:
                       if (!socialRenderers.has(Component)) socialRenderers.set(Component, (current: any) => {
                           const navigation = NavigationNative.useNavigation();
                           const detail = socialEntryFromProps(current);
-                          const open = () => { if (detail) navigation.push("PUPU_CUSTOM_PAGE", { title: "Custom profile preview", render: () => {
+                          const open = () => {
+                              // A connection with an account link opens that exact link, like a real connection.
+                              const link = detail && "service" in detail && typeof detail.url === "string" && /^https:///i.test(detail.url) ? detail.url : "";
+                              if (link) { void Linking.openURL(link).catch(() => showToast("Couldn't open this link.")); return; }
+                              if (detail) navigation.push("PUPU_CUSTOM_PAGE", { title: "Custom profile preview", render: () => {
                               const Detail = require("@core/ui/settings/components/CustomSocial").CustomSocialDetail;
                               const nativeId = current?.user?.id || current?.row?.user?.id || current?.item?.user?.id || "";
                               const owner = String(nativeId).startsWith("cloudcord-friend:") ? String(nativeId).split(":")[1] : "";
@@ -3004,7 +3008,26 @@ jobs:
           // purchase. Pause it while the Shop or a purchase window is open.
           let shopPaused = false;
           const pauseForShop = () => { if (!shopPaused) { shopPaused = true; setTimeout(() => { try { applyFakeNitro(); } catch {} }, 0); } };
-          const resumeAfterShop = () => { if (shopPaused) { shopPaused = false; setTimeout(() => { try { applyFakeNitro(); } catch {} }, 0); } };
+          const resumeAfterShop = () => { if (shopPaused) { shopPaused = false; setTimeout(() => { try { applyFakeNitro(); } catch {} restoreKeptTheme(); }, 0); } };
+          // Nitro gradient themes with Fake Nitro: Discord's servers drop a theme the account has no real
+          // Nitro for, so the next settings sync resets it. Remember the pick and put it back after syncs.
+          const rememberTheme = (action: any) => {
+              const theme = action?.changes?.appearance?.settings?.clientThemeSettings;
+              if (!theme || !("backgroundGradientPresetId" in theme)) return;
+              (settings as any).cloudcordNitroTheme = typeof theme.backgroundGradientPresetId === "number" ? theme.backgroundGradientPresetId : null;
+          };
+          let themeTimer: any;
+          const restoreKeptTheme = () => {
+              clearTimeout(themeTimer);
+              themeTimer = setTimeout(() => {
+                  const preset = (settings as any).cloudcordNitroTheme;
+                  if (!extrasState().fakeNitro || typeof preset !== "number") return;
+                  try {
+                      if ((findByStoreName("ClientThemesBackgroundStore") as any)?.gradientPreset?.id === preset) return;
+                      FluxDispatcher.dispatch({ type: "UPDATE_BACKGROUND_GRADIENT_PRESET", presetId: preset });
+                  } catch {}
+              }, 400);
+          };
           function applyFakeNitro() {
               try {
                   const store = findByStoreName("OverridePremiumTypeStore") as any;
@@ -3211,19 +3234,27 @@ jobs:
               const byId = new Map(rolesOf(guildId).map((role: any) => [role.id, role]));
               const hoist = fake.roles.map((id: string) => byId.get(id)).filter((role: any) => role?.hoist).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0))[0];
               const rowIndex = props.rows.findIndex((row: any) => row?.type === "MEMBER" && String(row.userId) === me);
-              if (!hoist || rowIndex < 0) return props;
-              const mineRow = props.rows[rowIndex];
+              if (!hoist) return props;
+              // Big lists only load rows near the screen; with no roles you sit deep in "Online", so build your row.
+              const mineRow = rowIndex >= 0 ? props.rows[rowIndex] : selfMemberRow(guildId, me);
+              if (!mineRow) return props;
               const current = byId.get(mineRow.hoistRoleId);
               if (current && (current.position ?? 0) >= (hoist.position ?? 0)) return props;
-              const key = hoist.id + "|" + props.rows.length + "|" + rowIndex;
+              const key = hoist.id + "|" + props.rows.length + "|" + rowIndex + "|" + (mineRow.status || "");
               const hit = listCache.get(props);
               if (hit && hit.key === key) return hit.value;
               const rows = props.rows.slice();
-              rows.splice(rowIndex, 1);
-              // Old group loses one; drop its header if it is now empty.
-              let oldHeader = -1;
-              for (let i = rowIndex - 1; i >= 0; i--) if (rows[i]?.type === "GROUP") { oldHeader = i; break; }
               const counts = new Map<string, number>((props.groups ?? []).map((group: any) => [String(group.id), group.count ?? 0]));
+              let oldHeader = -1;
+              if (rowIndex >= 0) {
+                  rows.splice(rowIndex, 1);
+                  // Old group loses one; drop its header if it is now empty.
+                  for (let i = rowIndex - 1; i >= 0; i--) if (rows[i]?.type === "GROUP") { oldHeader = i; break; }
+              } else {
+                  // Not loaded: you are counted in Online or Offline.
+                  const statusGroup = mineRow.status === "offline" || mineRow.status === "invisible" ? "offline" : "online";
+                  if (counts.has(statusGroup)) counts.set(statusGroup, Math.max(0, (counts.get(statusGroup) ?? 1) - 1));
+              }
               if (oldHeader >= 0) {
                   const id = String(rows[oldHeader].id);
                   counts.set(id, Math.max(0, (counts.get(id) ?? 1) - 1));
@@ -3244,6 +3275,17 @@ jobs:
               const value = { ...props, rows, groups, version: (props.version ?? 0) + 0.5 };
               listCache.set(props, { key, value });
               return value;
+          }
+          // Your own member-list row, built from the stores when Discord hasn't loaded it.
+          function selfMemberRow(guildId: string, me: string) {
+              try {
+                  const member = (findByStoreName("GuildMemberStore") as any)?.getMember?.(guildId, me);
+                  const user = (findByStoreName("UserStore") as any)?.getUser?.(me);
+                  if (!member || !user) return null;
+                  const presence = findByStoreName("PresenceStore") as any;
+                  const status = presence?.getStatus?.(me) ?? "online";
+                  return { ...member, type: "MEMBER", userId: me, user, status, activities: presence?.getActivities?.(me) ?? [], applicationStream: null, isOwner: (findByStoreName("GuildStore") as any)?.getGuild?.(guildId)?.ownerId === me, isMobileOnline: true, isVROnline: false };
+              } catch { return null; }
           }
           function installBoostHooks() {
               if (boostHooksInstalled) return;
@@ -3463,6 +3505,9 @@ jobs:
                       try { FluxDispatcher.subscribe("CONNECTION_OPEN", () => { try { applyFakeNitro(); } catch {} restoreLater(); }); } catch {}
                       for (const type of ["COLLECTIBLES_SHOP_OPEN","COLLECTIBLES_PRODUCT_DETAILS_OPEN","COLLECTIBLES_SHOP_HOME_FETCH","SKU_PURCHASE_MODAL_OPEN","PREMIUM_PAYMENT_MODAL_OPEN"]) { try { FluxDispatcher.subscribe(type, pauseForShop); } catch {} }
                       for (const type of ["SKU_PURCHASE_MODAL_CLOSE","SKU_PURCHASE_SUCCESS","PREMIUM_PAYMENT_MODAL_CLOSED","CHANNEL_SELECT"]) { try { FluxDispatcher.subscribe(type, resumeAfterShop); } catch {} }
+                      try { FluxDispatcher.subscribe("SELECTIVELY_SYNCED_USER_SETTINGS_UPDATE", rememberTheme); } catch {}
+                      for (const type of ["USER_SETTINGS_PROTO_UPDATE", "CONNECTION_OPEN", "CURRENT_USER_UPDATE"]) { try { FluxDispatcher.subscribe(type, restoreKeptTheme); } catch {} }
+                      restoreKeptTheme();
                       connectRealProfileMenu();
                       await pullOwnSharedProfile();
                       void refreshPublishedBadges(true);

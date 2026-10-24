@@ -52,6 +52,8 @@ export function installNativeSocialHooks(options: Hooks) {
                 if (!account?.cloudcordCustom || !account.cloudcordPreview) return platform.getPlatformUserUrl(account,...rest);
                 const safe = normalizeCustomSocial({customConnections:[account.cloudcordPreview]}).customConnections?.[0];
                 if (!safe) return undefined;
+                // A connection with an account link opens that exact link, like a real connection.
+                if ("service" in safe && safe.url) return safe.url;
                 // Entry IDs are scoped to a profile, not globally unique. Keep
                 // distinct native accounts from overwriting each other's preview.
                 const cachedURL = accountURLs.get(account);
