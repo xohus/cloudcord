@@ -124,7 +124,7 @@ export default definePlugin({
 
     messagePopoverButton: {
         icon: UploadIcon,
-        render(msg) {
+        render(msg): any {
             if (!canAddAttachments(msg)) return null;
 
             const channel = ChannelStore.getChannel(msg.channel_id);

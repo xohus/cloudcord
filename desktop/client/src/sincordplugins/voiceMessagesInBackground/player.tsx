@@ -8,7 +8,6 @@ import { Button } from "@components/Button";
 import { Microphone } from "@components/Icons";
 import { classNameFactory } from "@utils/css";
 import { useFixedTimer } from "@utils/react";
-import { formatDuration } from "@utils/text";
 import { ChannelRouter, ChannelStore, SelectedChannelStore, Slider, Tooltip, useStateFromStores } from "@webpack/common";
 import type { ComponentProps, ComponentType } from "react";
 
@@ -39,7 +38,8 @@ function CloseIcon() {
 }
 
 function time(seconds: number) {
-    return formatDuration(Math.max(0, seconds) * 1000);
+    const total = Math.max(0, Math.floor(seconds));
+    return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, "0")}`;
 }
 
 export function VoiceMessagesInBackgroundPlayer() {

@@ -22,7 +22,7 @@ import { Card } from "@components/Card";
 import { Heading } from "@components/Heading";
 import { Margins } from "@components/margins";
 import { Paragraph } from "@components/Paragraph";
-import { Devs } from "@utils/constants";
+import { Devs, EquicordDevs } from "@utils/constants";
 import { promptToRestart } from "@utils/promptToRestart";
 import { useAwaiter, useForceUpdater } from "@utils/react";
 import definePlugin, { OptionType } from "@utils/types";
@@ -287,7 +287,7 @@ export default definePlugin({
     description: "Rich Presence for Last.FM/Listenbrainz",
     tags: ["Activity", "Media"],
     searchTerms: ["lastfm", "LastFMRichPresence"],
-    authors: [Devs.Rini, Devs.Ven, Devs.angelcube, Devs.RuiNtD, Devs.blahajZip, Devs.archeruwu],
+    authors: [Devs.Rini, Devs.Ven, EquicordDevs.angelcube, Devs.RuiNtD, Devs.blahajZip, Devs.archeruwu],
 
     settings,
 

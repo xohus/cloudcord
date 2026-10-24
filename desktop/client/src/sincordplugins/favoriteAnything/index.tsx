@@ -5,7 +5,7 @@
  */
 
 import { definePluginSettings, migratePluginSettings } from "@api/Settings";
-import { Devs } from "@utils/constants";
+import { Devs, EquicordDevs } from "@utils/constants";
 import { getIntlMessage } from "@utils/discord";
 import definePlugin, { OptionType } from "@utils/types";
 import { ComponentType, ReactNode } from "react";
@@ -28,7 +28,7 @@ export default definePlugin({
     name: "FavoriteAnything",
     description: "Favorite any image, video, or file attachment",
     tags: ["Chat", "Media", "Utility"],
-    authors: [Devs.Davri, Devs.nin0dev],
+    authors: [EquicordDevs.Davri, EquicordDevs.nin0dev],
     searchTerms: ["favorite"],
     managedStyle,
     settings,

@@ -9,7 +9,7 @@ import "./styles.css";
 import { definePluginSettings, migratePluginSettings } from "@api/Settings";
 import { Badge } from "@components/Badge";
 import ErrorBoundary from "@components/ErrorBoundary";
-import { Devs } from "@utils/constants";
+import { Devs, EquicordDevs } from "@utils/constants";
 import { classNameFactory } from "@utils/css";
 import { identity, parseUrl } from "@utils/misc";
 import definePlugin, { defineDefault, OptionType } from "@utils/types";
@@ -125,7 +125,7 @@ migratePluginSettings("GifProviderSwitcher", "TenorGifSearch");
 export default definePlugin({
     name: "GifProviderSwitcher",
     description: "Allows you to use Tenor or Giphy GIF search instead of Klipy",
-    authors: [Devs.Lunascape, Devs.Ven],
+    authors: [EquicordDevs.Lunascape, Devs.Ven],
     tags: ["Media", "Chat", "Emotes"],
     searchTerms: ["TenorGifSearch"],
     settings,

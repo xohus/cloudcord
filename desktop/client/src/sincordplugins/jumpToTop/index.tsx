@@ -6,7 +6,7 @@
 
 import ErrorBoundary from "@components/ErrorBoundary";
 import { UpArrowIcon } from "@components/Icons";
-import { Devs } from "@utils/constants";
+import { Devs, EquicordDevs } from "@utils/constants";
 import { getIntlMessage } from "@utils/discord";
 import definePlugin from "@utils/types";
 import type { Channel } from "@vencord/discord-types";
@@ -27,7 +27,7 @@ function jumpToTop(channelId: string) {
 export default definePlugin({
     name: "JumpToTop",
     description: "Adds a button to jump to the first message in a channel",
-    authors: [Devs.Kaerion],
+    authors: [EquicordDevs.Kaerion],
     tags: ["Chat", "Utility"],
 
     patches: [{

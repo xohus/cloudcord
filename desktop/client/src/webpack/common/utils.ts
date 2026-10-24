@@ -138,7 +138,12 @@ export const Toasts = {
 /**
  * Show a simple toast. If you need more options, use Toasts.show manually
  */
-export function showToast(message: string, type = ToastType.MESSAGE, options?: ToastOptions) {
+export function showToast(message: string | { text: string; variant?: string; icon?: any; iconColor?: string; }, type = ToastType.MESSAGE, options?: ToastOptions) {
+    // Plugins ported from Equicord pass { text, variant } instead of (text, type).
+    if (typeof message === "object") {
+        type = message.variant === "critical" || message.variant === "danger" ? ToastType.FAILURE : message.variant === "success" ? ToastType.SUCCESS : ToastType.MESSAGE;
+        message = message.text;
+    }
     Toasts.show(Toasts.create(message, type, options));
 }
 
