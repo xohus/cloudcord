@@ -14137,6 +14137,7 @@
             return [];
           }
         })(),
+        activityAmounts: preview.activityAmounts || {},
         nativeHiddenBadges: (() => {
           try {
             return rootSettings.fakeProfileNativeHidden || [];
@@ -14422,6 +14423,7 @@
           selectedBadges,
           hiddenBadgeIds: Array.isArray(data.hiddenBadgeIds) ? data.hiddenBadgeIds : [],
           badgeOrder: Array.isArray(data.badgeOrder) ? data.badgeOrder : [],
+          activityAmounts: data.activityAmounts && typeof data.activityAmounts === "object" ? data.activityAmounts : preview.activityAmounts || {},
           syncRevision: Number(data.syncRevision || 0)
         };
         if (JSON.stringify(nextPreview) === JSON.stringify(preview))
@@ -15628,7 +15630,8 @@
         replace: shouldReplaceLocalBadges(),
         order: rootSettings.fakeProfileNativeOrder || [],
         hidden: rootSettings.fakeProfileNativeHidden || [],
-        activity: activityFromIds(Object.keys(preview.selectedBadges || {}).filter((id2) => preview.selectedBadges?.[id2]))
+        activity: activityFromIds(Object.keys(preview.selectedBadges || {}).filter((id2) => preview.selectedBadges?.[id2])),
+        amounts: preview.activityAmounts || {}
       };
     }
     if (badgesHiddenFor(id))
@@ -15647,7 +15650,8 @@
       replace: shouldReplaceSharedBadges(data),
       order: Array.isArray(data.nativeBadgeOrder) ? data.nativeBadgeOrder : [],
       hidden: Array.isArray(data.nativeHiddenBadges) ? data.nativeHiddenBadges : [],
-      activity: activityFromIds(ids)
+      activity: activityFromIds(ids),
+      amounts: data.activityAmounts && typeof data.activityAmounts === "object" ? data.activityAmounts : {}
     };
   }
   function addMonths(date, months) {
@@ -15684,12 +15688,16 @@
     var tier = Number(src.activity?.[key] ?? -1);
     return Number.isInteger(tier) && tier >= 0 && tier < 10 ? tier : -1;
   }
+  function activityAmount(src, key, tierAmount) {
+    var value = Number(src.amounts?.[key]);
+    return src.amounts?.[key] != null && Number.isFinite(value) && value >= 0 ? value : tierAmount;
+  }
   function activityDirectoryEntry(entry, src) {
     var badge = ACTIVITY_BADGES.find((item) => item.badgeId === entry.badge_id);
     var tier = badge ? activityTier(src, badge.key) : -1;
     if (!badge || tier < 0)
       return null;
-    var amount = badge.tiers[tier][1];
+    var amount = activityAmount(src, badge.key, badge.tiers[tier][1]);
     return {
       ...tieredEntry(entry, tier, badge.key === "account_age" ? monthsAgo(amount * 12) : monthsAgo(1), badge.label(amount), src.hidden.includes(entry.badge_id)),
       progress: []
@@ -15701,7 +15709,7 @@
       if (tier < 0)
         return "continue";
       var hash2 = ACTIVITY_ICON_HASHES[badge2.key]?.[tier];
-      var text = badge2.title + " \xB7 " + badge2.tiers[tier][0] + " \xB7 " + badge2.label(badge2.tiers[tier][1]);
+      var text = badge2.title + " \xB7 " + badge2.tiers[tier][0] + " \xB7 " + badge2.label(activityAmount(src, badge2.key, badge2.tiers[tier][1]));
       if (hash2) {
         out.push({
           id: badge2.key,
@@ -20493,11 +20501,44 @@
                 }),
                 EXPERIMENTAL_BADGE_GROUPS.length ? /* @__PURE__ */ jsx(K2.Section, {
                   title: "Milestone badges",
-                  children: EXPERIMENTAL_BADGE_GROUPS.map((group) => /* @__PURE__ */ jsx(ActionButton, {
-                    label: `${group.label}: ${group.tiers.find((tier) => preview.selectedBadges?.[tier.id])?.name || "None"}`,
-                    muted: true,
-                    onPress: () => chooseExperimentalBadge(group)
-                  }, group.id))
+                  children: EXPERIMENTAL_BADGE_GROUPS.map((group) => {
+                    var picked = group.tiers.find((tier) => preview.selectedBadges?.[tier.id]);
+                    var badge = ACTIVITY_BADGES.find((item) => item.key === group.id);
+                    var tierIndex = picked && badge ? badge.tiers.findIndex(([name]) => name === picked.name) : -1;
+                    var unit = group.id === "account_age" ? "Years" : group.id === "game_variety" ? "Games played" : "Hours";
+                    return /* @__PURE__ */ jsxs(import_react_native20.View, {
+                      style: {
+                        gap: 8
+                      },
+                      children: [
+                        /* @__PURE__ */ jsx(ActionButton, {
+                          label: `${group.label}: ${picked?.name || "None"}`,
+                          muted: true,
+                          onPress: () => chooseExperimentalBadge(group)
+                        }),
+                        picked ? /* @__PURE__ */ jsx(K2.Field, {
+                          label: unit + " shown on the badge",
+                          hint: "Empty uses the tier's amount.",
+                          children: /* @__PURE__ */ jsx(TextInput4, {
+                            defaultValue: preview.activityAmounts?.[group.id] != null ? String(preview.activityAmounts[group.id]) : "",
+                            placeholder: tierIndex >= 0 && badge ? String(badge.tiers[tierIndex][1]) : "",
+                            keyboardType: "number-pad",
+                            onChangeText: (text) => {
+                              var next = {
+                                ...preview.activityAmounts || {}
+                              };
+                              var clean = text.replace(/[^0-9]/g, "");
+                              if (clean)
+                                next[group.id] = Math.min(Number(clean), 1e6);
+                              else
+                                delete next[group.id];
+                              update("activityAmounts", next, true);
+                            }
+                          })
+                        }) : null
+                      ]
+                    }, group.id);
+                  })
                 }) : null,
                 /* @__PURE__ */ jsxs(K2.Section, {
                   title: "Badge order",
