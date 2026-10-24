@@ -35,7 +35,7 @@ const ModalContent = _ModalContent as any;
 const ModalFooter = _ModalFooter as any;
 import { SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { AuthenticationStore, RelationshipStore, Button, ChannelActionCreators, FluxDispatcher, FriendsStore, IconUtils, Menu, Popout, React, Select, showToast, SnowflakeUtils, Toasts, UserProfileActions, UserProfileStore, UserStore } from "@webpack/common";
+import { AuthenticationStore, RelationshipStore, Button, ChannelActionCreators, FluxDispatcher, RestAPI, FriendsStore, IconUtils, Menu, Popout, React, Select, showToast, SnowflakeUtils, Toasts, UserProfileActions, UserProfileStore, UserStore } from "@webpack/common";
 
 import nitroBronze from "file://../../../../../assets/NitroMilestones/bronze.png?base64";
 import nitroDiamond from "file://../../../../../assets/NitroMilestones/diamond.png?base64";
@@ -2717,13 +2717,15 @@ function applyDiscordBadges(data: CustomProfileData, badges: any[]) {
         const id = String(badge?.id || "");
         const description = String(badge?.description || "");
         if (BADGE_ID_FLAGS[id]) flags |= BADGE_ID_FLAGS[id];
+        // Activity badges: the tier shows only in the icon.
+        else if (ACTIVITY_ICON_HASHES[id]) { const tier = ACTIVITY_ICON_HASHES[id].indexOf(String(badge?.icon || "")); const picked = EXPERIMENTAL_BADGE_GROUPS.find(group => group.id === id)?.tiers[tier]; if (picked) custom.push(picked.id); }
         else if (id === "premium") { data.nitro = true; if (Number(data.nitroLevel ?? -1) < 0) data.nitroLevel = 0; }
         else if (/^premium_tenure_(\d+)_month/.test(id)) { const months = Number(id.match(/^premium_tenure_(\d+)_month/)![1]); data.nitro = true; data.nitroLevel = Math.max(0, NITRO_TIER_MONTHS.indexOf(months)); }
         else if (/^guild_booster_lvl(\d+)$/.test(id)) data.boostMonths = Math.max(0, Number(id.match(/(\d+)$/)![1]) - 1);
-        else if (id === "legacy_username") { custom.push("oldname"); data.oldName = description.replace(/^[^:]*:\s*/, "").trim() || description; }
+        else if (id === "legacy_username") { custom.push("oldname"); data.oldName = description.replace(/^originally known as\s*/i, "").trim() || description; }
         else if (id === "quest_completed") custom.push("quest");
         else if (id === "orb_profile_badge") custom.push("orbs");
-        else { const gift = GIFT_LEVELS.findIndex(level => description.toLowerCase().includes(level.name.toLowerCase()) || id.includes(level.id)); if (gift >= 0 && /gift/i.test(id + description)) data.giftLevel = gift; }
+        else if (id === "gifting" || /gift/i.test(id)) { const gift = GIFT_LEVELS.findIndex(level => new RegExp("\\b" + level.name + "\\b", "i").test(description)); data.giftLevel = gift >= 0 ? gift : 0; }
     }
     data.badgeFlags = flags;
     data.customBadgeIds = custom;
@@ -2740,41 +2742,42 @@ async function buildCopiedProfile(userId: string, source: "discord" | "cloudcord
         if (!shared) throw new Error("This person doesn't have a CloudCord profile.");
         return { ...JSON.parse(JSON.stringify(shared)), copiedUserId: userId };
     }
-    // Read their real Discord profile, not the CloudCord look we draw over it.
-    const wasReal = isRealProfileView(userId);
-    if (!wasReal) setRealProfileView(userId, true);
-    try { await Promise.resolve(fetchUserProfile(userId, { withMutualGuilds: false, withMutualFriends: false })); } catch { }
-    const user = UserStore.getUser(userId) as any;
-    if (!user) { if (!wasReal) setRealProfileView(userId, false); throw new Error("Discord hasn't loaded that user. Open their profile once, then try again."); }
-    const profile: any = UserProfileStore.getUserProfile(userId) ?? {};
+    // Ask Discord for their real profile. The API answer has no CloudCord look drawn over it.
+    let body: any = null;
+    try { body = (await RestAPI.get({ url: `/users/${userId}/profile`, query: { with_mutual_guilds: false, with_mutual_friends: false, with_mutual_friends_count: false } }))?.body; } catch { }
+    const user: any = body?.user ?? UserStore.getUser(userId);
+    if (!user) throw new Error("Couldn't load that profile. Check the user ID and try again.");
+    const profile: any = body?.user_profile ?? {};
+    const pick = (...values: any[]) => values.find(value => value != null);
     // Start from a blank look so nothing of yours (frame, tag, extra badges...) is left over.
-    const data: CustomProfileData = { username: user.username || "", globalName: user.globalName || "", bio: profile.bio || "", pronouns: profile.pronouns || "", copiedUserId: userId, badgeFlags: user.publicFlags ?? 0,
-        avatar: "", banner: "", accentColor: undefined, accentColor2: undefined, nitro: false, nitroLevel: -1, nitroSince: "", boostMonths: -1, giftLevel: -1, customBadgeIds: [], oldName: "",
-        decorationAsset: "", decorationSkuId: "", nameplate: null, profileEffect: null, profileFrame: null, displayNameStyles: null, serverTag: null };
-    try { const avatar = IconUtils.getUserAvatarURL(user, true, 512); if (avatar) data.avatar = avatar; } catch { }
-    const bannerId = profile.banner ?? user.banner;
+    const data: CustomProfileData = { username: user.username || "", globalName: pick(user.global_name, user.globalName) || "", bio: pick(profile.bio, user.bio) || "", pronouns: profile.pronouns || "", copiedUserId: userId,
+        badgeFlags: Number(pick(user.public_flags, user.publicFlags) ?? 0), avatar: "", banner: "", accentColor: undefined, accentColor2: undefined, nitro: false, nitroLevel: -1, nitroSince: "", boostMonths: -1, giftLevel: -1,
+        customBadgeIds: [], oldName: "", decorationAsset: "", decorationSkuId: "", nameplate: null, profileEffect: null, profileFrame: null, displayNameStyles: null, serverTag: null };
+    if (user.avatar) data.avatar = `https://cdn.discordapp.com/avatars/${userId}/${user.avatar}.${String(user.avatar).startsWith("a_") ? "gif" : "png"}?size=512`;
+    const bannerId = pick(profile.banner, user.banner);
     if (bannerId) data.banner = `https://cdn.discordapp.com/banners/${userId}/${bannerId}.${String(bannerId).startsWith("a_") ? "gif" : "png"}?size=600`;
-    const colors: number[] = Array.isArray(profile.themeColors) ? profile.themeColors.filter((value: any) => typeof value === "number") : [];
+    const colors: number[] = (pick(profile.theme_colors, profile.themeColors) ?? []).filter((value: any) => typeof value === "number");
     if (colors.length) { data.accentColor = colors[0]; data.accentColor2 = colors[1] ?? colors[0]; }
-    else if (typeof profile.accentColor === "number") data.accentColor = profile.accentColor;
+    else if (typeof pick(profile.accent_color, user.accent_color) === "number") data.accentColor = pick(profile.accent_color, user.accent_color);
     try { data.createdAt = new Date(Number(BigInt(userId) >> 22n) + 1420070400000).toISOString().slice(0, 10); } catch { }
-    // Nitro and boosting tiers come from how long they've had them.
-    const nitroMonths = monthsSince(profile.premiumSince);
-    if (nitroMonths >= 0 || (profile.premiumType ?? 0) > 0) { data.nitro = true; data.nitroLevel = Math.max(0, tierFor(Math.max(0, nitroMonths), NITRO_TIER_MONTHS)); if (profile.premiumSince) data.nitroSince = new Date(profile.premiumSince).toISOString().slice(0, 10); }
-    const boostMonths = monthsSince(profile.premiumGuildSince);
-    if (boostMonths >= 0) data.boostMonths = Math.max(0, tierFor(boostMonths, BOOST_TIER_MONTHS));
-    if (user.avatarDecorationData?.asset) { data.decorationAsset = user.avatarDecorationData.asset; data.decorationSkuId = user.avatarDecorationData.skuId ?? user.avatarDecorationData.sku_id; }
+    if (body?.premium_since || (body?.premium_type ?? 0) > 0) {
+        data.nitro = true;
+        data.nitroLevel = Math.max(0, tierFor(Math.max(0, monthsSince(body.premium_since)), NITRO_TIER_MONTHS));
+        if (body.premium_since) data.nitroSince = String(body.premium_since).slice(0, 10);
+    }
+    if (body?.premium_guild_since) data.boostMonths = Math.max(0, tierFor(monthsSince(body.premium_guild_since), BOOST_TIER_MONTHS));
+    const decoration = pick(user.avatar_decoration_data, user.avatarDecorationData);
+    if (decoration?.asset) { data.decorationAsset = decoration.asset; data.decorationSkuId = String(pick(decoration.sku_id, decoration.skuId) ?? ""); }
     const nameplate = user.collectibles?.nameplate;
-    if (nameplate?.asset) data.nameplate = { skuId: String(nameplate.skuId ?? nameplate.sku_id ?? ""), asset: nameplate.asset, label: nameplate.label, palette: nameplate.palette };
-    const effectSku = profile.profileEffect?.skuId ?? profile.profileEffectId ?? profile.profileEffect?.id;
+    if (nameplate?.asset) data.nameplate = { skuId: String(pick(nameplate.sku_id, nameplate.skuId) ?? ""), asset: nameplate.asset, label: nameplate.label, palette: nameplate.palette };
+    const effectSku = pick(profile.profile_effect?.sku_id, profile.profileEffect?.skuId);
     if (effectSku) data.profileEffect = { skuId: String(effectSku) };
-    const styles = user.displayNameStyles ?? user.display_name_styles;
-    if (styles && typeof styles.fontId === "number") data.displayNameStyles = { fontId: styles.fontId || 11, effectId: styles.effectId || 1, colors: Array.isArray(styles.colors) ? styles.colors : [] };
-    const guild = user.primaryGuild ?? user.primary_guild;
-    const tagGuild = guild?.identityGuildId ?? guild?.identity_guild_id;
+    const styles = pick(user.display_name_styles, user.displayNameStyles);
+    if (styles && (typeof pick(styles.font_id, styles.fontId) === "number")) data.displayNameStyles = { fontId: pick(styles.font_id, styles.fontId) || 11, effectId: pick(styles.effect_id, styles.effectId) || 1, colors: Array.isArray(styles.colors) ? styles.colors : [] };
+    const guild = pick(user.primary_guild, user.primaryGuild);
+    const tagGuild = pick(guild?.identity_guild_id, guild?.identityGuildId);
     if (guild?.tag && tagGuild && guild.badge) data.serverTag = { tag: guild.tag, guildId: String(tagGuild), badge: guild.badge };
-    if (Array.isArray(profile.badges) && profile.badges.length) applyDiscordBadges(data, profile.badges);
-    if (!wasReal) { setRealProfileView(userId, false); reloadDiscordProfile(userId); }
+    if (Array.isArray(body?.badges) && body.badges.length) applyDiscordBadges(data, body.badges);
     return data;
 }
 

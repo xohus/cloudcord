@@ -133,9 +133,19 @@ export async function isUpdateAvailableForPlugin(_, name: string): Promise<boole
     });
 }
 
+// Turn install failures into a message people can act on.
+function installError(error: any): string {
+    const text = String(error?.message ?? error ?? "");
+    if (/spawn git|'git' is not recognized|git: (?:command )?not found|ENOENT.*git/i.test(text)) return "Git is needed to install plugins from a link. Install Git from git-scm.com, then fully quit and reopen Discord.";
+    if (/definePlugin|Invalid plugin/i.test(text)) return "That repository isn't a Discord client plugin. Only Vencord-style plugins (with definePlugin) can be installed here.";
+    return text || "The install failed.";
+}
+
 export function initPluginInstall(_, link: string, source: string, owner: string, repo: string): Promise<string> {
     // eslint-disable-next-line
     return new Promise(async (resolve, reject) => {
+        // Every failure must reject; an unhandled one leaves Discord waiting ("reply was never sent").
+        try {
         await ensureCustomBuildCheckout();
         const verifiedRegex = link.match(CLONE_LINK_REGEX)!;
         const idpl = source === "plugins.nin0.dev" ? 1 : 0;
@@ -216,6 +226,10 @@ export function initPluginInstall(_, link: string, source: string, owner: string
             }
         });
         win.show();
+        } catch (error: any) {
+            try { await rm(join(userPluginsRoot, repo), { recursive: true, force: true }); } catch { }
+            reject(installError(error));
+        }
     });
 }
 
@@ -266,7 +280,7 @@ async function getPluginMeta(path: string, extra: object = {}): Promise<{
             if (f === "index.js") fileToRead = "index.js";
             if (f === "index.jsx") fileToRead = "index.jsx";
         });
-        if (!fileToRead) reject("Invalid plugin");
+        if (!fileToRead) return reject("Invalid plugin: no index file. That repository isn't a Discord client plugin.");
 
         const file = readFileSync(`${path}/${fileToRead}`, "utf8");
         let remoteURL;
@@ -290,6 +304,7 @@ async function getPluginMeta(path: string, extra: object = {}): Promise<{
         }
 
         const rawMeta = file.match(PLUGIN_META_REGEX);
+        if (!rawMeta) return reject("Invalid plugin: no definePlugin with a name and description.");
         resolve({
             name: rawMeta![1],
             description: rawMeta![2],
@@ -308,6 +323,8 @@ async function cloneRepo(link: string, repo: string): Promise<void> {
         const proc = spawn("git", ["clone", link], {
             cwd: userPluginsRoot
         });
+        // Missing git emits "error", not "close".
+        proc.once("error", reject);
         proc.once("close", async () => {
             if (proc.exitCode !== 0) {
                 if (!existsSync(join(userPluginsRoot, repo)))

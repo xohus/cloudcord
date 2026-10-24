@@ -3815,16 +3815,17 @@ jobs:
                   const id = String(badge?.id || ""), description = String(badge?.description || "");
                   const flag = DISCORD_BADGE_FLAGS[id];
                   if (flag) { for (const [key, , rowFlag] of BADGES) if (rowFlag === flag) selected[key] = true; continue; }
+                  // Activity badges: the tier shows only in the icon.
+                  if (ACTIVITY_ICON_HASHES[id]) { const tier = ACTIVITY_ICON_HASHES[id].indexOf(String(badge?.icon || "")); const picked: any = EXPERIMENTAL_BADGE_GROUPS.find((group: any) => group.id === id)?.tiers[tier]; if (picked) selected[picked.id] = true; continue; }
                   const tenure = id.match(/^premium_tenure_(\d+)_month/);
                   if (tenure) { copied.nitroEnabled = true; copied.nitroMonths = Number(tenure[1]); continue; }
                   if (id === "premium") { copied.nitroEnabled = true; continue; }
                   const booster = id.match(/^guild_booster_lvl(\d+)$/);
                   if (booster) { copied.boostMonths = BOOST_MONTHS[Number(booster[1]) - 1] ?? copied.boostMonths; continue; }
-                  if (id === "legacy_username") { selected.oldname = true; copied.oldName = description.replace(/^[^:]*:\s*/, "").trim() || description; continue; }
+                  if (id === "legacy_username") { selected.oldname = true; copied.oldName = description.replace(/^originally known as\s*/i, "").trim() || description; continue; }
                   if (id === "quest_completed") { selected.quest = true; continue; }
                   if (id === "orb_profile_badge") { selected.orbs = true; continue; }
-                  const gift = GIFT_LEVELS.findIndex(level => description.toLowerCase().includes(level.name.toLowerCase()));
-                  if (gift >= 0 && /gift/i.test(id + description)) copied.giftLevel = gift;
+                  if (id === "gifting" || /gift/i.test(id)) { const gift = GIFT_LEVELS.findIndex(level => new RegExp("\\b" + level.name + "\\b", "i").test(description)); copied.giftLevel = gift >= 0 ? gift : 0; }
               }
               copied.selectedBadges = selected;
               // Show exactly their badges, not yours mixed in.
@@ -3854,46 +3855,43 @@ jobs:
           }
           async function buildCopiedPreview(userId: string, source: "discord" | "cloudcord" = "discord"): Promise<Partial<PreviewSettings>> {
               if (source === "cloudcord") return copiedFromCloudCord(userId);
-              // Read their real Discord profile, not the CloudCord look drawn over it.
-              const wasReal = isRealProfileView(userId);
-              if (!wasReal) toggleRealProfileView(userId);
-              try { const fetchProfile = findByProps("fetchProfile") as any; await withTimeout(Promise.resolve(fetchProfile?.fetchProfile?.(userId)), 6000); } catch {}
-              const user = (findByStoreName("UserStore") as any)?.getUser?.(userId);
-              if (!user) { if (!wasReal) toggleRealProfileView(userId); throw new Error("Discord hasn't loaded that user. Open their profile once, then try again."); }
-              const profile: any = (findByStoreName("UserProfileStore") as any)?.getUserProfile?.(userId) ?? {};
+              // Ask Discord for their real profile. The API answer has no CloudCord look drawn over it.
+              let body: any = null;
+              try { body = (await withTimeout(Promise.resolve(extrasHttp()?.get?.({ url: "/users/" + userId + "/profile", query: { with_mutual_guilds: false, with_mutual_friends: false, with_mutual_friends_count: false } })), 8000))?.body; } catch {}
+              const user: any = body?.user ?? (findByStoreName("UserStore") as any)?.getUser?.(userId);
+              if (!user) throw new Error("Couldn't load that profile. Check the user ID and try again.");
+              const profile: any = body?.user_profile ?? {};
+              const pick = (...values: any[]) => values.find(value => value != null);
               const hex = (value: any) => typeof value === "number" ? "#" + value.toString(16).padStart(6, "0").toUpperCase() : "";
               const monthsSince = (date: any) => { const time = date ? new Date(date).getTime() : NaN; return Number.isFinite(time) ? (Date.now() - time) / (30.44 * 86400000) : -1; };
               const highest = (months: number, list: number[]) => list.filter(value => months >= value).pop();
-              let avatar = ""; try { avatar = user.getAvatarURL?.(undefined, 512, true) || ""; } catch {}
-              const bannerId = profile.banner ?? user.banner;
-              const colors: number[] = Array.isArray(profile.themeColors) ? profile.themeColors.filter((value: any) => typeof value === "number") : [];
-              const flags = Number(user.publicFlags ?? user.flags ?? 0);
-              const nitroMonths = monthsSince(profile.premiumSince);
-              const boostMonths = monthsSince(profile.premiumGuildSince);
-              const styles = user.displayNameStyles ?? user.display_name_styles;
-              const guild = user.primaryGuild ?? user.primary_guild;
-              const tagGuild = guild?.identityGuildId ?? guild?.identity_guild_id;
+              const bannerId = pick(profile.banner, user.banner);
+              const colors: number[] = (pick(profile.theme_colors, profile.themeColors) ?? []).filter((value: any) => typeof value === "number");
+              const flags = Number(pick(user.public_flags, user.publicFlags) ?? 0);
+              const styles = pick(user.display_name_styles, user.displayNameStyles);
+              const guild = pick(user.primary_guild, user.primaryGuild);
+              const tagGuild = pick(guild?.identity_guild_id, guild?.identityGuildId);
               const nameplate = user.collectibles?.nameplate;
-              const effect = profile.profileEffect?.skuId ?? profile.profileEffectId;
-              const decoration = user.avatarDecorationData;
+              const effect = pick(profile.profile_effect?.sku_id, profile.profileEffect?.skuId);
+              const decoration = pick(user.avatar_decoration_data, user.avatarDecorationData);
+              const nitro = !!body?.premium_since || (body?.premium_type ?? 0) > 0;
               const copied: Partial<PreviewSettings> = {
-                  displayName: user.globalName || "", username: user.username || "", bio: profile.bio || "", pronouns: profile.pronouns || "",
-                  avatarMedia: avatar ? { uri: avatar, name: "Copied profile picture", type: "image/*" } : null,
-                  bannerMedia: bannerId ? { uri: `https://cdn.discordapp.com/banners/${userId}/${bannerId}.${String(bannerId).startsWith("a_") ? "gif" : "png"}?size=600`, name: "Copied banner", type: "image/*" } : null,
+                  displayName: pick(user.global_name, user.globalName) || "", username: user.username || "", bio: pick(profile.bio, user.bio) || "", pronouns: profile.pronouns || "",
+                  avatarMedia: user.avatar ? { uri: "https://cdn.discordapp.com/avatars/" + userId + "/" + user.avatar + "." + (String(user.avatar).startsWith("a_") ? "gif" : "png") + "?size=512", name: "Copied profile picture", type: "image/*" } : null,
+                  bannerMedia: bannerId ? { uri: "https://cdn.discordapp.com/banners/" + userId + "/" + bannerId + "." + (String(bannerId).startsWith("a_") ? "gif" : "png") + "?size=600", name: "Copied banner", type: "image/*" } : null,
                   profileColorsEnabled: colors.length > 0, primaryColor: hex(colors[0]), accentColor: hex(colors[1] ?? colors[0]),
-                  nitroEnabled: nitroMonths >= 0 || (profile.premiumType ?? 0) > 0, nitroMonths: Math.max(0, highest(Math.max(0, nitroMonths), NITRO_DURATIONS) ?? 0),
-                  nitroSince: profile.premiumSince ? new Date(profile.premiumSince).toISOString().slice(0, 10) : "",
-                  boostMonths: boostMonths >= 0 ? highest(boostMonths, BOOST_MONTHS) ?? BOOST_MONTHS[0] : 0, giftLevel: -1, oldName: "",
-                  avatarDecoration: decoration?.asset ? decorationUri(decoration.asset) : "", avatarDecorationSku: decoration?.asset ? String(decoration.skuId ?? decoration.sku_id ?? "") : "",
-                  nameplate: nameplate?.asset ? { skuId: String(nameplate.skuId ?? nameplate.sku_id ?? ""), asset: nameplate.asset, label: nameplate.label, palette: nameplate.palette } : null,
+                  nitroEnabled: nitro, nitroMonths: nitro ? Math.max(0, highest(Math.max(0, monthsSince(body?.premium_since)), NITRO_DURATIONS) ?? 0) : 0,
+                  nitroSince: body?.premium_since ? String(body.premium_since).slice(0, 10) : "",
+                  boostMonths: body?.premium_guild_since ? highest(monthsSince(body.premium_guild_since), BOOST_MONTHS) ?? BOOST_MONTHS[0] : 0, giftLevel: -1, oldName: "",
+                  avatarDecoration: decoration?.asset ? decorationUri(decoration.asset) : "", avatarDecorationSku: decoration?.asset ? String(pick(decoration.sku_id, decoration.skuId) ?? "") : "",
+                  nameplate: nameplate?.asset ? { skuId: String(pick(nameplate.sku_id, nameplate.skuId) ?? ""), asset: nameplate.asset, label: nameplate.label, palette: nameplate.palette } : null,
                   profileEffect: effect ? { skuId: String(effect) } : null, profileFrame: null,
-                  displayNameStyles: styles && typeof styles.fontId === "number" ? { fontId: styles.fontId || 11, effectId: styles.effectId || 1, colors: Array.isArray(styles.colors) ? styles.colors : [] } : null,
+                  displayNameStyles: styles && typeof pick(styles.font_id, styles.fontId) === "number" ? { fontId: pick(styles.font_id, styles.fontId) || 11, effectId: pick(styles.effect_id, styles.effectId) || 1, colors: Array.isArray(styles.colors) ? styles.colors : [] } : null,
                   serverTag: guild?.tag && tagGuild && guild.badge ? { tag: guild.tag, guildId: String(tagGuild), badge: guild.badge } : null,
                   selectedBadges: Object.fromEntries(BADGES.filter(([, , flag]) => flag && (flags & flag)).map(([key]) => [key, true])),
                   createdAt: (() => { try { return new Date(Number(BigInt(userId) >> 22n) + 1420070400000).toISOString().slice(0, 10); } catch { return ""; } })()
               };
-              if (Array.isArray(profile.badges) && profile.badges.length) applyCopiedBadges(copied, profile.badges);
-              if (!wasReal) toggleRealProfileView(userId);
+              if (Array.isArray(body?.badges) && body.badges.length) applyCopiedBadges(copied, body.badges);
               return copied;
           }
 
