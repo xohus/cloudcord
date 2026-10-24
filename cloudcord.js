@@ -14691,6 +14691,7 @@
         ]);
     }
     if (data.banner) {
+      setOwnValue(cloned, "banner", data.banner);
       setOwnValue(cloned, "bannerURL", data.banner);
       setOwnValue(cloned, "bannerUrl", data.banner);
       setOwnValue(cloned, "getBannerURL", () => data.banner);
@@ -15450,6 +15451,8 @@
       setOwnValue(cloned, "getAvatarURL", () => avatar);
     }
     if (banner) {
+      setOwnValue(cloned, "banner", banner);
+      setOwnValue(cloned, "bannerSrc", banner);
       setOwnValue(cloned, "bannerURL", banner);
       setOwnValue(cloned, "bannerUrl", banner);
       setOwnValue(cloned, "getBannerURL", () => banner);
@@ -16666,7 +16669,10 @@
     ]) {
       addPatch(method5, bannerResolver, (args, original) => {
         var uri = mediaUri("bannerMedia");
-        return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
+        if (preview.enabled && uri && requestIsCurrent(args))
+          return uri;
+        var passed = args.map((value) => value?.banner).find((value) => typeof value === "string" && /^https:\/\//i.test(value));
+        return passed || original(...args);
       });
     }
     var snowflakeUtils = findByProps("extractTimestamp");
@@ -17256,6 +17262,33 @@
     ownerRowCache.set(props, value);
     return value;
   }
+  function fakeListCounts(guildId, props) {
+    var fake = boostFor(guildId);
+    if (!Array.isArray(props?.groups) || fake?.online == null && fake?.members == null)
+      return props;
+    var online = fake.online ?? props.groups.find((group) => group.id === "online")?.count ?? 0;
+    var offline = fake.members != null ? Math.max(0, fake.members - online) : void 0;
+    var key = online + "|" + offline;
+    var hit = countCache.get(props);
+    if (hit && hit.key === key)
+      return hit.value;
+    var groups = props.groups.map((group) => group.id === "online" ? {
+      ...group,
+      count: online
+    } : group.id === "offline" && offline != null ? {
+      ...group,
+      count: offline
+    } : group);
+    var value = {
+      ...props,
+      groups
+    };
+    countCache.set(props, {
+      key,
+      value
+    });
+    return value;
+  }
   function selfMemberRow(guildId, me) {
     try {
       var member = findByStoreName("GuildMemberStore")?.getMember?.(guildId, me);
@@ -17332,6 +17365,8 @@
           var next = fake?.roles?.length ? regroupMemberList(args[0], props) : props;
           if (fake?.owner)
             next = markOwnerRow(next);
+          if (fake?.online != null || fake?.members != null)
+            next = fakeListCounts(args[0], next);
           return next;
         } catch (e) {
           return props;
@@ -20716,7 +20751,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, leavingServers, NamePreviewBoundary, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
+  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, leavingServers, NamePreviewBoundary, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -21913,6 +21948,7 @@
       fakeMemberCache = /* @__PURE__ */ new WeakMap();
       listCache = /* @__PURE__ */ new WeakMap();
       ownerRowCache = /* @__PURE__ */ new WeakMap();
+      countCache = /* @__PURE__ */ new WeakMap();
       leavingServers = false;
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
