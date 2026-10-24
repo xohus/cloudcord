@@ -3832,6 +3832,17 @@ jobs:
               copied.replaceBadges = true;
           }
           function hasCloudCordProfile(userId: string) { return sharedProfiles.has(userId); }
+          // A user ID, an @mention, a profile link, or the username of someone Discord has loaded.
+          function resolveCopyTarget(text: string): string | null {
+              const value = String(text || "").trim();
+              const id = value.match(/\d{15,22}/)?.[0];
+              if (id) return id;
+              const name = value.replace(/^@/, "").toLowerCase();
+              if (!name) return null;
+              let users: any[] = [];
+              try { users = Object.values((findByStoreName("UserStore") as any)?.getUsers?.() ?? {}); } catch {}
+              return (users.find(user => user?.username?.toLowerCase() === name) ?? users.find(user => user?.globalName?.toLowerCase() === name))?.id ?? null;
+          }
           function copiedFromCloudCord(userId: string): Partial<PreviewSettings> {
               const data: any = sharedProfiles.get(userId);
               if (!data) throw new Error("This person doesn't have a CloudCord profile.");
@@ -4267,11 +4278,13 @@ jobs:
                           {activeTab === "profile" ? <Card border="strong">
                               <View style={{ padding: 16, gap: 24 }}>
                                   <K.Section title="Copy someone's profile" description="Use another person's names, pictures, colours, name style, badges, Nitro, decoration and more.">
-                                      <K.Field label="Their user ID" hint="Long-press them → Copy User ID"><TextInput value={copyId} placeholder="123456789012345678" keyboardType="number-pad" onChangeText={(text: string) => setCopyId(text.replace(/\D/g, ""))} /></K.Field>
-                                      {[["discord", /^\d{15,22}$/.test(copyId) && hasCloudCordProfile(copyId) ? "Copy Discord profile" : "Copy profile"], ...(/^\d{15,22}$/.test(copyId) && hasCloudCordProfile(copyId) ? [["cloudcord", "Copy CloudCord profile"]] : [])].map(([source, label]) => <K.Button key={source} label={copying ? "Copying…" : label} primary={source === "discord"} disabled={copying || !/^\d{15,22}$/.test(copyId)} onPress={async () => {
+                                      <K.Field label="Who to copy" hint="User ID, @username or profile link"><TextInput value={copyId} placeholder="@username or user ID" autoCapitalize="none" autoCorrect={false} onChangeText={(text: string) => setCopyId(text)} /></K.Field>
+                                      {(() => { const target = resolveCopyTarget(copyId); const both = !!target && hasCloudCordProfile(target); return [["discord", both ? "Copy Discord profile" : "Copy profile"], ...(both ? [["cloudcord", "Copy CloudCord profile"]] : [])]; })().map(([source, label]) => <K.Button key={source} label={copying ? "Copying…" : label} primary={source === "discord"} disabled={copying || !copyId.trim()} onPress={async () => {
+                                          const target = resolveCopyTarget(copyId);
+                                          if (!target) { Alert.alert("Couldn't find that person", "Use their user ID (long-press them → Copy User ID), or the username of someone you share a server with."); return; }
                                           setCopying(true);
                                           try {
-                                              const copied = await buildCopiedPreview(copyId, source as "discord" | "cloudcord");
+                                              const copied = await buildCopiedPreview(target, source as "discord" | "cloudcord");
                                               rootSettings.fakeProfile = { ...preview, ...copied, enabled: true, syncRevision: Date.now() };
                                               preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw();
                                               showToast("Copied " + (copied.displayName || copied.username || "their profile"));

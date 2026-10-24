@@ -2744,7 +2744,7 @@ async function buildCopiedProfile(userId: string, source: "discord" | "cloudcord
     }
     // Ask Discord for their real profile. The API answer has no CloudCord look drawn over it.
     let body: any = null;
-    try { body = (await RestAPI.get({ url: `/users/${userId}/profile`, query: { with_mutual_guilds: false, with_mutual_friends: false, with_mutual_friends_count: false } }))?.body; } catch { }
+    try { body = (await Promise.race([RestAPI.get({ url: `/users/${userId}/profile`, query: { with_mutual_guilds: false, with_mutual_friends: false, with_mutual_friends_count: false } }), new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 10000))]) as any)?.body; } catch { }
     const user: any = body?.user ?? UserStore.getUser(userId);
     if (!user) throw new Error("Couldn't load that profile. Check the user ID and try again.");
     const profile: any = body?.user_profile ?? {};
@@ -2781,27 +2781,41 @@ async function buildCopiedProfile(userId: string, source: "discord" | "cloudcord
     return data;
 }
 
+// A user ID, an @mention, a profile link, or the username of someone Discord has loaded.
+function resolveCopyTarget(text: string): string | null {
+    const value = text.trim();
+    const id = value.match(/\d{15,22}/)?.[0];
+    if (id) return id;
+    const name = value.replace(/^@/, "").toLowerCase();
+    if (!name) return null;
+    const users = Object.values((UserStore as any).getUsers?.() ?? {}) as any[];
+    return (users.find(user => user?.username?.toLowerCase() === name) ?? users.find(user => user?.globalName?.toLowerCase() === name))?.id ?? null;
+}
+
 function CopyProfileSection({ onCopy }: { onCopy: (data: CustomProfileData) => void; }) {
-    const [userId, setUserId] = React.useState("");
+    const [query, setQuery] = React.useState("");
     const [busy, setBusy] = React.useState(false);
-    const valid = /^\d{15,22}$/.test(userId.trim());
-    const both = valid && hasCloudCordProfile(userId.trim());
+    const [error, setError] = React.useState("");
+    const target = resolveCopyTarget(query);
+    const both = !!target && hasCloudCordProfile(target);
     const copy = async (source: "discord" | "cloudcord" = "discord") => {
-        if (!valid || busy) return;
-        setBusy(true);
+        if (busy || !query.trim()) return;
+        if (!target) { setError("Couldn't find that person. Use their user ID (right-click them → Copy User ID), or the username of someone you share a server with."); return; }
+        setBusy(true); setError("");
         try {
-            const data = await buildCopiedProfile(userId.trim(), source);
+            const data = await buildCopiedProfile(target, source);
             onCopy(data);
             showToast(`Copied ${data.globalName || data.username}. Press Save to use it.`, Toasts.Type.SUCCESS);
-        } catch (error: any) { showToast(error?.message || "Couldn't copy that profile.", Toasts.Type.FAILURE); }
+        } catch (problem: any) { setError(problem?.message || "Couldn't copy that profile."); }
         finally { setBusy(false); }
     };
     return <Section title="Copy someone's profile" description="Fill this editor with another person's profile: names, pictures, colours, name style, badges, Nitro, decoration and more. Nothing is saved until you press Save.">
         <div className="cpx-inline">
-            <input className="cpx-input" value={userId} placeholder="Their user ID (right-click → Copy User ID)" onChange={event => setUserId(event.currentTarget.value)} onKeyDown={event => { if (event.key === "Enter") void copy(); }} />
-            <button type="button" className="cpx-btn" disabled={!valid || busy} onClick={() => void copy("discord")}>{busy ? "Copying…" : both ? "Copy Discord profile" : "Copy profile"}</button>
+            <input className="cpx-input" value={query} placeholder="User ID, @username or profile link" onChange={event => { setQuery(event.currentTarget.value); setError(""); }} onKeyDown={event => { if (event.key === "Enter") void copy(); }} />
+            <button type="button" className="cpx-btn" disabled={!query.trim() || busy} onClick={() => void copy("discord")}>{busy ? "Copying…" : both ? "Copy Discord profile" : "Copy profile"}</button>
             {both && <button type="button" className="cpx-btn cpx-btn-primary" disabled={busy} onClick={() => void copy("cloudcord")}>Copy CloudCord profile</button>}
         </div>
+        {error && <span className="cpx-hint cpx-error" role="alert">{error}</span>}
         {both && <span className="cpx-hint">This person uses CloudCord. Copy their real Discord profile, or the custom profile they show with CloudCord.</span>}
     </Section>;
 }
