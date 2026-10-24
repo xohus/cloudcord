@@ -18799,6 +18799,21 @@
   function hasCloudCordProfile(userId) {
     return sharedProfiles.has(userId);
   }
+  function resolveCopyTarget(text) {
+    var value = String(text || "").trim();
+    var id = value.match(/\d{15,22}/)?.[0];
+    if (id)
+      return id;
+    var name = value.replace(/^@/, "").toLowerCase();
+    if (!name)
+      return null;
+    var users = [];
+    try {
+      users = Object.values(findByStoreName("UserStore")?.getUsers?.() ?? {});
+    } catch (e) {
+    }
+    return (users.find((user) => user?.username?.toLowerCase() === name) ?? users.find((user) => user?.globalName?.toLowerCase() === name))?.id ?? null;
+  }
   function copiedFromCloudCord(userId) {
     var data = sharedProfiles.get(userId);
     if (!data)
@@ -19656,34 +19671,44 @@
                   description: "Use another person's names, pictures, colours, name style, badges, Nitro, decoration and more.",
                   children: [
                     /* @__PURE__ */ jsx(K2.Field, {
-                      label: "Their user ID",
-                      hint: "Long-press them \u2192 Copy User ID",
+                      label: "Who to copy",
+                      hint: "User ID, @username or profile link",
                       children: /* @__PURE__ */ jsx(TextInput4, {
                         value: copyId,
-                        placeholder: "123456789012345678",
-                        keyboardType: "number-pad",
-                        onChangeText: (text) => setCopyId(text.replace(/\D/g, ""))
+                        placeholder: "@username or user ID",
+                        autoCapitalize: "none",
+                        autoCorrect: false,
+                        onChangeText: (text) => setCopyId(text)
                       })
                     }),
-                    [
-                      [
-                        "discord",
-                        /^\d{15,22}$/.test(copyId) && hasCloudCordProfile(copyId) ? "Copy Discord profile" : "Copy profile"
-                      ],
-                      .../^\d{15,22}$/.test(copyId) && hasCloudCordProfile(copyId) ? [
+                    (() => {
+                      var target = resolveCopyTarget(copyId);
+                      var both = !!target && hasCloudCordProfile(target);
+                      return [
                         [
-                          "cloudcord",
-                          "Copy CloudCord profile"
-                        ]
-                      ] : []
-                    ].map(([source, label]) => /* @__PURE__ */ jsx(K2.Button, {
+                          "discord",
+                          both ? "Copy Discord profile" : "Copy profile"
+                        ],
+                        ...both ? [
+                          [
+                            "cloudcord",
+                            "Copy CloudCord profile"
+                          ]
+                        ] : []
+                      ];
+                    })().map(([source, label]) => /* @__PURE__ */ jsx(K2.Button, {
                       label: copying ? "Copying\u2026" : label,
                       primary: source === "discord",
-                      disabled: copying || !/^\d{15,22}$/.test(copyId),
+                      disabled: copying || !copyId.trim(),
                       onPress: () => _async_to_generator(function* () {
+                        var target = resolveCopyTarget(copyId);
+                        if (!target) {
+                          import_react_native20.Alert.alert("Couldn't find that person", "Use their user ID (long-press them \u2192 Copy User ID), or the username of someone you share a server with.");
+                          return;
+                        }
                         setCopying(true);
                         try {
-                          var copied = yield buildCopiedPreview(copyId, source);
+                          var copied = yield buildCopiedPreview(target, source);
                           rootSettings.fakeProfile = {
                             ...preview,
                             ...copied,
