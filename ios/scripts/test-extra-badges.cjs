@@ -52,7 +52,7 @@ const desktopContext = vm.createContext({
     React: { createElement: (type, props, ...children) => ({ type, props: props || {}, children }) },
     Select: 'Select', SelectField: 'SelectField', Switch: 'Switch', TextField: 'TextField', BadgeCard: 'BadgeCard', BadgeGroup: 'BadgeGroup', BadgeBtn: 'BadgeBtn', BADGES: [], NITRO_LEVELS: [],
     GIFT_LEVELS: [], BOOST_LABELS: [], BOOST_ICONS: [], OLD_NAME_BADGE_ICON: '',
-    EXPERIMENTAL_BADGE_GROUPS: expected.groups, EVENT_BADGES: expected.events
+    EXPERIMENTAL_BADGE_GROUPS: expected.groups, EVENT_BADGES: expected.events, ACTIVITY_BADGES: []
 });
 vm.runInContext(esbuild.transformSync(pickerSource, { loader: 'tsx' }).code, desktopContext);
 let selectedIds;
