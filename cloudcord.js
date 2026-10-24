@@ -18750,6 +18750,13 @@
             selected[key] = true;
         return "continue";
       }
+      if (ACTIVITY_ICON_HASHES[id]) {
+        var tier = ACTIVITY_ICON_HASHES[id].indexOf(String(badge2?.icon || ""));
+        var picked = EXPERIMENTAL_BADGE_GROUPS.find((group) => group.id === id)?.tiers[tier];
+        if (picked)
+          selected[picked.id] = true;
+        return "continue";
+      }
       var tenure = id.match(/^premium_tenure_(\d+)_month/);
       if (tenure) {
         copied.nitroEnabled = true;
@@ -18767,7 +18774,7 @@
       }
       if (id === "legacy_username") {
         selected.oldname = true;
-        copied.oldName = description.replace(/^[^:]*:\s*/, "").trim() || description;
+        copied.oldName = description.replace(/^originally known as\s*/i, "").trim() || description;
         return "continue";
       }
       if (id === "quest_completed") {
@@ -18778,9 +18785,10 @@
         selected.orbs = true;
         return "continue";
       }
-      var gift = GIFT_LEVELS.findIndex((level) => description.toLowerCase().includes(level.name.toLowerCase()));
-      if (gift >= 0 && /gift/i.test(id + description))
-        copied.giftLevel = gift;
+      if (id === "gifting" || /gift/i.test(id)) {
+        var gift = GIFT_LEVELS.findIndex((level) => new RegExp("\\b" + level.name + "\\b", "i").test(description));
+        copied.giftLevel = gift >= 0 ? gift : 0;
+      }
     };
     var selected = {};
     for (var badge of badges)
@@ -18836,71 +18844,67 @@
     return _async_to_generator(function* () {
       if (source === "cloudcord")
         return copiedFromCloudCord(userId);
-      var wasReal = isRealProfileView(userId);
-      if (!wasReal)
-        toggleRealProfileView(userId);
+      var body = null;
       try {
-        var fetchProfile = findByProps("fetchProfile");
-        yield withTimeout(Promise.resolve(fetchProfile?.fetchProfile?.(userId)), 6e3);
+        body = (yield withTimeout(Promise.resolve(extrasHttp()?.get?.({
+          url: "/users/" + userId + "/profile",
+          query: {
+            with_mutual_guilds: false,
+            with_mutual_friends: false,
+            with_mutual_friends_count: false
+          }
+        })), 8e3))?.body;
       } catch (e) {
       }
-      var user = findByStoreName("UserStore")?.getUser?.(userId);
-      if (!user) {
-        if (!wasReal)
-          toggleRealProfileView(userId);
-        throw new Error("Discord hasn't loaded that user. Open their profile once, then try again.");
-      }
-      var profile = findByStoreName("UserProfileStore")?.getUserProfile?.(userId) ?? {};
+      var user = body?.user ?? findByStoreName("UserStore")?.getUser?.(userId);
+      if (!user)
+        throw new Error("Couldn't load that profile. Check the user ID and try again.");
+      var profile = body?.user_profile ?? {};
+      var pick = (...values) => values.find((value) => value != null);
       var hex = (value) => typeof value === "number" ? "#" + value.toString(16).padStart(6, "0").toUpperCase() : "";
       var monthsSince = (date) => {
         var time = date ? new Date(date).getTime() : NaN;
         return Number.isFinite(time) ? (Date.now() - time) / (30.44 * 864e5) : -1;
       };
       var highest = (months, list) => list.filter((value) => months >= value).pop();
-      var avatar = "";
-      try {
-        avatar = user.getAvatarURL?.(void 0, 512, true) || "";
-      } catch (e) {
-      }
-      var bannerId = profile.banner ?? user.banner;
-      var colors = Array.isArray(profile.themeColors) ? profile.themeColors.filter((value) => typeof value === "number") : [];
-      var flags = Number(user.publicFlags ?? user.flags ?? 0);
-      var nitroMonths = monthsSince(profile.premiumSince);
-      var boostMonths = monthsSince(profile.premiumGuildSince);
-      var styles = user.displayNameStyles ?? user.display_name_styles;
-      var guild = user.primaryGuild ?? user.primary_guild;
-      var tagGuild = guild?.identityGuildId ?? guild?.identity_guild_id;
+      var bannerId = pick(profile.banner, user.banner);
+      var colors = (pick(profile.theme_colors, profile.themeColors) ?? []).filter((value) => typeof value === "number");
+      var flags = Number(pick(user.public_flags, user.publicFlags) ?? 0);
+      var styles = pick(user.display_name_styles, user.displayNameStyles);
+      var guild = pick(user.primary_guild, user.primaryGuild);
+      var tagGuild = pick(guild?.identity_guild_id, guild?.identityGuildId);
       var nameplate = user.collectibles?.nameplate;
-      var effect = profile.profileEffect?.skuId ?? profile.profileEffectId;
-      var decoration = user.avatarDecorationData;
+      var effect = pick(profile.profile_effect?.sku_id, profile.profileEffect?.skuId);
+      var decoration = pick(user.avatar_decoration_data, user.avatarDecorationData);
+      var nitro = !!body?.premium_since || (body?.premium_type ?? 0) > 0;
       var copied = {
-        displayName: user.globalName || "",
+        displayName: pick(user.global_name, user.globalName) || "",
         username: user.username || "",
-        bio: profile.bio || "",
+        bio: pick(profile.bio, user.bio) || "",
         pronouns: profile.pronouns || "",
-        avatarMedia: avatar ? {
-          uri: avatar,
+        avatarMedia: user.avatar ? {
+          uri: "https://cdn.discordapp.com/avatars/" + userId + "/" + user.avatar + "." + (String(user.avatar).startsWith("a_") ? "gif" : "png") + "?size=512",
           name: "Copied profile picture",
           type: "image/*"
         } : null,
         bannerMedia: bannerId ? {
-          uri: `https://cdn.discordapp.com/banners/${userId}/${bannerId}.${String(bannerId).startsWith("a_") ? "gif" : "png"}?size=600`,
+          uri: "https://cdn.discordapp.com/banners/" + userId + "/" + bannerId + "." + (String(bannerId).startsWith("a_") ? "gif" : "png") + "?size=600",
           name: "Copied banner",
           type: "image/*"
         } : null,
         profileColorsEnabled: colors.length > 0,
         primaryColor: hex(colors[0]),
         accentColor: hex(colors[1] ?? colors[0]),
-        nitroEnabled: nitroMonths >= 0 || (profile.premiumType ?? 0) > 0,
-        nitroMonths: Math.max(0, highest(Math.max(0, nitroMonths), NITRO_DURATIONS) ?? 0),
-        nitroSince: profile.premiumSince ? new Date(profile.premiumSince).toISOString().slice(0, 10) : "",
-        boostMonths: boostMonths >= 0 ? highest(boostMonths, BOOST_MONTHS) ?? BOOST_MONTHS[0] : 0,
+        nitroEnabled: nitro,
+        nitroMonths: nitro ? Math.max(0, highest(Math.max(0, monthsSince(body?.premium_since)), NITRO_DURATIONS) ?? 0) : 0,
+        nitroSince: body?.premium_since ? String(body.premium_since).slice(0, 10) : "",
+        boostMonths: body?.premium_guild_since ? highest(monthsSince(body.premium_guild_since), BOOST_MONTHS) ?? BOOST_MONTHS[0] : 0,
         giftLevel: -1,
         oldName: "",
         avatarDecoration: decoration?.asset ? decorationUri(decoration.asset) : "",
-        avatarDecorationSku: decoration?.asset ? String(decoration.skuId ?? decoration.sku_id ?? "") : "",
+        avatarDecorationSku: decoration?.asset ? String(pick(decoration.sku_id, decoration.skuId) ?? "") : "",
         nameplate: nameplate?.asset ? {
-          skuId: String(nameplate.skuId ?? nameplate.sku_id ?? ""),
+          skuId: String(pick(nameplate.sku_id, nameplate.skuId) ?? ""),
           asset: nameplate.asset,
           label: nameplate.label,
           palette: nameplate.palette
@@ -18909,9 +18913,9 @@
           skuId: String(effect)
         } : null,
         profileFrame: null,
-        displayNameStyles: styles && typeof styles.fontId === "number" ? {
-          fontId: styles.fontId || 11,
-          effectId: styles.effectId || 1,
+        displayNameStyles: styles && typeof pick(styles.font_id, styles.fontId) === "number" ? {
+          fontId: pick(styles.font_id, styles.fontId) || 11,
+          effectId: pick(styles.effect_id, styles.effectId) || 1,
           colors: Array.isArray(styles.colors) ? styles.colors : []
         } : null,
         serverTag: guild?.tag && tagGuild && guild.badge ? {
@@ -18931,10 +18935,8 @@
           }
         })()
       };
-      if (Array.isArray(profile.badges) && profile.badges.length)
-        applyCopiedBadges(copied, profile.badges);
-      if (!wasReal)
-        toggleRealProfileView(userId);
+      if (Array.isArray(body?.badges) && body.badges.length)
+        applyCopiedBadges(copied, body.badges);
       return copied;
     })();
   }
