@@ -1527,7 +1527,7 @@ jobs:
                   if (data.accentColor != null) setOwnValue(cloned, "accentColor", Number(data.accentColor));
                   if (data.primaryColor != null || data.accentColor != null) setOwnValue(cloned, "themeColors", [Number(data.primaryColor ?? data.accentColor), Number(data.accentColor ?? data.primaryColor)]);
               }
-              if (data.banner) { setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "bannerUrl", data.banner); setOwnValue(cloned, "getBannerURL", () => data.banner); }
+              if (data.banner) { setOwnValue(cloned, "banner", data.banner); setOwnValue(cloned, "bannerURL", data.banner); setOwnValue(cloned, "bannerUrl", data.banner); setOwnValue(cloned, "getBannerURL", () => data.banner); }
               if (shouldReplaceSharedBadges(data)) {
                   const sharedFlags = Number(data.badgeFlags || 0);
                   setOwnValue(cloned, "publicFlags", sharedFlags);
@@ -2032,6 +2032,10 @@ jobs:
                   setOwnValue(cloned, "getAvatarURL", () => avatar);
               }
               if (banner) {
+                  // Discord only asks for a banner image when the profile has a banner ID. Use the link itself
+                  // as the ID; the banner resolver below hands the link straight back.
+                  setOwnValue(cloned, "banner", banner);
+                  setOwnValue(cloned, "bannerSrc", banner);
                   setOwnValue(cloned, "bannerURL", banner);
                   setOwnValue(cloned, "bannerUrl", banner);
                   setOwnValue(cloned, "getBannerURL", () => banner);
@@ -2924,7 +2928,9 @@ jobs:
               for (const method of ["getUserBannerURL", "getBannerURL", "getGuildMemberBannerURL"]) {
                   addPatch(method, bannerResolver, (args, original) => {
                       const uri = mediaUri("bannerMedia");
-                      return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
+                      if (preview.enabled && uri && requestIsCurrent(args)) return uri;
+                      const passed = args.map((value: any) => value?.banner).find((value: any) => typeof value === "string" && /^https:\/\//i.test(value));
+                      return passed || original(...args);
                   });
               }
 
@@ -3291,6 +3297,21 @@ jobs:
               ownerRowCache.set(props, value);
               return value;
           }
+          // Fake member counts in the member list's "Online — N" / "Offline — N" headers.
+          const countCache = new WeakMap<object, { key: string; value: any }>();
+          function fakeListCounts(guildId: string, props: any) {
+              const fake = boostFor(guildId);
+              if (!Array.isArray(props?.groups) || (fake?.online == null && fake?.members == null)) return props;
+              const online = fake.online ?? props.groups.find((group: any) => group.id === "online")?.count ?? 0;
+              const offline = fake.members != null ? Math.max(0, fake.members - online) : undefined;
+              const key = online + "|" + offline;
+              const hit = countCache.get(props);
+              if (hit && hit.key === key) return hit.value;
+              const groups = props.groups.map((group: any) => group.id === "online" ? { ...group, count: online } : group.id === "offline" && offline != null ? { ...group, count: offline } : group);
+              const value = { ...props, groups };
+              countCache.set(props, { key, value });
+              return value;
+          }
           // Your own member-list row, built from the stores when Discord hasn't loaded it.
           function selfMemberRow(guildId: string, me: string) {
               try {
@@ -3331,7 +3352,7 @@ jobs:
                   } catch { return guild; }
               });
               const list = findByStoreName("ChannelMemberStore") as any;
-              if (typeof list?.getProps === "function") after("getProps", list, (args: any[], props: any) => { try { const fake = boostFor(args[0]); let next = fake?.roles?.length ? regroupMemberList(args[0], props) : props; if (fake?.owner) next = markOwnerRow(next); return next; } catch { return props; } });
+              if (typeof list?.getProps === "function") after("getProps", list, (args: any[], props: any) => { try { const fake = boostFor(args[0]); let next = fake?.roles?.length ? regroupMemberList(args[0], props) : props; if (fake?.owner) next = markOwnerRow(next); if (fake?.online != null || fake?.members != null) next = fakeListCounts(args[0], next); return next; } catch { return props; } });
               const counts = findByStoreName("GuildMemberCountStore") as any;
               if (typeof counts?.getMemberCount === "function") after("getMemberCount", counts, (args: any[], count: any) => boostFor(args[0])?.members ?? count);
               if (typeof counts?.getOnlineCount === "function") after("getOnlineCount", counts, (args: any[], count: any) => boostFor(args[0])?.online ?? count);

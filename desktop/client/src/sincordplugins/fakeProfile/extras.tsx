@@ -339,6 +339,21 @@ function markOwnerRow(props: any) {
     ownerRowCache.set(props, value);
     return value;
 }
+// Fake member counts in the member list's "Online — N" / "Offline — N" headers.
+const countCache = new WeakMap<object, { key: string; value: any }>();
+function fakeListCounts(guildId: string, props: any) {
+    const fake = boostFor(guildId);
+    if (!Array.isArray(props?.groups) || (fake?.online == null && fake?.members == null)) return props;
+    const online = fake.online ?? props.groups.find((group: any) => group.id === "online")?.count ?? 0;
+    const offline = fake.members != null ? Math.max(0, fake.members - online) : undefined;
+    const key = online + "|" + offline;
+    const hit = countCache.get(props);
+    if (hit && hit.key === key) return hit.value;
+    const groups = props.groups.map((group: any) => group.id === "online" ? { ...group, count: online } : group.id === "offline" && offline != null ? { ...group, count: offline } : group);
+    const value = { ...props, groups };
+    countCache.set(props, { key, value });
+    return value;
+}
 let listOriginal: any = null;
 function installMemberListHook() {
     if (listOriginal || !ChannelMemberStore?.getProps) return;
@@ -350,6 +365,7 @@ function installMemberListHook() {
             const fake = boostFor(guildId);
             let next = fake?.roles?.length ? regroupMemberList(guildId, props) : props;
             if (fake?.owner) next = markOwnerRow(next);
+            if (fake?.online != null || fake?.members != null) next = fakeListCounts(guildId, next);
             return next;
         } catch { return props; }
     };
