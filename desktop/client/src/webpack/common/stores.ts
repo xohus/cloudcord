@@ -152,3 +152,9 @@ waitForStore("ThemeStore", m => {
     // For this reason, use a non import access here.
     Vencord.Api.Themes.initQuickCssThemeStore(m);
 });
+
+// Stores used by plugins ported from Equicord.
+export let ChannelSectionStore: any;
+export let GIFPickerViewStore: any;
+waitForStore("ChannelSectionStore", m => ChannelSectionStore = m);
+waitForStore("GIFPickerViewStore", m => GIFPickerViewStore = m);

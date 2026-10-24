@@ -39,6 +39,7 @@ import * as $ProfileSections from "./ProfileSections";
 import * as $ServerList from "./ServerList";
 import * as $Settings from "./Settings";
 import * as $Styles from "./Styles";
+import * as $SurfaceClasses from "./SurfaceClasses";
 import * as $Themes from "./Themes";
 import * as $UserSettings from "./UserSettings";
 
@@ -117,6 +118,11 @@ export const Settings = $Settings;
  * a
  */
 export const Styles = $Styles;
+
+/**
+ * Class names and props for Discord's main layout surfaces (used by CollapsibleUI)
+ */
+export const SurfaceClasses = $SurfaceClasses;
 
 /**
  * An API allowing you to display notifications.

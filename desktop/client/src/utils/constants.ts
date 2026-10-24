@@ -1364,3 +1364,6 @@ export const SincordDevsById = /* #__PURE__*/ (() =>
             .map(([_, v]) => [v.id, v] as const)
     ))
 )() as Record<string, Dev>;
+
+// Plugins ported from Equicord credit their authors here; unknown names fall back to a plain entry.
+export const EquicordDevs = new Proxy(SincordDevs as Record<string, Dev>, { get: (target, key) => (target as any)[key] ?? (Devs as any)[key] ?? { name: String(key), id: 0n } }) as Record<string, Dev>;
