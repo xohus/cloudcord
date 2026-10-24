@@ -3807,10 +3807,59 @@ jobs:
           }
 
           // Copy someone's profile: everything Discord shows, plus their CloudCord look.
-          async function buildCopiedPreview(userId: string): Promise<Partial<PreviewSettings>> {
+          // Discord badge IDs -> our badge rows and tiers.
+          const DISCORD_BADGE_FLAGS: Record<string, number> = { staff: 1, partner: 2, hypesquad: 4, bug_hunter_level_1: 8, hypesquad_house_1: 64, hypesquad_house_2: 128, hypesquad_house_3: 256, early_supporter: 512, bug_hunter_level_2: 16384, verified_developer: 131072, certified_moderator: 262144, active_developer: 4194304 };
+          function applyCopiedBadges(copied: Partial<PreviewSettings>, badges: any[]) {
+              const selected: Record<string, boolean> = {};
+              for (const badge of badges) {
+                  const id = String(badge?.id || ""), description = String(badge?.description || "");
+                  const flag = DISCORD_BADGE_FLAGS[id];
+                  if (flag) { for (const [key, , rowFlag] of BADGES) if (rowFlag === flag) selected[key] = true; continue; }
+                  const tenure = id.match(/^premium_tenure_(\d+)_month/);
+                  if (tenure) { copied.nitroEnabled = true; copied.nitroMonths = Number(tenure[1]); continue; }
+                  if (id === "premium") { copied.nitroEnabled = true; continue; }
+                  const booster = id.match(/^guild_booster_lvl(\d+)$/);
+                  if (booster) { copied.boostMonths = BOOST_MONTHS[Number(booster[1]) - 1] ?? copied.boostMonths; continue; }
+                  if (id === "legacy_username") { selected.oldname = true; copied.oldName = description.replace(/^[^:]*:\s*/, "").trim() || description; continue; }
+                  if (id === "quest_completed") { selected.quest = true; continue; }
+                  if (id === "orb_profile_badge") { selected.orbs = true; continue; }
+                  const gift = GIFT_LEVELS.findIndex(level => description.toLowerCase().includes(level.name.toLowerCase()));
+                  if (gift >= 0 && /gift/i.test(id + description)) copied.giftLevel = gift;
+              }
+              copied.selectedBadges = selected;
+              // Show exactly their badges, not yours mixed in.
+              copied.replaceBadges = true;
+          }
+          function hasCloudCordProfile(userId: string) { return sharedProfiles.has(userId); }
+          function copiedFromCloudCord(userId: string): Partial<PreviewSettings> {
+              const data: any = sharedProfiles.get(userId);
+              if (!data) throw new Error("This person doesn't have a CloudCord profile.");
+              const selectedBadges: Record<string, boolean> = {};
+              const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
+              for (const [id, , flag, , customId] of BADGES) selectedBadges[id] = customId ? customBadgeIds.includes(customId) : !!(Number(data.badgeFlags || 0) & flag);
+              return {
+                  username: data.username || "", displayName: data.globalName || data.displayName || "", ...normalizeProfileAppearance(data),
+                  avatarMedia: data.avatar ? { uri: String(data.avatar), name: "Copied profile picture", type: "image/*" } : null,
+                  bannerMedia: data.banner ? { uri: String(data.banner), name: "Copied banner", type: "image/*" } : null,
+                  nitroEnabled: remoteNitroEnabled(data), nitroSince: typeof data.nitroSince === "string" ? data.nitroSince : "",
+                  nitroMonths: remoteNitroEnabled(data) ? (NITRO_DURATIONS[Number(data.nitroLevel)] || 0) : 0,
+                  boostMonths: data.boostMonths >= 0 ? (BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0) : 0,
+                  giftLevel: Number.isInteger(data.giftLevel) ? data.giftLevel : -1,
+                  avatarDecoration: String(data.avatarDecoration || ""), avatarDecorationSku: String(data.avatarDecorationSku || ""),
+                  profileColorsEnabled: data.profileColorsEnabled === true || data.primaryColor != null || data.accentColor != null,
+                  primaryColor: colorHex(data.primaryColor, ""), accentColor: colorHex(data.accentColor, ""),
+                  bio: String(data.bio || ""), pronouns: String(data.pronouns || ""), createdAt: String(data.createdAt || ""), signupDate: String(data.signupDate || data.joinedSince || ""),
+                  oldName: String(data.oldName || ""), replaceBadges: remoteReplaceBadges(data), selectedBadges
+              };
+          }
+          async function buildCopiedPreview(userId: string, source: "discord" | "cloudcord" = "discord"): Promise<Partial<PreviewSettings>> {
+              if (source === "cloudcord") return copiedFromCloudCord(userId);
+              // Read their real Discord profile, not the CloudCord look drawn over it.
+              const wasReal = isRealProfileView(userId);
+              if (!wasReal) toggleRealProfileView(userId);
               try { const fetchProfile = findByProps("fetchProfile") as any; await withTimeout(Promise.resolve(fetchProfile?.fetchProfile?.(userId)), 6000); } catch {}
               const user = (findByStoreName("UserStore") as any)?.getUser?.(userId);
-              if (!user) throw new Error("Discord hasn't loaded that user. Open their profile once, then try again.");
+              if (!user) { if (!wasReal) toggleRealProfileView(userId); throw new Error("Discord hasn't loaded that user. Open their profile once, then try again."); }
               const profile: any = (findByStoreName("UserProfileStore") as any)?.getUserProfile?.(userId) ?? {};
               const hex = (value: any) => typeof value === "number" ? "#" + value.toString(16).padStart(6, "0").toUpperCase() : "";
               const monthsSince = (date: any) => { const time = date ? new Date(date).getTime() : NaN; return Number.isFinite(time) ? (Date.now() - time) / (30.44 * 86400000) : -1; };
@@ -3843,6 +3892,8 @@ jobs:
                   selectedBadges: Object.fromEntries(BADGES.filter(([, , flag]) => flag && (flags & flag)).map(([key]) => [key, true])),
                   createdAt: (() => { try { return new Date(Number(BigInt(userId) >> 22n) + 1420070400000).toISOString().slice(0, 10); } catch { return ""; } })()
               };
+              if (Array.isArray(profile.badges) && profile.badges.length) applyCopiedBadges(copied, profile.badges);
+              if (!wasReal) toggleRealProfileView(userId);
               return copied;
           }
 
@@ -4219,16 +4270,16 @@ jobs:
                               <View style={{ padding: 16, gap: 24 }}>
                                   <K.Section title="Copy someone's profile" description="Use another person's names, pictures, colours, name style, badges, Nitro, decoration and more.">
                                       <K.Field label="Their user ID" hint="Long-press them → Copy User ID"><TextInput value={copyId} placeholder="123456789012345678" keyboardType="number-pad" onChangeText={(text: string) => setCopyId(text.replace(/\D/g, ""))} /></K.Field>
-                                      <K.Button label={copying ? "Copying…" : "Copy profile"} primary disabled={copying || !/^\d{15,22}$/.test(copyId)} onPress={async () => {
+                                      {[["discord", /^\d{15,22}$/.test(copyId) && hasCloudCordProfile(copyId) ? "Copy Discord profile" : "Copy profile"], ...(/^\d{15,22}$/.test(copyId) && hasCloudCordProfile(copyId) ? [["cloudcord", "Copy CloudCord profile"]] : [])].map(([source, label]) => <K.Button key={source} label={copying ? "Copying…" : label} primary={source === "discord"} disabled={copying || !/^\d{15,22}$/.test(copyId)} onPress={async () => {
                                           setCopying(true);
                                           try {
-                                              const copied = await buildCopiedPreview(copyId);
+                                              const copied = await buildCopiedPreview(copyId, source as "discord" | "cloudcord");
                                               rootSettings.fakeProfile = { ...preview, ...copied, enabled: true, syncRevision: Date.now() };
                                               preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw();
                                               showToast("Copied " + (copied.displayName || copied.username || "their profile"));
                                           } catch (error: any) { Alert.alert("Couldn't copy", error?.message || "Try again."); }
                                           finally { setCopying(false); }
-                                      }} />
+                                      }} />)}
                                   </K.Section>
                                   <K.Section title="Names">
                                       <K.Field label="Display name"><TextInput defaultValue={preview.displayName} placeholder={realCurrentUser?.globalName || "Display name"} maxLength={32} onChangeText={value => update("displayName", value)} placeholderTextColor="#777" /></K.Field>

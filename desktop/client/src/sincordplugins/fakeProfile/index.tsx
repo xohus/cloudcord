@@ -1367,9 +1367,9 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                     resetProfileAccount(activeUserId() || "");
                 }} />
             ) : (
-                <Menu.MenuItem id="copy-user-profile" label="Copy this profile" subtext="Names, pictures, colours, badges and more" action={async () => {
+                [["discord", hasCloudCordProfile(user.id) ? "Copy Discord profile" : "Copy this profile"], ...(hasCloudCordProfile(user.id) ? [["cloudcord", "Copy CloudCord profile"]] : [])].map(([source, label]) => <Menu.MenuItem key={source} id={`copy-user-profile-${source}`} label={label} subtext="Names, pictures, colours, badges and more" action={async () => {
                     try {
-                        const newData: CustomProfileData = { localOnly: true, ...(await buildCopiedProfile(user.id)) };
+                        const newData: CustomProfileData = { localOnly: true, ...(await buildCopiedProfile(user.id, source as "discord" | "cloudcord")) };
                         const myId = AuthenticationStore?.getId?.();
                         if (myId) { allAccountsData[myId] = newData; allAccountsEnabled[myId] = true; }
                         storedData = newData; isEnabled = true; saveDataSync(newData, true); saveAllDataSync();
@@ -1377,7 +1377,7 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                         forceAccountPanelRerender();
                         showToast(`Copied ${newData.globalName || newData.username || "their"} profile. Saved on this device only.`, Toasts.Type.SUCCESS);
                     } catch (err) { console.error("[ProfileSpoofer] copyUserProfile error:", err); showToast("Couldn't copy that profile.", Toasts.Type.FAILURE); }
-                }} />
+                }} />)
             )}
         </Menu.MenuGroup>);
     } catch (err) { console.error("[ProfileSpoofer] Context menu patch error:", err); }
@@ -1669,6 +1669,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             </Section>
         </>,
         name: <>
+            <LocalTagSection />
             <Section title="Names">
                 <Grid2>
                     <TextField label="Display name" maxLength={32} value={data.globalName ?? ""} placeholder={selectedUser?.globalName || "Display name"} onChange={value => set("globalName", value)} />
@@ -1811,6 +1812,15 @@ export default definePlugin({
 
     patches: [
         {
+            // Local-only tag next to your own name in chat (APP, OFFICIAL, SYSTEM...).
+            find: "Types.SYSTEM_DM:null!=",
+            noWarn: true,
+            replacement: {
+                match: /(function \i\((\i)\)\{let \i,\{message:\i,channel:\i,user:(\i),isRepliedMessage:\i\}=\2;)/,
+                replace: "$1{const __ccTag=$self.localBotTag($3);if(__ccTag!=null)return __ccTag;}"
+            }
+        },
+        {
             // Clicking your own tiered Nitro badge opens Get Nitro (no real Nitro) or Nitro Home (Fake Nitro).
             // With a custom profile, show the tier card like everyone else sees it.
             find: "TIERED_TENURE_BADGE_CLICKED",
@@ -1870,6 +1880,11 @@ export default definePlugin({
         if (shouldReplaceBadges(data)) return badges.filter(custom);
         const replaced = new Set(badges.filter(badge => (badge as any).cloudcordProfileBadge === true).map(badgeLayoutKey));
         return badges.filter(badge => custom(badge) || !replaced.has(badgeLayoutKey(badge)));
+    },
+
+    localBotTag(user: any) {
+        if (!profileRuntimeActive || localNameTag == null || !user?.id || !isMe(user.id)) return null;
+        return localNameTag;
     },
 
     ownTenureCard() {
@@ -2689,10 +2704,48 @@ const NITRO_TIER_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
 const BOOST_TIER_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
 const monthsSince = (date: any) => { const time = date ? new Date(date).getTime() : NaN; return Number.isFinite(time) ? (Date.now() - time) / (30.44 * 86400_000) : -1; };
 const tierFor = (months: number, tiers: number[]) => { let index = -1; tiers.forEach((value, i) => { if (months >= value) index = i; }); return index; };
-async function buildCopiedProfile(userId: string): Promise<CustomProfileData> {
+// Discord's badge list -> our badge fields.
+const BADGE_ID_FLAGS: Record<string, number> = {
+    staff: FLAG.STAFF, partner: FLAG.PARTNER, hypesquad: FLAG.HYPESQUAD, bug_hunter_level_1: FLAG.BUG_HUNTER_1, bug_hunter_level_2: FLAG.BUG_HUNTER_2,
+    hypesquad_house_1: FLAG.BRAVERY, hypesquad_house_2: FLAG.BRILLIANCE, hypesquad_house_3: FLAG.BALANCE, early_supporter: FLAG.EARLY_SUPPORTER,
+    verified_developer: FLAG.DEV_VERIFIED, certified_moderator: FLAG.MOD_ALUMNI, active_developer: FLAG.ACTIVE_DEVELOPER
+};
+function applyDiscordBadges(data: CustomProfileData, badges: any[]) {
+    let flags = 0;
+    const custom: string[] = [];
+    for (const badge of badges) {
+        const id = String(badge?.id || "");
+        const description = String(badge?.description || "");
+        if (BADGE_ID_FLAGS[id]) flags |= BADGE_ID_FLAGS[id];
+        else if (id === "premium") { data.nitro = true; if (Number(data.nitroLevel ?? -1) < 0) data.nitroLevel = 0; }
+        else if (/^premium_tenure_(\d+)_month/.test(id)) { const months = Number(id.match(/^premium_tenure_(\d+)_month/)![1]); data.nitro = true; data.nitroLevel = Math.max(0, NITRO_TIER_MONTHS.indexOf(months)); }
+        else if (/^guild_booster_lvl(\d+)$/.test(id)) data.boostMonths = Math.max(0, Number(id.match(/(\d+)$/)![1]) - 1);
+        else if (id === "legacy_username") { custom.push("oldname"); data.oldName = description.replace(/^[^:]*:\s*/, "").trim() || description; }
+        else if (id === "quest_completed") custom.push("quest");
+        else if (id === "orb_profile_badge") custom.push("orbs");
+        else { const gift = GIFT_LEVELS.findIndex(level => description.toLowerCase().includes(level.name.toLowerCase()) || id.includes(level.id)); if (gift >= 0 && /gift/i.test(id + description)) data.giftLevel = gift; }
+    }
+    data.badgeFlags = flags;
+    data.customBadgeIds = custom;
+    // Show exactly their badges, not yours mixed in.
+    data.replaceRealBadges = true;
+}
+
+/** Whether this person has a CloudCord profile to copy. */
+function hasCloudCordProfile(userId: string) { return sharedProfiles.has(userId); }
+
+async function buildCopiedProfile(userId: string, source: "discord" | "cloudcord" = "discord"): Promise<CustomProfileData> {
+    if (source === "cloudcord") {
+        const shared = sharedProfiles.get(userId);
+        if (!shared) throw new Error("This person doesn't have a CloudCord profile.");
+        return { ...JSON.parse(JSON.stringify(shared)), copiedUserId: userId };
+    }
+    // Read their real Discord profile, not the CloudCord look we draw over it.
+    const wasReal = isRealProfileView(userId);
+    if (!wasReal) setRealProfileView(userId, true);
     try { await Promise.resolve(fetchUserProfile(userId, { withMutualGuilds: false, withMutualFriends: false })); } catch { }
     const user = UserStore.getUser(userId) as any;
-    if (!user) throw new Error("Discord hasn't loaded that user. Open their profile once, then try again.");
+    if (!user) { if (!wasReal) setRealProfileView(userId, false); throw new Error("Discord hasn't loaded that user. Open their profile once, then try again."); }
     const profile: any = UserProfileStore.getUserProfile(userId) ?? {};
     // Start from a blank look so nothing of yours (frame, tag, extra badges...) is left over.
     const data: CustomProfileData = { username: user.username || "", globalName: user.globalName || "", bio: profile.bio || "", pronouns: profile.pronouns || "", copiedUserId: userId, badgeFlags: user.publicFlags ?? 0,
@@ -2720,9 +2773,8 @@ async function buildCopiedProfile(userId: string): Promise<CustomProfileData> {
     const guild = user.primaryGuild ?? user.primary_guild;
     const tagGuild = guild?.identityGuildId ?? guild?.identity_guild_id;
     if (guild?.tag && tagGuild && guild.badge) data.serverTag = { tag: guild.tag, guildId: String(tagGuild), badge: guild.badge };
-    // A CloudCord user's own look wins over what Discord has.
-    const shared = sharedProfiles.get(userId);
-    if (shared) Object.assign(data, JSON.parse(JSON.stringify(shared)), { copiedUserId: userId });
+    if (Array.isArray(profile.badges) && profile.badges.length) applyDiscordBadges(data, profile.badges);
+    if (!wasReal) { setRealProfileView(userId, false); reloadDiscordProfile(userId); }
     return data;
 }
 
@@ -2730,11 +2782,12 @@ function CopyProfileSection({ onCopy }: { onCopy: (data: CustomProfileData) => v
     const [userId, setUserId] = React.useState("");
     const [busy, setBusy] = React.useState(false);
     const valid = /^\d{15,22}$/.test(userId.trim());
-    const copy = async () => {
+    const both = valid && hasCloudCordProfile(userId.trim());
+    const copy = async (source: "discord" | "cloudcord" = "discord") => {
         if (!valid || busy) return;
         setBusy(true);
         try {
-            const data = await buildCopiedProfile(userId.trim());
+            const data = await buildCopiedProfile(userId.trim(), source);
             onCopy(data);
             showToast(`Copied ${data.globalName || data.username}. Press Save to use it.`, Toasts.Type.SUCCESS);
         } catch (error: any) { showToast(error?.message || "Couldn't copy that profile.", Toasts.Type.FAILURE); }
@@ -2743,7 +2796,28 @@ function CopyProfileSection({ onCopy }: { onCopy: (data: CustomProfileData) => v
     return <Section title="Copy someone's profile" description="Fill this editor with another person's profile: names, pictures, colours, name style, badges, Nitro, decoration and more. Nothing is saved until you press Save.">
         <div className="cpx-inline">
             <input className="cpx-input" value={userId} placeholder="Their user ID (right-click → Copy User ID)" onChange={event => setUserId(event.currentTarget.value)} onKeyDown={event => { if (event.key === "Enter") void copy(); }} />
-            <button type="button" className="cpx-btn" disabled={!valid || busy} onClick={() => void copy()}>{busy ? "Copying…" : "Copy profile"}</button>
+            <button type="button" className="cpx-btn" disabled={!valid || busy} onClick={() => void copy("discord")}>{busy ? "Copying…" : both ? "Copy Discord profile" : "Copy profile"}</button>
+            {both && <button type="button" className="cpx-btn cpx-btn-primary" disabled={busy} onClick={() => void copy("cloudcord")}>Copy CloudCord profile</button>}
         </div>
+        {both && <span className="cpx-hint">This person uses CloudCord. Copy their real Discord profile, or the custom profile they show with CloudCord.</span>}
+    </Section>;
+}
+
+
+// ---- Tag next to your name in chat, only on this device (never synced) ----
+const LS_LOCAL_TAG = "cloudcord_local_tag";
+// Discord's tag types: 0 App, 1 Server, 2 System, 3 Official, 7 AI.
+const LOCAL_TAG_OPTIONS = [{ value: -1, label: "None" }, { value: 0, label: "App" }, { value: 3, label: "Official" }, { value: 2, label: "System" }, { value: 7, label: "AI" }, { value: 1, label: "Server" }];
+let localNameTag: number | null = (() => { try { const value = localStorage.getItem(LS_LOCAL_TAG); return value != null && LOCAL_TAG_OPTIONS.some(option => option.value === Number(value) && option.value >= 0) ? Number(value) : null; } catch { return null; } })();
+function LocalTagSection() {
+    const [value, setValue] = React.useState(localNameTag ?? -1);
+    return <Section title="Tag next to your name" description="Shows a Discord tag after your name on your messages. Only on this device: it is never synced, so nobody else sees it.">
+        <SelectField label="Tag" options={LOCAL_TAG_OPTIONS} value={value} onChange={next => {
+            const tag = Number(next);
+            localNameTag = tag >= 0 ? tag : null;
+            try { if (localNameTag == null) localStorage.removeItem(LS_LOCAL_TAG); else localStorage.setItem(LS_LOCAL_TAG, String(localNameTag)); } catch { }
+            setValue(tag);
+            forceAccountPanelRerender();
+        }} />
     </Section>;
 }
