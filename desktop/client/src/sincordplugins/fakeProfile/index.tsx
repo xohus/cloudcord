@@ -1367,27 +1367,16 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                     resetProfileAccount(activeUserId() || "");
                 }} />
             ) : (
-                <Menu.MenuItem id="copy-user-profile" label="Copy this profile" action={async () => {
+                <Menu.MenuItem id="copy-user-profile" label="Copy this profile" subtext="Names, pictures, colours, badges and more" action={async () => {
                     try {
-                        const targetUser = UserStore.getUser(user.id) as any; if (!targetUser) return;
-                        const UPS = findByProps("getUserProfile", "getGuildMemberProfile") as any;
-                        const profile = UPS?.getUserProfile?.(user.id) ?? {};
-                        const newData: CustomProfileData = {
-                            localOnly: true,
-                            username: targetUser.username || "", globalName: targetUser.globalName || "",
-                            bio: profile.bio || targetUser.bio || "", accentColor: profile.accentColor ?? targetUser.accentColor,
-                            badgeFlags: targetUser.publicFlags ?? 0, copiedUserId: user.id, nitro: (profile.premiumType ?? 0) > 0,
-                        };
-                        try { const avatarUrl = IconUtils?.getUserAvatarURL?.(targetUser, true, 512); if (avatarUrl) newData.avatar = avatarUrl; } catch { }
-                        if (profile.banner ?? targetUser.banner) { const bid = profile.banner ?? targetUser.banner; newData.banner = `https://cdn.discordapp.com/banners/${user.id}/${bid}.${bid.startsWith("a_") ? "gif" : "png"}?size=512`; }
-                        try { newData.createdAt = new Date(Number(BigInt(user.id) >> 22n) + 1420070400000).toISOString().slice(0, 10); } catch { }
-                        if (targetUser.avatarDecorationData?.asset) { newData.decorationAsset = targetUser.avatarDecorationData.asset; newData.decorationSkuId = targetUser.avatarDecorationData.skuId; }
+                        const newData: CustomProfileData = { localOnly: true, ...(await buildCopiedProfile(user.id)) };
                         const myId = AuthenticationStore?.getId?.();
                         if (myId) { allAccountsData[myId] = newData; allAccountsEnabled[myId] = true; }
                         storedData = newData; isEnabled = true; saveDataSync(newData, true); saveAllDataSync();
                         DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
                         forceAccountPanelRerender();
-                    } catch (err) { console.error("[ProfileSpoofer] copyUserProfile error:", err); }
+                        showToast(`Copied ${newData.globalName || newData.username || "their"} profile. Saved on this device only.`, Toasts.Type.SUCCESS);
+                    } catch (err) { console.error("[ProfileSpoofer] copyUserProfile error:", err); showToast("Couldn't copy that profile.", Toasts.Type.FAILURE); }
                 }} />
             )}
         </Menu.MenuGroup>);
@@ -1655,6 +1644,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
 
     const panels: Record<TabId, React.ReactNode> = {
         profile: <>
+            <CopyProfileSection onCopy={copied => setData(previous => ({ ...previous, ...copied }))} />
             <Section title="Pictures" description="Shown on your profile, in chat and in member lists for CloudCord users.">
                 <ImageField key={`avatar-${selectedAccountId}`} label="Profile picture" value={data.avatar ?? ""} hint="PNG, JPG, WebP or an animated GIF (up to 8 MB)." onChange={value => set("avatar", value)} />
                 <Switch label="Simulate Nitro" description="Unlocks profile colors. Your banner works with or without it." checked={data.nitro ?? false} onChange={value => set("nitro", value)} />
@@ -1821,6 +1811,22 @@ export default definePlugin({
 
     patches: [
         {
+            // Clicking your own tiered Nitro badge opens Get Nitro (no real Nitro) or Nitro Home (Fake Nitro).
+            // With a custom profile, show the tier card like everyone else sees it.
+            find: "TIERED_TENURE_BADGE_CLICKED",
+            noWarn: true,
+            replacement: [
+                {
+                    match: /(premium_type:\i,viewed_user_id:\i\?\.userId\}\),\i\)\{)(\i)\?/,
+                    replace: "$1$2&&!$self.ownTenureCard()?"
+                },
+                {
+                    match: /(\}if\()(\i)(\)\{let \i=null!=\i\.link\?)/,
+                    replace: "$1$2&&!$self.ownTenureCard()$3"
+                }
+            ]
+        },
+        {
             // Resolve the device-only fake gift link without asking Discord.
             find: "GIFT_CODE_RESOLVE(e),query:{with_application",
             noWarn: true,
@@ -1864,6 +1870,10 @@ export default definePlugin({
         if (shouldReplaceBadges(data)) return badges.filter(custom);
         const replaced = new Set(badges.filter(badge => (badge as any).cloudcordProfileBadge === true).map(badgeLayoutKey));
         return badges.filter(badge => custom(badge) || !replaced.has(badgeLayoutKey(badge)));
+    },
+
+    ownTenureCard() {
+        return profileRuntimeActive && isEnabled && !!storedData.nitro;
     },
 
     fakeGiftCode(code: string) {
@@ -2671,4 +2681,69 @@ function SavedProfilesPanel({ current, onLoad, fallbackName, fallbackUsername, f
             })}
         </div>
     </>;
+}
+
+
+// ---- Copy someone's profile: everything Discord shows, plus their CloudCord look ----
+const NITRO_TIER_MONTHS = [0, 1, 3, 6, 12, 24, 36, 60, 72];
+const BOOST_TIER_MONTHS = [1, 2, 3, 6, 9, 12, 15, 18, 24];
+const monthsSince = (date: any) => { const time = date ? new Date(date).getTime() : NaN; return Number.isFinite(time) ? (Date.now() - time) / (30.44 * 86400_000) : -1; };
+const tierFor = (months: number, tiers: number[]) => { let index = -1; tiers.forEach((value, i) => { if (months >= value) index = i; }); return index; };
+async function buildCopiedProfile(userId: string): Promise<CustomProfileData> {
+    try { await Promise.resolve(fetchUserProfile(userId, { withMutualGuilds: false, withMutualFriends: false })); } catch { }
+    const user = UserStore.getUser(userId) as any;
+    if (!user) throw new Error("Discord hasn't loaded that user. Open their profile once, then try again.");
+    const profile: any = UserProfileStore.getUserProfile(userId) ?? {};
+    // Start from a blank look so nothing of yours (frame, tag, extra badges...) is left over.
+    const data: CustomProfileData = { username: user.username || "", globalName: user.globalName || "", bio: profile.bio || "", pronouns: profile.pronouns || "", copiedUserId: userId, badgeFlags: user.publicFlags ?? 0,
+        avatar: "", banner: "", accentColor: undefined, accentColor2: undefined, nitro: false, nitroLevel: -1, nitroSince: "", boostMonths: -1, giftLevel: -1, customBadgeIds: [], oldName: "",
+        decorationAsset: "", decorationSkuId: "", nameplate: null, profileEffect: null, profileFrame: null, displayNameStyles: null, serverTag: null };
+    try { const avatar = IconUtils.getUserAvatarURL(user, true, 512); if (avatar) data.avatar = avatar; } catch { }
+    const bannerId = profile.banner ?? user.banner;
+    if (bannerId) data.banner = `https://cdn.discordapp.com/banners/${userId}/${bannerId}.${String(bannerId).startsWith("a_") ? "gif" : "png"}?size=600`;
+    const colors: number[] = Array.isArray(profile.themeColors) ? profile.themeColors.filter((value: any) => typeof value === "number") : [];
+    if (colors.length) { data.accentColor = colors[0]; data.accentColor2 = colors[1] ?? colors[0]; }
+    else if (typeof profile.accentColor === "number") data.accentColor = profile.accentColor;
+    try { data.createdAt = new Date(Number(BigInt(userId) >> 22n) + 1420070400000).toISOString().slice(0, 10); } catch { }
+    // Nitro and boosting tiers come from how long they've had them.
+    const nitroMonths = monthsSince(profile.premiumSince);
+    if (nitroMonths >= 0 || (profile.premiumType ?? 0) > 0) { data.nitro = true; data.nitroLevel = Math.max(0, tierFor(Math.max(0, nitroMonths), NITRO_TIER_MONTHS)); if (profile.premiumSince) data.nitroSince = new Date(profile.premiumSince).toISOString().slice(0, 10); }
+    const boostMonths = monthsSince(profile.premiumGuildSince);
+    if (boostMonths >= 0) data.boostMonths = Math.max(0, tierFor(boostMonths, BOOST_TIER_MONTHS));
+    if (user.avatarDecorationData?.asset) { data.decorationAsset = user.avatarDecorationData.asset; data.decorationSkuId = user.avatarDecorationData.skuId ?? user.avatarDecorationData.sku_id; }
+    const nameplate = user.collectibles?.nameplate;
+    if (nameplate?.asset) data.nameplate = { skuId: String(nameplate.skuId ?? nameplate.sku_id ?? ""), asset: nameplate.asset, label: nameplate.label, palette: nameplate.palette };
+    const effectSku = profile.profileEffect?.skuId ?? profile.profileEffectId ?? profile.profileEffect?.id;
+    if (effectSku) data.profileEffect = { skuId: String(effectSku) };
+    const styles = user.displayNameStyles ?? user.display_name_styles;
+    if (styles && typeof styles.fontId === "number") data.displayNameStyles = { fontId: styles.fontId || 11, effectId: styles.effectId || 1, colors: Array.isArray(styles.colors) ? styles.colors : [] };
+    const guild = user.primaryGuild ?? user.primary_guild;
+    const tagGuild = guild?.identityGuildId ?? guild?.identity_guild_id;
+    if (guild?.tag && tagGuild && guild.badge) data.serverTag = { tag: guild.tag, guildId: String(tagGuild), badge: guild.badge };
+    // A CloudCord user's own look wins over what Discord has.
+    const shared = sharedProfiles.get(userId);
+    if (shared) Object.assign(data, JSON.parse(JSON.stringify(shared)), { copiedUserId: userId });
+    return data;
+}
+
+function CopyProfileSection({ onCopy }: { onCopy: (data: CustomProfileData) => void; }) {
+    const [userId, setUserId] = React.useState("");
+    const [busy, setBusy] = React.useState(false);
+    const valid = /^\d{15,22}$/.test(userId.trim());
+    const copy = async () => {
+        if (!valid || busy) return;
+        setBusy(true);
+        try {
+            const data = await buildCopiedProfile(userId.trim());
+            onCopy(data);
+            showToast(`Copied ${data.globalName || data.username}. Press Save to use it.`, Toasts.Type.SUCCESS);
+        } catch (error: any) { showToast(error?.message || "Couldn't copy that profile.", Toasts.Type.FAILURE); }
+        finally { setBusy(false); }
+    };
+    return <Section title="Copy someone's profile" description="Fill this editor with another person's profile: names, pictures, colours, name style, badges, Nitro, decoration and more. Nothing is saved until you press Save.">
+        <div className="cpx-inline">
+            <input className="cpx-input" value={userId} placeholder="Their user ID (right-click → Copy User ID)" onChange={event => setUserId(event.currentTarget.value)} onKeyDown={event => { if (event.key === "Enter") void copy(); }} />
+            <button type="button" className="cpx-btn" disabled={!valid || busy} onClick={() => void copy()}>{busy ? "Copying…" : "Copy profile"}</button>
+        </div>
+    </Section>;
 }

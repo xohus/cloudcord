@@ -73,7 +73,7 @@ function fakeMember(guildId: string, member: any) {
     return value;
 }
 
-interface BoostFake { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[]; }
+interface BoostFake { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[]; owner?: boolean; }
 interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; fakeRequests?: { id: string; user: any; since: string; }[]; fakeOrbs?: number; }
 
 function readExtras(): Extras {
@@ -231,13 +231,15 @@ function installBoostHooks() {
     (GuildStore as any).getGuild = function (guildId: string, ...rest: any[]) {
         const guild = getGuild.call(this, guildId, ...rest);
         const fake = boostFor(guildId);
-        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified || fake?.members != null || fake?.online != null)) return guild;
+        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified || fake?.owner || fake?.members != null || fake?.online != null)) return guild;
         let overlay = guildOverlays.get(guild);
         if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, {
             get: (target, key) => {
                 const now = boostFor(guildId);
                 if (now?.level && key === "premiumTier") return 3;
                 if (now?.level && key === "premiumSubscriberCount") return Math.max(14, target.premiumSubscriberCount ?? 0);
+                if (now?.owner && key === "ownerId") return UserStore.getCurrentUser()?.id ?? target.ownerId;
+                if (now?.owner && key === "isOwner") return (userId: any) => String(userId?.id ?? userId) === UserStore.getCurrentUser()?.id || target.isOwner?.(userId);
                 if (now?.members != null && (key === "memberCount" || key === "approximateMemberCount")) return now.members;
                 if (now?.online != null && (key === "presenceCount" || key === "approximatePresenceCount")) return now.online;
                 if (key === "features" && (now?.partner || now?.verified)) return fakeFeatures(target.features, !!now.partner, !!now.verified);
@@ -322,6 +324,21 @@ function selfMemberRow(guildId: string, me: string) {
         return { ...member, type: "MEMBER", userId: me, user, status, activities: PresenceStore?.getActivities?.(me) ?? [], applicationStream: null, isOwner: GuildStore.getGuild(guildId)?.ownerId === me, isMobileOnline: false, isVROnline: false };
     } catch { return null; }
 }
+// Visual ownership: the crown on your row in the member list.
+const ownerRowCache = new WeakMap<object, any>();
+function markOwnerRow(props: any) {
+    const me = UserStore.getCurrentUser()?.id;
+    if (!me || !Array.isArray(props?.rows)) return props;
+    const hit = ownerRowCache.get(props);
+    if (hit) return hit;
+    const index = props.rows.findIndex((row: any) => row?.type === "MEMBER" && String(row.userId) === me);
+    if (index < 0 || props.rows[index].isOwner) return props;
+    const rows = props.rows.slice();
+    rows[index] = { ...rows[index], isOwner: true };
+    const value = { ...props, rows };
+    ownerRowCache.set(props, value);
+    return value;
+}
 let listOriginal: any = null;
 function installMemberListHook() {
     if (listOriginal || !ChannelMemberStore?.getProps) return;
@@ -329,7 +346,12 @@ function installMemberListHook() {
     listOriginal = store.getProps;
     store.getProps = function (guildId: string, ...rest: any[]) {
         const props = listOriginal.call(this, guildId, ...rest);
-        try { return boostFor(guildId)?.roles?.length ? regroupMemberList(guildId, props) : props; } catch { return props; }
+        try {
+            const fake = boostFor(guildId);
+            let next = fake?.roles?.length ? regroupMemberList(guildId, props) : props;
+            if (fake?.owner) next = markOwnerRow(next);
+            return next;
+        } catch { return props; }
     };
 }
 function uninstallMemberListHook() {
@@ -398,6 +420,7 @@ function BoostSection() {
                 <label className="cpx-field"><span className="cpx-label">Members</span><input className="cpx-input" type="number" min={0} placeholder="Real count" value={fake.members ?? ""} onChange={event => { const text = event.currentTarget.value; set({ members: text === "" ? undefined : Math.max(0, Math.floor(Number(text) || 0)) }); }} /></label>
                 <label className="cpx-field"><span className="cpx-label">Online</span><input className="cpx-input" type="number" min={0} placeholder="Real count" value={fake.online ?? ""} onChange={event => { const text = event.currentTarget.value; set({ online: text === "" ? undefined : Math.max(0, Math.floor(Number(text) || 0)) }); }} /></label>
             </Grid2>
+            <Switch label="Show me as the server owner" description="Crown next to your name and owner-only menus. Owner actions still fail, because Discord knows the real owner." checked={fake.owner === true} onChange={value => set({ owner: value })} />
             <Switch label="Show me as a booster here" description="The boosting icon by your name and Server Booster since on your profile." checked={fake.booster === true} onChange={value => set({ booster: value })} />
             <div className="cpx-field">
                 <span className="cpx-label">Fake roles {chosenRoles.size ? `(${chosenRoles.size})` : ""}</span>

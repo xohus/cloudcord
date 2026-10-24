@@ -3121,7 +3121,7 @@ jobs:
               setExtras({ ...extrasState(), fakeRequests: [] } as any);
           }
           // ---- Fake boost (device only) ----
-          type BoostFake = { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[] };
+          type BoostFake = { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[]; owner?: boolean };
           function boostFor(guildId?: string | null): BoostFake | undefined { return guildId ? (extrasState() as any).boosts?.[guildId] : undefined; }
           const guildOverlays = new WeakMap<object, any>();
           const memberOverlays = new WeakMap<object, any>();
@@ -3276,6 +3276,21 @@ jobs:
               listCache.set(props, { key, value });
               return value;
           }
+          // Visual ownership: the crown on your row in the member list.
+          const ownerRowCache = new WeakMap<object, any>();
+          function markOwnerRow(props: any) {
+              const me = currentUserId;
+              if (!me || !Array.isArray(props?.rows)) return props;
+              const hit = ownerRowCache.get(props);
+              if (hit) return hit;
+              const index = props.rows.findIndex((row: any) => row?.type === "MEMBER" && String(row.userId) === me);
+              if (index < 0 || props.rows[index].isOwner) return props;
+              const rows = props.rows.slice();
+              rows[index] = { ...rows[index], isOwner: true };
+              const value = { ...props, rows };
+              ownerRowCache.set(props, value);
+              return value;
+          }
           // Your own member-list row, built from the stores when Discord hasn't loaded it.
           function selfMemberRow(guildId: string, me: string) {
               try {
@@ -3297,12 +3312,14 @@ jobs:
                   try {
                   const guildId = args[0];
                   const fake = boostFor(guildId);
-                  if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified || fake?.members != null || fake?.online != null)) return guild;
+                  if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified || fake?.owner || fake?.members != null || fake?.online != null)) return guild;
                   let overlay = guildOverlays.get(guild);
                   if (!overlay) guildOverlays.set(guild, overlay = new Proxy(guild, { get: (target: any, key) => {
                       const now = boostFor(guildId);
                       if (now?.level && key === "premiumTier") return 3;
                       if (now?.level && key === "premiumSubscriberCount") return Math.max(14, target.premiumSubscriberCount ?? 0);
+                      if (now?.owner && key === "ownerId" && currentUserId) return currentUserId;
+                      if (now?.owner && key === "isOwner") return (userId: any) => String(userId?.id ?? userId) === currentUserId || target.isOwner?.(userId);
                       if (now?.members != null && (key === "memberCount" || key === "approximateMemberCount")) return now.members;
                       if (now?.online != null && (key === "presenceCount" || key === "approximatePresenceCount")) return now.online;
                       if (key === "features" && (now?.partner || now?.verified)) return fakeFeatures(target.features, !!now.partner, !!now.verified);
@@ -3314,7 +3331,7 @@ jobs:
                   } catch { return guild; }
               });
               const list = findByStoreName("ChannelMemberStore") as any;
-              if (typeof list?.getProps === "function") after("getProps", list, (args: any[], props: any) => { try { return boostFor(args[0])?.roles?.length ? regroupMemberList(args[0], props) : props; } catch { return props; } });
+              if (typeof list?.getProps === "function") after("getProps", list, (args: any[], props: any) => { try { const fake = boostFor(args[0]); let next = fake?.roles?.length ? regroupMemberList(args[0], props) : props; if (fake?.owner) next = markOwnerRow(next); return next; } catch { return props; } });
               const counts = findByStoreName("GuildMemberCountStore") as any;
               if (typeof counts?.getMemberCount === "function") after("getMemberCount", counts, (args: any[], count: any) => boostFor(args[0])?.members ?? count);
               if (typeof counts?.getOnlineCount === "function") after("getOnlineCount", counts, (args: any[], count: any) => boostFor(args[0])?.online ?? count);
@@ -3375,6 +3392,7 @@ jobs:
                       <ToggleRow label="Show as a Verified server" subLabel="Verified check next to the server name" value={fake.verified === true} onPress={() => set({ verified: !fake.verified })} />
                       <K.Field label="Members" hint="Leave empty for the real count"><TextInput defaultValue={fake.members == null ? "" : String(fake.members)} placeholder="25000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/\D/g, ""); set({ members: clean ? Number(clean) : undefined }); }} placeholderTextColor="#777" /></K.Field>
                       <K.Field label="Online" hint="Leave empty for the real count"><TextInput defaultValue={fake.online == null ? "" : String(fake.online)} placeholder="4000" keyboardType="number-pad" onChangeText={(text: string) => { const clean = text.replace(/\D/g, ""); set({ online: clean ? Number(clean) : undefined }); }} placeholderTextColor="#777" /></K.Field>
+                      <ToggleRow label="Show me as the server owner" subLabel="Crown next to your name. Owner actions still fail" value={fake.owner === true} onPress={() => set({ owner: !fake.owner })} />
                       <ToggleRow label="Show me as a booster here" subLabel="Boosting icon by your name in this server" value={fake.booster === true} onPress={() => set({ booster: !fake.booster })} />
                       <K.Field label={"Fake roles" + (chosenRoles.size ? " (" + chosenRoles.size + ")" : "")} hint="Name colour, role icon and member list group follow your highest role. Only on this device.">
                           <TextInput value={roleQuery} placeholder="Search roles" autoCapitalize="none" autoCorrect={false} onChangeText={setRoleQuery} placeholderTextColor="#777" />
@@ -3788,6 +3806,46 @@ jobs:
               </View>;
           }
 
+          // Copy someone's profile: everything Discord shows, plus their CloudCord look.
+          async function buildCopiedPreview(userId: string): Promise<Partial<PreviewSettings>> {
+              try { const fetchProfile = findByProps("fetchProfile") as any; await withTimeout(Promise.resolve(fetchProfile?.fetchProfile?.(userId)), 6000); } catch {}
+              const user = (findByStoreName("UserStore") as any)?.getUser?.(userId);
+              if (!user) throw new Error("Discord hasn't loaded that user. Open their profile once, then try again.");
+              const profile: any = (findByStoreName("UserProfileStore") as any)?.getUserProfile?.(userId) ?? {};
+              const hex = (value: any) => typeof value === "number" ? "#" + value.toString(16).padStart(6, "0").toUpperCase() : "";
+              const monthsSince = (date: any) => { const time = date ? new Date(date).getTime() : NaN; return Number.isFinite(time) ? (Date.now() - time) / (30.44 * 86400000) : -1; };
+              const highest = (months: number, list: number[]) => list.filter(value => months >= value).pop();
+              let avatar = ""; try { avatar = user.getAvatarURL?.(undefined, 512, true) || ""; } catch {}
+              const bannerId = profile.banner ?? user.banner;
+              const colors: number[] = Array.isArray(profile.themeColors) ? profile.themeColors.filter((value: any) => typeof value === "number") : [];
+              const flags = Number(user.publicFlags ?? user.flags ?? 0);
+              const nitroMonths = monthsSince(profile.premiumSince);
+              const boostMonths = monthsSince(profile.premiumGuildSince);
+              const styles = user.displayNameStyles ?? user.display_name_styles;
+              const guild = user.primaryGuild ?? user.primary_guild;
+              const tagGuild = guild?.identityGuildId ?? guild?.identity_guild_id;
+              const nameplate = user.collectibles?.nameplate;
+              const effect = profile.profileEffect?.skuId ?? profile.profileEffectId;
+              const decoration = user.avatarDecorationData;
+              const copied: Partial<PreviewSettings> = {
+                  displayName: user.globalName || "", username: user.username || "", bio: profile.bio || "", pronouns: profile.pronouns || "",
+                  avatarMedia: avatar ? { uri: avatar, name: "Copied profile picture", type: "image/*" } : null,
+                  bannerMedia: bannerId ? { uri: `https://cdn.discordapp.com/banners/${userId}/${bannerId}.${String(bannerId).startsWith("a_") ? "gif" : "png"}?size=600`, name: "Copied banner", type: "image/*" } : null,
+                  profileColorsEnabled: colors.length > 0, primaryColor: hex(colors[0]), accentColor: hex(colors[1] ?? colors[0]),
+                  nitroEnabled: nitroMonths >= 0 || (profile.premiumType ?? 0) > 0, nitroMonths: Math.max(0, highest(Math.max(0, nitroMonths), NITRO_DURATIONS) ?? 0),
+                  nitroSince: profile.premiumSince ? new Date(profile.premiumSince).toISOString().slice(0, 10) : "",
+                  boostMonths: boostMonths >= 0 ? highest(boostMonths, BOOST_MONTHS) ?? BOOST_MONTHS[0] : 0, giftLevel: -1, oldName: "",
+                  avatarDecoration: decoration?.asset ? decorationUri(decoration.asset) : "", avatarDecorationSku: decoration?.asset ? String(decoration.skuId ?? decoration.sku_id ?? "") : "",
+                  nameplate: nameplate?.asset ? { skuId: String(nameplate.skuId ?? nameplate.sku_id ?? ""), asset: nameplate.asset, label: nameplate.label, palette: nameplate.palette } : null,
+                  profileEffect: effect ? { skuId: String(effect) } : null, profileFrame: null,
+                  displayNameStyles: styles && typeof styles.fontId === "number" ? { fontId: styles.fontId || 11, effectId: styles.effectId || 1, colors: Array.isArray(styles.colors) ? styles.colors : [] } : null,
+                  serverTag: guild?.tag && tagGuild && guild.badge ? { tag: guild.tag, guildId: String(tagGuild), badge: guild.badge } : null,
+                  selectedBadges: Object.fromEntries(BADGES.filter(([, , flag]) => flag && (flags & flag)).map(([key]) => [key, true])),
+                  createdAt: (() => { try { return new Date(Number(BigInt(userId) >> 22n) + 1420070400000).toISOString().slice(0, 10); } catch { return ""; } })()
+              };
+              return copied;
+          }
+
           function ToggleRow({ label, subLabel, value, onPress }: { label: string; subLabel?: string; value: boolean; onPress: () => void; accent?: boolean }) {
               const { Toggle } = require("@core/ui/settings/components/ProfileStudio");
               return <Toggle label={label} subLabel={subLabel} value={value} onPress={onPress} />;
@@ -4069,6 +4127,8 @@ jobs:
 
               const K = require("@core/ui/settings/components/ProfileStudio") as typeof import("@core/ui/settings/components/ProfileStudio");
               const [showPreview, setShowPreview] = useState(false);
+              const [copyId, setCopyId] = useState("");
+              const [copying, setCopying] = useState(false);
               const [catalog, setCatalog] = useState<Catalog | null>(collectiblesCatalog);
               const [catalogStatus, setCatalogStatus] = useState<{ loading?: boolean; error?: string }>({ loading: !collectiblesCatalog });
               const catalogMounted = useRef(false);
@@ -4157,6 +4217,19 @@ jobs:
                           {activeTab === "custom" ? <Card border="strong"><View style={{ padding: 16 }}><CustomBadgeBeta /></View></Card> : null}
                           {activeTab === "profile" ? <Card border="strong">
                               <View style={{ padding: 16, gap: 24 }}>
+                                  <K.Section title="Copy someone's profile" description="Use another person's names, pictures, colours, name style, badges, Nitro, decoration and more.">
+                                      <K.Field label="Their user ID" hint="Long-press them → Copy User ID"><TextInput value={copyId} placeholder="123456789012345678" keyboardType="number-pad" onChangeText={(text: string) => setCopyId(text.replace(/\D/g, ""))} /></K.Field>
+                                      <K.Button label={copying ? "Copying…" : "Copy profile"} primary disabled={copying || !/^\d{15,22}$/.test(copyId)} onPress={async () => {
+                                          setCopying(true);
+                                          try {
+                                              const copied = await buildCopiedPreview(copyId);
+                                              rootSettings.fakeProfile = { ...preview, ...copied, enabled: true, syncRevision: Date.now() };
+                                              preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw();
+                                              showToast("Copied " + (copied.displayName || copied.username || "their profile"));
+                                          } catch (error: any) { Alert.alert("Couldn't copy", error?.message || "Try again."); }
+                                          finally { setCopying(false); }
+                                      }} />
+                                  </K.Section>
                                   <K.Section title="Names">
                                       <K.Field label="Display name"><TextInput defaultValue={preview.displayName} placeholder={realCurrentUser?.globalName || "Display name"} maxLength={32} onChangeText={value => update("displayName", value)} placeholderTextColor="#777" /></K.Field>
                                       <K.Field label="Username"><TextInput defaultValue={preview.username} placeholder={realCurrentUser?.username || "username"} maxLength={32} autoCapitalize="none" autoCorrect={false} onChangeText={value => update("username", value)} placeholderTextColor="#777" /></K.Field>

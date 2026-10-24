@@ -11,7 +11,9 @@ const nativeProfile = {connectedAccounts:[{id:'real',type:'github',name:'Real ac
 const nativeSocial = api.nativeSocialProfile(nativeProfile, source);
 assert.equal(nativeSocial.connectedAccounts.length,2);
 assert.equal(nativeSocial.connectedAccounts[0].verified,true);
-assert.equal(nativeSocial.connectedAccounts[1].verified,false);
+// The checkmark is an opt-in on the saved connection.
+assert.equal(nativeSocial.connectedAccounts[1].verified,true);
+assert.equal(api.nativeSocialProfile({}, {customConnections:[{...source.customConnections[0],verified:undefined}]}).connectedAccounts[0].verified,false);
 assert.equal(nativeSocial.connectedAccounts[1].cloudcordPreview.id,'connection');
 const otherLink = api.nativeSocialProfile({}, {customConnections:[{...source.customConnections[0],id:'manual-site',service:'other',accountId:'',url:'https://example.com/account/profile'}]}).connectedAccounts[0];
 assert.equal(otherLink.type,'domain');
@@ -26,7 +28,7 @@ assert.ok(api.customSocialValidationErrors({customConnections:[{...source.custom
 assert.equal(result.customFriends.length,0,'local and shared friend previews are retired');
 assert.equal(result.customConnections[0].details[0].value,'123');
 assert.equal(result.customConnections[0].service,'steam');
-assert.equal(result.customConnections[0].verified,undefined);
+assert.equal(result.customConnections[0].verified,true); // opt-in checkmark is kept
 assert.equal(JSON.stringify(api.normalizeProfileAppearance(result)),JSON.stringify(result));
 assert.equal(source.customFriends[0].verified,true,'normalizing does not mutate native/input data');
 assert.equal(api.customPreviewURL('javascript:alert(1)'), '');

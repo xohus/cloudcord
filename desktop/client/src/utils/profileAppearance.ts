@@ -35,6 +35,8 @@ export type CustomConnectionPreview = {
     items?: { id: string; title: string; image: string; url: string; subtitle: string }[];
     mode?: "manual" | "fetched";
     fetchedAt?: string;
+    /** Show Discord's verified checkmark on this connection. */
+    verified?: boolean;
 };
 
 /** Apply a lookup only to the same surviving entry; edits made while fetching win. */
@@ -75,7 +77,9 @@ export async function fetchConnectionPreview(service: CustomConnectionPreview["s
     const data = await publicConnectionRequest("lookup", service, query);
     const normalized = normalizeCustomSocial({customConnections:[{...data,id:"fetched-preview",service}]}).customConnections?.[0];
     if (!normalized) throw new Error("The service did not return usable public account information.");
-    return normalized;
+    // Only the person editing can turn the checkmark on; a lookup never claims it.
+    const { verified: _verified, ...lookup } = normalized;
+    return lookup;
 }
 
 export async function searchConnectionItems(service: CustomConnectionPreview["service"], query: string): Promise<NonNullable<CustomConnectionPreview["items"]>> {
@@ -163,6 +167,7 @@ export function normalizeCustomSocial(data: any): Pick<ProfileAppearance, "custo
         details: records(item.details).slice(0, 20).map(detail => ({ label: textField(detail.label, 80), value: textField(detail.value, 300) })).filter(detail => detail.label),
         items: unique(records(item.items).slice(0, 30).map(content => ({id:textField(content.id,100),title:textField(content.title,150),image:customPreviewURL(content.image),url:customPreviewURL(content.url),subtitle:textField(content.subtitle,200)})).filter(content=>content.title && content.id)),
         mode: item.mode === "fetched" ? "fetched" as const : "manual" as const,
+        verified: item.verified === true,
         fetchedAt: typeof item.fetchedAt === "string" && Number.isFinite(Date.parse(item.fetchedAt)) ? new Date(item.fetchedAt).toISOString() : ""
     })).filter(item => item.username || item.displayName || item.accountId));
     return result;
@@ -337,7 +342,7 @@ export function nativeSocialProfile(profile: any, data: any): Record<string, any
         accounts.push({
             id: domain || entry.accountId || `cloudcord:${entry.id}`, type: entry.service === "x" ? "twitter" : entry.service === "other" || entry.service === "domain" ? "domain" : entry.service,
             name: domain || entry.displayName || entry.username || entry.accountId,
-            verified: false, visibility: 1, show_activity: false,
+            verified: entry.verified === true, visibility: 1, show_activity: false,
             cloudcordCustom: true, cloudcordPreview: entry,
         });
     }

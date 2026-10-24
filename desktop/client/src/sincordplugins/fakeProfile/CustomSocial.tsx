@@ -185,6 +185,10 @@ export function CustomSocialEditor({ data, onChange }: { data: ProfileAppearance
                 <SocialField label="Username" value={entry.username} onChange={username => patch({ username })} />
                 <SocialField label="Account ID" value={entry.accountId} onChange={accountId => patch({ accountId })} />
                 <SocialField label="Account link" placeholder="https://" value={entry.url} onChange={url => patch({ url })} />
+                <label className="cpx-check" style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                    <input type="checkbox" checked={entry.verified === true} onChange={event => patch({ verified: event.currentTarget.checked })} />
+                    <span>Show the verified checkmark</span>
+                </label>
                 <SocialField label="Avatar image link" placeholder="https://" value={entry.avatar} onChange={avatar => patch({ avatar })} />
                 <SocialField label="Banner image link" placeholder="https://" value={entry.banner} onChange={banner => patch({ banner })} />
             </div>
