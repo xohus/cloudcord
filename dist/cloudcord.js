@@ -16203,6 +16203,11 @@
           var navigation2 = NavigationNative.useNavigation();
           var detail = socialEntryFromProps(current);
           var open = () => {
+            var link = detail && "service" in detail && typeof detail.url === "string" && /^https:/;
+            if (link) {
+              void import_react_native20.Linking.openURL(link).catch(() => showToast("Couldn't open this link."));
+              return;
+            }
             if (detail)
               navigation2.push("PUPU_CUSTOM_PAGE", {
                 title: "Custom profile preview",
@@ -17130,28 +17135,36 @@
     ]));
     var hoist = fake.roles.map((id2) => byId.get(id2)).filter((role) => role?.hoist).sort((a, b3) => (b3.position ?? 0) - (a.position ?? 0))[0];
     var rowIndex = props.rows.findIndex((row2) => row2?.type === "MEMBER" && String(row2.userId) === me);
-    if (!hoist || rowIndex < 0)
+    if (!hoist)
       return props;
-    var mineRow = props.rows[rowIndex];
+    var mineRow = rowIndex >= 0 ? props.rows[rowIndex] : selfMemberRow(guildId, me);
+    if (!mineRow)
+      return props;
     var current = byId.get(mineRow.hoistRoleId);
     if (current && (current.position ?? 0) >= (hoist.position ?? 0))
       return props;
-    var key = hoist.id + "|" + props.rows.length + "|" + rowIndex;
+    var key = hoist.id + "|" + props.rows.length + "|" + rowIndex + "|" + (mineRow.status || "");
     var hit = listCache.get(props);
     if (hit && hit.key === key)
       return hit.value;
     var rows = props.rows.slice();
-    rows.splice(rowIndex, 1);
-    var oldHeader = -1;
-    for (var i = rowIndex - 1; i >= 0; i--)
-      if (rows[i]?.type === "GROUP") {
-        oldHeader = i;
-        break;
-      }
     var counts = new Map((props.groups ?? []).map((group) => [
       String(group.id),
       group.count ?? 0
     ]));
+    var oldHeader = -1;
+    if (rowIndex >= 0) {
+      rows.splice(rowIndex, 1);
+      for (var i = rowIndex - 1; i >= 0; i--)
+        if (rows[i]?.type === "GROUP") {
+          oldHeader = i;
+          break;
+        }
+    } else {
+      var statusGroup = mineRow.status === "offline" || mineRow.status === "invisible" ? "offline" : "online";
+      if (counts.has(statusGroup))
+        counts.set(statusGroup, Math.max(0, (counts.get(statusGroup) ?? 1) - 1));
+    }
     if (oldHeader >= 0) {
       var id = String(rows[oldHeader].id);
       counts.set(id, Math.max(0, (counts.get(id) ?? 1) - 1));
@@ -17210,6 +17223,30 @@
       value
     });
     return value;
+  }
+  function selfMemberRow(guildId, me) {
+    try {
+      var member = findByStoreName("GuildMemberStore")?.getMember?.(guildId, me);
+      var user = findByStoreName("UserStore")?.getUser?.(me);
+      if (!member || !user)
+        return null;
+      var presence = findByStoreName("PresenceStore");
+      var status = presence?.getStatus?.(me) ?? "online";
+      return {
+        ...member,
+        type: "MEMBER",
+        userId: me,
+        user,
+        status,
+        activities: presence?.getActivities?.(me) ?? [],
+        applicationStream: null,
+        isOwner: findByStoreName("GuildStore")?.getGuild?.(guildId)?.ownerId === me,
+        isMobileOnline: true,
+        isVROnline: false
+      };
+    } catch (e) {
+      return null;
+    }
   }
   function installBoostHooks() {
     if (boostHooksInstalled)
@@ -18010,6 +18047,21 @@
           } catch (e) {
           }
         }
+        try {
+          FluxDispatcher.subscribe("SELECTIVELY_SYNCED_USER_SETTINGS_UPDATE", rememberTheme);
+        } catch (e) {
+        }
+        for (var type2 of [
+          "USER_SETTINGS_PROTO_UPDATE",
+          "CONNECTION_OPEN",
+          "CURRENT_USER_UPDATE"
+        ]) {
+          try {
+            FluxDispatcher.subscribe(type2, restoreKeptTheme);
+          } catch (e) {
+          }
+        }
+        restoreKeptTheme();
         connectRealProfileMenu();
         yield pullOwnSharedProfile();
         void refreshPublishedBadges(true);
@@ -20334,7 +20386,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -21479,8 +21531,32 @@
               applyFakeNitro();
             } catch (e) {
             }
+            restoreKeptTheme();
           }, 0);
         }
+      };
+      rememberTheme = (action) => {
+        var theme = action?.changes?.appearance?.settings?.clientThemeSettings;
+        if (!theme || !("backgroundGradientPresetId" in theme))
+          return;
+        settings.cloudcordNitroTheme = typeof theme.backgroundGradientPresetId === "number" ? theme.backgroundGradientPresetId : null;
+      };
+      restoreKeptTheme = () => {
+        clearTimeout(themeTimer);
+        themeTimer = setTimeout(() => {
+          var preset = settings.cloudcordNitroTheme;
+          if (!extrasState().fakeNitro || typeof preset !== "number")
+            return;
+          try {
+            if (findByStoreName("ClientThemesBackgroundStore")?.gradientPreset?.id === preset)
+              return;
+            FluxDispatcher.dispatch({
+              type: "UPDATE_BACKGROUND_GRADIENT_PRESET",
+              presetId: preset
+            });
+          } catch (e) {
+          }
+        }, 400);
       };
       giftHookInstalled = false;
       rawUser = (user) => ({
