@@ -18740,16 +18740,116 @@
       ]
     });
   }
-  function buildCopiedPreview(userId) {
+  function applyCopiedBadges(copied, badges) {
+    var _loop2 = function(badge2) {
+      var id = String(badge2?.id || ""), description = String(badge2?.description || "");
+      var flag = DISCORD_BADGE_FLAGS[id];
+      if (flag) {
+        for (var [key, , rowFlag] of BADGES)
+          if (rowFlag === flag)
+            selected[key] = true;
+        return "continue";
+      }
+      var tenure = id.match(/^premium_tenure_(\d+)_month/);
+      if (tenure) {
+        copied.nitroEnabled = true;
+        copied.nitroMonths = Number(tenure[1]);
+        return "continue";
+      }
+      if (id === "premium") {
+        copied.nitroEnabled = true;
+        return "continue";
+      }
+      var booster = id.match(/^guild_booster_lvl(\d+)$/);
+      if (booster) {
+        copied.boostMonths = BOOST_MONTHS[Number(booster[1]) - 1] ?? copied.boostMonths;
+        return "continue";
+      }
+      if (id === "legacy_username") {
+        selected.oldname = true;
+        copied.oldName = description.replace(/^[^:]*:\s*/, "").trim() || description;
+        return "continue";
+      }
+      if (id === "quest_completed") {
+        selected.quest = true;
+        return "continue";
+      }
+      if (id === "orb_profile_badge") {
+        selected.orbs = true;
+        return "continue";
+      }
+      var gift = GIFT_LEVELS.findIndex((level) => description.toLowerCase().includes(level.name.toLowerCase()));
+      if (gift >= 0 && /gift/i.test(id + description))
+        copied.giftLevel = gift;
+    };
+    var selected = {};
+    for (var badge of badges)
+      _loop2(badge);
+    copied.selectedBadges = selected;
+    copied.replaceBadges = true;
+  }
+  function hasCloudCordProfile(userId) {
+    return sharedProfiles.has(userId);
+  }
+  function copiedFromCloudCord(userId) {
+    var data = sharedProfiles.get(userId);
+    if (!data)
+      throw new Error("This person doesn't have a CloudCord profile.");
+    var selectedBadges = {};
+    var customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
+    for (var [id, , flag, , customId] of BADGES)
+      selectedBadges[id] = customId ? customBadgeIds.includes(customId) : !!(Number(data.badgeFlags || 0) & flag);
+    return {
+      username: data.username || "",
+      displayName: data.globalName || data.displayName || "",
+      ...normalizeProfileAppearance(data),
+      avatarMedia: data.avatar ? {
+        uri: String(data.avatar),
+        name: "Copied profile picture",
+        type: "image/*"
+      } : null,
+      bannerMedia: data.banner ? {
+        uri: String(data.banner),
+        name: "Copied banner",
+        type: "image/*"
+      } : null,
+      nitroEnabled: remoteNitroEnabled(data),
+      nitroSince: typeof data.nitroSince === "string" ? data.nitroSince : "",
+      nitroMonths: remoteNitroEnabled(data) ? NITRO_DURATIONS[Number(data.nitroLevel)] || 0 : 0,
+      boostMonths: data.boostMonths >= 0 ? BOOST_DURATIONS[Number(data.boostMonths) + 1] || 0 : 0,
+      giftLevel: Number.isInteger(data.giftLevel) ? data.giftLevel : -1,
+      avatarDecoration: String(data.avatarDecoration || ""),
+      avatarDecorationSku: String(data.avatarDecorationSku || ""),
+      profileColorsEnabled: data.profileColorsEnabled === true || data.primaryColor != null || data.accentColor != null,
+      primaryColor: colorHex(data.primaryColor, ""),
+      accentColor: colorHex(data.accentColor, ""),
+      bio: String(data.bio || ""),
+      pronouns: String(data.pronouns || ""),
+      createdAt: String(data.createdAt || ""),
+      signupDate: String(data.signupDate || data.joinedSince || ""),
+      oldName: String(data.oldName || ""),
+      replaceBadges: remoteReplaceBadges(data),
+      selectedBadges
+    };
+  }
+  function buildCopiedPreview(userId, source = "discord") {
     return _async_to_generator(function* () {
+      if (source === "cloudcord")
+        return copiedFromCloudCord(userId);
+      var wasReal = isRealProfileView(userId);
+      if (!wasReal)
+        toggleRealProfileView(userId);
       try {
         var fetchProfile = findByProps("fetchProfile");
         yield withTimeout(Promise.resolve(fetchProfile?.fetchProfile?.(userId)), 6e3);
       } catch (e) {
       }
       var user = findByStoreName("UserStore")?.getUser?.(userId);
-      if (!user)
+      if (!user) {
+        if (!wasReal)
+          toggleRealProfileView(userId);
         throw new Error("Discord hasn't loaded that user. Open their profile once, then try again.");
+      }
       var profile = findByStoreName("UserProfileStore")?.getUserProfile?.(userId) ?? {};
       var hex = (value) => typeof value === "number" ? "#" + value.toString(16).padStart(6, "0").toUpperCase() : "";
       var monthsSince = (date) => {
@@ -18831,6 +18931,10 @@
           }
         })()
       };
+      if (Array.isArray(profile.badges) && profile.badges.length)
+        applyCopiedBadges(copied, profile.badges);
+      if (!wasReal)
+        toggleRealProfileView(userId);
       return copied;
     })();
   }
@@ -19559,14 +19663,25 @@
                         onChangeText: (text) => setCopyId(text.replace(/\D/g, ""))
                       })
                     }),
-                    /* @__PURE__ */ jsx(K2.Button, {
-                      label: copying ? "Copying\u2026" : "Copy profile",
-                      primary: true,
+                    [
+                      [
+                        "discord",
+                        /^\d{15,22}$/.test(copyId) && hasCloudCordProfile(copyId) ? "Copy Discord profile" : "Copy profile"
+                      ],
+                      .../^\d{15,22}$/.test(copyId) && hasCloudCordProfile(copyId) ? [
+                        [
+                          "cloudcord",
+                          "Copy CloudCord profile"
+                        ]
+                      ] : []
+                    ].map(([source, label]) => /* @__PURE__ */ jsx(K2.Button, {
+                      label: copying ? "Copying\u2026" : label,
+                      primary: source === "discord",
                       disabled: copying || !/^\d{15,22}$/.test(copyId),
                       onPress: () => _async_to_generator(function* () {
                         setCopying(true);
                         try {
-                          var copied = yield buildCopiedPreview(copyId);
+                          var copied = yield buildCopiedPreview(copyId, source);
                           rootSettings.fakeProfile = {
                             ...preview,
                             ...copied,
@@ -19586,7 +19701,7 @@
                           setCopying(false);
                         }
                       })()
-                    })
+                    }, source))
                   ]
                 }),
                 /* @__PURE__ */ jsxs(K2.Section, {
@@ -20574,7 +20689,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, leavingServers, NamePreviewBoundary, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -21815,6 +21930,20 @@
         ]);
         return NamePreviewBoundary2;
       }(import_react6.Component);
+      DISCORD_BADGE_FLAGS = {
+        staff: 1,
+        partner: 2,
+        hypesquad: 4,
+        bug_hunter_level_1: 8,
+        hypesquad_house_1: 64,
+        hypesquad_house_2: 128,
+        hypesquad_house_3: 256,
+        early_supporter: 512,
+        bug_hunter_level_2: 16384,
+        verified_developer: 131072,
+        certified_moderator: 262144,
+        active_developer: 4194304
+      };
       PROFILE_COLORS = [
         "#5865F2",
         "#4752C4",
