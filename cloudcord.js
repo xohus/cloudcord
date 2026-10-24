@@ -6610,7 +6610,8 @@
       }).customConnections?.[0];
       if (!normalized)
         throw new Error("The service did not return usable public account information.");
-      return normalized;
+      var { verified: _verified, ...lookup } = normalized;
+      return lookup;
     })();
   }
   function searchConnectionItems(service, query) {
@@ -6793,6 +6794,7 @@
           subtitle: textField(content.subtitle, 200)
         })).filter((content) => content.title && content.id)),
         mode: item.mode === "fetched" ? "fetched" : "manual",
+        verified: item.verified === true,
         fetchedAt: typeof item.fetchedAt === "string" && Number.isFinite(Date.parse(item.fetchedAt)) ? new Date(item.fetchedAt).toISOString() : ""
       })).filter((item) => item.username || item.displayName || item.accountId));
     return result;
@@ -7054,7 +7056,7 @@
         id: domain || entry.accountId || `cloudcord:${entry.id}`,
         type: entry.service === "x" ? "twitter" : entry.service === "other" || entry.service === "domain" ? "domain" : entry.service,
         name: domain || entry.displayName || entry.username || entry.accountId,
-        verified: false,
+        verified: entry.verified === true,
         visibility: 1,
         show_activity: false,
         cloudcordCustom: true,
@@ -13371,6 +13373,14 @@
                   onChange: (url2) => patch({
                     url: url2
                   })
+                }),
+                /* @__PURE__ */ jsx(TableRow2, {
+                  label: "Show the verified checkmark",
+                  subLabel: entry.verified ? "On" : "Off",
+                  selected: entry.verified === true,
+                  onPress: () => patch({
+                    verified: !entry.verified
+                  })
                 })
               ]
             }),
@@ -17224,6 +17234,28 @@
     });
     return value;
   }
+  function markOwnerRow(props) {
+    var me = currentUserId;
+    if (!me || !Array.isArray(props?.rows))
+      return props;
+    var hit = ownerRowCache.get(props);
+    if (hit)
+      return hit;
+    var index = props.rows.findIndex((row) => row?.type === "MEMBER" && String(row.userId) === me);
+    if (index < 0 || props.rows[index].isOwner)
+      return props;
+    var rows = props.rows.slice();
+    rows[index] = {
+      ...rows[index],
+      isOwner: true
+    };
+    var value = {
+      ...props,
+      rows
+    };
+    ownerRowCache.set(props, value);
+    return value;
+  }
   function selfMemberRow(guildId, me) {
     try {
       var member = findByStoreName("GuildMemberStore")?.getMember?.(guildId, me);
@@ -17260,7 +17292,7 @@
       try {
         var guildId = args[0];
         var fake = boostFor(guildId);
-        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified || fake?.members != null || fake?.online != null))
+        if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified || fake?.owner || fake?.members != null || fake?.online != null))
           return guild;
         var overlay = guildOverlays.get(guild);
         if (!overlay)
@@ -17271,6 +17303,10 @@
                 return 3;
               if (now?.level && key === "premiumSubscriberCount")
                 return Math.max(14, target.premiumSubscriberCount ?? 0);
+              if (now?.owner && key === "ownerId" && currentUserId)
+                return currentUserId;
+              if (now?.owner && key === "isOwner")
+                return (userId) => String(userId?.id ?? userId) === currentUserId || target.isOwner?.(userId);
               if (now?.members != null && (key === "memberCount" || key === "approximateMemberCount"))
                 return now.members;
               if (now?.online != null && (key === "presenceCount" || key === "approximatePresenceCount"))
@@ -17292,7 +17328,11 @@
     if (typeof list?.getProps === "function")
       after("getProps", list, (args, props) => {
         try {
-          return boostFor(args[0])?.roles?.length ? regroupMemberList(args[0], props) : props;
+          var fake = boostFor(args[0]);
+          var next = fake?.roles?.length ? regroupMemberList(args[0], props) : props;
+          if (fake?.owner)
+            next = markOwnerRow(next);
+          return next;
         } catch (e) {
           return props;
         }
@@ -17533,6 +17573,14 @@
                   });
                 },
                 placeholderTextColor: "#777"
+              })
+            }),
+            /* @__PURE__ */ jsx(ToggleRow, {
+              label: "Show me as the server owner",
+              subLabel: "Crown next to your name. Owner actions still fail",
+              value: fake.owner === true,
+              onPress: () => set({
+                owner: !fake.owner
               })
             }),
             /* @__PURE__ */ jsx(ToggleRow, {
@@ -18692,6 +18740,100 @@
       ]
     });
   }
+  function buildCopiedPreview(userId) {
+    return _async_to_generator(function* () {
+      try {
+        var fetchProfile = findByProps("fetchProfile");
+        yield withTimeout(Promise.resolve(fetchProfile?.fetchProfile?.(userId)), 6e3);
+      } catch (e) {
+      }
+      var user = findByStoreName("UserStore")?.getUser?.(userId);
+      if (!user)
+        throw new Error("Discord hasn't loaded that user. Open their profile once, then try again.");
+      var profile = findByStoreName("UserProfileStore")?.getUserProfile?.(userId) ?? {};
+      var hex = (value) => typeof value === "number" ? "#" + value.toString(16).padStart(6, "0").toUpperCase() : "";
+      var monthsSince = (date) => {
+        var time = date ? new Date(date).getTime() : NaN;
+        return Number.isFinite(time) ? (Date.now() - time) / (30.44 * 864e5) : -1;
+      };
+      var highest = (months, list) => list.filter((value) => months >= value).pop();
+      var avatar = "";
+      try {
+        avatar = user.getAvatarURL?.(void 0, 512, true) || "";
+      } catch (e) {
+      }
+      var bannerId = profile.banner ?? user.banner;
+      var colors = Array.isArray(profile.themeColors) ? profile.themeColors.filter((value) => typeof value === "number") : [];
+      var flags = Number(user.publicFlags ?? user.flags ?? 0);
+      var nitroMonths = monthsSince(profile.premiumSince);
+      var boostMonths = monthsSince(profile.premiumGuildSince);
+      var styles = user.displayNameStyles ?? user.display_name_styles;
+      var guild = user.primaryGuild ?? user.primary_guild;
+      var tagGuild = guild?.identityGuildId ?? guild?.identity_guild_id;
+      var nameplate = user.collectibles?.nameplate;
+      var effect = profile.profileEffect?.skuId ?? profile.profileEffectId;
+      var decoration = user.avatarDecorationData;
+      var copied = {
+        displayName: user.globalName || "",
+        username: user.username || "",
+        bio: profile.bio || "",
+        pronouns: profile.pronouns || "",
+        avatarMedia: avatar ? {
+          uri: avatar,
+          name: "Copied profile picture",
+          type: "image/*"
+        } : null,
+        bannerMedia: bannerId ? {
+          uri: `https://cdn.discordapp.com/banners/${userId}/${bannerId}.${String(bannerId).startsWith("a_") ? "gif" : "png"}?size=600`,
+          name: "Copied banner",
+          type: "image/*"
+        } : null,
+        profileColorsEnabled: colors.length > 0,
+        primaryColor: hex(colors[0]),
+        accentColor: hex(colors[1] ?? colors[0]),
+        nitroEnabled: nitroMonths >= 0 || (profile.premiumType ?? 0) > 0,
+        nitroMonths: Math.max(0, highest(Math.max(0, nitroMonths), NITRO_DURATIONS) ?? 0),
+        nitroSince: profile.premiumSince ? new Date(profile.premiumSince).toISOString().slice(0, 10) : "",
+        boostMonths: boostMonths >= 0 ? highest(boostMonths, BOOST_MONTHS) ?? BOOST_MONTHS[0] : 0,
+        giftLevel: -1,
+        oldName: "",
+        avatarDecoration: decoration?.asset ? decorationUri(decoration.asset) : "",
+        avatarDecorationSku: decoration?.asset ? String(decoration.skuId ?? decoration.sku_id ?? "") : "",
+        nameplate: nameplate?.asset ? {
+          skuId: String(nameplate.skuId ?? nameplate.sku_id ?? ""),
+          asset: nameplate.asset,
+          label: nameplate.label,
+          palette: nameplate.palette
+        } : null,
+        profileEffect: effect ? {
+          skuId: String(effect)
+        } : null,
+        profileFrame: null,
+        displayNameStyles: styles && typeof styles.fontId === "number" ? {
+          fontId: styles.fontId || 11,
+          effectId: styles.effectId || 1,
+          colors: Array.isArray(styles.colors) ? styles.colors : []
+        } : null,
+        serverTag: guild?.tag && tagGuild && guild.badge ? {
+          tag: guild.tag,
+          guildId: String(tagGuild),
+          badge: guild.badge
+        } : null,
+        selectedBadges: Object.fromEntries(BADGES.filter(([, , flag]) => flag && flags & flag).map(([key]) => [
+          key,
+          true
+        ])),
+        createdAt: (() => {
+          try {
+            return new Date(Number(BigInt(userId) >> 22n) + 14200704e5).toISOString().slice(0, 10);
+          } catch (e) {
+            return "";
+          }
+        })()
+      };
+      return copied;
+    })();
+  }
   function ToggleRow({ label, subLabel, value, onPress }) {
     var { Toggle: Toggle2 } = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
     return /* @__PURE__ */ jsx(Toggle2, {
@@ -19073,6 +19215,8 @@
     };
     var K2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
     var [showPreview, setShowPreview] = (0, import_react6.useState)(false);
+    var [copyId, setCopyId] = (0, import_react6.useState)("");
+    var [copying, setCopying] = (0, import_react6.useState)(false);
     var [catalog, setCatalog] = (0, import_react6.useState)(collectiblesCatalog);
     var [catalogStatus, setCatalogStatus] = (0, import_react6.useState)({
       loading: !collectiblesCatalog
@@ -19401,6 +19545,50 @@
                 gap: 24
               },
               children: [
+                /* @__PURE__ */ jsxs(K2.Section, {
+                  title: "Copy someone's profile",
+                  description: "Use another person's names, pictures, colours, name style, badges, Nitro, decoration and more.",
+                  children: [
+                    /* @__PURE__ */ jsx(K2.Field, {
+                      label: "Their user ID",
+                      hint: "Long-press them \u2192 Copy User ID",
+                      children: /* @__PURE__ */ jsx(TextInput4, {
+                        value: copyId,
+                        placeholder: "123456789012345678",
+                        keyboardType: "number-pad",
+                        onChangeText: (text) => setCopyId(text.replace(/\D/g, ""))
+                      })
+                    }),
+                    /* @__PURE__ */ jsx(K2.Button, {
+                      label: copying ? "Copying\u2026" : "Copy profile",
+                      primary: true,
+                      disabled: copying || !/^\d{15,22}$/.test(copyId),
+                      onPress: () => _async_to_generator(function* () {
+                        setCopying(true);
+                        try {
+                          var copied = yield buildCopiedPreview(copyId);
+                          rootSettings.fakeProfile = {
+                            ...preview,
+                            ...copied,
+                            enabled: true,
+                            syncRevision: Date.now()
+                          };
+                          preview = rootSettings.fakeProfile;
+                          queueSharedPublish();
+                          clearCache();
+                          suppressOwnPullUntil = Date.now() + 15e3;
+                          refreshPreview();
+                          redraw();
+                          showToast("Copied " + (copied.displayName || copied.username || "their profile"));
+                        } catch (error) {
+                          import_react_native20.Alert.alert("Couldn't copy", error?.message || "Try again.");
+                        } finally {
+                          setCopying(false);
+                        }
+                      })()
+                    })
+                  ]
+                }),
                 /* @__PURE__ */ jsxs(K2.Section, {
                   title: "Names",
                   children: [
@@ -20386,7 +20574,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
+  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, leavingServers, NamePreviewBoundary, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -21582,6 +21770,7 @@
       switcherSearches = 0;
       fakeMemberCache = /* @__PURE__ */ new WeakMap();
       listCache = /* @__PURE__ */ new WeakMap();
+      ownerRowCache = /* @__PURE__ */ new WeakMap();
       leavingServers = false;
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
