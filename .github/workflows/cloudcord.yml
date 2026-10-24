@@ -445,6 +445,7 @@ jobs:
               selectedBadges: Record<string, boolean>;
               hiddenBadgeIds: string[];
               badgeOrder: string[];
+              activityAmounts?: Record<string, number>;
               syncRevision: number;
           };
 
@@ -1174,6 +1175,7 @@ jobs:
                   replaceRealBadges: snapshot.replaceBadges === true,
                   hiddenBadgeIds: [...snapshot.hiddenBadgeIds],
                   nativeBadgeOrder: (() => { try { return rootSettings.fakeProfileNativeOrder || []; } catch { return []; } })(),
+                  activityAmounts: preview.activityAmounts || {},
                   nativeHiddenBadges: (() => { try { return rootSettings.fakeProfileNativeHidden || []; } catch { return []; } })(),
                   badgeOrder: [...snapshot.badgeOrder],
                   customBadgeIds: [
@@ -1361,6 +1363,7 @@ jobs:
                       selectedBadges,
                       hiddenBadgeIds: Array.isArray(data.hiddenBadgeIds) ? data.hiddenBadgeIds : [],
                       badgeOrder: Array.isArray(data.badgeOrder) ? data.badgeOrder : [],
+                      activityAmounts: data.activityAmounts && typeof data.activityAmounts === "object" ? data.activityAmounts : (preview.activityAmounts || {}),
                       syncRevision: Number(data.syncRevision || 0)
                   } satisfies PreviewSettings;
                   // Polls commonly return the same snapshot. Replacing the
@@ -2159,13 +2162,13 @@ jobs:
               if (id.startsWith("guild_booster_lvl")) return 12;
               return DIRECTORY_BADGE_IDS[id];
           }
-          type BadgeSource = { nitroMonths: number; nitroSince?: string; boostIndex: number; giftLevel: number; selected: (row: any[]) => boolean; activity: Record<string, number>; oldName?: string; replace: boolean; order: number[]; hidden: number[] };
+          type BadgeSource = { nitroMonths: number; nitroSince?: string; boostIndex: number; giftLevel: number; selected: (row: any[]) => boolean; activity: Record<string, number>; amounts?: Record<string, number>; oldName?: string; replace: boolean; order: number[]; hidden: number[] };
           function badgeSourceFor(id: string): BadgeSource | undefined {
               if (isCurrentUser(id)) {
                   if (!preview.enabled || rootSettings.fakeProfileLocalOnly && preview.hideBadgesWhenSyncOff) return undefined;
                   return { nitroMonths: preview.nitroEnabled ? preview.nitroMonths : -1, nitroSince: (preview as any).nitroSince, boostIndex: preview.boostMonths > 0 ? BOOST_MONTHS.indexOf(preview.boostMonths) : -1, giftLevel: Number(preview.giftLevel ?? -1),
                       selected: ([rowId]) => !!preview.selectedBadges?.[rowId], oldName: preview.oldName, replace: shouldReplaceLocalBadges(),
-                      order: rootSettings.fakeProfileNativeOrder || [], hidden: rootSettings.fakeProfileNativeHidden || [], activity: activityFromIds(Object.keys(preview.selectedBadges || {}).filter(id => preview.selectedBadges?.[id])) };
+                      order: rootSettings.fakeProfileNativeOrder || [], hidden: rootSettings.fakeProfileNativeHidden || [], activity: activityFromIds(Object.keys(preview.selectedBadges || {}).filter(id => preview.selectedBadges?.[id])), amounts: preview.activityAmounts || {} };
               }
               if (badgesHiddenFor(id)) return undefined;
               const data = getProfileOverride(id, true);
@@ -2173,7 +2176,7 @@ jobs:
               const ids = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
               return { nitroMonths: remoteNitroEnabled(data) ? NITRO_DURATIONS[Number(data.nitroLevel)] || 0 : -1, nitroSince: data.nitroSince, boostIndex: Number(data.boostMonths ?? -1), giftLevel: Number(data.giftLevel ?? -1),
                   selected: ([, , flag, , customId]) => customId ? ids.includes(customId) : (Number(data.badgeFlags || 0) & Number(flag)) !== 0, oldName: data.oldName, replace: shouldReplaceSharedBadges(data),
-                  order: Array.isArray(data.nativeBadgeOrder) ? data.nativeBadgeOrder : [], hidden: Array.isArray(data.nativeHiddenBadges) ? data.nativeHiddenBadges : [], activity: activityFromIds(ids) };
+                  order: Array.isArray(data.nativeBadgeOrder) ? data.nativeBadgeOrder : [], hidden: Array.isArray(data.nativeHiddenBadges) ? data.nativeHiddenBadges : [], activity: activityFromIds(ids), amounts: data.activityAmounts && typeof data.activityAmounts === "object" ? data.activityAmounts : {} };
           }
           const shortDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
           function addMonths(date: Date, months: number) { const next = new Date(date); next.setMonth(next.getMonth() + months); return next; }
@@ -2215,11 +2218,15 @@ jobs:
               const tier = Number(src.activity?.[key] ?? -1);
               return Number.isInteger(tier) && tier >= 0 && tier < 10 ? tier : -1;
           }
+          function activityAmount(src: BadgeSource, key: string, tierAmount: number) {
+              const value = Number(src.amounts?.[key]);
+              return src.amounts?.[key] != null && Number.isFinite(value) && value >= 0 ? value : tierAmount;
+          }
           function activityDirectoryEntry(entry: any, src: BadgeSource) {
               const badge = ACTIVITY_BADGES.find(item => item.badgeId === entry.badge_id);
               const tier = badge ? activityTier(src, badge.key) : -1;
               if (!badge || tier < 0) return null;
-              const amount = badge.tiers[tier][1];
+              const amount = activityAmount(src, badge.key, badge.tiers[tier][1]);
               return { ...tieredEntry(entry, tier, badge.key === "account_age" ? monthsAgo(amount * 12) : monthsAgo(1), badge.label(amount), src.hidden.includes(entry.badge_id)), progress: [] };
           }
 
@@ -2237,7 +2244,7 @@ jobs:
                   if (tier < 0) continue;
                   const hash = ACTIVITY_ICON_HASHES[badge.key]?.[tier];
                   // Mobile shows only the badge text, so include the tier and amount like Discord's card: "Account Age · Stromatolite · 9 years".
-                  const text = badge.title + " · " + badge.tiers[tier][0] + " · " + badge.label(badge.tiers[tier][1]);
+                  const text = badge.title + " · " + badge.tiers[tier][0] + " · " + badge.label(activityAmount(src, badge.key, badge.tiers[tier][1]));
                   if (hash) { out.push({ id: badge.key, description: text, icon: hash }); continue; }
                   const fallback = EXPERIMENTAL_BADGE_GROUPS.find((group: any) => group.id === badge.key)?.tiers.find((item: any) => item.name === badge.tiers[tier][0])?.icon;
                   const icon = fallback ?? (currentUserId ? store?.getBadgeById?.(badge.badgeId, currentUserId)?.tiers?.[tier]?.simple_icon_raster_url : undefined);
@@ -4443,7 +4450,19 @@ jobs:
                                       <K.BadgeGrid items={[{ key: "none", label: "None", active: preview.giftLevel < 0, onPress: () => update("giftLevel", -1, true) }, ...GIFT_LEVELS.map((gift, index) => ({ key: gift.name, label: gift.name, icon: gift.icon, active: preview.giftLevel === index, onPress: () => update("giftLevel", index, true) }))]} />
                                   </K.Section>
                                   {EXPERIMENTAL_BADGE_GROUPS.length ? <K.Section title="Milestone badges">
-                                      {EXPERIMENTAL_BADGE_GROUPS.map(group => <ActionButton key={group.id} label={`${group.label}: ${group.tiers.find(tier => preview.selectedBadges?.[tier.id])?.name || "None"}`} muted onPress={() => chooseExperimentalBadge(group)} />)}
+                                      {EXPERIMENTAL_BADGE_GROUPS.map(group => {
+                                          const picked = group.tiers.find(tier => preview.selectedBadges?.[tier.id]);
+                                          const badge = ACTIVITY_BADGES.find(item => item.key === group.id);
+                                          const tierIndex = picked && badge ? badge.tiers.findIndex(([name]) => name === picked.name) : -1;
+                                          const unit = group.id === "account_age" ? "Years" : group.id === "game_variety" ? "Games played" : "Hours";
+                                          return <View key={group.id} style={{ gap: 8 }}>
+                                              <ActionButton label={`${group.label}: ${picked?.name || "None"}`} muted onPress={() => chooseExperimentalBadge(group)} />
+                                              {picked ? <K.Field label={unit + " shown on the badge"} hint="Empty uses the tier's amount.">
+                                                  <TextInput defaultValue={preview.activityAmounts?.[group.id] != null ? String(preview.activityAmounts[group.id]) : ""} placeholder={tierIndex >= 0 && badge ? String(badge.tiers[tierIndex][1]) : ""} keyboardType="number-pad"
+                                                      onChangeText={(text: string) => { const next = { ...(preview.activityAmounts || {}) }; const clean = text.replace(/[^0-9]/g, ""); if (clean) next[group.id] = Math.min(Number(clean), 1000000); else delete next[group.id]; update("activityAmounts", next, true); }} />
+                                              </K.Field> : null}
+                                          </View>;
+                                      })}
                                   </K.Section> : null}
                                   <K.Section title="Badge order" description="Top to bottom is the order on your profile.">
                                       {editableBadgeRows().map((badge, index, rows) => (

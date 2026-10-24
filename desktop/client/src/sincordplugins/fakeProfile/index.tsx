@@ -482,6 +482,8 @@ interface CustomProfileData extends ProfileAppearance {
     oldName?: string; decorationAsset?: string; decorationSkuId?: string; copiedUserId?: string; signupDate?: string; replaceRealBadges?: boolean; giftLevel?: number;
     syncRevision?: number;
     hiddenBadgeIds?: string[]; badgeOrder?: string[];
+    /** Custom amount shown on an activity badge (years, hours or games), by badge key. */
+    activityAmounts?: Record<string, number>;
 }
 
 let storedData: CustomProfileData = {};
@@ -1428,11 +1430,12 @@ function BadgeGroup({ title, hint, children, radio }: { title: string; hint?: st
     </div>;
 }
 
-function BadgePicker({ selected, onChange, nitroType, onNitroType, giftLevel, onGiftLevel, boostLevel, onBoostLevel, customIds, onCustomIds, oldName, onOldName, replaceRealBadges, onReplaceRealBadges }: {
+function BadgePicker({ selected, onChange, nitroType, onNitroType, giftLevel, onGiftLevel, boostLevel, onBoostLevel, customIds, onCustomIds, oldName, onOldName, replaceRealBadges, onReplaceRealBadges, activityAmounts = {}, onActivityAmounts }: {
     selected: number; onChange: (v: number) => void; nitroType: number; onNitroType: (v: number) => void;
     giftLevel: number; onGiftLevel: (v: number) => void;
     boostLevel: number; onBoostLevel: (v: number) => void; customIds: string[]; onCustomIds: (v: string[]) => void; oldName: string; onOldName: (v: string) => void;
     replaceRealBadges: boolean; onReplaceRealBadges: (v: boolean) => void;
+    activityAmounts?: Record<string, number>; onActivityAmounts?: (v: Record<string, number>) => void;
 }) {
     const toggleId = (id: string) => onCustomIds(customIds.includes(id) ? customIds.filter(other => other !== id) : [...customIds, id]);
     const hasOldName = customIds.includes("oldname");
@@ -1470,10 +1473,21 @@ function BadgePicker({ selected, onChange, nitroType, onNitroType, giftLevel, on
         </BadgeGroup>}
 
         {EXPERIMENTAL_BADGE_GROUPS.length > 0 && <div className="cpx-grid2">
-            {EXPERIMENTAL_BADGE_GROUPS.map(group => <SelectField key={group.id} label={group.label}
-                options={[{ value: "", label: "None" }, ...group.tiers.map(tier => ({ value: tier.id, label: `${tier.name} · ${tier.milestone}` }))]}
-                value={group.tiers.find(tier => customIds.includes(tier.id))?.id || ""}
-                onChange={value => onCustomIds([...customIds.filter(id => !group.tiers.some(tier => tier.id === id)), ...(value ? [value] : [])])} />)}
+            {EXPERIMENTAL_BADGE_GROUPS.map(group => {
+                const picked = group.tiers.find(tier => customIds.includes(tier.id));
+                const badge = ACTIVITY_BADGES.find(item => item.key === group.id);
+                const tierIndex = picked && badge ? badge.tiers.findIndex(([name]) => name === picked.name) : -1;
+                const unit = group.id === "account_age" ? "Years" : group.id === "game_variety" ? "Games played" : "Hours";
+                return <div key={group.id} className="cpx-field">
+                    <SelectField label={group.label}
+                        options={[{ value: "", label: "None" }, ...group.tiers.map(tier => ({ value: tier.id, label: `${tier.name} · ${tier.milestone}` }))]}
+                        value={picked?.id || ""}
+                        onChange={value => onCustomIds([...customIds.filter(id => !group.tiers.some(tier => tier.id === id)), ...(value ? [value] : [])])} />
+                    {picked && onActivityAmounts && <TextField label={`${unit} shown on the badge`} type="number" value={activityAmounts[group.id] != null ? String(activityAmounts[group.id]) : ""}
+                        placeholder={tierIndex >= 0 && badge ? String(badge.tiers[tierIndex][1]) : ""} hint="Empty uses the tier's amount."
+                        onChange={text => { const next = { ...activityAmounts }; const value = Math.floor(Number(text)); if (text.trim() && Number.isFinite(value) && value >= 0) next[group.id] = Math.min(value, 1_000_000); else delete next[group.id]; onActivityAmounts(next); }} />}
+                </div>;
+            })}
         </div>}
     </div>;
 }
@@ -1723,7 +1737,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                 <Switch label="Hide CloudCord badges while sync is off" description="When you save on this device only, show no CloudCord badges on your profile." checked={data.hideBadgesWhenSyncOff === true} onChange={value => set("hideBadgesWhenSyncOff", value)} />
                 <Switch label="Use Discord's Edit Profile for picture and banner" description="While your custom profile is on, a picture or banner you pick in Discord's own Edit Profile is saved here instead, GIFs included." checked={data.nativeEditorImages !== false} onChange={value => set("nativeEditorImages", value)} />
                 <Switch label="Hide other CloudCord profiles" description="Show everyone with their real Discord profile. You can still open one person's real profile from the three-dot menu on their profile." checked={data.hideOtherProfiles === true} onChange={value => set("hideOtherProfiles", value)} />
-                <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} />
+                <BadgePicker selected={data.badgeFlags ?? 0} onChange={v => set("badgeFlags", v)} nitroType={nitroLevel} onNitroType={v => { set("nitroLevel", v); set("nitro", v >= 0); }} giftLevel={giftLevel} onGiftLevel={v => set("giftLevel", v)} boostLevel={boostLevel} onBoostLevel={v => set("boostMonths", v)} customIds={customIds} onCustomIds={v => set("customBadgeIds", v)} oldName={oldName} onOldName={v => set("oldName", v)} replaceRealBadges={data.replaceRealBadges === true} onReplaceRealBadges={v => set("replaceRealBadges", v)} activityAmounts={data.activityAmounts ?? {}} onActivityAmounts={v => set("activityAmounts", v)} />
             </Section>
             <Section title="Badge order" description="Hide badges or change their order.">
                 <BadgeLayoutEditor data={data} userId={selectedAccountId} onChange={layout => setData(previous => ({ ...previous, ...layout }))} />
@@ -2503,7 +2517,8 @@ function activityDirectoryEntry(entry: any, data: CustomProfileData) {
     const badge = ACTIVITY_BADGES.find(item => item.badgeId === entry.badge_id);
     const tier = badge ? activityTier(data, badge.key) : -1;
     if (!badge || tier < 0) return null;
-    const amount = badge.tiers[tier][1];
+    const custom = Number(data.activityAmounts?.[badge.key]);
+    const amount = Number.isFinite(custom) && custom >= 0 && data.activityAmounts?.[badge.key] != null ? custom : badge.tiers[tier][1];
     const since = badge.key === "account_age" ? monthsAgo(amount * 12) : monthsAgo(1);
     return { ...tieredEntry(entry, tier, since, [], badge.label(amount)), progress: [] };
 }
@@ -2612,7 +2627,8 @@ function OtherProfilesPanel() {
                 <BadgePicker selected={draft.badgeFlags ?? 0} onChange={value => set("badgeFlags", value)} nitroType={nitroLevel} onNitroType={value => { set("nitroLevel", value); set("nitro", value >= 0); }}
                     giftLevel={Number(draft.giftLevel ?? -1)} onGiftLevel={value => set("giftLevel", value)} boostLevel={Number(draft.boostMonths ?? -1)} onBoostLevel={value => set("boostMonths", value)}
                     customIds={draft.customBadgeIds ?? []} onCustomIds={value => set("customBadgeIds", value)} oldName={draft.oldName ?? ""} onOldName={value => set("oldName", value)}
-                    replaceRealBadges={draft.replaceRealBadges === true} onReplaceRealBadges={value => set("replaceRealBadges", value)} />
+                    replaceRealBadges={draft.replaceRealBadges === true} onReplaceRealBadges={value => set("replaceRealBadges", value)}
+                    activityAmounts={draft.activityAmounts ?? {}} onActivityAmounts={value => set("activityAmounts", value)} />
             </Section>
             <div className="cpx-inline">
                 <button type="button" className="cpx-btn cpx-btn-primary" onClick={save}>Save for {target.name}</button>
