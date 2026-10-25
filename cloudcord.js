@@ -16767,6 +16767,13 @@
     owned.state.premiumTypeOverride = accountChanged ? void 0 : owned.previous;
     return true;
   }
+  function profileNitroOn() {
+    try {
+      return !!(preview?.enabled && preview?.nitroEnabled);
+    } catch (e) {
+      return false;
+    }
+  }
   function applyFakeNitro() {
     try {
       var store = findByStoreName("OverridePremiumTypeStore");
@@ -16777,7 +16784,7 @@
       var changed = false;
       if (ownedNitroOverride && (ownedNitroOverride.state !== state2 || ownedNitroOverride.ownerId !== ownerId))
         changed = restoreFakeNitroOverride(ownedNitroOverride.state === state2);
-      if (extrasState().fakeNitro && !shopPaused && ownerId && state2.premiumTypeActual !== 2) {
+      if ((extrasState().fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state2.premiumTypeActual !== 2) {
         if (!ownedNitroOverride && state2.premiumTypeOverride !== 2)
           ownedNitroOverride = {
             state: state2,
@@ -19520,6 +19527,12 @@
       if (refresh)
         refreshPreview();
       suppressOwnPullUntil = Date.now() + 15e3;
+      if (key === "nitroEnabled" || key === "enabled") {
+        try {
+          applyFakeNitro();
+        } catch (e) {
+        }
+      }
       redraw();
     };
     var choose = (key, source) => _async_to_generator(function* () {
