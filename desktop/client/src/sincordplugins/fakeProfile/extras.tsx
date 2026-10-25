@@ -111,6 +111,11 @@ const SHOP_CLOSE = ["SKU_PURCHASE_MODAL_CLOSE","SKU_PURCHASE_SUCCESS","PREMIUM_P
 function pauseForShop() { if (!shopPaused) { shopPaused = true; applyFakeNitro(); } }
 function resumeAfterShop() { if (shopPaused) { shopPaused = false; applyFakeNitro(); } }
 
+// Nitro turned on in the custom profile also hides Nitro upsells, like "Act like I have Nitro".
+let profileNitroOn: () => boolean = () => false;
+export function setProfileNitroSource(source: () => boolean) { profileNitroOn = source; }
+export function refreshFakeNitro() { applyFakeNitro(); }
+
 function applyFakeNitro() {
     try {
         const state = OverridePremiumTypeStore?.getState?.();
@@ -120,7 +125,7 @@ function applyFakeNitro() {
         if (ownedNitroOverride && (ownedNitroOverride.state !== state || ownedNitroOverride.ownerId !== ownerId)) {
             changed = restoreFakeNitroOverride(ownedNitroOverride.state === state);
         }
-        if (extras.fakeNitro && !shopPaused && ownerId && state.premiumTypeActual !== 2) {
+        if ((extras.fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state.premiumTypeActual !== 2) {
             // Own only the override installed here. Never erase another plugin's
             // override just because this switch defaults to off.
             if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
@@ -792,7 +797,7 @@ export function ExtrasPanel() {
     const copy = () => { if (!code) return; navigator.clipboard?.writeText(giftUrl(code)).then(() => showToast("Copied gift link.", Toasts.Type.SUCCESS), () => { }); };
     return <>
         <Section title="Fake Nitro" description="Only on this device. Nothing changes for other people.">
-            <Switch label="Act like I have Nitro" description="Removes Nitro previews, upsells and Get Nitro prompts. Real Nitro features like big uploads still need real Nitro." checked={state.fakeNitro === true} onChange={value => { writeExtras({ ...extras, fakeNitro: value }); applyFakeNitro(); }} />
+            <Switch label="Act like I have Nitro" description="Removes Nitro previews, upsells and Get Nitro prompts. Turns on by itself while Nitro is on in your custom profile. Real Nitro features like big uploads still need real Nitro." checked={state.fakeNitro === true} onChange={value => { writeExtras({ ...extras, fakeNitro: value }); applyFakeNitro(); }} />
         </Section>
         <Section title="Fake orbs" description="Shows this many orbs in your wallet, only on this device. You can't spend them.">
             <input className="cpx-input" type="number" min={0} placeholder="Leave empty for your real balance" value={state.fakeOrbs ?? ""} onChange={event => { const text = event.currentTarget.value; const value = text === "" ? undefined : Math.max(0, Math.floor(Number(text) || 0)); installOrbHooks(); writeExtras({ ...extras, fakeOrbs: value }); refreshOrbs(); }} />

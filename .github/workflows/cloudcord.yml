@@ -3041,6 +3041,7 @@ jobs:
                   } catch {}
               }, 400);
           };
+          function profileNitroOn() { try { return !!(preview?.enabled && preview?.nitroEnabled); } catch { return false; } }
           function applyFakeNitro() {
               try {
                   const store = findByStoreName("OverridePremiumTypeStore") as any;
@@ -3049,7 +3050,8 @@ jobs:
                   const ownerId = (findByStoreName("UserStore") as any)?.getCurrentUser?.()?.id || "";
                   let changed = false;
                   if (ownedNitroOverride && (ownedNitroOverride.state !== state || ownedNitroOverride.ownerId !== ownerId)) changed = restoreFakeNitroOverride(ownedNitroOverride.state === state);
-                  if (extrasState().fakeNitro && !shopPaused && ownerId && state.premiumTypeActual !== 2) {
+                  // Nitro on in the custom profile also hides Nitro upsells, like "Act like I have Nitro".
+                  if ((extrasState().fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state.premiumTypeActual !== 2) {
                       if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
                       if (state.premiumTypeOverride !== 2) { state.premiumTypeOverride = 2; changed = true; }
                   } else changed = restoreFakeNitroOverride() || changed;
@@ -4176,6 +4178,7 @@ jobs:
                   clearCache();
                   if (refresh) refreshPreview();
                   suppressOwnPullUntil = Date.now() + 15_000;
+                  if (key === "nitroEnabled" || key === "enabled") { try { applyFakeNitro(); } catch {} }
                   redraw();
               };
 

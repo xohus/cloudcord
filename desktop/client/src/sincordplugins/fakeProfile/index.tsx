@@ -26,7 +26,7 @@ import { DataStore } from "@api/index";
 import { localStorage } from "@utils/localStorage";
 import { isRealProfileView, setRealProfileView } from "@utils/realProfileView";
 
-import { addFakeRequest, fakeGiftFor, hasFakeRequest, removeFakeRequest, startExtras, stopExtras } from "./extras";
+import { addFakeRequest, fakeGiftFor, hasFakeRequest, refreshFakeNitro, removeFakeRequest, setProfileNitroSource, startExtras, stopExtras } from "./extras";
 import { ModalContent as _ModalContent, ModalFooter as _ModalFooter, ModalHeader as _ModalHeader, ModalRoot as _ModalRoot, openModal } from "@utils/modal";
 
 const ModalRoot = _ModalRoot as any;
@@ -1294,6 +1294,7 @@ function stopDomObserver() {
     while ((n = walker.nextNode())) { if ((n as any).__cp_orig !== undefined) { n.nodeValue = (n as any).__cp_orig; delete (n as any).__cp_orig; } }
 }
 function forceAccountPanelRerender() {
+    try { refreshFakeNitro(); } catch { }
     try {
         const WP = (Vencord as any).Webpack;
         const US = WP?.findByStoreName?.("UserStore"); if (US?.emitChange) US.emitChange();
@@ -2082,6 +2083,7 @@ fakeObfuscatedEmail(real: string | null) {
         // hooks exist; load them again once Discord has settled so the fake data applies.
         reloadDiscordProfile(activeUserId());
         for (const delay of [3000, 12000]) setTimeout(() => { if (profileRuntimeActive) reloadDiscordProfile(activeUserId()); }, delay);
+        setProfileNitroSource(() => profileRuntimeActive && isEnabled && storedData.nitro === true);
         startExtras();
         FluxDispatcher.subscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange);
 
