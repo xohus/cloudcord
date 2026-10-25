@@ -1522,7 +1522,7 @@ jobs:
                   setOwnValue(cloned, "name", displayName);
                   setOwnValue(cloned, "getGlobalName", () => displayName);
               }
-              if (data.avatar) { setOwnValue(cloned, "avatarURL", data.avatar); setOwnValue(cloned, "avatarUrl", data.avatar); setOwnValue(cloned, "getAvatarURL", () => data.avatar); }
+              if (data.avatar) { setOwnValue(cloned, "avatarURL", data.avatar); setOwnValue(cloned, "avatarUrl", data.avatar); setOwnValue(cloned, "getAvatarURL", () => data.avatar); setOwnValue(cloned, "getAvatarSource", () => ({ uri: data.avatar })); }
               applyAvatarDecoration(cloned, data);
               applyCollectibles(cloned, data);
               if (data.profileColorsEnabled === true) {
@@ -1583,6 +1583,7 @@ jobs:
                   setOwnValue(cloned, "avatarUrl", data.avatar);
                   setOwnValue(cloned, "avatarSrc", data.avatar);
                   setOwnValue(cloned, "getAvatarURL", () => data.avatar);
+                  setOwnValue(cloned, "getAvatarSource", () => ({ uri: data.avatar }));
               }
               if (data.banner) {
                   setOwnValue(cloned, "banner", data.banner);
@@ -2033,6 +2034,8 @@ jobs:
                   setOwnValue(cloned, "avatarURL", avatar);
                   setOwnValue(cloned, "avatarUrl", avatar);
                   setOwnValue(cloned, "getAvatarURL", () => avatar);
+                  // iOS draws profile pictures from getAvatarSource, not getAvatarURL.
+                  setOwnValue(cloned, "getAvatarSource", () => ({ uri: avatar }));
               }
               if (banner) {
                   // Discord only asks for a banner image when the profile has a banner ID. Use the link itself
@@ -2920,16 +2923,26 @@ jobs:
               diagnostics.avatarResolver = !!avatarResolver;
               diagnostics.bannerResolver = !!bannerResolver;
 
+              // Custom picture for whoever this avatar request is about: you, or another CloudCord user.
+              const customAvatarFor = (args: any[]) => {
+                  const uri = mediaUri("avatarMedia");
+                  if (preview.enabled && uri && requestIsCurrent(args)) return uri;
+                  // Other CloudCord users show their synced picture, like on desktop.
+                  for (const value of args) {
+                      const id = typeof value === "string" ? value : value?.id ?? value?.userId ?? value?.user?.id;
+                      if (typeof id !== "string" || !/^\d{15,22}$/.test(id) || isCurrentUser(id)) continue;
+                      const shared = getProfileOverride(id)?.avatar;
+                      if (typeof shared === "string" && /^https:\/\//i.test(shared)) return shared;
+                  }
+                  return "";
+              };
               for (const method of ["getUserAvatarURL", "getAvatarURL", "getGuildMemberAvatarURL", "getGuildMemberAvatarURLSimple"]) {
-                  addPatch(method, avatarResolver, (args, original) => {
-                      const uri = mediaUri("avatarMedia");
-                      return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
-                  });
+                  addPatch(method, avatarResolver, (args, original) => customAvatarFor(args) || original(...args));
               }
-              for (const method of ["getUserAvatarSource", "getGuildMemberAvatarSource"]) {
+              for (const method of ["getUserAvatarSource", "getGuildMemberAvatarSource", "getAvatarSource"]) {
                   addPatch(method, avatarResolver, (args, original) => {
-                      const uri = mediaUri("avatarMedia");
-                      return preview.enabled && uri && requestIsCurrent(args) ? { uri } : original(...args);
+                      const uri = customAvatarFor(args);
+                      return uri ? { uri } : original(...args);
                   });
               }
               for (const method of ["getUserBannerURL", "getBannerURL", "getGuildMemberBannerURL"]) {
