@@ -14705,6 +14705,9 @@
       setOwnValue(cloned, "avatarURL", data.avatar);
       setOwnValue(cloned, "avatarUrl", data.avatar);
       setOwnValue(cloned, "getAvatarURL", () => data.avatar);
+      setOwnValue(cloned, "getAvatarSource", () => ({
+        uri: data.avatar
+      }));
     }
     applyAvatarDecoration(cloned, data);
     applyCollectibles(cloned, data);
@@ -14785,6 +14788,9 @@
       setOwnValue(cloned, "avatarUrl", data.avatar);
       setOwnValue(cloned, "avatarSrc", data.avatar);
       setOwnValue(cloned, "getAvatarURL", () => data.avatar);
+      setOwnValue(cloned, "getAvatarSource", () => ({
+        uri: data.avatar
+      }));
     }
     if (data.banner) {
       setOwnValue(cloned, "banner", data.banner);
@@ -15478,6 +15484,9 @@
       setOwnValue(cloned, "avatarURL", avatar);
       setOwnValue(cloned, "avatarUrl", avatar);
       setOwnValue(cloned, "getAvatarURL", () => avatar);
+      setOwnValue(cloned, "getAvatarSource", () => ({
+        uri: avatar
+      }));
     }
     if (banner) {
       setOwnValue(cloned, "banner", banner);
@@ -16675,24 +16684,36 @@
     var bannerResolver = findByProps("getUserBannerURL") || findByProps("getBannerURL");
     diagnostics.avatarResolver = !!avatarResolver;
     diagnostics.bannerResolver = !!bannerResolver;
+    var customAvatarFor = (args) => {
+      var uri = mediaUri("avatarMedia");
+      if (preview.enabled && uri && requestIsCurrent(args))
+        return uri;
+      for (var value of args) {
+        var id = typeof value === "string" ? value : value?.id ?? value?.userId ?? value?.user?.id;
+        if (typeof id !== "string" || !/^\d{15,22}$/.test(id) || isCurrentUser(id))
+          continue;
+        var shared = getProfileOverride(id)?.avatar;
+        if (typeof shared === "string" && /^https:\/\//i.test(shared))
+          return shared;
+      }
+      return "";
+    };
     for (var method3 of [
       "getUserAvatarURL",
       "getAvatarURL",
       "getGuildMemberAvatarURL",
       "getGuildMemberAvatarURLSimple"
     ]) {
-      addPatch(method3, avatarResolver, (args, original) => {
-        var uri = mediaUri("avatarMedia");
-        return preview.enabled && uri && requestIsCurrent(args) ? uri : original(...args);
-      });
+      addPatch(method3, avatarResolver, (args, original) => customAvatarFor(args) || original(...args));
     }
     for (var method4 of [
       "getUserAvatarSource",
-      "getGuildMemberAvatarSource"
+      "getGuildMemberAvatarSource",
+      "getAvatarSource"
     ]) {
       addPatch(method4, avatarResolver, (args, original) => {
-        var uri = mediaUri("avatarMedia");
-        return preview.enabled && uri && requestIsCurrent(args) ? {
+        var uri = customAvatarFor(args);
+        return uri ? {
           uri
         } : original(...args);
       });
