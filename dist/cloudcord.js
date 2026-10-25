@@ -17321,7 +17321,158 @@
       return null;
     }
   }
+  function styledRole(base, patch) {
+    var color2 = patch.color ? hexNumber(patch.color) : null;
+    return {
+      ...base,
+      ...patch.name ? {
+        name: patch.name
+      } : {},
+      ...color2 != null ? {
+        color: color2,
+        colorString: patch.color,
+        colors: {
+          primary_color: color2,
+          secondary_color: null,
+          tertiary_color: null
+        },
+        colorStrings: {
+          primaryColor: patch.color,
+          secondaryColor: null,
+          tertiaryColor: null
+        }
+      } : {},
+      ...patch.emoji ? {
+        unicodeEmoji: patch.emoji,
+        icon: null
+      } : {}
+    };
+  }
+  function customRoleRecord(guildId, role, index, top) {
+    var key = guildId + ":" + JSON.stringify(role) + ":" + index + ":" + top;
+    var value = visualRoleCache.get(key);
+    if (!value)
+      visualRoleCache.set(key, value = styledRole({
+        id: role.id,
+        name: role.name,
+        guildId,
+        permissions: role.admin ? BigInt(8) : BigInt(0),
+        mentionable: false,
+        position: role.top ? top + 1 + index : 0,
+        color: 0,
+        colorString: null,
+        colors: {
+          primary_color: null,
+          secondary_color: null,
+          tertiary_color: null
+        },
+        colorStrings: {
+          primaryColor: null,
+          secondaryColor: null,
+          tertiaryColor: null
+        },
+        hoist: role.hoist,
+        managed: false,
+        tags: {},
+        icon: null,
+        unicodeEmoji: null,
+        flags: 0,
+        description: null
+      }, {
+        color: role.color,
+        emoji: role.emoji
+      }));
+    return value;
+  }
+  function installRoleHooks() {
+    var store = findByStoreName("GuildRoleStore");
+    if (roleHooksInstalled || typeof store?.getUnsafeMutableRoles !== "function")
+      return;
+    roleHooksInstalled = true;
+    var parts = (guildId) => {
+      var fake = boostFor(guildId);
+      return {
+        custom: fake?.customRoles ?? [],
+        tweaks: fake?.roleTweaks ?? {}
+      };
+    };
+    var topOf = (roles) => Math.max(0, ...Object.values(roles ?? {}).map((role) => Number(role?.position) || 0));
+    var patchOne = (guildId, role) => {
+      var tweak = role && parts(guildId).tweaks[role.id];
+      if (!tweak)
+        return role;
+      var key = guildId + ":tweak:" + role.id + ":" + JSON.stringify(tweak) + ":" + role.position;
+      var value = visualRoleCache.get(key);
+      if (!value)
+        visualRoleCache.set(key, value = styledRole(role, tweak));
+      return value;
+    };
+    var reading = false;
+    var realRoles = (guildId) => {
+      reading = true;
+      try {
+        return store.getUnsafeMutableRoles(guildId);
+      } finally {
+        reading = false;
+      }
+    };
+    after("getUnsafeMutableRoles", store, (args, roles) => {
+      if (reading)
+        return roles;
+      try {
+        var { custom, tweaks } = parts(args[0]);
+        if (!roles || !custom.length && !Object.keys(tweaks).length)
+          return roles;
+        var key = JSON.stringify(custom) + JSON.stringify(tweaks);
+        var hit = visualRoleLists.get(roles);
+        if (hit && hit.key === key)
+          return hit.value;
+        var top = topOf(roles), value = {};
+        for (var [id, role] of Object.entries(roles))
+          value[id] = patchOne(args[0], role);
+        custom.forEach((role2, index) => {
+          value[role2.id] = customRoleRecord(args[0], role2, index, top);
+        });
+        visualRoleLists.set(roles, {
+          key,
+          value
+        });
+        return value;
+      } catch (e) {
+        return roles;
+      }
+    });
+    if (typeof store.getRole === "function")
+      after("getRole", store, (args, role) => {
+        try {
+          var custom = parts(args[0]).custom;
+          var index = custom.findIndex((item) => item.id === args[1]);
+          if (index >= 0)
+            return customRoleRecord(args[0], custom[index], index, topOf(realRoles(args[0])));
+          return patchOne(args[0], role);
+        } catch (e) {
+          return role;
+        }
+      });
+    if (typeof store.getManyRoles === "function")
+      after("getManyRoles", store, (args, roles) => {
+        try {
+          var { custom, tweaks } = parts(args[0]);
+          if (!custom.length && !Object.keys(tweaks).length)
+            return roles;
+          return (args[1] ?? []).map((id) => store.getRole(args[0], id)).filter(Boolean);
+        } catch (e) {
+          return roles;
+        }
+      });
+    if (typeof store.getNumRoles === "function")
+      after("getNumRoles", store, (args, count) => count + parts(args[0]).custom.length);
+  }
   function installBoostHooks() {
+    try {
+      installRoleHooks();
+    } catch (e) {
+    }
     if (boostHooksInstalled)
       return;
     var guilds = findByStoreName("GuildStore");
@@ -17477,6 +17628,7 @@
         findByStoreName("GuildStore")?.emitChange?.();
         findByStoreName("GuildMemberStore")?.emitChange?.();
         findByStoreName("ChannelMemberStore")?.emitChange?.();
+        findByStoreName("GuildRoleStore")?.emitChange?.();
       } catch (e) {
       }
       refresh();
@@ -17699,9 +17851,262 @@
               onPress: () => set({
                 roles: []
               })
-            }) : null
+            }) : null,
+            /* @__PURE__ */ jsx(VisualRolesEditor, {
+              fake,
+              roles,
+              onChange: set
+            })
           ]
         }) : null
+      ]
+    });
+  }
+  function VisualRolesEditor({ fake, roles, onChange }) {
+    var K2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
+    var [draft, setDraft] = (0, import_react6.useState)({
+      id: "",
+      name: "",
+      color: "#5865F2",
+      hoist: true,
+      emoji: "",
+      admin: false,
+      top: true
+    });
+    var [tweakId, setTweakId] = (0, import_react6.useState)("");
+    var [query, setQuery] = (0, import_react6.useState)("");
+    var custom = fake.customRoles ?? [];
+    var tweaks = fake.roleTweaks ?? {};
+    var tweak = tweakId ? tweaks[tweakId] ?? {} : {};
+    var realRoles = roles.filter((role) => !String(role.id).startsWith("cc-role-") && (!query.trim() || String(role.name).toLowerCase().includes(query.trim().toLowerCase()))).slice(0, 30);
+    var setTweak = (patch) => {
+      var merged = {
+        ...tweak,
+        ...patch
+      };
+      for (var key of Object.keys(merged))
+        if (!merged[key])
+          delete merged[key];
+      var next = {
+        ...tweaks
+      };
+      if (Object.keys(merged).length)
+        next[tweakId] = merged;
+      else
+        delete next[tweakId];
+      onChange({
+        roleTweaks: next
+      });
+    };
+    var validColor = (text) => /^#?[0-9a-f]{6}$/i.test(text.trim()) ? "#" + text.trim().replace(/^#/, "").toUpperCase() : void 0;
+    return /* @__PURE__ */ jsxs(import_react_native20.View, {
+      style: {
+        gap: 12
+      },
+      children: [
+        /* @__PURE__ */ jsxs(K2.Section, {
+          title: "Your own roles",
+          description: "Roles only you see. Put them above every role, even bots, with a colour, an emoji icon or Administrator. Administrator only changes what Discord shows you.",
+          children: [
+            custom.map((role) => /* @__PURE__ */ jsx(K2.Row, {
+              label: (role.emoji ? role.emoji + " " : "") + role.name,
+              subLabel: [
+                role.color,
+                role.top ? "Top" : "",
+                role.admin ? "Administrator" : ""
+              ].filter(Boolean).join(" \xB7 "),
+              icon: /* @__PURE__ */ jsx(import_react_native20.View, {
+                style: {
+                  width: 12,
+                  height: 12,
+                  borderRadius: 6,
+                  backgroundColor: role.color
+                }
+              }),
+              onPress: () => import_react_native20.Alert.alert("Delete " + role.name + "?", "", [
+                {
+                  text: "Cancel",
+                  style: "cancel"
+                },
+                {
+                  text: "Delete",
+                  style: "destructive",
+                  onPress: () => onChange({
+                    customRoles: custom.filter((other) => other.id !== role.id),
+                    roles: (fake.roles ?? []).filter((id) => id !== role.id)
+                  })
+                }
+              ])
+            }, role.id)),
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "Name",
+              children: /* @__PURE__ */ jsx(TextInput4, {
+                value: draft.name,
+                placeholder: "Owner",
+                maxLength: 100,
+                onChangeText: (name) => setDraft({
+                  ...draft,
+                  name
+                })
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "Colour",
+              hint: "Hex, like #F1C40F",
+              children: /* @__PURE__ */ jsx(TextInput4, {
+                defaultValue: draft.color,
+                placeholder: "#5865F2",
+                autoCapitalize: "characters",
+                maxLength: 7,
+                onChangeText: (text) => {
+                  var color2 = validColor(text);
+                  if (color2)
+                    setDraft({
+                      ...draft,
+                      color: color2
+                    });
+                }
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Field, {
+              label: "Emoji icon",
+              children: /* @__PURE__ */ jsx(TextInput4, {
+                value: draft.emoji ?? "",
+                placeholder: "\u{1F451} (optional)",
+                maxLength: 8,
+                onChangeText: (emoji) => setDraft({
+                  ...draft,
+                  emoji
+                })
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Toggle, {
+              label: "Show separately in the member list",
+              value: draft.hoist,
+              onPress: () => setDraft({
+                ...draft,
+                hoist: !draft.hoist
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Toggle, {
+              label: "Above every other role",
+              subLabel: "Higher than all real roles, bots included",
+              value: draft.top === true,
+              onPress: () => setDraft({
+                ...draft,
+                top: !draft.top
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Toggle, {
+              label: "Administrator",
+              subLabel: "Shows admin options; they won't work",
+              value: draft.admin === true,
+              onPress: () => setDraft({
+                ...draft,
+                admin: !draft.admin
+              })
+            }),
+            /* @__PURE__ */ jsx(K2.Button, {
+              label: "Create role and give it to me",
+              primary: true,
+              disabled: !draft.name.trim(),
+              onPress: () => {
+                var role = {
+                  ...draft,
+                  name: draft.name.trim().slice(0, 100),
+                  id: "cc-role-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)
+                };
+                onChange({
+                  customRoles: [
+                    ...custom,
+                    role
+                  ],
+                  roles: [
+                    ...fake.roles ?? [],
+                    role.id
+                  ]
+                });
+                setDraft({
+                  ...draft,
+                  name: "",
+                  emoji: ""
+                });
+              }
+            })
+          ]
+        }),
+        /* @__PURE__ */ jsxs(K2.Section, {
+          title: "Restyle a real role",
+          description: "A different name, colour or emoji icon for any role here, only on this device.",
+          children: [
+            /* @__PURE__ */ jsx(TextInput4, {
+              value: query,
+              placeholder: "Search roles",
+              autoCapitalize: "none",
+              onChangeText: setQuery
+            }),
+            /* @__PURE__ */ jsx(K2.Chips, {
+              options: realRoles.map((role) => ({
+                value: role.id,
+                label: (tweaks[role.id] ? "\u270E " : "") + role.name,
+                dot: role.colorString || void 0
+              })),
+              value: tweakId,
+              onChange: (value) => setTweakId(value)
+            }),
+            tweakId ? /* @__PURE__ */ jsxs(Fragment, {
+              children: [
+                /* @__PURE__ */ jsx(K2.Field, {
+                  label: "New name",
+                  children: /* @__PURE__ */ jsx(TextInput4, {
+                    defaultValue: tweak.name ?? "",
+                    placeholder: "Keep name",
+                    maxLength: 100,
+                    onChangeText: (name) => setTweak({
+                      name
+                    })
+                  }, tweakId + "n")
+                }),
+                /* @__PURE__ */ jsx(K2.Field, {
+                  label: "New colour",
+                  hint: "Hex, like #F1C40F. Empty keeps the colour.",
+                  children: /* @__PURE__ */ jsx(TextInput4, {
+                    defaultValue: tweak.color ?? "",
+                    placeholder: "#99AAB5",
+                    autoCapitalize: "characters",
+                    maxLength: 7,
+                    onChangeText: (text) => setTweak({
+                      color: validColor(text) ?? ""
+                    })
+                  }, tweakId + "c")
+                }),
+                /* @__PURE__ */ jsx(K2.Field, {
+                  label: "Emoji icon",
+                  children: /* @__PURE__ */ jsx(TextInput4, {
+                    defaultValue: tweak.emoji ?? "",
+                    placeholder: "\u2B50 (optional)",
+                    maxLength: 8,
+                    onChangeText: (emoji) => setTweak({
+                      emoji
+                    })
+                  }, tweakId + "e")
+                }),
+                tweaks[tweakId] ? /* @__PURE__ */ jsx(K2.Button, {
+                  label: "Reset this role",
+                  onPress: () => {
+                    var next = {
+                      ...tweaks
+                    };
+                    delete next[tweakId];
+                    onChange({
+                      roleTweaks: next
+                    });
+                  }
+                }) : null
+              ]
+            }) : null
+          ]
+        })
       ]
     });
   }
@@ -20792,7 +21197,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, leavingServers, NamePreviewBoundary, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
+  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, NamePreviewBoundary, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -21990,6 +22395,13 @@
       listCache = /* @__PURE__ */ new WeakMap();
       ownerRowCache = /* @__PURE__ */ new WeakMap();
       countCache = /* @__PURE__ */ new WeakMap();
+      hexNumber = (hex) => {
+        var value = parseInt(String(hex || "").replace(/^#/, ""), 16);
+        return Number.isFinite(value) ? value : 0;
+      };
+      visualRoleCache = /* @__PURE__ */ new Map();
+      visualRoleLists = /* @__PURE__ */ new WeakMap();
+      roleHooksInstalled = false;
       leavingServers = false;
       NamePreviewBoundary = /* @__PURE__ */ function(Component2) {
         "use strict";
