@@ -115,6 +115,19 @@ function resumeAfterShop() { if (shopPaused) { shopPaused = false; applyFakeNitr
 let profileNitroOn: () => boolean = () => false;
 export function setProfileNitroSource(source: () => boolean) { profileNitroOn = source; }
 export function refreshFakeNitro() { applyFakeNitro(); }
+// Discord only uses the Nitro override for staff; the plugin patch asks this instead.
+let fakeNitroActive = false;
+export function isFakeNitroActive() { return fakeNitroActive; }
+// Your account record keeps its real Nitro type until Discord rebuilds it, so set it now.
+function setCurrentPremiumType(type: number | undefined) {
+    try {
+        const me: any = UserStore.getCurrentUser();
+        if (!me || type == null || me.premiumType === type) return false;
+        me.premiumType = type;
+        (UserStore as any).emitChange?.();
+        return true;
+    } catch { return false; }
+}
 
 function applyFakeNitro() {
     try {
@@ -125,12 +138,17 @@ function applyFakeNitro() {
         if (ownedNitroOverride && (ownedNitroOverride.state !== state || ownedNitroOverride.ownerId !== ownerId)) {
             changed = restoreFakeNitroOverride(ownedNitroOverride.state === state);
         }
-        if ((extras.fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state.premiumTypeActual !== 2) {
+        const active = !!((extras.fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state.premiumTypeActual !== 2);
+        if (active) {
             // Own only the override installed here. Never erase another plugin's
             // override just because this switch defaults to off.
             if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
             if (state.premiumTypeOverride !== 2) { state.premiumTypeOverride = 2; changed = true; }
         } else changed = restoreFakeNitroOverride() || changed;
+        const wasActive = fakeNitroActive;
+        fakeNitroActive = active;
+        if (active) changed = setCurrentPremiumType(2) || changed;
+        else if (wasActive) changed = setCurrentPremiumType(state.premiumTypeActual ?? 0) || changed;
         if (changed) { (OverridePremiumTypeStore as any).emitChange?.(); restoreKeptTheme(); }
     } catch { }
 }
@@ -765,6 +783,7 @@ export function startExtras() {
     applyFakeNitro();
     restoreFakeRequests();
     FluxDispatcher.subscribe("CONNECTION_OPEN", applyFakeNitro);
+    FluxDispatcher.subscribe("CURRENT_USER_UPDATE", applyFakeNitro);
     FluxDispatcher.subscribe("CONNECTION_OPEN", installOrbHooks);
     FluxDispatcher.subscribe("CONNECTION_OPEN", restoreSoon);
     for (const type of SHOP_OPEN) FluxDispatcher.subscribe(type, pauseForShop);
@@ -782,6 +801,7 @@ export function stopExtras() {
     clearInterval(orbRetry);
     uninstallOrbHooks();
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", applyFakeNitro);
+    FluxDispatcher.unsubscribe("CURRENT_USER_UPDATE", applyFakeNitro);
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", installOrbHooks);
     FluxDispatcher.unsubscribe("CONNECTION_OPEN", restoreSoon);
     if (extras.fakeNitro) { const prev = extras; extras = { ...prev, fakeNitro: false }; applyFakeNitro(); extras = prev; }

@@ -3054,6 +3054,18 @@ jobs:
                   } catch {}
               }, 400);
           };
+          // Discord only uses the Nitro override for staff, so also set it on your account record.
+          let fakeNitroActive = false;
+          function setCurrentPremiumType(type: number | undefined) {
+              try {
+                  const users = findByStoreName("UserStore") as any;
+                  const me = users?.getCurrentUser?.();
+                  if (!me || type == null || me.premiumType === type) return false;
+                  me.premiumType = type;
+                  users?.emitChange?.();
+                  return true;
+              } catch { return false; }
+          }
           function profileNitroOn() { try { return !!(preview?.enabled && preview?.nitroEnabled); } catch { return false; } }
           function applyFakeNitro() {
               try {
@@ -3064,10 +3076,15 @@ jobs:
                   let changed = false;
                   if (ownedNitroOverride && (ownedNitroOverride.state !== state || ownedNitroOverride.ownerId !== ownerId)) changed = restoreFakeNitroOverride(ownedNitroOverride.state === state);
                   // Nitro on in the custom profile also hides Nitro upsells, like "Act like I have Nitro".
-                  if ((extrasState().fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state.premiumTypeActual !== 2) {
+                  const active = !!((extrasState().fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state.premiumTypeActual !== 2);
+                  if (active) {
                       if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
                       if (state.premiumTypeOverride !== 2) { state.premiumTypeOverride = 2; changed = true; }
                   } else changed = restoreFakeNitroOverride() || changed;
+                  const wasActive = fakeNitroActive;
+                  fakeNitroActive = active;
+                  if (active) setCurrentPremiumType(2);
+                  else if (wasActive) setCurrentPremiumType(state.premiumTypeActual ?? 0);
                   if (changed) store.emitChange?.();
               } catch {}
           }
@@ -3680,6 +3697,7 @@ jobs:
                       const restoreLater = () => setTimeout(() => { try { restoreFakeRequests(); } catch {} }, 1500);
                       restoreLater();
                       try { FluxDispatcher.subscribe("CONNECTION_OPEN", () => { try { applyFakeNitro(); } catch {} restoreLater(); }); } catch {}
+                      try { FluxDispatcher.subscribe("CURRENT_USER_UPDATE", () => { try { applyFakeNitro(); } catch {} }); } catch {}
                       for (const type of ["COLLECTIBLES_SHOP_OPEN","COLLECTIBLES_PRODUCT_DETAILS_OPEN","COLLECTIBLES_SHOP_HOME_FETCH","SKU_PURCHASE_MODAL_OPEN","PREMIUM_PAYMENT_MODAL_OPEN"]) { try { FluxDispatcher.subscribe(type, pauseForShop); } catch {} }
                       for (const type of ["SKU_PURCHASE_MODAL_CLOSE","SKU_PURCHASE_SUCCESS","PREMIUM_PAYMENT_MODAL_CLOSED","CHANNEL_SELECT"]) { try { FluxDispatcher.subscribe(type, resumeAfterShop); } catch {} }
                       try { FluxDispatcher.subscribe("SELECTIVELY_SYNCED_USER_SETTINGS_UPDATE", rememberTheme); } catch {}

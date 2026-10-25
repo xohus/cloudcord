@@ -26,7 +26,7 @@ import { DataStore } from "@api/index";
 import { localStorage } from "@utils/localStorage";
 import { isRealProfileView, setRealProfileView } from "@utils/realProfileView";
 
-import { addFakeRequest, fakeGiftFor, hasFakeRequest, refreshFakeNitro, removeFakeRequest, setProfileNitroSource, startExtras, stopExtras } from "./extras";
+import { addFakeRequest, fakeGiftFor, hasFakeRequest, isFakeNitroActive, refreshFakeNitro, removeFakeRequest, setProfileNitroSource, startExtras, stopExtras } from "./extras";
 import { ModalContent as _ModalContent, ModalFooter as _ModalFooter, ModalHeader as _ModalHeader, ModalRoot as _ModalRoot, openModal } from "@utils/modal";
 
 const ModalRoot = _ModalRoot as any;
@@ -1827,6 +1827,14 @@ export default definePlugin({
 
     patches: [
         {
+            // Discord applies the Nitro type override only for staff. Apply it while Fake Nitro is on.
+            find: ".getPremiumTypeActual();return ",
+            replacement: {
+                match: /(function \i\((\i),(\i)\)\{)if\(!\2\)return \3;(?=let \i=\i\.\i\.getPremiumTypeOverride\(\))/,
+                replace: "$1if(!$2&&!$self.fakeNitroActive())return $3;"
+            }
+        },
+        {
             // Local-only tag next to your own name in chat (APP, OFFICIAL, SYSTEM...).
             find: "Types.SYSTEM_DM:null!=",
             noWarn: true,
@@ -1900,6 +1908,10 @@ export default definePlugin({
     localBotTag(user: any) {
         if (!profileRuntimeActive || localNameTag == null || !user?.id || !isMe(user.id)) return null;
         return localNameTag;
+    },
+
+    fakeNitroActive() {
+        return isFakeNitroActive();
     },
 
     ownTenureCard() {
