@@ -73,7 +73,9 @@ function fakeMember(guildId: string, member: any) {
     return value;
 }
 
-interface BoostFake { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[]; owner?: boolean; }
+interface CustomRole { id: string; name: string; color: string; hoist: boolean; emoji?: string; admin?: boolean; top?: boolean; }
+interface RoleTweak { name?: string; color?: string; emoji?: string; }
+interface BoostFake { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[]; owner?: boolean; customRoles?: CustomRole[]; roleTweaks?: Record<string, RoleTweak>; }
 interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; fakeRequests?: { id: string; user: any; since: string; }[]; fakeOrbs?: number; }
 
 function readExtras(): Extras {
@@ -222,7 +224,87 @@ function fakeFeatures(real: any, partner: boolean, verified: boolean) {
 }
 function boostFor(guildId?: string | null) { return guildId ? extras.boosts?.[guildId] : undefined; }
 // Read-only overlays: Discord's stores keep their real data, we only change what's returned.
+// ---- Visual roles: your own roles and new names/colours/icons for real ones, only on this device ----
+const hexNumber = (hex?: string) => { const value = parseInt(String(hex || "").replace(/^#/, ""), 16); return Number.isFinite(value) ? value : 0; };
+const roleCache = new Map<string, any>();
+function styledRole(base: any, patch: { name?: string; color?: string; emoji?: string; }) {
+    const color = patch.color ? hexNumber(patch.color) : null;
+    return {
+        ...base,
+        ...(patch.name ? { name: patch.name } : {}),
+        ...(color != null ? { color, colorString: patch.color, colors: { primary_color: color, secondary_color: null, tertiary_color: null }, colorStrings: { primaryColor: patch.color, secondaryColor: null, tertiaryColor: null } } : {}),
+        ...(patch.emoji ? { unicodeEmoji: patch.emoji, icon: null } : {})
+    };
+}
+function customRoleRecord(guildId: string, role: CustomRole, index: number, topPosition: number) {
+    const key = guildId + ":" + JSON.stringify(role) + ":" + index + ":" + topPosition;
+    const hit = roleCache.get(key);
+    if (hit) return hit;
+    const value = styledRole({
+        id: role.id, name: role.name, guildId, permissions: role.admin ? 8n : 0n, mentionable: false,
+        position: role.top ? topPosition + 1 + index : 0, color: 0, colorString: null, colors: { primary_color: null, secondary_color: null, tertiary_color: null },
+        colorStrings: { primaryColor: null, secondaryColor: null, tertiaryColor: null }, hoist: role.hoist, managed: false, tags: {}, icon: null, unicodeEmoji: null, flags: 0, description: null
+    }, { color: role.color, emoji: role.emoji });
+    roleCache.set(key, value);
+    return value;
+}
+let roleOriginals: { getUnsafeMutableRoles: any; getRole: any; getManyRoles: any; getNumRoles: any; } | null = null;
+function visualRolesFor(guildId: string) {
+    const fake = boostFor(guildId);
+    return { custom: fake?.customRoles ?? [], tweaks: fake?.roleTweaks ?? {} };
+}
+const roleListCache = new WeakMap<object, { key: string; value: any; }>();
+function installRoleHooks() {
+    if (roleOriginals || !GuildRoleStore?.getUnsafeMutableRoles) return;
+    const store: any = GuildRoleStore;
+    roleOriginals = { getUnsafeMutableRoles: store.getUnsafeMutableRoles, getRole: store.getRole, getManyRoles: store.getManyRoles, getNumRoles: store.getNumRoles };
+    const original = roleOriginals;
+    const topOf = (roles: any) => Math.max(0, ...Object.values(roles ?? {}).map((role: any) => Number(role?.position) || 0));
+    const patchOne = (guildId: string, role: any) => {
+        const tweak = role && visualRolesFor(guildId).tweaks[role.id];
+        if (!tweak) return role;
+        const key = guildId + ":tweak:" + role.id + ":" + JSON.stringify(tweak) + ":" + role.position;
+        let value = roleCache.get(key);
+        if (!value) roleCache.set(key, value = styledRole(role, tweak));
+        return value;
+    };
+    store.getUnsafeMutableRoles = function (guildId: string, ...rest: any[]) {
+        const roles = original.getUnsafeMutableRoles.call(this, guildId, ...rest);
+        const { custom, tweaks } = visualRolesFor(guildId);
+        if (!roles || (!custom.length && !Object.keys(tweaks).length)) return roles;
+        const key = JSON.stringify(custom) + JSON.stringify(tweaks);
+        const hit = roleListCache.get(roles);
+        if (hit && hit.key === key) return hit.value;
+        const top = topOf(roles);
+        const value: any = {};
+        for (const [id, role] of Object.entries(roles)) value[id] = patchOne(guildId, role);
+        custom.forEach((role, index) => { value[role.id] = customRoleRecord(guildId, role, index, top); });
+        roleListCache.set(roles, { key, value });
+        return value;
+    };
+    store.getRole = function (guildId: string, roleId: string, ...rest: any[]) {
+        const custom = visualRolesFor(guildId).custom;
+        const index = custom.findIndex(role => role.id === roleId);
+        if (index >= 0) return customRoleRecord(guildId, custom[index], index, topOf(original.getUnsafeMutableRoles.call(this, guildId)));
+        return patchOne(guildId, original.getRole.call(this, guildId, roleId, ...rest));
+    };
+    store.getManyRoles = function (guildId: string, ids: string[], ...rest: any[]) {
+        const custom = visualRolesFor(guildId).custom;
+        if (!custom.length && !Object.keys(visualRolesFor(guildId).tweaks).length) return original.getManyRoles.call(this, guildId, ids, ...rest);
+        return (ids ?? []).map(id => store.getRole(guildId, id)).filter(Boolean);
+    };
+    store.getNumRoles = function (guildId: string, ...rest: any[]) {
+        return original.getNumRoles.call(this, guildId, ...rest) + visualRolesFor(guildId).custom.length;
+    };
+}
+function uninstallRoleHooks() {
+    if (!roleOriginals) return;
+    Object.assign(GuildRoleStore as any, roleOriginals);
+    roleOriginals = null;
+}
+
 function installBoostHooks() {
+    try { installRoleHooks(); } catch { }
     try { installCountHooks(); } catch { }
     try { installMemberListHook(); } catch { }
     if (boostOriginals || !GuildStore || !GuildMemberStore) return;
@@ -394,6 +476,7 @@ function uninstallCountHooks() {
     countOriginals = null;
 }
 function uninstallBoostHooks() {
+    uninstallRoleHooks();
     uninstallCountHooks();
     uninstallMemberListHook();
     if (!boostOriginals) return;
@@ -402,7 +485,7 @@ function uninstallBoostHooks() {
     boostOriginals = null;
 }
 function refreshGuildViews(guildId: string) {
-    try { (GuildStore as any).emitChange?.(); (GuildMemberStore as any).emitChange?.(); (GuildMemberCountStore as any)?.emitChange?.(); (ChannelMemberStore as any)?.emitChange?.(); } catch { }
+    try { (GuildStore as any).emitChange?.(); (GuildMemberStore as any).emitChange?.(); (GuildMemberCountStore as any)?.emitChange?.(); (ChannelMemberStore as any)?.emitChange?.(); (GuildRoleStore as any)?.emitChange?.(); } catch { }
     try { FluxDispatcher.dispatch({ type: "GUILD_MEMBER_PROFILE_UPDATE", guildId }); } catch { }
 }
 
@@ -450,8 +533,63 @@ function BoostSection() {
                 </div>
                 {chosenRoles.size > 0 && <div className="cpx-inline"><button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => set({ roles: [] })}>Remove all fake roles</button></div>}
             </div>
+            <VisualRolesEditor guildId={guild.id} fake={fake} roles={roles} onChange={set} />
         </>}
     </Section>;
+}
+
+function VisualRolesEditor({ guildId, fake, roles, onChange }: { guildId: string; fake: BoostFake; roles: any[]; onChange: (patch: BoostFake) => void; }) {
+    const [draft, setDraft] = React.useState<CustomRole>({ id: "", name: "", color: "#5865f2", hoist: true, emoji: "", admin: false, top: true });
+    const [tweakId, setTweakId] = React.useState("");
+    const custom = fake.customRoles ?? [];
+    const tweaks = fake.roleTweaks ?? {};
+    const realRoles = roles.filter((role: any) => !String(role.id).startsWith("cc-role-"));
+    const tweak = tweakId ? tweaks[tweakId] ?? {} : {};
+    const setTweak = (patch: RoleTweak) => {
+        const next = { ...tweaks, [tweakId]: { ...tweak, ...patch } };
+        for (const key of Object.keys(next[tweakId])) if (!(next[tweakId] as any)[key]) delete (next[tweakId] as any)[key];
+        if (!Object.keys(next[tweakId]).length) delete next[tweakId];
+        onChange({ roleTweaks: next });
+    };
+    const addRole = () => {
+        if (!draft.name.trim()) return;
+        const role = { ...draft, name: draft.name.trim().slice(0, 100), id: "cc-role-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) };
+        onChange({ customRoles: [...custom, role], roles: [...(fake.roles ?? []), role.id] });
+        setDraft({ ...draft, name: "", emoji: "" });
+    };
+    return <>
+        <div className="cpx-field">
+            <span className="cpx-label">Your own roles</span>
+            <span className="cpx-hint">Make roles that only you see. Put them above every role, even bots, and give them a colour, an emoji icon or Administrator. Administrator only changes what Discord shows you; real actions still need real permissions.</span>
+            {custom.map(role => <div key={role.id} className="cpx-order-row" style={{ gap: 10 }}>
+                <span style={{ width: 12, height: 12, borderRadius: 6, background: role.color, flex: "0 0 12px" }} />
+                <span style={{ flex: 1 }}>{role.emoji ? role.emoji + " " : ""}{role.name}{role.admin ? " · Administrator" : ""}{role.top ? " · Top" : ""}</span>
+                <button type="button" className="cpx-btn cpx-btn-ghost cpx-btn-danger-text" onClick={() => onChange({ customRoles: custom.filter(other => other.id !== role.id), roles: (fake.roles ?? []).filter(id => id !== role.id) })}>Delete</button>
+            </div>)}
+            <Grid2>
+                <label className="cpx-field"><span className="cpx-label">Name</span><input className="cpx-input" value={draft.name} maxLength={100} placeholder="Owner" onChange={event => setDraft({ ...draft, name: event.currentTarget.value })} /></label>
+                <label className="cpx-field"><span className="cpx-label">Colour</span><input className="cpx-input" type="color" value={draft.color} onChange={event => setDraft({ ...draft, color: event.currentTarget.value })} /></label>
+            </Grid2>
+            <label className="cpx-field"><span className="cpx-label">Emoji icon</span><input className="cpx-input" value={draft.emoji ?? ""} maxLength={8} placeholder="👑 (optional)" onChange={event => setDraft({ ...draft, emoji: event.currentTarget.value })} /></label>
+            <Switch label="Show separately in the member list" checked={draft.hoist} onChange={value => setDraft({ ...draft, hoist: value })} />
+            <Switch label="Above every other role" description="Higher than all real roles, bots included." checked={draft.top === true} onChange={value => setDraft({ ...draft, top: value })} />
+            <Switch label="Administrator" description="Discord shows you admin options. They won't work, because the server doesn't give you the permission." checked={draft.admin === true} onChange={value => setDraft({ ...draft, admin: value })} />
+            <div className="cpx-inline"><button type="button" className="cpx-btn cpx-btn-primary" disabled={!draft.name.trim()} onClick={addRole}>Create role and give it to me</button></div>
+        </div>
+        <div className="cpx-field">
+            <span className="cpx-label">Restyle a real role</span>
+            <span className="cpx-hint">Give any role here a different name, colour or emoji icon, only on this device.</span>
+            <SelectField label="Role" options={[{ value: "", label: "Choose a role" }, ...realRoles.map((role: any) => ({ value: role.id, label: (tweaks[role.id] ? "✎ " : "") + role.name }))]} value={tweakId} onChange={value => setTweakId(String(value))} />
+            {tweakId && <>
+                <Grid2>
+                    <label className="cpx-field"><span className="cpx-label">New name</span><input className="cpx-input" value={tweak.name ?? ""} maxLength={100} placeholder="Keep name" onChange={event => setTweak({ name: event.currentTarget.value })} /></label>
+                    <label className="cpx-field"><span className="cpx-label">New colour</span><input className="cpx-input" type="color" value={tweak.color ?? "#99aab5"} onChange={event => setTweak({ color: event.currentTarget.value })} /></label>
+                </Grid2>
+                <label className="cpx-field"><span className="cpx-label">Emoji icon</span><input className="cpx-input" value={tweak.emoji ?? ""} maxLength={8} placeholder="⭐ (optional)" onChange={event => setTweak({ emoji: event.currentTarget.value })} /></label>
+                {tweaks[tweakId] && <div className="cpx-inline"><button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => { const next = { ...tweaks }; delete next[tweakId]; onChange({ roleTweaks: next }); }}>Reset this role</button></div>}
+            </>}
+        </div>
+    </>;
 }
 
 // ---- Fake friend requests ----

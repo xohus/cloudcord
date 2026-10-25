@@ -3134,7 +3134,9 @@ jobs:
               setExtras({ ...extrasState(), fakeRequests: [] } as any);
           }
           // ---- Fake boost (device only) ----
-          type BoostFake = { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[]; owner?: boolean };
+          type CustomRole = { id: string; name: string; color: string; hoist: boolean; emoji?: string; admin?: boolean; top?: boolean };
+          type RoleTweak = { name?: string; color?: string; emoji?: string };
+          type BoostFake = { level?: boolean; booster?: boolean; partner?: boolean; verified?: boolean; members?: number; online?: number; roles?: string[]; owner?: boolean; customRoles?: CustomRole[]; roleTweaks?: Record<string, RoleTweak> };
           function boostFor(guildId?: string | null): BoostFake | undefined { return guildId ? (extrasState() as any).boosts?.[guildId] : undefined; }
           const guildOverlays = new WeakMap<object, any>();
           const memberOverlays = new WeakMap<object, any>();
@@ -3330,7 +3332,75 @@ jobs:
                   return { ...member, type: "MEMBER", userId: me, user, status, activities: presence?.getActivities?.(me) ?? [], applicationStream: null, isOwner: (findByStoreName("GuildStore") as any)?.getGuild?.(guildId)?.ownerId === me, isMobileOnline: true, isVROnline: false };
               } catch { return null; }
           }
+          // ---- Visual roles: your own roles and new names/colours/icons for real ones, only on this device ----
+          const hexNumber = (hex?: string) => { const value = parseInt(String(hex || "").replace(/^#/, ""), 16); return Number.isFinite(value) ? value : 0; };
+          const visualRoleCache = new Map<string, any>();
+          function styledRole(base: any, patch: RoleTweak) {
+              const color = patch.color ? hexNumber(patch.color) : null;
+              return { ...base, ...(patch.name ? { name: patch.name } : {}),
+                  ...(color != null ? { color, colorString: patch.color, colors: { primary_color: color, secondary_color: null, tertiary_color: null }, colorStrings: { primaryColor: patch.color, secondaryColor: null, tertiaryColor: null } } : {}),
+                  ...(patch.emoji ? { unicodeEmoji: patch.emoji, icon: null } : {}) };
+          }
+          function customRoleRecord(guildId: string, role: CustomRole, index: number, top: number) {
+              const key = guildId + ":" + JSON.stringify(role) + ":" + index + ":" + top;
+              let value = visualRoleCache.get(key);
+              if (!value) visualRoleCache.set(key, value = styledRole({ id: role.id, name: role.name, guildId, permissions: role.admin ? BigInt(8) : BigInt(0), mentionable: false, position: role.top ? top + 1 + index : 0,
+                  color: 0, colorString: null, colors: { primary_color: null, secondary_color: null, tertiary_color: null }, colorStrings: { primaryColor: null, secondaryColor: null, tertiaryColor: null },
+                  hoist: role.hoist, managed: false, tags: {}, icon: null, unicodeEmoji: null, flags: 0, description: null }, { color: role.color, emoji: role.emoji }));
+              return value;
+          }
+          const visualRoleLists = new WeakMap<object, { key: string; value: any }>();
+          let roleHooksInstalled = false;
+          function installRoleHooks() {
+              const store = findByStoreName("GuildRoleStore") as any;
+              if (roleHooksInstalled || typeof store?.getUnsafeMutableRoles !== "function") return;
+              roleHooksInstalled = true;
+              const parts = (guildId: string) => { const fake = boostFor(guildId); return { custom: fake?.customRoles ?? [], tweaks: fake?.roleTweaks ?? {} }; };
+              const topOf = (roles: any) => Math.max(0, ...Object.values(roles ?? {}).map((role: any) => Number(role?.position) || 0));
+              const patchOne = (guildId: string, role: any) => {
+                  const tweak = role && parts(guildId).tweaks[role.id];
+                  if (!tweak) return role;
+                  const key = guildId + ":tweak:" + role.id + ":" + JSON.stringify(tweak) + ":" + role.position;
+                  let value = visualRoleCache.get(key);
+                  if (!value) visualRoleCache.set(key, value = styledRole(role, tweak));
+                  return value;
+              };
+              let reading = false;
+              const realRoles = (guildId: string) => { reading = true; try { return store.getUnsafeMutableRoles(guildId); } finally { reading = false; } };
+              after("getUnsafeMutableRoles", store, (args: any[], roles: any) => {
+                  if (reading) return roles;
+                  try {
+                      const { custom, tweaks } = parts(args[0]);
+                      if (!roles || (!custom.length && !Object.keys(tweaks).length)) return roles;
+                      const key = JSON.stringify(custom) + JSON.stringify(tweaks);
+                      const hit = visualRoleLists.get(roles);
+                      if (hit && hit.key === key) return hit.value;
+                      const top = topOf(roles), value: any = {};
+                      for (const [id, role] of Object.entries(roles)) value[id] = patchOne(args[0], role);
+                      custom.forEach((role, index) => { value[role.id] = customRoleRecord(args[0], role, index, top); });
+                      visualRoleLists.set(roles, { key, value });
+                      return value;
+                  } catch { return roles; }
+              });
+              if (typeof store.getRole === "function") after("getRole", store, (args: any[], role: any) => {
+                  try {
+                      const custom = parts(args[0]).custom;
+                      const index = custom.findIndex(item => item.id === args[1]);
+                      if (index >= 0) return customRoleRecord(args[0], custom[index], index, topOf(realRoles(args[0])));
+                      return patchOne(args[0], role);
+                  } catch { return role; }
+              });
+              if (typeof store.getManyRoles === "function") after("getManyRoles", store, (args: any[], roles: any) => {
+                  try {
+                      const { custom, tweaks } = parts(args[0]);
+                      if (!custom.length && !Object.keys(tweaks).length) return roles;
+                      return (args[1] ?? []).map((id: string) => store.getRole(args[0], id)).filter(Boolean);
+                  } catch { return roles; }
+              });
+              if (typeof store.getNumRoles === "function") after("getNumRoles", store, (args: any[], count: number) => count + parts(args[0]).custom.length);
+          }
           function installBoostHooks() {
+              try { installRoleHooks(); } catch {}
               if (boostHooksInstalled) return;
               const guilds = findByStoreName("GuildStore") as any;
               const members = findByStoreName("GuildMemberStore") as any;
@@ -3401,7 +3471,7 @@ jobs:
                   if (!guildId) return;
                   const state: any = extrasState();
                   setExtras({ ...state, boosts: { ...state.boosts, [guildId]: { ...fake, ...patch } } });
-                  try { (findByStoreName("GuildStore") as any)?.emitChange?.(); (findByStoreName("GuildMemberStore") as any)?.emitChange?.(); (findByStoreName("ChannelMemberStore") as any)?.emitChange?.(); } catch {}
+                  try { (findByStoreName("GuildStore") as any)?.emitChange?.(); (findByStoreName("GuildMemberStore") as any)?.emitChange?.(); (findByStoreName("ChannelMemberStore") as any)?.emitChange?.(); (findByStoreName("GuildRoleStore") as any)?.emitChange?.(); } catch {}
                   refresh();
               };
               const roles = guild ? rolesOf(guild.id) : [];
@@ -3436,8 +3506,54 @@ jobs:
                           {!shownRoles.length ? <Text variant="text-sm/medium" color="text-muted">No roles found.</Text> : null}
                       </View>
                       {chosenRoles.size ? <Button text="Remove all fake roles" variant="secondary" size="sm" onPress={() => set({ roles: [] })} /> : null}
+                      <VisualRolesEditor fake={fake} roles={roles} onChange={set} />
                   </> : null}
               </K.Section>;
+          }
+          function VisualRolesEditor({ fake, roles, onChange }: { fake: BoostFake; roles: any[]; onChange: (patch: BoostFake) => void }) {
+              const K = require("@core/ui/settings/components/ProfileStudio");
+              const [draft, setDraft] = useState<CustomRole>({ id: "", name: "", color: "#5865F2", hoist: true, emoji: "", admin: false, top: true });
+              const [tweakId, setTweakId] = useState("");
+              const [query, setQuery] = useState("");
+              const custom = fake.customRoles ?? [];
+              const tweaks = fake.roleTweaks ?? {};
+              const tweak: RoleTweak = tweakId ? tweaks[tweakId] ?? {} : {};
+              const realRoles = roles.filter((role: any) => !String(role.id).startsWith("cc-role-") && (!query.trim() || String(role.name).toLowerCase().includes(query.trim().toLowerCase()))).slice(0, 30);
+              const setTweak = (patch: RoleTweak) => {
+                  const merged: any = { ...tweak, ...patch };
+                  for (const key of Object.keys(merged)) if (!merged[key]) delete merged[key];
+                  const next = { ...tweaks };
+                  if (Object.keys(merged).length) next[tweakId] = merged; else delete next[tweakId];
+                  onChange({ roleTweaks: next });
+              };
+              const validColor = (text: string) => /^#?[0-9a-f]{6}$/i.test(text.trim()) ? "#" + text.trim().replace(/^#/, "").toUpperCase() : undefined;
+              return <View style={{ gap: 12 }}>
+                  <K.Section title="Your own roles" description="Roles only you see. Put them above every role, even bots, with a colour, an emoji icon or Administrator. Administrator only changes what Discord shows you.">
+                      {custom.map(role => <K.Row key={role.id} label={(role.emoji ? role.emoji + " " : "") + role.name} subLabel={[role.color, role.top ? "Top" : "", role.admin ? "Administrator" : ""].filter(Boolean).join(" · ")}
+                          icon={<View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: role.color }} />} onPress={() => Alert.alert("Delete " + role.name + "?", "", [{ text: "Cancel", style: "cancel" }, { text: "Delete", style: "destructive", onPress: () => onChange({ customRoles: custom.filter(other => other.id !== role.id), roles: (fake.roles ?? []).filter(id => id !== role.id) }) }])} />)}
+                      <K.Field label="Name"><TextInput value={draft.name} placeholder="Owner" maxLength={100} onChangeText={(name: string) => setDraft({ ...draft, name })} /></K.Field>
+                      <K.Field label="Colour" hint="Hex, like #F1C40F"><TextInput defaultValue={draft.color} placeholder="#5865F2" autoCapitalize="characters" maxLength={7} onChangeText={(text: string) => { const color = validColor(text); if (color) setDraft({ ...draft, color }); }} /></K.Field>
+                      <K.Field label="Emoji icon"><TextInput value={draft.emoji ?? ""} placeholder="👑 (optional)" maxLength={8} onChangeText={(emoji: string) => setDraft({ ...draft, emoji })} /></K.Field>
+                      <K.Toggle label="Show separately in the member list" value={draft.hoist} onPress={() => setDraft({ ...draft, hoist: !draft.hoist })} />
+                      <K.Toggle label="Above every other role" subLabel="Higher than all real roles, bots included" value={draft.top === true} onPress={() => setDraft({ ...draft, top: !draft.top })} />
+                      <K.Toggle label="Administrator" subLabel="Shows admin options; they won't work" value={draft.admin === true} onPress={() => setDraft({ ...draft, admin: !draft.admin })} />
+                      <K.Button label="Create role and give it to me" primary disabled={!draft.name.trim()} onPress={() => {
+                          const role = { ...draft, name: draft.name.trim().slice(0, 100), id: "cc-role-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6) };
+                          onChange({ customRoles: [...custom, role], roles: [...(fake.roles ?? []), role.id] });
+                          setDraft({ ...draft, name: "", emoji: "" });
+                      }} />
+                  </K.Section>
+                  <K.Section title="Restyle a real role" description="A different name, colour or emoji icon for any role here, only on this device.">
+                      <TextInput value={query} placeholder="Search roles" autoCapitalize="none" onChangeText={setQuery} />
+                      <K.Chips options={realRoles.map((role: any) => ({ value: role.id, label: (tweaks[role.id] ? "✎ " : "") + role.name, dot: role.colorString || undefined }))} value={tweakId} onChange={(value: string) => setTweakId(value)} />
+                      {tweakId ? <>
+                          <K.Field label="New name"><TextInput key={tweakId + "n"} defaultValue={tweak.name ?? ""} placeholder="Keep name" maxLength={100} onChangeText={(name: string) => setTweak({ name })} /></K.Field>
+                          <K.Field label="New colour" hint="Hex, like #F1C40F. Empty keeps the colour."><TextInput key={tweakId + "c"} defaultValue={tweak.color ?? ""} placeholder="#99AAB5" autoCapitalize="characters" maxLength={7} onChangeText={(text: string) => setTweak({ color: validColor(text) ?? "" })} /></K.Field>
+                          <K.Field label="Emoji icon"><TextInput key={tweakId + "e"} defaultValue={tweak.emoji ?? ""} placeholder="⭐ (optional)" maxLength={8} onChangeText={(emoji: string) => setTweak({ emoji })} /></K.Field>
+                          {tweaks[tweakId] ? <K.Button label="Reset this role" onPress={() => { const next = { ...tweaks }; delete next[tweakId]; onChange({ roleTweaks: next }); }} /> : null}
+                      </> : null}
+                  </K.Section>
+              </View>;
           }
           let leavingServers = false;
           function confirmLeaveAllServers() {
