@@ -16815,6 +16815,19 @@
     owned.state.premiumTypeOverride = accountChanged ? void 0 : owned.previous;
     return true;
   }
+  function setCurrentPremiumType(type) {
+    try {
+      var users = findByStoreName("UserStore");
+      var me = users?.getCurrentUser?.();
+      if (!me || type == null || me.premiumType === type)
+        return false;
+      me.premiumType = type;
+      users?.emitChange?.();
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
   function profileNitroOn() {
     try {
       return !!(preview?.enabled && preview?.nitroEnabled);
@@ -16832,7 +16845,8 @@
       var changed = false;
       if (ownedNitroOverride && (ownedNitroOverride.state !== state2 || ownedNitroOverride.ownerId !== ownerId))
         changed = restoreFakeNitroOverride(ownedNitroOverride.state === state2);
-      if ((extrasState().fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state2.premiumTypeActual !== 2) {
+      var active = !!((extrasState().fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state2.premiumTypeActual !== 2);
+      if (active) {
         if (!ownedNitroOverride && state2.premiumTypeOverride !== 2)
           ownedNitroOverride = {
             state: state2,
@@ -16845,6 +16859,12 @@
         }
       } else
         changed = restoreFakeNitroOverride() || changed;
+      var wasActive = fakeNitroActive;
+      fakeNitroActive = active;
+      if (active)
+        setCurrentPremiumType(2);
+      else if (wasActive)
+        setCurrentPremiumType(state2.premiumTypeActual ?? 0);
       if (changed)
         store.emitChange?.();
     } catch (e) {
@@ -18572,6 +18592,15 @@
             } catch (e) {
             }
             restoreLater();
+          });
+        } catch (e) {
+        }
+        try {
+          FluxDispatcher.subscribe("CURRENT_USER_UPDATE", () => {
+            try {
+              applyFakeNitro();
+            } catch (e) {
+            }
           });
         } catch (e) {
         }
@@ -21258,7 +21287,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, NamePreviewBoundary, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
+  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, pauseForShop, resumeAfterShop, rememberTheme, themeTimer, restoreKeptTheme, fakeNitroActive, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, NamePreviewBoundary, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -22430,6 +22459,7 @@
           }
         }, 400);
       };
+      fakeNitroActive = false;
       giftHookInstalled = false;
       rawUser = (user) => ({
         id: user.id,
