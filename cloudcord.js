@@ -6886,13 +6886,13 @@
     if (data?.nameplate === null)
       result.nameplate = null;
     else if (data?.nameplate && typeof data.nameplate === "object") {
-      var { skuId, asset, label, palette } = data.nameplate;
+      var { skuId, asset, label, palette: palette2 } = data.nameplate;
       if (typeof skuId === "string" && SNOWFLAKE.test(skuId) && typeof asset === "string" && /^nameplates\/[A-Za-z0-9_\/-]{1,180}\/$/.test(asset) && !asset.includes("..")) {
         result.nameplate = {
           skuId,
           asset,
           label: text(label, 80),
-          palette: typeof palette === "string" && /^[a-z_]{1,30}$/.test(palette) ? palette : ""
+          palette: typeof palette2 === "string" && /^[a-z_]{1,30}$/.test(palette2) ? palette2 : ""
         };
       }
     }
@@ -10310,12 +10310,11 @@
     TableRow: () => TableRow2,
     Toggle: () => Toggle
   });
-  function solid(token, fallback) {
+  function isLightTheme() {
     try {
-      var value = typeof token === "string" ? token : token ? resolveSemanticColor(token) : null;
-      return typeof value === "string" && value && !/^(transparent|#0000|#00000000)$/i.test(value) ? value : fallback;
+      return String(findByStoreName("ThemeStore")?.theme ?? "").toLowerCase() === "light";
     } catch (e) {
-      return fallback;
+      return false;
     }
   }
   function icon(names) {
@@ -12197,7 +12196,7 @@
       ]
     });
   }
-  var import_react3, import_react_native16, C3, R2, GAP, STUDIO_TABS, tabInfo, STATUS_COLORS;
+  var import_react3, import_react_native16, DARK, LIGHT, palette, C3, R2, GAP, STUDIO_TABS, tabInfo, STATUS_COLORS;
   var init_ProfileStudio = __esm({
     "src/core/ui/settings/components/ProfileStudio.tsx"() {
       "use strict";
@@ -12207,22 +12206,50 @@
       import_react3 = __toESM(require_react());
       import_react_native16 = __toESM(require_react_native());
       init_components();
-      init_common();
       init_assets();
-      init_color();
-      C3 = {
-        page: () => solid(tokens.colors.BACKGROUND_BASE_LOWEST ?? tokens.colors.BACKGROUND_TERTIARY, "#111214"),
-        panel: () => solid(tokens.colors.BACKGROUND_BASE_LOWER ?? tokens.colors.BACKGROUND_SECONDARY, "#1E1F22"),
-        raised: () => solid(tokens.colors.BACKGROUND_BASE_LOW ?? tokens.colors.BACKGROUND_PRIMARY, "#2B2D31"),
-        line: () => solid(tokens.colors.BORDER_SUBTLE, "rgba(255,255,255,0.08)"),
-        text: () => solid(tokens.colors.TEXT_NORMAL, "#DBDEE1"),
-        muted: () => solid(tokens.colors.TEXT_MUTED, "#949BA4"),
-        brand: "#5865F2",
-        brandSoft: "rgba(88,101,242,0.18)",
+      init_metro();
+      DARK = {
+        page: "#1E1F22",
+        panel: "#2B2D31",
+        raised: "#313338",
+        line: "rgba(255,255,255,0.08)",
+        text: "#F2F3F5",
+        muted: "#B5BAC1",
+        brandSoft: "rgba(88,101,242,0.22)",
         brandText: "#C9CDFB",
+        off: "#4E5058"
+      };
+      LIGHT = {
+        page: "#E3E5E8",
+        panel: "#F2F3F5",
+        raised: "#FFFFFF",
+        line: "rgba(0,0,0,0.10)",
+        text: "#060607",
+        muted: "#5C5E66",
+        brandSoft: "rgba(88,101,242,0.14)",
+        brandText: "#4752C4",
+        off: "#80848E"
+      };
+      palette = () => isLightTheme() ? LIGHT : DARK;
+      C3 = {
+        page: () => palette().page,
+        panel: () => palette().panel,
+        raised: () => palette().raised,
+        line: () => palette().line,
+        text: () => palette().text,
+        muted: () => palette().muted,
+        brand: "#5865F2",
+        get brandSoft() {
+          return palette().brandSoft;
+        },
+        get brandText() {
+          return palette().brandText;
+        },
         green: "#23A55A",
         red: "#F23F43",
-        off: "#4E5058"
+        get off() {
+          return palette().off;
+        }
       };
       R2 = {
         sm: 10,
@@ -17825,7 +17852,7 @@
                       borderRadius: 999,
                       borderWidth: 2,
                       borderColor: on ? "#5865F2" : "transparent",
-                      backgroundColor: on ? "rgba(88,101,242,0.18)" : "#1E1F22"
+                      backgroundColor: on ? "rgba(88,101,242,0.18)" : "rgba(128,128,128,0.16)"
                     },
                     children: [
                       /* @__PURE__ */ jsx(import_react_native20.View, {
