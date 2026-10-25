@@ -6,31 +6,32 @@ import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, TextInput, View } from "react-native";
 import { Text } from "@metro/common/components";
-import { tokens } from "@metro/common";
 import { findAssetId } from "@lib/api/assets";
-import { resolveSemanticColor } from "@ui/color";
+import { findByStoreName } from "@metro";
 
 // ---- Theme ----
-// Discord's tokens are semantic colour objects; RN needs real colour strings.
-function solid(token: any, fallback: string) {
-    try {
-        const value = typeof token === "string" ? token : token ? resolveSemanticColor(token) : null;
-        return typeof value === "string" && value && !/^(transparent|#0000|#00000000)$/i.test(value) ? value : fallback;
-    } catch { return fallback; }
+// Colours follow Discord's light or dark theme. Discord's colour tokens can resolve to the
+// wrong theme (e.g. on Midnight), which left text black on dark panels, so pick from the
+// theme name instead.
+function isLightTheme() {
+    try { return String((findByStoreName("ThemeStore") as any)?.theme ?? "").toLowerCase() === "light"; } catch { return false; }
 }
+const DARK = { page: "#1E1F22", panel: "#2B2D31", raised: "#313338", line: "rgba(255,255,255,0.08)", text: "#F2F3F5", muted: "#B5BAC1", brandSoft: "rgba(88,101,242,0.22)", brandText: "#C9CDFB", off: "#4E5058" };
+const LIGHT = { page: "#E3E5E8", panel: "#F2F3F5", raised: "#FFFFFF", line: "rgba(0,0,0,0.10)", text: "#060607", muted: "#5C5E66", brandSoft: "rgba(88,101,242,0.14)", brandText: "#4752C4", off: "#80848E" };
+const palette = () => isLightTheme() ? LIGHT : DARK;
 const C = {
-    page: () => solid(tokens.colors.BACKGROUND_BASE_LOWEST ?? tokens.colors.BACKGROUND_TERTIARY, "#111214"),
-    panel: () => solid(tokens.colors.BACKGROUND_BASE_LOWER ?? tokens.colors.BACKGROUND_SECONDARY, "#1E1F22"),
-    raised: () => solid(tokens.colors.BACKGROUND_BASE_LOW ?? tokens.colors.BACKGROUND_PRIMARY, "#2B2D31"),
-    line: () => solid(tokens.colors.BORDER_SUBTLE, "rgba(255,255,255,0.08)"),
-    text: () => solid(tokens.colors.TEXT_NORMAL, "#DBDEE1"),
-    muted: () => solid(tokens.colors.TEXT_MUTED, "#949BA4"),
+    page: () => palette().page,
+    panel: () => palette().panel,
+    raised: () => palette().raised,
+    line: () => palette().line,
+    text: () => palette().text,
+    muted: () => palette().muted,
     brand: "#5865F2",
-    brandSoft: "rgba(88,101,242,0.18)",
-    brandText: "#C9CDFB",
+    get brandSoft() { return palette().brandSoft; },
+    get brandText() { return palette().brandText; },
     green: "#23A55A",
     red: "#F23F43",
-    off: "#4E5058"
+    get off() { return palette().off; }
 };
 const R = { sm: 10, md: 14, lg: 20 };
 const GAP = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };

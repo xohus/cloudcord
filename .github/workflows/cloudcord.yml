@@ -3500,7 +3500,7 @@ jobs:
                       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                           {shownRoles.map((role: any) => {
                               const on = chosenRoles.has(role.id);
-                              return <Pressable key={role.id} onPress={() => toggleRole(role.id)} style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: on ? "#5865F2" : "transparent", backgroundColor: on ? "rgba(88,101,242,0.18)" : "#1E1F22" }}>
+                              return <Pressable key={role.id} onPress={() => toggleRole(role.id)} style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 999, borderWidth: 2, borderColor: on ? "#5865F2" : "transparent", backgroundColor: on ? "rgba(88,101,242,0.18)" : "rgba(128,128,128,0.16)" }}>
                                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: role.colorString || "#99AAB5" }} />
                                   <Text variant="text-sm/medium" color="text-normal">{role.name}</Text>
                               </Pressable>;
