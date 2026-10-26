@@ -7,6 +7,8 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { logger } from "./logger";
+import { profileStorage } from "./storage";
 import "./style.css";
 import "./editor.css";
 import decorationCatalog from "./decorations.json";
@@ -52,10 +54,6 @@ const DS_KEY = "customProfile_data";
 const DS_ENABLED = "customProfile_enabled";
 const DS_ALL_DATA = "customProfile_allData";
 const DS_ALL_ENABLED = "customProfile_allEnabled";
-const LS_ALL_DATA = "SincordCP_allData";
-const LS_ALL_ENABLED = "SincordCP_allEnabled";
-const LS_KEY_DATA = "SincordCP_data";
-const LS_KEY_ENABLED = "SincordCP_enabled";
 const SHARED_PROFILE_API = "https://getcloudcord.com";
 const LS_SHARE = "CloudCord_fakeProfileShare";
 
@@ -519,7 +517,7 @@ const sharedMissingUntil = new Map<string, number>();
 const sharedViewedAt = new Map<string, number>();
 let sharedBackoffUntil = 0;
 const sharedProfiles = new Map<string, CustomProfileData>();
-let realGetUserProfile: ((...args: any[]) => any) | null = null;
+let realGetUserProfile: ((...args: unknown[]) => any) | null = null;
 let realGetCurrentUser: (() => any) | null = null;
 /** Discord marks profiles the viewer isn't allowed to see as private; show those exactly as Discord does. */
 function isPrivateProfile(userId: string): boolean {
@@ -557,7 +555,7 @@ async function refreshUploadedBadges(force = false) {
         if (!Array.isArray(payload?.badges)) return;
         const next = payload.badges.filter((badge: any) => typeof badge?.id === "string" && typeof badge?.userId === "string" && typeof badge?.name === "string" && typeof badge?.icon === "string" && badge.icon.startsWith("https://getcloudcord.com/v1/custom-badges/"));
         if (JSON.stringify(next) !== JSON.stringify(uploadedBadges)) { uploadedBadges = next; forceAccountPanelRerender(); }
-    } catch {} finally { badgeFetchPending = false; }
+    } catch (e) { logger.warn("Fetching uploaded badges failed", e); } finally { badgeFetchPending = false; }
 }
 function uploadedUserBadges(userId: string): ProfileBadge[] {
     return uploadedBadges.filter(badge => badge.userId === userId).map(badge => ({ id: `cloudcord-custom-${badge.id}`, description: badge.name, iconSrc: badge.icon, position: 0 }));
@@ -775,7 +773,7 @@ async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
         // Migrate old installations once, without sharing one edit token across
         // Discord accounts or deleting another account's credentials on a 401.
         let legacy: any = await DataStore.get(LS_SHARE) || {};
-        if (!legacy.id) { try { legacy = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { } }
+        if (!legacy.id) { try { legacy = JSON.parse(localStorage.getItem(LS_SHARE) || "{}"); } catch { /* silent: corrupt legacy share entry is treated as empty */ } }
         if (legacy.id && (!legacy.ownerId || legacy.ownerId === ownerId)) {
             saved = legacy;
             await DataStore.set(shareKey, { ...saved, ownerId });
@@ -853,7 +851,7 @@ function installProfileReadHook(store: any, method: string, handler: (original: 
     const original = store?.[method];
     if (typeof original !== "function") return;
     const generation = profileRuntimeGeneration;
-    const wrapped = function (this: any, ...args: any[]) {
+    const wrapped = function (this: any, ...args: unknown[]) {
         if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return original.apply(this, args);
         return handler(original.bind(this), args);
     };
@@ -868,7 +866,7 @@ function uninstallProfileStoreHooks() {
 function installProfileStoreHooks(plugin: any) {
     const owner = {};
     try {
-        const US: any = UserStore || (Vencord as any).Webpack?.findByStoreName?.("UserStore");
+        const US: any = UserStore || (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserStore");
         if (US && !US._cp_hook) {
             if (typeof US.getCurrentUser === "function") realGetCurrentUser = US.getCurrentUser.bind(US);
             let lastReal: any = null, lastFake: any = null, lastVersion = -1;
@@ -899,9 +897,9 @@ function installProfileStoreHooks(plugin: any) {
                 profileStoreCleanups.push(() => US.removeChangeListener(invalidate));
             }
         }
-    } catch { }
+    } catch (e) { logger.warn("Installing UserStore hooks failed", e); }
     try {
-        const UPS = (Vencord as any).Webpack?.findByProps?.("getUserProfile", "getGuildMemberProfile");
+        const UPS = Vencord.Webpack?.findByProps?.("getUserProfile", "getGuildMemberProfile");
         if (UPS && !UPS._cp_hook) {
             if (typeof UPS.getUserProfile === "function") realGetUserProfile = UPS.getUserProfile.bind(UPS);
             for (const method of ["getUserProfile", "getGuildMemberProfile"]) installProfileReadHook(UPS, method, (original, args) => {
@@ -917,7 +915,7 @@ function installProfileStoreHooks(plugin: any) {
             UPS._cp_hook = owner;
             profileStoreCleanups.push(() => { if (UPS._cp_hook === owner) delete UPS._cp_hook; });
         }
-    } catch { }
+    } catch (e) { logger.warn("Installing UserProfileStore hook failed", e); }
 }
 
 const isImageUri = (value: unknown): value is string => typeof value === "string" && /^(data:image\/(png|jpe?g|gif|webp);base64,|https:\/\/)/i.test(value);
@@ -944,9 +942,9 @@ function onPendingProfileChange(action: any) {
     saveOwnData(next);
     queueSharedPublish();
     setTimeout(() => {
-        try { FluxDispatcher.dispatch({ type: "USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", pendingAvatar: undefined, pendingBanner: undefined }); } catch { }
+        try { FluxDispatcher.dispatch({ type: "USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", pendingAvatar: undefined, pendingBanner: undefined }); } catch (e) { logger.warn("Clearing pending avatar/banner failed", e); }
     }, 0);
-    try { showToast(isImageUri(banner) && isImageUri(avatar) ? "Saved as your CloudCord picture and banner." : isImageUri(banner) ? "Saved as your CloudCord banner." : "Saved as your CloudCord profile picture.", Toasts.Type.SUCCESS); } catch { }
+    try { showToast(isImageUri(banner) && isImageUri(avatar) ? "Saved as your CloudCord picture and banner." : isImageUri(banner) ? "Saved as your CloudCord banner." : "Saved as your CloudCord profile picture.", Toasts.Type.SUCCESS); } catch (e) { logger.warn("Showing save toast failed", e); }
 }
 
 function queueSharedPublish() {
@@ -987,7 +985,7 @@ async function pullOwnSharedProfile() {
         saveDataSync(pulled, true); saveAllDataSync();
         await Promise.all([DataStore.set(DS_ALL_DATA, allAccountsData), DataStore.set(DS_ALL_ENABLED, allAccountsEnabled)]);
         cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++; forceAccountPanelRerender();
-    } catch { }
+    } catch (e) { logger.warn("Pulling profile from the cloud failed", e); }
 }
 
 function requestSharedProfile(userId: string, force = false) {
@@ -1017,10 +1015,10 @@ function requestSharedProfile(userId: string, force = false) {
                 if (sharedProfiles.delete(userId)) {
                     sharedProfileFetchedAt.delete(userId);
                     try {
-                        (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore")?.emitChange?.();
-                        (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
+                        (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserProfileStore")?.emitChange?.();
+                        (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserStore")?.emitChange?.();
                         refreshPresence();
-                    } catch { }
+                    } catch (e) { logger.warn("Refreshing profile stores failed", e); }
                 }
                 return null;
             }
@@ -1052,11 +1050,10 @@ function requestSharedProfile(userId: string, force = false) {
                 reloadDiscordProfile(userId);
             }
             try {
-                const UPS = (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore");
-                UPS?.emitChange?.();
-                (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
+                (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserProfileStore")?.emitChange?.();
+                (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserStore")?.emitChange?.();
                 refreshPresence();
-            } catch { }
+            } catch (e) { logger.warn("Refreshing profile stores failed", e); }
         }).catch(() => {
             if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
             sharedBackoffUntil = Math.max(sharedBackoffUntil, Date.now() + 30_000);
@@ -1174,10 +1171,10 @@ function resolveProfileUserId(subject: any, profile: any): string {
 }
 
 function saveDataSync(data: CustomProfileData, enabled: boolean) {
-    try { localStorage.setItem(LS_KEY_DATA, JSON.stringify(data)); localStorage.setItem(LS_KEY_ENABLED, enabled ? "1" : "0"); } catch { }
+    try { profileStorage.set("profileData", JSON.stringify(data)); profileStorage.set("profileEnabled", enabled ? "1" : "0"); } catch (e) { logger.warn("Saving profile to localStorage failed", e); }
 }
 function saveAllDataSync() {
-    try { localStorage.setItem(LS_ALL_DATA, JSON.stringify(allAccountsData)); localStorage.setItem(LS_ALL_ENABLED, JSON.stringify(allAccountsEnabled)); } catch { }
+    try { profileStorage.set("allData", JSON.stringify(allAccountsData)); profileStorage.set("allEnabled", JSON.stringify(allAccountsEnabled)); } catch (e) { logger.warn("Saving all-account profiles to localStorage failed", e); }
 }
 function syncCurrentUserData() {
     const myId = activeUserId();
@@ -1185,15 +1182,15 @@ function syncCurrentUserData() {
 }
 function loadDataSync() {
     try {
-        const rawAll = localStorage.getItem(LS_ALL_DATA);
+        const rawAll = profileStorage.get("allData");
         if (rawAll) {
             try { allAccountsData = JSON.parse(rawAll); } catch { allAccountsData = {}; }
-            const rawEnabled = localStorage.getItem(LS_ALL_ENABLED);
+            const rawEnabled = profileStorage.get("allEnabled");
             try { allAccountsEnabled = rawEnabled ? JSON.parse(rawEnabled) : {}; } catch { allAccountsEnabled = {}; }
             syncCurrentUserData(); return;
         }
-        const raw = localStorage.getItem(LS_KEY_DATA);
-        const en = localStorage.getItem(LS_KEY_ENABLED);
+        const raw = profileStorage.get("profileData");
+        const en = profileStorage.get("profileEnabled");
         if (raw) { try { storedData = JSON.parse(raw); } catch { storedData = {}; } } else storedData = {};
         isEnabled = en === "1";
     } catch { storedData = {}; isEnabled = false; }
@@ -1213,11 +1210,11 @@ loadDataSync();
 function isMe(userId: string | null | undefined): boolean {
     if (!userId) return false;
     if (_cachedMyId) return _cachedMyId === userId;
-    try { const myId = activeUserId(); if (myId) { _cachedMyId = myId; return myId === userId; } } catch { }
+    try { const myId = activeUserId(); if (myId) { _cachedMyId = myId; return myId === userId; } } catch { /* silent: called on every render to check the current user */ }
     return false;
 }
 function updateCachedRealData() {
-    try { const myId = activeUserId(); if (myId) _cachedMyId = myId; } catch { }
+    try { const myId = activeUserId(); if (myId) _cachedMyId = myId; } catch { /* silent: called on every render to cache the current user id */ }
 }
 function getRealDateVariants(): string[] {
     if (_cachedRealDateVariants) return _cachedRealDateVariants;
@@ -1231,25 +1228,33 @@ function getRealDateVariants(): string[] {
             { day: "2-digit", month: "2-digit", year: "numeric" },
         ];
         for (const loc of ["en-US", "en-GB", "fr-FR", navigator.language]) {
-            for (const fmt of fmtSpecs) { try { const s = new Intl.DateTimeFormat(loc, fmt).format(d); variants.add(s); variants.add(s.replace(/\s/g, " ")); } catch { } }
+            for (const fmt of fmtSpecs) { try { const s = new Intl.DateTimeFormat(loc, fmt).format(d); variants.add(s); variants.add(s.replace(/\s/g, " ")); } catch { /* silent: some locales reject some formats; that variant is just skipped */ } }
         }
-        variants.add(d.getFullYear().toString());
         _cachedRealDateVariants = [...variants].filter(v => v.length >= 4);
         return _cachedRealDateVariants;
     } catch { return []; }
 }
+// Formatting is slow and this runs for every text node on screen, so cache by date.
+let _cachedFakeDateVariants: { isoDate: string; variants: string[]; } | null = null;
 function getFakeDateVariants(isoDate: string): string[] {
+    if (_cachedFakeDateVariants?.isoDate === isoDate) return _cachedFakeDateVariants.variants;
+    _cachedFakeDateVariants = { isoDate, variants: buildFakeDateVariants(isoDate) };
+    return _cachedFakeDateVariants.variants;
+}
+function buildFakeDateVariants(isoDate: string): string[] {
     try {
         const d = new Date(isoDate + "T12:00:00Z"); const variants = new Set<string>();
         for (const fmt of [{ day: "numeric", month: "short", year: "numeric" } as Intl.DateTimeFormatOptions, { day: "numeric", month: "long", year: "numeric" } as Intl.DateTimeFormatOptions]) {
-            try { variants.add(new Intl.DateTimeFormat(navigator.language, fmt).format(d)); } catch { }
+            try { variants.add(new Intl.DateTimeFormat(navigator.language, fmt).format(d)); } catch { /* silent: some locales reject some formats; that variant is just skipped */ }
         }
         return [...variants];
     } catch { return []; }
 }
+// Real text of nodes the rewriter changed, so stopping can put it back.
+const originalText = new WeakMap<Node, string>();
 function scanTextNode(node: Text) {
     if (!isEnabled || !node.nodeValue) return;
-    const val = (node as any).__cp_orig || node.nodeValue;
+    const val = originalText.get(node) ?? node.nodeValue;
     let result = val; let replaced = false;
     if (storedData.createdAt) {
         const realDates = getRealDateVariants(); const fakeDates = getFakeDateVariants(storedData.createdAt);
@@ -1262,7 +1267,7 @@ function scanTextNode(node: Text) {
     // Nitro overlays are resolved per profile by userProfileBadges. Never
     // rewrite milestone text from the global DOM observer: storedData belongs
     // to the signed-in user and would replace another user's overlay with ours.
-    if (replaced && result !== node.nodeValue) { if ((node as any).__cp_orig === undefined) (node as any).__cp_orig = val; node.nodeValue = result; }
+    if (replaced && result !== node.nodeValue) { if (!originalText.has(node)) originalText.set(node, val); node.nodeValue = result; }
 }
 function scanNode(node: Node) {
     if (node.nodeType === Node.TEXT_NODE) { scanTextNode(node as Text); return; }
@@ -1277,6 +1282,9 @@ function processDomBatch() {
     const batch = _domMutations; _domMutations = [];
     for (const m of batch) { if (m.type === "characterData") scanTextNode(m.target as Text); else for (const n of m.addedNodes) scanNode(n); }
 }
+// DOM on purpose: a catch-all for the real name and join date in places that read
+// them from somewhere other than the patched UserStore/UserProfileStore (tooltips,
+// copied text, older cached components). It matches text content only, never class names.
 function startDomObserver() {
     stopDomObserver(); if (!isEnabled) return;
     scanNode(document.body);
@@ -1291,17 +1299,19 @@ function stopDomObserver() {
     domObserver?.disconnect(); domObserver = null;
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let n: Node | null;
-    while ((n = walker.nextNode())) { if ((n as any).__cp_orig !== undefined) { n.nodeValue = (n as any).__cp_orig; delete (n as any).__cp_orig; } }
+    while ((n = walker.nextNode())) { const original = originalText.get(n); if (original !== undefined) { n.nodeValue = original; originalText.delete(n); } }
 }
+// Vencord.Webpack exposes findByStoreName at runtime but not in its types.
+type NamedStore = { emitChange?(): void; getCurrentUser?(): any; getUser?(id: string): any; };
+type WebpackWithStoreName = { findByStoreName?(name: string): NamedStore | undefined; };
 function forceAccountPanelRerender() {
-    try { refreshFakeNitro(); } catch { }
+    try { refreshFakeNitro(); } catch (e) { logger.warn("Refreshing fake Nitro failed", e); }
     try {
-        const WP = (Vencord as any).Webpack;
-        const US = WP?.findByStoreName?.("UserStore"); if (US?.emitChange) US.emitChange();
-        const UPS = WP?.findByStoreName?.("UserProfileStore"); if (UPS?.emitChange) UPS.emitChange();
+        (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserStore")?.emitChange?.();
+        (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserProfileStore")?.emitChange?.();
         refreshPresence();
         if (isEnabled) startDomObserver(); else stopDomObserver();
-    } catch { }
+    } catch (e) { logger.warn("Applying profile change failed", e); }
 }
 async function loadData() {
     try {
@@ -1328,7 +1338,7 @@ async function loadData() {
             saveAllDataSync();
         }
         saveDataSync(storedData, isEnabled);
-    } catch { }
+    } catch (e) { logger.warn("Saving profile failed", e); }
 }
 
 function realProfileMenuItem(userId: string) {
@@ -1337,11 +1347,11 @@ function realProfileMenuItem(userId: string) {
     return <Menu.MenuItem id="cloudcord-profile-view" label={viewingReal ? "Return to CloudCord profile" : "Show real profile"} action={() => {
         setRealProfileView(userId, !viewingReal);
         cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
-        try { (UserProfileStore as any).emitChange?.(); } catch { }
-        try { (UserStore as any).emitChange?.(); } catch { }
+        try { UserProfileStore.emitChange?.(); } catch (e) { logger.warn("Refreshing UserProfileStore failed", e); }
+        try { UserStore.emitChange?.(); } catch (e) { logger.warn("Refreshing UserStore failed", e); }
         forceAccountPanelRerender();
         // Let the menu close first so Discord does not stack modals on a closing layer.
-        setTimeout(() => { try { UserProfileActions.openUserProfileModal({ userId }); } catch { } }, 50);
+        setTimeout(() => { try { UserProfileActions.openUserProfileModal({ userId }); } catch (e) { logger.warn("Opening profile modal failed", e); } }, 50);
     }} />;
 }
 
@@ -1379,11 +1389,11 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                         DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
                         forceAccountPanelRerender();
                         showToast(`Copied ${newData.globalName || newData.username || "their"} profile. Saved on this device only.`, Toasts.Type.SUCCESS);
-                    } catch (err) { console.error("[ProfileSpoofer] copyUserProfile error:", err); showToast("Couldn't copy that profile.", Toasts.Type.FAILURE); }
+                    } catch (err) { logger.error("Copying user profile failed:", err); showToast("Couldn't copy that profile.", Toasts.Type.FAILURE); }
                 }} />)
             )}
         </Menu.MenuGroup>);
-    } catch (err) { console.error("[ProfileSpoofer] Context menu patch error:", err); }
+    } catch (err) { logger.error("Context menu patch failed:", err); }
 };
 
 function EditIcon({ size = 18 }: { size?: number; }) { return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" /></svg>; }
@@ -1499,7 +1509,7 @@ function badgeLayoutRows(data: CustomProfileData, userId: string): ProfileBadge[
     try {
         const profile = UserProfileStore.getUserProfile(userId) as any;
         native = profile?.cloudcordUnorderedBadges?.() || profile?.getBadges?.() || profile?.badges || [];
-    } catch { }
+    } catch { /* silent: runs during render; missing native badges just means none */ }
     // Regenerate fake badges from the editor draft rather than the last save.
     const rows: ProfileBadge[] = !shouldReplaceBadges(data) && Array.isArray(native) ? native.filter(badge => !/^sp_|^fakeprofile-|^cloudcord-shared-/.test(String(badge.id))) : [];
     const flagKeys: Record<number, string> = {
@@ -1580,9 +1590,9 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
 
     const accounts = React.useMemo(() => {
         try {
-            const MAS = (window as any).Vencord?.Webpack?.findByProps?.("getUsers", "getValidUsers");
+            const MAS = Vencord.Webpack?.findByProps?.("getUsers", "getValidUsers");
             if (MAS?.getUsers) { const users = MAS.getUsers(); if (Array.isArray(users) && users.length > 0) return users; }
-        } catch { }
+        } catch { /* silent: runs during render; falls back to the current account */ }
         const me = UserStore.getCurrentUser(); return me ? [me] : [];
     }, []);
 
@@ -1591,7 +1601,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     function set<K extends keyof CustomProfileData>(key: K, val: CustomProfileData[K]) { setData(d => ({ ...d, [key]: val })); }
     const appearanceEnums = React.useMemo(() => {
         // Discord now ships the font and effect lists as separate plain enums.
-        const find = (filter: (m: any) => boolean) => { try { return (Vencord as any).Webpack.find(filter, { isIndirect: true }); } catch { return undefined; } };
+        const find = (filter: (m: any) => boolean) => { try { return Vencord.Webpack.find(filter, { isIndirect: true }); } catch { return undefined; } };
         return {
             DisplayNameFont: find(m => m?.BANGERS === 1 && m?.DEFAULT === 11),
             DisplayNameEffect: find(m => m && typeof m === "object" && "SOLID" in m && "GRADIENT" in m && "NEON" in m)
@@ -1634,7 +1644,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                 if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
                 await publishSharedProfile();
             }
-        } catch (err) { console.error("[ProfileSpoofer] save error:", err); suppressOwnPullUntil = 0; setSaveError(err instanceof Error ? err.message : "Couldn't save your profile. Try again."); setSaving(false); return; }
+        } catch (err) { logger.error("Saving profile failed:", err); suppressOwnPullUntil = 0; setSaveError(err instanceof Error ? err.message : "Couldn't save your profile. Try again."); setSaving(false); return; }
         setSaving(false); rootProps.onClose();
     }
 
@@ -1655,7 +1665,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     const fallbackAvatar = selectedUser ? IconUtils.getUserAvatarURL(selectedUser, false, 128) : "https://cdn.discordapp.com/embed/avatars/0.png";
     const currentDecoration = decorations.find(item => item.id === data.decorationAsset) || ALL_DECORATIONS.find(item => item.id === data.decorationAsset) || liveDecorations.find(item => item.id === data.decorationAsset);
     const nameColors = [0, 1, 2].map(index => nameStyle.colors[index] ?? nameStyle.colors[0] ?? 0xffffff);
-    const knownTags = availableServerTags((UserStore as any).getUsers?.());
+    const knownTags = availableServerTags(UserStore.getUsers());
 
     const panels: Record<TabId, React.ReactNode> = {
         profile: <>
@@ -2023,7 +2033,7 @@ export default definePlugin({
                 merged.bannerSrc = storedData.banner;
                 merged.getBannerURL = () => storedData.banner;
             }
-            if (storedData.signupDate) { try { merged.joinedAt = new Date(storedData.signupDate + "T12:00:00Z"); } catch { } }
+            if (storedData.signupDate) { try { merged.joinedAt = new Date(storedData.signupDate + "T12:00:00Z"); } catch { /* silent: runs per profile read; an invalid date leaves joinedAt unset */ } }
             if (storedData.decorationAsset) { merged.avatarDecoration = nativeDecoration(storedData); merged.avatarDecorationData = merged.avatarDecoration; }
             if (storedData.nitro && storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
             applyNativeProfileMetadata(merged, storedData);
@@ -2075,7 +2085,7 @@ fakeObfuscatedEmail(real: string | null) {
         const generation = ++profileRuntimeGeneration;
         installPresenceHooks(userId => isMe(userId) ? (isEnabled ? storedData : undefined) : isRealProfileView(userId) ? undefined : viewedSharedProfile(userId));
         installTagIconSwap();
-        try { installSwitcherHook(); } catch { }
+        try { installSwitcherHook(); } catch (e) { logger.warn("Installing account switcher hook failed", e); }
         this._catalogListener = onCatalogLoaded(() => { cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++; forceAccountPanelRerender(); });
         // Also hook the public resolver: a source-text patch alone can miss
         // Discord's newer/minified resolver layout.
@@ -2083,14 +2093,14 @@ fakeObfuscatedEmail(real: string | null) {
         if (typeof resolver?.getAvatarDecorationURL === "function" && !this._origGetAvatarDecorationURL) {
             this._origGetAvatarDecorationURL = resolver.getAvatarDecorationURL;
             const original = resolver.getAvatarDecorationURL;
-            resolver.getAvatarDecorationURL = (input: any, ...args: any[]) => this.patchDecorationUrl(input) || original.call(resolver, input, ...args);
+            resolver.getAvatarDecorationURL = (input: any, ...args: unknown[]) => this.patchDecorationUrl(input) || original.call(resolver, input, ...args);
         }
         addHeaderBarButton("profile-spoofer-btn", () => <CustomProfileButton />, 10);
         addContextMenuPatch("user-context", userContextMenuPatch);
         addContextMenuPatch(["user-profile-actions", "user-profile-overflow-menu"], profileOverflowPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
-        (FluxDispatcher as any).addInterceptor?.(rewriteFetchedProfile);
-        (FluxDispatcher as any).addInterceptor?.(rewriteBadgeDirectory);
+        FluxDispatcher.addInterceptor?.(rewriteFetchedProfile);
+        FluxDispatcher.addInterceptor?.(rewriteBadgeDirectory);
         // Discord loads your profile and badge info at startup, possibly before these
         // hooks exist; load them again once Discord has settled so the fake data applies.
         reloadDiscordProfile(activeUserId());
@@ -2104,7 +2114,7 @@ fakeObfuscatedEmail(real: string | null) {
         if (IconUtils?.getUserAvatarURL && !_avatarPatchApplied) {
             this._origGetUserAvatarURL = IconUtils.getUserAvatarURL;
             const orig = this._origGetUserAvatarURL;
-            (IconUtils as any).getUserAvatarURL = (user: any, ...args: any[]) => {
+            (IconUtils as any).getUserAvatarURL = (user: any, ...args: unknown[]) => {
                 if (user?.id && isMe(user.id) && isEnabled && storedData.avatar) return storedData.avatar;
                 if (user?.id && !isMe(user.id)) {
                     requestSharedProfile(user.id);
@@ -2161,8 +2171,8 @@ fakeObfuscatedEmail(real: string | null) {
 
     stop() {
         profileRuntimeActive = false;
-        try { uninstallSwitcherHook(); } catch { }
-        try { const d = FluxDispatcher as any; if (Array.isArray(d._interceptors)) d._interceptors = d._interceptors.filter((fn: any) => fn !== rewriteFetchedProfile && fn !== rewriteBadgeDirectory); } catch { }
+        try { uninstallSwitcherHook(); } catch (e) { logger.warn("Removing account switcher hook failed", e); }
+        try { const d = FluxDispatcher as any; if (Array.isArray(d._interceptors)) d._interceptors = d._interceptors.filter((fn: any) => fn !== rewriteFetchedProfile && fn !== rewriteBadgeDirectory); } catch (e) { logger.warn("Removing flux interceptors failed", e); }
         reloadDiscordProfile(activeUserId());
         profileRuntimeGeneration++;
         otherUserCache = new WeakMap();
@@ -2211,14 +2221,13 @@ function buildProfileBadges(userId: string): ProfileBadge[] {
 
         // Suppress real Discord badges by zeroing publicFlags on the live user object
         try {
-            const WP = (Vencord as any).Webpack;
-            const US = WP?.findByStoreName?.("UserStore") || WP?.findByProps?.("getCurrentUser", "getUser");
+            const US = (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserStore") || Vencord.Webpack.findByProps("getCurrentUser", "getUser");
             const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
             if (liveUser && shouldReplaceBadges(profileData)) {
                 Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
                 Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
             }
-        } catch { }
+        } catch (e) { logger.warn("Hiding native badge flags failed", e); }
 
         // Let Discord's profile badge renderer determine the icon size.
         // Forcing 26px made CloudCord badges visibly larger than native ones.
@@ -2320,7 +2329,7 @@ function rewriteFetchedProfile(action: any) {
         }
         const boost = Number(data.boostMonths ?? -1);
         if (boost >= 0 && boost < BOOST_LEVEL_MONTHS.length) raw.premium_guild_since = monthsAgo(BOOST_LEVEL_MONTHS[boost]).toISOString();
-    } catch { }
+    } catch (e) { logger.warn("Rewriting fetched profile failed", e); }
     return false;
 }
 // Discord's badge directory (owned badges, tiers, "Subscriber since" labels) loads
@@ -2372,15 +2381,14 @@ function tieredEntry(entry: any, tierIndex: number, since: Date, monthsPerTier: 
 // The line under a badge's title ("A Nitro original") is only sent to owners. Known
 // ones are listed here; others are learned from any real owner's badges we see.
 const KNOWN_BADGE_INFO: Record<number, string> = { 5: "First in, no hesitation", 6: "Patience meets discipline", 7: "Calm in the chaos", 11: "A Nitro original", 14: "1 Quest completed", 16: "This is just the beginning..." };
-const LS_BADGE_INFO = "cloudcord_badge_info";
-let learnedBadgeInfo: Record<number, string> = (() => { try { return JSON.parse(localStorage.getItem(LS_BADGE_INFO) || "{}") || {}; } catch { return {}; } })();
+let learnedBadgeInfo: Record<number, string> = (() => { try { return JSON.parse(profileStorage.get("badgeInfo") || "{}") || {}; } catch { return {}; } })();
 function learnBadgeInfo(entries: any[]) {
     let changed = false;
     for (const entry of entries) {
         if (!entry?.owned || !entry.info_label || entry.tiers?.length || DIRECTORY_ONLY_BADGES.has(entry.badge_id)) continue;
         if (learnedBadgeInfo[entry.badge_id] !== entry.info_label) { learnedBadgeInfo = { ...learnedBadgeInfo, [entry.badge_id]: entry.info_label }; changed = true; }
     }
-    if (changed) try { localStorage.setItem(LS_BADGE_INFO, JSON.stringify(learnedBadgeInfo)); } catch { }
+    if (changed) try { profileStorage.set("badgeInfo", JSON.stringify(learnedBadgeInfo)); } catch (e) { logger.warn("Saving learned badge info failed", e); }
 }
 
 function fakeDirectoryEntry(entry: any, userId: string, data: CustomProfileData, owned: Map<number, any>, replace: boolean) {
@@ -2411,7 +2419,7 @@ function rewriteBadgeDirectory(action: any) {
     const type = action?.type;
     if (type !== "BADGE_DIRECTORY_FETCH_SUCCESS" && type !== "BADGE_FETCH_SUCCESS" && type !== "BADGE_SUMMARY_FETCH_SUCCESS") return false;
     const userId = action.userId;
-    try { learnBadgeInfo(Array.isArray(action.badges) ? action.badges : action.badge ? [action.badge] : []); } catch { }
+    try { learnBadgeInfo(Array.isArray(action.badges) ? action.badges : action.badge ? [action.badge] : []); } catch (e) { logger.warn("Learning badge info failed", e); }
     const data = userId ? profileDataFor(userId) : undefined;
     if (!data) return false;
     try {
@@ -2433,13 +2441,13 @@ function rewriteBadgeDirectory(action: any) {
             action.badges = entries;
         }
         if (action.badge) action.badge = fakeDirectoryEntry(action.badge, userId, data, owned, replace);
-    } catch { }
+    } catch (e) { logger.warn("Rewriting badge directory failed", e); }
     return false;
 }
 function reloadBadgeDirectory(userId: string | null | undefined) {
     if (!userId) return;
     reapplyBadgeDirectory(userId);
-    try { void Promise.resolve(fetchBadgeDirectory(userId)).catch(() => { }); } catch { }
+    try { void Promise.resolve(fetchBadgeDirectory(userId)).catch(() => { }); } catch (e) { logger.warn("Fetching badge directory failed", e); }
 }
 // Re-run the badge rewrite on the badge info Discord already has (no network). A fetch
 // can be skipped while Discord's copy is fresh, which left badges without fake data.
@@ -2465,8 +2473,8 @@ function installSwitcherHook() {
     const store: any = multiAccountStore;
     switcherOriginals = { getUsers: store.getUsers, getValidUsers: store.getValidUsers };
     const { getUsers, getValidUsers } = switcherOriginals;
-    store.getUsers = function (...args: any[]) { return spoofSwitcherUsers(getUsers.apply(this, args)); };
-    if (getValidUsers) store.getValidUsers = function (...args: any[]) { return spoofSwitcherUsers(getValidUsers.apply(this, args)); };
+    store.getUsers = function (...args: unknown[]) { return spoofSwitcherUsers(getUsers.apply(this, args)); };
+    if (getValidUsers) store.getValidUsers = function (...args: unknown[]) { return spoofSwitcherUsers(getValidUsers.apply(this, args)); };
 }
 function uninstallSwitcherHook() {
     if (!switcherOriginals) return;
@@ -2481,13 +2489,13 @@ function reapplyBadgeDirectory(userId: string | null | undefined) {
         if (!badgeDirectoryStore?.hasCatalogFor?.(userId)) return;
         const badges = (badgeDirectoryStore.getBadges(userId) || []).map((entry: any) => ({ ...entry }));
         if (badges.length) FluxDispatcher.dispatch({ type: "BADGE_DIRECTORY_FETCH_SUCCESS", userId, badges });
-    } catch { }
+    } catch (e) { logger.warn("Re-dispatching badge directory failed", e); }
 }
 
 // Ask Discord to load a profile again so the edited data replaces what it cached.
 function reloadDiscordProfile(userId: string | null | undefined) {
     if (!userId) return;
-    try { void Promise.resolve(fetchUserProfile(userId, { withMutualGuilds: false, withMutualFriends: false })).catch(() => { }); } catch { }
+    try { void Promise.resolve(fetchUserProfile(userId, { withMutualGuilds: false, withMutualFriends: false })).catch(() => { }); } catch (e) { logger.warn("Fetching user profile failed", e); }
     reloadBadgeDirectory(userId);
 }
 
@@ -2539,16 +2547,15 @@ function activityDirectoryEntry(entry: any, data: CustomProfileData) {
 
 
 // ---- Other profiles: edits to other people's profiles, only on this device ----
-const LS_LOCAL_PROFILES = "cloudcord_local_profiles";
 let localProfiles: Record<string, CustomProfileData> = (() => {
-    try { const value = JSON.parse(localStorage.getItem(LS_LOCAL_PROFILES) || "{}"); return value && typeof value === "object" ? value : {}; } catch { return {}; }
+    try { const value = JSON.parse(profileStorage.get("localProfiles") || "{}"); return value && typeof value === "object" ? value : {}; } catch { return {}; }
 })();
 function localProfileFor(userId: string): CustomProfileData | undefined {
     return /^\d{15,22}$/.test(userId) && !isMe(userId) ? localProfiles[userId] : undefined;
 }
 function writeLocalProfiles(next: Record<string, CustomProfileData>, changedId?: string) {
     localProfiles = next;
-    try { localStorage.setItem(LS_LOCAL_PROFILES, JSON.stringify(next)); } catch { }
+    try { profileStorage.set("localProfiles", JSON.stringify(next)); } catch (e) { logger.warn("Saving local profiles failed", e); }
     otherUserCache = new WeakMap();
     _dataVersion++;
     forceAccountPanelRerender();
@@ -2571,7 +2578,7 @@ function OtherProfilesPanel() {
         const clean = id.trim();
         setUserId(clean);
         setDraft({ ...(localProfiles[clean] || {}) });
-        if (/^\d{15,22}$/.test(clean) && !UserStore.getUser(clean)) { try { void Promise.resolve(fetchUserProfile(clean, { withMutualGuilds: false, withMutualFriends: false })).then(force, () => { }); } catch { } }
+        if (/^\d{15,22}$/.test(clean) && !UserStore.getUser(clean)) { try { void Promise.resolve(fetchUserProfile(clean, { withMutualGuilds: false, withMutualFriends: false })).then(force, () => { }); } catch (e) { logger.warn("Fetching local profile user failed", e); } }
     };
     const save = () => {
         if (!validId || !draft) return;
@@ -2656,12 +2663,11 @@ function OtherProfilesPanel() {
 
 // ---- Saved profiles: named copies of your custom profile you can switch between ----
 interface SavedProfile { id: string; name: string; savedAt: number; data: CustomProfileData; }
-const LS_SAVED_PROFILES = "cloudcord_saved_profiles";
 function readSavedProfiles(): SavedProfile[] {
-    try { const value = JSON.parse(localStorage.getItem(LS_SAVED_PROFILES) || "[]"); return Array.isArray(value) ? value.filter(item => item?.id && item?.data) : []; } catch { return []; }
+    try { const value = JSON.parse(profileStorage.get("savedProfiles") || "[]"); return Array.isArray(value) ? value.filter(item => item?.id && item?.data) : []; } catch { return []; }
 }
 function writeSavedProfiles(next: SavedProfile[]) {
-    try { localStorage.setItem(LS_SAVED_PROFILES, JSON.stringify(next)); return true; }
+    try { profileStorage.set("savedProfiles", JSON.stringify(next)); return true; }
     catch { showToast("Couldn't save: storage is full. Remove a saved profile or use image links instead of uploads.", Toasts.Type.FAILURE); return false; }
 }
 // Only the look is saved; sync bookkeeping stays with the live profile.
@@ -2774,7 +2780,7 @@ async function buildCopiedProfile(userId: string, source: "discord" | "cloudcord
     }
     // Ask Discord for their real profile. The API answer has no CloudCord look drawn over it.
     let body: any = null;
-    try { body = (await Promise.race([RestAPI.get({ url: `/users/${userId}/profile`, query: { with_mutual_guilds: false, with_mutual_friends: false, with_mutual_friends_count: false } }), new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 10000))]) as any)?.body; } catch { }
+    try { body = (await Promise.race([RestAPI.get({ url: `/users/${userId}/profile`, query: { with_mutual_guilds: false, with_mutual_friends: false, with_mutual_friends_count: false } }), new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 10000))]) as any)?.body; } catch (e) { logger.warn("Fetching profile failed", e); }
     const user: any = body?.user ?? UserStore.getUser(userId);
     if (!user) throw new Error("Couldn't load that profile. Check the user ID and try again.");
     const profile: any = body?.user_profile ?? {};
@@ -2789,7 +2795,7 @@ async function buildCopiedProfile(userId: string, source: "discord" | "cloudcord
     const colors: number[] = (pick(profile.theme_colors, profile.themeColors) ?? []).filter((value: any) => typeof value === "number");
     if (colors.length) { data.accentColor = colors[0]; data.accentColor2 = colors[1] ?? colors[0]; }
     else if (typeof pick(profile.accent_color, user.accent_color) === "number") data.accentColor = pick(profile.accent_color, user.accent_color);
-    try { data.createdAt = new Date(Number(BigInt(userId) >> 22n) + 1420070400000).toISOString().slice(0, 10); } catch { }
+    try { data.createdAt = new Date(Number(BigInt(userId) >> 22n) + 1420070400000).toISOString().slice(0, 10); } catch { /* silent: invalid snowflake means no creation date */ }
     if (body?.premium_since || (body?.premium_type ?? 0) > 0) {
         data.nitro = true;
         data.nitroLevel = Math.max(0, tierFor(Math.max(0, monthsSince(body.premium_since)), NITRO_TIER_MONTHS));
@@ -2818,7 +2824,7 @@ function resolveCopyTarget(text: string): string | null {
     if (id) return id;
     const name = value.replace(/^@/, "").toLowerCase();
     if (!name) return null;
-    const users = Object.values((UserStore as any).getUsers?.() ?? {}) as any[];
+    const users = Object.values(UserStore.getUsers() ?? {}) as any[];
     return (users.find(user => user?.username?.toLowerCase() === name) ?? users.find(user => user?.globalName?.toLowerCase() === name))?.id ?? null;
 }
 
@@ -2852,17 +2858,16 @@ function CopyProfileSection({ onCopy }: { onCopy: (data: CustomProfileData) => v
 
 
 // ---- Tag next to your name in chat, only on this device (never synced) ----
-const LS_LOCAL_TAG = "cloudcord_local_tag";
 // Discord's tag types: 0 App, 1 Server, 2 System, 3 Official, 7 AI.
 const LOCAL_TAG_OPTIONS = [{ value: -1, label: "None" }, { value: 0, label: "App" }, { value: 3, label: "Official" }, { value: 2, label: "System" }, { value: 7, label: "AI" }, { value: 1, label: "Server" }];
-let localNameTag: number | null = (() => { try { const value = localStorage.getItem(LS_LOCAL_TAG); return value != null && LOCAL_TAG_OPTIONS.some(option => option.value === Number(value) && option.value >= 0) ? Number(value) : null; } catch { return null; } })();
+let localNameTag: number | null = (() => { try { const value = profileStorage.get("localTag"); return value != null && LOCAL_TAG_OPTIONS.some(option => option.value === Number(value) && option.value >= 0) ? Number(value) : null; } catch { return null; } })();
 function LocalTagSection() {
     const [value, setValue] = React.useState(localNameTag ?? -1);
     return <Section title="Tag next to your name" description="Shows a Discord tag after your name on your messages. Only on this device: it is never synced, so nobody else sees it.">
         <SelectField label="Tag" options={LOCAL_TAG_OPTIONS} value={value} onChange={next => {
             const tag = Number(next);
             localNameTag = tag >= 0 ? tag : null;
-            try { if (localNameTag == null) localStorage.removeItem(LS_LOCAL_TAG); else localStorage.setItem(LS_LOCAL_TAG, String(localNameTag)); } catch { }
+            try { if (localNameTag == null) profileStorage.remove("localTag"); else profileStorage.set("localTag", String(localNameTag)); } catch (e) { logger.warn("Saving local tag failed", e); }
             setValue(tag);
             forceAccountPanelRerender();
         }} />

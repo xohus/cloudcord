@@ -180,6 +180,8 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             let foregroundNode = image.parentElement;
             while (foregroundNode) {
                 const style = getComputedStyle(foregroundNode);
+                // No store exposes the colour Discord actually painted, so read it from the DOM.
+                // The partial class match is a best-effort hint; the walk falls back to --text-normal.
                 const username = foregroundNode.querySelector<HTMLElement>('[class*="userTagUsername"], [class*="username"]');
                 if (username) {
                     const rgb = parseColor(getComputedStyle(username).color);
@@ -226,15 +228,18 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             }
             if (brightness !== null) apply(useBlack(profileColors.map(color => [(color >> 16) & 255, (color >> 8) & 255, color & 255])));
             };
+            // Hover and animation change ancestor classes many times a second; check at most once per frame.
+            let queued = false;
+            const scheduleUpdate = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; update(); }); };
             update();
             // Refs may fire before a portal's final inherited theme is applied.
             requestAnimationFrame(() => { update(); requestAnimationFrame(update); });
-            image.onload = update;
+            image.onload = scheduleUpdate;
             // Profile themes can arrive after the first frames, or change while
             // the popout stays open. Watch inherited theme attributes, not the
             // image's own filter, to avoid an observer feedback loop.
             if (typeof MutationObserver !== "undefined") {
-                themeObserver = new MutationObserver(update);
+                themeObserver = new MutationObserver(scheduleUpdate);
                 let ancestor = image.parentElement;
                 while (ancestor) {
                     themeObserver.observe(ancestor, { attributes: true, attributeFilter: ["class", "style", "data-theme"] });

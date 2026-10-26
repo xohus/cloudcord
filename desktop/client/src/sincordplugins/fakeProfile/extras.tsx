@@ -7,13 +7,15 @@
 // Device-only extras that live in the Custom Profile editor: Fake Nitro, a local
 // fake Nitro gift link, local fake friend requests, leave all servers and a full reset.
 
+import type { Role } from "@vencord/discord-types";
+import { logger } from "./logger";
+import { profileStorage } from "./storage";
 import * as DataStore from "@api/DataStore";
 import { findStoreLazy } from "@webpack";
 import { Alerts, ChannelStore, Flux, FluxDispatcher, GuildMemberStore, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
 
 import { Grid2, Section, SelectField, Switch } from "./editorUi";
 
-const LS_EXTRAS = "cloudcord_profile_extras";
 const NITRO_APP_ID = "521842831262875670";
 const NITRO_SKU = "521847234246082599";
 const NITRO_BASIC_SKU = "978380684370378762";
@@ -37,11 +39,11 @@ const ChannelMemberStore: any = findStoreLazy("ChannelMemberStore");
 const PresenceStore: any = findStoreLazy("PresenceStore");
 
 // Roles of a server as a list, highest first. Discord renamed this getter a few times.
-function rolesOf(guildId: string): any[] {
-    let roles: any = null;
-    try { roles = GuildRoleStore?.getUnsafeMutableRoles?.(guildId) ?? GuildRoleStore?.getRolesSnapshot?.(guildId) ?? GuildRoleStore?.getRoles?.(guildId); } catch { }
+function rolesOf(guildId: string): Role[] {
+    let roles: Record<string, Role> | Role[] | null | undefined = null;
+    try { roles = GuildRoleStore?.getUnsafeMutableRoles?.(guildId) ?? GuildRoleStore?.getRolesSnapshot?.(guildId) ?? GuildRoleStore?.getRoles?.(guildId); } catch { /* silent: called from render hooks; a missing getter means no roles */ }
     if (!roles) roles = (GuildStore.getGuild(guildId) as any)?.roles;
-    return Object.values(roles ?? {}).filter((role: any) => role?.id && role.id !== guildId).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0));
+    return Object.values<Role>(roles ?? {}).filter((role: Role) => role?.id && role.id !== guildId).sort((a, b) => (b.position ?? 0) - (a.position ?? 0));
 }
 
 // Fake roles and booster status layered on your real member record. The colour,
@@ -59,13 +61,13 @@ function fakeMember(guildId: string, member: any) {
     if (booster) value.premiumSince = BOOST_SINCE.toISOString();
     if (extraRoles.length) {
         value.roles = [...(member.roles ?? []), ...extraRoles];
-        const byId = new Map(rolesOf(guildId).map((role: any) => [role.id, role]));
+        const byId = new Map(rolesOf(guildId).map((role: Role) => [role.id, role]));
         const mine = value.roles.map((id: string) => byId.get(id)).filter(Boolean).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0));
-        const colored = mine.find((role: any) => role.colorString || role.color);
+        const colored = mine.find((role: Role) => role.colorString || role.color);
         if (colored) { value.colorString = colored.colorString ?? value.colorString; value.colorStrings = colored.colorStrings ?? value.colorStrings; value.colorRoleId = colored.id; }
-        const hoisted = mine.find((role: any) => role.hoist);
+        const hoisted = mine.find((role: Role) => role.hoist);
         if (hoisted) value.hoistRoleId = hoisted.id;
-        const icon = mine.find((role: any) => role.icon || role.unicodeEmoji);
+        const icon = mine.find((role: Role) => role.icon || role.unicodeEmoji);
         if (icon) value.iconRoleId = icon.id;
         if (mine[0]) value.highestRoleId = mine[0].id;
     }
@@ -79,13 +81,13 @@ interface BoostFake { level?: boolean; booster?: boolean; partner?: boolean; ver
 interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; fakeRequests?: { id: string; user: any; since: string; }[]; fakeOrbs?: number; }
 
 function readExtras(): Extras {
-    try { return JSON.parse(localStorage.getItem(LS_EXTRAS) || "{}") || {}; } catch { return {}; }
+    try { return JSON.parse(profileStorage.get("extras") || "{}") || {}; } catch { return {}; }
 }
 let extras: Extras = readExtras();
 const listeners = new Set<() => void>();
 function writeExtras(next: Extras) {
     extras = next;
-    try { localStorage.setItem(LS_EXTRAS, JSON.stringify(next)); } catch { }
+    try { profileStorage.set("extras", JSON.stringify(next)); } catch (e) { logger.warn("Saving extras failed", e); }
     listeners.forEach(fn => fn());
 }
 function useExtras() {
@@ -124,7 +126,7 @@ function setCurrentPremiumType(type: number | undefined) {
         const me: any = UserStore.getCurrentUser();
         if (!me || type == null || me.premiumType === type) return false;
         me.premiumType = type;
-        (UserStore as any).emitChange?.();
+        UserStore.emitChange?.();
         return true;
     } catch { return false; }
 }
@@ -149,8 +151,8 @@ function applyFakeNitro() {
         fakeNitroActive = active;
         if (active) changed = setCurrentPremiumType(2) || changed;
         else if (wasActive) changed = setCurrentPremiumType(state.premiumTypeActual ?? 0) || changed;
-        if (changed) { (OverridePremiumTypeStore as any).emitChange?.(); restoreKeptTheme(); }
-    } catch { }
+        if (changed) { OverridePremiumTypeStore.emitChange?.(); restoreKeptTheme(); }
+    } catch (e) { logger.warn("Updating Nitro override failed", e); }
 }
 
 // ---- Fake gift link ----
@@ -184,7 +186,7 @@ function installGiftHook() {
     if (restOriginals || !RestAPI) return;
     const post: any = RestAPI.post;
     const owned = { post, wrappedPost: null as any };
-    const wrappedPost = function (this: any, req: any, ...rest: any[]) {
+    const wrappedPost = function (this: any, req: any, ...rest: unknown[]) {
         if (restOriginals !== owned) return post.call(this, req, ...rest);
         const match = giftPath(req?.url);
         if (match?.[2] && extras.giftCode && match[1] === extras.giftCode) {
@@ -282,8 +284,8 @@ function installRoleHooks() {
     const store: any = GuildRoleStore;
     roleOriginals = { getUnsafeMutableRoles: store.getUnsafeMutableRoles, getRole: store.getRole, getManyRoles: store.getManyRoles, getNumRoles: store.getNumRoles };
     const original = roleOriginals;
-    const topOf = (roles: any) => Math.max(0, ...Object.values(roles ?? {}).map((role: any) => Number(role?.position) || 0));
-    const patchOne = (guildId: string, role: any) => {
+    const topOf = (roles: Record<string, Role> | undefined) => Math.max(0, ...Object.values<Role>(roles ?? {}).map((role: Role) => Number(role?.position) || 0));
+    const patchOne = (guildId: string, role: Role) => {
         const tweak = role && visualRolesFor(guildId).tweaks[role.id];
         if (!tweak) return role;
         const key = guildId + ":tweak:" + role.id + ":" + JSON.stringify(tweak) + ":" + role.position;
@@ -291,7 +293,7 @@ function installRoleHooks() {
         if (!value) roleCache.set(key, value = styledRole(role, tweak));
         return value;
     };
-    store.getUnsafeMutableRoles = function (guildId: string, ...rest: any[]) {
+    store.getUnsafeMutableRoles = function (guildId: string, ...rest: unknown[]) {
         const roles = original.getUnsafeMutableRoles.call(this, guildId, ...rest);
         const { custom, tweaks } = visualRolesFor(guildId);
         if (!roles || (!custom.length && !Object.keys(tweaks).length)) return roles;
@@ -300,23 +302,23 @@ function installRoleHooks() {
         if (hit && hit.key === key) return hit.value;
         const top = topOf(roles);
         const value: any = {};
-        for (const [id, role] of Object.entries(roles)) value[id] = patchOne(guildId, role);
+        for (const [id, role] of Object.entries<Role>(roles)) value[id] = patchOne(guildId, role);
         custom.forEach((role, index) => { value[role.id] = customRoleRecord(guildId, role, index, top); });
         roleListCache.set(roles, { key, value });
         return value;
     };
-    store.getRole = function (guildId: string, roleId: string, ...rest: any[]) {
+    store.getRole = function (guildId: string, roleId: string, ...rest: unknown[]) {
         const custom = visualRolesFor(guildId).custom;
         const index = custom.findIndex(role => role.id === roleId);
         if (index >= 0) return customRoleRecord(guildId, custom[index], index, topOf(original.getUnsafeMutableRoles.call(this, guildId)));
         return patchOne(guildId, original.getRole.call(this, guildId, roleId, ...rest));
     };
-    store.getManyRoles = function (guildId: string, ids: string[], ...rest: any[]) {
+    store.getManyRoles = function (guildId: string, ids: string[], ...rest: unknown[]) {
         const custom = visualRolesFor(guildId).custom;
         if (!custom.length && !Object.keys(visualRolesFor(guildId).tweaks).length) return original.getManyRoles.call(this, guildId, ids, ...rest);
         return (ids ?? []).map(id => store.getRole(guildId, id)).filter(Boolean);
     };
-    store.getNumRoles = function (guildId: string, ...rest: any[]) {
+    store.getNumRoles = function (guildId: string, ...rest: unknown[]) {
         return original.getNumRoles.call(this, guildId, ...rest) + visualRolesFor(guildId).custom.length;
     };
 }
@@ -327,13 +329,13 @@ function uninstallRoleHooks() {
 }
 
 function installBoostHooks() {
-    try { installRoleHooks(); } catch { }
-    try { installCountHooks(); } catch { }
-    try { installMemberListHook(); } catch { }
+    try { installRoleHooks(); } catch (e) { logger.warn("Installing role hooks failed", e); }
+    try { installCountHooks(); } catch (e) { logger.warn("Installing count hooks failed", e); }
+    try { installMemberListHook(); } catch (e) { logger.warn("Installing member list hook failed", e); }
     if (boostOriginals || !GuildStore || !GuildMemberStore) return;
     boostOriginals = { getGuild: GuildStore.getGuild, getMember: GuildMemberStore.getMember, getSelfMember: (GuildMemberStore as any).getSelfMember };
     const { getGuild, getMember } = boostOriginals;
-    (GuildStore as any).getGuild = function (guildId: string, ...rest: any[]) {
+    (GuildStore as any).getGuild = function (guildId: string, ...rest: unknown[]) {
         const guild = getGuild.call(this, guildId, ...rest);
         const fake = boostFor(guildId);
         if (!guild || typeof guild !== "object" || overlaySet.has(guild) || !(fake?.level || fake?.partner || fake?.verified || fake?.owner || fake?.members != null || fake?.online != null)) return guild;
@@ -355,13 +357,13 @@ function installBoostHooks() {
         overlaySet.add(overlay);
         return overlay;
     };
-    (GuildMemberStore as any).getMember = function (guildId: string, userId: string, ...rest: any[]) {
+    (GuildMemberStore as any).getMember = function (guildId: string, userId: string, ...rest: unknown[]) {
         const member = getMember.call(this, guildId, userId, ...rest);
         if (!member || typeof member !== "object" || !boostFor(guildId) || userId !== UserStore.getCurrentUser()?.id) return member;
         return fakeMember(guildId, member);
     };
     const { getSelfMember } = boostOriginals;
-    if (getSelfMember) (GuildMemberStore as any).getSelfMember = function (guildId: string, ...rest: any[]) {
+    if (getSelfMember) (GuildMemberStore as any).getSelfMember = function (guildId: string, ...rest: unknown[]) {
         const member = getSelfMember.call(this, guildId, ...rest);
         return member && typeof member === "object" && boostFor(guildId) ? fakeMember(guildId, member) : member;
     };
@@ -373,8 +375,8 @@ function regroupMemberList(guildId: string, props: any) {
     const fake = boostFor(guildId);
     const me = UserStore.getCurrentUser()?.id;
     if (!fake?.roles?.length || !me || !props || !Array.isArray(props.rows)) return props;
-    const byId = new Map(rolesOf(guildId).map((role: any) => [role.id, role]));
-    const hoist = fake.roles.map((id: string) => byId.get(id)).filter((role: any) => role?.hoist).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0))[0];
+    const byId = new Map(rolesOf(guildId).map((role: Role) => [role.id, role]));
+    const hoist = fake.roles.map((id: string) => byId.get(id)).filter((role): role is Role => !!role?.hoist).sort((a, b) => (b.position ?? 0) - (a.position ?? 0))[0];
     const rowIndex = props.rows.findIndex((row: any) => row?.type === "MEMBER" && String(row.userId) === me);
     if (!hoist) return props;
     // Big lists only load rows near the screen; with no roles you sit deep in "Online", so build your row.
@@ -403,11 +405,11 @@ function regroupMemberList(guildId: string, props: any) {
         if (!counts.get(id) && rows[oldHeader + 1]?.type !== "MEMBER") rows.splice(oldHeader, 1);
     }
     const row = { ...mineRow, hoistRoleId: hoist.id, roles: [...new Set([...(mineRow.roles ?? []), ...fake.roles])] };
-    try { const member = fakeMember(guildId, mineRow); Object.assign(row, { colorString: member.colorString, colorStrings: member.colorStrings, colorRoleId: member.colorRoleId, iconRoleId: member.iconRoleId, highestRoleId: member.highestRoleId, hoistRoleId: hoist.id }); } catch {}
+    try { const member = fakeMember(guildId, mineRow); Object.assign(row, { colorString: member.colorString, colorStrings: member.colorStrings, colorRoleId: member.colorRoleId, iconRoleId: member.iconRoleId, highestRoleId: member.highestRoleId, hoistRoleId: hoist.id }); } catch { /* silent: runs per member-list render; falls back to the plain row */ }
     let header = rows.findIndex((entry: any) => entry?.type === "GROUP" && String(entry.id) === hoist.id);
     if (header < 0) {
         // New header above the first role group that sits lower than this role (or above "Online").
-        header = rows.findIndex((entry: any) => entry?.type === "GROUP" && (byId.has(String(entry.id)) ? (byId.get(String(entry.id)).position ?? 0) < (hoist.position ?? 0) : true));
+        header = rows.findIndex((entry: any) => entry?.type === "GROUP" && (byId.has(String(entry.id)) ? (byId.get(String(entry.id))!.position ?? 0) < (hoist.position ?? 0) : true));
         if (header < 0) header = rows.length;
         rows.splice(header, 0, { type: "GROUP", key: hoist.id, id: hoist.id, title: hoist.name });
     }
@@ -464,7 +466,7 @@ function installMemberListHook() {
     if (listOriginal || !ChannelMemberStore?.getProps) return;
     const store: any = ChannelMemberStore;
     listOriginal = store.getProps;
-    store.getProps = function (guildId: string, ...rest: any[]) {
+    store.getProps = function (guildId: string, ...rest: unknown[]) {
         const props = listOriginal.call(this, guildId, ...rest);
         try {
             const fake = boostFor(guildId);
@@ -488,8 +490,8 @@ function installCountHooks() {
     const store: any = GuildMemberCountStore;
     countOriginals = { getMemberCount: store.getMemberCount, getOnlineCount: store.getOnlineCount };
     const { getMemberCount, getOnlineCount } = countOriginals;
-    store.getMemberCount = function (guildId: string, ...rest: any[]) { return boostFor(guildId)?.members ?? getMemberCount.call(this, guildId, ...rest); };
-    if (getOnlineCount) store.getOnlineCount = function (guildId: string, ...rest: any[]) { return boostFor(guildId)?.online ?? getOnlineCount.call(this, guildId, ...rest); };
+    store.getMemberCount = function (guildId: string, ...rest: unknown[]) { return boostFor(guildId)?.members ?? getMemberCount.call(this, guildId, ...rest); };
+    if (getOnlineCount) store.getOnlineCount = function (guildId: string, ...rest: unknown[]) { return boostFor(guildId)?.online ?? getOnlineCount.call(this, guildId, ...rest); };
 }
 function uninstallCountHooks() {
     if (!countOriginals) return;
@@ -508,8 +510,8 @@ function uninstallBoostHooks() {
     boostOriginals = null;
 }
 function refreshGuildViews(guildId: string) {
-    try { (GuildStore as any).emitChange?.(); (GuildMemberStore as any).emitChange?.(); (GuildMemberCountStore as any)?.emitChange?.(); (ChannelMemberStore as any)?.emitChange?.(); (GuildRoleStore as any)?.emitChange?.(); } catch { }
-    try { FluxDispatcher.dispatch({ type: "GUILD_MEMBER_PROFILE_UPDATE", guildId }); } catch { }
+    try { GuildStore.emitChange?.(); GuildMemberStore.emitChange?.(); GuildMemberCountStore.emitChange?.(); ChannelMemberStore.emitChange?.(); GuildRoleStore.emitChange?.(); } catch (e) { logger.warn("Refreshing guild stores failed", e); }
+    try { FluxDispatcher.dispatch({ type: "GUILD_MEMBER_PROFILE_UPDATE", guildId }); } catch (e) { logger.warn("Dispatching member profile update failed", e); }
 }
 
 function BoostSection() {
@@ -524,7 +526,7 @@ function BoostSection() {
     const roles = guild ? rolesOf(guild.id) : [];
     const chosenRoles = new Set(fake.roles ?? []);
     const query = roleQuery.trim().toLowerCase();
-    const shownRoles = roles.filter((role: any) => !role.managed && (!query || role.name.toLowerCase().includes(query))).slice(0, 60);
+    const shownRoles = roles.filter((role: Role) => !role.managed && (!query || role.name.toLowerCase().includes(query))).slice(0, 60);
     const toggleRole = (id: string) => { const next = new Set(chosenRoles); if (next.has(id)) next.delete(id); else next.add(id); set({ roles: [...next] }); };
     return <Section title="Fake server" description={guild ? `For ${guild.name}. Only on this device: other people see the real server.` : guildId ? "You're not in a server with that ID." : "Enter a server ID, or open a server first."}>
         <label className="cpx-field"><span className="cpx-label">Server ID</span><input className="cpx-input" value={chosenId} placeholder="Right-click a server → Copy Server ID" onChange={event => setChosenId(event.currentTarget.value)} /></label>
@@ -549,7 +551,7 @@ function BoostSection() {
                 <span className="cpx-hint">Your name colour, role icon and member list group follow your highest role, and the roles show on your profile. Only on this device.</span>
                 <input className="cpx-input" value={roleQuery} placeholder="Search roles" onChange={event => setRoleQuery(event.currentTarget.value)} />
                 <div className="cpx-chips" style={{ display: "flex", flexWrap: "wrap", gap: 6, maxHeight: 220, overflowY: "auto" }}>
-                    {shownRoles.map((role: any) => <button key={role.id} type="button" className={"cpx-segment" + (chosenRoles.has(role.id) ? " cpx-on" : "")} onClick={() => toggleRole(role.id)}>
+                    {shownRoles.map((role: Role) => <button key={role.id} type="button" className={"cpx-segment" + (chosenRoles.has(role.id) ? " cpx-on" : "")} onClick={() => toggleRole(role.id)}>
                         <span style={{ width: 10, height: 10, borderRadius: 5, background: role.colorString || "#99aab5", flex: "0 0 10px" }} />{role.name}
                     </button>)}
                     {!shownRoles.length && <span className="cpx-hint">No roles found.</span>}
@@ -566,7 +568,7 @@ function VisualRolesEditor({ guildId, fake, roles, onChange }: { guildId: string
     const [tweakId, setTweakId] = React.useState("");
     const custom = fake.customRoles ?? [];
     const tweaks = fake.roleTweaks ?? {};
-    const realRoles = roles.filter((role: any) => !String(role.id).startsWith("cc-role-"));
+    const realRoles = roles.filter((role: Role) => !String(role.id).startsWith("cc-role-"));
     const tweak = tweakId ? tweaks[tweakId] ?? {} : {};
     const setTweak = (patch: RoleTweak) => {
         const next = { ...tweaks, [tweakId]: { ...tweak, ...patch } };
@@ -602,7 +604,7 @@ function VisualRolesEditor({ guildId, fake, roles, onChange }: { guildId: string
         <div className="cpx-field">
             <span className="cpx-label">Restyle a real role</span>
             <span className="cpx-hint">Give any role here a different name, colour or emoji icon, only on this device.</span>
-            <SelectField label="Role" options={[{ value: "", label: "Choose a role" }, ...realRoles.map((role: any) => ({ value: role.id, label: (tweaks[role.id] ? "✎ " : "") + role.name }))]} value={tweakId} onChange={value => setTweakId(String(value))} />
+            <SelectField label="Role" options={[{ value: "", label: "Choose a role" }, ...realRoles.map((role: Role) => ({ value: role.id, label: (tweaks[role.id] ? "✎ " : "") + role.name }))]} value={tweakId} onChange={value => setTweakId(String(value))} />
             {tweakId && <>
                 <Grid2>
                     <label className="cpx-field"><span className="cpx-label">New name</span><input className="cpx-input" value={tweak.name ?? ""} maxLength={100} placeholder="Keep name" onChange={event => setTweak({ name: event.currentTarget.value })} /></label>
@@ -637,7 +639,7 @@ export async function addFakeRequestById(rawId: string) {
     let user: any = UserStore.getUser(id);
     if (!user) {
         // Not cached yet: look the user up once so the request has a name and avatar.
-        try { user = (await RestAPI.get({ url: `/users/${id}` }))?.body; } catch { }
+        try { user = (await RestAPI.get({ url: `/users/${id}` }))?.body; } catch (e) { logger.warn("Looking up user failed", e); }
     }
     if (!user) { showToast("Couldn't find that user.", Toasts.Type.FAILURE); return false; }
     addFakeRequest(user);
@@ -699,9 +701,9 @@ function confirmLeaveAll() {
 
 // ---- Reset ----
 async function resetEverything() {
-    try { await DataStore.clear(); } catch { }
-    try { for (const key of Object.keys(localStorage)) if (/^(customProfile|cloudcord|CloudCord|Vencord|sincord)/i.test(key)) localStorage.removeItem(key); } catch { }
-    try { await VencordNative.settings.set({} as any); } catch { }
+    try { await DataStore.clear(); } catch (e) { logger.warn("Clearing DataStore failed", e); }
+    try { for (const key of Object.keys(localStorage)) if (/^(customProfile|cloudcord|CloudCord|Vencord|sincord)/i.test(key)) localStorage.removeItem(key); } catch (e) { logger.warn("Clearing localStorage failed", e); }
+    try { await VencordNative.settings.set({} as any); } catch (e) { logger.warn("Clearing settings failed", e); }
     location.reload();
 }
 function confirmReset() {
@@ -728,7 +730,7 @@ function installOrbHooks() {
     const wallet = orbStores.wallet ? null : get("WalletBalanceStore");
     if (wallet?.getBalance) {
         const realGet = wallet.getBalance;
-        wallet.getBalance = function (...args: any[]) { return fakeOrbCount() ?? realGet.apply(this, args); };
+        wallet.getBalance = function (...args: unknown[]) { return fakeOrbCount() ?? realGet.apply(this, args); };
         wallet.__ccRealGetBalance = realGet;
         orbStores.wallet = wallet;
     }
@@ -741,21 +743,20 @@ function uninstallOrbHooks() {
     orbStores.currency = orbStores.wallet = undefined;
 }
 function refreshOrbs() {
-    for (const store of [orbStores.currency, orbStores.wallet]) try { store?.emitChange?.(); } catch { }
+    for (const store of [orbStores.currency, orbStores.wallet]) try { store?.emitChange?.(); } catch (e) { logger.warn("Refreshing orb stores failed", e); }
 }
 
 let orbRetry: ReturnType<typeof setInterval> | undefined;
 // Nitro gradient themes with Fake Nitro: Discord saves the theme to your account, its servers
 // drop it because the account has no real Nitro, and the next settings sync resets it. Remember
 // the theme you picked here and put it back after each sync.
-const LS_NITRO_THEME = "cloudcord_nitro_theme";
 const ClientThemesBackgroundStore: any = findStoreLazy("ClientThemesBackgroundStore");
-let keptThemePreset: number | null = (() => { try { const value = Number(localStorage.getItem(LS_NITRO_THEME)); return Number.isFinite(value) && value > 0 ? value : null; } catch { return null; } })();
+let keptThemePreset: number | null = (() => { try { const value = Number(profileStorage.get("nitroTheme")); return Number.isFinite(value) && value > 0 ? value : null; } catch { return null; } })();
 function rememberTheme(action: any) {
     const theme = action?.changes?.appearance?.settings?.clientThemeSettings;
     if (!theme || !("backgroundGradientPresetId" in theme)) return;
     keptThemePreset = typeof theme.backgroundGradientPresetId === "number" ? theme.backgroundGradientPresetId : null;
-    try { if (keptThemePreset != null) localStorage.setItem(LS_NITRO_THEME, String(keptThemePreset)); else localStorage.removeItem(LS_NITRO_THEME); } catch { }
+    try { if (keptThemePreset != null) profileStorage.set("nitroTheme", String(keptThemePreset)); else profileStorage.remove("nitroTheme"); } catch (e) { logger.warn("Saving Nitro theme failed", e); }
 }
 let themeTimer: ReturnType<typeof setTimeout> | undefined;
 function restoreKeptTheme() {
@@ -765,7 +766,7 @@ function restoreKeptTheme() {
         try {
             if (ClientThemesBackgroundStore?.gradientPreset?.id === keptThemePreset) return;
             FluxDispatcher.dispatch({ type: "UPDATE_BACKGROUND_GRADIENT_PRESET", presetId: keptThemePreset });
-        } catch { }
+        } catch (e) { logger.warn("Restoring Nitro theme failed", e); }
     }, 400);
 }
 const THEME_SYNC_EVENTS = ["USER_SETTINGS_PROTO_UPDATE", "CONNECTION_OPEN", "OVERLAY_INITIALIZE", "CURRENT_USER_UPDATE"];

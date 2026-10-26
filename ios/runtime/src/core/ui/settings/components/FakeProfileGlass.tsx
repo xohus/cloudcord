@@ -65,7 +65,7 @@ const ICONS: Record<ProfileTab, string[]> = {
     social: ["LinkIcon", "PeopleIcon"], dates: ["CalendarIcon", "ClockIcon"], custom: ["ImageIcon", "StarIcon"], others: ["PeopleIcon", "UserIcon"]
 };
 function iconSource(tab: ProfileTab) {
-    for (const name of [...ICONS[tab], "SettingsIcon"]) { try { const id = findAssetId(name); if (id) return id; } catch {} }
+    for (const name of [...ICONS[tab], "SettingsIcon"]) { try { const id = findAssetId(name); if (id) return id; } catch { /* silent: render path; tries the next icon name */ } }
     return undefined;
 }
 /** A square icon tile, tinted like a dashboard nav icon. */

@@ -520,7 +520,7 @@ export function connectionDomain(entry: Pick<CustomConnectionPreview, "url" | "a
         try {
             const host = new URL(/^https?:\/\//.test(text) ? text : `https://${text}`).hostname.replace(/^www\./, "");
             if (/^(?=.{1,253}$)([a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(host)) return host;
-        } catch { }
+        } catch { /* silent: not a URL; falls through to the next check */ }
     }
     return "";
 }

@@ -16,7 +16,7 @@ function avatarOf(id: string, data?: LocalProfile) {
 }
 function labelOf(id: string, data?: LocalProfile) {
     let user: any = null;
-    try { user = userStore()?.getUser?.(id); } catch {}
+    try { user = userStore()?.getUser?.(id); } catch { /* silent: render path; falls back to the raw id */ }
     return { name: data?.displayName || user?.globalName || user?.username || "Unknown user", username: data?.username || user?.username || id };
 }
 const hexToNumber = (text: string) => { const clean = text.trim().replace(/^#/, ""); return /^[0-9a-f]{6}$/i.test(clean) ? parseInt(clean, 16) : undefined; };
