@@ -45,10 +45,10 @@ function check(surface, stored, expected, foreground = '', edited = null, active
     if (!edited || !active) {
         image.parentElement.style.backgroundImage = 'none';
         image.parentElement.style.backgroundColor = 'rgb(255,255,255)';
-        observerCallback();
+        observerCallback(); while (frames.length) frames.shift()();
         assert.equal(image.style.filter, 'brightness(0)', 'late light theme must turn badge black');
         image.parentElement.style.backgroundColor = 'rgb(0,0,0)';
-        observerCallback();
+        observerCallback(); while (frames.length) frames.shift()();
         assert.equal(image.style.filter, 'brightness(0) invert(1)', 'late dark theme must turn badge white');
     }
     result.props.children.props.ref(null);

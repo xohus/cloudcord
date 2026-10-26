@@ -1230,12 +1230,18 @@ function getRealDateVariants(): string[] {
         for (const loc of ["en-US", "en-GB", "fr-FR", navigator.language]) {
             for (const fmt of fmtSpecs) { try { const s = new Intl.DateTimeFormat(loc, fmt).format(d); variants.add(s); variants.add(s.replace(/\s/g, " ")); } catch { /* silent: some locales reject some formats; that variant is just skipped */ } }
         }
-        variants.add(d.getFullYear().toString());
         _cachedRealDateVariants = [...variants].filter(v => v.length >= 4);
         return _cachedRealDateVariants;
     } catch { return []; }
 }
+// Formatting is slow and this runs for every text node on screen, so cache by date.
+let _cachedFakeDateVariants: { isoDate: string; variants: string[]; } | null = null;
 function getFakeDateVariants(isoDate: string): string[] {
+    if (_cachedFakeDateVariants?.isoDate === isoDate) return _cachedFakeDateVariants.variants;
+    _cachedFakeDateVariants = { isoDate, variants: buildFakeDateVariants(isoDate) };
+    return _cachedFakeDateVariants.variants;
+}
+function buildFakeDateVariants(isoDate: string): string[] {
     try {
         const d = new Date(isoDate + "T12:00:00Z"); const variants = new Set<string>();
         for (const fmt of [{ day: "numeric", month: "short", year: "numeric" } as Intl.DateTimeFormatOptions, { day: "numeric", month: "long", year: "numeric" } as Intl.DateTimeFormatOptions]) {
@@ -1244,9 +1250,11 @@ function getFakeDateVariants(isoDate: string): string[] {
         return [...variants];
     } catch { return []; }
 }
+// Real text of nodes the rewriter changed, so stopping can put it back.
+const originalText = new WeakMap<Node, string>();
 function scanTextNode(node: Text) {
     if (!isEnabled || !node.nodeValue) return;
-    const val = (node as any).__cp_orig || node.nodeValue;
+    const val = originalText.get(node) ?? node.nodeValue;
     let result = val; let replaced = false;
     if (storedData.createdAt) {
         const realDates = getRealDateVariants(); const fakeDates = getFakeDateVariants(storedData.createdAt);
@@ -1259,7 +1267,7 @@ function scanTextNode(node: Text) {
     // Nitro overlays are resolved per profile by userProfileBadges. Never
     // rewrite milestone text from the global DOM observer: storedData belongs
     // to the signed-in user and would replace another user's overlay with ours.
-    if (replaced && result !== node.nodeValue) { if ((node as any).__cp_orig === undefined) (node as any).__cp_orig = val; node.nodeValue = result; }
+    if (replaced && result !== node.nodeValue) { if (!originalText.has(node)) originalText.set(node, val); node.nodeValue = result; }
 }
 function scanNode(node: Node) {
     if (node.nodeType === Node.TEXT_NODE) { scanTextNode(node as Text); return; }
@@ -1291,7 +1299,7 @@ function stopDomObserver() {
     domObserver?.disconnect(); domObserver = null;
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     let n: Node | null;
-    while ((n = walker.nextNode())) { if ((n as any).__cp_orig !== undefined) { n.nodeValue = (n as any).__cp_orig; delete (n as any).__cp_orig; } }
+    while ((n = walker.nextNode())) { const original = originalText.get(n); if (original !== undefined) { n.nodeValue = original; originalText.delete(n); } }
 }
 // Vencord.Webpack exposes findByStoreName at runtime but not in its types.
 type NamedStore = { emitChange?(): void; getCurrentUser?(): any; getUser?(id: string): any; };
