@@ -167,10 +167,11 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
 
         insertNativeRows(sections);
 
-        // Never insert CloudCord into the middle of Discord's native settings list.
-        // SettingHookHarness can retain hook state by position; shifting native rows can
-        // make an existing harness run a different usePredicate/useConfig hook chain.
-        // Appending keeps every existing Discord setting at its current position.
+        // CloudCord goes right after Discord's first group (Account Settings) so it's easy
+        // to find. SettingHookHarness keeps hook state by position, so the insert must be
+        // identical every time: it always happens before Discord copies the list (see the
+        // before-hooks below) and never moves once present, keeping positions stable.
+        let insertAt = Math.min(1, sections.length);
         Object.keys(registeredSections).forEach(sectionName => {
             if (sectionName === "CloudCord" && settings.cloudcordSectionHidden) return;
             const rows = registeredSections[sectionName].filter(row => !row.nativeSection);
@@ -181,7 +182,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
                 section?.settings?.some?.((key: string) => rowKeys.has(key))
             );
             if (!alreadyExists) {
-                sections.push({
+                sections.splice(insertAt++, 0, {
                     label: sectionName,
                     title: sectionName,
                     settings: rows.map(row => row.key)

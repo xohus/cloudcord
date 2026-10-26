@@ -699,6 +699,8 @@ let lastRemoteProfile: Record<string, any> | null = null;
 let profileRuntimeActive = false;
 let profileRuntimeGeneration = 0;
 // Device-only settings that never belong in the shared profile.
+// Set while a template is previewed on your profile.
+let templatePreview: { data: CustomProfileData; enabled: boolean; pullUntil: number; name: string; } | null = null;
 const LOCAL_ONLY_FIELDS = ["localOnly", "hideOtherProfiles", "nativeEditorImages", "hideBadgesWhenSyncOff", "copiedUserId"];
 function remoteOnlyFields() {
     if (!lastRemoteProfile || typeof lastRemoteProfile !== "object") return {};
@@ -2197,6 +2199,7 @@ fakeObfuscatedEmail(real: string | null) {
         this._nativeSocial?.stop(); this._nativeSocial = null;
         window.removeEventListener("focus", refreshBadgesOnFocus);
         removeHeaderBarButton("profile-spoofer-btn"); removeContextMenuPatch("user-context", userContextMenuPatch); removeContextMenuPatch(["user-profile-actions", "user-profile-overflow-menu"], profileOverflowPatch);
+        stopTemplatePreview();
         stopExtras();
         FluxDispatcher.unsubscribe("CONNECTION_OPEN", onAccountSwitch); FluxDispatcher.unsubscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange); stopDomObserver();
         if (sharedSyncTimer) { clearInterval(sharedSyncTimer); sharedSyncTimer = null; }
@@ -2949,11 +2952,39 @@ const countTemplateUse = (id: string) => { void fetch(`${SHARED_PROFILE_API}/v1/
 async function fetchTemplate(id: string) {
     const own = readSavedProfiles().find(item => item.share?.id === id);
     const share = await shareRequest(`/${id}`, { method: "GET", token: own?.share?.token });
-    return { name: String(share.name || "Template"), data: fromSharedProfile(share.profile) };
+    // Blank fields in a template (name, bio, picture) keep your own instead of clearing them.
+    const data = Object.fromEntries(Object.entries(fromSharedProfile(share.profile)).filter(([, value]) => value !== "" && value !== undefined)) as CustomProfileData;
+    return { name: String(share.name || "Template"), data };
 }
 const newSavedId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
-function TemplateCard({ template, busy, onUse, onSave }: { template: TemplateSummary; busy: boolean; onUse: () => void; onSave: () => void; }) {
+// Template preview: shows a template on your own Discord profile without saving or
+// syncing anything. Stopping (or closing the editor) puts your real profile back.
+function refreshOwnProfile() {
+    cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+    forceAccountPanelRerender();
+    reloadDiscordProfile(activeUserId());
+}
+function startTemplatePreview(name: string, data: CustomProfileData) {
+    if (!templatePreview) templatePreview = { data: storedData, enabled: isEnabled, pullUntil: suppressOwnPullUntil, name };
+    templatePreview.name = name;
+    // Keep your own settings; take the template's whole look (colors, banner and cosmetics).
+    // Cosmetics the template doesn't have are cleared so the preview matches it exactly.
+    const look: CustomProfileData = { nameplate: null, profileEffect: null, profileFrame: null, decorationAsset: undefined, decorationSkuId: undefined, banner: "", accentColor: undefined, accentColor2: undefined, ...data };
+    // Device-only, so a preview is never published to other people.
+    storedData = { ...templatePreview.data, ...look, localOnly: true };
+    isEnabled = true;
+    suppressOwnPullUntil = Number.MAX_SAFE_INTEGER;
+    refreshOwnProfile();
+}
+function stopTemplatePreview() {
+    if (!templatePreview) return;
+    storedData = templatePreview.data; isEnabled = templatePreview.enabled; suppressOwnPullUntil = templatePreview.pullUntil;
+    templatePreview = null;
+    refreshOwnProfile();
+}
+
+function TemplateCard({ template, busy, previewing, onPreview, onUse, onSave }: { template: TemplateSummary; busy: boolean; previewing: boolean; onPreview: () => void; onUse: () => void; onSave: () => void; }) {
     const p = template.preview || {};
     return <div className="cpx-tpl-card" style={{ ["--cpx-tpl-accent" as any]: p.accent || "#5865f2" }}>
         <div className="cpx-tpl-banner" style={p.banner ? { backgroundImage: `url("${encodeURI(p.banner)}")` } : undefined} />
@@ -2963,6 +2994,7 @@ function TemplateCard({ template, busy, onUse, onSave }: { template: TemplateSum
             <span className="cpx-hint">{template.category || "Other"} · {(template.uses ?? 0).toLocaleString()} {template.uses === 1 ? "use" : "uses"}</span>
             {(template.description || p.bio) && <span className="cpx-tpl-desc">{template.description || p.bio}</span>}
             <div className="cpx-tpl-actions">
+                <button type="button" className={`cpx-btn ${previewing ? "cpx-btn-primary" : ""}`} disabled={busy} onClick={onPreview}>{previewing ? "Stop" : "Preview"}</button>
                 <button type="button" className="cpx-btn cpx-btn-primary" disabled={busy} onClick={onUse}>Use</button>
                 <button type="button" className="cpx-btn" disabled={busy} onClick={onSave}>Save</button>
             </div>
@@ -2983,6 +3015,9 @@ function TemplatesPanel({ current, onApply }: { current: CustomProfileData; onAp
     const [pubDescription, setPubDescription] = React.useState("");
     const [pubVisibility, setPubVisibility] = React.useState<ShareVisibility>("public");
     const [published, setPublished] = React.useState<ProfileShare | null>(null);
+    const [previewing, setPreviewing] = React.useState<{ id: string; name: string; data: CustomProfileData; } | null>(null);
+    // Leaving the Templates tab or closing the editor always ends a preview.
+    React.useEffect(() => () => stopTemplatePreview(), []);
 
     React.useEffect(() => {
         let cancelled = false;
@@ -2998,8 +3033,17 @@ function TemplatesPanel({ current, onApply }: { current: CustomProfileData; onAp
     }, [query, category, sort]);
 
     const run = async (task: () => Promise<void>) => { setBusy(true); setError(""); try { await task(); } catch (problem: any) { setError(/not found/i.test(String(problem?.message)) ? "That template doesn't exist or is private." : problem?.message || "Something went wrong."); } finally { setBusy(false); } };
-    const use = (id: string) => run(async () => {
+    const preview = (id: string) => run(async () => {
+        if (previewing?.id === id) { stopTemplatePreview(); setPreviewing(null); return; }
         const template = await fetchTemplate(id);
+        startTemplatePreview(template.name, template.data);
+        setPreviewing({ id, ...template });
+        showToast(`Previewing "${template.name}" on your profile. Open your profile to see it.`, Toasts.Type.SUCCESS);
+    });
+    const stopPreview = () => { stopTemplatePreview(); setPreviewing(null); showToast("Preview stopped. Your profile is back.", Toasts.Type.SUCCESS); };
+    const use = (id: string) => run(async () => {
+        const template = previewing?.id === id ? previewing : await fetchTemplate(id);
+        stopTemplatePreview(); setPreviewing(null);
         onApply(template.data);
         countTemplateUse(id);
         showToast(`Applied "${template.name}". Press Save to keep it.`, Toasts.Type.SUCCESS);
@@ -3024,7 +3068,13 @@ function TemplatesPanel({ current, onApply }: { current: CustomProfileData; onAp
     const codeId = shareCodeFrom(code);
 
     return <>
-        <Section title="Profile templates" description="Looks made by the CloudCord community. Use one to load it into the editor, or save it for later. Also at getcloudcord.com/templates.">
+        {previewing && <Section title={`Previewing "${previewing.name}"`} description="Your Discord profile shows this template right now, only for you. Nothing is saved or synced until you choose Use and press Save.">
+            <div className="cpx-inline">
+                <button type="button" className="cpx-btn cpx-btn-primary" onClick={() => void use(previewing.id)}>Use this template</button>
+                <button type="button" className="cpx-btn" onClick={stopPreview}>Stop preview</button>
+            </div>
+        </Section>}
+        <Section title="Profile templates" description="Looks made by the CloudCord community. Preview one on your profile, use it, or save it for later. Also at getcloudcord.com/templates.">
             <div className="cpx-inline">
                 <input className="cpx-input" value={query} maxLength={60} placeholder="Search templates" onChange={event => setQuery(event.currentTarget.value)} />
                 <button type="button" className={`cpx-btn ${sort === "popular" ? "cpx-btn-primary" : "cpx-btn-ghost"}`} onClick={() => setSort("popular")}>Popular</button>
@@ -3035,7 +3085,7 @@ function TemplatesPanel({ current, onApply }: { current: CustomProfileData; onAp
             </div>
             {error && <span className="cpx-hint cpx-error" role="alert">{error}</span>}
             {items === null ? <span className="cpx-hint">Loading templates…</span>
-                : items.length ? <div className="cpx-tpl-grid">{items.map(template => <TemplateCard key={template.id} template={template} busy={busy} onUse={() => void use(template.id)} onSave={() => void save(template.id)} />)}</div>
+                : items.length ? <div className="cpx-tpl-grid">{items.map(template => <TemplateCard key={template.id} template={template} busy={busy} previewing={previewing?.id === template.id} onPreview={() => void preview(template.id)} onUse={() => void use(template.id)} onSave={() => void save(template.id)} />)}</div>
                     : <span className="cpx-hint">No templates found. Be the first: publish yours below.</span>}
         </Section>
         <Section title="Use a code" description="Paste a template link or code someone gave you.">
