@@ -14196,7 +14196,7 @@
   }
   function publishSharedProfile() {
     return _async_to_generator(function* () {
-      if (rootSettings.fakeProfileLocalOnly || !preview.enabled || !currentUserId)
+      if (rootSettings.fakeProfileLocalOnly || !preview.enabled || !currentUserId || Reflect.get(rootSettings, "fakeProfilePreviewBackup"))
         return;
       var queue = publishSharedProfile;
       if (queue.pending) {
@@ -14370,7 +14370,7 @@
     })();
   }
   function queueSharedPublish() {
-    if (rootSettings.fakeProfileLocalOnly) {
+    if (rootSettings.fakeProfileLocalOnly || Reflect.get(rootSettings, "fakeProfilePreviewBackup")) {
       if (publishTimer)
         clearTimeout(publishTimer);
       return;
@@ -18576,6 +18576,14 @@
     });
   }
   function initializeFakeProfile() {
+    try {
+      var backup = rootSettings.fakeProfilePreviewBackup;
+      if (backup) {
+        rootSettings.fakeProfile = backup;
+        delete rootSettings.fakeProfilePreviewBackup;
+      }
+    } catch (e) {
+    }
     if (initPromise)
       return initPromise;
     initPromise = (() => _async_to_generator(function* () {
@@ -19157,7 +19165,9 @@
     var { syncRevision: _revision, enabled: _enabled, ...rest } = data || {};
     return JSON.parse(JSON.stringify(rest));
   }
-  function ProfileTemplates({ current, onUse }) {
+  function ProfileTemplates({ current, onUse, onPreview }) {
+    var [previewing, setPreviewing] = (0, import_react6.useState)(null);
+    (0, import_react6.useEffect)(() => () => onPreview(null), []);
     var S2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
     var [query, setQuery] = (0, import_react6.useState)("");
     var [category, setCategory] = (0, import_react6.useState)("");
@@ -19210,12 +19220,29 @@
         name: String(share.name || "Template").slice(0, 40),
         data: savedSnapshot({
           ...current,
-          ...previewFromShared(share.profile || {})
+          ...Object.fromEntries(Object.entries(previewFromShared(share.profile || {})).filter(([, value]) => value !== "" && value !== void 0))
         })
       };
     })();
-    var use = (id) => run(() => _async_to_generator(function* () {
+    var preview2 = (id) => run(() => _async_to_generator(function* () {
+      if (previewing?.id === id) {
+        onPreview(null);
+        setPreviewing(null);
+        showToast("Preview stopped");
+        return;
+      }
       var template = yield fetchTemplate(id);
+      onPreview(template.data);
+      setPreviewing({
+        id,
+        ...template
+      });
+      showToast("Previewing \u201C" + template.name + "\u201D on your profile");
+    })());
+    var use = (id) => run(() => _async_to_generator(function* () {
+      var template = previewing?.id === id ? previewing : yield fetchTemplate(id);
+      onPreview(null);
+      setPreviewing(null);
       onUse(template.data);
       countTemplateUse(id);
       showToast("Applied \u201C" + template.name + "\u201D");
@@ -19281,6 +19308,35 @@
         gap: 20
       },
       children: [
+        previewing ? /* @__PURE__ */ jsx(S2.Panel, {
+          children: /* @__PURE__ */ jsx(S2.Section, {
+            title: "Previewing \u201C" + previewing.name + "\u201D",
+            description: "Your profile shows this template right now, only for you. Nothing is saved or synced until you choose Use.",
+            children: /* @__PURE__ */ jsxs(import_react_native20.View, {
+              style: {
+                flexDirection: "row",
+                gap: 8
+              },
+              children: [
+                /* @__PURE__ */ jsx(S2.Button, {
+                  label: "Use this template",
+                  primary: true,
+                  grow: true,
+                  onPress: () => use(previewing.id)
+                }),
+                /* @__PURE__ */ jsx(S2.Button, {
+                  label: "Stop preview",
+                  grow: true,
+                  onPress: () => {
+                    onPreview(null);
+                    setPreviewing(null);
+                    showToast("Preview stopped");
+                  }
+                })
+              ]
+            })
+          })
+        }) : null,
         /* @__PURE__ */ jsx(S2.Panel, {
           children: /* @__PURE__ */ jsxs(S2.Section, {
             title: "Profile templates",
@@ -19370,6 +19426,11 @@
                         children: (template.category || "Other") + " \xB7 " + (template.uses || 0) + (template.uses === 1 ? " use" : " uses")
                       })
                     ]
+                  }),
+                  /* @__PURE__ */ jsx(S2.Button, {
+                    label: previewing?.id === template.id ? "Stop" : "Preview",
+                    disabled: busy,
+                    onPress: () => preview2(template.id)
                   }),
                   /* @__PURE__ */ jsx(S2.Button, {
                     label: "Use",
@@ -20685,6 +20746,35 @@
           }) : null,
           activeTab === "templates" ? /* @__PURE__ */ jsx(ProfileTemplates, {
             current: preview,
+            onPreview: (data) => {
+              var backup = rootSettings.fakeProfilePreviewBackup;
+              if (data) {
+                var original = backup || preview;
+                if (!backup)
+                  rootSettings.fakeProfilePreviewBackup = JSON.parse(JSON.stringify(original));
+                rootSettings.fakeProfile = {
+                  ...original,
+                  avatarDecoration: null,
+                  avatarDecorationSku: null,
+                  profileEffect: null,
+                  profileFrame: null,
+                  nameplate: null,
+                  bannerMedia: null,
+                  profileColorsEnabled: false,
+                  ...data,
+                  enabled: true
+                };
+              } else if (backup) {
+                rootSettings.fakeProfile = backup;
+                delete rootSettings.fakeProfilePreviewBackup;
+              } else
+                return;
+              preview = rootSettings.fakeProfile;
+              clearCache();
+              suppressOwnPullUntil = data ? Date.now() + 24 * 36e5 : Date.now() + 15e3;
+              refreshPreview();
+              redraw();
+            },
             onUse: (data) => {
               rootSettings.fakeProfile = {
                 ...preview,
@@ -23741,6 +23831,7 @@
       if (!Array.isArray(sections))
         return;
       insertNativeRows(sections);
+      var insertAt = Math.min(1, sections.length);
       Object.keys(registeredSections).forEach((sectionName) => {
         if (sectionName === "CloudCord" && settings.cloudcordSectionHidden)
           return;
@@ -23750,7 +23841,7 @@
         var rowKeys = new Set(rows.map((row) => row.key));
         var alreadyExists = sections.some((section) => section?.label === sectionName || section?.title === sectionName || section?.settings?.some?.((key) => rowKeys.has(key)));
         if (!alreadyExists) {
-          sections.push({
+          sections.splice(insertAt++, 0, {
             label: sectionName,
             title: sectionName,
             settings: rows.map((row) => row.key)
