@@ -137,7 +137,7 @@ export function Grid2({ children }: { children: React.ReactNode; }) {
     return <div className="cpx-grid2">{children}</div>;
 }
 
-export type TabId = "profile" | "name" | "cosmetics" | "status" | "badges" | "connections" | "saved" | "others";
+export type TabId = "profile" | "name" | "cosmetics" | "status" | "badges" | "connections" | "templates" | "saved" | "others";
 export const TABS: { id: TabId; label: string; }[] = [
     { id: "profile", label: "Profile" },
     { id: "name", label: "Name & tag" },
@@ -145,11 +145,12 @@ export const TABS: { id: TabId; label: string; }[] = [
     { id: "status", label: "Status" },
     { id: "badges", label: "Badges" },
     { id: "connections", label: "Connections" },
+    { id: "templates", label: "Templates" },
     { id: "saved", label: "Saved profiles" },
     { id: "others", label: "Other profiles" }
 ];
 
-const TAB_ICONS: Record<TabId, string> = { "profile":"<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21c0-4 4-6 8-6s8 2 8 6\"/>","name":"<path d=\"M3 12V4h8l10 10-8 8L3 12z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>","cosmetics":"<path d=\"M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z\"/>","status":"<circle cx=\"12\" cy=\"12\" r=\"8\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>","badges":"<circle cx=\"12\" cy=\"9\" r=\"6\"/><path d=\"M8.5 14 7 22l5-3 5 3-1.5-8\"/>","connections":"<path d=\"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1\"/><path d=\"M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1\"/>","saved":"<rect x=\"4\" y=\"3\" width=\"13\" height=\"17\" rx=\"2\"/><path d=\"M8 3v6l2.5-1.5L13 9V3\"/><path d=\"M20 7v12a2 2 0 0 1-2 2H8\"/>","others":"<circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5\"/><circle cx=\"17\" cy=\"9\" r=\"2.5\"/><path d=\"M17 14.5c2.5 0 4.5 1.5 4.5 4\"/>" };
+const TAB_ICONS: Record<TabId, string> = { "profile":"<circle cx=\"12\" cy=\"8\" r=\"4\"/><path d=\"M4 21c0-4 4-6 8-6s8 2 8 6\"/>","name":"<path d=\"M3 12V4h8l10 10-8 8L3 12z\"/><circle cx=\"7.5\" cy=\"7.5\" r=\"1.5\"/>","cosmetics":"<path d=\"M12 3l2.5 5.5L20 11l-5.5 2.5L12 19l-2.5-5.5L4 11l5.5-2.5z\"/>","status":"<circle cx=\"12\" cy=\"12\" r=\"8\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>","badges":"<circle cx=\"12\" cy=\"9\" r=\"6\"/><path d=\"M8.5 14 7 22l5-3 5 3-1.5-8\"/>","connections":"<path d=\"M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1\"/><path d=\"M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1\"/>","templates":"<rect x=\"3\" y=\"3\" width=\"7\" height=\"7\" rx=\"1.5\"/><rect x=\"14\" y=\"3\" width=\"7\" height=\"7\" rx=\"1.5\"/><rect x=\"3\" y=\"14\" width=\"7\" height=\"7\" rx=\"1.5\"/><path d=\"M17.5 14v7M14 17.5h7\"/>","saved":"<rect x=\"4\" y=\"3\" width=\"13\" height=\"17\" rx=\"2\"/><path d=\"M8 3v6l2.5-1.5L13 9V3\"/><path d=\"M20 7v12a2 2 0 0 1-2 2H8\"/>","others":"<circle cx=\"9\" cy=\"8\" r=\"3.5\"/><path d=\"M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5\"/><circle cx=\"17\" cy=\"9\" r=\"2.5\"/><path d=\"M17 14.5c2.5 0 4.5 1.5 4.5 4\"/>" };
 
 function TabIcon({ id }: { id: TabId; }) {
     return <svg className="cpx-tab-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" dangerouslySetInnerHTML={{ __html: TAB_ICONS[id] }} />;

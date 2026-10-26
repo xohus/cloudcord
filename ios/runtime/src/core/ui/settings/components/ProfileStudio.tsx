@@ -42,7 +42,7 @@ function icon(names: string[]) {
 }
 
 // ---- Sections ----
-export type StudioTab = "overview" | "profile" | "name" | "cosmetics" | "status" | "badges" | "social" | "dates" | "custom" | "saved" | "others";
+export type StudioTab = "overview" | "profile" | "name" | "cosmetics" | "status" | "badges" | "social" | "dates" | "custom" | "templates" | "saved" | "others";
 export const STUDIO_TABS: { id: StudioTab; label: string; blurb: string; icons: string[] }[] = [
     { id: "overview", label: "Home", blurb: "Your profile at a glance", icons: ["HomeIcon", "GridSquareIcon"] },
     { id: "profile", label: "Profile", blurb: "Names, pictures, banner, bio and colours", icons: ["UserIcon"] },
@@ -53,6 +53,7 @@ export const STUDIO_TABS: { id: StudioTab; label: string; blurb: string; icons: 
     { id: "social", label: "Connections", blurb: "Accounts and domains on your profile", icons: ["LinkIcon"] },
     { id: "dates", label: "Dates", blurb: "Account created and member since", icons: ["CalendarIcon", "ClockIcon"] },
     { id: "custom", label: "Custom badges", blurb: "Upload your own badge (beta)", icons: ["ImageIcon", "StarIcon"] },
+    { id: "templates", label: "Templates", blurb: "Browse and publish community profile looks", icons: ["GridSquareIcon", "SparklesIcon"] },
     { id: "saved", label: "Saved", blurb: "Switch between saved copies of your profile", icons: ["BookmarkIcon", "FolderIcon", "StarIcon"] },
     { id: "others", label: "Others", blurb: "Other profiles, fake server and extras", icons: ["PeopleIcon", "UserIcon"] }
 ];
