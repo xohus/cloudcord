@@ -21,7 +21,7 @@ ifeq ($(CLOUDCORD_SAFE_UI),1)
 CloudCordTweak_CFLAGS += -DCLOUDCORD_SAFE_UI=1
 CloudCordTweak_FILES := $(filter-out Sources/Fonts.x Sources/Themes.x,$(CloudCordTweak_FILES))
 endif
-CloudCordTweak_FRAMEWORKS = Foundation UIKit CoreGraphics CoreText CoreFoundation UniformTypeIdentifiers
+CloudCordTweak_FRAMEWORKS = Foundation Security UIKit CoreGraphics CoreText CoreFoundation UniformTypeIdentifiers
 
 BunnyResources_INSTALL_PATH = "/Library/Application\ Support/"
 BunnyResources_RESOURCE_DIRS = Resources

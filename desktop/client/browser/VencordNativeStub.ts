@@ -39,6 +39,31 @@ const setCssDebounced = debounce((css: string) => VencordNative.quickCss.set(css
 
 const themeStore = DataStore.createStore("VencordThemes", "VencordThemeData");
 
+// BotCord on the web: tokens are sealed with AES-GCM under a non-extractable key kept in
+// IndexedDB, so they're never stored in plain text and the key itself can't be exported.
+const WEB_BOTS_KEY = "CloudCord_BotVault";
+const WEB_BOTS_CRYPTO_KEY = "CloudCord_BotVaultKey";
+interface SealedBot { id: string; name: string; iv: string; data: string; }
+const toBase64 = (bytes: ArrayBuffer | Uint8Array) => btoa(String.fromCharCode(...new Uint8Array(bytes)));
+const fromBase64 = (text: string) => Uint8Array.from(atob(text), char => char.charCodeAt(0));
+async function vaultKey() {
+    const stored = await DataStore.get<CryptoKey>(WEB_BOTS_CRYPTO_KEY);
+    if (stored) return stored;
+    const key = await crypto.subtle.generateKey({ name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    await DataStore.set(WEB_BOTS_CRYPTO_KEY, key);
+    return key;
+}
+async function encryptToken(token: string) {
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const data = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, await vaultKey(), new TextEncoder().encode(token));
+    return { iv: toBase64(iv), data: toBase64(data) };
+}
+async function decryptToken(bot: SealedBot) {
+    try { return new TextDecoder().decode(await crypto.subtle.decrypt({ name: "AES-GCM", iv: fromBase64(bot.iv) }, await vaultKey(), fromBase64(bot.data))); }
+    catch { return null; }
+}
+const webBots = async () => { const bots = await DataStore.get<SealedBot[]>(WEB_BOTS_KEY); return Array.isArray(bots) ? bots : []; };
+
 // probably should make this less cursed at some point
 window.VencordNative = {
     themes: {
@@ -78,12 +103,29 @@ window.VencordNative = {
     },
 
     botCord: {
-        async request(token: string, path: string, options?: {
+        listBots: async () => (await webBots()).map(({ id, name }) => ({ id, name })),
+        async saveBot(name: string, rawToken: string) {
+            const token = String(rawToken || "").replace(/^Bot\s+/i, "").trim();
+            if (token.length < 20 || /\s/.test(token)) throw new Error("Invalid bot token");
+            const bots = await webBots();
+            const existing = await Promise.all(bots.map(async bot => (await decryptToken(bot)) === token ? bot.id : null));
+            const id = existing.find(Boolean) ?? crypto.randomUUID();
+            const sealed = await encryptToken(token);
+            await DataStore.set(WEB_BOTS_KEY, [...bots.filter(bot => bot.id !== id), { id, name: String(name || "Bot").slice(0, 64), ...sealed }]);
+            return id;
+        },
+        async removeBot(id: string) {
+            await DataStore.set(WEB_BOTS_KEY, (await webBots()).filter(bot => bot.id !== id));
+        },
+        async request(botId: string, path: string, options?: {
             method?: "GET" | "POST";
             body?: Record<string, unknown>;
             files?: Array<{ name: string; type: string; data: string; }>;
         }) {
             try {
+                const bot = (await webBots()).find(item => item.id === botId);
+                const token = bot ? await decryptToken(bot) : null;
+                if (!token) return { ok: false, status: 0, error: "That bot isn't saved on this device" };
                 const headers: Record<string, string> = { Authorization: `Bot ${token}` };
                 let body: BodyInit | undefined;
                 if (options?.files?.length) {

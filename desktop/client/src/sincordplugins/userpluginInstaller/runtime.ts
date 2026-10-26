@@ -8,18 +8,32 @@ import * as Common from "@webpack/common";
 
 import Plugins, { PluginMeta } from "~plugins";
 
+// Security model: runtime user plugins run in the main renderer with the same access as
+// CloudCord itself (a real sandbox isn't possible: plugins need Discord's webpack modules).
+// What protects users instead:
+//  - installs need an explicit confirmation that names the exact source and hash;
+//  - the download must match the SHA-256 in the plugin's manifest;
+//  - the stored code is re-checked against that hash on every load, so code that was
+//    changed after install never runs;
+//  - secrets such as BotCord tokens are kept out of the renderer (see main/botTokens.ts).
 const storageKey = "cloudcord-runtime-userplugins-v1";
-interface StoredPlugin { name: string; source: string; url: string; }
+interface StoredPlugin { name: string; source: string; url: string; sha256?: string; }
+
+async function sha256Hex(bytes: BufferSource) {
+    return [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(b => b.toString(16).padStart(2, "0")).join("");
+}
 
 async function registerPlugin(entry: StoredPlugin, enable = false) {
     if (Plugins[entry.name]) throw new Error("A plugin with that name is already installed.");
+    if (!entry.sha256 || await sha256Hex(new TextEncoder().encode(entry.source)) !== entry.sha256)
+        throw new Error("This plugin's saved code doesn't match what you installed. Reinstall it from its link.");
     const modules: Record<string, unknown> = { "@api/Settings": SettingsApi, "@utils/types": { ...Types, __esModule: true }, "@utils/constants": Constants, "@webpack": Webpack, "@webpack/common": Common };
     const module = { exports: {} as any };
     const requireModule = (name: string) => {
         if (!(name in modules)) throw new Error(`Unsupported browser plugin import: ${name}`);
         return modules[name];
     };
-    // User explicitly confirms running third-party code before installation.
+    // Runs only code the user confirmed at install and that still matches its hash.
     new Function("module", "exports", "require", entry.source)(module, module.exports, requireModule);
     const plugin = module.exports.default ?? module.exports;
     if (plugin.name !== entry.name || typeof plugin.description !== "string" || !Array.isArray(plugin.authors) || plugin.patches?.length || plugin.native)
@@ -48,6 +62,10 @@ async function registerPlugin(entry: StoredPlugin, enable = false) {
 
 export async function loadRuntimePlugins() {
     const entries = await DataStore.get<StoredPlugin[]>(storageKey) ?? [];
+    if (entries.some(entry => !entry.sha256)) {
+        for (const entry of entries) entry.sha256 ??= await sha256Hex(new TextEncoder().encode(entry.source));
+        await DataStore.set(storageKey, entries);
+    }
     for (const entry of entries) {
         if (Plugins[entry.name]) continue;
         try { await registerPlugin(entry); }
@@ -69,15 +87,16 @@ export async function installRuntimePlugin(link: string): Promise<boolean> {
     if (typeof manifest.name !== "string" || typeof manifest.browser.entry !== "string" || !/^[A-Za-z][A-Za-z0-9_-]{0,79}$/.test(manifest.name) || !/^[a-f0-9]{64}$/.test(manifest.browser.sha256)) throw new Error("Invalid browser plugin manifest.");
     const url = new URL(manifest.browser.entry, base);
     if (url.origin !== base.origin || !url.pathname.startsWith(base.pathname) || url.search || url.hash) throw new Error("Invalid browser plugin entry.");
-    if (!confirm(`Install ${manifest.name} from ${base.host}?\nPlugins can access your Discord session. Only install code from developers you trust.`)) throw new Error("silentStop");
+    if (!confirm(`Install ${manifest.name}?\n\nSource: ${url.href}\nSHA-256: ${manifest.browser.sha256}\n\nThis plugin runs with full access to your Discord account and messages, the same as CloudCord itself. Only install code from developers you trust.`)) throw new Error("silentStop");
     const code = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10000) });
     if (!code.ok) throw new Error("Could not download the plugin.");
     const bytes = await code.arrayBuffer();
     if (bytes.byteLength > 256 * 1024) throw new Error("Plugin download is too large.");
-    const hash = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))].map(b => b.toString(16).padStart(2, "0")).join("");
-    if (hash !== manifest.browser.sha256) throw new Error("Plugin download did not match its manifest.");
+    if (await sha256Hex(bytes) !== manifest.browser.sha256) throw new Error("Plugin download did not match its manifest.");
     const entries = await DataStore.get<StoredPlugin[]>(storageKey) ?? [];
-    const entry = { name: manifest.name, source: new TextDecoder().decode(bytes), url: base.href };
+    const source = new TextDecoder().decode(bytes);
+    // Hash the decoded text so the load-time check compares like with like.
+    const entry = { name: manifest.name, source, url: base.href, sha256: await sha256Hex(new TextEncoder().encode(source)) };
     await registerPlugin(entry, true);
     try { await DataStore.set(storageKey, [...entries, entry]); }
     catch (error) { stopPlugin(Plugins[entry.name]); delete Plugins[entry.name]; delete PluginMeta[entry.name]; throw error; }

@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <CommonCrypto/CommonDigest.h>
+#import <Security/Security.h>
 
 #import "Fonts.h"
 #import "LoaderConfig.h"
@@ -300,9 +301,56 @@ static BOOL downloadBundle(BOOL isExplicit)
     return success;
 }
 
+// BotCord secrets (bot tokens) live in the iOS Keychain, never in the Documents folder.
+static NSString *const kBotCordKeychainService = @"com.cloudcord.botcord";
+
+static NSMutableDictionary *botCordSecretQuery(NSString *key)
+{
+    return [@{
+        (__bridge NSString *) kSecClass : (__bridge NSString *) kSecClassGenericPassword,
+        (__bridge NSString *) kSecAttrService : kBotCordKeychainService,
+        (__bridge NSString *) kSecAttrAccount : key
+    } mutableCopy];
+}
+
+static BOOL validSecretKey(id key)
+{
+    return [key isKindOfClass:[NSString class]] && [(NSString *) key length] > 0 && [(NSString *) key length] <= 128;
+}
+
 static void registerBridgeMethods(void)
 {
     BridgeRegistry *b = [BridgeRegistry shared];
+
+    [b registerMethod:@"botcord.secret.get"
+             callback:^id(NSArray *args) {
+                 if (args.count < 1 || !validSecretKey(args[0])) return nil;
+                 NSMutableDictionary *query = botCordSecretQuery(args[0]);
+                 query[(__bridge NSString *) kSecReturnData] = @YES;
+                 query[(__bridge NSString *) kSecMatchLimit] = (__bridge NSString *) kSecMatchLimitOne;
+                 CFTypeRef data = NULL;
+                 if (SecItemCopyMatching((__bridge CFDictionaryRef) query, &data) != errSecSuccess || !data) return nil;
+                 NSString *value = [[NSString alloc] initWithData:(__bridge_transfer NSData *) data encoding:NSUTF8StringEncoding];
+                 return value;
+             }];
+
+    [b registerMethod:@"botcord.secret.set"
+             callback:^id(NSArray *args) {
+                 if (args.count < 2 || !validSecretKey(args[0]) || ![args[1] isKindOfClass:[NSString class]]) return @NO;
+                 NSData *value = [(NSString *) args[1] dataUsingEncoding:NSUTF8StringEncoding];
+                 NSMutableDictionary *query = botCordSecretQuery(args[0]);
+                 SecItemDelete((__bridge CFDictionaryRef) query);
+                 query[(__bridge NSString *) kSecValueData] = value;
+                 query[(__bridge NSString *) kSecAttrAccessible] = (__bridge NSString *) kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly;
+                 return @(SecItemAdd((__bridge CFDictionaryRef) query, NULL) == errSecSuccess);
+             }];
+
+    [b registerMethod:@"botcord.secret.delete"
+             callback:^id(NSArray *args) {
+                 if (args.count < 1 || !validSecretKey(args[0])) return @NO;
+                 OSStatus status = SecItemDelete((__bridge CFDictionaryRef) botCordSecretQuery(args[0]));
+                 return @(status == errSecSuccess || status == errSecItemNotFound);
+             }];
 
     [b registerMethod:@"realcord.config"
              callback:^id(NSArray *args) {

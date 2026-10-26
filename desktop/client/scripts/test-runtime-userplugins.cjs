@@ -20,7 +20,7 @@ const modules = {
     '@utils/constants': {}, '@utils/types': {}, '@webpack': {}, '@webpack/common': {},
     '~plugins': { default: registry, PluginMeta: meta, __esModule: true }
 };
-const context = { module: { exports: {} }, exports: {}, IS_WEB: true, crypto: webcrypto, URL, AbortSignal, TextDecoder, confirm: () => true, console,
+const context = { module: { exports: {} }, exports: {}, IS_WEB: true, crypto: webcrypto, URL, AbortSignal, TextDecoder, TextEncoder, confirm: () => true, console,
     require: name => modules[name],
     fetch: async url => String(url).endsWith('manifest.json') ? { ok: true, json: async () => manifest } : { ok: true, arrayBuffer: async () => new TextEncoder().encode(code).buffer }
 };
@@ -36,6 +36,16 @@ vm.runInContext(esbuild.transformSync(source, { loader: 'ts', format: 'cjs' }).c
     delete registry.TestPlugin;
     await api.loadRuntimePlugins();
     assert.equal(starts, 2, 'reload restores enabled plugin');
+    // Code changed after install must not run.
+    delete registry.TestPlugin;
+    const original = saved[0].source;
+    saved[0].source = original + "\n// tampered";
+    await api.loadRuntimePlugins();
+    assert.equal(registry.TestPlugin, undefined, 'tampered plugin is refused');
+    assert.equal(starts, 2);
+    saved[0].source = original;
+    await api.loadRuntimePlugins();
+    assert.equal(starts, 3, 'untampered plugin loads again');
     await api.removeRuntimePlugin('TestPlugin');
     assert.equal(saved.length, 0);
     assert.equal(registry.TestPlugin, undefined);
