@@ -8,6 +8,7 @@
  */
 
 import { logger } from "./logger";
+import { migrateLegacyStorage, profileStorage } from "./storage";
 import "./style.css";
 import "./editor.css";
 import decorationCatalog from "./decorations.json";
@@ -53,10 +54,6 @@ const DS_KEY = "customProfile_data";
 const DS_ENABLED = "customProfile_enabled";
 const DS_ALL_DATA = "customProfile_allData";
 const DS_ALL_ENABLED = "customProfile_allEnabled";
-const LS_ALL_DATA = "SincordCP_allData";
-const LS_ALL_ENABLED = "SincordCP_allEnabled";
-const LS_KEY_DATA = "SincordCP_data";
-const LS_KEY_ENABLED = "SincordCP_enabled";
 const SHARED_PROFILE_API = "https://getcloudcord.com";
 const LS_SHARE = "CloudCord_fakeProfileShare";
 
@@ -1170,10 +1167,10 @@ function resolveProfileUserId(subject: any, profile: any): string {
 }
 
 function saveDataSync(data: CustomProfileData, enabled: boolean) {
-    try { localStorage.setItem(LS_KEY_DATA, JSON.stringify(data)); localStorage.setItem(LS_KEY_ENABLED, enabled ? "1" : "0"); } catch (e) { logger.warn("Saving profile to localStorage failed", e); }
+    try { profileStorage.set("profileData", JSON.stringify(data)); profileStorage.set("profileEnabled", enabled ? "1" : "0"); } catch (e) { logger.warn("Saving profile to localStorage failed", e); }
 }
 function saveAllDataSync() {
-    try { localStorage.setItem(LS_ALL_DATA, JSON.stringify(allAccountsData)); localStorage.setItem(LS_ALL_ENABLED, JSON.stringify(allAccountsEnabled)); } catch (e) { logger.warn("Saving all-account profiles to localStorage failed", e); }
+    try { profileStorage.set("allData", JSON.stringify(allAccountsData)); profileStorage.set("allEnabled", JSON.stringify(allAccountsEnabled)); } catch (e) { logger.warn("Saving all-account profiles to localStorage failed", e); }
 }
 function syncCurrentUserData() {
     const myId = activeUserId();
@@ -1181,15 +1178,15 @@ function syncCurrentUserData() {
 }
 function loadDataSync() {
     try {
-        const rawAll = localStorage.getItem(LS_ALL_DATA);
+        const rawAll = profileStorage.get("allData");
         if (rawAll) {
             try { allAccountsData = JSON.parse(rawAll); } catch { allAccountsData = {}; }
-            const rawEnabled = localStorage.getItem(LS_ALL_ENABLED);
+            const rawEnabled = profileStorage.get("allEnabled");
             try { allAccountsEnabled = rawEnabled ? JSON.parse(rawEnabled) : {}; } catch { allAccountsEnabled = {}; }
             syncCurrentUserData(); return;
         }
-        const raw = localStorage.getItem(LS_KEY_DATA);
-        const en = localStorage.getItem(LS_KEY_ENABLED);
+        const raw = profileStorage.get("profileData");
+        const en = profileStorage.get("profileEnabled");
         if (raw) { try { storedData = JSON.parse(raw); } catch { storedData = {}; } } else storedData = {};
         isEnabled = en === "1";
     } catch { storedData = {}; isEnabled = false; }
@@ -2067,6 +2064,7 @@ fakeObfuscatedEmail(real: string | null) {
     } as ProfileBadge] as ProfileBadge[],
 
     async start() {
+        migrateLegacyStorage();
         profileRuntimeActive = true;
         const generation = ++profileRuntimeGeneration;
         installPresenceHooks(userId => isMe(userId) ? (isEnabled ? storedData : undefined) : isRealProfileView(userId) ? undefined : viewedSharedProfile(userId));
@@ -2366,15 +2364,14 @@ function tieredEntry(entry: any, tierIndex: number, since: Date, monthsPerTier: 
 // The line under a badge's title ("A Nitro original") is only sent to owners. Known
 // ones are listed here; others are learned from any real owner's badges we see.
 const KNOWN_BADGE_INFO: Record<number, string> = { 5: "First in, no hesitation", 6: "Patience meets discipline", 7: "Calm in the chaos", 11: "A Nitro original", 14: "1 Quest completed", 16: "This is just the beginning..." };
-const LS_BADGE_INFO = "cloudcord_badge_info";
-let learnedBadgeInfo: Record<number, string> = (() => { try { return JSON.parse(localStorage.getItem(LS_BADGE_INFO) || "{}") || {}; } catch { return {}; } })();
+let learnedBadgeInfo: Record<number, string> = (() => { try { return JSON.parse(profileStorage.get("badgeInfo") || "{}") || {}; } catch { return {}; } })();
 function learnBadgeInfo(entries: any[]) {
     let changed = false;
     for (const entry of entries) {
         if (!entry?.owned || !entry.info_label || entry.tiers?.length || DIRECTORY_ONLY_BADGES.has(entry.badge_id)) continue;
         if (learnedBadgeInfo[entry.badge_id] !== entry.info_label) { learnedBadgeInfo = { ...learnedBadgeInfo, [entry.badge_id]: entry.info_label }; changed = true; }
     }
-    if (changed) try { localStorage.setItem(LS_BADGE_INFO, JSON.stringify(learnedBadgeInfo)); } catch (e) { logger.warn("Saving learned badge info failed", e); }
+    if (changed) try { profileStorage.set("badgeInfo", JSON.stringify(learnedBadgeInfo)); } catch (e) { logger.warn("Saving learned badge info failed", e); }
 }
 
 function fakeDirectoryEntry(entry: any, userId: string, data: CustomProfileData, owned: Map<number, any>, replace: boolean) {
@@ -2533,16 +2530,15 @@ function activityDirectoryEntry(entry: any, data: CustomProfileData) {
 
 
 // ---- Other profiles: edits to other people's profiles, only on this device ----
-const LS_LOCAL_PROFILES = "cloudcord_local_profiles";
 let localProfiles: Record<string, CustomProfileData> = (() => {
-    try { const value = JSON.parse(localStorage.getItem(LS_LOCAL_PROFILES) || "{}"); return value && typeof value === "object" ? value : {}; } catch { return {}; }
+    try { const value = JSON.parse(profileStorage.get("localProfiles") || "{}"); return value && typeof value === "object" ? value : {}; } catch { return {}; }
 })();
 function localProfileFor(userId: string): CustomProfileData | undefined {
     return /^\d{15,22}$/.test(userId) && !isMe(userId) ? localProfiles[userId] : undefined;
 }
 function writeLocalProfiles(next: Record<string, CustomProfileData>, changedId?: string) {
     localProfiles = next;
-    try { localStorage.setItem(LS_LOCAL_PROFILES, JSON.stringify(next)); } catch (e) { logger.warn("Saving local profiles failed", e); }
+    try { profileStorage.set("localProfiles", JSON.stringify(next)); } catch (e) { logger.warn("Saving local profiles failed", e); }
     otherUserCache = new WeakMap();
     _dataVersion++;
     forceAccountPanelRerender();
@@ -2650,12 +2646,11 @@ function OtherProfilesPanel() {
 
 // ---- Saved profiles: named copies of your custom profile you can switch between ----
 interface SavedProfile { id: string; name: string; savedAt: number; data: CustomProfileData; }
-const LS_SAVED_PROFILES = "cloudcord_saved_profiles";
 function readSavedProfiles(): SavedProfile[] {
-    try { const value = JSON.parse(localStorage.getItem(LS_SAVED_PROFILES) || "[]"); return Array.isArray(value) ? value.filter(item => item?.id && item?.data) : []; } catch { return []; }
+    try { const value = JSON.parse(profileStorage.get("savedProfiles") || "[]"); return Array.isArray(value) ? value.filter(item => item?.id && item?.data) : []; } catch { return []; }
 }
 function writeSavedProfiles(next: SavedProfile[]) {
-    try { localStorage.setItem(LS_SAVED_PROFILES, JSON.stringify(next)); return true; }
+    try { profileStorage.set("savedProfiles", JSON.stringify(next)); return true; }
     catch { showToast("Couldn't save: storage is full. Remove a saved profile or use image links instead of uploads.", Toasts.Type.FAILURE); return false; }
 }
 // Only the look is saved; sync bookkeeping stays with the live profile.
@@ -2846,17 +2841,16 @@ function CopyProfileSection({ onCopy }: { onCopy: (data: CustomProfileData) => v
 
 
 // ---- Tag next to your name in chat, only on this device (never synced) ----
-const LS_LOCAL_TAG = "cloudcord_local_tag";
 // Discord's tag types: 0 App, 1 Server, 2 System, 3 Official, 7 AI.
 const LOCAL_TAG_OPTIONS = [{ value: -1, label: "None" }, { value: 0, label: "App" }, { value: 3, label: "Official" }, { value: 2, label: "System" }, { value: 7, label: "AI" }, { value: 1, label: "Server" }];
-let localNameTag: number | null = (() => { try { const value = localStorage.getItem(LS_LOCAL_TAG); return value != null && LOCAL_TAG_OPTIONS.some(option => option.value === Number(value) && option.value >= 0) ? Number(value) : null; } catch { return null; } })();
+let localNameTag: number | null = (() => { try { const value = profileStorage.get("localTag"); return value != null && LOCAL_TAG_OPTIONS.some(option => option.value === Number(value) && option.value >= 0) ? Number(value) : null; } catch { return null; } })();
 function LocalTagSection() {
     const [value, setValue] = React.useState(localNameTag ?? -1);
     return <Section title="Tag next to your name" description="Shows a Discord tag after your name on your messages. Only on this device: it is never synced, so nobody else sees it.">
         <SelectField label="Tag" options={LOCAL_TAG_OPTIONS} value={value} onChange={next => {
             const tag = Number(next);
             localNameTag = tag >= 0 ? tag : null;
-            try { if (localNameTag == null) localStorage.removeItem(LS_LOCAL_TAG); else localStorage.setItem(LS_LOCAL_TAG, String(localNameTag)); } catch (e) { logger.warn("Saving local tag failed", e); }
+            try { if (localNameTag == null) profileStorage.remove("localTag"); else profileStorage.set("localTag", String(localNameTag)); } catch (e) { logger.warn("Saving local tag failed", e); }
             setValue(tag);
             forceAccountPanelRerender();
         }} />

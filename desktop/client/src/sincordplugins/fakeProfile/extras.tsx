@@ -9,13 +9,13 @@
 
 import type { Role } from "@vencord/discord-types";
 import { logger } from "./logger";
+import { profileStorage } from "./storage";
 import * as DataStore from "@api/DataStore";
 import { findStoreLazy } from "@webpack";
 import { Alerts, ChannelStore, Flux, FluxDispatcher, GuildMemberStore, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
 
 import { Grid2, Section, SelectField, Switch } from "./editorUi";
 
-const LS_EXTRAS = "cloudcord_profile_extras";
 const NITRO_APP_ID = "521842831262875670";
 const NITRO_SKU = "521847234246082599";
 const NITRO_BASIC_SKU = "978380684370378762";
@@ -81,13 +81,13 @@ interface BoostFake { level?: boolean; booster?: boolean; partner?: boolean; ver
 interface Extras { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, BoostFake>; fakeRequests?: { id: string; user: any; since: string; }[]; fakeOrbs?: number; }
 
 function readExtras(): Extras {
-    try { return JSON.parse(localStorage.getItem(LS_EXTRAS) || "{}") || {}; } catch { return {}; }
+    try { return JSON.parse(profileStorage.get("extras") || "{}") || {}; } catch { return {}; }
 }
 let extras: Extras = readExtras();
 const listeners = new Set<() => void>();
 function writeExtras(next: Extras) {
     extras = next;
-    try { localStorage.setItem(LS_EXTRAS, JSON.stringify(next)); } catch (e) { logger.warn("Saving extras failed", e); }
+    try { profileStorage.set("extras", JSON.stringify(next)); } catch (e) { logger.warn("Saving extras failed", e); }
     listeners.forEach(fn => fn());
 }
 function useExtras() {
@@ -750,14 +750,13 @@ let orbRetry: ReturnType<typeof setInterval> | undefined;
 // Nitro gradient themes with Fake Nitro: Discord saves the theme to your account, its servers
 // drop it because the account has no real Nitro, and the next settings sync resets it. Remember
 // the theme you picked here and put it back after each sync.
-const LS_NITRO_THEME = "cloudcord_nitro_theme";
 const ClientThemesBackgroundStore: any = findStoreLazy("ClientThemesBackgroundStore");
-let keptThemePreset: number | null = (() => { try { const value = Number(localStorage.getItem(LS_NITRO_THEME)); return Number.isFinite(value) && value > 0 ? value : null; } catch { return null; } })();
+let keptThemePreset: number | null = (() => { try { const value = Number(profileStorage.get("nitroTheme")); return Number.isFinite(value) && value > 0 ? value : null; } catch { return null; } })();
 function rememberTheme(action: any) {
     const theme = action?.changes?.appearance?.settings?.clientThemeSettings;
     if (!theme || !("backgroundGradientPresetId" in theme)) return;
     keptThemePreset = typeof theme.backgroundGradientPresetId === "number" ? theme.backgroundGradientPresetId : null;
-    try { if (keptThemePreset != null) localStorage.setItem(LS_NITRO_THEME, String(keptThemePreset)); else localStorage.removeItem(LS_NITRO_THEME); } catch (e) { logger.warn("Saving Nitro theme failed", e); }
+    try { if (keptThemePreset != null) profileStorage.set("nitroTheme", String(keptThemePreset)); else profileStorage.remove("nitroTheme"); } catch (e) { logger.warn("Saving Nitro theme failed", e); }
 }
 let themeTimer: ReturnType<typeof setTimeout> | undefined;
 function restoreKeptTheme() {
