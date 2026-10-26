@@ -12344,6 +12344,15 @@
           ]
         },
         {
+          id: "templates",
+          label: "Templates",
+          blurb: "Browse and publish community profile looks",
+          icons: [
+            "GridSquareIcon",
+            "SparklesIcon"
+          ]
+        },
+        {
           id: "saved",
           label: "Saved",
           blurb: "Switch between saved copies of your profile",
@@ -19113,14 +19122,15 @@
       return result;
     })();
   }
-  function publishShare(item, visibility) {
-    return _async_to_generator(function* () {
+  function publishShare(_0, _1) {
+    return _async_to_generator(function* (item, visibility, extra = {}) {
       var profile = yield ownSharedProfile(item.data);
       if (item.share) {
         yield shareRequest("/" + item.share.id, "PUT", {
           name: item.name,
           visibility,
-          profile
+          profile,
+          ...extra
         }, item.share.token);
         return {
           ...item.share,
@@ -19133,18 +19143,345 @@
         ownerId: currentUserId,
         name: item.name,
         visibility,
-        profile
+        profile,
+        ...extra
       });
       return {
         id: created.id,
         token: created.editToken,
         visibility
       };
-    })();
+    }).apply(this, arguments);
   }
   function savedSnapshot(data) {
     var { syncRevision: _revision, enabled: _enabled, ...rest } = data || {};
     return JSON.parse(JSON.stringify(rest));
+  }
+  function ProfileTemplates({ current, onUse }) {
+    var S2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
+    var [query, setQuery] = (0, import_react6.useState)("");
+    var [category, setCategory] = (0, import_react6.useState)("");
+    var [sort, setSort] = (0, import_react6.useState)("popular");
+    var [items, setItems] = (0, import_react6.useState)(null);
+    var [busy, setBusy] = (0, import_react6.useState)(false);
+    var [code, setCode] = (0, import_react6.useState)("");
+    var [pubName, setPubName] = (0, import_react6.useState)("");
+    var [pubDescription, setPubDescription] = (0, import_react6.useState)("");
+    var [pubCategory, setPubCategory] = (0, import_react6.useState)("Aesthetic");
+    var [pubVisibility, setPubVisibility] = (0, import_react6.useState)("public");
+    var [publishedId, setPublishedId] = (0, import_react6.useState)(null);
+    var saved = () => Array.isArray(rootSettings.fakeProfileSaved) ? rootSettings.fakeProfileSaved : [];
+    (0, import_react6.useEffect)(() => {
+      var cancelled = false;
+      var timer = setTimeout(() => _async_to_generator(function* () {
+        var params = "?limit=40&sort=" + sort + (query.trim() ? "&q=" + encodeURIComponent(query.trim()) : "") + (category ? "&category=" + encodeURIComponent(category) : "");
+        try {
+          var result = yield shareRequest(params, "GET");
+          if (!cancelled)
+            setItems(result.shares ?? []);
+        } catch (e) {
+          if (!cancelled)
+            setItems([]);
+        }
+      })(), query ? 350 : 0);
+      return () => {
+        cancelled = true;
+        clearTimeout(timer);
+      };
+    }, [
+      query,
+      category,
+      sort
+    ]);
+    var run = (task) => _async_to_generator(function* () {
+      setBusy(true);
+      try {
+        yield task();
+      } catch (error) {
+        import_react_native20.Alert.alert("Templates", /not found/i.test(String(error?.message)) ? "That template doesn't exist or is private." : error?.message || "Something went wrong.");
+      } finally {
+        setBusy(false);
+      }
+    })();
+    var fetchTemplate = (id) => _async_to_generator(function* () {
+      var own = saved().find((item) => item.share?.id === id);
+      var share = yield shareRequest("/" + id, "GET", void 0, own?.share?.token);
+      return {
+        name: String(share.name || "Template").slice(0, 40),
+        data: savedSnapshot({
+          ...current,
+          ...previewFromShared(share.profile || {})
+        })
+      };
+    })();
+    var use = (id) => run(() => _async_to_generator(function* () {
+      var template = yield fetchTemplate(id);
+      onUse(template.data);
+      countTemplateUse(id);
+      showToast("Applied \u201C" + template.name + "\u201D");
+    })());
+    var save = (id) => run(() => _async_to_generator(function* () {
+      var template = yield fetchTemplate(id);
+      rootSettings.fakeProfileSaved = [
+        {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          name: template.name,
+          savedAt: Date.now(),
+          data: template.data
+        },
+        ...saved()
+      ];
+      countTemplateUse(id);
+      showToast("Added \u201C" + template.name + "\u201D to Saved");
+    })());
+    var publish = () => run(() => _async_to_generator(function* () {
+      var name = pubName.trim().slice(0, 40);
+      if (!name)
+        throw new Error("Give your template a name.");
+      var item = {
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        name,
+        savedAt: Date.now(),
+        data: savedSnapshot(current)
+      };
+      var share = yield publishShare(item, pubVisibility, {
+        category: pubCategory,
+        description: pubDescription.trim()
+      });
+      rootSettings.fakeProfileSaved = [
+        {
+          ...item,
+          share
+        },
+        ...saved()
+      ];
+      setPublishedId(share.id);
+      showToast(pubVisibility === "public" ? "Published to templates" : "Template link created");
+    })());
+    var codeId = shareCodeFrom(code);
+    var pill = (label, on, onPress) => /* @__PURE__ */ jsx(import_react_native20.Pressable, {
+      onPress,
+      style: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 999,
+        backgroundColor: on ? "#5865F2" : "rgba(255,255,255,0.06)"
+      },
+      children: /* @__PURE__ */ jsx(Text, {
+        variant: "text-sm/semibold",
+        style: {
+          color: on ? "#fff" : void 0
+        },
+        color: on ? void 0 : "text-muted",
+        children: label
+      })
+    }, label);
+    return /* @__PURE__ */ jsxs(import_react_native20.View, {
+      style: {
+        gap: 20
+      },
+      children: [
+        /* @__PURE__ */ jsx(S2.Panel, {
+          children: /* @__PURE__ */ jsxs(S2.Section, {
+            title: "Profile templates",
+            description: "Looks made by the CloudCord community. Use one or save it for later. Also at getcloudcord.com/templates.",
+            children: [
+              /* @__PURE__ */ jsx(S2.Field, {
+                label: "Search",
+                children: /* @__PURE__ */ jsx(TextInput4, {
+                  value: query,
+                  placeholder: "Search templates",
+                  autoCorrect: false,
+                  onChangeText: setQuery
+                })
+              }),
+              /* @__PURE__ */ jsxs(import_react_native20.View, {
+                style: {
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 6
+                },
+                children: [
+                  pill("Popular", sort === "popular", () => setSort("popular")),
+                  pill("New", sort === "new", () => setSort("new"))
+                ]
+              }),
+              /* @__PURE__ */ jsx(import_react_native20.View, {
+                style: {
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 6
+                },
+                children: [
+                  "",
+                  ...TEMPLATE_CATEGORIES
+                ].map((name) => pill(name || "All", category === name, () => setCategory(name)))
+              })
+            ]
+          })
+        }),
+        items === null ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-sm/medium",
+          color: "text-muted",
+          children: "Loading templates\u2026"
+        }) : !items.length ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-sm/medium",
+          color: "text-muted",
+          children: "No templates found. Be the first: publish yours below."
+        }) : null,
+        (items || []).map((template) => {
+          var p = template.preview || {};
+          return /* @__PURE__ */ jsxs(import_react_native20.View, {
+            style: {
+              gap: 8
+            },
+            children: [
+              /* @__PURE__ */ jsx(S2.DiscordProfileCard, {
+                name: p.name || template.name,
+                username: template.category || "Template",
+                avatar: p.avatar || void 0,
+                banner: p.banner || void 0,
+                primary: p.accent || void 0,
+                status: "online",
+                bio: template.description || p.bio || void 0,
+                badges: []
+              }),
+              /* @__PURE__ */ jsxs(import_react_native20.View, {
+                style: {
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 8
+                },
+                children: [
+                  /* @__PURE__ */ jsxs(import_react_native20.View, {
+                    style: {
+                      flex: 1
+                    },
+                    children: [
+                      /* @__PURE__ */ jsx(Text, {
+                        variant: "text-md/bold",
+                        color: "text-normal",
+                        numberOfLines: 1,
+                        children: template.name
+                      }),
+                      /* @__PURE__ */ jsx(Text, {
+                        variant: "text-xs/medium",
+                        color: "text-muted",
+                        children: (template.category || "Other") + " \xB7 " + (template.uses || 0) + (template.uses === 1 ? " use" : " uses")
+                      })
+                    ]
+                  }),
+                  /* @__PURE__ */ jsx(S2.Button, {
+                    label: "Use",
+                    primary: true,
+                    disabled: busy,
+                    onPress: () => use(template.id)
+                  }),
+                  /* @__PURE__ */ jsx(S2.Button, {
+                    label: "Save",
+                    disabled: busy,
+                    onPress: () => save(template.id)
+                  })
+                ]
+              })
+            ]
+          }, template.id);
+        }),
+        /* @__PURE__ */ jsx(S2.Panel, {
+          children: /* @__PURE__ */ jsxs(S2.Section, {
+            title: "Use a code",
+            description: "Paste a template link or code someone gave you.",
+            children: [
+              /* @__PURE__ */ jsx(S2.Field, {
+                label: "Link or code",
+                children: /* @__PURE__ */ jsx(TextInput4, {
+                  value: code,
+                  placeholder: "getcloudcord.com/p/\u2026",
+                  autoCapitalize: "none",
+                  autoCorrect: false,
+                  onChangeText: setCode
+                })
+              }),
+              /* @__PURE__ */ jsxs(import_react_native20.View, {
+                style: {
+                  flexDirection: "row",
+                  gap: 8
+                },
+                children: [
+                  /* @__PURE__ */ jsx(S2.Button, {
+                    label: "Use",
+                    primary: true,
+                    grow: true,
+                    disabled: busy || !codeId,
+                    onPress: () => codeId && use(codeId)
+                  }),
+                  /* @__PURE__ */ jsx(S2.Button, {
+                    label: "Save",
+                    grow: true,
+                    disabled: busy || !codeId,
+                    onPress: () => codeId && save(codeId)
+                  })
+                ]
+              })
+            ]
+          })
+        }),
+        /* @__PURE__ */ jsx(S2.Panel, {
+          children: /* @__PURE__ */ jsxs(S2.Section, {
+            title: "Publish your profile",
+            description: "Shares how your profile looks right now. Your account details are never included.",
+            children: [
+              /* @__PURE__ */ jsx(S2.Field, {
+                label: "Name",
+                children: /* @__PURE__ */ jsx(TextInput4, {
+                  value: pubName,
+                  placeholder: "Template name",
+                  maxLength: 40,
+                  onChangeText: setPubName
+                })
+              }),
+              /* @__PURE__ */ jsx(S2.Field, {
+                label: "Description",
+                children: /* @__PURE__ */ jsx(TextInput4, {
+                  value: pubDescription,
+                  placeholder: "Optional",
+                  maxLength: 200,
+                  onChangeText: setPubDescription
+                })
+              }),
+              /* @__PURE__ */ jsx(import_react_native20.View, {
+                style: {
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 6
+                },
+                children: TEMPLATE_CATEGORIES.map((name) => pill(name, pubCategory === name, () => setPubCategory(name)))
+              }),
+              /* @__PURE__ */ jsx(import_react_native20.View, {
+                style: {
+                  flexDirection: "row",
+                  flexWrap: "wrap",
+                  gap: 6
+                },
+                children: SHARE_VISIBILITIES.map((option) => pill(option.label, pubVisibility === option.value, () => setPubVisibility(option.value)))
+              }),
+              /* @__PURE__ */ jsx(S2.Button, {
+                label: busy ? "Working\u2026" : "Publish",
+                primary: true,
+                disabled: busy || !pubName.trim(),
+                onPress: publish
+              }),
+              publishedId && pubVisibility !== "private" ? /* @__PURE__ */ jsx(Text, {
+                variant: "text-sm/medium",
+                color: "text-normal",
+                selectable: true,
+                children: shareLink(publishedId)
+              }) : null
+            ]
+          })
+        })
+      ]
+    });
   }
   function SavedProfiles({ current, realUser, onUse }) {
     var S2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
@@ -19292,71 +19629,6 @@
                 primary: true,
                 onPress: saveCurrent
               })
-            ]
-          })
-        }),
-        /* @__PURE__ */ jsx(S2.Panel, {
-          children: /* @__PURE__ */ jsxs(S2.Section, {
-            title: "Import a shared profile",
-            description: "Paste a link or code someone shared. It's added to Saved; nothing changes until you use it.",
-            children: [
-              /* @__PURE__ */ jsx(S2.Field, {
-                label: "Link or code",
-                children: /* @__PURE__ */ jsx(TextInput4, {
-                  value: code,
-                  placeholder: "getcloudcord.com/p/\u2026",
-                  autoCapitalize: "none",
-                  autoCorrect: false,
-                  onChangeText: setCode
-                })
-              }),
-              /* @__PURE__ */ jsxs(import_react_native20.View, {
-                style: {
-                  flexDirection: "row",
-                  gap: 8
-                },
-                children: [
-                  /* @__PURE__ */ jsx(S2.Button, {
-                    label: "Import",
-                    primary: true,
-                    grow: true,
-                    disabled: busy || !code.trim(),
-                    onPress: () => importCode(code)
-                  }),
-                  /* @__PURE__ */ jsx(S2.Button, {
-                    label: "Browse public",
-                    grow: true,
-                    disabled: busy,
-                    onPress: () => run(() => _async_to_generator(function* () {
-                      setPublicShares((yield shareRequest("?limit=30", "GET")).shares ?? []);
-                    })())
-                  })
-                ]
-              }),
-              publicShares ? publicShares.length ? publicShares.map((share) => /* @__PURE__ */ jsx(S2.Row, {
-                label: share.name,
-                subLabel: share.preview?.name || void 0,
-                icon: share.preview?.avatar ? /* @__PURE__ */ jsx(import_react_native20.Image, {
-                  source: {
-                    uri: share.preview.avatar
-                  },
-                  style: {
-                    width: 28,
-                    height: 28,
-                    borderRadius: 14
-                  }
-                }) : void 0,
-                trailing: /* @__PURE__ */ jsx(Text, {
-                  variant: "text-sm/bold",
-                  color: "text-brand",
-                  children: "Import"
-                }),
-                onPress: () => importCode(share.id)
-              }, share.id)) : /* @__PURE__ */ jsx(Text, {
-                variant: "text-sm/medium",
-                color: "text-muted",
-                children: "No public profiles yet."
-              }) : null
             ]
           })
         }),
@@ -20410,6 +20682,23 @@
                 };
               })()
             })
+          }) : null,
+          activeTab === "templates" ? /* @__PURE__ */ jsx(ProfileTemplates, {
+            current: preview,
+            onUse: (data) => {
+              rootSettings.fakeProfile = {
+                ...preview,
+                ...data,
+                enabled: preview.enabled,
+                syncRevision: Date.now()
+              };
+              preview = rootSettings.fakeProfile;
+              queueSharedPublish();
+              clearCache();
+              suppressOwnPullUntil = Date.now() + 15e3;
+              refreshPreview();
+              redraw();
+            }
           }) : null,
           activeTab === "saved" ? /* @__PURE__ */ jsx(SavedProfiles, {
             current: preview,
@@ -21551,7 +21840,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, shopResumeTimer, resumeAfterShop, pauseForShop, rememberTheme, themeTimer, restoreKeptTheme, fakeNitroActive, currentUserNitroHooked, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, NamePreviewBoundary, SHARE_VISIBILITIES, shareLink, shareCodeFrom, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
+  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, shopResumeTimer, resumeAfterShop, pauseForShop, rememberTheme, themeTimer, restoreKeptTheme, fakeNitroActive, currentUserNitroHooked, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, NamePreviewBoundary, SHARE_VISIBILITIES, shareLink, shareCodeFrom, TEMPLATE_CATEGORIES, countTemplateUse, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -22821,6 +23110,22 @@
       ];
       shareLink = (id) => SHARED_PROFILE_API + "/p/" + id;
       shareCodeFrom = (text) => String(text || "").trim().match(/(?:\/p\/)?([A-Za-z0-9]{6,16})\/?$/)?.[1] ?? null;
+      TEMPLATE_CATEGORIES = [
+        "Aesthetic",
+        "Anime",
+        "Gaming",
+        "Minimal",
+        "Dark",
+        "Cute",
+        "Funny",
+        "Other"
+      ];
+      countTemplateUse = (id) => {
+        fetch(SHARED_PROFILE_API + "/v1/shares/" + id + "/use", {
+          method: "POST"
+        }).catch(() => {
+        });
+      };
       DISCORD_BADGE_FLAGS = {
         staff: 1,
         partner: 2,
