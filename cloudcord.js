@@ -24953,12 +24953,39 @@
       }
     }
   }
+  function secretBridge(method, ...args) {
+    var bridge = globalThis.__RAIN_BRIDGE_CALL_SYNC__;
+    if (typeof bridge !== "function")
+      return {
+        ok: false
+      };
+    try {
+      var response = bridge({
+        rain: {
+          method: "botcord.secret." + method,
+          args
+        }
+      });
+      if (!response || response.error)
+        return {
+          ok: false
+        };
+      return {
+        ok: true,
+        value: response.result
+      };
+    } catch (e) {
+      return {
+        ok: false
+      };
+    }
+  }
   function cleanAccount(value) {
     if (!value || typeof value !== "object")
       return null;
     var id = typeof value.id === "string" ? value.id : "";
     var username = typeof value.username === "string" ? value.username : "";
-    var token = typeof value.token === "string" ? normalizeBotToken(value.token) : "";
+    var token = normalizeBotToken(typeof value.token === "string" && value.token ? value.token : id ? keychainGet(id.slice(0, 64)) : "");
     if (!id || !username || !token)
       return null;
     return {
@@ -25002,8 +25029,10 @@
   }
   function persist() {
     return _async_to_generator(function* () {
+      var secure = keychainAvailable() && state.accounts.every((account) => keychainSet(account.id, account.token));
+      var accounts = secure ? state.accounts.map(({ token: _token, ...rest }) => rest) : state.accounts;
       var payload = JSON.stringify({
-        accounts: state.accounts,
+        accounts,
         activeAccountId: state.activeAccountId,
         recentDMs: state.recentDMs
       });
@@ -25012,6 +25041,8 @@
   }
   function resetCorruptStore() {
     return _async_to_generator(function* () {
+      for (var account of state.accounts)
+        keychainDelete(account.id);
       state = {
         ...DEFAULT_STATE,
         loaded: true
@@ -25049,7 +25080,10 @@
             yield resetCorruptStore();
             return;
           }
-          state = sanitizeState(JSON.parse(raw));
+          var parsed = JSON.parse(raw);
+          state = sanitizeState(parsed);
+          if (Array.isArray(parsed?.accounts) && parsed.accounts.some((account) => typeof account?.token === "string" && account.token) && keychainAvailable())
+            yield persist();
         } catch (e) {
           yield resetCorruptStore();
         } finally {
@@ -25119,6 +25153,7 @@
     return _async_to_generator(function* () {
       yield ensureBotCordLoaded();
       state.accounts = state.accounts.filter((a) => a.id !== id);
+      keychainDelete(id);
       if (state.activeAccountId === id)
         state.activeAccountId = state.accounts[0]?.id ?? null;
       yield persist();
@@ -25278,7 +25313,7 @@
       return response.json();
     })();
   }
-  var import_react8, FILE_PATH, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners;
+  var import_react8, FILE_PATH, SECRET_PREFIX, MAX_FILE_BYTES, MAX_ACCOUNTS, DEFAULT_STATE, state, loadPromise, listeners, keychainAvailable, keychainGet, keychainSet, keychainDelete;
   var init_botcord = __esm({
     "src/lib/api/botcord.ts"() {
       "use strict";
@@ -25289,6 +25324,7 @@
       init_modules();
       import_react8 = __toESM(require_react());
       FILE_PATH = "botcord/accounts.json";
+      SECRET_PREFIX = "bot-token:";
       MAX_FILE_BYTES = 256 * 1024;
       MAX_ACCOUNTS = 50;
       DEFAULT_STATE = {
@@ -25302,6 +25338,15 @@
       };
       loadPromise = null;
       listeners = /* @__PURE__ */ new Set();
+      keychainAvailable = () => secretBridge("delete", SECRET_PREFIX + "probe").ok;
+      keychainGet = (id) => {
+        var result = secretBridge("get", SECRET_PREFIX + id);
+        return result.ok && typeof result.value === "string" ? result.value : "";
+      };
+      keychainSet = (id, token) => secretBridge("set", SECRET_PREFIX + id, token).value === true;
+      keychainDelete = (id) => {
+        secretBridge("delete", SECRET_PREFIX + id);
+      };
     }
   });
 
