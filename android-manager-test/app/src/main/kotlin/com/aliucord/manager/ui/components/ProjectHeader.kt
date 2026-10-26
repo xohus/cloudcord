@@ -28,7 +28,7 @@ fun ProjectHeader(
         modifier = modifier,
     ) {
         Image(
-            painter = painterResource(if (aliucord) R.drawable.ic_aliucord_logo else R.drawable.ic_rounded_rain),
+            painter = painterResource(if (aliucord) R.drawable.ic_aliucord_logo else R.drawable.cloudcord_logo),
             contentDescription = null,
             modifier = Modifier
                 .padding(bottom = 6.dp)
@@ -51,16 +51,16 @@ fun ProjectHeader(
         Row(
             horizontalArrangement = Arrangement.Center,
         ) {
-            TextButton(onClick = { uriHandler.openUri("https://codeberg.org/${if (aliucord) "Aliucord" else BuildConfig.CODEBERG_ORG}") }) {
+            TextButton(onClick = { uriHandler.openUri(if (aliucord) "https://codeberg.org/Aliucord" else "https://getcloudcord.com") }) {
                 Icon(
-                    painter = painterResource(R.drawable.codeberg_logo_icon_white),
+                    painter = painterResource(if (aliucord) R.drawable.codeberg_logo_icon_white else R.drawable.ic_cloudcord_mono),
                     contentDescription = null,
-                    modifier = Modifier.padding(end = ButtonDefaults.IconSpacing),
+                    modifier = Modifier.padding(end = ButtonDefaults.IconSpacing).size(22.dp),
                 )
-                Text(text = stringResource(R.string.codeberg))
+                Text(text = if (aliucord) stringResource(R.string.codeberg) else "Website")
             }
 
-            TextButton(onClick = { uriHandler.openUri("https://github.com/${if (aliucord) "Aliucord" else BuildConfig.GITHUB_ORG}") }) {
+            TextButton(onClick = { uriHandler.openUri(if (aliucord) "https://github.com/Aliucord" else "https://github.com/xohus/cloudcord") }) {
                 Icon(
                     painter = painterResource(R.drawable.ic_account_github_white_24dp),
                     contentDescription = null,
@@ -69,7 +69,7 @@ fun ProjectHeader(
                 Text(text = stringResource(R.string.github))
             }
 
-            TextButton(onClick = { uriHandler.openUri(if (aliucord) "https://discord.gg/EsNDvBaHVU" else "https://getcloudcord.com") }) {
+            TextButton(onClick = { uriHandler.openUri(if (aliucord) "https://discord.gg/EsNDvBaHVU" else "https://discord.gg/cloudcord") }) {
                 Icon(
                     painter = painterResource(R.drawable.ic_discord),
                     contentDescription = stringResource(R.string.support_server),

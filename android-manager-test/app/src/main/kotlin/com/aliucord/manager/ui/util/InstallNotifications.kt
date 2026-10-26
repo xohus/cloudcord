@@ -47,7 +47,7 @@ object InstallNotifications {
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setDefaults(Notification.DEFAULT_LIGHTS or Notification.DEFAULT_SOUND)
             .setAutoCancel(true)
-            .setSmallIcon(R.drawable.ic_rounded_rain)
+            .setSmallIcon(R.drawable.ic_cloudcord_mono)
             .setContentTitle(context.getString(title))
             .setContentText(context.getString(description))
             .setContentIntent(

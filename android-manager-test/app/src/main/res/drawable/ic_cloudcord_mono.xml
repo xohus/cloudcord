@@ -1,0 +1,4 @@
+<!-- CloudCord cloud, single colour for notification icons. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="24dp" android:height="24dp" android:viewportWidth="108" android:viewportHeight="108">
+    <path android:fillColor="#FFFFFFFF" android:pathData="M28,70C14,70 13,50 26,47C25,32 43,28 51,37C63,17 88,30 84,47C101,50 98,70 84,70Z"/>
+</vector>
