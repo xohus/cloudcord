@@ -1674,6 +1674,15 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                 <ImageField key={`avatar-${selectedAccountId}`} label="Profile picture" value={data.avatar ?? ""} hint="PNG, JPG, WebP or an animated GIF (up to 8 MB)." onChange={value => set("avatar", value)} />
                 <Switch label="Simulate Nitro" description="Unlocks profile colors. Your banner works with or without it." checked={data.nitro ?? false} onChange={value => set("nitro", value)} />
                 <ImageField key={`banner-${selectedAccountId}`} label="Banner" shape="banner" value={data.banner ?? ""} hint="Animated GIF banners work too." onChange={value => set("banner", value)} />
+                <div className="cpx-inline">
+                    <button type="button" className="cpx-btn" onClick={() => {
+                        // Your custom picture if you set one, otherwise your real Discord one.
+                        const avatar = data.avatar || (selectedUser ? IconUtils.getUserAvatarURL(selectedUser, true, 1024) : "");
+                        if (!avatar) return;
+                        set("banner", avatar);
+                        showToast("Your profile picture is now your banner.", Toasts.Type.SUCCESS);
+                    }}>Use profile picture as banner</button>
+                </div>
             </Section>
             <Section title="About you">
                 <TextField label="Bio" multiline maxLength={190} value={data.bio ?? ""} placeholder="Tell people about yourself" onChange={value => set("bio", value)} />

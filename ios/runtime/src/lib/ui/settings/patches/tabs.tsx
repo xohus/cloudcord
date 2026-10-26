@@ -3,6 +3,7 @@ import { TableRow } from "@metro/common/components";
 import { findByFilePathLazy, findByNameAll, findByNameLazy, findByPropsAll, findByPropsLazy } from "@metro/wrappers";
 import { registeredSections } from "@ui/settings";
 import { settings } from "@lib/api/settings";
+import { NativeClientInfoModule } from "@lib/api/native/modules";
 
 import { CustomPageRenderer, wrapOnPress } from "./shared";
 import { findInReactTree } from "@lib/utils";
@@ -12,6 +13,14 @@ const settingConstants344 = findByFilePathLazy("modules/user_settings/core/nativ
 const createListModule = findByPropsLazy("createList");
 const SettingsOverviewScreen = findByNameLazy("SettingsOverviewScreen", false);
 const SettingsOverviewScreen344 = findByFilePathLazy("modules/user_settings/overview/native/SettingsOverviewScreen.tsx");
+
+// Discord 344 moved the settings list (new renderer config, no root ACCOUNT section).
+// No loader sets __CLOUDCORD_BRIDGELESS__ reliably (Android never does), so check the
+// Discord version too; otherwise the 331 path finds nothing and CloudCord vanishes.
+export function usesModernSettings() {
+    if ((globalThis as any).__CLOUDCORD_BRIDGELESS__) return true;
+    try { return parseInt(String(NativeClientInfoModule?.getConstants?.()?.Version ?? ""), 10) >= 344; } catch { return false; }
+}
 
 export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     const fallbackNames = [
@@ -88,7 +97,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     // Discord 331 uses one root createList settings model. The recursive 344
     // fallbacks must never run here: they can discover the Account tab's
     // internal sections first and incorrectly nest CloudCord inside Account.
-    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+    if (!usesModernSettings()) {
         (globalThis as any).__CLOUDCORD_331_ROOT_SETTINGS__ = true;
         const customRoutes = {
             VendettaCustomPage: {

@@ -4662,6 +4662,14 @@ jobs:
                                   <K.Section title="Pictures" description="Shown on your profile, in chat and in member lists for CloudCord users.">
                                       <MediaEditor label="Profile picture" field="avatarMedia" />
                                       <MediaEditor label="Banner" field="bannerMedia" banner />
+                                      <ActionButton label="Use profile picture as banner" muted onPress={() => {
+                                          // Your custom picture if you set one, otherwise your real Discord one.
+                                          let uri = preview.avatarMedia?.uri;
+                                          if (!uri) { try { uri = realCurrentUser?.getAvatarURL?.(undefined, 1024); } catch {} }
+                                          if (!uri) { Alert.alert("No profile picture", "Set a profile picture first."); return; }
+                                          update("bannerMedia", { ...(preview.avatarMedia || {}), uri, name: preview.avatarMedia?.name || "profile-picture", type: preview.avatarMedia?.type || "image/png" }, true);
+                                          showToast("Your profile picture is now your banner");
+                                      }} />
                                       <ToggleRow label="Simulate Nitro" subLabel="Unlocks profile colors. Your banner works without it" value={preview.nitroEnabled} onPress={() => update("nitroEnabled", !preview.nitroEnabled, true)} />
                                   </K.Section>
                                   <K.Section title="About you">

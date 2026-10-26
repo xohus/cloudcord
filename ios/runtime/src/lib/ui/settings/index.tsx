@@ -3,7 +3,7 @@ import { lazy } from "react";
 import type { ImageURISource } from "react-native";
 
 import { patchPanelUI } from "./patches/panel";
-import { patchTabsUI } from "./patches/tabs";
+import { patchTabsUI, usesModernSettings } from "./patches/tabs";
 
 export interface RowConfig {
     key: string;
@@ -36,7 +36,7 @@ export function patchSettings() {
     // panel.tsx targets Discord 331's class-based settings tree. Applying it
     // to 344's SettingsOverviewScreen can invalidate the whole navigation
     // render, which presents as a blank account. tabs.tsx owns 344 settings.
-    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) patchPanelUI(unpatches);
+    if (!usesModernSettings()) patchPanelUI(unpatches);
 
     return () => unpatches.forEach(u => u());
 }
