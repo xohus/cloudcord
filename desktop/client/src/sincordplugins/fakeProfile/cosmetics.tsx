@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
+import { logger } from "./logger";
 import { Settings } from "@api/Settings";
 import { openPluginModal } from "@components/settings/tabs/plugins/PluginModal";
 import { withTimeout } from "@utils/asyncTimeout";
@@ -35,7 +36,7 @@ async function fromDiscordStore(effects: any): Promise<Catalog | null> {
         try {
             const fetchCategories: any = findByCode('"COLLECTIBLES_CATEGORIES_FETCH"', "CATEGORIES_FETCH_STARTED");
             if (typeof fetchCategories === "function") await withTimeout(Promise.resolve(fetchCategories()), 8000);
-        } catch { }
+        } catch (e) { logger.warn("Fetching collectibles categories failed", e); }
     }
     const products = store.products ? [...store.products.values()] : [];
     return products.length ? parseCatalog([{ products }], effects) : null;
@@ -149,8 +150,8 @@ export function uninstallPresenceHooks() {
 }
 
 export function refreshPresence() {
-    try { (PresenceStore as any)?.emitChange?.(); } catch { }
-    try { selfStore()?.emitChange?.(); } catch { }
+    try { (PresenceStore as any)?.emitChange?.(); } catch (e) { logger.warn("Refreshing PresenceStore failed", e); }
+    try { selfStore()?.emitChange?.(); } catch (e) { logger.warn("Refreshing self presence failed", e); }
 }
 
 // ---------- custom server tag icon ----------

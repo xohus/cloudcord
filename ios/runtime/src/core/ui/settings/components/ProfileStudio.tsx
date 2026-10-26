@@ -37,7 +37,7 @@ const R = { sm: 10, md: 14, lg: 20 };
 const GAP = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24 };
 
 function icon(names: string[]) {
-    for (const name of names) { try { const id = findAssetId(name); if (id) return id; } catch {} }
+    for (const name of names) { try { const id = findAssetId(name); if (id) return id; } catch { /* silent: render path; tries the next icon name */ } }
     return undefined;
 }
 

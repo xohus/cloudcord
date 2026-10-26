@@ -7,6 +7,7 @@
 // Device-only extras that live in the Custom Profile editor: Fake Nitro, a local
 // fake Nitro gift link, local fake friend requests, leave all servers and a full reset.
 
+import { logger } from "./logger";
 import * as DataStore from "@api/DataStore";
 import { findStoreLazy } from "@webpack";
 import { Alerts, ChannelStore, Flux, FluxDispatcher, GuildMemberStore, GuildStore, OverridePremiumTypeStore, React, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SnowflakeUtils, Toasts, UserStore } from "@webpack/common";
@@ -39,7 +40,7 @@ const PresenceStore: any = findStoreLazy("PresenceStore");
 // Roles of a server as a list, highest first. Discord renamed this getter a few times.
 function rolesOf(guildId: string): any[] {
     let roles: any = null;
-    try { roles = GuildRoleStore?.getUnsafeMutableRoles?.(guildId) ?? GuildRoleStore?.getRolesSnapshot?.(guildId) ?? GuildRoleStore?.getRoles?.(guildId); } catch { }
+    try { roles = GuildRoleStore?.getUnsafeMutableRoles?.(guildId) ?? GuildRoleStore?.getRolesSnapshot?.(guildId) ?? GuildRoleStore?.getRoles?.(guildId); } catch { /* silent: called from render hooks; a missing getter means no roles */ }
     if (!roles) roles = (GuildStore.getGuild(guildId) as any)?.roles;
     return Object.values(roles ?? {}).filter((role: any) => role?.id && role.id !== guildId).sort((a: any, b: any) => (b.position ?? 0) - (a.position ?? 0));
 }
@@ -85,7 +86,7 @@ let extras: Extras = readExtras();
 const listeners = new Set<() => void>();
 function writeExtras(next: Extras) {
     extras = next;
-    try { localStorage.setItem(LS_EXTRAS, JSON.stringify(next)); } catch { }
+    try { localStorage.setItem(LS_EXTRAS, JSON.stringify(next)); } catch (e) { logger.warn("Saving extras failed", e); }
     listeners.forEach(fn => fn());
 }
 function useExtras() {
@@ -150,7 +151,7 @@ function applyFakeNitro() {
         if (active) changed = setCurrentPremiumType(2) || changed;
         else if (wasActive) changed = setCurrentPremiumType(state.premiumTypeActual ?? 0) || changed;
         if (changed) { (OverridePremiumTypeStore as any).emitChange?.(); restoreKeptTheme(); }
-    } catch { }
+    } catch (e) { logger.warn("Updating Nitro override failed", e); }
 }
 
 // ---- Fake gift link ----
@@ -327,9 +328,9 @@ function uninstallRoleHooks() {
 }
 
 function installBoostHooks() {
-    try { installRoleHooks(); } catch { }
-    try { installCountHooks(); } catch { }
-    try { installMemberListHook(); } catch { }
+    try { installRoleHooks(); } catch (e) { logger.warn("Installing role hooks failed", e); }
+    try { installCountHooks(); } catch (e) { logger.warn("Installing count hooks failed", e); }
+    try { installMemberListHook(); } catch (e) { logger.warn("Installing member list hook failed", e); }
     if (boostOriginals || !GuildStore || !GuildMemberStore) return;
     boostOriginals = { getGuild: GuildStore.getGuild, getMember: GuildMemberStore.getMember, getSelfMember: (GuildMemberStore as any).getSelfMember };
     const { getGuild, getMember } = boostOriginals;
@@ -403,7 +404,7 @@ function regroupMemberList(guildId: string, props: any) {
         if (!counts.get(id) && rows[oldHeader + 1]?.type !== "MEMBER") rows.splice(oldHeader, 1);
     }
     const row = { ...mineRow, hoistRoleId: hoist.id, roles: [...new Set([...(mineRow.roles ?? []), ...fake.roles])] };
-    try { const member = fakeMember(guildId, mineRow); Object.assign(row, { colorString: member.colorString, colorStrings: member.colorStrings, colorRoleId: member.colorRoleId, iconRoleId: member.iconRoleId, highestRoleId: member.highestRoleId, hoistRoleId: hoist.id }); } catch {}
+    try { const member = fakeMember(guildId, mineRow); Object.assign(row, { colorString: member.colorString, colorStrings: member.colorStrings, colorRoleId: member.colorRoleId, iconRoleId: member.iconRoleId, highestRoleId: member.highestRoleId, hoistRoleId: hoist.id }); } catch { /* silent: runs per member-list render; falls back to the plain row */ }
     let header = rows.findIndex((entry: any) => entry?.type === "GROUP" && String(entry.id) === hoist.id);
     if (header < 0) {
         // New header above the first role group that sits lower than this role (or above "Online").
@@ -508,8 +509,8 @@ function uninstallBoostHooks() {
     boostOriginals = null;
 }
 function refreshGuildViews(guildId: string) {
-    try { (GuildStore as any).emitChange?.(); (GuildMemberStore as any).emitChange?.(); (GuildMemberCountStore as any)?.emitChange?.(); (ChannelMemberStore as any)?.emitChange?.(); (GuildRoleStore as any)?.emitChange?.(); } catch { }
-    try { FluxDispatcher.dispatch({ type: "GUILD_MEMBER_PROFILE_UPDATE", guildId }); } catch { }
+    try { (GuildStore as any).emitChange?.(); (GuildMemberStore as any).emitChange?.(); (GuildMemberCountStore as any)?.emitChange?.(); (ChannelMemberStore as any)?.emitChange?.(); (GuildRoleStore as any)?.emitChange?.(); } catch (e) { logger.warn("Refreshing guild stores failed", e); }
+    try { FluxDispatcher.dispatch({ type: "GUILD_MEMBER_PROFILE_UPDATE", guildId }); } catch (e) { logger.warn("Dispatching member profile update failed", e); }
 }
 
 function BoostSection() {
@@ -637,7 +638,7 @@ export async function addFakeRequestById(rawId: string) {
     let user: any = UserStore.getUser(id);
     if (!user) {
         // Not cached yet: look the user up once so the request has a name and avatar.
-        try { user = (await RestAPI.get({ url: `/users/${id}` }))?.body; } catch { }
+        try { user = (await RestAPI.get({ url: `/users/${id}` }))?.body; } catch (e) { logger.warn("Looking up user failed", e); }
     }
     if (!user) { showToast("Couldn't find that user.", Toasts.Type.FAILURE); return false; }
     addFakeRequest(user);
@@ -699,9 +700,9 @@ function confirmLeaveAll() {
 
 // ---- Reset ----
 async function resetEverything() {
-    try { await DataStore.clear(); } catch { }
-    try { for (const key of Object.keys(localStorage)) if (/^(customProfile|cloudcord|CloudCord|Vencord|sincord)/i.test(key)) localStorage.removeItem(key); } catch { }
-    try { await VencordNative.settings.set({} as any); } catch { }
+    try { await DataStore.clear(); } catch (e) { logger.warn("Clearing DataStore failed", e); }
+    try { for (const key of Object.keys(localStorage)) if (/^(customProfile|cloudcord|CloudCord|Vencord|sincord)/i.test(key)) localStorage.removeItem(key); } catch (e) { logger.warn("Clearing localStorage failed", e); }
+    try { await VencordNative.settings.set({} as any); } catch (e) { logger.warn("Clearing settings failed", e); }
     location.reload();
 }
 function confirmReset() {
@@ -741,7 +742,7 @@ function uninstallOrbHooks() {
     orbStores.currency = orbStores.wallet = undefined;
 }
 function refreshOrbs() {
-    for (const store of [orbStores.currency, orbStores.wallet]) try { store?.emitChange?.(); } catch { }
+    for (const store of [orbStores.currency, orbStores.wallet]) try { store?.emitChange?.(); } catch (e) { logger.warn("Refreshing orb stores failed", e); }
 }
 
 let orbRetry: ReturnType<typeof setInterval> | undefined;
@@ -755,7 +756,7 @@ function rememberTheme(action: any) {
     const theme = action?.changes?.appearance?.settings?.clientThemeSettings;
     if (!theme || !("backgroundGradientPresetId" in theme)) return;
     keptThemePreset = typeof theme.backgroundGradientPresetId === "number" ? theme.backgroundGradientPresetId : null;
-    try { if (keptThemePreset != null) localStorage.setItem(LS_NITRO_THEME, String(keptThemePreset)); else localStorage.removeItem(LS_NITRO_THEME); } catch { }
+    try { if (keptThemePreset != null) localStorage.setItem(LS_NITRO_THEME, String(keptThemePreset)); else localStorage.removeItem(LS_NITRO_THEME); } catch (e) { logger.warn("Saving Nitro theme failed", e); }
 }
 let themeTimer: ReturnType<typeof setTimeout> | undefined;
 function restoreKeptTheme() {
@@ -765,7 +766,7 @@ function restoreKeptTheme() {
         try {
             if (ClientThemesBackgroundStore?.gradientPreset?.id === keptThemePreset) return;
             FluxDispatcher.dispatch({ type: "UPDATE_BACKGROUND_GRADIENT_PRESET", presetId: keptThemePreset });
-        } catch { }
+        } catch (e) { logger.warn("Restoring Nitro theme failed", e); }
     }, 400);
 }
 const THEME_SYNC_EVENTS = ["USER_SETTINGS_PROTO_UPDATE", "CONNECTION_OPEN", "OVERLAY_INITIALIZE", "CURRENT_USER_UPDATE"];
