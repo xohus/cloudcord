@@ -14,6 +14,15 @@ const context = { module: { exports: {} }, require: name => {
 } };
 vm.runInNewContext(esbuild.transformSync(fs.readFileSync(path.join(__dirname, '../src/api/Badges.ts'), 'utf8'), { loader: 'ts', format: 'cjs' }).code, context);
 const api = context.module.exports, args = { userId: '1465007041390317579', guildId: 'guild' };
+const roster = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../config/staff-roster.json'), 'utf8'));
+for (const rank of roster.roles) for (const userId of rank.userIds) {
+    const official = api._getBadges({ ...args, userId }).filter(b => b.id.startsWith('cloudcord-official-'));
+    assert.equal(official.length, 1, `${userId} receives exactly one staff badge`);
+    assert.equal(official[0].description, `CloudCord ${rank.name}`);
+}
+for (const userId of ['318501167741272066', '1121228881425354832', '1169999011642605628', '1312331817818394665', '1453130879537905734', '1541881462914023501']) {
+    assert(!api._getBadges({ ...args, userId }).some(b => b.id.startsWith('cloudcord-official-')), `removed staff ${userId} has no official badge`);
+}
 api.addProfileBadge({ id: 'broken', getBadges() { throw Error('profile unavailable'); } });
 api.addProfileBadge({ id: 'broken-predicate', shouldShow() { throw Error('bad predicate'); } });
 api.addProfileBadge({ id: 'invalid', getBadges: () => ({ id: 'not-an-array' }) });

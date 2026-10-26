@@ -24,6 +24,7 @@ import { React, Toasts, UserProfileStore } from "@webpack/common";
 import { ComponentType, HTMLProps } from "react";
 import Plugins from "~plugins";
 import { isRealProfileView } from "@utils/realProfileView";
+import { Logger } from "@utils/Logger";
 
 import { isPluginEnabled } from "./PluginManager";
 
@@ -65,31 +66,60 @@ export interface ProfileBadge {
 }
 
 const Badges = new Set<ProfileBadge>();
+const failedBadgeSources = new WeakSet<object>();
+type BadgeComponent = NonNullable<ProfileBadge["component"]>;
+const guardedBadgeComponents = new WeakMap<BadgeComponent, BadgeComponent>();
+
+function guardBadgeComponent(component: BadgeComponent): BadgeComponent {
+    const cached = guardedBadgeComponents.get(component);
+    if (cached) return cached;
+    const wrapped = ErrorBoundary.wrap(component, { noop: true });
+    guardedBadgeComponents.set(component, wrapped);
+    guardedBadgeComponents.set(wrapped, wrapped);
+    return wrapped;
+}
+
+function readBadgeSource(source: object, load: () => unknown): ProfileBadge[] {
+    try {
+        const rows = load();
+        if (rows == null || rows === false) return [];
+        if (!Array.isArray(rows)) throw new Error("Badge source did not return an array");
+        return rows.filter((row): row is ProfileBadge => row && typeof row === "object" && !Array.isArray(row) && typeof row.id === "string" && row.id.length > 0);
+    } catch (error) {
+        if (!failedBadgeSources.has(source)) {
+            failedBadgeSources.add(source);
+            new Logger("BadgeAPI").warn("Skipped a failed badge source; other profile badges remain available", error);
+        }
+        return [];
+    }
+}
 
 export const CLOUDCORD_STAFF_ROLES: Record<string, string> = {
     "463515440606609419": "Founder",
-    "1526004298020950075": "Head Staff",
+    "1417880742502994042": "Chief of staff",
+    "1394648991223779328": "Management Supervisor",
+    "1526004298020950075": "Management Supervisor",
     "1540350369232850995": "Manager",
     "1497588725788442637": "Manager",
+    "1330236504198611029": "Social Media Manager",
     "1191456523763859558": "Admin",
     "1457121276748365989": "Admin",
     "1465007041390317579": "Admin",
-    "1470732628461359251": "Support Lead",
-    "1417880742502994042": "Supervisor",
-    "1169999011642605628": "Senior Mod",
-    "1394648991223779328": "Senior Mod",
-    "1312331817818394665": "Senior Mod",
-    "318501167741272066": "Mod",
+    "1470732628461359251": "Lead of Support",
     "553936745058664458": "Mod",
     "1073445426025480202": "Mod",
-    "1121228881425354832": "Mod",
     "1141922991622586418": "Mod",
-    "1453130879537905734": "Mod",
+    "1495382175158243440": "Mod",
+    "562677177779224588": "Trial Moderator",
+    "673898407601111059": "Trial Moderator",
+    "1416192374895542455": "Trial Moderator",
+    "1440072683969839235": "Trial Moderator",
+    "1540703692133634183": "Trial Moderator",
+    "1560310951805321359": "Trial Moderator",
     "551069589983854603": "Senior Support",
-    "1330236504198611029": "Senior Support",
+    "257020965756731403": "Support",
+    "1069892245823692871": "Support",
     "1186647886608478260": "Support",
-    "1416192374895542455": "Support",
-    "1541881462914023501": "Support",
     "1560496375710613514": "Support"
 };
 const CLOUDCORD_BADGE_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png";
@@ -264,7 +294,7 @@ function showStaffRole(label: string) {
  * @param badge The badge to register
  */
 export function addProfileBadge(badge: ProfileBadge) {
-    badge.component &&= ErrorBoundary.wrap(badge.component, { noop: true });
+    badge.component &&= guardBadgeComponent(badge.component);
     Badges.add(badge);
 }
 
@@ -287,17 +317,14 @@ export function _getBadges(args: BadgeUserArgs) {
     if (profilePlugin?.started && profilePlugin.badgesHiddenFor?.(args.userId)) return [];
     const badges = [] as ProfileBadge[];
     for (const badge of Badges) {
-        if (badge.shouldShow && !badge.shouldShow(args)) {
-            continue;
-        }
-
-        const b = badge.getBadges
-            ? badge.getBadges(args).map(badge => ({
-                ...args,
-                ...badge,
-                component: badge.component && ErrorBoundary.wrap(badge.component, { noop: true })
-            }))
-            : [{ ...args, ...badge }];
+        const b = readBadgeSource(badge, () => {
+            if (badge.shouldShow && !badge.shouldShow(args)) return [];
+            return badge.getBadges ? badge.getBadges(args) : [badge];
+        }).map(badge => ({
+            ...args,
+            ...badge,
+            component: badge.component && guardBadgeComponent(badge.component)
+        }));
 
         if (badge.position === BadgePosition.START) {
             badges.unshift(...b);
@@ -322,9 +349,9 @@ export function _getBadges(args: BadgeUserArgs) {
         });
     }
 
-    const donorBadges = BadgeAPIPlugin.getDonorBadges(args.userId);
-    const sincordDonorBadges = BadgeAPIPlugin.getSincordDonorBadges(args.userId);
-    const GlobalBadges = isPluginEnabled(globalBadges.name) ? globalBadges.getGlobalBadges(args.userId) : false;
+    const donorBadges = readBadgeSource(BadgeAPIPlugin, () => BadgeAPIPlugin.getDonorBadges(args.userId));
+    const sincordDonorBadges = readBadgeSource(BadgeAPIPlugin, () => BadgeAPIPlugin.getSincordDonorBadges(args.userId));
+    const GlobalBadges = readBadgeSource(globalBadges, () => isPluginEnabled(globalBadges.name) ? globalBadges.getGlobalBadges(args.userId) : []);
 
     // do globalbadges first so it shows before the contrib badges but after donor badges
     if (GlobalBadges) {
