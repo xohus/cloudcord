@@ -118,7 +118,7 @@ function hookStore(store: any, userArg: boolean, lookup: DataLookup): Patched | 
         if (typeof store[name] !== "function") return;
         const original = store[name];
         originals[name] = original;
-        store[name] = wrappers[name] = function (...args: any[]) {
+        store[name] = wrappers[name] = function (...args: unknown[]) {
             const real = original.apply(this, args);
             if (!state.active) return real;
             try { const id = user(args); return id ? fn(lookup(id), real, args) : real; } catch { return real; }
@@ -150,7 +150,7 @@ export function uninstallPresenceHooks() {
 }
 
 export function refreshPresence() {
-    try { (PresenceStore as any)?.emitChange?.(); } catch (e) { logger.warn("Refreshing PresenceStore failed", e); }
+    try { PresenceStore.emitChange?.(); } catch (e) { logger.warn("Refreshing PresenceStore failed", e); }
     try { selfStore()?.emitChange?.(); } catch (e) { logger.warn("Refreshing self presence failed", e); }
 }
 
@@ -396,7 +396,7 @@ export function StatusEditor({ data, set }: { data: ProfileAppearance; set: Sett
 /** Real Rich Presence is handled by the CustomRPC plugin; unlike the cosmetics above it is
  * visible to everyone, because Discord broadcasts it. */
 function RichPresenceBlock() {
-    const plugin = (window as any).Vencord?.Plugins?.plugins?.CustomRPC;
+    const plugin = Vencord.Plugins?.plugins?.CustomRPC;
     const [enabled, setEnabled] = React.useState<boolean>(() => !!Settings.plugins.CustomRPC?.enabled);
     const [pendingRestart, setPendingRestart] = React.useState(false);
     if (!plugin) return null;

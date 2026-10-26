@@ -520,7 +520,7 @@ const sharedMissingUntil = new Map<string, number>();
 const sharedViewedAt = new Map<string, number>();
 let sharedBackoffUntil = 0;
 const sharedProfiles = new Map<string, CustomProfileData>();
-let realGetUserProfile: ((...args: any[]) => any) | null = null;
+let realGetUserProfile: ((...args: unknown[]) => any) | null = null;
 let realGetCurrentUser: (() => any) | null = null;
 /** Discord marks profiles the viewer isn't allowed to see as private; show those exactly as Discord does. */
 function isPrivateProfile(userId: string): boolean {
@@ -854,7 +854,7 @@ function installProfileReadHook(store: any, method: string, handler: (original: 
     const original = store?.[method];
     if (typeof original !== "function") return;
     const generation = profileRuntimeGeneration;
-    const wrapped = function (this: any, ...args: any[]) {
+    const wrapped = function (this: any, ...args: unknown[]) {
         if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return original.apply(this, args);
         return handler(original.bind(this), args);
     };
@@ -869,7 +869,7 @@ function uninstallProfileStoreHooks() {
 function installProfileStoreHooks(plugin: any) {
     const owner = {};
     try {
-        const US: any = UserStore || (Vencord as any).Webpack?.findByStoreName?.("UserStore");
+        const US: any = UserStore;
         if (US && !US._cp_hook) {
             if (typeof US.getCurrentUser === "function") realGetCurrentUser = US.getCurrentUser.bind(US);
             let lastReal: any = null, lastFake: any = null, lastVersion = -1;
@@ -902,7 +902,7 @@ function installProfileStoreHooks(plugin: any) {
         }
     } catch (e) { logger.warn("Installing UserStore hooks failed", e); }
     try {
-        const UPS = (Vencord as any).Webpack?.findByProps?.("getUserProfile", "getGuildMemberProfile");
+        const UPS = Vencord.Webpack?.findByProps?.("getUserProfile", "getGuildMemberProfile");
         if (UPS && !UPS._cp_hook) {
             if (typeof UPS.getUserProfile === "function") realGetUserProfile = UPS.getUserProfile.bind(UPS);
             for (const method of ["getUserProfile", "getGuildMemberProfile"]) installProfileReadHook(UPS, method, (original, args) => {
@@ -1018,8 +1018,6 @@ function requestSharedProfile(userId: string, force = false) {
                 if (sharedProfiles.delete(userId)) {
                     sharedProfileFetchedAt.delete(userId);
                     try {
-                        (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore")?.emitChange?.();
-                        (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
                         refreshPresence();
                     } catch (e) { logger.warn("Refreshing profile stores failed", e); }
                 }
@@ -1053,9 +1051,6 @@ function requestSharedProfile(userId: string, force = false) {
                 reloadDiscordProfile(userId);
             }
             try {
-                const UPS = (Vencord as any).Webpack?.findByStoreName?.("UserProfileStore");
-                UPS?.emitChange?.();
-                (Vencord as any).Webpack?.findByStoreName?.("UserStore")?.emitChange?.();
                 refreshPresence();
             } catch (e) { logger.warn("Refreshing profile stores failed", e); }
         }).catch(() => {
@@ -1297,9 +1292,6 @@ function stopDomObserver() {
 function forceAccountPanelRerender() {
     try { refreshFakeNitro(); } catch (e) { logger.warn("Refreshing fake Nitro failed", e); }
     try {
-        const WP = (Vencord as any).Webpack;
-        const US = WP?.findByStoreName?.("UserStore"); if (US?.emitChange) US.emitChange();
-        const UPS = WP?.findByStoreName?.("UserProfileStore"); if (UPS?.emitChange) UPS.emitChange();
         refreshPresence();
         if (isEnabled) startDomObserver(); else stopDomObserver();
     } catch (e) { logger.warn("Applying profile change failed", e); }
@@ -1338,8 +1330,8 @@ function realProfileMenuItem(userId: string) {
     return <Menu.MenuItem id="cloudcord-profile-view" label={viewingReal ? "Return to CloudCord profile" : "Show real profile"} action={() => {
         setRealProfileView(userId, !viewingReal);
         cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
-        try { (UserProfileStore as any).emitChange?.(); } catch (e) { logger.warn("Refreshing UserProfileStore failed", e); }
-        try { (UserStore as any).emitChange?.(); } catch (e) { logger.warn("Refreshing UserStore failed", e); }
+        try { UserProfileStore.emitChange?.(); } catch (e) { logger.warn("Refreshing UserProfileStore failed", e); }
+        try { UserStore.emitChange?.(); } catch (e) { logger.warn("Refreshing UserStore failed", e); }
         forceAccountPanelRerender();
         // Let the menu close first so Discord does not stack modals on a closing layer.
         setTimeout(() => { try { UserProfileActions.openUserProfileModal({ userId }); } catch (e) { logger.warn("Opening profile modal failed", e); } }, 50);
@@ -1581,7 +1573,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
 
     const accounts = React.useMemo(() => {
         try {
-            const MAS = (window as any).Vencord?.Webpack?.findByProps?.("getUsers", "getValidUsers");
+            const MAS = Vencord.Webpack?.findByProps?.("getUsers", "getValidUsers");
             if (MAS?.getUsers) { const users = MAS.getUsers(); if (Array.isArray(users) && users.length > 0) return users; }
         } catch { /* silent: runs during render; falls back to the current account */ }
         const me = UserStore.getCurrentUser(); return me ? [me] : [];
@@ -1592,7 +1584,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     function set<K extends keyof CustomProfileData>(key: K, val: CustomProfileData[K]) { setData(d => ({ ...d, [key]: val })); }
     const appearanceEnums = React.useMemo(() => {
         // Discord now ships the font and effect lists as separate plain enums.
-        const find = (filter: (m: any) => boolean) => { try { return (Vencord as any).Webpack.find(filter, { isIndirect: true }); } catch { return undefined; } };
+        const find = (filter: (m: any) => boolean) => { try { return Vencord.Webpack.find(filter, { isIndirect: true }); } catch { return undefined; } };
         return {
             DisplayNameFont: find(m => m?.BANGERS === 1 && m?.DEFAULT === 11),
             DisplayNameEffect: find(m => m && typeof m === "object" && "SOLID" in m && "GRADIENT" in m && "NEON" in m)
@@ -1656,7 +1648,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     const fallbackAvatar = selectedUser ? IconUtils.getUserAvatarURL(selectedUser, false, 128) : "https://cdn.discordapp.com/embed/avatars/0.png";
     const currentDecoration = decorations.find(item => item.id === data.decorationAsset) || ALL_DECORATIONS.find(item => item.id === data.decorationAsset) || liveDecorations.find(item => item.id === data.decorationAsset);
     const nameColors = [0, 1, 2].map(index => nameStyle.colors[index] ?? nameStyle.colors[0] ?? 0xffffff);
-    const knownTags = availableServerTags((UserStore as any).getUsers?.());
+    const knownTags = availableServerTags(UserStore.getUsers());
 
     const panels: Record<TabId, React.ReactNode> = {
         profile: <>
@@ -2084,14 +2076,14 @@ fakeObfuscatedEmail(real: string | null) {
         if (typeof resolver?.getAvatarDecorationURL === "function" && !this._origGetAvatarDecorationURL) {
             this._origGetAvatarDecorationURL = resolver.getAvatarDecorationURL;
             const original = resolver.getAvatarDecorationURL;
-            resolver.getAvatarDecorationURL = (input: any, ...args: any[]) => this.patchDecorationUrl(input) || original.call(resolver, input, ...args);
+            resolver.getAvatarDecorationURL = (input: any, ...args: unknown[]) => this.patchDecorationUrl(input) || original.call(resolver, input, ...args);
         }
         addHeaderBarButton("profile-spoofer-btn", () => <CustomProfileButton />, 10);
         addContextMenuPatch("user-context", userContextMenuPatch);
         addContextMenuPatch(["user-profile-actions", "user-profile-overflow-menu"], profileOverflowPatch);
         FluxDispatcher.subscribe("CONNECTION_OPEN", onAccountSwitch);
-        (FluxDispatcher as any).addInterceptor?.(rewriteFetchedProfile);
-        (FluxDispatcher as any).addInterceptor?.(rewriteBadgeDirectory);
+        FluxDispatcher.addInterceptor?.(rewriteFetchedProfile);
+        FluxDispatcher.addInterceptor?.(rewriteBadgeDirectory);
         // Discord loads your profile and badge info at startup, possibly before these
         // hooks exist; load them again once Discord has settled so the fake data applies.
         reloadDiscordProfile(activeUserId());
@@ -2105,7 +2097,7 @@ fakeObfuscatedEmail(real: string | null) {
         if (IconUtils?.getUserAvatarURL && !_avatarPatchApplied) {
             this._origGetUserAvatarURL = IconUtils.getUserAvatarURL;
             const orig = this._origGetUserAvatarURL;
-            (IconUtils as any).getUserAvatarURL = (user: any, ...args: any[]) => {
+            (IconUtils as any).getUserAvatarURL = (user: any, ...args: unknown[]) => {
                 if (user?.id && isMe(user.id) && isEnabled && storedData.avatar) return storedData.avatar;
                 if (user?.id && !isMe(user.id)) {
                     requestSharedProfile(user.id);
@@ -2212,9 +2204,7 @@ function buildProfileBadges(userId: string): ProfileBadge[] {
 
         // Suppress real Discord badges by zeroing publicFlags on the live user object
         try {
-            const WP = (Vencord as any).Webpack;
-            const US = WP?.findByStoreName?.("UserStore") || WP?.findByProps?.("getCurrentUser", "getUser");
-            const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
+            const liveUser = userIsMe ? UserStore.getCurrentUser() : UserStore.getUser(userId);
             if (liveUser && shouldReplaceBadges(profileData)) {
                 Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
                 Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
@@ -2466,8 +2456,8 @@ function installSwitcherHook() {
     const store: any = multiAccountStore;
     switcherOriginals = { getUsers: store.getUsers, getValidUsers: store.getValidUsers };
     const { getUsers, getValidUsers } = switcherOriginals;
-    store.getUsers = function (...args: any[]) { return spoofSwitcherUsers(getUsers.apply(this, args)); };
-    if (getValidUsers) store.getValidUsers = function (...args: any[]) { return spoofSwitcherUsers(getValidUsers.apply(this, args)); };
+    store.getUsers = function (...args: unknown[]) { return spoofSwitcherUsers(getUsers.apply(this, args)); };
+    if (getValidUsers) store.getValidUsers = function (...args: unknown[]) { return spoofSwitcherUsers(getValidUsers.apply(this, args)); };
 }
 function uninstallSwitcherHook() {
     if (!switcherOriginals) return;
@@ -2819,7 +2809,7 @@ function resolveCopyTarget(text: string): string | null {
     if (id) return id;
     const name = value.replace(/^@/, "").toLowerCase();
     if (!name) return null;
-    const users = Object.values((UserStore as any).getUsers?.() ?? {}) as any[];
+    const users = Object.values(UserStore.getUsers() ?? {}) as any[];
     return (users.find(user => user?.username?.toLowerCase() === name) ?? users.find(user => user?.globalName?.toLowerCase() === name))?.id ?? null;
 }
 

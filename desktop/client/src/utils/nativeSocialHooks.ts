@@ -22,7 +22,7 @@ export function installNativeSocialHooks(options: Hooks) {
     const wrap = (object: any, key: string, handler: (original: Function, args: any[]) => any) => {
         if (typeof object?.[key] !== "function") return;
         const original = object[key];
-        const replacement = function (this: any, ...args: any[]) { return handler(original.bind(this), args); };
+        const replacement = function (this: any, ...args: unknown[]) { return handler(original.bind(this), args); };
         object[key] = replacement;
         cleanups.push(() => { if (object[key] === replacement) object[key] = original; });
     };
@@ -48,7 +48,7 @@ export function installNativeSocialHooks(options: Hooks) {
         const platform = original(...args);
         if (!platform || typeof platform.getPlatformUserUrl !== "function") return platform;
         return Object.assign(Object.create(Object.getPrototypeOf(platform)),platform,{
-            getPlatformUserUrl(account: any, ...rest: any[]) {
+            getPlatformUserUrl(account: any, ...rest: unknown[]) {
                 if (!account?.cloudcordCustom || !account.cloudcordPreview) return platform.getPlatformUserUrl(account,...rest);
                 const safe = normalizeCustomSocial({customConnections:[account.cloudcordPreview]}).customConnections?.[0];
                 if (!safe) return undefined;
