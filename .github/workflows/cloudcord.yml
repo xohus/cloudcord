@@ -1145,10 +1145,10 @@ jobs:
               } catch { return null; }
           }
 
-          async function ownSharedProfile() {
+          async function ownSharedProfile(source?: PreviewSettings) {
               // Freeze one logical edit before yielding to native file decoding.
               // Reading the global preview between awaits can mix accounts/edits.
-              const snapshot = JSON.parse(JSON.stringify(preview)) as PreviewSettings;
+              const snapshot = JSON.parse(JSON.stringify(source ?? preview)) as PreviewSettings;
               return {
                   username: snapshot.username,
                   globalName: snapshot.displayName,
@@ -3919,7 +3919,26 @@ jobs:
           }
 
           // Saved profiles: named copies of your custom profile, shown like Discord's profile cards.
-          type SavedProfile = { id: string; name: string; savedAt: number; data: any };
+          type ShareVisibility = "public" | "unlisted" | "private";
+          type ProfileShare = { id: string; token: string; visibility: ShareVisibility };
+          type SavedProfile = { id: string; name: string; savedAt: number; data: any; share?: ProfileShare };
+          // Sharing saved profiles through getcloudcord.com.
+          const SHARE_VISIBILITIES: { value: ShareVisibility; label: string }[] = [{ value: "unlisted", label: "Unlisted" }, { value: "public", label: "Public" }, { value: "private", label: "Private" }];
+          const shareLink = (id: string) => SHARED_PROFILE_API + "/p/" + id;
+          const shareCodeFrom = (text: string) => String(text || "").trim().match(/(?:\/p\/)?([A-Za-z0-9]{6,16})\/?$/)?.[1] ?? null;
+          async function shareRequest(path: string, method: string, body?: any, token?: string) {
+              const response = await withTimeout(fetch(SHARED_PROFILE_API + "/v1/shares" + path, { method, headers: { "content-type": "application/json", ...(token ? { authorization: "Bearer " + token } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) }), 15000);
+              const result = await response.json().catch(() => ({}));
+              if (!response.ok) throw new Error(result?.error || "Sharing failed (" + response.status + ")");
+              return result;
+          }
+          async function publishShare(item: SavedProfile, visibility: ShareVisibility): Promise<ProfileShare> {
+              const profile = await ownSharedProfile(item.data);
+              if (item.share) { await shareRequest("/" + item.share.id, "PUT", { name: item.name, visibility, profile }, item.share.token); return { ...item.share, visibility }; }
+              if (!currentUserId) throw new Error("Sign in to Discord first.");
+              const created = await shareRequest("", "POST", { ownerId: currentUserId, name: item.name, visibility, profile });
+              return { id: created.id, token: created.editToken, visibility };
+          }
           function savedSnapshot(data: any) {
               const { syncRevision: _revision, enabled: _enabled, ...rest } = data || {};
               return JSON.parse(JSON.stringify(rest));
@@ -3938,6 +3957,33 @@ jobs:
                   setName("");
                   showToast("Saved \u201c" + label + "\u201d");
               };
+              const [code, setCode] = useState("");
+              const [busy, setBusy] = useState(false);
+              const [sharing, setSharing] = useState<string | null>(null);
+              const [publicShares, setPublicShares] = useState<any[] | null>(null);
+              const run = async (task: () => Promise<void>) => { setBusy(true); try { await task(); } catch (error: any) { Alert.alert("Sharing", error?.message || "Something went wrong."); } finally { setBusy(false); } };
+              const importCode = (value: string) => run(async () => {
+                  const id = shareCodeFrom(value);
+                  if (!id) throw new Error("Paste a share link or code.");
+                  const own = items.find(item => item.share?.id === id);
+                  let share: any;
+                  try { share = await shareRequest("/" + id, "GET", undefined, own?.share?.token); }
+                  catch (error: any) { throw new Error(/not found/i.test(String(error?.message)) ? "That profile doesn't exist or is private." : error?.message); }
+                  const data = savedSnapshot({ ...current, ...previewFromShared(share.profile || {}) });
+                  commit([{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: String(share.name || "Imported profile").slice(0, 40), savedAt: Date.now(), data }, ...items]);
+                  setCode("");
+                  showToast("Added \u201c" + share.name + "\u201d to Saved");
+              });
+              const shareItem = (item: SavedProfile, visibility: ShareVisibility) => run(async () => {
+                  const share = await publishShare(item, visibility);
+                  commit(items.map(other => other.id === item.id ? { ...other, share } : other));
+                  showToast(item.share ? "Share updated" : "Profile shared");
+              });
+              const stopSharing = (item: SavedProfile) => run(async () => {
+                  if (item.share) await shareRequest("/" + item.share.id, "DELETE", undefined, item.share.token).catch((error: any) => { if (!/not found|only the device/i.test(String(error?.message))) throw error; });
+                  commit(items.map(other => other.id === item.id ? { ...other, share: undefined } : other));
+              });
+              const copyLink = (id: string) => { try { (findByProps("setString", "getString") as any)?.setString?.(shareLink(id)); showToast("Link copied"); } catch {} };
               const remove = (item: SavedProfile) => Alert.alert("Delete \u201c" + item.name + "\u201d?", "This saved copy is removed. Your current profile stays as it is.", [
                   { text: "Cancel", style: "cancel" },
                   { text: "Delete", style: "destructive", onPress: () => commit(items.filter(other => other.id !== item.id)) }
@@ -3955,6 +4001,18 @@ jobs:
                           <S.Button label="Save current profile" primary onPress={saveCurrent} />
                       </S.Section>
                   </S.Panel>
+                  <S.Panel>
+                  <S.Section title="Import a shared profile" description="Paste a link or code someone shared. It's added to Saved; nothing changes until you use it.">
+                      <S.Field label="Link or code"><TextInput value={code} placeholder="getcloudcord.com/p/…" autoCapitalize="none" autoCorrect={false} onChangeText={setCode} /></S.Field>
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                          <S.Button label="Import" primary grow disabled={busy || !code.trim()} onPress={() => importCode(code)} />
+                          <S.Button label="Browse public" grow disabled={busy} onPress={() => run(async () => { setPublicShares((await shareRequest("?limit=30", "GET")).shares ?? []); })} />
+                      </View>
+                      {publicShares ? (publicShares.length ? publicShares.map((share: any) => <S.Row key={share.id} label={share.name} subLabel={share.preview?.name || undefined}
+                          icon={share.preview?.avatar ? <Image source={{ uri: share.preview.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} /> : undefined}
+                          trailing={<Text variant="text-sm/bold" color="text-brand">Import</Text>} onPress={() => importCode(share.id)} />) : <Text variant="text-sm/medium" color="text-muted">No public profiles yet.</Text>) : null}
+                  </S.Section>
+              </S.Panel>
                   {!items.length ? <Text variant="text-sm/medium" color="text-muted">No saved profiles yet. Set up your profile, then save it here to come back to it later.</Text> : null}
                   {items.map(item => {
                       const data = item.data || {};
@@ -3978,6 +4036,17 @@ jobs:
                               <S.Button label="Update" onPress={() => { commit(items.map(other => other.id === item.id ? { ...other, data: savedSnapshot(current), savedAt: Date.now() } : other)); showToast("Updated \u201c" + item.name + "\u201d"); }} />
                               <S.Button label="Delete" danger onPress={() => remove(item)} />
                           </View>
+                  {sharing === item.id ? <View style={{ gap: 8 }}>
+                      <S.Chips options={SHARE_VISIBILITIES} value={item.share?.visibility ?? "unlisted"} onChange={(value: ShareVisibility) => shareItem(item, value)} />
+                      {item.share && item.share.visibility !== "private" ? <Text variant="text-sm/medium" color="text-normal" selectable>{shareLink(item.share.id)}</Text> : null}
+                      {item.share?.visibility === "private" ? <Text variant="text-xs/medium" color="text-muted">Private: only this device can open it. Code {item.share.id}</Text> : null}
+                      <View style={{ flexDirection: "row", gap: 8 }}>
+                          {!item.share ? <S.Button label={busy ? "Sharing…" : "Share unlisted"} primary disabled={busy} grow onPress={() => shareItem(item, "unlisted")} /> : null}
+                          {item.share && item.share.visibility !== "private" ? <S.Button label="Copy link" grow onPress={() => copyLink(item.share!.id)} /> : null}
+                          {item.share ? <S.Button label="Stop sharing" danger disabled={busy} onPress={() => stopSharing(item)} /> : null}
+                          <S.Button label="Close" onPress={() => setSharing(null)} />
+                      </View>
+                  </View> : <S.Button label={item.share ? "Shared · " + item.share.visibility : "Share"} onPress={() => setSharing(item.id)} />}
                       </View>;
                   })}
               </View>;
@@ -4023,6 +4092,10 @@ jobs:
           function copiedFromCloudCord(userId: string): Partial<PreviewSettings> {
               const data: any = sharedProfiles.get(userId);
               if (!data) throw new Error("This person doesn't have a CloudCord profile.");
+              return previewFromShared(data);
+          }
+          // A profile in the shared (synced) format, as this editor's profile.
+          function previewFromShared(data: any): Partial<PreviewSettings> {
               const selectedBadges: Record<string, boolean> = {};
               const customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
               for (const [id, , flag, , customId] of BADGES) selectedBadges[id] = customId ? customBadgeIds.includes(customId) : !!(Number(data.badgeFlags || 0) & flag);
