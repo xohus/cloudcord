@@ -94,11 +94,14 @@ export default {
     },
 
     botCord: {
-        request: <T = unknown>(token: string, path: string, options?: {
+        listBots: () => invoke<Array<{ id: string; name: string; }>>(IpcEvents.BOTCORD_LIST_BOTS),
+        saveBot: (name: string, token: string) => invoke<string>(IpcEvents.BOTCORD_SAVE_BOT, name, token),
+        removeBot: (id: string) => invoke<void>(IpcEvents.BOTCORD_REMOVE_BOT, id),
+        request: <T = unknown>(botId: string, path: string, options?: {
             method?: "GET" | "POST";
             body?: Record<string, unknown>;
             files?: Array<{ name: string; type: string; data: string; }>;
-        }) => invoke<{ ok: boolean; status: number; data?: T; error?: string; }>(IpcEvents.BOTCORD_API_REQUEST, token, path, options),
+        }) => invoke<{ ok: boolean; status: number; data?: T; error?: string; }>(IpcEvents.BOTCORD_API_REQUEST, botId, path, options),
     },
 
     csp: {

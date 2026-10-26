@@ -29,6 +29,7 @@ import { open, readdir, readFile, unlink } from "fs/promises";
 import { release } from "os";
 import { join, normalize } from "path";
 
+import { listBots, removeBot, saveBot, tokenFor } from "./botTokens";
 import { registerCspIpcHandlers } from "./csp/manager";
 import { ALLOWED_PROTOCOLS, QUICK_CSS_PATH, SETTINGS_DIR, THEMES_DIR } from "./utils/constants";
 import { makeLinksOpenExternally } from "./utils/externalLinks";
@@ -62,14 +63,18 @@ const BOTCORD_ALLOWED_PATHS = [
     /^\/channels\/\d{17,20}\/messages$/,
 ];
 
-ipcMain.handle(IpcEvents.BOTCORD_API_REQUEST, async (_, token: string, path: string, options: {
+ipcMain.handle(IpcEvents.BOTCORD_LIST_BOTS, () => listBots());
+ipcMain.handle(IpcEvents.BOTCORD_SAVE_BOT, (_, name: string, token: string) => saveBot(name, token));
+ipcMain.handle(IpcEvents.BOTCORD_REMOVE_BOT, (_, id: string) => removeBot(String(id)));
+
+// Requests name a saved bot by id; the token itself never leaves the main process.
+ipcMain.handle(IpcEvents.BOTCORD_API_REQUEST, async (_, botId: string, path: string, options: {
     method?: "GET" | "POST";
     body?: Record<string, unknown>;
     files?: Array<{ name: string; type: string; data: string; }>;
 } = {}) => {
-    const cleanToken = token.replace(/^Bot\s+/i, "").trim();
-    if (cleanToken.length < 20 || /\s/.test(cleanToken))
-        return { ok: false, status: 0, error: "Invalid bot token" };
+    const cleanToken = tokenFor(String(botId));
+    if (!cleanToken) return { ok: false, status: 0, error: "That bot isn't saved on this device" };
     if (!BOTCORD_ALLOWED_PATHS.some(pattern => pattern.test(path)))
         return { ok: false, status: 0, error: "BotCord blocked an unsupported Discord API path" };
     const method = options.method ?? "GET";

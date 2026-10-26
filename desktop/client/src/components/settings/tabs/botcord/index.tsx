@@ -17,7 +17,8 @@ import { DataStore } from "@api/index";
 import { Margins } from "@utils/margins";
 import { Alerts, closeModal, openModal, Parser, React, TextInput, Toasts, useEffect, useRef, useState } from "@webpack/common";
 
-const DS_BOT_TOKENS = "CloudCord_BotTokens";
+// Old builds kept tokens here in plain text; they're moved to secure storage on load.
+const DS_LEGACY_BOT_TOKENS = "CloudCord_BotTokens";
 const DS_ACTIVE_BOT = "CloudCord_ActiveBot";
 const BOTCORD_AVAILABLE = IS_WEB;
 const normalizeBotToken = (value: string) => value.replace(/^Bot\s+/i, "").trim();
@@ -33,17 +34,28 @@ function controlDiscordWindow(action: "minimize" | "maximize" | "close") {
     void VencordNative.window[action]();
 }
 
-async function requestBotApi<T>(token: string, path: string, options?: Parameters<typeof VencordNative.botCord.request>[2]): Promise<T> {
-    const result = await VencordNative.botCord.request<T>(normalizeBotToken(token), path, options);
+async function requestBotApi<T>(botId: string, path: string, options?: Parameters<typeof VencordNative.botCord.request>[2]): Promise<T> {
+    const result = await VencordNative.botCord.request<T>(botId, path, options);
     if (!result.ok) throw new Error(result.error || `Discord request failed (${result.status})`);
     return result.data as T;
 }
 
 interface BotAccount {
+    id: string;
     name: string;
-    token: string;
-    botId?: string;
-    avatar?: string;
+}
+
+/** Moves bots saved by older builds out of plain-text storage. Returns old token → new id. */
+async function migrateLegacyBots() {
+    const legacy = await DataStore.get<Array<{ name: string; token: string; }>>(DS_LEGACY_BOT_TOKENS);
+    const ids = new Map<string, string>();
+    if (!Array.isArray(legacy) || !legacy.length) return ids;
+    for (const bot of legacy) {
+        if (!bot?.token) continue;
+        try { ids.set(normalizeBotToken(bot.token), await VencordNative.botCord.saveBot(bot.name, bot.token)); } catch { }
+    }
+    await DataStore.del(DS_LEGACY_BOT_TOKENS);
+    return ids;
 }
 
 interface BotIdentity {
@@ -426,22 +438,21 @@ function BotCordComponent() {
     const [showToken, setShowToken] = useState(false);
 
     useEffect(() => {
-        void Promise.all([
-            DataStore.get<BotAccount[]>(DS_BOT_TOKENS),
-            DataStore.get<string>(DS_ACTIVE_BOT)
-        ]).then(([bots, active]) => {
-            setSavedBots(Array.isArray(bots) ? bots : []);
-            setActiveBot(active ?? "");
-        }).catch(() => {
+        void (async () => {
+            const migrated = await migrateLegacyBots();
+            const [bots, active] = await Promise.all([VencordNative.botCord.listBots(), DataStore.get<string>(DS_ACTIVE_BOT)]);
+            let activeId = active ?? "";
+            if (activeId && !bots.some(bot => bot.id === activeId)) {
+                activeId = migrated.get(normalizeBotToken(activeId)) ?? "";
+                if (activeId) await DataStore.set(DS_ACTIVE_BOT, activeId); else await DataStore.del(DS_ACTIVE_BOT);
+            }
+            setSavedBots(bots);
+            setActiveBot(activeId);
+        })().catch(() => {
             setSavedBots([]);
             setActiveBot("");
         });
     }, []);
-
-    const saveBotsList = (list: BotAccount[]) => {
-        setSavedBots(list);
-        void DataStore.set(DS_BOT_TOKENS, list);
-    };
 
     const handleAddBot = () => {
         const trimmed = normalizeBotToken(token);
@@ -450,15 +461,16 @@ function BotCordComponent() {
             return;
         }
         const name = botName.trim() || `Bot ${savedBots.length + 1}`;
-        const newBots = [...savedBots.filter(b => b.token !== trimmed), { name, token: trimmed }];
-        saveBotsList(newBots);
-        setToken("");
-        setBotName("");
-        Toasts.show({ id: "bot-token-added", message: `Saved ${name} successfully!`, type: Toasts.Type.SUCCESS });
+        void VencordNative.botCord.saveBot(name, trimmed).then(async () => {
+            setSavedBots(await VencordNative.botCord.listBots());
+            setToken("");
+            setBotName("");
+            Toasts.show({ id: "bot-token-added", message: `Saved ${name} securely`, type: Toasts.Type.SUCCESS });
+        }, (error: any) => Toasts.show({ id: "bot-token-failed", message: error?.message || "Couldn't save the bot", type: Toasts.Type.FAILURE }));
     };
 
-    const handleActivateBot = (botToken: string, name: string) => {
-        const isActive = activeBot === normalizeBotToken(botToken);
+    const handleActivateBot = (botId: string, name: string) => {
+        const isActive = activeBot === botId;
         Alerts.show({
             title: `${isActive ? "Open" : "Activate"} ${name}?`,
             body: "CloudCord will validate this bot with Discord and use it inside BotCord. Your Discord user account will stay signed in.",
@@ -466,12 +478,11 @@ function BotCordComponent() {
             cancelText: "Cancel",
             async onConfirm() {
                 try {
-                    const cleanToken = normalizeBotToken(botToken);
-                    const bot = await requestBotApi<BotIdentity>(cleanToken, "/users/@me");
+                    const bot = await requestBotApi<BotIdentity>(botId, "/users/@me");
 
-                    await DataStore.set(DS_ACTIVE_BOT, cleanToken);
-                    setActiveBot(cleanToken);
-                    openBotCordOverlay(bot, cleanToken);
+                    await DataStore.set(DS_ACTIVE_BOT, botId);
+                    setActiveBot(botId);
+                    openBotCordOverlay(bot, botId);
                     Toasts.show({ id: "bot-activated", message: `${name} is now active in BotCord`, type: Toasts.Type.SUCCESS });
                 } catch (e: any) {
                     Toasts.show({ id: "bot-activate-fail", message: "Failed to activate bot: " + e.message, type: Toasts.Type.FAILURE });
@@ -480,10 +491,9 @@ function BotCordComponent() {
         });
     };
 
-    const handleDeleteBot = (botToken: string) => {
-        const updated = savedBots.filter(b => b.token !== botToken);
-        saveBotsList(updated);
-        if (activeBot === normalizeBotToken(botToken)) {
+    const handleDeleteBot = (botId: string) => {
+        void VencordNative.botCord.removeBot(botId).then(async () => setSavedBots(await VencordNative.botCord.listBots()));
+        if (activeBot === botId) {
             closeBotCordOverlay();
             void DataStore.del(DS_ACTIVE_BOT);
             setActiveBot("");
@@ -494,7 +504,7 @@ function BotCordComponent() {
     return (
         <SettingsTab>
             {!BOTCORD_AVAILABLE && <Notice.Warning className={Margins.bottom16}>
-                BotCord is temporarily unavailable on CloudCord Desktop while stability work is completed. Saved bots and tokens remain stored locally.
+                BotCord is temporarily unavailable on CloudCord Desktop while stability work is completed. Saved bots stay encrypted on this device.
             </Notice.Warning>}
             <Paragraph className={Margins.bottom16}>
                 BotCord manages and tests Discord bots in a separate session without replacing your Discord user account.
@@ -538,8 +548,8 @@ function BotCordComponent() {
                 <Paragraph style={{ opacity: 0.7 }}>No bot tokens saved yet. Add one above to get started.</Paragraph>
             ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {savedBots.map((bot, idx) => (
-                        <Card key={idx} style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    {savedBots.map(bot => (
+                        <Card key={bot.id} style={{ padding: "12px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                                 <RobotIcon style={{ width: "24px", height: "24px", opacity: 0.8 }} />
                                 <div>
@@ -551,14 +561,14 @@ function BotCordComponent() {
                                 <Button
                                     size="small"
                                     disabled={!BOTCORD_AVAILABLE}
-                                    onClick={() => handleActivateBot(bot.token, bot.name)}
+                                    onClick={() => handleActivateBot(bot.id, bot.name)}
                                 >
-                                    {activeBot === normalizeBotToken(bot.token) ? "Open" : "Activate"}
+                                    {activeBot === bot.id ? "Open" : "Activate"}
                                 </Button>
                                 <Button
                                     size="small"
                                     variant="dangerSecondary"
-                                    onClick={() => handleDeleteBot(bot.token)}
+                                    onClick={() => handleDeleteBot(bot.id)}
                                 >
                                     <DeleteIcon style={{ width: "16px", height: "16px" }} />
                                 </Button>

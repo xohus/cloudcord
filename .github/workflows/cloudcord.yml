@@ -5401,6 +5401,8 @@ jobs:
           done
       - name: Publish runtime to main
         if: github.ref == 'refs/heads/main'
+        env:
+          CLOUDCORD_RUNTIME_SIGNING_KEY: ${{ secrets.CLOUDCORD_RUNTIME_SIGNING_KEY }}
         run: |
           set -e
           git config user.name "github-actions[bot]"
@@ -5419,6 +5421,19 @@ jobs:
               "sha256": hashlib.sha256(runtime).hexdigest(),
               "size": len(runtime),
           }
+          # Sign the manifest with the release key. Loaders refuse unsigned updates.
+          key = os.environ.get("CLOUDCORD_RUNTIME_SIGNING_KEY", "")
+          if not key.strip():
+              raise SystemExit("CLOUDCORD_RUNTIME_SIGNING_KEY secret is not set; refusing to publish an unsigned runtime")
+          message = "cloudcord-runtime\n{schema}\n{version}\n{url}\n{sha256}\n{size}".format(**manifest).encode()
+          key_path = Path(os.environ["RUNNER_TEMP"]) / "runtime-signing.pem"
+          key_path.write_text(key, encoding="utf-8")
+          try:
+              import base64
+              signature = subprocess.run(["openssl", "dgst", "-sha256", "-sign", str(key_path)], input=message, check=True, capture_output=True).stdout
+          finally:
+              key_path.unlink(missing_ok=True)
+          manifest["signature"] = base64.b64encode(signature).decode()
           Path("dist/runtime-manifest.json").write_text(json.dumps(manifest, separators=(",", ":")) + "\n", encoding="utf-8")
           PY
           git add dist/runtime-manifest.json

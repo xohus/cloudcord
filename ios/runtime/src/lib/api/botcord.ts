@@ -28,6 +28,9 @@ export interface BotCordState {
 }
 
 const FILE_PATH = "botcord/accounts.json";
+// Tokens are kept in the iOS Keychain through the CloudCord tweak. Older app installs
+// without the Keychain bridge keep using the accounts file until they're updated.
+const SECRET_PREFIX = "bot-token:";
 const MAX_FILE_BYTES = 256 * 1024;
 const MAX_ACCOUNTS = 50;
 const DEFAULT_STATE: BotCordState = { accounts: [], activeAccountId: null, recentDMs: {}, loaded: false };
@@ -46,11 +49,25 @@ function notify() {
     }
 }
 
+function secretBridge(method: string, ...args: string[]): { ok: boolean; value?: any; } {
+    const bridge = (globalThis as any).__RAIN_BRIDGE_CALL_SYNC__;
+    if (typeof bridge !== "function") return { ok: false };
+    try {
+        const response = bridge({ rain: { method: "botcord.secret." + method, args } });
+        if (!response || response.error) return { ok: false };
+        return { ok: true, value: response.result };
+    } catch { return { ok: false }; }
+}
+const keychainAvailable = () => secretBridge("delete", SECRET_PREFIX + "probe").ok;
+const keychainGet = (id: string) => { const result = secretBridge("get", SECRET_PREFIX + id); return result.ok && typeof result.value === "string" ? result.value : ""; };
+const keychainSet = (id: string, token: string) => secretBridge("set", SECRET_PREFIX + id, token).value === true;
+const keychainDelete = (id: string) => { secretBridge("delete", SECRET_PREFIX + id); };
+
 function cleanAccount(value: any): BotCordAccount | null {
     if (!value || typeof value !== "object") return null;
     const id = typeof value.id === "string" ? value.id : "";
     const username = typeof value.username === "string" ? value.username : "";
-    const token = typeof value.token === "string" ? normalizeBotToken(value.token) : "";
+    const token = normalizeBotToken(typeof value.token === "string" && value.token ? value.token : id ? keychainGet(id.slice(0, 64)) : "");
     if (!id || !username || !token) return null;
     return {
         id: id.slice(0, 64),
@@ -92,11 +109,15 @@ function sanitizeState(value: any): BotCordState {
 }
 
 async function persist() {
-    const payload = JSON.stringify({ accounts: state.accounts, activeAccountId: state.activeAccountId, recentDMs: state.recentDMs });
+    // With the Keychain available, the file keeps only names and ids; tokens go to the Keychain.
+    const secure = keychainAvailable() && state.accounts.every(account => keychainSet(account.id, account.token));
+    const accounts = secure ? state.accounts.map(({ token: _token, ...rest }) => rest) : state.accounts;
+    const payload = JSON.stringify({ accounts, activeAccountId: state.activeAccountId, recentDMs: state.recentDMs });
     await NativeFileModule.writeFile("documents", FILE_PATH, payload, "utf8");
 }
 
 async function resetCorruptStore() {
+    for (const account of state.accounts) keychainDelete(account.id);
     state = { ...DEFAULT_STATE, loaded: true };
     try { await NativeFileModule.writeFile("documents", FILE_PATH, JSON.stringify({ accounts: [], activeAccountId: null, recentDMs: {} }), "utf8"); } catch {}
 }
@@ -121,7 +142,10 @@ export async function ensureBotCordLoaded() {
                 await resetCorruptStore();
                 return;
             }
-            state = sanitizeState(JSON.parse(raw));
+            const parsed = JSON.parse(raw);
+            state = sanitizeState(parsed);
+            // Move tokens saved in plain text by older builds into the Keychain.
+            if (Array.isArray(parsed?.accounts) && parsed.accounts.some((account: any) => typeof account?.token === "string" && account.token) && keychainAvailable()) await persist();
         } catch {
             await resetCorruptStore();
         } finally {
@@ -176,6 +200,7 @@ export async function addBotAccount(token: string) {
 export async function removeBotAccount(id: string) {
     await ensureBotCordLoaded();
     state.accounts = state.accounts.filter(a => a.id !== id);
+    keychainDelete(id);
     if (state.activeAccountId === id) state.activeAccountId = state.accounts[0]?.id ?? null;
     await persist(); notify();
 }

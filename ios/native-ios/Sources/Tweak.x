@@ -1,6 +1,7 @@
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
 #import <CommonCrypto/CommonDigest.h>
+#import <Security/Security.h>
 
 #import "Fonts.h"
 #import "LoaderConfig.h"
@@ -125,6 +126,44 @@ static NSString *sha256Hex(NSData *data)
     return result;
 }
 
+// Runtime updates must be signed by CloudCord's release key (ECDSA P-256). The manifest's
+// hash and size are only trusted after its signature checks out against this built-in key,
+// so a compromised website or CDN can't push code to clients.
+static NSString *const kRuntimeSigningPublicKey = @"BFAtic2uomR6FiE4WR8GHfu7xBIYIhHKV/eF+LsdUZq+e1zYJA6+s5W/715qOFnQ+8kbIOm9IAly/fbHN+kVIlM=";
+
+static BOOL isRuntimeManifestSigned(NSDictionary *manifest)
+{
+    NSString *signature = [manifest[@"signature"] isKindOfClass:[NSString class]] ? manifest[@"signature"] : nil;
+    if (!signature.length)
+        return NO;
+    // Must match the string the release workflow signs.
+    NSString *signed_ = [NSString stringWithFormat:@"cloudcord-runtime\n%@\n%@\n%@\n%@\n%@",
+                         manifest[@"schema"] ?: @"", manifest[@"version"] ?: @"", manifest[@"url"] ?: @"",
+                         manifest[@"sha256"] ?: @"", manifest[@"size"] ?: @""];
+    NSData *keyData = [[NSData alloc] initWithBase64EncodedString:kRuntimeSigningPublicKey options:0];
+    NSData *signatureData = [[NSData alloc] initWithBase64EncodedString:signature options:0];
+    if (!keyData || !signatureData)
+        return NO;
+    NSDictionary *attributes = @{
+        (__bridge NSString *) kSecAttrKeyType : (__bridge NSString *) kSecAttrKeyTypeECSECPrimeRandom,
+        (__bridge NSString *) kSecAttrKeyClass : (__bridge NSString *) kSecAttrKeyClassPublic,
+        (__bridge NSString *) kSecAttrKeySizeInBits : @256
+    };
+    CFErrorRef error = NULL;
+    SecKeyRef key = SecKeyCreateWithData((__bridge CFDataRef) keyData, (__bridge CFDictionaryRef) attributes, &error);
+    if (!key)
+    {
+        if (error) CFRelease(error);
+        return NO;
+    }
+    BOOL valid = SecKeyVerifySignature(key, kSecKeyAlgorithmECDSASignatureMessageX962SHA256,
+                                       (__bridge CFDataRef) [signed_ dataUsingEncoding:NSUTF8StringEncoding],
+                                       (__bridge CFDataRef) signatureData, &error);
+    if (error) CFRelease(error);
+    CFRelease(key);
+    return valid;
+}
+
 static NSDictionary *fetchRuntimeManifest(void)
 {
     NSURL *url = [NSURL URLWithString:@"https://getcloudcord.com/api/proxy/raw/dist/runtime-manifest.json"];
@@ -177,11 +216,17 @@ static NSURL *resolveDownloadURL(NSString **expectedHash, NSNumber **expectedSiz
         return fresh.customLoadUrl;
 
     NSDictionary *manifest = fetchRuntimeManifest();
+    if (manifest && !isRuntimeManifestSigned(manifest))
+    {
+        BunnyLog(@"[Updater] Runtime manifest signature is missing or invalid; keeping cached runtime");
+        return nil;
+    }
     NSString *urlString = [manifest[@"url"] isKindOfClass:[NSString class]] ? manifest[@"url"] : nil;
     NSString *hash = [manifest[@"sha256"] isKindOfClass:[NSString class]] ? [manifest[@"sha256"] lowercaseString] : nil;
     NSNumber *size = [manifest[@"size"] isKindOfClass:[NSNumber class]] ? manifest[@"size"] : nil;
 
-    if (!urlString || ![urlString hasPrefix:@"https://getcloudcord.com/api/proxy/"] || hash.length != 64 || !size || size.unsignedLongLongValue < 512 || size.unsignedLongLongValue > 8 * 1024 * 1024)
+    BOOL trustedHost = [urlString hasPrefix:@"https://getcloudcord.com/api/proxy/"] || [urlString hasPrefix:@"https://raw.githubusercontent.com/xohus/cloudcord/"];
+    if (!urlString || !trustedHost || hash.length != 64 || !size || size.unsignedLongLongValue < 512 || size.unsignedLongLongValue > 8 * 1024 * 1024)
     {
         BunnyLog(@"[Updater] Runtime manifest is missing or invalid; keeping cached runtime");
         return nil;
@@ -300,9 +345,56 @@ static BOOL downloadBundle(BOOL isExplicit)
     return success;
 }
 
+// BotCord secrets (bot tokens) live in the iOS Keychain, never in the Documents folder.
+static NSString *const kBotCordKeychainService = @"com.cloudcord.botcord";
+
+static NSMutableDictionary *botCordSecretQuery(NSString *key)
+{
+    return [@{
+        (__bridge NSString *) kSecClass : (__bridge NSString *) kSecClassGenericPassword,
+        (__bridge NSString *) kSecAttrService : kBotCordKeychainService,
+        (__bridge NSString *) kSecAttrAccount : key
+    } mutableCopy];
+}
+
+static BOOL validSecretKey(id key)
+{
+    return [key isKindOfClass:[NSString class]] && [(NSString *) key length] > 0 && [(NSString *) key length] <= 128;
+}
+
 static void registerBridgeMethods(void)
 {
     BridgeRegistry *b = [BridgeRegistry shared];
+
+    [b registerMethod:@"botcord.secret.get"
+             callback:^id(NSArray *args) {
+                 if (args.count < 1 || !validSecretKey(args[0])) return nil;
+                 NSMutableDictionary *query = botCordSecretQuery(args[0]);
+                 query[(__bridge NSString *) kSecReturnData] = @YES;
+                 query[(__bridge NSString *) kSecMatchLimit] = (__bridge NSString *) kSecMatchLimitOne;
+                 CFTypeRef data = NULL;
+                 if (SecItemCopyMatching((__bridge CFDictionaryRef) query, &data) != errSecSuccess || !data) return nil;
+                 NSString *value = [[NSString alloc] initWithData:(__bridge_transfer NSData *) data encoding:NSUTF8StringEncoding];
+                 return value;
+             }];
+
+    [b registerMethod:@"botcord.secret.set"
+             callback:^id(NSArray *args) {
+                 if (args.count < 2 || !validSecretKey(args[0]) || ![args[1] isKindOfClass:[NSString class]]) return @NO;
+                 NSData *value = [(NSString *) args[1] dataUsingEncoding:NSUTF8StringEncoding];
+                 NSMutableDictionary *query = botCordSecretQuery(args[0]);
+                 SecItemDelete((__bridge CFDictionaryRef) query);
+                 query[(__bridge NSString *) kSecValueData] = value;
+                 query[(__bridge NSString *) kSecAttrAccessible] = (__bridge NSString *) kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly;
+                 return @(SecItemAdd((__bridge CFDictionaryRef) query, NULL) == errSecSuccess);
+             }];
+
+    [b registerMethod:@"botcord.secret.delete"
+             callback:^id(NSArray *args) {
+                 if (args.count < 1 || !validSecretKey(args[0])) return @NO;
+                 OSStatus status = SecItemDelete((__bridge CFDictionaryRef) botCordSecretQuery(args[0]));
+                 return @(status == errSecSuccess || status == errSecItemNotFound);
+             }];
 
     [b registerMethod:@"realcord.config"
              callback:^id(NSArray *args) {

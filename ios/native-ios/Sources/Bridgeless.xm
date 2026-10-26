@@ -187,7 +187,7 @@ static void injectPreBundle(jsi::Runtime &runtime)
     injectPreBundle(runtime);
     NSString *bundlePath = [NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"BunnyResources.bundle"];
     NSBundle *resources = [NSBundle bundleWithPath:bundlePath];
-    NSData *identity = [@"globalThis.__CLOUDCORD_LOADER__=Object.assign(globalThis.__RAIN_LOADER__,{loaderName:'CloudCord',cloudcordAutoUpdateVersion:3,hasThemeSupport:false,fontPatch:0});globalThis.__PYON_LOADER__=globalThis.__CLOUDCORD_LOADER__;" dataUsingEncoding:NSUTF8StringEncoding];
+    NSData *identity = [@"globalThis.__CLOUDCORD_LOADER__=Object.assign(globalThis.__RAIN_LOADER__,{loaderName:'CloudCord',cloudcordAutoUpdateVersion:4,cloudcordSignedUpdates:true,hasThemeSupport:false,fontPatch:0});globalThis.__PYON_LOADER__=globalThis.__CLOUDCORD_LOADER__;" dataUsingEncoding:NSUTF8StringEncoding];
     [JSI evaluate:identity tag:@"cloudcord:rain-identity" runtime:runtime];
     // Seed each new IPA once so an older download cannot override its runtime.
     NSData *packaged = [NSData dataWithContentsOfURL:[resources URLForResource:@"runtime" withExtension:@"js"]];
