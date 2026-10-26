@@ -8,7 +8,7 @@
  */
 
 import { logger } from "./logger";
-import { migrateLegacyStorage, profileStorage } from "./storage";
+import { profileStorage } from "./storage";
 import "./style.css";
 import "./editor.css";
 import decorationCatalog from "./decorations.json";
@@ -2081,7 +2081,6 @@ fakeObfuscatedEmail(real: string | null) {
     } as ProfileBadge] as ProfileBadge[],
 
     async start() {
-        migrateLegacyStorage();
         profileRuntimeActive = true;
         const generation = ++profileRuntimeGeneration;
         installPresenceHooks(userId => isMe(userId) ? (isEnabled ? storedData : undefined) : isRealProfileView(userId) ? undefined : viewedSharedProfile(userId));
