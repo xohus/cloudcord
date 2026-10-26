@@ -2662,7 +2662,39 @@ function OtherProfilesPanel() {
 
 
 // ---- Saved profiles: named copies of your custom profile you can switch between ----
-interface SavedProfile { id: string; name: string; savedAt: number; data: CustomProfileData; }
+type ShareVisibility = "public" | "unlisted" | "private";
+interface ProfileShare { id: string; token: string; visibility: ShareVisibility; }
+interface SavedProfile { id: string; name: string; savedAt: number; data: CustomProfileData; share?: ProfileShare; }
+
+// ---- Sharing saved profiles through getcloudcord.com ----
+const SHARE_VISIBILITIES: { value: ShareVisibility; label: string; }[] = [
+    { value: "unlisted", label: "Unlisted · only people with the link" },
+    { value: "public", label: "Public · listed for everyone" },
+    { value: "private", label: "Private · only this device" }
+];
+const shareLink = (id: string) => `${SHARED_PROFILE_API}/p/${id}`;
+const shareCodeFrom = (text: string) => String(text || "").trim().match(/(?:\/p\/)?([A-Za-z0-9]{6,16})\/?$/)?.[1] ?? null;
+async function shareRequest(path: string, init: RequestInit & { token?: string; }) {
+    const { token, ...rest } = init;
+    const response = await fetch(`${SHARED_PROFILE_API}/v1/shares${path}`, {
+        ...rest, signal: AbortSignal.timeout(15000),
+        headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body?.error || `Sharing failed (${response.status})`);
+    return body;
+}
+async function publishShare(item: SavedProfile, visibility: ShareVisibility): Promise<ProfileShare> {
+    const profile = toSharedProfile(item.data);
+    if (item.share) {
+        await shareRequest(`/${item.share.id}`, { method: "PUT", token: item.share.token, body: JSON.stringify({ name: item.name, visibility, profile }) });
+        return { ...item.share, visibility };
+    }
+    const ownerId = UserStore.getCurrentUser()?.id;
+    if (!ownerId) throw new Error("Sign in to Discord first.");
+    const created = await shareRequest("", { method: "POST", body: JSON.stringify({ ownerId, name: item.name, visibility, profile }) });
+    return { id: created.id, token: created.editToken, visibility };
+}
 function readSavedProfiles(): SavedProfile[] {
     try { const value = JSON.parse(profileStorage.get("savedProfiles") || "[]"); return Array.isArray(value) ? value.filter(item => item?.id && item?.data) : []; } catch { return []; }
 }
@@ -2701,6 +2733,7 @@ function SavedProfilesPanel({ current, onLoad, fallbackName, fallbackUsername, f
                 <button type="button" className="cpx-btn cpx-btn-primary" onClick={saveCurrent}>Save current profile</button>
             </div>
         </Section>
+        <ShareImportSection onImport={(name, data) => commit([{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name.slice(0, 40), savedAt: Date.now(), data: savedSnapshot(data) }, ...readSavedProfiles()])} />
         {!items.length && <span className="cpx-hint">No saved profiles yet. Set up your profile, then save it here to come back to it later.</span>}
         <div className="cpx-saved-grid">
             {items.map(item => {
@@ -2728,6 +2761,7 @@ function SavedProfilesPanel({ current, onLoad, fallbackName, fallbackUsername, f
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M6 6l1 14h10l1-14"/></svg>
                         </button>
                     </div>
+                    <ShareControls item={item} onChange={share => commit(readSavedProfiles().map(other => other.id === item.id ? { ...other, share } : other))} />
                 </div>;
             })}
         </div>
@@ -2871,5 +2905,69 @@ function LocalTagSection() {
             setValue(tag);
             forceAccountPanelRerender();
         }} />
+    </Section>;
+}
+
+
+function ShareControls({ item, onChange }: { item: SavedProfile; onChange: (share: ProfileShare | undefined) => void; }) {
+    const [open, setOpen] = React.useState(false);
+    const [visibility, setVisibility] = React.useState<ShareVisibility>(item.share?.visibility ?? "unlisted");
+    const [busy, setBusy] = React.useState(false);
+    const [error, setError] = React.useState("");
+    const run = async (task: () => Promise<void>) => { setBusy(true); setError(""); try { await task(); } catch (problem: any) { setError(problem?.message || "Sharing failed."); } finally { setBusy(false); } };
+    const share = () => run(async () => { const next = await publishShare(item, visibility); onChange(next); showToast(item.share ? "Share updated." : "Profile shared.", Toasts.Type.SUCCESS); });
+    const stop = () => run(async () => { if (item.share) await shareRequest(`/${item.share.id}`, { method: "DELETE", token: item.share.token }).catch(problem => { if (!/not found|401/i.test(String(problem?.message))) throw problem; }); onChange(undefined); setOpen(false); });
+    const copy = () => { if (!item.share) return; navigator.clipboard?.writeText(shareLink(item.share.id)).then(() => showToast("Link copied.", Toasts.Type.SUCCESS), () => { }); };
+    if (!open) return <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => setOpen(true)}>{item.share ? `Shared · ${item.share.visibility}` : "Share"}</button>;
+    return <div className="cpx-field" style={{ padding: 10, borderRadius: 10, background: "var(--cpx-surface)" }}>
+        <SelectField label="Who can see it" options={SHARE_VISIBILITIES} value={visibility} onChange={value => setVisibility(value as ShareVisibility)} />
+        {item.share && visibility !== "private" && <input className="cpx-input" readOnly value={shareLink(item.share.id)} onFocus={event => event.currentTarget.select()} />}
+        {item.share && visibility === "private" && <span className="cpx-hint">Private: only this device can open it. Code {item.share.id}.</span>}
+        {error && <span className="cpx-hint cpx-error" role="alert">{error}</span>}
+        <div className="cpx-inline">
+            <button type="button" className="cpx-btn cpx-btn-primary" disabled={busy} onClick={share}>{busy ? "Working…" : item.share ? "Update share" : "Share"}</button>
+            {item.share && visibility !== "private" && <button type="button" className="cpx-btn" onClick={copy}>Copy link</button>}
+            {item.share && <button type="button" className="cpx-btn cpx-btn-ghost cpx-btn-danger-text" disabled={busy} onClick={stop}>Stop sharing</button>}
+            <button type="button" className="cpx-btn cpx-btn-ghost" onClick={() => setOpen(false)}>Close</button>
+        </div>
+    </div>;
+}
+
+function ShareImportSection({ onImport }: { onImport: (name: string, data: CustomProfileData) => void; }) {
+    const [code, setCode] = React.useState("");
+    const [busy, setBusy] = React.useState(false);
+    const [error, setError] = React.useState("");
+    const [publicShares, setPublicShares] = React.useState<any[] | null>(null);
+    const importCode = async (value: string) => {
+        const id = shareCodeFrom(value);
+        if (!id) { setError("Paste a share link or code."); return; }
+        setBusy(true); setError("");
+        try {
+            const own = readSavedProfiles().find(item => item.share?.id === id);
+            const share = await shareRequest(`/${id}`, { method: "GET", token: own?.share?.token });
+            onImport(share.name || "Imported profile", fromSharedProfile(share.profile));
+            setCode("");
+            showToast(`Added "${share.name}" to your Saved profiles.`, Toasts.Type.SUCCESS);
+        } catch (problem: any) { setError(/not found/i.test(String(problem?.message)) ? "That profile doesn't exist or is private." : problem?.message || "Couldn't import that profile."); }
+        finally { setBusy(false); }
+    };
+    const browse = async () => {
+        setBusy(true); setError("");
+        try { setPublicShares((await shareRequest("?limit=30", { method: "GET" })).shares ?? []); }
+        catch (problem: any) { setError(problem?.message || "Couldn't load public profiles."); }
+        finally { setBusy(false); }
+    };
+    return <Section title="Import a shared profile" description="Paste a link or code someone shared. It's added to your Saved profiles; nothing changes until you use it.">
+        <div className="cpx-inline">
+            <input className="cpx-input" value={code} placeholder="getcloudcord.com/p/… or code" onChange={event => { setCode(event.currentTarget.value); setError(""); }} onKeyDown={event => { if (event.key === "Enter") void importCode(code); }} />
+            <button type="button" className="cpx-btn" disabled={busy || !code.trim()} onClick={() => void importCode(code)}>Import</button>
+            <button type="button" className="cpx-btn cpx-btn-ghost" disabled={busy} onClick={() => void browse()}>Browse public</button>
+        </div>
+        {error && <span className="cpx-hint cpx-error" role="alert">{error}</span>}
+        {publicShares && (publicShares.length ? publicShares.map(share => <div key={share.id} className="cpx-order-row" style={{ gap: 10 }}>
+            {share.preview?.avatar ? <img src={share.preview.avatar} alt="" width={28} height={28} style={{ borderRadius: "50%" }} /> : <span style={{ width: 28 }} />}
+            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><strong>{share.name}</strong>{share.preview?.name ? ` · ${share.preview.name}` : ""}</span>
+            <button type="button" className="cpx-btn cpx-btn-ghost" disabled={busy} onClick={() => void importCode(share.id)}>Import</button>
+        </div>) : <span className="cpx-hint">No public profiles yet.</span>)}
     </Section>;
 }
