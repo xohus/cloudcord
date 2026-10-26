@@ -180,6 +180,8 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             let foregroundNode = image.parentElement;
             while (foregroundNode) {
                 const style = getComputedStyle(foregroundNode);
+                // No store exposes the colour Discord actually painted, so read it from the DOM.
+                // The partial class match is a best-effort hint; the walk falls back to --text-normal.
                 const username = foregroundNode.querySelector<HTMLElement>('[class*="userTagUsername"], [class*="username"]');
                 if (username) {
                     const rgb = parseColor(getComputedStyle(username).color);

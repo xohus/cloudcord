@@ -158,6 +158,9 @@ export function refreshPresence() {
 // The tag travels through Discord's badge-hash field as a key; images that
 // Discord builds for that key are swapped for the uploaded icon.
 
+// DOM on purpose: tag images are built inline by many components from the CDN URL,
+// with no shared webpack URL builder to patch. Matches on the image src, not on
+// Discord class names, so it survives class renames.
 let tagObserver: MutationObserver | null = null;
 // Discord serves tag badges from /clan-badges/ now (older builds: /guild-tag-badges/).
 const TAG_IMAGE = /\/(?:clan-badges|guild-tag-badges)\/\d{15,22}\/(cc[a-f0-9]{30})\./;

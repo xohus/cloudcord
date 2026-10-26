@@ -1273,6 +1273,9 @@ function processDomBatch() {
     const batch = _domMutations; _domMutations = [];
     for (const m of batch) { if (m.type === "characterData") scanTextNode(m.target as Text); else for (const n of m.addedNodes) scanNode(n); }
 }
+// DOM on purpose: a catch-all for the real name and join date in places that read
+// them from somewhere other than the patched UserStore/UserProfileStore (tooltips,
+// copied text, older cached components). It matches text content only, never class names.
 function startDomObserver() {
     stopDomObserver(); if (!isEnabled) return;
     scanNode(document.body);
