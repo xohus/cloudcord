@@ -3033,8 +3033,14 @@ jobs:
           // Fake Nitro makes the Shop show member prices, and Discord's server then rejects the
           // purchase. Pause it while the Shop or a purchase window is open.
           let shopPaused = false;
-          const pauseForShop = () => { if (!shopPaused) { shopPaused = true; setTimeout(() => { try { applyFakeNitro(); } catch {} }, 0); } };
-          const resumeAfterShop = () => { if (shopPaused) { shopPaused = false; setTimeout(() => { try { applyFakeNitro(); } catch {} restoreKeptTheme(); }, 0); } };
+          // Leaving the Shop doesn't always send an event on mobile, so the pause also ends on its own.
+          let shopResumeTimer: any;
+          const resumeAfterShop = () => { clearTimeout(shopResumeTimer); if (shopPaused) { shopPaused = false; setTimeout(() => { try { applyFakeNitro(); } catch {} restoreKeptTheme(); }, 0); } };
+          const pauseForShop = () => {
+              clearTimeout(shopResumeTimer);
+              shopResumeTimer = setTimeout(resumeAfterShop, 3 * 60 * 1000);
+              if (!shopPaused) { shopPaused = true; setTimeout(() => { try { applyFakeNitro(); } catch {} }, 0); }
+          };
           // Nitro gradient themes with Fake Nitro: Discord's servers drop a theme the account has no real
           // Nitro for, so the next settings sync resets it. Remember the pick and put it back after syncs.
           const rememberTheme = (action: any) => {
@@ -3056,6 +3062,17 @@ jobs:
           };
           // Discord only uses the Nitro override for staff, so also set it on your account record.
           let fakeNitroActive = false;
+          let currentUserNitroHooked = false;
+          function installCurrentUserNitroHook() {
+              const users = findByStoreName("UserStore") as any;
+              if (currentUserNitroHooked || typeof users?.getCurrentUser !== "function") return;
+              currentUserNitroHooked = true;
+              after("getCurrentUser", users, (_args: any[], user: any) => {
+                  // Discord replaces the record on many refreshes; put Nitro back on whichever one it returns.
+                  if (fakeNitroActive && user && user.premiumType !== 2) { try { user.premiumType = 2; } catch {} }
+                  return user;
+              });
+          }
           function setCurrentPremiumType(type: number | undefined) {
               try {
                   const users = findByStoreName("UserStore") as any;
@@ -3077,6 +3094,7 @@ jobs:
                   if (ownedNitroOverride && (ownedNitroOverride.state !== state || ownedNitroOverride.ownerId !== ownerId)) changed = restoreFakeNitroOverride(ownedNitroOverride.state === state);
                   // Nitro on in the custom profile also hides Nitro upsells, like "Act like I have Nitro".
                   const active = !!((extrasState().fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state.premiumTypeActual !== 2);
+                  if (active) { try { installCurrentUserNitroHook(); } catch {} }
                   if (active) {
                       if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
                       if (state.premiumTypeOverride !== 2) { state.premiumTypeOverride = 2; changed = true; }

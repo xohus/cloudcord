@@ -110,8 +110,14 @@ function restoreFakeNitroOverride(accountChanged = false) {
 let shopPaused = false;
 const SHOP_OPEN = ["COLLECTIBLES_SHOP_OPEN","COLLECTIBLES_PRODUCT_DETAILS_OPEN","COLLECTIBLES_SHOP_HOME_FETCH","SKU_PURCHASE_MODAL_OPEN","PREMIUM_PAYMENT_MODAL_OPEN"];
 const SHOP_CLOSE = ["SKU_PURCHASE_MODAL_CLOSE","SKU_PURCHASE_SUCCESS","PREMIUM_PAYMENT_MODAL_CLOSED","CHANNEL_SELECT"];
-function pauseForShop() { if (!shopPaused) { shopPaused = true; applyFakeNitro(); } }
-function resumeAfterShop() { if (shopPaused) { shopPaused = false; applyFakeNitro(); } }
+// Leaving the Shop doesn't always send an event, so the pause also ends on its own.
+let shopResumeTimer: ReturnType<typeof setTimeout> | undefined;
+function pauseForShop() {
+    clearTimeout(shopResumeTimer);
+    shopResumeTimer = setTimeout(resumeAfterShop, 3 * 60 * 1000);
+    if (!shopPaused) { shopPaused = true; applyFakeNitro(); }
+}
+function resumeAfterShop() { clearTimeout(shopResumeTimer); if (shopPaused) { shopPaused = false; applyFakeNitro(); } }
 
 // Nitro turned on in the custom profile also hides Nitro upsells, like "Act like I have Nitro".
 let profileNitroOn: () => boolean = () => false;
@@ -119,6 +125,24 @@ export function setProfileNitroSource(source: () => boolean) { profileNitroOn = 
 export function refreshFakeNitro() { applyFakeNitro(); }
 // Discord only uses the Nitro override for staff; the plugin patch asks this instead.
 let fakeNitroActive = false;
+// Discord replaces your account record on many refreshes; put Nitro back on whichever one it returns.
+let realGetCurrentUser: (() => any) | null = null;
+function installCurrentUserNitroHook() {
+    if (realGetCurrentUser) return;
+    const store = UserStore as any;
+    realGetCurrentUser = store.getCurrentUser;
+    const original = realGetCurrentUser!;
+    store.getCurrentUser = function (this: unknown) {
+        const user = original.call(this);
+        if (fakeNitroActive && user && user.premiumType !== 2) user.premiumType = 2;
+        return user;
+    };
+}
+function uninstallCurrentUserNitroHook() {
+    if (!realGetCurrentUser) return;
+    (UserStore as any).getCurrentUser = realGetCurrentUser;
+    realGetCurrentUser = null;
+}
 export function isFakeNitroActive() { return fakeNitroActive; }
 // Your account record keeps its real Nitro type until Discord rebuilds it, so set it now.
 function setCurrentPremiumType(type: number | undefined) {
@@ -142,6 +166,7 @@ function applyFakeNitro() {
         }
         const active = !!((extras.fakeNitro || profileNitroOn()) && !shopPaused && ownerId && state.premiumTypeActual !== 2);
         if (active) {
+            installCurrentUserNitroHook();
             // Own only the override installed here. Never erase another plugin's
             // override just because this switch defaults to off.
             if (!ownedNitroOverride && state.premiumTypeOverride !== 2) ownedNitroOverride = { state, ownerId, previous: state.premiumTypeOverride };
@@ -791,6 +816,8 @@ export function startExtras() {
     for (const type of SHOP_CLOSE) FluxDispatcher.subscribe(type, resumeAfterShop);
 }
 export function stopExtras() {
+    clearTimeout(shopResumeTimer);
+    uninstallCurrentUserNitroHook();
     FluxDispatcher.unsubscribe("SELECTIVELY_SYNCED_USER_SETTINGS_UPDATE", rememberTheme);
     for (const type of THEME_SYNC_EVENTS) FluxDispatcher.unsubscribe(type, restoreKeptTheme);
     clearTimeout(themeTimer);
