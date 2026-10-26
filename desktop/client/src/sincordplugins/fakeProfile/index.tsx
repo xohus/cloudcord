@@ -1380,11 +1380,11 @@ const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: a
                         DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
                         forceAccountPanelRerender();
                         showToast(`Copied ${newData.globalName || newData.username || "their"} profile. Saved on this device only.`, Toasts.Type.SUCCESS);
-                    } catch (err) { console.error("[ProfileSpoofer] copyUserProfile error:", err); showToast("Couldn't copy that profile.", Toasts.Type.FAILURE); }
+                    } catch (err) { logger.error("Copying user profile failed:", err); showToast("Couldn't copy that profile.", Toasts.Type.FAILURE); }
                 }} />)
             )}
         </Menu.MenuGroup>);
-    } catch (err) { console.error("[ProfileSpoofer] Context menu patch error:", err); }
+    } catch (err) { logger.error("Context menu patch failed:", err); }
 };
 
 function EditIcon({ size = 18 }: { size?: number; }) { return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" /></svg>; }
@@ -1635,7 +1635,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
                 if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
                 await publishSharedProfile();
             }
-        } catch (err) { console.error("[ProfileSpoofer] save error:", err); suppressOwnPullUntil = 0; setSaveError(err instanceof Error ? err.message : "Couldn't save your profile. Try again."); setSaving(false); return; }
+        } catch (err) { logger.error("Saving profile failed:", err); suppressOwnPullUntil = 0; setSaveError(err instanceof Error ? err.message : "Couldn't save your profile. Try again."); setSaving(false); return; }
         setSaving(false); rootProps.onClose();
     }
 
