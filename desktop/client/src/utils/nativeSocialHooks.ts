@@ -20,8 +20,11 @@ export function installNativeSocialHooks(options: Hooks) {
     const accountURLs = new WeakMap<object, string>();
     let previewSequence = 0;
     const wrap = (object: any, key: string, handler: (original: Function, args: any[]) => any) => {
-        if (typeof object?.[key] !== "function") return;
-        const original = object[key];
+        // Lazy webpack proxies throw (rather than return undefined) when Discord renamed
+        // the module, so a missing target must be skipped, not crash plugin start.
+        let original: unknown;
+        try { original = object?.[key]; } catch { return; }
+        if (typeof original !== "function") return;
         const replacement = function (this: any, ...args: unknown[]) { return handler(original.bind(this), args); };
         object[key] = replacement;
         cleanups.push(() => { if (object[key] === replacement) object[key] = original; });
