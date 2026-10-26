@@ -3950,16 +3950,118 @@ jobs:
               if (!response.ok) throw new Error(result?.error || "Sharing failed (" + response.status + ")");
               return result;
           }
-          async function publishShare(item: SavedProfile, visibility: ShareVisibility): Promise<ProfileShare> {
+          async function publishShare(item: SavedProfile, visibility: ShareVisibility, extra: { category?: string; description?: string } = {}): Promise<ProfileShare> {
               const profile = await ownSharedProfile(item.data);
-              if (item.share) { await shareRequest("/" + item.share.id, "PUT", { name: item.name, visibility, profile }, item.share.token); return { ...item.share, visibility }; }
+              if (item.share) { await shareRequest("/" + item.share.id, "PUT", { name: item.name, visibility, profile, ...extra }, item.share.token); return { ...item.share, visibility }; }
               if (!currentUserId) throw new Error("Sign in to Discord first.");
-              const created = await shareRequest("", "POST", { ownerId: currentUserId, name: item.name, visibility, profile });
+              const created = await shareRequest("", "POST", { ownerId: currentUserId, name: item.name, visibility, profile, ...extra });
               return { id: created.id, token: created.editToken, visibility };
           }
           function savedSnapshot(data: any) {
               const { syncRevision: _revision, enabled: _enabled, ...rest } = data || {};
               return JSON.parse(JSON.stringify(rest));
+          }
+          // Templates: community profiles from getcloudcord.com/templates.
+          const TEMPLATE_CATEGORIES = ["Aesthetic", "Anime", "Gaming", "Minimal", "Dark", "Cute", "Funny", "Other"];
+          const countTemplateUse = (id: string) => { fetch(SHARED_PROFILE_API + "/v1/shares/" + id + "/use", { method: "POST" }).catch(() => {}); };
+          function ProfileTemplates({ current, onUse }: { current: any; onUse: (data: any) => void }) {
+              const S = require("@core/ui/settings/components/ProfileStudio");
+              const [query, setQuery] = useState("");
+              const [category, setCategory] = useState("");
+              const [sort, setSort] = useState("popular");
+              const [items, setItems] = useState<any[] | null>(null);
+              const [busy, setBusy] = useState(false);
+              const [code, setCode] = useState("");
+              const [pubName, setPubName] = useState("");
+              const [pubDescription, setPubDescription] = useState("");
+              const [pubCategory, setPubCategory] = useState("Aesthetic");
+              const [pubVisibility, setPubVisibility] = useState<ShareVisibility>("public");
+              const [publishedId, setPublishedId] = useState<string | null>(null);
+              const saved = (): SavedProfile[] => Array.isArray((rootSettings as any).fakeProfileSaved) ? (rootSettings as any).fakeProfileSaved : [];
+              useEffect(() => {
+                  let cancelled = false;
+                  const timer = setTimeout(async () => {
+                      const params = "?limit=40&sort=" + sort + (query.trim() ? "&q=" + encodeURIComponent(query.trim()) : "") + (category ? "&category=" + encodeURIComponent(category) : "");
+                      try { const result = await shareRequest(params, "GET"); if (!cancelled) setItems(result.shares ?? []); }
+                      catch { if (!cancelled) setItems([]); }
+                  }, query ? 350 : 0);
+                  return () => { cancelled = true; clearTimeout(timer); };
+              }, [query, category, sort]);
+              const run = async (task: () => Promise<void>) => { setBusy(true); try { await task(); } catch (error: any) { Alert.alert("Templates", /not found/i.test(String(error?.message)) ? "That template doesn't exist or is private." : error?.message || "Something went wrong."); } finally { setBusy(false); } };
+              const fetchTemplate = async (id: string) => {
+                  const own = saved().find(item => item.share?.id === id);
+                  const share = await shareRequest("/" + id, "GET", undefined, own?.share?.token);
+                  return { name: String(share.name || "Template").slice(0, 40), data: savedSnapshot({ ...current, ...previewFromShared(share.profile || {}) }) };
+              };
+              const use = (id: string) => run(async () => { const template = await fetchTemplate(id); onUse(template.data); countTemplateUse(id); showToast("Applied \u201c" + template.name + "\u201d"); });
+              const save = (id: string) => run(async () => {
+                  const template = await fetchTemplate(id);
+                  (rootSettings as any).fakeProfileSaved = [{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: template.name, savedAt: Date.now(), data: template.data }, ...saved()];
+                  countTemplateUse(id);
+                  showToast("Added \u201c" + template.name + "\u201d to Saved");
+              });
+              const publish = () => run(async () => {
+                  const name = pubName.trim().slice(0, 40);
+                  if (!name) throw new Error("Give your template a name.");
+                  const item: SavedProfile = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name, savedAt: Date.now(), data: savedSnapshot(current) };
+                  const share = await publishShare(item, pubVisibility, { category: pubCategory, description: pubDescription.trim() });
+                  // Also kept in Saved, where it can be updated or unshared later.
+                  (rootSettings as any).fakeProfileSaved = [{ ...item, share }, ...saved()];
+                  setPublishedId(share.id);
+                  showToast(pubVisibility === "public" ? "Published to templates" : "Template link created");
+              });
+              const codeId = shareCodeFrom(code);
+              const pill = (label: string, on: boolean, onPress: () => void) => <Pressable key={label} onPress={onPress} style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999, backgroundColor: on ? "#5865F2" : "rgba(255,255,255,0.06)" }}>
+                  <Text variant="text-sm/semibold" style={{ color: on ? "#fff" : undefined }} color={on ? undefined : "text-muted"}>{label}</Text>
+              </Pressable>;
+              return <View style={{ gap: 20 }}>
+                  <S.Panel>
+                      <S.Section title="Profile templates" description="Looks made by the CloudCord community. Use one or save it for later. Also at getcloudcord.com/templates.">
+                          <S.Field label="Search"><TextInput value={query} placeholder="Search templates" autoCorrect={false} onChangeText={setQuery} /></S.Field>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                              {pill("Popular", sort === "popular", () => setSort("popular"))}
+                              {pill("New", sort === "new", () => setSort("new"))}
+                          </View>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                              {["", ...TEMPLATE_CATEGORIES].map(name => pill(name || "All", category === name, () => setCategory(name)))}
+                          </View>
+                      </S.Section>
+                  </S.Panel>
+                  {items === null ? <Text variant="text-sm/medium" color="text-muted">Loading templates…</Text> : !items.length ? <Text variant="text-sm/medium" color="text-muted">No templates found. Be the first: publish yours below.</Text> : null}
+                  {(items || []).map((template: any) => {
+                      const p = template.preview || {};
+                      return <View key={template.id} style={{ gap: 8 }}>
+                          <S.DiscordProfileCard name={p.name || template.name} username={template.category || "Template"} avatar={p.avatar || undefined} banner={p.banner || undefined} primary={p.accent || undefined} status="online" bio={template.description || p.bio || undefined} badges={[]} />
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                              <View style={{ flex: 1 }}>
+                                  <Text variant="text-md/bold" color="text-normal" numberOfLines={1}>{template.name}</Text>
+                                  <Text variant="text-xs/medium" color="text-muted">{(template.category || "Other") + " \u00b7 " + (template.uses || 0) + (template.uses === 1 ? " use" : " uses")}</Text>
+                              </View>
+                              <S.Button label="Use" primary disabled={busy} onPress={() => use(template.id)} />
+                              <S.Button label="Save" disabled={busy} onPress={() => save(template.id)} />
+                          </View>
+                      </View>;
+                  })}
+                  <S.Panel>
+                      <S.Section title="Use a code" description="Paste a template link or code someone gave you.">
+                          <S.Field label="Link or code"><TextInput value={code} placeholder="getcloudcord.com/p/…" autoCapitalize="none" autoCorrect={false} onChangeText={setCode} /></S.Field>
+                          <View style={{ flexDirection: "row", gap: 8 }}>
+                              <S.Button label="Use" primary grow disabled={busy || !codeId} onPress={() => codeId && use(codeId)} />
+                              <S.Button label="Save" grow disabled={busy || !codeId} onPress={() => codeId && save(codeId)} />
+                          </View>
+                      </S.Section>
+                  </S.Panel>
+                  <S.Panel>
+                      <S.Section title="Publish your profile" description="Shares how your profile looks right now. Your account details are never included.">
+                          <S.Field label="Name"><TextInput value={pubName} placeholder="Template name" maxLength={40} onChangeText={setPubName} /></S.Field>
+                          <S.Field label="Description"><TextInput value={pubDescription} placeholder="Optional" maxLength={200} onChangeText={setPubDescription} /></S.Field>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>{TEMPLATE_CATEGORIES.map(name => pill(name, pubCategory === name, () => setPubCategory(name)))}</View>
+                          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>{SHARE_VISIBILITIES.map(option => pill(option.label, pubVisibility === option.value, () => setPubVisibility(option.value)))}</View>
+                          <S.Button label={busy ? "Working…" : "Publish"} primary disabled={busy || !pubName.trim()} onPress={publish} />
+                          {publishedId && pubVisibility !== "private" ? <Text variant="text-sm/medium" color="text-normal" selectable>{shareLink(publishedId)}</Text> : null}
+                      </S.Section>
+                  </S.Panel>
+              </View>;
           }
           function SavedProfiles({ current, realUser, onUse }: { current: any; realUser: any; onUse: (data: any) => void }) {
               const S = require("@core/ui/settings/components/ProfileStudio");
@@ -4019,18 +4121,6 @@ jobs:
                           <S.Button label="Save current profile" primary onPress={saveCurrent} />
                       </S.Section>
                   </S.Panel>
-                  <S.Panel>
-                  <S.Section title="Import a shared profile" description="Paste a link or code someone shared. It's added to Saved; nothing changes until you use it.">
-                      <S.Field label="Link or code"><TextInput value={code} placeholder="getcloudcord.com/p/…" autoCapitalize="none" autoCorrect={false} onChangeText={setCode} /></S.Field>
-                      <View style={{ flexDirection: "row", gap: 8 }}>
-                          <S.Button label="Import" primary grow disabled={busy || !code.trim()} onPress={() => importCode(code)} />
-                          <S.Button label="Browse public" grow disabled={busy} onPress={() => run(async () => { setPublicShares((await shareRequest("?limit=30", "GET")).shares ?? []); })} />
-                      </View>
-                      {publicShares ? (publicShares.length ? publicShares.map((share: any) => <S.Row key={share.id} label={share.name} subLabel={share.preview?.name || undefined}
-                          icon={share.preview?.avatar ? <Image source={{ uri: share.preview.avatar }} style={{ width: 28, height: 28, borderRadius: 14 }} /> : undefined}
-                          trailing={<Text variant="text-sm/bold" color="text-brand">Import</Text>} onPress={() => importCode(share.id)} />) : <Text variant="text-sm/medium" color="text-muted">No public profiles yet.</Text>) : null}
-                  </S.Section>
-              </S.Panel>
                   {!items.length ? <Text variant="text-sm/medium" color="text-muted">No saved profiles yet. Set up your profile, then save it here to come back to it later.</Text> : null}
                   {items.map(item => {
                       const data = item.data || {};
@@ -4535,6 +4625,10 @@ jobs:
                               try { nativeAvatar = user?.getAvatarURL?.() || nativeAvatar; } catch {}
                               return { username: shared?.username || user?.username || "", displayName: shared?.globalName || shared?.displayName || user?.globalName || user?.global_name || "", avatar: shared?.avatar || nativeAvatar, banner: shared?.banner || customDiscordMediaURL("banners", id, profile?.banner ?? user?.banner), bio: shared?.bio || profile?.bio || "", badges: BADGES.filter(([, , flag, , customId]) => customId ? customIds.includes(customId) : flag && (flags & flag) !== 0).map(([,name,,icon]) => ({name,icon})) };
                           }} /></Card> : null}
+                          {(activeTab as string) === "templates" ? <ProfileTemplates current={preview} onUse={(data: any) => {
+                              rootSettings.fakeProfile = { ...preview, ...data, enabled: preview.enabled, syncRevision: Date.now() };
+                              preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw();
+                          }} /> : null}
                           {(activeTab as string) === "saved" ? <SavedProfiles current={preview} realUser={realCurrentUser} onUse={(data: any) => {
                               rootSettings.fakeProfile = { ...preview, ...data, enabled: preview.enabled, syncRevision: Date.now() };
                               preview = rootSettings.fakeProfile as PreviewSettings; queueSharedPublish(); clearCache(); suppressOwnPullUntil = Date.now() + 15000; refreshPreview(); redraw();

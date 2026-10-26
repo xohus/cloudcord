@@ -1755,6 +1755,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             </Section>
         </>,
         others: <OtherProfilesPanel />,
+        templates: <TemplatesPanel current={data} onApply={value => setData({ ...data, ...value })} />,
         saved: <SavedProfilesPanel current={data} onLoad={value => setData({ ...value })} fallbackName={selectedUser?.globalName || selectedUser?.username || "You"} fallbackUsername={selectedUser?.username || "username"} fallbackAvatar={fallbackAvatar}
             decorationFor={asset => (decorations.find(item => item.id === asset) || ALL_DECORATIONS.find(item => item.id === asset) || liveDecorations.find(item => item.id === asset))?.url}
             effectFor={skuId => catalogData?.effects.find(item => item.skuId === skuId)?.title} frameFor={skuId => catalogData?.frames.find(item => item.skuId === skuId)?.label} />,
@@ -2684,15 +2685,16 @@ async function shareRequest(path: string, init: RequestInit & { token?: string; 
     if (!response.ok) throw new Error(body?.error || `Sharing failed (${response.status})`);
     return body;
 }
-async function publishShare(item: SavedProfile, visibility: ShareVisibility): Promise<ProfileShare> {
+const TEMPLATE_CATEGORIES = ["Aesthetic", "Anime", "Gaming", "Minimal", "Dark", "Cute", "Funny", "Other"];
+async function publishShare(item: SavedProfile, visibility: ShareVisibility, extra: { category?: string; description?: string; } = {}): Promise<ProfileShare> {
     const profile = toSharedProfile(item.data);
     if (item.share) {
-        await shareRequest(`/${item.share.id}`, { method: "PUT", token: item.share.token, body: JSON.stringify({ name: item.name, visibility, profile }) });
+        await shareRequest(`/${item.share.id}`, { method: "PUT", token: item.share.token, body: JSON.stringify({ name: item.name, visibility, profile, ...extra }) });
         return { ...item.share, visibility };
     }
     const ownerId = UserStore.getCurrentUser()?.id;
     if (!ownerId) throw new Error("Sign in to Discord first.");
-    const created = await shareRequest("", { method: "POST", body: JSON.stringify({ ownerId, name: item.name, visibility, profile }) });
+    const created = await shareRequest("", { method: "POST", body: JSON.stringify({ ownerId, name: item.name, visibility, profile, ...extra }) });
     return { id: created.id, token: created.editToken, visibility };
 }
 function readSavedProfiles(): SavedProfile[] {
@@ -2733,7 +2735,6 @@ function SavedProfilesPanel({ current, onLoad, fallbackName, fallbackUsername, f
                 <button type="button" className="cpx-btn cpx-btn-primary" onClick={saveCurrent}>Save current profile</button>
             </div>
         </Section>
-        <ShareImportSection onImport={(name, data) => commit([{ id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), name: name.slice(0, 40), savedAt: Date.now(), data: savedSnapshot(data) }, ...readSavedProfiles()])} />
         {!items.length && <span className="cpx-hint">No saved profiles yet. Set up your profile, then save it here to come back to it later.</span>}
         <div className="cpx-saved-grid">
             {items.map(item => {
@@ -2933,41 +2934,118 @@ function ShareControls({ item, onChange }: { item: SavedProfile; onChange: (shar
     </div>;
 }
 
-function ShareImportSection({ onImport }: { onImport: (name: string, data: CustomProfileData) => void; }) {
-    const [code, setCode] = React.useState("");
-    const [busy, setBusy] = React.useState(false);
-    const [error, setError] = React.useState("");
-    const [publicShares, setPublicShares] = React.useState<any[] | null>(null);
-    const importCode = async (value: string) => {
-        const id = shareCodeFrom(value);
-        if (!id) { setError("Paste a share link or code."); return; }
-        setBusy(true); setError("");
-        try {
-            const own = readSavedProfiles().find(item => item.share?.id === id);
-            const share = await shareRequest(`/${id}`, { method: "GET", token: own?.share?.token });
-            onImport(share.name || "Imported profile", fromSharedProfile(share.profile));
-            setCode("");
-            showToast(`Added "${share.name}" to your Saved profiles.`, Toasts.Type.SUCCESS);
-        } catch (problem: any) { setError(/not found/i.test(String(problem?.message)) ? "That profile doesn't exist or is private." : problem?.message || "Couldn't import that profile."); }
-        finally { setBusy(false); }
-    };
-    const browse = async () => {
-        setBusy(true); setError("");
-        try { setPublicShares((await shareRequest("?limit=30", { method: "GET" })).shares ?? []); }
-        catch (problem: any) { setError(problem?.message || "Couldn't load public profiles."); }
-        finally { setBusy(false); }
-    };
-    return <Section title="Import a shared profile" description="Paste a link or code someone shared. It's added to your Saved profiles; nothing changes until you use it.">
-        <div className="cpx-inline">
-            <input className="cpx-input" value={code} placeholder="getcloudcord.com/p/… or code" onChange={event => { setCode(event.currentTarget.value); setError(""); }} onKeyDown={event => { if (event.key === "Enter") void importCode(code); }} />
-            <button type="button" className="cpx-btn" disabled={busy || !code.trim()} onClick={() => void importCode(code)}>Import</button>
-            <button type="button" className="cpx-btn cpx-btn-ghost" disabled={busy} onClick={() => void browse()}>Browse public</button>
+// ---- Templates: community profiles from getcloudcord.com/templates ----
+interface TemplateSummary { id: string; name: string; category?: string; description?: string; uses?: number; preview?: { name?: string; avatar?: string; banner?: string; bio?: string; accent?: string; }; }
+const countTemplateUse = (id: string) => { void fetch(`${SHARED_PROFILE_API}/v1/shares/${id}/use`, { method: "POST" }).catch(() => { }); };
+async function fetchTemplate(id: string) {
+    const own = readSavedProfiles().find(item => item.share?.id === id);
+    const share = await shareRequest(`/${id}`, { method: "GET", token: own?.share?.token });
+    return { name: String(share.name || "Template"), data: fromSharedProfile(share.profile) };
+}
+const newSavedId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+function TemplateCard({ template, busy, onUse, onSave }: { template: TemplateSummary; busy: boolean; onUse: () => void; onSave: () => void; }) {
+    const p = template.preview || {};
+    return <div className="cpx-tpl-card" style={{ ["--cpx-tpl-accent" as any]: p.accent || "#5865f2" }}>
+        <div className="cpx-tpl-banner" style={p.banner ? { backgroundImage: `url("${encodeURI(p.banner)}")` } : undefined} />
+        <div className="cpx-tpl-avatar">{p.avatar && <img src={p.avatar} alt="" loading="lazy" />}</div>
+        <div className="cpx-tpl-body">
+            <span className="cpx-tpl-name" title={template.name}>{template.name}</span>
+            <span className="cpx-hint">{template.category || "Other"} · {(template.uses ?? 0).toLocaleString()} {template.uses === 1 ? "use" : "uses"}</span>
+            {(template.description || p.bio) && <span className="cpx-tpl-desc">{template.description || p.bio}</span>}
+            <div className="cpx-tpl-actions">
+                <button type="button" className="cpx-btn cpx-btn-primary" disabled={busy} onClick={onUse}>Use</button>
+                <button type="button" className="cpx-btn" disabled={busy} onClick={onSave}>Save</button>
+            </div>
         </div>
-        {error && <span className="cpx-hint cpx-error" role="alert">{error}</span>}
-        {publicShares && (publicShares.length ? publicShares.map(share => <div key={share.id} className="cpx-order-row" style={{ gap: 10 }}>
-            {share.preview?.avatar ? <img src={share.preview.avatar} alt="" width={28} height={28} style={{ borderRadius: "50%" }} /> : <span style={{ width: 28 }} />}
-            <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><strong>{share.name}</strong>{share.preview?.name ? ` · ${share.preview.name}` : ""}</span>
-            <button type="button" className="cpx-btn cpx-btn-ghost" disabled={busy} onClick={() => void importCode(share.id)}>Import</button>
-        </div>) : <span className="cpx-hint">No public profiles yet.</span>)}
-    </Section>;
+    </div>;
+}
+
+function TemplatesPanel({ current, onApply }: { current: CustomProfileData; onApply: (data: CustomProfileData) => void; }) {
+    const [query, setQuery] = React.useState("");
+    const [category, setCategory] = React.useState("");
+    const [sort, setSort] = React.useState<"popular" | "new">("popular");
+    const [items, setItems] = React.useState<TemplateSummary[] | null>(null);
+    const [error, setError] = React.useState("");
+    const [busy, setBusy] = React.useState(false);
+    const [code, setCode] = React.useState("");
+    const [pubName, setPubName] = React.useState("");
+    const [pubCategory, setPubCategory] = React.useState("Aesthetic");
+    const [pubDescription, setPubDescription] = React.useState("");
+    const [pubVisibility, setPubVisibility] = React.useState<ShareVisibility>("public");
+    const [published, setPublished] = React.useState<ProfileShare | null>(null);
+
+    React.useEffect(() => {
+        let cancelled = false;
+        const timer = setTimeout(async () => {
+            setError("");
+            const params = new URLSearchParams({ limit: "48", sort });
+            if (query.trim()) params.set("q", query.trim());
+            if (category) params.set("category", category);
+            try { const result = await shareRequest(`?${params}`, { method: "GET" }); if (!cancelled) setItems(result.shares ?? []); }
+            catch (problem: any) { if (!cancelled) { setItems([]); setError(problem?.message || "Couldn't load templates."); } }
+        }, query ? 300 : 0);
+        return () => { cancelled = true; clearTimeout(timer); };
+    }, [query, category, sort]);
+
+    const run = async (task: () => Promise<void>) => { setBusy(true); setError(""); try { await task(); } catch (problem: any) { setError(/not found/i.test(String(problem?.message)) ? "That template doesn't exist or is private." : problem?.message || "Something went wrong."); } finally { setBusy(false); } };
+    const use = (id: string) => run(async () => {
+        const template = await fetchTemplate(id);
+        onApply(template.data);
+        countTemplateUse(id);
+        showToast(`Applied "${template.name}". Press Save to keep it.`, Toasts.Type.SUCCESS);
+    });
+    const save = (id: string) => run(async () => {
+        const template = await fetchTemplate(id);
+        if (writeSavedProfiles([{ id: newSavedId(), name: template.name.slice(0, 40), savedAt: Date.now(), data: savedSnapshot(template.data) }, ...readSavedProfiles()])) {
+            countTemplateUse(id);
+            showToast(`Added "${template.name}" to Saved profiles.`, Toasts.Type.SUCCESS);
+        }
+    });
+    const publish = () => run(async () => {
+        const name = pubName.trim();
+        if (!name) throw new Error("Give your template a name.");
+        const item: SavedProfile = { id: newSavedId(), name: name.slice(0, 40), savedAt: Date.now(), data: savedSnapshot(current) };
+        const share = await publishShare(item, pubVisibility, { category: pubCategory, description: pubDescription.trim() });
+        // Also kept in Saved profiles, where it can be updated or unshared later.
+        writeSavedProfiles([{ ...item, share }, ...readSavedProfiles()]);
+        setPublished(share);
+        showToast(pubVisibility === "public" ? "Published to the template gallery." : "Template link created.", Toasts.Type.SUCCESS);
+    });
+    const codeId = shareCodeFrom(code);
+
+    return <>
+        <Section title="Profile templates" description="Looks made by the CloudCord community. Use one to load it into the editor, or save it for later. Also at getcloudcord.com/templates.">
+            <div className="cpx-inline">
+                <input className="cpx-input" value={query} maxLength={60} placeholder="Search templates" onChange={event => setQuery(event.currentTarget.value)} />
+                <button type="button" className={`cpx-btn ${sort === "popular" ? "cpx-btn-primary" : "cpx-btn-ghost"}`} onClick={() => setSort("popular")}>Popular</button>
+                <button type="button" className={`cpx-btn ${sort === "new" ? "cpx-btn-primary" : "cpx-btn-ghost"}`} onClick={() => setSort("new")}>New</button>
+            </div>
+            <div className="cpx-tpl-chips">
+                {["", ...TEMPLATE_CATEGORIES].map(name => <button key={name || "all"} type="button" className="cpx-tpl-chip" aria-pressed={category === name} onClick={() => setCategory(name)}>{name || "All"}</button>)}
+            </div>
+            {error && <span className="cpx-hint cpx-error" role="alert">{error}</span>}
+            {items === null ? <span className="cpx-hint">Loading templates…</span>
+                : items.length ? <div className="cpx-tpl-grid">{items.map(template => <TemplateCard key={template.id} template={template} busy={busy} onUse={() => void use(template.id)} onSave={() => void save(template.id)} />)}</div>
+                    : <span className="cpx-hint">No templates found. Be the first: publish yours below.</span>}
+        </Section>
+        <Section title="Use a code" description="Paste a template link or code someone gave you.">
+            <div className="cpx-inline">
+                <input className="cpx-input" value={code} placeholder="getcloudcord.com/p/… or code" onChange={event => setCode(event.currentTarget.value)} />
+                <button type="button" className="cpx-btn cpx-btn-primary" disabled={busy || !codeId} onClick={() => codeId && void use(codeId)}>Use</button>
+                <button type="button" className="cpx-btn" disabled={busy || !codeId} onClick={() => codeId && void save(codeId)}>Save</button>
+            </div>
+        </Section>
+        <Section title="Publish your profile as a template" description="Shares how your profile looks right now. Your account details are never included.">
+            <input className="cpx-input" value={pubName} maxLength={40} placeholder="Template name" onChange={event => setPubName(event.currentTarget.value)} />
+            <input className="cpx-input" value={pubDescription} maxLength={200} placeholder="Short description (optional)" onChange={event => setPubDescription(event.currentTarget.value)} />
+            <SelectField label="Category" options={TEMPLATE_CATEGORIES.map(value => ({ value, label: value }))} value={pubCategory} onChange={value => setPubCategory(value)} />
+            <SelectField label="Who can see it" options={SHARE_VISIBILITIES} value={pubVisibility} onChange={value => setPubVisibility(value as ShareVisibility)} />
+            <div className="cpx-inline">
+                <button type="button" className="cpx-btn cpx-btn-primary" disabled={busy || !pubName.trim()} onClick={() => void publish()}>{busy ? "Working…" : "Publish"}</button>
+            </div>
+            {published && published.visibility !== "private" && <input className="cpx-input" readOnly value={shareLink(published.id)} onFocus={event => event.currentTarget.select()} />}
+            {published && <span className="cpx-hint">Also kept in Saved profiles, where you can update it or stop sharing.</span>}
+        </Section>
+    </>;
 }
