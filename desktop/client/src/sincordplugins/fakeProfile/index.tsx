@@ -866,7 +866,7 @@ function uninstallProfileStoreHooks() {
 function installProfileStoreHooks(plugin: any) {
     const owner = {};
     try {
-        const US: any = UserStore;
+        const US: any = UserStore || (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserStore");
         if (US && !US._cp_hook) {
             if (typeof US.getCurrentUser === "function") realGetCurrentUser = US.getCurrentUser.bind(US);
             let lastReal: any = null, lastFake: any = null, lastVersion = -1;
@@ -1015,6 +1015,8 @@ function requestSharedProfile(userId: string, force = false) {
                 if (sharedProfiles.delete(userId)) {
                     sharedProfileFetchedAt.delete(userId);
                     try {
+                        (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserProfileStore")?.emitChange?.();
+                        (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserStore")?.emitChange?.();
                         refreshPresence();
                     } catch (e) { logger.warn("Refreshing profile stores failed", e); }
                 }
@@ -1048,6 +1050,8 @@ function requestSharedProfile(userId: string, force = false) {
                 reloadDiscordProfile(userId);
             }
             try {
+                (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserProfileStore")?.emitChange?.();
+                (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserStore")?.emitChange?.();
                 refreshPresence();
             } catch (e) { logger.warn("Refreshing profile stores failed", e); }
         }).catch(() => {
@@ -1289,9 +1293,14 @@ function stopDomObserver() {
     let n: Node | null;
     while ((n = walker.nextNode())) { if ((n as any).__cp_orig !== undefined) { n.nodeValue = (n as any).__cp_orig; delete (n as any).__cp_orig; } }
 }
+// Vencord.Webpack exposes findByStoreName at runtime but not in its types.
+type NamedStore = { emitChange?(): void; getCurrentUser?(): any; getUser?(id: string): any; };
+type WebpackWithStoreName = { findByStoreName?(name: string): NamedStore | undefined; };
 function forceAccountPanelRerender() {
     try { refreshFakeNitro(); } catch (e) { logger.warn("Refreshing fake Nitro failed", e); }
     try {
+        (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserStore")?.emitChange?.();
+        (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserProfileStore")?.emitChange?.();
         refreshPresence();
         if (isEnabled) startDomObserver(); else stopDomObserver();
     } catch (e) { logger.warn("Applying profile change failed", e); }
@@ -2205,7 +2214,8 @@ function buildProfileBadges(userId: string): ProfileBadge[] {
 
         // Suppress real Discord badges by zeroing publicFlags on the live user object
         try {
-            const liveUser = userIsMe ? UserStore.getCurrentUser() : UserStore.getUser(userId);
+            const US = (Vencord.Webpack as WebpackWithStoreName).findByStoreName?.("UserStore") || Vencord.Webpack.findByProps("getCurrentUser", "getUser");
+            const liveUser = userIsMe ? US?.getCurrentUser?.() : US?.getUser?.(userId);
             if (liveUser && shouldReplaceBadges(profileData)) {
                 Object.defineProperty(liveUser, "publicFlags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
                 Object.defineProperty(liveUser, "flags", { get: () => 0, set: () => {}, configurable: true, enumerable: true });
