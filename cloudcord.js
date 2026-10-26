@@ -20862,6 +20862,30 @@
                       field: "bannerMedia",
                       banner: true
                     }),
+                    /* @__PURE__ */ jsx(ActionButton, {
+                      label: "Use profile picture as banner",
+                      muted: true,
+                      onPress: () => {
+                        var uri = preview.avatarMedia?.uri;
+                        if (!uri) {
+                          try {
+                            uri = realCurrentUser?.getAvatarURL?.(void 0, 1024);
+                          } catch (e) {
+                          }
+                        }
+                        if (!uri) {
+                          import_react_native20.Alert.alert("No profile picture", "Set a profile picture first.");
+                          return;
+                        }
+                        update("bannerMedia", {
+                          ...preview.avatarMedia || {},
+                          uri,
+                          name: preview.avatarMedia?.name || "profile-picture",
+                          type: preview.avatarMedia?.type || "image/png"
+                        }, true);
+                        showToast("Your profile picture is now your banner");
+                      }
+                    }),
                     /* @__PURE__ */ jsx(ToggleRow, {
                       label: "Simulate Nitro",
                       subLabel: "Unlocks profile colors. Your banner works without it",
@@ -23544,6 +23568,15 @@
   });
 
   // src/lib/ui/settings/patches/tabs.tsx
+  function usesModernSettings() {
+    if (globalThis.__CLOUDCORD_BRIDGELESS__)
+      return true;
+    try {
+      return parseInt(String(NativeClientInfoModule?.getConstants?.()?.Version ?? ""), 10) >= 344;
+    } catch (e) {
+      return false;
+    }
+  }
   function patchTabsUI(unpatches) {
     var fallbackNames = [
       "renderer-live-table",
@@ -23624,7 +23657,7 @@
         if (!target.settings.includes(row.key))
           target.settings.push(row.key);
     };
-    if (!globalThis.__CLOUDCORD_BRIDGELESS__) {
+    if (!usesModernSettings()) {
       globalThis.__CLOUDCORD_331_ROOT_SETTINGS__ = true;
       var customRoutes = {
         VendettaCustomPage: {
@@ -23863,6 +23896,7 @@
       init_wrappers();
       init_settings2();
       init_settings();
+      init_modules();
       init_shared();
       init_utils();
       settingConstants = findByPropsLazy("SETTING_RENDERER_CONFIG");
@@ -23887,7 +23921,7 @@
   function patchSettings() {
     var unpatches = new Array();
     patchTabsUI(unpatches);
-    if (!globalThis.__CLOUDCORD_BRIDGELESS__)
+    if (!usesModernSettings())
       patchPanelUI(unpatches);
     return () => unpatches.forEach((u) => u());
   }
