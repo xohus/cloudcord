@@ -14127,9 +14127,9 @@
       }
     }).apply(this, arguments);
   }
-  function ownSharedProfile() {
+  function ownSharedProfile(source) {
     return _async_to_generator(function* () {
-      var snapshot2 = JSON.parse(JSON.stringify(preview));
+      var snapshot2 = JSON.parse(JSON.stringify(source ?? preview));
       return {
         username: snapshot2.username,
         globalName: snapshot2.displayName,
@@ -19093,6 +19093,55 @@
       })
     });
   }
+  function shareRequest(path, method, body, token) {
+    return _async_to_generator(function* () {
+      var response = yield withTimeout(fetch(SHARED_PROFILE_API + "/v1/shares" + path, {
+        method,
+        headers: {
+          "content-type": "application/json",
+          ...token ? {
+            authorization: "Bearer " + token
+          } : {}
+        },
+        ...body ? {
+          body: JSON.stringify(body)
+        } : {}
+      }), 15e3);
+      var result = yield response.json().catch(() => ({}));
+      if (!response.ok)
+        throw new Error(result?.error || "Sharing failed (" + response.status + ")");
+      return result;
+    })();
+  }
+  function publishShare(item, visibility) {
+    return _async_to_generator(function* () {
+      var profile = yield ownSharedProfile(item.data);
+      if (item.share) {
+        yield shareRequest("/" + item.share.id, "PUT", {
+          name: item.name,
+          visibility,
+          profile
+        }, item.share.token);
+        return {
+          ...item.share,
+          visibility
+        };
+      }
+      if (!currentUserId)
+        throw new Error("Sign in to Discord first.");
+      var created = yield shareRequest("", "POST", {
+        ownerId: currentUserId,
+        name: item.name,
+        visibility,
+        profile
+      });
+      return {
+        id: created.id,
+        token: created.editToken,
+        visibility
+      };
+    })();
+  }
   function savedSnapshot(data) {
     var { syncRevision: _revision, enabled: _enabled, ...rest } = data || {};
     return JSON.parse(JSON.stringify(rest));
@@ -19127,6 +19176,73 @@
       ]);
       setName("");
       showToast("Saved \u201C" + label + "\u201D");
+    };
+    var [code, setCode] = (0, import_react6.useState)("");
+    var [busy, setBusy] = (0, import_react6.useState)(false);
+    var [sharing, setSharing] = (0, import_react6.useState)(null);
+    var [publicShares, setPublicShares] = (0, import_react6.useState)(null);
+    var run = (task) => _async_to_generator(function* () {
+      setBusy(true);
+      try {
+        yield task();
+      } catch (error) {
+        import_react_native20.Alert.alert("Sharing", error?.message || "Something went wrong.");
+      } finally {
+        setBusy(false);
+      }
+    })();
+    var importCode = (value) => run(() => _async_to_generator(function* () {
+      var id = shareCodeFrom(value);
+      if (!id)
+        throw new Error("Paste a share link or code.");
+      var own = items.find((item) => item.share?.id === id);
+      var share;
+      try {
+        share = yield shareRequest("/" + id, "GET", void 0, own?.share?.token);
+      } catch (error) {
+        throw new Error(/not found/i.test(String(error?.message)) ? "That profile doesn't exist or is private." : error?.message);
+      }
+      var data = savedSnapshot({
+        ...current,
+        ...previewFromShared(share.profile || {})
+      });
+      commit([
+        {
+          id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+          name: String(share.name || "Imported profile").slice(0, 40),
+          savedAt: Date.now(),
+          data
+        },
+        ...items
+      ]);
+      setCode("");
+      showToast("Added \u201C" + share.name + "\u201D to Saved");
+    })());
+    var shareItem = (item, visibility) => run(() => _async_to_generator(function* () {
+      var share = yield publishShare(item, visibility);
+      commit(items.map((other) => other.id === item.id ? {
+        ...other,
+        share
+      } : other));
+      showToast(item.share ? "Share updated" : "Profile shared");
+    })());
+    var stopSharing = (item) => run(() => _async_to_generator(function* () {
+      if (item.share)
+        yield shareRequest("/" + item.share.id, "DELETE", void 0, item.share.token).catch((error) => {
+          if (!/not found|only the device/i.test(String(error?.message)))
+            throw error;
+        });
+      commit(items.map((other) => other.id === item.id ? {
+        ...other,
+        share: void 0
+      } : other));
+    })());
+    var copyLink = (id) => {
+      try {
+        findByProps("setString", "getString")?.setString?.(shareLink(id));
+        showToast("Link copied");
+      } catch (e) {
+      }
     };
     var remove = (item) => import_react_native20.Alert.alert("Delete \u201C" + item.name + "\u201D?", "This saved copy is removed. Your current profile stays as it is.", [
       {
@@ -19176,6 +19292,71 @@
                 primary: true,
                 onPress: saveCurrent
               })
+            ]
+          })
+        }),
+        /* @__PURE__ */ jsx(S2.Panel, {
+          children: /* @__PURE__ */ jsxs(S2.Section, {
+            title: "Import a shared profile",
+            description: "Paste a link or code someone shared. It's added to Saved; nothing changes until you use it.",
+            children: [
+              /* @__PURE__ */ jsx(S2.Field, {
+                label: "Link or code",
+                children: /* @__PURE__ */ jsx(TextInput4, {
+                  value: code,
+                  placeholder: "getcloudcord.com/p/\u2026",
+                  autoCapitalize: "none",
+                  autoCorrect: false,
+                  onChangeText: setCode
+                })
+              }),
+              /* @__PURE__ */ jsxs(import_react_native20.View, {
+                style: {
+                  flexDirection: "row",
+                  gap: 8
+                },
+                children: [
+                  /* @__PURE__ */ jsx(S2.Button, {
+                    label: "Import",
+                    primary: true,
+                    grow: true,
+                    disabled: busy || !code.trim(),
+                    onPress: () => importCode(code)
+                  }),
+                  /* @__PURE__ */ jsx(S2.Button, {
+                    label: "Browse public",
+                    grow: true,
+                    disabled: busy,
+                    onPress: () => run(() => _async_to_generator(function* () {
+                      setPublicShares((yield shareRequest("?limit=30", "GET")).shares ?? []);
+                    })())
+                  })
+                ]
+              }),
+              publicShares ? publicShares.length ? publicShares.map((share) => /* @__PURE__ */ jsx(S2.Row, {
+                label: share.name,
+                subLabel: share.preview?.name || void 0,
+                icon: share.preview?.avatar ? /* @__PURE__ */ jsx(import_react_native20.Image, {
+                  source: {
+                    uri: share.preview.avatar
+                  },
+                  style: {
+                    width: 28,
+                    height: 28,
+                    borderRadius: 14
+                  }
+                }) : void 0,
+                trailing: /* @__PURE__ */ jsx(Text, {
+                  variant: "text-sm/bold",
+                  color: "text-brand",
+                  children: "Import"
+                }),
+                onPress: () => importCode(share.id)
+              }, share.id)) : /* @__PURE__ */ jsx(Text, {
+                variant: "text-sm/medium",
+                color: "text-muted",
+                children: "No public profiles yet."
+              }) : null
             ]
           })
         }),
@@ -19286,6 +19467,65 @@
                     onPress: () => remove(item)
                   })
                 ]
+              }),
+              sharing === item.id ? /* @__PURE__ */ jsxs(import_react_native20.View, {
+                style: {
+                  gap: 8
+                },
+                children: [
+                  /* @__PURE__ */ jsx(S2.Chips, {
+                    options: SHARE_VISIBILITIES,
+                    value: item.share?.visibility ?? "unlisted",
+                    onChange: (value) => shareItem(item, value)
+                  }),
+                  item.share && item.share.visibility !== "private" ? /* @__PURE__ */ jsx(Text, {
+                    variant: "text-sm/medium",
+                    color: "text-normal",
+                    selectable: true,
+                    children: shareLink(item.share.id)
+                  }) : null,
+                  item.share?.visibility === "private" ? /* @__PURE__ */ jsxs(Text, {
+                    variant: "text-xs/medium",
+                    color: "text-muted",
+                    children: [
+                      "Private: only this device can open it. Code ",
+                      item.share.id
+                    ]
+                  }) : null,
+                  /* @__PURE__ */ jsxs(import_react_native20.View, {
+                    style: {
+                      flexDirection: "row",
+                      gap: 8
+                    },
+                    children: [
+                      !item.share ? /* @__PURE__ */ jsx(S2.Button, {
+                        label: busy ? "Sharing\u2026" : "Share unlisted",
+                        primary: true,
+                        disabled: busy,
+                        grow: true,
+                        onPress: () => shareItem(item, "unlisted")
+                      }) : null,
+                      item.share && item.share.visibility !== "private" ? /* @__PURE__ */ jsx(S2.Button, {
+                        label: "Copy link",
+                        grow: true,
+                        onPress: () => copyLink(item.share.id)
+                      }) : null,
+                      item.share ? /* @__PURE__ */ jsx(S2.Button, {
+                        label: "Stop sharing",
+                        danger: true,
+                        disabled: busy,
+                        onPress: () => stopSharing(item)
+                      }) : null,
+                      /* @__PURE__ */ jsx(S2.Button, {
+                        label: "Close",
+                        onPress: () => setSharing(null)
+                      })
+                    ]
+                  })
+                ]
+              }) : /* @__PURE__ */ jsx(S2.Button, {
+                label: item.share ? "Shared \xB7 " + item.share.visibility : "Share",
+                onPress: () => setSharing(item.id)
               })
             ]
           }, item.id);
@@ -19371,6 +19611,9 @@
     var data = sharedProfiles.get(userId);
     if (!data)
       throw new Error("This person doesn't have a CloudCord profile.");
+    return previewFromShared(data);
+  }
+  function previewFromShared(data) {
     var selectedBadges = {};
     var customBadgeIds = Array.isArray(data.customBadgeIds) ? data.customBadgeIds : [];
     for (var [id, , flag, , customId] of BADGES)
@@ -21308,7 +21551,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, shopResumeTimer, resumeAfterShop, pauseForShop, rememberTheme, themeTimer, restoreKeptTheme, fakeNitroActive, currentUserNitroHooked, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, NamePreviewBoundary, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
+  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, shopResumeTimer, resumeAfterShop, pauseForShop, rememberTheme, themeTimer, restoreKeptTheme, fakeNitroActive, currentUserNitroHooked, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, NamePreviewBoundary, SHARE_VISIBILITIES, shareLink, shareCodeFrom, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -22562,6 +22805,22 @@
         ]);
         return NamePreviewBoundary2;
       }(import_react6.Component);
+      SHARE_VISIBILITIES = [
+        {
+          value: "unlisted",
+          label: "Unlisted"
+        },
+        {
+          value: "public",
+          label: "Public"
+        },
+        {
+          value: "private",
+          label: "Private"
+        }
+      ];
+      shareLink = (id) => SHARED_PROFILE_API + "/p/" + id;
+      shareCodeFrom = (text) => String(text || "").trim().match(/(?:\/p\/)?([A-Za-z0-9]{6,16})\/?$/)?.[1] ?? null;
       DISCORD_BADGE_FLAGS = {
         staff: 1,
         partner: 2,
