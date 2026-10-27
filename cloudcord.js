@@ -25064,6 +25064,14 @@
         [
           "BUNNY_PLUGINS",
           "Add-ons"
+        ],
+        [
+          "BUNNY_THEMES",
+          "Themes"
+        ],
+        [
+          "BUNNY_FONTS",
+          "Fonts"
         ]
       ];
     }
@@ -31168,6 +31176,8 @@
       "BOTCORD",
       "FAKE_PROFILE",
       "BUNNY_PLUGINS",
+      "BUNNY_THEMES",
+      "BUNNY_FONTS",
       "CLOUDCORD_DIAGNOSTICS"
     ];
     var configurableKeys = new Set(defaultOrder.filter((key) => key !== "CLOUDCORD"));
@@ -31182,8 +31192,6 @@
     ].filter((row) => ![
       "STORE_CLOUD",
       "CLOUDCORD_PLUGIN_BROWSER",
-      "BUNNY_THEMES",
-      "BUNNY_FONTS",
       "CLOUDCORD_RECOVERY"
     ].includes(row.key)).map((row) => {
       if (row.nativeSection)
