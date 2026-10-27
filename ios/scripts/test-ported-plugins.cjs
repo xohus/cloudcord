@@ -23,6 +23,7 @@ const stores = {
 };
 const storageData = {};
 const toasts = [];
+const edits = [];
 const dispatched = [];
 const opened = [];
 
@@ -43,7 +44,7 @@ function load(rel) {
             if (name === '@lib/api/patcher') return patcher;
             if (name === '@lib/api/flux') return { intercept: cb => { intercepts.push(cb); return () => { intercepts = intercepts.filter(i => i !== cb); }; } };
             if (name === '@metro/common') return { messageUtil, FluxDispatcher: { dispatch: p => dispatched.push(p) }, url: { openURL: u => opened.push(u) } };
-            if (name === '@metro') return { findByStoreName: n => stores[n], findByProps: () => ({ startTyping() { return 'typed'; }, stopTyping() {}, createFriendInvite: async () => ({ code: 'abc', expires_at: '2030-01-01', max_uses: 5 }), removeRelationship() {} }) };
+            if (name === '@metro') return { findByStoreName: n => stores[n], findByProps: () => ({ startTyping() { return 'typed'; }, stopTyping() {}, createFriendInvite: async () => ({ code: 'abc', expires_at: '2030-01-01', max_uses: 5 }), removeRelationship() {}, editMessage: (c, id, m) => edits.push([id, m.content]), startEditMessage() {} }) };
             if (name === '@lib/api/commands') return { registerCommand: c => { commands.push(c); return () => commands.splice(commands.indexOf(c), 1); } };
             if (name === '@lib/api/commands/types') return { ApplicationCommandOptionType: { STRING: 3, INTEGER: 4 } };
             if (name === '@lib/ui/toasts') return { showToast: text => toasts.push(text) };
@@ -60,7 +61,7 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
 (async () => {
     // Every new plugin lists original authors and none of them is Endcord.
     const ids = fs.readFileSync(`${root}/index.ts`, 'utf8').match(/"cloudcord\.(\w+)"/g).map(id => id.slice(11, -1));
-    assert.equal(ids.length, 37);
+    assert.equal(ids.length, 48);
     for (const id of ids) {
         const { manifest } = plugin(id);
         assert(manifest.display.authors.length > 0, `${id} credits its authors`);
@@ -197,5 +198,34 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
     stores.ReadStateStore = { hasUnread: id => id === 'c2', lastMessageId: () => 'm9' };
     assert.equal(JSON.stringify(load('readallnotifications/index').unreadChannels()), JSON.stringify([{ channelId: 'c2', messageId: 'm9', readStateType: 0 }]));
 
-    console.log('PASS 37 ported mobile plugins: credits, transforms, filters, commands and clean stop');
+    assert.equal(load('sedenhanced/index').applySed('s/cat/dog/g', 'cat and cat'), 'dog and dog');
+    assert.equal(load('sedenhanced/index').applySed('s/(/x/', 'a(b'), 'axb', 'bad regex falls back to plain text');
+    assert.equal(load('unitconverter/index').convert('10 km'), '10 km = 6.21 mi');
+    assert.equal(load('unitconverter/index').convert('100 F'), '100°F = 37.78°C');
+    assert.equal(load('keywordnotify/index').matchesKeyword('Big NEWS today', 'news, /to+day/'), true);
+    const nml = plugin('normalizemessagelinks'); nml.start();
+    assert.equal(send('https://canary.discord.com/channels/1/2/3')[1].content, 'https://discord.com/channels/1/2/3'); nml.stop();
+    storageData['plugins/storage/cloudcord.silenceusers.json'].mutedUserIds = 'loud';
+    const su = plugin('silenceusers'); su.start(); await new Promise(r => setTimeout(r, 0));
+    const quiet = dispatch({ type: 'MESSAGE_CREATE', message: { author: { id: 'loud' }, mentions: [{ id: 'me' }], mention_everyone: true } }).message;
+    assert.equal(quiet.mentions.length, 0); assert.equal(quiet.mention_everyone, false); su.stop();
+    storageData['plugins/storage/cloudcord.stickerblocker.json'].blockedStickers = 's1';
+    const sb = plugin('stickerblocker'); sb.start(); await new Promise(r => setTimeout(r, 0));
+    assert.equal(dispatch({ type: 'MESSAGE_CREATE', message: { sticker_items: [{ id: 's1' }, { id: 's2' }] } }).message.sticker_items.length, 1); sb.stop();
+    storageData['plugins/storage/cloudcord.clientsideblock.json'].usersToBlock = 'pest';
+    const csb = plugin('clientsideblock'); csb.start(); await new Promise(r => setTimeout(r, 0));
+    assert.equal(dispatch({ type: 'MESSAGE_CREATE', message: { author: { id: 'pest' } } }), false); csb.stop();
+    const rpc = plugin('replypingcontrol'); rpc.start(); await new Promise(r => setTimeout(r, 0));
+    const reply = dispatch({ type: 'MESSAGE_CREATE', message: { author: { id: 'x' }, referenced_message: { author: { id: 'me' } }, mentions: [{ id: 'me' }] } }).message;
+    assert.equal(reply.mentions.length, 0, 'replies do not ping by default'); rpc.stop();
+    stores.MessageStore.getMessages = () => ({ toArray: () => [{ id: 'last', author: { id: 'me' }, content: 'hello wrld', timestamp: new Date().toISOString() }] });
+    const sed = plugin('sedenhanced'); sed.start(); send('s/wrld/world/'); assert.deepEqual(edits.at(-1), ['last', 'hello world']); sed.stop();
+    const burst = plugin('messageburst'); burst.start(); await new Promise(r => setTimeout(r, 0));
+    messageUtil.sendMessage('c', { content: 'again' }, undefined, {}); assert.deepEqual(edits.at(-1), ['last', 'hello wrld\nagain']); burst.stop();
+    stores.GuildMemberStore.getMembers = () => [{ userId: 'a', roles: ['r1'] }, { userId: 'b', roles: [] }];
+    stores.UserStore.getUser = id => ({ username: id + '-name' });
+    const ir = plugin('inrole'); ir.start(); commands[0].execute([{ name: 'role', value: 'r1' }], { channel: { id: 'c' } });
+    assert.match(sent.at(-1)[1], /1 member.*a-name/s); ir.stop();
+
+    console.log('PASS 48 ported mobile plugins: credits, transforms, filters, commands and clean stop');
 })().catch(error => { console.error(error); process.exit(1); });

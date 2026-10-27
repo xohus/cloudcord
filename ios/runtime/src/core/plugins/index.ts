@@ -49,6 +49,17 @@ export const getCorePlugins = (): Record<string, CorePlugin> => ({
     "cloudcord.newguildsettings": { ...require("./newguildsettings"), preenabled: false },
     "cloudcord.betterplusreacts": { ...require("./betterplusreacts"), preenabled: false },
     "cloudcord.translate": { ...require("./translate"), preenabled: false },
+    "cloudcord.clientsideblock": { ...require("./clientsideblock"), preenabled: false },
+    "cloudcord.keywordnotify": { ...require("./keywordnotify"), preenabled: false },
+    "cloudcord.messagenotifier": { ...require("./messagenotifier"), preenabled: false },
+    "cloudcord.messageburst": { ...require("./messageburst"), preenabled: false },
+    "cloudcord.normalizemessagelinks": { ...require("./normalizemessagelinks"), preenabled: false },
+    "cloudcord.replypingcontrol": { ...require("./replypingcontrol"), preenabled: false },
+    "cloudcord.sedenhanced": { ...require("./sedenhanced"), preenabled: false },
+    "cloudcord.silenceusers": { ...require("./silenceusers"), preenabled: false },
+    "cloudcord.stickerblocker": { ...require("./stickerblocker"), preenabled: false },
+    "cloudcord.inrole": { ...require("./inrole"), preenabled: false },
+    "cloudcord.unitconverter": { ...require("./unitconverter"), preenabled: false },
 });
 
 /**
