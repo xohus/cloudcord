@@ -10,15 +10,18 @@ const TRACKING_PARAMS = [
 // Short single-letter params are only tracking on these sites.
 const SHORT_PARAM_SITES = /(^|\.)(twitter\.com|x\.com)$/i;
 
-function clean(url: string) {
-    let parsed: URL;
-    try { parsed = new URL(url); } catch { return url; }
-    let changed = false;
-    for (const key of [...parsed.searchParams.keys()]) {
-        if (key.length <= 1 && !SHORT_PARAM_SITES.test(parsed.hostname)) continue;
-        if (TRACKING_PARAMS.some(re => re.test(key))) { parsed.searchParams.delete(key); changed = true; }
-    }
-    return changed ? parsed.toString() : url;
+// Plain string parsing: React Native's URL class doesn't implement hostname or searchParams.
+export function clean(url: string) {
+    const match = url.match(/^(https?:\/\/([^/?#]+)[^?#]*)\?([^#]*)(#.*)?$/i);
+    if (!match) return url;
+    const [, base, host, query, hash = ""] = match;
+    const kept = query.split("&").filter(pair => {
+        if (!pair) return false;
+        const key = decodeURIComponent(pair.split("=")[0].replace(/\+/g, " "));
+        if (key.length <= 1 && !SHORT_PARAM_SITES.test(host)) return true;
+        return !TRACKING_PARAMS.some(re => re.test(key));
+    });
+    return kept.length === query.split("&").filter(Boolean).length ? url : base + (kept.length ? "?" + kept.join("&") : "") + hash;
 }
 
 let unpatch: (() => void) | undefined;

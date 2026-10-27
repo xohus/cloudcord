@@ -42,6 +42,13 @@ export const getCorePlugins = (): Record<string, CorePlugin> => ({
     "cloudcord.voicejoinmessages": { ...require("./voicejoinmessages"), preenabled: false },
     "cloudcord.messagelogger": { ...require("./messagelogger"), preenabled: false },
     "cloudcord.hopon": { ...require("./hopon"), preenabled: false },
+    "cloudcord.noprofilethemes": { ...require("./noprofilethemes"), preenabled: false },
+    "cloudcord.fakeprofilethemes": { ...require("./fakeprofilethemes"), preenabled: false },
+    "cloudcord.dontroundmytimestamps": { ...require("./dontroundmytimestamps"), preenabled: false },
+    "cloudcord.readallnotifications": { ...require("./readallnotifications"), preenabled: false },
+    "cloudcord.newguildsettings": { ...require("./newguildsettings"), preenabled: false },
+    "cloudcord.betterplusreacts": { ...require("./betterplusreacts"), preenabled: false },
+    "cloudcord.translate": { ...require("./translate"), preenabled: false },
 });
 
 /**

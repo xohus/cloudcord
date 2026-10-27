@@ -31,13 +31,15 @@ function load(rel) {
     const file = fs.existsSync(`${root}/${rel}.ts`) ? `${root}/${rel}.ts` : `${root}/${rel}.tsx`;
     const code = esbuild.transformSync(fs.readFileSync(file, 'utf8'), { loader: file.endsWith('x') ? 'tsx' : 'ts', format: 'cjs', jsx: 'transform' }).code;
     vm.runInNewContext(code, {
-        module, exports: module.exports, URL, console, setTimeout, clearTimeout,
+        // No URL or URLSearchParams: React Native only partly implements them.
+        module, exports: module.exports, console, setTimeout, clearTimeout,
         require(name) {
             if (name === '..') return { defineCorePlugin: instance => instance };
             if (name === '../shared/sendMessage') return load('shared/sendMessage');
             if (name === '../shared/messageFilter') return load('shared/messageFilter');
             if (name === '../shared/settings') return load('shared/settings');
             if (name === '../shared/voice') return load('shared/voice');
+            if (name === '../shared/profiles') return load('shared/profiles');
             if (name === '@lib/api/patcher') return patcher;
             if (name === '@lib/api/flux') return { intercept: cb => { intercepts.push(cb); return () => { intercepts = intercepts.filter(i => i !== cb); }; } };
             if (name === '@metro/common') return { messageUtil, FluxDispatcher: { dispatch: p => dispatched.push(p) }, url: { openURL: u => opened.push(u) } };
@@ -58,7 +60,7 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
 (async () => {
     // Every new plugin lists original authors and none of them is Endcord.
     const ids = fs.readFileSync(`${root}/index.ts`, 'utf8').match(/"cloudcord\.(\w+)"/g).map(id => id.slice(11, -1));
-    assert.equal(ids.length, 30);
+    assert.equal(ids.length, 37);
     for (const id of ids) {
         const { manifest } = plugin(id);
         assert(manifest.display.authors.length > 0, `${id} credits its authors`);
@@ -172,5 +174,28 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
     assert.equal(opened.at(-1), 'https://example.com');
     hop.stop();
 
-    console.log('PASS 30 ported mobile plugins: credits, transforms, filters, commands and clean stop');
+    const encode3y3 = text => [...text].map(c => String.fromCodePoint(c.codePointAt(0) + 0xe0000)).join('');
+    assert.equal(JSON.stringify(load('fakeprofilethemes/index').decode('hi ' + encode3y3('[#ff0000,#00ff00]'))), JSON.stringify([0xff0000, 0x00ff00]));
+    const fpt = plugin('fakeprofilethemes'); fpt.start();
+    const prof = { user: { id: 'u9' }, bio: encode3y3('[#112233,#445566]') };
+    dispatch({ type: 'USER_PROFILE_FETCH_SUCCESS', userProfile: prof });
+    assert.equal(JSON.stringify(prof.theme_colors), JSON.stringify([0x112233, 0x445566]));
+    fpt.stop();
+    const npt = plugin('noprofilethemes'); npt.start();
+    const other = { user: { id: 'u9' }, theme_colors: [1, 2] }, mine = { user: { id: 'me' }, theme_colors: [1, 2] };
+    dispatch({ type: 'USER_PROFILE_FETCH_SUCCESS', userProfile: other }); dispatch({ type: 'USER_PROFILE_FETCH_SUCCESS', userProfile: mine });
+    assert.equal(other.theme_colors, undefined); assert.equal(mine.theme_colors.length, 2);
+    npt.stop();
+    const bpr = load('betterplusreacts/index');
+    assert.equal(JSON.stringify(bpr.parsePlusReact('++:fire:')), JSON.stringify({ back: 2, name: 'fire' }));
+    assert.equal(bpr.parsePlusReact('hello +:fire:'), null);
+    const tr = load('translate/index');
+    const fake = async url => ({ ok: true, json: async () => [[['hello', 'hola']], null, 'es'], url });
+    assert.equal(JSON.stringify(await tr.googleTranslate('hola', 'en', fake)), JSON.stringify({ text: 'hello', from: 'es' }));
+    stores.GuildStore = { getGuilds: () => ({ g: { id: 'g' } }) };
+    stores.GuildChannelStore = { getChannels: () => ({ SELECTABLE: [{ channel: { id: 'c1' } }, { channel: { id: 'c2' } }], VOCAL: [] }) };
+    stores.ReadStateStore = { hasUnread: id => id === 'c2', lastMessageId: () => 'm9' };
+    assert.equal(JSON.stringify(load('readallnotifications/index').unreadChannels()), JSON.stringify([{ channelId: 'c2', messageId: 'm9', readStateType: 0 }]));
+
+    console.log('PASS 37 ported mobile plugins: credits, transforms, filters, commands and clean stop');
 })().catch(error => { console.error(error); process.exit(1); });
