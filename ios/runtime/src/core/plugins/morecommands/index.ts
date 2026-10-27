@@ -66,7 +66,7 @@ export default defineCorePlugin({
         display: {
             name: "MoreCommands",
             description: "Adds /choose, /flipcoin, /rolldice, /randomnumber, /wordcount and /transform",
-            authors: ["Arjix", "amy", "Samu", "zyqunix", "ShadyGoat", "thororen", "Korbo", "nyx", "Samwich", "Fafa", "JacobTm", "voidbbg"].map(name => ({ name })),
+            authors: ["ArjixWasTaken", "Amy", "Samu", "zyqunix", "Shady Goat", "thororen", "Korbo", "verticalsync.", "Samwich", "Fafa", "Jacob.Tm", "voidbbg"].map(name => ({ name })),
         },
     },
     start() { unregisters = COMMANDS.map(command => registerCommand(command as any)); },

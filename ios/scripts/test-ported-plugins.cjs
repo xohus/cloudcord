@@ -23,6 +23,8 @@ const stores = {
 };
 const storageData = {};
 const toasts = [];
+const dispatched = [];
+const opened = [];
 
 function load(rel) {
     const module = { exports: {} };
@@ -35,9 +37,10 @@ function load(rel) {
             if (name === '../shared/sendMessage') return load('shared/sendMessage');
             if (name === '../shared/messageFilter') return load('shared/messageFilter');
             if (name === '../shared/settings') return load('shared/settings');
+            if (name === '../shared/voice') return load('shared/voice');
             if (name === '@lib/api/patcher') return patcher;
             if (name === '@lib/api/flux') return { intercept: cb => { intercepts.push(cb); return () => { intercepts = intercepts.filter(i => i !== cb); }; } };
-            if (name === '@metro/common') return { messageUtil };
+            if (name === '@metro/common') return { messageUtil, FluxDispatcher: { dispatch: p => dispatched.push(p) }, url: { openURL: u => opened.push(u) } };
             if (name === '@metro') return { findByStoreName: n => stores[n], findByProps: () => ({ startTyping() { return 'typed'; }, stopTyping() {}, createFriendInvite: async () => ({ code: 'abc', expires_at: '2030-01-01', max_uses: 5 }), removeRelationship() {} }) };
             if (name === '@lib/api/commands') return { registerCommand: c => { commands.push(c); return () => commands.splice(commands.indexOf(c), 1); } };
             if (name === '@lib/api/commands/types') return { ApplicationCommandOptionType: { STRING: 3, INTEGER: 4 } };
@@ -55,7 +58,7 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
 (async () => {
     // Every new plugin lists original authors and none of them is Endcord.
     const ids = fs.readFileSync(`${root}/index.ts`, 'utf8').match(/"cloudcord\.(\w+)"/g).map(id => id.slice(11, -1));
-    assert.equal(ids.length, 23);
+    assert.equal(ids.length, 30);
     for (const id of ids) {
         const { manifest } = plugin(id);
         assert(manifest.display.authors.length > 0, `${id} credits its authors`);
@@ -143,5 +146,31 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
     notifier.stop();
     const sched = plugin('scheduledmessages'); sched.start(); assert.equal(commands[0].name, 'schedule'); sched.stop(); assert.equal(commands.length, 0);
 
-    console.log('PASS 23 ported mobile plugins: credits, transforms, filters, commands and clean stop');
+    const calls = plugin('ignorecalls');
+    storageData['plugins/storage/cloudcord.ignorecalls.json'].ids = 'dm1';
+    calls.start(); await new Promise(r => setTimeout(r, 0));
+    assert.equal(JSON.stringify(dispatch({ type: 'CALL_CREATE', channelId: 'dm1', ringing: ['me', 'x'] }).ringing), JSON.stringify(['x']));
+    assert.equal(dispatch({ type: 'CALL_CREATE', channelId: 'other', ringing: ['me'] }), undefined);
+    calls.stop();
+    stores.MessageStore = { getMessage: () => ({ content: 'secret', author: { id: 'u' } }) };
+    const logger = plugin('messagelogger'); logger.start(); await new Promise(r => setTimeout(r, 0));
+    assert.equal(dispatch({ type: 'MESSAGE_DELETE', channelId: 'c', id: 'm' }), false, 'delete is blocked');
+    await new Promise(r => setTimeout(r, 0));
+    assert.match(dispatched.at(-1).message.content, /^secret\n-# .*deleted$/);
+    assert.match(dispatch({ type: 'MESSAGE_UPDATE', message: { id: 'm', channel_id: 'c', content: 'new' } }).message.content, /^new\n-# .*before: secret$/);
+    logger.stop();
+    stores.RelationshipStore.isFriend = () => true; stores.ChannelStore.getChannel = () => ({ name: 'general', guild_id: 'g' });
+    const vj = plugin('voicejoinmessages'); vj.start();
+    dispatch({ type: 'VOICE_STATE_UPDATES', voiceStates: [{ userId: 'u2', channelId: 'v1' }] }); await new Promise(r => setTimeout(r, 0));
+    assert.match(toasts.at(-1), /joined .*general/);
+    vj.stop();
+    stores.SelectedChannelStore = { getChannelId: () => 'c', getVoiceChannelId: () => null };
+    const hop = plugin('hopon');
+    storageData['plugins/storage/cloudcord.hopon.json'].url = 'https://example.com';
+    hop.start(); await new Promise(r => setTimeout(r, 0));
+    dispatch({ type: 'MESSAGE_CREATE', channelId: 'c', message: { content: 'HOP ON now' } }); await new Promise(r => setTimeout(r, 0));
+    assert.equal(opened.at(-1), 'https://example.com');
+    hop.stop();
+
+    console.log('PASS 30 ported mobile plugins: credits, transforms, filters, commands and clean stop');
 })().catch(error => { console.error(error); process.exit(1); });

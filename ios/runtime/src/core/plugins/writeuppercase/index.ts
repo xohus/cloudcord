@@ -23,7 +23,7 @@ export default defineCorePlugin({
         display: {
             name: "WriteUpperCase",
             description: "Capitalises the first letter of each sentence you send",
-            authors: [{ name: "Samwich" }, { name: "KrystalSkull" }],
+            authors: [{ name: "Samwich" }, { name: "krystalskullofficial" }],
         },
     },
     start() {

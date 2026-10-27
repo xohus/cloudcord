@@ -6,7 +6,7 @@ import { Button, Stack, TableRowGroup, TableSwitchRow, Text, TextInput } from "@
 import { messageUtil } from "@metro/common";
 import { View } from "react-native";
 
-// Mobile version of the CustomCommands plugin by Ven and Luny.
+// Mobile version of the CustomCommands plugin by Vee and Luny.
 interface CustomCommand { name: string; response: string; onlyMe?: boolean; }
 const storage = createStorage<{ commands?: CustomCommand[]; }>("plugins/storage/cloudcord.customcommands.json");
 const textOf = (value: any) => typeof value === "string" ? value : value?.nativeEvent?.text ?? "";
@@ -38,7 +38,7 @@ export default defineCorePlugin({
         display: {
             name: "CustomCommands",
             description: "Make your own slash commands that send a saved reply",
-            authors: [{ name: "Ven" }, { name: "Luny" }],
+            authors: [{ name: "Vee" }, { name: "Luny" }],
         },
     },
     start() { running = true; void awaitStorage(storage).then(() => { if (running) registerAll(); }); },

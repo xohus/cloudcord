@@ -1,7 +1,7 @@
 import { defineCorePlugin } from "..";
 import { onSendMessage } from "../shared/sendMessage";
 
-// Mobile version of the Unindent plugin by Ven.
+// Mobile version of the Unindent plugin by Vee.
 function unindent(code: string) {
     const lines = code.replace(/^\n+/, "").split("\n");
     const indents = lines.filter(line => line.trim()).map(line => line.match(/^[\t ]*/)![0].length);
@@ -21,7 +21,7 @@ export default defineCorePlugin({
         display: {
             name: "Unindent",
             description: "Removes extra indentation from code blocks you send",
-            authors: [{ name: "Ven" }],
+            authors: [{ name: "Vee" }],
         },
     },
     start() {

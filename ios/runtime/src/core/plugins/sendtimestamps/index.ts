@@ -1,7 +1,7 @@
 import { defineCorePlugin } from "..";
 import { onSendMessage } from "../shared/sendMessage";
 
-// Mobile version of the SendTimestamps plugin by Ven, GGTyler and Grzesiek11.
+// Mobile version of the SendTimestamps plugin by Vee, GGTyler and Grzesiek11.
 // `5:30 PM` or `17:30` in backticks becomes a Discord timestamp everyone sees in their own time zone.
 export function parseTime(time: string, now = Date.now()) {
     const clean = time.slice(1, -1).replace(/(\d)(AM|PM)$/i, "$1 $2");
@@ -23,7 +23,7 @@ export default defineCorePlugin({
         display: {
             name: "SendTimestamps",
             description: "Write a time like `5:30 PM` in backticks and it's sent as a timestamp in everyone's own time zone",
-            authors: [{ name: "Ven" }, { name: "GGTyler" }, { name: "Grzesiek11" }],
+            authors: [{ name: "Vee" }, { name: "GGTyler" }, { name: "Grzesiek11" }],
         },
     },
     start() {

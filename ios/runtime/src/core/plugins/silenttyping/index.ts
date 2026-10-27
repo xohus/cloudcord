@@ -2,7 +2,7 @@ import { defineCorePlugin } from "..";
 import { instead } from "@lib/api/patcher";
 import { findByProps } from "@metro";
 
-// Mobile version of the SilentTyping plugin by Ven, Rini, ImBanana and Etorix.
+// Mobile version of the SilentTyping plugin by Vee, Rini, ImBanana and Etorix.
 let unpatches: (() => unknown)[] = [];
 
 export default defineCorePlugin({
@@ -15,7 +15,7 @@ export default defineCorePlugin({
         display: {
             name: "SilentTyping",
             description: "Others don't see you typing",
-            authors: [{ name: "Ven" }, { name: "Rini" }, { name: "ImBanana" }, { name: "Etorix" }],
+            authors: [{ name: "Vee" }, { name: "Rini" }, { name: "Im_Banana" }, { name: "Etorix" }],
         },
     },
     start() {

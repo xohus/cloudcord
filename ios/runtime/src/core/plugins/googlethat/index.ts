@@ -25,7 +25,7 @@ export default defineCorePlugin({
         display: {
             name: "GoogleThat",
             description: "Adds /googlethat, which sends a search link",
-            authors: [{ name: "Samwich" }, { name: "KrystalSkull" }],
+            authors: [{ name: "Samwich" }, { name: "krystalskullofficial" }],
         },
     },
     start() {

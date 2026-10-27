@@ -35,6 +35,13 @@ export const getCorePlugins = (): Record<string, CorePlugin> => ({
     "cloudcord.scheduledmessages": { ...require("./scheduledmessages"), preenabled: false },
     "cloudcord.customcommands": { ...require("./customcommands"), preenabled: false },
     "cloudcord.relationshipnotifier": { ...require("./relationshipnotifier"), preenabled: false },
+    "cloudcord.ignorecalls": { ...require("./ignorecalls"), preenabled: false },
+    "cloudcord.spotifysharecommands": { ...require("./spotifysharecommands"), preenabled: false },
+    "cloudcord.followvoiceuser": { ...require("./followvoiceuser"), preenabled: false },
+    "cloudcord.voicerejoin": { ...require("./voicerejoin"), preenabled: false },
+    "cloudcord.voicejoinmessages": { ...require("./voicejoinmessages"), preenabled: false },
+    "cloudcord.messagelogger": { ...require("./messagelogger"), preenabled: false },
+    "cloudcord.hopon": { ...require("./hopon"), preenabled: false },
 });
 
 /**

@@ -14,7 +14,7 @@ export default defineCorePlugin({
         display: {
             name: "TalkInReverse",
             description: "Reverses every message you send",
-            authors: [{ name: "Tolgchu" }],
+            authors: [{ name: "✨Tolgchu✨" }],
         },
     },
     start() {

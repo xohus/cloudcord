@@ -2,7 +2,7 @@ import { defineCorePlugin } from "..";
 import { onSendMessage } from "../shared/sendMessage";
 import { pluginSettings, SettingsPage } from "../shared/settings";
 
-// Mobile version of the Signature plugin by Ven, Rini, ImBanana and KrystalSkull.
+// Mobile version of the Signature plugin by Vee, Rini, ImBanana and KrystalSkull.
 const settings = pluginSettings("cloudcord.signature", { name: "a chronic discord user", newLine: true });
 
 let unpatch: (() => void) | undefined;
@@ -17,7 +17,7 @@ export default defineCorePlugin({
         display: {
             name: "Signature",
             description: "Adds a signature to the end of messages you send",
-            authors: [{ name: "Ven" }, { name: "Rini" }, { name: "ImBanana" }, { name: "KrystalSkull" }],
+            authors: [{ name: "Vee" }, { name: "Rini" }, { name: "Im_Banana" }, { name: "krystalskullofficial" }],
         },
     },
     start() {
