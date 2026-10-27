@@ -11,6 +11,17 @@ export const getCorePlugins = (): Record<string, CorePlugin> => ({
     "bunny.badges": require("./badges"),
     "bunny.notrack": require("./notrack"),
     "bunny.messagefix": require("./messagefix"),
+    // Mobile versions of desktop plugins; each credits the plugin's original authors. Off until turned on.
+    "cloudcord.clearurls": { ...require("./clearurls"), preenabled: false },
+    "cloudcord.noreplymention": { ...require("./noreplymention"), preenabled: false },
+    "cloudcord.unindent": { ...require("./unindent"), preenabled: false },
+    "cloudcord.silenttyping": { ...require("./silenttyping"), preenabled: false },
+    "cloudcord.noblockedmessages": { ...require("./noblockedmessages"), preenabled: false },
+    "cloudcord.blockkeywords": { ...require("./blockkeywords"), preenabled: false },
+    "cloudcord.atsomeone": { ...require("./atsomeone"), preenabled: false },
+    "cloudcord.morecommands": { ...require("./morecommands"), preenabled: false },
+    "cloudcord.textreplace": { ...require("./textreplace"), preenabled: false },
+    "cloudcord.nopendingcount": { ...require("./nopendingcount"), preenabled: false },
 });
 
 /**
