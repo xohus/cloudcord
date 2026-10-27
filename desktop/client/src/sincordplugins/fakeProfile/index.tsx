@@ -15,6 +15,7 @@ import decorationCatalog from "./decorations.json";
 import { CustomSocialEditor, openSocialDetail } from "./CustomSocial";
 import { ColorField, DiscordProfileCard, Grid2, ImageField, ProfilePreview, Section, SelectField, Switch, TabId, TabList, TextField } from "./editorUi";
 import { Current, installPresenceHooks, installTagIconSwap, loadCatalog, NameplateEditor, PickerGrid, onCatalogLoaded, ProfileEffectEditor, profileEffectFor, ProfileFrameEditor, refreshPresence, StatusEditor, TagIconEditor, uninstallPresenceHooks, uninstallTagIconSwap } from "./cosmetics";
+import { popNotice, showNotice } from "@api/Notices";
 import { installNativeSocialHooks } from "@utils/nativeSocialHooks";
 import { appearanceOptions, availableServerTags, Catalog, customDiscordMediaURL, nameplateAssetURL, nativeCollectibles, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, ProfileAppearance } from "@utils/profileAppearance";
 import { findByCodeLazy, findByProps, findStoreLazy } from "@webpack";
@@ -2972,16 +2973,18 @@ function startTemplatePreview(name: string, data: CustomProfileData) {
     // Cosmetics the template doesn't have are cleared so the preview matches it exactly.
     const look: CustomProfileData = { nameplate: null, profileEffect: null, profileFrame: null, decorationAsset: undefined, decorationSkuId: undefined, banner: "", accentColor: undefined, accentColor2: undefined, ...data };
     // Device-only, so a preview is never published to other people.
-    storedData = { ...templatePreview.data, ...look, localOnly: true };
+    storedData = { ...templatePreview.data, ...look, localOnly: true, hideBadgesWhenSyncOff: false };
     isEnabled = true;
     suppressOwnPullUntil = Number.MAX_SAFE_INTEGER;
     refreshOwnProfile();
+    try { popNotice(); showNotice(`Previewing the "${name}" template on your profile. Only you can see it.`, "Stop preview", () => stopTemplatePreview()); } catch (e) { logger.warn("Showing the preview notice failed", e); }
 }
 function stopTemplatePreview() {
     if (!templatePreview) return;
     storedData = templatePreview.data; isEnabled = templatePreview.enabled; suppressOwnPullUntil = templatePreview.pullUntil;
     templatePreview = null;
     refreshOwnProfile();
+    try { popNotice(); } catch { /* the notice may already be closed */ }
 }
 
 function TemplateCard({ template, busy, previewing, onPreview, onUse, onSave }: { template: TemplateSummary; busy: boolean; previewing: boolean; onPreview: () => void; onUse: () => void; onSave: () => void; }) {
@@ -3016,8 +3019,8 @@ function TemplatesPanel({ current, onApply }: { current: CustomProfileData; onAp
     const [pubVisibility, setPubVisibility] = React.useState<ShareVisibility>("public");
     const [published, setPublished] = React.useState<ProfileShare | null>(null);
     const [previewing, setPreviewing] = React.useState<{ id: string; name: string; data: CustomProfileData; } | null>(null);
-    // Leaving the Templates tab or closing the editor always ends a preview.
-    React.useEffect(() => () => stopTemplatePreview(), []);
+    // Pick up a preview that's still running from before the editor was reopened.
+    React.useEffect(() => { if (templatePreview) setPreviewing(current => current ?? { id: "", name: templatePreview!.name, data: templatePreview!.data }); }, []);
 
     React.useEffect(() => {
         let cancelled = false;
@@ -3038,7 +3041,7 @@ function TemplatesPanel({ current, onApply }: { current: CustomProfileData; onAp
         const template = await fetchTemplate(id);
         startTemplatePreview(template.name, template.data);
         setPreviewing({ id, ...template });
-        showToast(`Previewing "${template.name}" on your profile. Open your profile to see it.`, Toasts.Type.SUCCESS);
+        showToast(`Previewing "${template.name}". Close the editor and open your profile to see it.`, Toasts.Type.SUCCESS);
     });
     const stopPreview = () => { stopTemplatePreview(); setPreviewing(null); showToast("Preview stopped. Your profile is back.", Toasts.Type.SUCCESS); };
     const use = (id: string) => run(async () => {
@@ -3068,7 +3071,7 @@ function TemplatesPanel({ current, onApply }: { current: CustomProfileData; onAp
     const codeId = shareCodeFrom(code);
 
     return <>
-        {previewing && <Section title={`Previewing "${previewing.name}"`} description="Your Discord profile shows this template right now, only for you. Nothing is saved or synced until you choose Use and press Save.">
+        {previewing && <Section title={`Previewing "${previewing.name}"`} description="Your Discord profile shows this template right now, only for you. Close the editor to look at it; the bar at the top of Discord stops it. Nothing is saved or synced until you choose Use and press Save.">
             <div className="cpx-inline">
                 <button type="button" className="cpx-btn cpx-btn-primary" onClick={() => void use(previewing.id)}>Use this template</button>
                 <button type="button" className="cpx-btn" onClick={stopPreview}>Stop preview</button>

@@ -168,7 +168,7 @@ async function runUpdateCheck() {
             () => openSettingsTabModal(UpdaterTab!)
         );
     } catch (err) {
-        UpdateLogger.error("Failed to check for updates", err);
+        UpdateLogger.error("Failed to check for updates:", (err as any)?.message ?? err, (err as any)?.stack ?? "");
     }
 }
 
@@ -186,7 +186,7 @@ function initTrayIpc() {
                 showNotice("No updates available, you're on the latest version!", "OK", popNotice);
             }
         } catch (err) {
-            UpdateLogger.error("Failed to check for updates from tray", err);
+            UpdateLogger.error("Failed to check for updates from tray:", (err as any)?.message ?? err);
             showNotice("Failed to check for updates, check the console for more info", "OK", popNotice);
         }
     });

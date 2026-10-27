@@ -171,6 +171,22 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             themeObserver?.disconnect();
             themeObserver = null;
             if (!image) return;
+            // Discord draws a translucent overlay (dark in dark theme, light in light theme)
+            // over custom profile colours, so the colour behind the badge is the blend, not the
+            // raw profile colour. Without this a light profile colour in dark theme gave a black
+            // badge on a dark card.
+            const behindOverlay = (rgb: number[]) => {
+                let node: HTMLElement | null = image.parentElement;
+                while (node) {
+                    const overlay = parseColor(getComputedStyle(node).getPropertyValue("--profile-gradient-overlay-color").trim());
+                    if (overlay) {
+                        const alpha = overlay.length >= 4 ? overlay[3] : 1;
+                        return [0, 1, 2].map(i => rgb[i] * (1 - alpha) + overlay[i] * alpha);
+                    }
+                    node = node.parentElement;
+                }
+                return rgb;
+            };
             const update = () => {
             if (!image.isConnected) return;
             const apply = (black: boolean) => {
@@ -184,7 +200,7 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
             const editedColors: number[] | null = profilePlugin?.started ? (profilePlugin.getActiveProfileColors?.(badge.userId) ?? null) : null;
             if (editedColors?.length) {
                 // Discord themes the profile from the primary colour, so contrast with that one.
-                apply(useBlack(editedColors.slice(0, 1).map(color => [(color >> 16) & 255, (color >> 8) & 255, color & 255])));
+                apply(useBlack(editedColors.slice(0, 1).map(color => behindOverlay([(color >> 16) & 255, (color >> 8) & 255, color & 255]))));
                 return;
             }
             // Prefer the rendered surface near the badge, not globally inherited
@@ -194,7 +210,7 @@ function createOfficialCloudBadgeIcon(badge: ProfileBadge & BadgeUserArgs) {
                 const style = getComputedStyle(surface);
                 const gradientColors = [...(style.backgroundImage || "").matchAll(/(?:rgba?|color|oklab|oklch|lab|lch)\([^)]*\)/g)].map(match => parseColor(match[0])).filter((color): color is number[] => color !== null);
                 if (gradientColors.length) {
-                    apply(useBlack(gradientColors.slice(0, 1)));
+                    apply(useBlack(gradientColors.slice(0, 1).map(behindOverlay)));
                     return;
                 }
                 const background = parseColor(style.backgroundColor);

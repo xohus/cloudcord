@@ -29,6 +29,9 @@ import gitRemote from "~git-remote";
 import { ASAR_FILE, serializeErrors } from "./common";
 
 const API_BASE = `https://api.github.com/repos/${gitRemote}`;
+// Plain release downloads aren't rate limited like the GitHub API (60 requests an hour
+// per IP without a login), so update checks use them and never depend on the API.
+const RELEASE_BASE = `https://github.com/${gitRemote}/releases/download/new_beta_t_desktop`;
 let PendingUpdate: { asarUrl: string; checksumUrl: string; } | null = null;
 
 async function githubGet<T = any>(endpoint: string) {
@@ -45,32 +48,30 @@ async function calculateGitChanges() {
     const isOutdated = await fetchUpdates();
     if (!isOutdated) return [];
 
-    const data = await githubGet<any>(`/compare/${gitHash}...main`);
-
-    return data.commits.map((c: any) => ({
-        hash: c.sha,
-        author: c.author?.login ?? c.commit?.author?.name ?? "Ghost",
-        message: c.commit.message.split("\n")[0]
-    }));
+    // The change list is a nice-to-have: if the API is rate limited the update still goes ahead.
+    try {
+        const data = await githubGet<any>(`/compare/${gitHash}...main`);
+        return data.commits.map((c: any) => ({
+            hash: c.sha,
+            author: c.author?.login ?? c.commit?.author?.name ?? "Ghost",
+            message: c.commit.message.split("\n")[0]
+        }));
+    } catch {
+        return [{ hash: "latest", author: "CloudCord", message: "A new CloudCord update is ready" }];
+    }
 }
 
 async function fetchUpdates() {
-    const data = await githubGet<any>("/releases/tags/new_beta_t_desktop");
+    const checksumUrl = `${RELEASE_BASE}/${ASAR_FILE}.sha256`;
+    const expected = (await fetchBuffer(checksumUrl)).toString("utf8").trim().split(/\s+/)[0]?.toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(expected ?? ""))
+        throw new Error("The CloudCord release checksum is unreadable");
 
-    const hash = data.name?.slice(data.name.lastIndexOf(" ") + 1);
-    if (hash === gitHash)
+    const asarPath = __dirname;
+    if (asarPath.toLowerCase().endsWith(".asar") && createHash("sha256").update(readFileSync(asarPath)).digest("hex") === expected)
         return false;
 
-    const asset = data.assets.find((a: any) => a.name === ASAR_FILE);
-    const checksum = data.assets.find((a: any) => a.name === `${ASAR_FILE}.sha256`);
-    if (!asset || !checksum)
-        throw new Error(`Latest CloudCord release is missing ${ASAR_FILE} or its checksum`);
-
-    PendingUpdate = {
-        asarUrl: asset.browser_download_url,
-        checksumUrl: checksum.browser_download_url
-    };
-
+    PendingUpdate = { asarUrl: `${RELEASE_BASE}/${ASAR_FILE}`, checksumUrl };
     return true;
 }
 

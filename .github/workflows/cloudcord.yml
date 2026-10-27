@@ -3972,8 +3972,8 @@ jobs:
           const countTemplateUse = (id: string) => { fetch(SHARED_PROFILE_API + "/v1/shares/" + id + "/use", { method: "POST" }).catch(() => {}); };
           function ProfileTemplates({ current, onUse, onPreview }: { current: any; onUse: (data: any) => void; onPreview: (data: any | null) => void }) {
               const [previewing, setPreviewing] = useState<{ id: string; name: string; data: any } | null>(null);
-              // Leaving the Templates tab always ends a preview.
-              useEffect(() => () => onPreview(null), []);
+              // A preview stays on while you go look at your profile; Stop (or the next app start) ends it.
+              useEffect(() => { const backup = Reflect.get(rootSettings, "fakeProfilePreviewBackup"); if (backup && !previewing) setPreviewing({ id: "", name: "Template", data: null }); }, []);
               const S = require("@core/ui/settings/components/ProfileStudio");
               const [query, setQuery] = useState("");
               const [category, setCategory] = useState("");
@@ -4038,7 +4038,7 @@ jobs:
                   {previewing ? <S.Panel>
                       <S.Section title={"Previewing \u201c" + previewing.name + "\u201d"} description="Your profile shows this template right now, only for you. Nothing is saved or synced until you choose Use.">
                           <View style={{ flexDirection: "row", gap: 8 }}>
-                              <S.Button label="Use this template" primary grow onPress={() => use(previewing.id)} />
+                              {previewing.data ? <S.Button label="Use this template" primary grow onPress={() => use(previewing.id)} /> : null}
                               <S.Button label="Stop preview" grow onPress={() => { onPreview(null); setPreviewing(null); showToast("Preview stopped"); }} />
                           </View>
                       </S.Section>
