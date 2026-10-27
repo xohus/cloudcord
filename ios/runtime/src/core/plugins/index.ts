@@ -30,6 +30,11 @@ export const getCorePlugins = (): Record<string, CorePlugin> => ({
     "cloudcord.silentmessagetoggle": { ...require("./silentmessagetoggle"), preenabled: false },
     "cloudcord.splitlargemessages": { ...require("./splitlargemessages"), preenabled: false },
     "cloudcord.polishwording": { ...require("./polishwording"), preenabled: false },
+    "cloudcord.friendinvites": { ...require("./friendinvites"), preenabled: false },
+    "cloudcord.sendtimestamps": { ...require("./sendtimestamps"), preenabled: false },
+    "cloudcord.scheduledmessages": { ...require("./scheduledmessages"), preenabled: false },
+    "cloudcord.customcommands": { ...require("./customcommands"), preenabled: false },
+    "cloudcord.relationshipnotifier": { ...require("./relationshipnotifier"), preenabled: false },
 });
 
 /**

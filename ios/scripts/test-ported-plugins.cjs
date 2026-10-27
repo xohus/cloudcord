@@ -22,13 +22,14 @@ const stores = {
     UserStore: { getCurrentUser: () => ({ id: 'me' }) },
 };
 const storageData = {};
+const toasts = [];
 
 function load(rel) {
     const module = { exports: {} };
     const file = fs.existsSync(`${root}/${rel}.ts`) ? `${root}/${rel}.ts` : `${root}/${rel}.tsx`;
     const code = esbuild.transformSync(fs.readFileSync(file, 'utf8'), { loader: file.endsWith('x') ? 'tsx' : 'ts', format: 'cjs', jsx: 'transform' }).code;
     vm.runInNewContext(code, {
-        module, exports: module.exports, URL, console,
+        module, exports: module.exports, URL, console, setTimeout, clearTimeout,
         require(name) {
             if (name === '..') return { defineCorePlugin: instance => instance };
             if (name === '../shared/sendMessage') return load('shared/sendMessage');
@@ -37,9 +38,10 @@ function load(rel) {
             if (name === '@lib/api/patcher') return patcher;
             if (name === '@lib/api/flux') return { intercept: cb => { intercepts.push(cb); return () => { intercepts = intercepts.filter(i => i !== cb); }; } };
             if (name === '@metro/common') return { messageUtil };
-            if (name === '@metro') return { findByStoreName: n => stores[n], findByProps: () => ({ startTyping() { return 'typed'; }, stopTyping() {} }) };
+            if (name === '@metro') return { findByStoreName: n => stores[n], findByProps: () => ({ startTyping() { return 'typed'; }, stopTyping() {}, createFriendInvite: async () => ({ code: 'abc', expires_at: '2030-01-01', max_uses: 5 }), removeRelationship() {} }) };
             if (name === '@lib/api/commands') return { registerCommand: c => { commands.push(c); return () => commands.splice(commands.indexOf(c), 1); } };
             if (name === '@lib/api/commands/types') return { ApplicationCommandOptionType: { STRING: 3, INTEGER: 4 } };
+            if (name === '@lib/ui/toasts') return { showToast: text => toasts.push(text) };
             if (name === '@lib/api/storage') return { createStorage: path => (storageData[path] ??= {}), awaitStorage: async () => {} };
             return {};
         }
@@ -53,7 +55,7 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
 (async () => {
     // Every new plugin lists original authors and none of them is Endcord.
     const ids = fs.readFileSync(`${root}/index.ts`, 'utf8').match(/"cloudcord\.(\w+)"/g).map(id => id.slice(11, -1));
-    assert.equal(ids.length, 18);
+    assert.equal(ids.length, 23);
     for (const id of ids) {
         const { manifest } = plugin(id);
         assert(manifest.display.authors.length > 0, `${id} credits its authors`);
@@ -121,5 +123,25 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
     const sig = plugin('signature'); sig.start(); await new Promise(r => setTimeout(r, 0)); assert.equal(send('hi')[1].content, 'hi\n> a chronic discord user'); sig.stop();
     const google = plugin('googlethat'); google.start(); assert.equal(commands[0].execute([{ name: 'input', value: 'a b' }]).content, 'https://www.google.com/search?q=a%20b'); google.stop();
 
-    console.log('PASS 18 ported mobile plugins: credits, transforms, filters, commands and clean stop');
+    const ts = load('sendtimestamps/index');
+    const noon = new Date('2030-06-01T08:00:00').getTime();
+    assert.equal(ts.parseTime('`9:30 AM`', noon), `<t:${new Date('2030-06-01T09:30:00').getTime() / 1000}:t>`);
+    assert.equal(ts.parseTime('`7:00`', noon), `<t:${new Date('2030-06-02T07:00:00').getTime() / 1000}:t>`, 'a past time means tomorrow');
+    const invites = plugin('friendinvites'); invites.start();
+    commands.find(c => c.name === 'create friend invite').execute([], { channel: { id: 'c' } }); await new Promise(r => setTimeout(r, 0));
+    assert.match(sent.at(-1)[1], /^discord\.gg\/abc .*Max uses: `5`$/);
+    invites.stop(); assert.equal(commands.length, 0);
+    const custom = plugin('customcommands');
+    storageData['plugins/storage/cloudcord.customcommands.json'].commands = [{ name: 'Hello There', response: 'hi all' }, { name: '', response: 'skip' }];
+    custom.start(); await new Promise(r => setTimeout(r, 0));
+    assert.equal(commands.length, 1); assert.equal(commands[0].name, 'hello-there'); assert.equal(commands[0].execute([], {}).content, 'hi all');
+    custom.stop(); assert.equal(commands.length, 0);
+    const notifier = plugin('relationshipnotifier'); notifier.start();
+    stores.RelationshipStore.getRelationshipType = () => 1; stores.UserStore.getUser = () => ({ username: 'pal' });
+    dispatch({ type: 'RELATIONSHIP_REMOVE', relationship: { id: 'u1', type: 1 } }); await new Promise(r => setTimeout(r, 0));
+    assert.equal(toasts.at(-1), 'pal removed you as a friend');
+    notifier.stop();
+    const sched = plugin('scheduledmessages'); sched.start(); assert.equal(commands[0].name, 'schedule'); sched.stop(); assert.equal(commands.length, 0);
+
+    console.log('PASS 23 ported mobile plugins: credits, transforms, filters, commands and clean stop');
 })().catch(error => { console.error(error); process.exit(1); });
