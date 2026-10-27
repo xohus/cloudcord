@@ -25,8 +25,10 @@ export function installNativeSocialHooks(options: Hooks) {
         let original: unknown;
         try { original = object?.[key]; } catch { return; }
         if (typeof original !== "function") return;
-        const replacement = function (this: any, ...args: unknown[]) { return handler(original.bind(this), args); };
-        object[key] = replacement;
+        const replacement = function (this: any, ...args: unknown[]) { return handler((original as Function).bind(this), args); };
+        // The same proxies can also refuse writes; skip the hook instead of throwing.
+        try { object[key] = replacement; } catch { return; }
+        if (object[key] !== replacement) return;
         cleanups.push(() => { if (object[key] === replacement) object[key] = original; });
     };
     const friend = (id: any) => {
