@@ -9,6 +9,8 @@ const tabs = [
     ["BOTCORD", "Botcord"],
     ["FAKE_PROFILE", "Profile"],
     ["BUNNY_PLUGINS", "Add-ons"],
+    ["BUNNY_THEMES", "Themes"],
+    ["BUNNY_FONTS", "Fonts"],
 ] as const;
 
 export default function Customization() {

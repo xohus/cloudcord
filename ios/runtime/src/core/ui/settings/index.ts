@@ -95,12 +95,13 @@ export default function initSettings() {
             }
         ];
 
-    const defaultOrder = ["CLOUDCORD", "BOTCORD", "FAKE_PROFILE", "BUNNY_PLUGINS", "CLOUDCORD_DIAGNOSTICS"];
+    // Themes and Fonts show as their own tabs wherever the loader supports them (Android).
+    const defaultOrder = ["CLOUDCORD", "BOTCORD", "FAKE_PROFILE", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_DIAGNOSTICS"];
     const configurableKeys = new Set(defaultOrder.filter(key => key !== "CLOUDCORD"));
     const configuredOrder = settings.cloudcordTabOrder ?? [];
     const orderIndex = new Map(configuredOrder.map((key, index) => [key, index]));
     const items = [...baseItems, hiddenControlsItem]
-        .filter(row => !["STORE_CLOUD", "CLOUDCORD_PLUGIN_BROWSER", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_RECOVERY"].includes(row.key))
+        .filter(row => !["STORE_CLOUD", "CLOUDCORD_PLUGIN_BROWSER", "CLOUDCORD_RECOVERY"].includes(row.key))
         .map(row => {
             if (row.nativeSection) return row;
             const originalPredicate = row.usePredicate;
