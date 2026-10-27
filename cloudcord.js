@@ -19167,7 +19167,15 @@
   }
   function ProfileTemplates({ current, onUse, onPreview }) {
     var [previewing, setPreviewing] = (0, import_react6.useState)(null);
-    (0, import_react6.useEffect)(() => () => onPreview(null), []);
+    (0, import_react6.useEffect)(() => {
+      var backup = Reflect.get(rootSettings, "fakeProfilePreviewBackup");
+      if (backup && !previewing)
+        setPreviewing({
+          id: "",
+          name: "Template",
+          data: null
+        });
+    }, []);
     var S2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
     var [query, setQuery] = (0, import_react6.useState)("");
     var [category, setCategory] = (0, import_react6.useState)("");
@@ -19318,12 +19326,12 @@
                 gap: 8
               },
               children: [
-                /* @__PURE__ */ jsx(S2.Button, {
+                previewing.data ? /* @__PURE__ */ jsx(S2.Button, {
                   label: "Use this template",
                   primary: true,
                   grow: true,
                   onPress: () => use(previewing.id)
-                }),
+                }) : null,
                 /* @__PURE__ */ jsx(S2.Button, {
                   label: "Stop preview",
                   grow: true,
