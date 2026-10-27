@@ -33,6 +33,7 @@ function load(rel) {
             if (name === '..') return { defineCorePlugin: instance => instance };
             if (name === '../shared/sendMessage') return load('shared/sendMessage');
             if (name === '../shared/messageFilter') return load('shared/messageFilter');
+            if (name === '../shared/settings') return load('shared/settings');
             if (name === '@lib/api/patcher') return patcher;
             if (name === '@lib/api/flux') return { intercept: cb => { intercepts.push(cb); return () => { intercepts = intercepts.filter(i => i !== cb); }; } };
             if (name === '@metro/common') return { messageUtil };
@@ -52,7 +53,7 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
 (async () => {
     // Every new plugin lists original authors and none of them is Endcord.
     const ids = fs.readFileSync(`${root}/index.ts`, 'utf8').match(/"cloudcord\.(\w+)"/g).map(id => id.slice(11, -1));
-    assert.equal(ids.length, 10);
+    assert.equal(ids.length, 18);
     for (const id of ids) {
         const { manifest } = plugin(id);
         assert(manifest.display.authors.length > 0, `${id} credits its authors`);
@@ -108,5 +109,17 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
     pending.stop();
     assert.equal(stores.RelationshipStore.getPendingCount(), 5);
 
-    console.log('PASS 10 ported mobile plugins: credits, transforms, filters, commands and clean stop');
+    const ing = load('ingtoninator/index');
+    assert.equal(ing.ingtonify('hello world', () => 0.99), 'hello worldington');
+    assert.equal(ing.ingtonify('hit https://x.com/b', () => 0.99), 'hitington https://x.com/b', 'never edits links');
+    assert.equal(load('writeuppercase/index').capitalise('hi there. ok cool. yes', 'ok'), 'Hi there. ok cool. Yes');
+    assert.equal(JSON.stringify(load('splitlargemessages/index').splitMessage('aaa bbb ccc', 7)), JSON.stringify(['aaa bbb', 'ccc']));
+    const pw = load('polishwording/index');
+    assert.equal(pw.polish('i dont know `dont` Its fine', { fixApostrophes: true, fixCapitalization: true, fixPunctuation: true }), 'I don\x27t know `dont` Its fine.');
+    const reverse = plugin('talkinreverse'); reverse.start(); assert.equal(send('abc')[1].content, 'cba'); reverse.stop();
+    const silent = plugin('silentmessagetoggle'); silent.start(); assert.equal(send('hi')[1].content, '@silent hi'); silent.stop();
+    const sig = plugin('signature'); sig.start(); await new Promise(r => setTimeout(r, 0)); assert.equal(send('hi')[1].content, 'hi\n> a chronic discord user'); sig.stop();
+    const google = plugin('googlethat'); google.start(); assert.equal(commands[0].execute([{ name: 'input', value: 'a b' }]).content, 'https://www.google.com/search?q=a%20b'); google.stop();
+
+    console.log('PASS 18 ported mobile plugins: credits, transforms, filters, commands and clean stop');
 })().catch(error => { console.error(error); process.exit(1); });

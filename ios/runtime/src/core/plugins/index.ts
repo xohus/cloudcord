@@ -22,6 +22,14 @@ export const getCorePlugins = (): Record<string, CorePlugin> => ({
     "cloudcord.morecommands": { ...require("./morecommands"), preenabled: false },
     "cloudcord.textreplace": { ...require("./textreplace"), preenabled: false },
     "cloudcord.nopendingcount": { ...require("./nopendingcount"), preenabled: false },
+    "cloudcord.googlethat": { ...require("./googlethat"), preenabled: false },
+    "cloudcord.ingtoninator": { ...require("./ingtoninator"), preenabled: false },
+    "cloudcord.writeuppercase": { ...require("./writeuppercase"), preenabled: false },
+    "cloudcord.talkinreverse": { ...require("./talkinreverse"), preenabled: false },
+    "cloudcord.signature": { ...require("./signature"), preenabled: false },
+    "cloudcord.silentmessagetoggle": { ...require("./silentmessagetoggle"), preenabled: false },
+    "cloudcord.splitlargemessages": { ...require("./splitlargemessages"), preenabled: false },
+    "cloudcord.polishwording": { ...require("./polishwording"), preenabled: false },
 });
 
 /**
