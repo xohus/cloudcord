@@ -60,6 +60,9 @@ export const getCorePlugins = (): Record<string, CorePlugin> => ({
     "cloudcord.stickerblocker": { ...require("./stickerblocker"), preenabled: false },
     "cloudcord.inrole": { ...require("./inrole"), preenabled: false },
     "cloudcord.unitconverter": { ...require("./unitconverter"), preenabled: false },
+    "cloudcord.customrpc": { ...require("./customrpc"), preenabled: false },
+    "cloudcord.lastfmrichpresence": { ...require("./lastfmrichpresence"), preenabled: false },
+    "cloudcord.alwaysanimate": { ...require("./alwaysanimate"), preenabled: false },
 });
 
 /**

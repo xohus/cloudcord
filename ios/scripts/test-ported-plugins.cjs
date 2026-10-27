@@ -61,7 +61,7 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
 (async () => {
     // Every new plugin lists original authors and none of them is Endcord.
     const ids = fs.readFileSync(`${root}/index.ts`, 'utf8').match(/"cloudcord\.(\w+)"/g).map(id => id.slice(11, -1));
-    assert.equal(ids.length, 48);
+    assert.equal(ids.length, 51);
     for (const id of ids) {
         const { manifest } = plugin(id);
         assert(manifest.display.authors.length > 0, `${id} credits its authors`);
@@ -227,5 +227,12 @@ const dispatch = payload => intercepts.reduce((result, cb) => result === false ?
     const ir = plugin('inrole'); ir.start(); commands[0].execute([{ name: 'role', value: 'r1' }], { channel: { id: 'c' } });
     assert.match(sent.at(-1)[1], /1 member.*a-name/s); ir.stop();
 
-    console.log('PASS 48 ported mobile plugins: credits, transforms, filters, commands and clean stop');
+    const rpc2 = load('customrpc/index');
+    assert.equal(rpc2.buildActivity({ name: '' }, 1), null);
+    assert.equal(rpc2.buildActivity({ name: 'Chess', type: '3' }, 5).type, 3);
+    const lfm = load('lastfmrichpresence/index');
+    assert.equal(lfm.activityFromLastfm({ recenttracks: { track: [{ name: 'Song', artist: { '#text': 'Band' }, '@attr': { nowplaying: 'true' } }] } }).name, 'Band - Song');
+    assert.equal(lfm.activityFromLastfm({ recenttracks: { track: [{ name: 'Old' }] } }), null, 'only now playing');
+
+    console.log('PASS 51 ported mobile plugins: credits, transforms, filters, commands and clean stop');
 })().catch(error => { console.error(error); process.exit(1); });
