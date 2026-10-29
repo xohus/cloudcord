@@ -13,6 +13,7 @@ import org.lsposed.lspatch.share.LSPConfig
 import org.lsposed.patch.LSPatch
 import org.lsposed.patch.util.Logger
 import java.io.File
+import java.util.Locale
 
 class InjectRainXposedStep : Step() {
     override val group: StepGroup = StepGroup.Install
@@ -82,8 +83,12 @@ class InjectRainXposedStep : Step() {
             //     FilenameUtils.getBaseName(apkFileName),
             //     LSPConfig.instance.VERSION_CODE)
             // )
-            val patchedApkName = "${baseName}-${LSPConfig.instance.VERSION_CODE}-lspatched.apk"
-            val patchedApk = File(tempDir, patchedApkName)
+            // Format with the device locale like LSPatch does (Arabic and similar locales use non-ASCII digits),
+            // falling back to any matching output in case the formatting ever differs.
+            val patchedApkName = String.format(Locale.getDefault(), "%s-%d-lspatched.apk", baseName, LSPConfig.instance.VERSION_CODE)
+            val patchedApk = File(tempDir, patchedApkName).takeIf { it.exists() }
+                ?: tempDir.listFiles { f -> f.name.startsWith("$baseName-") && f.name.endsWith("-lspatched.apk") }?.singleOrNull()
+                ?: File(tempDir, patchedApkName)
 
             if (patchedApk.exists()) {
                 patchedApk.copyTo(originalApk, overwrite = true)
