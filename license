@@ -4,6 +4,21 @@ Copyright © 2026 xohus. All rights reserved.
 
 This software, including but not limited to its source code, compiled code, scripts, user interface, designs, graphics, assets, documentation, APIs, implementations, architecture, features, systems, workflows, names, branding, and associated materials (collectively, the “Software”), is proprietary property of xohus.
 
+## 0. SCOPE: WHAT THIS LICENSE COVERS
+
+This license covers CloudCord's original work by xohus: the CloudCord name, logos, badge and overlay artwork, decorations and other graphics, and any code written for CloudCord that is not part of, or derived from, the open-source projects listed below.
+
+The following parts are built on open-source projects and are NOT covered by this license. They stay under their own licenses, which take priority over anything below:
+
+| Folder | Based on | License |
+| --- | --- | --- |
+| `desktop/client/` | Vencord and Equicord | GNU GPL v3.0, see `desktop/client/LICENSE` |
+| `android/` | Aliucord / Vendetta / Raincord Manager | Open Software License 3.0, see `android/LICENSE` |
+| `ios/native-ios/`, `ios/rain-original/` | Raincord / RainTweak | Open Software License 3.0, see `ios/native-ios/RAIN-LICENSE` |
+| `ios/runtime/` | Vendetta / Bunny / Rain | BSD 3-Clause, see `ios/runtime/LICENSE` |
+
+CloudCord changes to those folders are released under the same license as the folder. Artwork and branding inside them (logos, badge and overlay images, decorations) remain covered by this proprietary license.
+
 ## 1. LIMITED PERMISSION TO VIEW
 
 You are permitted to view publicly available CloudCord source code solely for personal inspection, security review, educational understanding, and evaluation.
