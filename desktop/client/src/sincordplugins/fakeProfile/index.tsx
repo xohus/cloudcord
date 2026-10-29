@@ -3,12 +3,12 @@
  * Originally created by xohus for CloudCord on iOS and Android.
  * Adapted and substantially expanded for CloudCord Desktop by xohus.
  * Copyright (c) 2026 xohus and CloudCord contributors
- * Portions copyright (c) 2026 Sincord contributors
+ * Originally based on Sincord's FakeProfile; portions copyright (c) 2026 Sincord contributors
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
 import { logger } from "./logger";
-import { profileStorage } from "./storage";
+import { profileStorage, ProfileStorageKey } from "./storage";
 import "./style.css";
 import "./editor.css";
 import decorationCatalog from "./decorations.json";
@@ -36,7 +36,7 @@ const ModalRoot = _ModalRoot as any;
 const ModalHeader = _ModalHeader as any;
 const ModalContent = _ModalContent as any;
 const ModalFooter = _ModalFooter as any;
-import { SincordDevs } from "@utils/constants";
+import { Devs, SincordDevs } from "@utils/constants";
 import definePlugin from "@utils/types";
 import { AuthenticationStore, RelationshipStore, Button, ChannelActionCreators, FluxDispatcher, RestAPI, FriendsStore, IconUtils, Menu, Popout, React, Select, showToast, SnowflakeUtils, Toasts, UserProfileActions, UserProfileStore, UserStore } from "@webpack/common";
 
@@ -51,33 +51,37 @@ import nitroSilver from "file://../../../../../assets/NitroMilestones/silver.png
 
 const pngDataUrl = (source: string) => source.startsWith("data:") ? source : `data:image/png;base64,${source}`;
 
-const DS_KEY = "customProfile_data";
-const DS_ENABLED = "customProfile_enabled";
-const DS_ALL_DATA = "customProfile_allData";
-const DS_ALL_ENABLED = "customProfile_allEnabled";
+// DataStore keys. The two single-profile keys come from the first release and are
+// only read to migrate old installs into the per-account maps.
+const STORE_KEYS = {
+    legacyProfile: "customProfile_data",
+    legacyEnabled: "customProfile_enabled",
+    profiles: "customProfile_allData",
+    enabled: "customProfile_allEnabled",
+} as const;
 const SHARED_PROFILE_API = "https://getcloudcord.com";
 const LS_SHARE = "CloudCord_fakeProfileShare";
 
-const FLAG = {
-    STAFF: 1, PARTNER: 2, HYPESQUAD: 4, BUG_HUNTER_1: 8,
-    BRAVERY: 64, BRILLIANCE: 128, BALANCE: 256, EARLY_SUPPORTER: 512,
-    BUG_HUNTER_2: 16384, DEV_VERIFIED: 131072, MOD_ALUMNI: 262144, ACTIVE_DEVELOPER: 4194304,
-};
+const badgeIcon = (hash: string) => `https://cdn.discordapp.com/badge-icons/${hash}.png`;
 
-const BADGES = [
-    { label: "Discord Staff", flag: FLAG.STAFF, icon: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png" },
-    { label: "Partnered Server Owner", flag: FLAG.PARTNER, icon: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png" },
-    { label: "HypeSquad Events", flag: FLAG.HYPESQUAD, icon: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png" },
-    { label: "Bug Hunter", flag: FLAG.BUG_HUNTER_1, icon: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png" },
-    { label: "HypeSquad Bravery", flag: FLAG.BRAVERY, icon: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png" },
-    { label: "HypeSquad Brilliance", flag: FLAG.BRILLIANCE, icon: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png" },
-    { label: "HypeSquad Balance", flag: FLAG.BALANCE, icon: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png" },
-    { label: "Early Supporter", flag: FLAG.EARLY_SUPPORTER, icon: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png" },
-    { label: "Golden Bug Hunter", flag: FLAG.BUG_HUNTER_2, icon: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png" },
-    { label: "Moderator Programs Alumni", flag: FLAG.MOD_ALUMNI, icon: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png" },
-    { label: "Early Verified Bot Developer", flag: FLAG.DEV_VERIFIED, icon: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png" },
-    { label: "Active Developer", flag: FLAG.ACTIVE_DEVELOPER, icon: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png" },
-];
+// Discord's public user flags, in the order Discord draws them on a profile.
+const DISCORD_FLAG_BADGES = ([
+    ["sp_staff", "STAFF", 1 << 0, "Discord Staff", "5e74e9b61934fc1f67c65515d1f7e60d"],
+    ["sp_partner", "PARTNER", 1 << 1, "Partnered Server Owner", "3f9748e53446a137a052f3454e2de41e"],
+    ["sp_hypesquad", "HYPESQUAD", 1 << 2, "HypeSquad Events", "bf01d1073931f921909045f3a39fd264"],
+    ["sp_bh1", "BUG_HUNTER_1", 1 << 3, "Bug Hunter", "2717692c7dca7289b35297368a940dd0"],
+    ["sp_bravery", "BRAVERY", 1 << 6, "HypeSquad Bravery", "8a88d63823d8a71cd5e390baa45efa02"],
+    ["sp_brilliance", "BRILLIANCE", 1 << 7, "HypeSquad Brilliance", "011940fd013da3f7fb926e4a1cd2e618"],
+    ["sp_balance", "BALANCE", 1 << 8, "HypeSquad Balance", "3aa41de486fa12454c3761e8e223442e"],
+    ["sp_early", "EARLY_SUPPORTER", 1 << 9, "Early Supporter", "7060786766c9c840eb3019e725d2b358"],
+    ["sp_bh2", "BUG_HUNTER_2", 1 << 14, "Golden Bug Hunter", "848f79194d4be5ff5f81505cbd0ce1e6"],
+    ["sp_dev", "DEV_VERIFIED", 1 << 17, "Early Verified Bot Developer", "6df5892e0f35b051f8b61eace34f4967"],
+    ["sp_mod", "MOD_ALUMNI", 1 << 18, "Moderator Programs Alumni", "fee1624003e2fee35cb398e125dc479b"],
+    ["sp_activedev", "ACTIVE_DEVELOPER", 1 << 22, "Active Developer", "6bdc42827a38498929a4920da12695d9"],
+] as const).map(([id, name, flag, label, hash]) => ({ id, name, flag, label, icon: badgeIcon(hash) }));
+
+const FLAG = Object.fromEntries(DISCORD_FLAG_BADGES.map(badge => [badge.name, badge.flag])) as Record<typeof DISCORD_FLAG_BADGES[number]["name"], number>;
+const BADGES = DISCORD_FLAG_BADGES;
 
 // Discord artwork archived at a pinned revision; tier IDs are shared across clients.
 const EXPERIMENTAL_BADGE_GROUPS = [
@@ -385,16 +389,10 @@ const NITRO_LEVELS = [
 ];
 const BOOST_LABELS = ["1 month", "2 months", "3 months", "6 months", "9 months", "1 year", "15 months", "18 months", "2 years"];
 const BOOST_ICONS = [
-    "https://cdn.discordapp.com/badge-icons/51040c70d4f20a921ad6674ff86fc95c.png",
-    "https://cdn.discordapp.com/badge-icons/0e4080d1d333bc7ad29ef6528b6f2fb7.png",
-    "https://cdn.discordapp.com/badge-icons/72bed924410c304dbe3d00a6e593ff59.png",
-    "https://cdn.discordapp.com/badge-icons/df199d2050d3ed4ebf84d64ae83989f8.png",
-    "https://cdn.discordapp.com/badge-icons/996b3e870e8a22ce519b3a50e6bdd52f.png",
-    "https://cdn.discordapp.com/badge-icons/991c9f39ee33d7537d9f408c3e53141e.png",
-    "https://cdn.discordapp.com/badge-icons/cb3ae83c15e970e8f3d410bc62cb8b99.png",
-    "https://cdn.discordapp.com/badge-icons/7142225d31238f6387d9f09efaa02759.png",
-    "https://cdn.discordapp.com/badge-icons/ec92202290b48d0879b7413d2dde3bab.png",
-];
+    "51040c70d4f20a921ad6674ff86fc95c", "0e4080d1d333bc7ad29ef6528b6f2fb7", "72bed924410c304dbe3d00a6e593ff59",
+    "df199d2050d3ed4ebf84d64ae83989f8", "996b3e870e8a22ce519b3a50e6bdd52f", "991c9f39ee33d7537d9f408c3e53141e",
+    "cb3ae83c15e970e8f3d410bc62cb8b99", "7142225d31238f6387d9f09efaa02759", "ec92202290b48d0879b7413d2dde3bab",
+].map(badgeIcon);
 const DISCORD_PROFILE_BADGE_ORDER = [
     "sp_staff", "sp_partner", "sp_hypesquad", "sp_bh1",
     "sp_bravery", "sp_brilliance", "sp_balance", "sp_early",
@@ -485,24 +483,28 @@ interface CustomProfileData extends ProfileAppearance {
     activityAmounts?: Record<string, number>;
 }
 
+// Profile of the signed-in account, and whether it is switched on.
 let storedData: CustomProfileData = {};
 let isEnabled = false;
-let domObserver: MutationObserver | null = null;
-let cachedOriginalUser: any = null;
-let cachedFakeUser: any = null;
-let otherUserCache = new WeakMap<object, { profile: CustomProfileData; user: any; }>();
-let cachedDataHash = 0;
-let _trueOriginalUser: any = null;
-let _dataVersion = 0;
+// Every saved account's profile, keyed by Discord user id.
 let allAccountsData: Record<string, CustomProfileData> = {};
 let allAccountsEnabled: Record<string, boolean> = {};
+// Bumped whenever the active profile changes, so memoised user objects are rebuilt.
+let profileVersion = 0;
+// The signed-in user as Discord returns it, and the disguised copy built from it.
+let ownRealUser: any = null;
+let ownUserCache: { source: any; clone: any; version: number; } | null = null;
+let otherUserCache = new WeakMap<object, { profile: CustomProfileData; user: any; }>();
 let _cachedMyId: string | null = null;
 let _realUsername = "";
 let _realGlobalName = "";
 let _avatarPatchApplied = false;
-let _domQueued = false;
-let _domMutations: MutationRecord[] = [];
-let _cachedRealDateVariants: string[] | null = null;
+
+function invalidateOwnUser(forgetRealUser = false) {
+    ownUserCache = null;
+    if (forgetRealUser) ownRealUser = null;
+    profileVersion++;
+}
 const REPLACE_BADGES_SYNC_ID = "__cc_replace_real_badges";
 // Network budget for the CloudCord profile server. Member lists can touch hundreds
 // of users a second, so lookups are cached, negative answers remembered, and
@@ -787,7 +789,7 @@ async function publishSharedProfileSnapshot(allowRetry = true): Promise<void> {
     // being uploaded, not the object that existed before that await.
     storedData.syncRevision = Math.max(Date.now(), Number(storedData.syncRevision || 0) + 1, remoteRevision + 1);
     allAccountsData[ownerId] = storedData;
-    saveDataSync(storedData, true); saveAllDataSync();
+    mirrorActiveProfile(storedData, true); mirrorAllProfiles();
     const response = await fetchProfileResponse(`${SHARED_PROFILE_API}${saved.id ? `/v1/profiles/${encodeURIComponent(saved.id)}` : "/v1/profiles"}`, {
         method: saved.id ? "PUT" : "POST",
         headers: { "Content-Type": "application/json", ...(saved.editToken ? { Authorization: `Bearer ${saved.editToken}` } : {}) },
@@ -821,10 +823,10 @@ function saveOwnData(next: CustomProfileData, enabled = isEnabled) {
     storedData = next; isEnabled = enabled;
     const myId = activeUserId();
     if (myId) { allAccountsData[myId] = next; allAccountsEnabled[myId] = enabled; }
-    saveDataSync(next, enabled); saveAllDataSync();
-    DataStore.set(DS_KEY, next).catch(() => { });
-    DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
-    cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+    mirrorActiveProfile(next, enabled); mirrorAllProfiles();
+    DataStore.set(STORE_KEYS.legacyProfile, next).catch(() => { });
+    storeAllProfiles();
+    invalidateOwnUser();
     forceAccountPanelRerender();
 }
 
@@ -838,14 +840,14 @@ function resetProfileAccount(accountId: string) {
     if (accountId === activeUserId()) {
         if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
         storedData = cleared; isEnabled = false;
-        saveDataSync(cleared, false);
-        DataStore.set(DS_KEY, cleared).catch(() => { });
-        DataStore.set(DS_ENABLED, false).catch(() => { });
-        cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
+        mirrorActiveProfile(cleared, false);
+        DataStore.set(STORE_KEYS.legacyProfile, cleared).catch(() => { });
+        DataStore.set(STORE_KEYS.legacyEnabled, false).catch(() => { });
+        invalidateOwnUser(true);
     }
-    saveAllDataSync();
-    DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { });
-    DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
+    mirrorAllProfiles();
+    DataStore.set(STORE_KEYS.profiles, allAccountsData).catch(() => { });
+    DataStore.set(STORE_KEYS.enabled, allAccountsEnabled).catch(() => { });
     forceAccountPanelRerender();
 }
 
@@ -881,8 +883,8 @@ function installProfileStoreHooks(plugin: any) {
                     if (real.globalName) _realGlobalName = real.globalName;
                 }
                 if (!isEnabled) return real;
-                if (real === lastReal && lastVersion === _dataVersion && lastFake) return lastFake;
-                lastReal = real; lastVersion = _dataVersion;
+                if (real === lastReal && lastVersion === profileVersion && lastFake) return lastFake;
+                lastReal = real; lastVersion = profileVersion;
                 return lastFake = plugin.fakeCurrentUser(real);
             });
             installProfileReadHook(US, "getUser", (original, args) => {
@@ -894,7 +896,7 @@ function installProfileStoreHooks(plugin: any) {
             if (typeof US.addChangeListener === "function" && typeof US.removeChangeListener === "function") {
                 const invalidate = () => {
                     otherUserCache = new WeakMap();
-                    cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+                    invalidateOwnUser();
                 };
                 US.addChangeListener(invalidate);
                 profileStoreCleanups.push(() => US.removeChangeListener(invalidate));
@@ -985,9 +987,9 @@ async function pullOwnSharedProfile() {
         if (!Object.keys(pulled).length) return;
         if (JSON.stringify(pulled) === JSON.stringify(storedData) && isEnabled) return;
         storedData = pulled; isEnabled = true; allAccountsData[id] = pulled; allAccountsEnabled[id] = true;
-        saveDataSync(pulled, true); saveAllDataSync();
-        await Promise.all([DataStore.set(DS_ALL_DATA, allAccountsData), DataStore.set(DS_ALL_ENABLED, allAccountsEnabled)]);
-        cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++; forceAccountPanelRerender();
+        mirrorActiveProfile(pulled, true); mirrorAllProfiles();
+        await Promise.all([DataStore.set(STORE_KEYS.profiles, allAccountsData), DataStore.set(STORE_KEYS.enabled, allAccountsEnabled)]);
+        invalidateOwnUser(); forceAccountPanelRerender();
     } catch (e) { logger.warn("Pulling profile from the cloud failed", e); }
 }
 
@@ -1173,137 +1175,208 @@ function resolveProfileUserId(subject: any, profile: any): string {
     );
 }
 
-function saveDataSync(data: CustomProfileData, enabled: boolean) {
-    try { profileStorage.set("profileData", JSON.stringify(data)); profileStorage.set("profileEnabled", enabled ? "1" : "0"); } catch (e) { logger.warn("Saving profile to localStorage failed", e); }
+// localStorage mirror: DataStore is async, but Discord renders the account panel
+// before it answers, so a synchronous copy avoids flashing the real profile.
+function writeMirror(entries: Partial<Record<ProfileStorageKey, string>>, what: string) {
+    try {
+        for (const [key, value] of Object.entries(entries) as [ProfileStorageKey, string][]) profileStorage.set(key, value);
+    } catch (e) { logger.warn(`Saving ${what} to localStorage failed`, e); }
 }
-function saveAllDataSync() {
-    try { profileStorage.set("allData", JSON.stringify(allAccountsData)); profileStorage.set("allEnabled", JSON.stringify(allAccountsEnabled)); } catch (e) { logger.warn("Saving all-account profiles to localStorage failed", e); }
+function readMirror<T>(key: ProfileStorageKey, fallback: T): T {
+    const raw = profileStorage.get(key);
+    if (!raw) return fallback;
+    try { return JSON.parse(raw) as T; } catch { return fallback; }
+}
+function mirrorActiveProfile(data: CustomProfileData, enabled: boolean) {
+    writeMirror({ profileData: JSON.stringify(data), profileEnabled: enabled ? "1" : "0" }, "profile");
+}
+function mirrorAllProfiles() {
+    writeMirror({ allData: JSON.stringify(allAccountsData), allEnabled: JSON.stringify(allAccountsEnabled) }, "all-account profiles");
+}
+function storeAllProfiles() {
+    DataStore.set(STORE_KEYS.profiles, allAccountsData).catch(() => { });
+    DataStore.set(STORE_KEYS.enabled, allAccountsEnabled).catch(() => { });
 }
 function syncCurrentUserData() {
     const myId = activeUserId();
-    if (myId) { _cachedMyId = myId; storedData = allAccountsData[myId] || {}; isEnabled = allAccountsEnabled[myId] || false; }
+    if (!myId) return;
+    _cachedMyId = myId;
+    storedData = allAccountsData[myId] ?? {};
+    isEnabled = allAccountsEnabled[myId] ?? false;
 }
 function loadDataSync() {
     try {
-        const rawAll = profileStorage.get("allData");
-        if (rawAll) {
-            try { allAccountsData = JSON.parse(rawAll); } catch { allAccountsData = {}; }
-            const rawEnabled = profileStorage.get("allEnabled");
-            try { allAccountsEnabled = rawEnabled ? JSON.parse(rawEnabled) : {}; } catch { allAccountsEnabled = {}; }
-            syncCurrentUserData(); return;
+        if (profileStorage.get("allData")) {
+            allAccountsData = readMirror("allData", {});
+            allAccountsEnabled = readMirror("allEnabled", {});
+            syncCurrentUserData();
+            return;
         }
-        const raw = profileStorage.get("profileData");
-        const en = profileStorage.get("profileEnabled");
-        if (raw) { try { storedData = JSON.parse(raw); } catch { storedData = {}; } } else storedData = {};
-        isEnabled = en === "1";
-    } catch { storedData = {}; isEnabled = false; }
+        // Installs from before multi-account support kept a single profile.
+        storedData = readMirror("profileData", {});
+        isEnabled = profileStorage.get("profileEnabled") === "1";
+    } catch {
+        storedData = {};
+        isEnabled = false;
+    }
 }
+// Discord fires CONNECTION_OPEN after login and after every account switch.
 function onAccountSwitch() {
     lastRemoteProfile = null;
     _cachedMyId = null;
-    updateCachedRealData(); syncCurrentUserData();
-    cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
-    _realUsername = ""; _realGlobalName = ""; _cachedRealDateVariants = null;
-    if (isEnabled) startDomObserver(); else stopDomObserver();
+    _realUsername = "";
+    _realGlobalName = "";
+    updateCachedRealData();
+    syncCurrentUserData();
+    invalidateOwnUser(true);
+    textRewriter.forgetAccount();
+    (isEnabled ? startDomObserver : stopDomObserver)();
     void pullOwnSharedProfile();
     forceAccountPanelRerender();
 }
 loadDataSync();
 
+/** The signed-in account's id, remembered until the next account switch. Hot path: runs on every render. */
+function ownId(): string | null {
+    if (!_cachedMyId) {
+        try { _cachedMyId = activeUserId() || null; } catch { /* not logged in yet */ }
+    }
+    return _cachedMyId;
+}
 function isMe(userId: string | null | undefined): boolean {
-    if (!userId) return false;
-    if (_cachedMyId) return _cachedMyId === userId;
-    try { const myId = activeUserId(); if (myId) { _cachedMyId = myId; return myId === userId; } } catch { /* silent: called on every render to check the current user */ }
-    return false;
+    return !!userId && ownId() === userId;
 }
 function updateCachedRealData() {
-    try { const myId = activeUserId(); if (myId) _cachedMyId = myId; } catch { /* silent: called on every render to cache the current user id */ }
+    try { _cachedMyId = activeUserId() || _cachedMyId; } catch { /* not logged in yet */ }
 }
-function getRealDateVariants(): string[] {
-    if (_cachedRealDateVariants) return _cachedRealDateVariants;
-    try {
-        const u = UserStore.getCurrentUser(); if (!u?.id) return [];
-        const ms = Number(BigInt(u.id) >> 22n) + 1420070400000;
-        const d = new Date(ms); const variants = new Set<string>();
-        const fmtSpecs: Intl.DateTimeFormatOptions[] = [
-            { day: "numeric", month: "short", year: "numeric" }, { day: "numeric", month: "long", year: "numeric" },
-            { month: "short", day: "numeric", year: "numeric" }, { month: "long", day: "numeric", year: "numeric" },
-            { day: "2-digit", month: "2-digit", year: "numeric" },
+// Discord ids carry their creation time: the top bits are milliseconds since 2015-01-01.
+const DISCORD_EPOCH = 1420070400000;
+const noonUtc = (isoDate: string) => new Date(`${isoDate}T12:00:00Z`);
+
+function formatDateEveryWay(date: Date, locales: string[], styles: Intl.DateTimeFormatOptions[]): string[] {
+    const out = new Set<string>();
+    for (const locale of locales) for (const style of styles) {
+        let text: string;
+        try { text = new Intl.DateTimeFormat(locale, style).format(date); } catch { continue; }
+        out.add(text);
+        out.add(text.replace(/\s/g, " "));
+    }
+    return [...out].filter(text => text.length >= 4);
+}
+
+/**
+ * Last-resort pass over visible text for the real join date and names, for places
+ * that read them from somewhere the store hooks do not reach (tooltips, cached
+ * components). It only touches text nodes and remembers what it changed, so
+ * stopping puts every node back exactly as it was.
+ */
+const textRewriter = new class {
+    private observer: MutationObserver | null = null;
+    private pending: MutationRecord[] = [];
+    private flushScheduled = false;
+    private readonly originals = new WeakMap<Node, string>();
+    private realDates: string[] | null = null;
+    private fakeDates: { iso: string; texts: string[]; } | null = null;
+
+    forgetAccount() {
+        this.realDates = null;
+    }
+
+    private realJoinDates(): string[] {
+        if (this.realDates) return this.realDates;
+        const id = UserStore.getCurrentUser()?.id;
+        if (!id) return [];
+        try {
+            const created = new Date(Number(BigInt(id) >> 22n) + DISCORD_EPOCH);
+            this.realDates = formatDateEveryWay(created, ["en-US", "en-GB", "fr-FR", navigator.language], [
+                { day: "numeric", month: "short", year: "numeric" },
+                { day: "numeric", month: "long", year: "numeric" },
+                { month: "short", day: "numeric", year: "numeric" },
+                { month: "long", day: "numeric", year: "numeric" },
+                { day: "2-digit", month: "2-digit", year: "numeric" },
+            ]);
+        } catch { this.realDates = []; }
+        return this.realDates;
+    }
+
+    private fakeJoinDate(iso: string): string | undefined {
+        if (this.fakeDates?.iso !== iso) {
+            let texts: string[] = [];
+            try {
+                texts = formatDateEveryWay(noonUtc(iso), [navigator.language], [
+                    { day: "numeric", month: "short", year: "numeric" },
+                    { day: "numeric", month: "long", year: "numeric" },
+                ]);
+            } catch { /* invalid date: nothing to substitute */ }
+            this.fakeDates = { iso, texts };
+        }
+        return this.fakeDates.texts[0];
+    }
+
+    private rewrite(node: Text) {
+        if (!isEnabled || !node.nodeValue) return;
+        const source = this.originals.get(node) ?? node.nodeValue;
+        const swaps: [string, string | undefined][] = [
+            [_realUsername, storedData.username],
+            [_realGlobalName, storedData.globalName],
         ];
-        for (const loc of ["en-US", "en-GB", "fr-FR", navigator.language]) {
-            for (const fmt of fmtSpecs) { try { const s = new Intl.DateTimeFormat(loc, fmt).format(d); variants.add(s); variants.add(s.replace(/\s/g, " ")); } catch { /* silent: some locales reject some formats; that variant is just skipped */ } }
+        if (storedData.createdAt) {
+            const fake = this.fakeJoinDate(storedData.createdAt);
+            for (const real of this.realJoinDates()) swaps.unshift([real, fake]);
         }
-        _cachedRealDateVariants = [...variants].filter(v => v.length >= 4);
-        return _cachedRealDateVariants;
-    } catch { return []; }
-}
-// Formatting is slow and this runs for every text node on screen, so cache by date.
-let _cachedFakeDateVariants: { isoDate: string; variants: string[]; } | null = null;
-function getFakeDateVariants(isoDate: string): string[] {
-    if (_cachedFakeDateVariants?.isoDate === isoDate) return _cachedFakeDateVariants.variants;
-    _cachedFakeDateVariants = { isoDate, variants: buildFakeDateVariants(isoDate) };
-    return _cachedFakeDateVariants.variants;
-}
-function buildFakeDateVariants(isoDate: string): string[] {
-    try {
-        const d = new Date(isoDate + "T12:00:00Z"); const variants = new Set<string>();
-        for (const fmt of [{ day: "numeric", month: "short", year: "numeric" } as Intl.DateTimeFormatOptions, { day: "numeric", month: "long", year: "numeric" } as Intl.DateTimeFormatOptions]) {
-            try { variants.add(new Intl.DateTimeFormat(navigator.language, fmt).format(d)); } catch { /* silent: some locales reject some formats; that variant is just skipped */ }
+        let text = source;
+        for (const [from, to] of swaps) if (from && to && text.includes(from)) text = text.replaceAll(from, to);
+        // Nitro milestone text is left to the badge component: storedData belongs to
+        // the signed-in user and must never overwrite someone else's overlay.
+        if (text === source || text === node.nodeValue) return;
+        if (!this.originals.has(node)) this.originals.set(node, source);
+        node.nodeValue = text;
+    }
+
+    private rewriteTree(root: Node) {
+        if (root.nodeType === Node.TEXT_NODE) return this.rewrite(root as Text);
+        const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) this.rewrite(node as Text);
+    }
+
+    private flush = () => {
+        this.flushScheduled = false;
+        const records = this.pending.splice(0);
+        if (!isEnabled) return;
+        for (const record of records) {
+            if (record.type === "characterData") this.rewrite(record.target as Text);
+            else record.addedNodes.forEach(node => this.rewriteTree(node));
         }
-        return [...variants];
-    } catch { return []; }
-}
-// Real text of nodes the rewriter changed, so stopping can put it back.
-const originalText = new WeakMap<Node, string>();
-function scanTextNode(node: Text) {
-    if (!isEnabled || !node.nodeValue) return;
-    const val = originalText.get(node) ?? node.nodeValue;
-    let result = val; let replaced = false;
-    if (storedData.createdAt) {
-        const realDates = getRealDateVariants(); const fakeDates = getFakeDateVariants(storedData.createdAt);
-        if (realDates.length > 0 && fakeDates.length > 0) {
-            for (const realDate of realDates) { if (realDate.length >= 4 && val.includes(realDate)) { result = result.split(realDate).join(fakeDates[0]); replaced = true; } }
+    };
+
+    start() {
+        this.stop();
+        if (!isEnabled) return;
+        this.rewriteTree(document.body);
+        this.observer = new MutationObserver(records => {
+            if (!isEnabled || records.length === 0) return;
+            this.pending.push(...records);
+            if (this.flushScheduled) return;
+            this.flushScheduled = true;
+            setTimeout(() => requestAnimationFrame(this.flush), 10);
+        });
+        this.observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    }
+
+    stop() {
+        this.observer?.disconnect();
+        this.observer = null;
+        const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+            const original = this.originals.get(node);
+            if (original === undefined) continue;
+            node.nodeValue = original;
+            this.originals.delete(node);
         }
     }
-    if (_realUsername && storedData.username && result.includes(_realUsername)) { result = result.split(_realUsername).join(storedData.username); replaced = true; }
-    if (_realGlobalName && storedData.globalName && result.includes(_realGlobalName)) { result = result.split(_realGlobalName).join(storedData.globalName); replaced = true; }
-    // Nitro overlays are resolved per profile by userProfileBadges. Never
-    // rewrite milestone text from the global DOM observer: storedData belongs
-    // to the signed-in user and would replace another user's overlay with ours.
-    if (replaced && result !== node.nodeValue) { if (!originalText.has(node)) originalText.set(node, val); node.nodeValue = result; }
-}
-function scanNode(node: Node) {
-    if (node.nodeType === Node.TEXT_NODE) { scanTextNode(node as Text); return; }
-    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-    let n: Node | null;
-    while ((n = walker.nextNode())) scanTextNode(n as Text);
-    // Milestone artwork is likewise owned by the clicked badge component.
-}
-function processDomBatch() {
-    _domQueued = false;
-    if (!isEnabled) { _domMutations = []; return; }
-    const batch = _domMutations; _domMutations = [];
-    for (const m of batch) { if (m.type === "characterData") scanTextNode(m.target as Text); else for (const n of m.addedNodes) scanNode(n); }
-}
-// DOM on purpose: a catch-all for the real name and join date in places that read
-// them from somewhere other than the patched UserStore/UserProfileStore (tooltips,
-// copied text, older cached components). It matches text content only, never class names.
-function startDomObserver() {
-    stopDomObserver(); if (!isEnabled) return;
-    scanNode(document.body);
-    domObserver = new MutationObserver(mutations => {
-        if (!isEnabled || !mutations.length) return;
-        _domMutations.push(...mutations);
-        if (!_domQueued) { _domQueued = true; setTimeout(() => requestAnimationFrame(processDomBatch), 10); }
-    });
-    domObserver.observe(document.body, { childList: true, subtree: true, characterData: true });
-}
-function stopDomObserver() {
-    domObserver?.disconnect(); domObserver = null;
-    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
-    let n: Node | null;
-    while ((n = walker.nextNode())) { const original = originalText.get(n); if (original !== undefined) { n.nodeValue = original; originalText.delete(n); } }
-}
+}();
+const startDomObserver = () => textRewriter.start();
+const stopDomObserver = () => textRewriter.stop();
 // Vencord.Webpack exposes findByStoreName at runtime but not in its types.
 type NamedStore = { emitChange?(): void; getCurrentUser?(): any; getUser?(id: string): any; };
 type WebpackWithStoreName = { findByStoreName?(name: string): NamedStore | undefined; };
@@ -1316,32 +1389,47 @@ function forceAccountPanelRerender() {
         if (isEnabled) startDomObserver(); else stopDomObserver();
     } catch (e) { logger.warn("Applying profile change failed", e); }
 }
+/** Replaces the localStorage mirror with DataStore's copy once it arrives. */
 async function loadData() {
+    const generation = profileRuntimeGeneration;
+    const ownerId = activeUserId();
+    const fingerprint = () => JSON.stringify([allAccountsData, allAccountsEnabled, storedData, isEnabled]);
+    const before = fingerprint();
+    // Abort if the plugin restarted, the account changed, or the user edited the
+    // profile while we were waiting: their newer edit wins over the stored copy.
+    const stillCurrent = () => profileRuntimeActive && generation === profileRuntimeGeneration
+        && activeUserId() === ownerId && fingerprint() === before;
     try {
-        const generation = profileRuntimeGeneration;
-        const ownerId = activeUserId();
-        const snapshot = JSON.stringify([allAccountsData, allAccountsEnabled, storedData, isEnabled]);
-        const canRestore = () => profileRuntimeActive && generation === profileRuntimeGeneration && activeUserId() === ownerId
-            && JSON.stringify([allAccountsData, allAccountsEnabled, storedData, isEnabled]) === snapshot;
-        const allData = await DataStore.get(DS_ALL_DATA) as Record<string, CustomProfileData> | null;
-        const allEnabledDs = await DataStore.get(DS_ALL_ENABLED) as Record<string, boolean> | null;
-        if (!canRestore()) return;
-        if (allData && typeof allData === "object" && Object.keys(allData).length > 0) {
-            allAccountsData = allData; allAccountsEnabled = allEnabledDs || {};
-            syncCurrentUserData(); saveAllDataSync(); saveDataSync(storedData, isEnabled); return;
+        const [profiles, enabled] = await Promise.all([
+            DataStore.get<Record<string, CustomProfileData>>(STORE_KEYS.profiles),
+            DataStore.get<Record<string, boolean>>(STORE_KEYS.enabled),
+        ]);
+        if (!stillCurrent()) return;
+        if (profiles && typeof profiles === "object" && Object.keys(profiles).length) {
+            allAccountsData = profiles;
+            allAccountsEnabled = enabled ?? {};
+            syncCurrentUserData();
+            mirrorAllProfiles();
+            mirrorActiveProfile(storedData, isEnabled);
+            return;
         }
-        const d = await DataStore.get(DS_KEY) as CustomProfileData | null;
-        const e = await DataStore.get(DS_ENABLED) as boolean | null;
-        if (!canRestore()) return;
-        if (d !== null) storedData = d; if (e !== null) isEnabled = e === true;
-        const myId = ownerId;
-        if (myId && storedData && Object.keys(storedData).length > 0) {
-            allAccountsData[myId] = storedData; allAccountsEnabled[myId] = isEnabled;
-            DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
-            saveAllDataSync();
+
+        // First run after updating from the single-profile release: move it under this account.
+        const [legacyProfile, legacyEnabled] = await Promise.all([
+            DataStore.get<CustomProfileData>(STORE_KEYS.legacyProfile),
+            DataStore.get<boolean>(STORE_KEYS.legacyEnabled),
+        ]);
+        if (!stillCurrent()) return;
+        if (legacyProfile != null) storedData = legacyProfile;
+        if (legacyEnabled != null) isEnabled = legacyEnabled === true;
+        if (ownerId && Object.keys(storedData ?? {}).length) {
+            allAccountsData[ownerId] = storedData;
+            allAccountsEnabled[ownerId] = isEnabled;
+            storeAllProfiles();
+            mirrorAllProfiles();
         }
-        saveDataSync(storedData, isEnabled);
-    } catch (e) { logger.warn("Saving profile failed", e); }
+        mirrorActiveProfile(storedData, isEnabled);
+    } catch (e) { logger.warn("Loading saved profiles failed", e); }
 }
 
 function realProfileMenuItem(userId: string) {
@@ -1349,7 +1437,7 @@ function realProfileMenuItem(userId: string) {
     if (!viewingReal && (!sharedProfiles.has(userId) || storedData.hideOtherProfiles)) return null;
     return <Menu.MenuItem id="cloudcord-profile-view" label={viewingReal ? "Return to CloudCord profile" : "Show real profile"} action={() => {
         setRealProfileView(userId, !viewingReal);
-        cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+        invalidateOwnUser();
         try { UserProfileStore.emitChange?.(); } catch (e) { logger.warn("Refreshing UserProfileStore failed", e); }
         try { UserStore.emitChange?.(); } catch (e) { logger.warn("Refreshing UserStore failed", e); }
         forceAccountPanelRerender();
@@ -1366,68 +1454,152 @@ const profileOverflowPatch: NavContextMenuPatchCallback = (children, props: any)
     if (item) children.unshift(<Menu.MenuGroup>{item}</Menu.MenuGroup>);
 };
 
-const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: any) => {
-    if (!children || !Array.isArray(children) || !user?.id) return;
+type CopySource = "discord" | "cloudcord";
+
+/** Makes `profile` the active, switched-on profile for the signed-in account. */
+function activateProfile(profile: CustomProfileData) {
+    const accountId = AuthenticationStore?.getId?.();
+    if (accountId) {
+        allAccountsData[accountId] = profile;
+        allAccountsEnabled[accountId] = true;
+    }
+    storedData = profile;
+    isEnabled = true;
+    mirrorActiveProfile(profile, true);
+    mirrorAllProfiles();
+    storeAllProfiles();
+    invalidateOwnUser();
+    forceAccountPanelRerender();
+}
+
+async function copyProfileFrom(user: any, source: CopySource) {
     try {
-        const me = UserStore.getCurrentUser(); if (!me || user.id === me.id) return;
-        children.push(<Menu.MenuGroup>
-            {realProfileMenuItem(user.id)}
-            {!user.bot && (hasFakeRequest(user.id)
-                ? <Menu.MenuItem id="cloudcord-fake-request-remove" label="Remove fake friend request" action={() => removeFakeRequest(user.id)} />
-                : <Menu.MenuItem id="cloudcord-fake-request" label="Fake friend request" subtext="Only you see it" action={() => addFakeRequest(user)} />)}
-        </Menu.MenuGroup>);
-        const isCopied = isEnabled && storedData.copiedUserId === user.id;
-        children.push(<Menu.MenuGroup>
-            {isCopied ? (
-                <Menu.MenuItem id="remove-copy-profile" label="Remove copied profile" color="danger" action={() => {
-                    resetProfileAccount(activeUserId() || "");
-                }} />
-            ) : (
-                [["discord", hasCloudCordProfile(user.id) ? "Copy Discord profile" : "Copy this profile"], ...(hasCloudCordProfile(user.id) ? [["cloudcord", "Copy CloudCord profile"]] : [])].map(([source, label]) => <Menu.MenuItem key={source} id={`copy-user-profile-${source}`} label={label} subtext="Names, pictures, colours, badges and more" action={async () => {
-                    try {
-                        const newData: CustomProfileData = { localOnly: true, ...(await buildCopiedProfile(user.id, source as "discord" | "cloudcord")) };
-                        const myId = AuthenticationStore?.getId?.();
-                        if (myId) { allAccountsData[myId] = newData; allAccountsEnabled[myId] = true; }
-                        storedData = newData; isEnabled = true; saveDataSync(newData, true); saveAllDataSync();
-                        DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
-                        forceAccountPanelRerender();
-                        showToast(`Copied ${newData.globalName || newData.username || "their"} profile. Saved on this device only.`, Toasts.Type.SUCCESS);
-                    } catch (err) { logger.error("Copying user profile failed:", err); showToast("Couldn't copy that profile.", Toasts.Type.FAILURE); }
-                }} />)
-            )}
-        </Menu.MenuGroup>);
+        const copied: CustomProfileData = { localOnly: true, ...(await buildCopiedProfile(user.id, source)) };
+        activateProfile(copied);
+        const who = copied.globalName || copied.username || "their";
+        showToast(`Copied ${who} profile. Saved on this device only.`, Toasts.Type.SUCCESS);
+    } catch (err) {
+        logger.error("Copying user profile failed:", err);
+        showToast("Couldn't copy that profile.", Toasts.Type.FAILURE);
+    }
+}
+
+function copyProfileItems(user: any) {
+    if (isEnabled && storedData.copiedUserId === user.id) {
+        return <Menu.MenuItem id="remove-copy-profile" label="Remove copied profile" color="danger" action={() => resetProfileAccount(activeUserId() || "")} />;
+    }
+    const hasCloudProfile = hasCloudCordProfile(user.id);
+    const sources: [CopySource, string][] = hasCloudProfile
+        ? [["discord", "Copy Discord profile"], ["cloudcord", "Copy CloudCord profile"]]
+        : [["discord", "Copy this profile"]];
+    return sources.map(([source, label]) => (
+        <Menu.MenuItem key={source} id={`copy-user-profile-${source}`} label={label}
+            subtext="Names, pictures, colours, badges and more" action={() => copyProfileFrom(user, source)} />
+    ));
+}
+
+function fakeRequestItem(user: any) {
+    if (user.bot) return null;
+    return hasFakeRequest(user.id)
+        ? <Menu.MenuItem id="cloudcord-fake-request-remove" label="Remove fake friend request" action={() => removeFakeRequest(user.id)} />
+        : <Menu.MenuItem id="cloudcord-fake-request" label="Fake friend request" subtext="Only you see it" action={() => addFakeRequest(user)} />;
+}
+
+// Right-click on someone else: view their real profile, fake a friend request, or copy their profile.
+const userContextMenuPatch: NavContextMenuPatchCallback = (children, { user }: any) => {
+    if (!Array.isArray(children) || !user?.id) return;
+    try {
+        const ownId = UserStore.getCurrentUser()?.id;
+        if (!ownId || ownId === user.id) return;
+        children.push(
+            <Menu.MenuGroup>{realProfileMenuItem(user.id)}{fakeRequestItem(user)}</Menu.MenuGroup>,
+            <Menu.MenuGroup>{copyProfileItems(user)}</Menu.MenuGroup>,
+        );
     } catch (err) { logger.error("Context menu patch failed:", err); }
 };
 
-function EditIcon({ size = 18 }: { size?: number; }) { return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z" /></svg>; }
-function FolderIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2Z" /></svg>; }
-function CloseIcon() { return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>; }
-function TrashIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v2h4a1 1 0 1 1 0 2h-1.1l-.9 12.1A3 3 0 0 1 17 23H7a3 3 0 0 1-3-2.9L3.1 8H2a1 1 0 0 1 0-2h4V4Zm2 0v2h6V4H9ZM5.1 8l.9 11.9a1 1 0 0 0 1 .1h6a1 1 0 0 0 1-.1L14.9 8H5.1Z" /></svg>; }
-function SaveIcon() { return <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7l-4-4Zm-5 16a3 3 0 1 1 0-6 3 3 0 0 1 0 6Zm3-10H5V5h10v4Z" /></svg>; }
+// Small 24×24 glyphs drawn in the current text colour.
+const ICON_PATHS = {
+    edit: "M4 16.5V20h3.5L18 9.5 14.5 6 4 16.5Zm16.2-9.3a1 1 0 0 0 0-1.4l-2-2a1 1 0 0 0-1.4 0L15.5 5.1 19 8.6l1.2-1.4Z",
+    folder: "M3 6.5A1.5 1.5 0 0 1 4.5 5h5l2 2h8A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5v-11Z",
+    trash: "M9 3h6l1 2h4v2H4V5h4l1-2ZM6 9h12l-1 11a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1L6 9Z",
+    save: "M5 3h11l5 5v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm2 2v4h8V5H7Zm5 8a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z",
+} as const;
+function Glyph({ name, size }: { name: keyof typeof ICON_PATHS; size: number; }) {
+    return <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d={ICON_PATHS[name]} /></svg>;
+}
+const EditIcon = ({ size = 18 }: { size?: number; }) => <Glyph name="edit" size={size} />;
+const FolderIcon = () => <Glyph name="folder" size={14} />;
+const TrashIcon = () => <Glyph name="trash" size={14} />;
+const SaveIcon = () => <Glyph name="save" size={14} />;
+const CloseIcon = () => (
+    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" aria-hidden="true">
+        <path d="m6 6 12 12M18 6 6 18" />
+    </svg>
+);
+
+function LabelledField({ label, children }: { label: string; children: React.ReactNode; }) {
+    return <div className="cp-field"><div className="cp-section-label">{label}</div>{children}</div>;
+}
 
 function Field({ label, value, placeholder, onChange, type = "text" }: { label: string; value: string; placeholder?: string; onChange: (v: string) => void; type?: string; }) {
-    return <div className="cp-field"><div className="cp-section-label">{label}</div><input className="cp-input" type={type} value={value} placeholder={placeholder} onChange={e => onChange(e.target.value)} /></div>;
+    return (
+        <LabelledField label={label}>
+            <input className="cp-input" type={type} value={value} placeholder={placeholder} onChange={event => onChange(event.currentTarget.value)} />
+        </LabelledField>
+    );
 }
+
+const readAsDataUrl = (file: Blob) => new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(reader.error);
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.readAsDataURL(file);
+});
+
+/** A URL box plus a file picker; picked files are stored inline as data: URLs. */
 function ImageUpload({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void; }) {
-    const fileRef = React.useRef<HTMLInputElement>(null);
-    function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-        const file = e.target.files?.[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => { if (ev.target?.result) onChange(ev.target.result as string); };
-        reader.readAsDataURL(file);
-    }
-    return (<div className="cp-field"><div className="cp-section-label">{label}</div><div className="cp-image-row">
-        <input className="cp-input" placeholder="Image URL..." value={value.startsWith("data:") ? "" : value} onChange={e => onChange(e.target.value)} />
-        <button className="cp-file-btn" onClick={() => fileRef.current?.click()} title="Choose a file"><FolderIcon /></button>
-        <input ref={fileRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleFile} />
-        {value && <><img src={value} alt="" className="cp-preview-avatar" /><button className="cp-clear-btn" onClick={() => onChange("")} title="Remove"><CloseIcon /></button></>}
-    </div></div>);
+    const picker = React.useRef<HTMLInputElement>(null);
+    const isInline = value.startsWith("data:");
+    const onPick = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const [file] = event.currentTarget.files ?? [];
+        if (!file) return;
+        const url = await readAsDataUrl(file).catch(() => "");
+        if (url) onChange(url);
+    };
+    return (
+        <LabelledField label={label}>
+            <div className="cp-image-row">
+                <input className="cp-input" placeholder="Image URL..." value={isInline ? "" : value} onChange={event => onChange(event.currentTarget.value)} />
+                <button className="cp-file-btn" title="Choose a file" onClick={() => picker.current?.click()}><FolderIcon /></button>
+                <input ref={picker} type="file" accept="image/*" hidden onChange={onPick} />
+                {value ? (
+                    <>
+                        <img className="cp-preview-avatar" src={value} alt="" />
+                        <button className="cp-clear-btn" title="Remove" onClick={() => onChange("")}><CloseIcon /></button>
+                    </>
+                ) : null}
+            </div>
+        </LabelledField>
+    );
 }
+
 function Toggle({ label, checked, onChange, sublabel }: { label: string; checked: boolean; onChange: (v: boolean) => void; sublabel?: string; }) {
-    return (<div className="cp-toggle-row" role="switch" aria-checked={checked} tabIndex={0} onKeyDown={e => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); onChange(!checked); } }} onClick={() => onChange(!checked)}>
-        <div className="cp-toggle-text"><span className="cp-toggle-label">{label}</span>{sublabel && <span className="cp-toggle-sub">{sublabel}</span>}</div>
-        <div className={`cp-toggle ${checked ? "cp-toggle-on" : ""}`}><div className="cp-toggle-thumb" /></div>
-    </div>);
+    const flip = () => onChange(!checked);
+    const onKey = (event: React.KeyboardEvent) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        flip();
+    };
+    return (
+        <div className="cp-toggle-row" role="switch" tabIndex={0} aria-checked={checked} onClick={flip} onKeyDown={onKey}>
+            <div className="cp-toggle-text">
+                <span className="cp-toggle-label">{label}</span>
+                {sublabel ? <span className="cp-toggle-sub">{sublabel}</span> : null}
+            </div>
+            <div className={checked ? "cp-toggle cp-toggle-on" : "cp-toggle"}><div className="cp-toggle-thumb" /></div>
+        </div>
+    );
 }
 function BadgeCard({ label, icon, active, onClick, radio }: { label: string; icon?: string; active: boolean; onClick: () => void; radio?: boolean; }) {
     return <button type="button" role={radio ? "radio" : "checkbox"} aria-checked={active} className={`cpx-badge-card ${active ? "cpx-on" : ""}`} onClick={onClick} title={label}>
@@ -1451,7 +1623,11 @@ function BadgePicker({ selected, onChange, nitroType, onNitroType, giftLevel, on
     replaceRealBadges: boolean; onReplaceRealBadges: (v: boolean) => void;
     activityAmounts?: Record<string, number>; onActivityAmounts?: (v: Record<string, number>) => void;
 }) {
-    const toggleId = (id: string) => onCustomIds(customIds.includes(id) ? customIds.filter(other => other !== id) : [...customIds, id]);
+    const toggleId = (id: string) => {
+        const next = new Set(customIds);
+        if (!next.delete(id)) next.add(id);
+        onCustomIds([...next]);
+    };
     const hasOldName = customIds.includes("oldname");
     return <div className="cpx-badges">
         <Switch label="Hide my real badges" description="When you pick badges here, show only these instead of your real Discord badges." checked={replaceRealBadges} onChange={onReplaceRealBadges} />
@@ -1591,13 +1767,7 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
         return () => { profileEditorOpen = false; };
     }, []);
 
-    const accounts = React.useMemo(() => {
-        try {
-            const MAS = Vencord.Webpack?.findByProps?.("getUsers", "getValidUsers");
-            if (MAS?.getUsers) { const users = MAS.getUsers(); if (Array.isArray(users) && users.length > 0) return users; }
-        } catch { /* silent: runs during render; falls back to the current account */ }
-        const me = UserStore.getCurrentUser(); return me ? [me] : [];
-    }, []);
+    const accounts = React.useMemo(signedInAccounts, []);
 
     React.useEffect(() => { setData({ ...(allAccountsData[selectedAccountId] || {}) }); }, [selectedAccountId]);
 
@@ -1630,14 +1800,17 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
             if (data.displayNameStyles && !appearance.displayNameStyles) throw new Error("Choose valid username styles and colors.");
             const savedData = { ...data, ...appearance, localOnly: !useEverywhere, ...(useEverywhere ? { syncRevision: Math.max(Date.now(), Number(allAccountsData[selectedAccountId]?.syncRevision || 0) + 1) } : {}) };
             if (!useEverywhere && publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
-            allAccountsData[selectedAccountId] = savedData; allAccountsEnabled[selectedAccountId] = true;
             if (selectedAccountId === myId) {
-                storedData = savedData; isEnabled = true; saveDataSync(storedData, true);
-                cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+                activateProfile(savedData);
+            } else {
+                // Another signed-in account: save it for when they switch, leave the active one alone.
+                allAccountsData[selectedAccountId] = savedData;
+                allAccountsEnabled[selectedAccountId] = true;
+                mirrorAllProfiles();
+                storeAllProfiles();
             }
-            saveAllDataSync();
-            DataStore.set(DS_ALL_DATA, allAccountsData).catch(() => { }); DataStore.set(DS_ALL_ENABLED, allAccountsEnabled).catch(() => { });
-            updateCachedRealData(); forceAccountPanelRerender();
+            updateCachedRealData();
+            forceAccountPanelRerender();
             reloadDiscordProfile(selectedAccountId);
             if (selectedAccountId === myId && useEverywhere) {
                 // Keep the just-saved local revision authoritative while the
@@ -1837,15 +2010,60 @@ function CustomProfileModal({ rootProps }: { rootProps: any; }) {
     </ModalRoot>);
 }
 
+const openProfileEditor = () => openModal(props => <CustomProfileModal rootProps={props} />);
+const HeaderEditIcon = () => <EditIcon size={18} />;
+
 function CustomProfileButton() {
-    return <HeaderBarButton icon={() => <EditIcon size={18} />} tooltip="Custom Profile" onClick={() => openModal(props => <CustomProfileModal rootProps={props} />)} />;
+    return <HeaderBarButton tooltip="Custom Profile" icon={HeaderEditIcon} onClick={openProfileEditor} />;
+}
+
+const splitOnce = (text: string, separator: string): [string, string | undefined] => {
+    const at = text.indexOf(separator);
+    return at < 0 ? [text, undefined] : [text.slice(0, at), text.slice(at + separator.length)];
+};
+
+/**
+ * Copies a Discord user object (same prototype, same own properties) and replaces
+ * the given fields with read-only getters. Discord keeps reading the copy like the
+ * real user, so every place that shows a name picks up the disguise.
+ */
+function disguiseUser(real: any, fields: Record<string, () => unknown>): any {
+    const copy = Object.create(Object.getPrototypeOf(real));
+    for (const key of Reflect.ownKeys(real)) {
+        if (key === "__cp_isClone" || key === "__cp_original" || (typeof key === "string" && key in fields)) continue;
+        const descriptor = Object.getOwnPropertyDescriptor(real, key);
+        if (descriptor) Object.defineProperty(copy, key, descriptor);
+    }
+    Object.defineProperty(copy, "__cp_isClone", { value: true, enumerable: false, configurable: true });
+    for (const [key, get] of Object.entries(fields)) {
+        Object.defineProperty(copy, key, { get, set() { /* Discord may assign; the disguise wins */ }, configurable: true, enumerable: true });
+    }
+    return copy;
+}
+
+/** Decoration, badge flags and profile metadata from a CloudCord profile onto a disguised user. */
+function dressUserClone(clone: any, profile: CustomProfileData) {
+    if (profile.decorationAsset) clone.avatarDecoration = clone.avatarDecorationData = nativeDecoration(profile);
+    if (shouldReplaceBadges(profile)) clone.publicFlags = profile.badgeFlags ?? 0;
+    applyNativeProfileMetadata(clone, profile, false, false);
+}
+
+/** Accounts in Discord's account switcher, or just the current one when the switcher is unavailable. */
+function signedInAccounts(): any[] {
+    try {
+        const switcher = Vencord.Webpack?.findByProps?.("getUsers", "getValidUsers");
+        const users = switcher?.getUsers?.();
+        if (Array.isArray(users) && users.length) return users;
+    } catch { /* runs during render; fall back to the current account */ }
+    const current = UserStore.getCurrentUser();
+    return current ? [current] : [];
 }
 
 export default definePlugin({
     name: "ProfileSpoofer",
     enabledByDefault: true,
     description: "Updating / experimental — visually customize your profile. Some options may currently contain errors.",
-    authors: [SincordDevs.nobody],
+    authors: [Devs.Xohus, SincordDevs.nobody],
     dependencies: ["HeaderBarAPI", "ContextMenuAPI", "ProfileSectionsAPI"],
 
     patches: [
@@ -1898,13 +2116,66 @@ export default definePlugin({
                 replace: "const ccDecorationUrl=$self.patchDecorationUrl($1);if(ccDecorationUrl)return ccDecorationUrl;"
             }
         },
-        { find: ':"SHOULD_LOAD");', replacement: { match: /\i(?:\?)?.getPreviewBanner\(\i,\i,\i\)(?=.{0,100}"COMPLETE")/, replace: "$self.patchBannerUrl(arguments[0])||$&" } },
-        { find: ".WIDGETS_RTC_UPSELL_COACHMARK)", replacement: { match: /currentUser:(\i)(?=.{0,200}voiceDb)/, replace: "currentUser:$self.fakeCurrentUser($1)" } },
-        { find: "DISPLAY_NAME", noWarn: true, replacement: { match: /(?<=currentUser:\i,user:)(\i)/, replace: "$self.fakeCurrentUser($1)" } },
-        { find: "obfuscatedEmail", noWarn: true, replacement: [{ match: /obfuscatedEmail:(\i)/, replace: "obfuscatedEmail:$self.fakeObfuscatedEmail($1)" }, { match: /obfuscatedPhone:(\i)/, replace: "obfuscatedPhone:$self.fakeObfuscatedPhone($1)" }] },
-        { find: "isHoveringOrFocusing", replacement: { noWarn: true, match: /user:([A-Za-z_$][\w$]*),displayProfile:([A-Za-z_$][\w$]*),themeType/, replace: "user:$self.fakeCurrentUser($1),displayProfile:$2,themeType" } },
-        { find: "AccountPanel", replacement: { match: /user:([a-zA-Z0-9_]+),/, replace: "user:$self.fakeCurrentUser($1)," } },
-        { find: "UserAccountSettings", replacement: [{ match: /user:([a-zA-Z0-9_]+),/, replace: "user:$self.fakeCurrentUser($1)," }, { match: /email:([^,}]+),/, replace: "email:$self.fakeObfuscatedEmail($1)," }] },
+        {
+            // Your own banner preview while the profile editor loads.
+            find: ':"SHOULD_LOAD");',
+            replacement: {
+                match: /\i(?:\?)?.getPreviewBanner\(\i,\i,\i\)(?=.{0,100}"COMPLETE")/,
+                replace: "$self.patchBannerUrl(arguments[0])||$&"
+            }
+        },
+        // Places that receive the signed-in user directly instead of reading UserStore.
+        {
+            // Voice and activity panel.
+            find: ".WIDGETS_RTC_UPSELL_COACHMARK)",
+            replacement: {
+                match: /currentUser:(\i)(?=.{0,200}voiceDb)/,
+                replace: "currentUser:$self.fakeCurrentUser($1)"
+            }
+        },
+        {
+            // Display name preview in settings.
+            find: "DISPLAY_NAME",
+            noWarn: true,
+            replacement: {
+                match: /(?<=currentUser:\i,user:)(\i)/,
+                replace: "$self.fakeCurrentUser($1)"
+            }
+        },
+        {
+            // Masked email and phone under My Account.
+            find: "obfuscatedEmail",
+            noWarn: true,
+            replacement: [
+                { match: /obfuscatedEmail:(\i)/, replace: "obfuscatedEmail:$self.fakeObfuscatedEmail($1)" },
+                { match: /obfuscatedPhone:(\i)/, replace: "obfuscatedPhone:$self.fakeObfuscatedPhone($1)" },
+            ]
+        },
+        {
+            // Hover card on your own avatar.
+            find: "isHoveringOrFocusing",
+            replacement: {
+                noWarn: true,
+                match: /user:([A-Za-z_$][\w$]*),displayProfile:([A-Za-z_$][\w$]*),themeType/,
+                replace: "user:$self.fakeCurrentUser($1),displayProfile:$2,themeType"
+            }
+        },
+        {
+            // The name and avatar in the bottom-left account panel.
+            find: "AccountPanel",
+            replacement: {
+                match: /user:([a-zA-Z0-9_]+),/,
+                replace: "user:$self.fakeCurrentUser($1),"
+            }
+        },
+        {
+            // My Account settings page.
+            find: "UserAccountSettings",
+            replacement: [
+                { match: /user:([a-zA-Z0-9_]+),/, replace: "user:$self.fakeCurrentUser($1)," },
+                { match: /email:([^,}]+),/, replace: "email:$self.fakeObfuscatedEmail($1)," },
+            ]
+        },
     ],
 
     badgesHiddenFor(userId: string) {
@@ -1947,80 +2218,70 @@ export default definePlugin({
     },
 
     fakeCurrentUser(user: any) {
-        if (!profileRuntimeActive || !user || !isMe(user.id) || !isEnabled) return user;
-        if (cachedOriginalUser === user && cachedFakeUser && cachedDataHash === _dataVersion) return cachedFakeUser;
-        const realUser = (user as any).__cp_isClone ? _trueOriginalUser || user : user;
-        if (!realUser.__cp_isClone) _trueOriginalUser = realUser;
-        const realUsername = realUser.__cp_isClone ? (realUser._realUsername || realUser.username) : realUser.username;
-        const realGlobalName = realUser.__cp_isClone ? (realUser._realGlobalName ?? realUser.globalName) : realUser.globalName;
-        const realDisplayName = realUser.__cp_isClone ? (realUser._realDisplayName ?? realUser.displayName) : realUser.displayName;
-        const clone = Object.create(Object.getPrototypeOf(realUser));
-        for (const key of Reflect.ownKeys(realUser)) {
-            if (key === "username" || key === "globalName" || key === "displayName" || key === "__cp_isClone") continue;
-            const desc = Object.getOwnPropertyDescriptor(realUser, key);
-            if (desc) Object.defineProperty(clone, key, desc);
+        if (!profileRuntimeActive || !user || !isEnabled || !isMe(user.id)) return user;
+        const cached = ownUserCache;
+        if (cached && cached.source === user && cached.version === profileVersion) return cached.clone;
+        // Discord sometimes hands back our own disguised copy; always build from the real object.
+        const real = user.__cp_isClone ? ownRealUser || user : user;
+        if (!real.__cp_isClone) ownRealUser = real;
+        const realName = {
+            username: real.__cp_isClone ? real._realUsername || real.username : real.username,
+            globalName: real.__cp_isClone ? real._realGlobalName ?? real.globalName : real.globalName,
+            displayName: real.__cp_isClone ? real._realDisplayName ?? real.displayName : real.displayName,
+        };
+        const fakeName = {
+            username: storedData.username || realName.username,
+            globalName: storedData.globalName || realName.globalName,
+            displayName: storedData.globalName || realName.globalName || realName.displayName || realName.username,
+        };
+        // Getters read isEnabled live, so switching the profile off shows the real name at once.
+        const pick = <K extends keyof typeof realName>(key: K) => () => isEnabled ? fakeName[key] : realName[key];
+        const clone = disguiseUser(real, {
+            username: pick("username"),
+            globalName: pick("globalName"),
+            displayName: () => isEnabled ? fakeName.displayName : realName.displayName || realName.globalName || realName.username,
+        });
+        clone._realUsername = realName.username;
+        clone._realGlobalName = realName.globalName;
+        clone._realDisplayName = realName.displayName;
+        clone.getTag = () => `${storedData.username || realName.username}#0000`;
+        clone.getGlobalName = pick("globalName");
+        if (storedData.createdAt) {
+            const created = new Date(`${storedData.createdAt}T12:00:00Z`);
+            Object.defineProperty(clone, "createdAt", { get: () => created, configurable: true, enumerable: true });
         }
-        Object.defineProperty(clone, "__cp_isClone", { value: true, enumerable: false, configurable: true });
-        clone._realUsername = realUsername; clone._realGlobalName = realGlobalName; clone._realDisplayName = realDisplayName;
-        const fakeUsername = storedData.username || realUsername;
-        const fakeGlobal = storedData.globalName || realGlobalName;
-        const fakeDisplay = storedData.globalName || realGlobalName || realDisplayName || realUsername;
-        Object.defineProperty(clone, "username", { get: () => isEnabled ? fakeUsername : realUsername, set: () => { }, configurable: true, enumerable: true });
-        Object.defineProperty(clone, "globalName", { get: () => isEnabled ? fakeGlobal : realGlobalName, set: () => { }, configurable: true, enumerable: true });
-        Object.defineProperty(clone, "displayName", { get: () => isEnabled ? fakeDisplay : (realDisplayName || realGlobalName || realUsername), set: () => { }, configurable: true, enumerable: true });
-        clone.getTag = () => (storedData.username || realUsername) + "#0000";
-        clone.getGlobalName = () => isEnabled ? fakeGlobal : realGlobalName;
-        if (storedData.createdAt) { const fakeCreatedAt = new Date(storedData.createdAt + "T12:00:00Z"); Object.defineProperty(clone, "createdAt", { get: () => fakeCreatedAt, configurable: true, enumerable: true }); }
-        if (storedData.decorationAsset) { clone.avatarDecoration = nativeDecoration(storedData); clone.avatarDecorationData = clone.avatarDecoration; }
-        const wantedFlags = storedData.badgeFlags != null ? storedData.badgeFlags : 0;
-        if (shouldReplaceBadges(storedData)) {
-            clone.publicFlags = wantedFlags;
-        }
-        applyNativeProfileMetadata(clone, storedData, false, false);
-        cachedOriginalUser = user; cachedFakeUser = clone; cachedDataHash = _dataVersion;
+        dressUserClone(clone, storedData);
+        ownUserCache = { source: user, clone, version: profileVersion };
         return clone;
     },
 
     fakeOtherUser(user: any) {
-        if (!profileRuntimeActive) return user?.__cp_original || user;
-        if (isRealProfileView(user?.id)) return user?.__cp_original || user;
+        const original = user?.__cp_original || user;
+        if (!profileRuntimeActive || isRealProfileView(user?.id)) return original;
         if (!user || isMe(user.id)) return user;
         const shared = viewedSharedProfile(user.id);
         if (!shared) {
             requestSharedProfile(user.id);
             return user;
         }
-        const realUser = user.__cp_isClone ? (user.__cp_original || user) : user;
-        const cached = otherUserCache.get(realUser);
+        const real = user.__cp_isClone ? original : user;
+        const cached = otherUserCache.get(real);
         if (cached?.profile === shared) return cached.user;
-        const clone = Object.create(Object.getPrototypeOf(realUser));
-        for (const key of Reflect.ownKeys(realUser)) {
-            if (key === "username" || key === "globalName" || key === "displayName" || key === "__cp_isClone" || key === "__cp_original") continue;
-            const desc = Object.getOwnPropertyDescriptor(realUser, key);
-            if (desc) Object.defineProperty(clone, key, desc);
-        }
-        Object.defineProperty(clone, "__cp_isClone", { value: true, enumerable: false, configurable: true });
-        Object.defineProperty(clone, "__cp_original", { value: realUser, enumerable: false, configurable: true });
-        
-        const fakeUsername = shared.username || realUser.username;
-        const fakeGlobal = shared.globalName || realUser.globalName;
-        const fakeDisplay = shared.globalName || shared.username || realUser.displayName;
-        
-        Object.defineProperty(clone, "username", { get: () => fakeUsername, set: () => { }, configurable: true, enumerable: true });
-        Object.defineProperty(clone, "globalName", { get: () => fakeGlobal, set: () => { }, configurable: true, enumerable: true });
-        Object.defineProperty(clone, "displayName", { get: () => fakeDisplay, set: () => { }, configurable: true, enumerable: true });
-        Object.defineProperty(clone, "userName", { get: () => fakeUsername, set: () => { }, configurable: true, enumerable: true });
-        Object.defineProperty(clone, "tag", { get: () => `@${fakeUsername}`, set: () => { }, configurable: true, enumerable: true });
-        clone.getTag = () => fakeUsername + "#0000";
-        clone.getGlobalName = () => fakeGlobal;
-        
-        if (shared.decorationAsset) { clone.avatarDecoration = nativeDecoration(shared); clone.avatarDecorationData = clone.avatarDecoration; }
-        const wantedFlags = shared.badgeFlags != null ? shared.badgeFlags : 0;
-        if (shouldReplaceBadges(shared)) {
-            clone.publicFlags = wantedFlags;
-        }
-        applyNativeProfileMetadata(clone, shared, false, false);
-        otherUserCache.set(realUser, { profile: shared, user: clone });
+        const username = shared.username || real.username;
+        const globalName = shared.globalName || real.globalName;
+        const displayName = shared.globalName || shared.username || real.displayName;
+        const clone = disguiseUser(real, {
+            username: () => username,
+            globalName: () => globalName,
+            displayName: () => displayName,
+            userName: () => username,
+            tag: () => `@${username}`,
+        });
+        Object.defineProperty(clone, "__cp_original", { value: real, enumerable: false, configurable: true });
+        clone.getTag = () => `${username}#0000`;
+        clone.getGlobalName = () => globalName;
+        dressUserClone(clone, shared);
+        otherUserCache.set(real, { profile: shared, user: clone });
         return clone;
     },
 
@@ -2033,37 +2294,42 @@ export default definePlugin({
         return colors.every(color => Number.isFinite(color) && color >= 0 && color <= 0xffffff) ? colors : null;
     },
 
+    /** Your own UserProfileStore entry with the chosen bio, banner, colours and dates layered on top. */
     hookUserProfile(profile: any) {
         if (!profile || !isEnabled) return profile;
+        const data = storedData;
         try {
-            const merged: any = nativeSocialProfile(profile, storedData);
-            if (storedData.bio) merged.bio = storedData.bio;
-            if (storedData.pronouns) merged.pronouns = storedData.pronouns;
-            if (storedData.accentColor != null) merged.accentColor = storedData.accentColor;
-            if (storedData.banner) {
-                merged.bannerURL = storedData.banner;
-                merged.bannerUrl = storedData.banner;
-                merged.bannerSrc = storedData.banner;
-                merged.getBannerURL = () => storedData.banner;
+            const overrides: any = nativeSocialProfile(profile, data);
+            const { bio, pronouns, accentColor, banner, signupDate } = data;
+            Object.assign(overrides,
+                bio ? { bio } : null,
+                pronouns ? { pronouns } : null,
+                accentColor != null ? { accentColor } : null,
+                // Discord reads the banner under several names depending on the component.
+                banner ? { bannerURL: banner, bannerUrl: banner, bannerSrc: banner, getBannerURL: () => storedData.banner } : null,
+            );
+            if (signupDate) {
+                const joined = new Date(`${signupDate}T12:00:00Z`);
+                if (!Number.isNaN(joined.getTime())) overrides.joinedAt = joined;
             }
-            if (storedData.signupDate) { try { merged.joinedAt = new Date(storedData.signupDate + "T12:00:00Z"); } catch { /* silent: runs per profile read; an invalid date leaves joinedAt unset */ } }
-            if (storedData.decorationAsset) { merged.avatarDecoration = nativeDecoration(storedData); merged.avatarDecorationData = merged.avatarDecoration; }
-            if (storedData.nitro && storedData.accentColor != null) merged.themeColors = [storedData.accentColor, storedData.accentColor2 ?? storedData.accentColor];
-            applyNativeProfileMetadata(merged, storedData);
-            return Object.assign(Object.create(Object.getPrototypeOf(profile)), profile, merged);
+            if (data.decorationAsset) overrides.avatarDecoration = overrides.avatarDecorationData = nativeDecoration(data);
+            if (data.nitro && accentColor != null) overrides.themeColors = [accentColor, data.accentColor2 ?? accentColor];
+            applyNativeProfileMetadata(overrides, data);
+            const result = Object.create(Object.getPrototypeOf(profile));
+            return Object.assign(result, profile, overrides);
         } catch { return profile; }
     },
 
-fakeObfuscatedEmail(real: string | null) {
+    fakeObfuscatedEmail(real: string | null) {
         if (!profileRuntimeActive || !isEnabled || !storedData.email || !real) return real;
-        const fake = storedData.email; const atIdx = fake.indexOf("@");
-        if (atIdx <= 1) return fake;
-        return fake[0] + "***" + fake.slice(atIdx - 1);
+        // Mask like Discord does: first letter, stars, then the last letter before @ onwards.
+        const [local, domain] = splitOnce(storedData.email, "@");
+        return domain === undefined || local.length < 2 ? storedData.email : `${local[0]}***${local.at(-1)}@${domain}`;
     },
     fakeObfuscatedPhone(real: string | null) {
         if (!profileRuntimeActive || !isEnabled || !storedData.phone || !real) return real;
-        const fake = storedData.phone;
-        return fake.length < 4 ? fake : "***-***-" + fake.slice(-4);
+        const { phone } = storedData;
+        return phone.length >= 4 ? `***-***-${phone.slice(-4)}` : phone;
     },
     patchDecorationUrl(input: any) {
         if (!profileRuntimeActive) return undefined;
@@ -2073,12 +2339,12 @@ fakeObfuscatedEmail(real: string | null) {
         return item?.url;
     },
 
-    patchBannerUrl({ displayProfile }: any) {
-        if (!profileRuntimeActive || !isEnabled || !storedData.banner) return null;
-        try { return isMe(displayProfile?.userId) ? storedData.banner : null; } catch { return null; }
+    patchBannerUrl(props: any) {
+        const ownBanner = profileRuntimeActive && isEnabled ? storedData.banner : undefined;
+        return ownBanner && isMe(props?.displayProfile?.userId) ? ownBanner : null;
     },
 
-    toolboxActions: { "Open Profile Spoofer"() { openModal(props => <CustomProfileModal rootProps={props} />); } },
+    toolboxActions: { "Open Profile Spoofer": openProfileEditor },
     _origGetUserAvatarURL: null as any,
     _catalogListener: null as null | (() => void),
     _origGetAvatarDecorationURL: null as any,
@@ -2099,7 +2365,7 @@ fakeObfuscatedEmail(real: string | null) {
         installPresenceHooks(userId => isMe(userId) ? (isEnabled ? storedData : undefined) : isRealProfileView(userId) ? undefined : viewedSharedProfile(userId));
         installTagIconSwap();
         try { installSwitcherHook(); } catch (e) { logger.warn("Installing account switcher hook failed", e); }
-        this._catalogListener = onCatalogLoaded(() => { cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++; forceAccountPanelRerender(); });
+        this._catalogListener = onCatalogLoaded(() => { invalidateOwnUser(); forceAccountPanelRerender(); });
         // Also hook the public resolver: a source-text patch alone can miss
         // Discord's newer/minified resolver layout.
         const resolver: any = IconUtils;
@@ -2124,30 +2390,24 @@ fakeObfuscatedEmail(real: string | null) {
 
         installProfileStoreHooks(this);
 
+        // Avatars: yours from your profile, everyone else's from their shared CloudCord profile.
         if (IconUtils?.getUserAvatarURL && !_avatarPatchApplied) {
-            this._origGetUserAvatarURL = IconUtils.getUserAvatarURL;
-            const orig = this._origGetUserAvatarURL;
-            (IconUtils as any).getUserAvatarURL = (user: any, ...args: unknown[]) => {
-                if (user?.id && isMe(user.id) && isEnabled && storedData.avatar) return storedData.avatar;
-                if (user?.id && !isMe(user.id)) {
-                    requestSharedProfile(user.id);
-                    const shared = viewedSharedProfile(user.id);
-                    if (shared?.avatar) return shared.avatar;
-                }
-                return orig(user, ...args);
+            const realAvatarUrl: (...args: any[]) => string = this._origGetUserAvatarURL = IconUtils.getUserAvatarURL;
+            const avatarFor = (userId: string): string | undefined => {
+                if (isMe(userId)) return isEnabled ? storedData.avatar : undefined;
+                requestSharedProfile(userId);
+                return viewedSharedProfile(userId)?.avatar;
             };
+            (IconUtils as any).getUserAvatarURL = (user: any, ...args: unknown[]) => (user?.id && avatarFor(user.id)) || realAvatarUrl(user, ...args);
             _avatarPatchApplied = true;
         }
 
+        // Your own id encodes your real sign-up time; answer with the chosen date instead.
         if (SnowflakeUtils?.extractTimestamp && !this._origExtractTimestamp) {
-            this._origExtractTimestamp = SnowflakeUtils.extractTimestamp;
-            const orig = this._origExtractTimestamp;
-            (SnowflakeUtils as any).extractTimestamp = (snowflake: string) => {
-                if (isEnabled && isMe(snowflake)) {
-                    if (storedData.signupDate) return new Date(storedData.signupDate + "T12:00:00Z").getTime();
-                    if (storedData.createdAt) return new Date(storedData.createdAt + "T12:00:00Z").getTime();
-                }
-                return orig(snowflake);
+            const realExtract = this._origExtractTimestamp = SnowflakeUtils.extractTimestamp;
+            (SnowflakeUtils as any).extractTimestamp = (id: string) => {
+                const chosen = isEnabled && isMe(id) ? storedData.signupDate || storedData.createdAt : undefined;
+                return chosen ? Date.parse(`${chosen}T12:00:00Z`) : realExtract(id);
             };
         }
 
@@ -2190,7 +2450,7 @@ fakeObfuscatedEmail(real: string | null) {
         profileRuntimeGeneration++;
         otherUserCache = new WeakMap();
         sharedRequests.clear(); sharedQueued.clear();
-        cachedFakeUser = null; cachedOriginalUser = null; _trueOriginalUser = null; _dataVersion++;
+        invalidateOwnUser(true);
         uninstallProfileStoreHooks();
         if (publishTimer) { clearTimeout(publishTimer); publishTimer = null; }
         (publishSharedProfile as any).queued = false;
@@ -2204,8 +2464,16 @@ fakeObfuscatedEmail(real: string | null) {
         stopExtras();
         FluxDispatcher.unsubscribe("CONNECTION_OPEN", onAccountSwitch); FluxDispatcher.unsubscribe("USER_PROFILE_SETTINGS_SET_PENDING_CHANGES", onPendingProfileChange); stopDomObserver();
         if (sharedSyncTimer) { clearInterval(sharedSyncTimer); sharedSyncTimer = null; }
-        if (this._origExtractTimestamp && SnowflakeUtils) { (SnowflakeUtils as any).extractTimestamp = this._origExtractTimestamp; this._origExtractTimestamp = null; }
-        if (this._origGetUserAvatarURL && IconUtils) { (IconUtils as any).getUserAvatarURL = this._origGetUserAvatarURL; this._origGetUserAvatarURL = null; _avatarPatchApplied = false; }
+        // Put Discord's own functions back.
+        if (SnowflakeUtils && this._origExtractTimestamp) {
+            (SnowflakeUtils as any).extractTimestamp = this._origExtractTimestamp;
+            this._origExtractTimestamp = null;
+        }
+        if (IconUtils && this._origGetUserAvatarURL) {
+            (IconUtils as any).getUserAvatarURL = this._origGetUserAvatarURL;
+            this._origGetUserAvatarURL = null;
+            _avatarPatchApplied = false;
+        }
         if (this._origGetAvatarDecorationURL && IconUtils) { (IconUtils as any).getAvatarDecorationURL = this._origGetAvatarDecorationURL; this._origGetAvatarDecorationURL = null; }
     },
 
@@ -2254,18 +2522,9 @@ function buildProfileBadges(userId: string): ProfileBadge[] {
         const f = profileData.badgeFlags ?? 0; const badges: ProfileBadge[] = [];
         // Keep Discord's badge sequence while retaining CloudCord's full Nitro
         // milestone hover card on Windows.
-        if (f & FLAG.STAFF) badges.push({ id: "sp_staff", description: "Discord Staff", iconSrc: "https://cdn.discordapp.com/badge-icons/5e74e9b61934fc1f67c65515d1f7e60d.png", position: 0, props: { style } });
-        if (f & FLAG.PARTNER) badges.push({ id: "sp_partner", description: "Partnered Server Owner", iconSrc: "https://cdn.discordapp.com/badge-icons/3f9748e53446a137a052f3454e2de41e.png", position: 0, props: { style } });
-        if (f & FLAG.HYPESQUAD) badges.push({ id: "sp_hypesquad", description: "HypeSquad Events", iconSrc: "https://cdn.discordapp.com/badge-icons/bf01d1073931f921909045f3a39fd264.png", position: 0, props: { style } });
-        if (f & FLAG.BUG_HUNTER_1) badges.push({ id: "sp_bh1", description: "Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/2717692c7dca7289b35297368a940dd0.png", position: 0, props: { style } });
-        if (f & FLAG.BRAVERY) badges.push({ id: "sp_bravery", description: "HypeSquad Bravery", iconSrc: "https://cdn.discordapp.com/badge-icons/8a88d63823d8a71cd5e390baa45efa02.png", position: 0, props: { style } });
-        if (f & FLAG.BRILLIANCE) badges.push({ id: "sp_brilliance", description: "HypeSquad Brilliance", iconSrc: "https://cdn.discordapp.com/badge-icons/011940fd013da3f7fb926e4a1cd2e618.png", position: 0, props: { style } });
-        if (f & FLAG.BALANCE) badges.push({ id: "sp_balance", description: "HypeSquad Balance", iconSrc: "https://cdn.discordapp.com/badge-icons/3aa41de486fa12454c3761e8e223442e.png", position: 0, props: { style } });
-        if (f & FLAG.EARLY_SUPPORTER) badges.push({ id: "sp_early", description: "Early Supporter", iconSrc: "https://cdn.discordapp.com/badge-icons/7060786766c9c840eb3019e725d2b358.png", position: 0, props: { style } });
-        if (f & FLAG.BUG_HUNTER_2) badges.push({ id: "sp_bh2", description: "Golden Bug Hunter", iconSrc: "https://cdn.discordapp.com/badge-icons/848f79194d4be5ff5f81505cbd0ce1e6.png", position: 0, props: { style } });
-        if (f & FLAG.DEV_VERIFIED) badges.push({ id: "sp_dev", description: "Early Verified Bot Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6df5892e0f35b051f8b61eace34f4967.png", position: 0, props: { style } });
-        if (f & FLAG.MOD_ALUMNI) badges.push({ id: "sp_mod", description: "Moderator Programs Alumni", iconSrc: "https://cdn.discordapp.com/badge-icons/fee1624003e2fee35cb398e125dc479b.png", position: 0, props: { style } });
-        if (f & FLAG.ACTIVE_DEVELOPER) badges.push({ id: "sp_activedev", description: "Active Developer", iconSrc: "https://cdn.discordapp.com/badge-icons/6bdc42827a38498929a4920da12695d9.png", position: 0, props: { style } });
+        for (const badge of DISCORD_FLAG_BADGES) {
+            if (f & badge.flag) badges.push({ id: badge.id, description: badge.label, iconSrc: badge.icon, position: 0, props: { style } });
+        }
         if (hasNitroFake) badges.push({
             id: nativeNitroBadgeId(nl),
             key: NITRO_LEVELS[nl].name,
@@ -2571,7 +2830,7 @@ function writeLocalProfiles(next: Record<string, CustomProfileData>, changedId?:
     localProfiles = next;
     try { profileStorage.set("localProfiles", JSON.stringify(next)); } catch (e) { logger.warn("Saving local profiles failed", e); }
     otherUserCache = new WeakMap();
-    _dataVersion++;
+    profileVersion++;
     forceAccountPanelRerender();
     if (changedId) reloadDiscordProfile(changedId);
 }
@@ -2962,7 +3221,7 @@ const newSavedId = () => Date.now().toString(36) + Math.random().toString(36).sl
 // Template preview: shows a template on your own Discord profile without saving or
 // syncing anything. Stopping (or closing the editor) puts your real profile back.
 function refreshOwnProfile() {
-    cachedFakeUser = null; cachedOriginalUser = null; _dataVersion++;
+    invalidateOwnUser();
     forceAccountPanelRerender();
     reloadDiscordProfile(activeUserId());
 }
