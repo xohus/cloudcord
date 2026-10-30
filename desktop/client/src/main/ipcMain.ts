@@ -59,7 +59,8 @@ const BOTCORD_ALLOWED_PATHS = [
     /^\/users\/@me\/channels$/,
     /^\/guilds\/\d{17,20}\/channels$/,
     /^\/guilds\/\d{17,20}\/members\?limit=(?:[1-9]\d{0,2}|1000)$/,
-    /^\/channels\/\d{17,20}\/messages\?limit=(?:[1-9]|[1-4]\d|50)$/,
+    /^\/guilds\/\d{17,20}\/roles$/,
+    /^\/channels\/\d{17,20}\/messages\?limit=(?:[1-9]|[1-4]\d|50)(?:&(?:before|after)=\d{17,20})?$/,
     /^\/channels\/\d{17,20}\/messages$/,
 ];
 
