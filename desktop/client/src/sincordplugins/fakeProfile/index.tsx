@@ -958,12 +958,22 @@ function queueSharedPublish() {
     publishTimer = setTimeout(() => void publishSharedProfile().catch(() => { }), 800);
 }
 
+/** JSON with object keys sorted and empty values dropped, so equal profiles compare equal. */
+function stableJson(value: unknown): string {
+    return JSON.stringify(value, (_key, v) => {
+        if (!v || typeof v !== "object" || Array.isArray(v)) return v;
+        return Object.fromEntries(Object.keys(v).sort().filter(k => v[k] !== undefined && v[k] !== null && v[k] !== "").map(k => [k, v[k]]));
+    });
+}
+
 async function pullOwnSharedProfile() {
     if (!profileRuntimeActive || storedData.localOnly) return;
     const generation = profileRuntimeGeneration;
     // Never replace local form state with the last server snapshot while the
     // profile editor is open or immediately after saving a newer revision.
     if (profileEditorOpen || Date.now() < suppressOwnPullUntil) return;
+    // A local edit is waiting to upload (or uploading): the server copy is older than what's on screen.
+    if (publishTimer || (publishSharedProfile as { pending?: Promise<void>; }).pending) return;
     const id = activeUserId();
     if (!id) return;
     const localSnapshot = JSON.stringify(storedData);
@@ -979,8 +989,20 @@ async function pullOwnSharedProfile() {
         if (!response.ok) return;
         const payload = await response.json();
         if (!profileRuntimeActive || generation !== profileRuntimeGeneration || activeUserId() !== id || storedData.localOnly || profileEditorOpen || Date.now() < suppressOwnPullUntil || JSON.stringify(storedData) !== localSnapshot) return;
+        if (publishTimer || (publishSharedProfile as { pending?: Promise<void>; }).pending) return;
         const remote = payload?.profile ?? payload;
-        if (Number(remote?.syncRevision || 0) < Number(storedData.syncRevision || 0)) return;
+        const remoteRevision = Number(remote?.syncRevision || 0);
+        const localRevision = Number(storedData.syncRevision || 0);
+        // Only a strictly newer server copy (edited on another device) may replace this one.
+        // Same revision but different fields means a local edit that hasn't been uploaded
+        // yet: keep it and upload it, instead of reverting it to the server copy.
+        if (remoteRevision < localRevision) return;
+        if (remoteRevision === localRevision && localRevision > 0) {
+            const serverCopy = fromSharedProfile(remote);
+            for (const key of LOCAL_ONLY_FIELDS) if (Object.prototype.hasOwnProperty.call(storedData, key)) (serverCopy as any)[key] = (storedData as any)[key];
+            if (isEnabled && stableJson(serverCopy) !== stableJson(storedData)) queueSharedPublish();
+            return;
+        }
         lastRemoteProfile = payload?.profile ?? payload ?? null;
         const pulled = fromSharedProfile(lastRemoteProfile);
         for (const key of LOCAL_ONLY_FIELDS) if (Object.prototype.hasOwnProperty.call(storedData, key)) (pulled as any)[key] = (storedData as any)[key];

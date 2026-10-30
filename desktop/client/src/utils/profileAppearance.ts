@@ -96,8 +96,12 @@ export function customPreviewUsername(value: string): string {
 
 export function customPreviewURL(value: unknown): string {
     if (typeof value !== "string" || value.length > 2048) return "";
+    let text = value.trim();
+    // People type "instagram.com/name" or paste http:// links; treat both as https.
+    if (/^http:\/\//i.test(text)) text = `https://${text.slice(7)}`;
+    else if (!/^[a-z][a-z\d+.-]*:/i.test(text) && /^(?:www\.)?[a-z\d-]+(?:\.[a-z\d-]+)+(?:[/?#]|$)/i.test(text)) text = `https://${text}`;
     try {
-        const url = new URL(value);
+        const url = new URL(text);
         // No executable schemes or embedded credentials in shared links/media.
         return url.protocol === "https:" && !url.username && !url.password ? url.href : "";
     } catch { return ""; }
