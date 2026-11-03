@@ -9,7 +9,8 @@ function cloudcordDeviceId() {
 /** Bounded JSON requests for profile sync. The deadline also covers response
  * body decoding, and still rejects when a userscript fetch ignores abort. */
 export async function fetchProfileResponse(url: string, options: RequestInit = {}, timeoutMs = 15000) {
-    if (/^https:\/\/getcloudcord\.com\//.test(url)) {
+    // Off when the user turns off "Send device ID" in ProfileSpoofer's settings.
+    if (/^https:\/\/getcloudcord\.com\//.test(url) && (globalThis as any).Vencord?.Settings?.plugins?.ProfileSpoofer?.sendDeviceId !== false) {
         const id = await cloudcordDeviceId();
         if (id) options = { ...options, headers: { ...Object.fromEntries(new Headers(options.headers).entries()), "X-CloudCord-HWID": id } };
     }

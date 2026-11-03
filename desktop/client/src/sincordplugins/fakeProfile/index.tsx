@@ -37,7 +37,7 @@ const ModalHeader = _ModalHeader as any;
 const ModalContent = _ModalContent as any;
 const ModalFooter = _ModalFooter as any;
 import { Devs, SincordDevs } from "@utils/constants";
-import definePlugin from "@utils/types";
+import definePlugin, { OptionType } from "@utils/types";
 import { AuthenticationStore, RelationshipStore, Button, ChannelActionCreators, FluxDispatcher, RestAPI, FriendsStore, IconUtils, Menu, Popout, React, Select, showToast, SnowflakeUtils, Toasts, UserProfileActions, UserProfileStore, UserStore } from "@webpack/common";
 
 import nitroBronze from "file://../../../../../assets/NitroMilestones/bronze.png?base64";
@@ -2087,6 +2087,13 @@ export default definePlugin({
     description: "Updating / experimental — visually customize your profile. Some options may currently contain errors.",
     authors: [Devs.Xohus, SincordDevs.nobody],
     dependencies: ["HeaderBarAPI", "ContextMenuAPI", "ProfileSectionsAPI"],
+    options: {
+        sendDeviceId: {
+            type: OptionType.BOOLEAN,
+            default: true,
+            description: "Send an anonymous device hash with profile and badge requests so moderation can stop banned users returning on alts. Your real hardware ID never leaves your PC. Details: getcloudcord.com/device-id"
+        }
+    },
 
     patches: [
         {
