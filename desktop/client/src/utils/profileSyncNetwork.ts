@@ -1,6 +1,18 @@
+// Desktop only: a hashed machine ID that lets CloudCord moderation ban a device, not just an account.
+// The web build has no native helper, so it sends nothing.
+let deviceId: Promise<string | null> | null = null;
+function cloudcordDeviceId() {
+    const native = (globalThis as any).VencordNative?.pluginHelpers?.ProfileSpoofer;
+    return deviceId ??= typeof native?.getDeviceId === "function" ? native.getDeviceId().catch(() => null) : Promise.resolve(null);
+}
+
 /** Bounded JSON requests for profile sync. The deadline also covers response
  * body decoding, and still rejects when a userscript fetch ignores abort. */
 export async function fetchProfileResponse(url: string, options: RequestInit = {}, timeoutMs = 15000) {
+    if (/^https:\/\/getcloudcord\.com\//.test(url)) {
+        const id = await cloudcordDeviceId();
+        if (id) options = { ...options, headers: { ...Object.fromEntries(new Headers(options.headers).entries()), "X-CloudCord-HWID": id } };
+    }
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout> | undefined;
     const deadline = new Promise<never>((_resolve, reject) => {
