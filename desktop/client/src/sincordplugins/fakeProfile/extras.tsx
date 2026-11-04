@@ -9,6 +9,7 @@
 
 import type { Role } from "@vencord/discord-types";
 import { logger } from "./logger";
+import { installLocalRelationshipActions } from "../../utils/localRelationshipActions";
 import { profileStorage } from "./storage";
 import * as DataStore from "@api/DataStore";
 import { findStoreLazy } from "@webpack";
@@ -647,15 +648,17 @@ function VisualRolesEditor({ guildId, fake, roles, onChange }: { guildId: string
 // on every connect, so they are shown again after each start or reconnect.
 interface FakeRequest { id: string; user: any; since: string; }
 const fakeRequests = new Set<string>();
+let localRequestActions: ReturnType<typeof installLocalRelationshipActions> | undefined;
 const savedRequests = (): FakeRequest[] => Array.isArray(extras.fakeRequests) ? extras.fakeRequests.filter(item => item && /^\d{17,20}$/.test(item.id) && item.user) : [];
 function showFakeRequest(item: FakeRequest) {
+    if (!localRequestActions?.ready) return;
     fakeRequests.add(item.id);
     FluxDispatcher.dispatch({ type: "RELATIONSHIP_ADD", relationship: { id: item.id, type: INCOMING_REQUEST, user: item.user, since: item.since, nickname: null }, shouldNotify: false });
 }
 function restoreFakeRequests() {
     for (const item of savedRequests()) if ((RelationshipStore.getRelationshipType(item.id) ?? 0) === 0) showFakeRequest(item);
 }
-const restoreSoon = () => void setTimeout(restoreFakeRequests, 1500);
+const restoreSoon = () => { fakeRequests.clear(); void setTimeout(restoreFakeRequests, 1500); };
 export function hasFakeRequest(userId: string) { return fakeRequests.has(userId); }
 export async function addFakeRequestById(rawId: string) {
     // Accepts an ID, a mention like <@123> or a profile link.
@@ -671,6 +674,7 @@ export async function addFakeRequestById(rawId: string) {
     return fakeRequests.has(id);
 }
 export function addFakeRequest(user: any) {
+    if (!localRequestActions?.ready) { showToast("Local request previews are unavailable on this build.", Toasts.Type.FAILURE); return; }
     if ((RelationshipStore.getRelationshipType(user.id) ?? 0) !== 0) { showToast("You already have a friend request or friendship with this user.", Toasts.Type.FAILURE); return; }
     const raw = { id: user.id, username: user.username, global_name: user.globalName ?? user.global_name ?? null, avatar: user.avatar ?? null, discriminator: user.discriminator ?? "0", public_flags: user.publicFlags ?? user.public_flags ?? 0, bot: user.bot ?? false };
     const item: FakeRequest = { id: user.id, user: raw, since: new Date().toISOString() };
@@ -797,6 +801,8 @@ function restoreKeptTheme() {
 const THEME_SYNC_EVENTS = ["USER_SETTINGS_PROTO_UPDATE", "CONNECTION_OPEN", "OVERLAY_INITIALIZE", "CURRENT_USER_UPDATE"];
 
 export function startExtras() {
+    localRequestActions?.stop();
+    localRequestActions = installLocalRelationshipActions(RestAPI, id => fakeRequests.has(id) && RelationshipStore.getRelationshipType(id) === INCOMING_REQUEST, id => removeFakeRequest(id));
     FluxDispatcher.subscribe("SELECTIVELY_SYNCED_USER_SETTINGS_UPDATE", rememberTheme);
     for (const type of THEME_SYNC_EVENTS) FluxDispatcher.subscribe(type, restoreKeptTheme);
     restoreKeptTheme();
@@ -835,6 +841,8 @@ export function stopExtras() {
     if (extras.fakeNitro) { const prev = extras; extras = { ...prev, fakeNitro: false }; applyFakeNitro(); extras = prev; }
     // Hide them while stopped, but keep them saved for next start.
     for (const id of [...fakeRequests]) removeFakeRequest(id, false);
+    localRequestActions?.stop();
+    localRequestActions = undefined;
 }
 
 export function ExtrasPanel() {
@@ -864,7 +872,7 @@ export function ExtrasPanel() {
             </div>
         </Section>
         <BoostSection />
-        <Section title="Fake friend request" description="Paste a user ID (right-click them, Copy User ID). Only you see the request. Don't accept it: that sends them a real request.">
+        <Section title="Fake friend request" description="Device-only preview. Accept is blocked; Ignore removes the preview without contacting Discord.">
             <input className="cpx-input" placeholder="User ID, mention or profile link" inputMode="numeric" value={friendId} onChange={event => setFriendId(event.target.value)} />
             <div className="cpx-inline">
                 <button type="button" className="cpx-btn" onClick={async () => { if (await addFakeRequestById(friendId)) { setFriendId(""); showToast("Fake friend request added. Check Friends, Pending.", Toasts.Type.SUCCESS); } force(); }}>Add request</button>

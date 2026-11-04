@@ -12,6 +12,7 @@ concurrency:
       - "ios/**"
       - "desktop/client/src/utils/profileAppearance.ts"
       - "desktop/client/src/utils/connectionSettings.ts"
+      - "desktop/client/src/utils/localRelationshipActions.ts"
       - "cloudcord-favicon.png"
       - "assets/cloudcord-favicon.png"
       - "assets/cloudcord-logo.png"
@@ -144,6 +145,7 @@ jobs:
           cp "../ios/runtime/src/core/plugins/messagefix/index.ts" "src/core/plugins/messagefix/index.ts"
           cp "../desktop/client/src/utils/profileAppearance.ts" "src/lib/api/profileAppearance.ts"
           cp "../desktop/client/src/utils/connectionSettings.ts" "src/lib/api/connectionSettings.ts"
+          cp "../desktop/client/src/utils/localRelationshipActions.ts" "src/lib/api/localRelationshipActions.ts"
           cp "../ios/runtime/src/lib/api/react/jsx.ts" "src/lib/api/react/jsx.ts"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
           mkdir -p src/lib/api/native
@@ -384,6 +386,7 @@ jobs:
           function CustomSocialEditor(props: any) { const Component = require("@core/ui/settings/components/CustomSocial").CustomSocialEditor; return <Component {...props} />; }
           import { presentationIdentity, presentationName } from "@lib/api/profileIdentity";
           import { installConnectionSettings } from "@lib/api/connectionSettings";
+          import { installLocalRelationshipActions } from "@lib/api/localRelationshipActions";
           import { settings } from "@lib/api/settings";
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByName, findByNameLazy, findByProps, findByStoreName } from "@metro";
@@ -3037,6 +3040,7 @@ jobs:
           ];
           type ExtrasState = { fakeNitro?: boolean; giftCode?: string; giftPlan?: string; giftStyle?: number; boosts?: Record<string, any>; fakeOrbs?: number };
           const fakeRequestIds = new Set<string>();
+          let localRequestActions: ReturnType<typeof installLocalRelationshipActions> | undefined;
           function extrasState(): ExtrasState { const value = (settings as any)[EXTRAS_KEY]; return value && typeof value === "object" ? value : {}; }
           function setExtras(next: ExtrasState) { (settings as any)[EXTRAS_KEY] = next; }
           function extrasHttp() { for (const candidate of [findByProps("getAPIBaseURL", "get"), (findByProps("HTTP") as any)?.HTTP, findByProps("get", "post", "put", "del")]) if (typeof (candidate as any)?.get === "function") return candidate as any; return null; }
@@ -3171,6 +3175,7 @@ jobs:
           const rawUser = (user: any) => ({ id: user.id, username: user.username, global_name: user.globalName ?? user.global_name ?? null, avatar: user.avatar ?? null, discriminator: user.discriminator ?? "0", public_flags: user.publicFlags ?? user.public_flags ?? 0, bot: user.bot ?? false });
           function savedFakeRequests(): FakeRequest[] { const list = (extrasState() as any).fakeRequests; return Array.isArray(list) ? list.filter((item: any) => item && /^\d{17,20}$/.test(item.id) && item.user) : []; }
           function showFakeRequest(item: FakeRequest) {
+              if (!localRequestActions?.ready) return;
               fakeRequestIds.add(item.id);
               FluxDispatcher.dispatch({ type: "RELATIONSHIP_ADD", relationship: { id: item.id, type: 3, user: item.user, since: item.since, nickname: null }, shouldNotify: false });
           }
@@ -3183,6 +3188,7 @@ jobs:
           // Accepts an ID, a mention like <@123> or a profile link; keeps only the digits.
           function parseUserId(text: string) { return (String(text).match(/\d{17,20}/) || [""])[0]; }
           async function addFakeFriendRequest(input: string) {
+              if (!localRequestActions?.ready) { Alert.alert("Fake friend request", "Local request previews are unavailable on this build."); return false; }
               const id = parseUserId(input);
               if (!id) { Alert.alert("Fake friend request", "Paste a user ID, mention or profile link."); return false; }
               let user: any = (findByStoreName("UserStore") as any)?.getUser?.(id);
@@ -3690,7 +3696,7 @@ jobs:
                       </View>
                   </K.Section>
                   <BoostSection refresh={force} />
-                  <K.Section title="Fake friend request" description="Only you see it. Don't accept it: that sends them a real request.">
+                  <K.Section title="Fake friend request" description="Device-only preview. Accept is blocked; Ignore removes it without contacting Discord.">
                       <K.Field label="User ID, mention or profile link"><TextInput key={inputKey} defaultValue={friendId} placeholder="Paste here" autoCapitalize="none" autoCorrect={false} returnKeyType="done" onChangeText={setFriendId} onSubmitEditing={() => void add()} placeholderTextColor="#777" /></K.Field>
                       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
                           <Button text="Paste" variant="secondary" size="sm" onPress={async () => {
@@ -3732,6 +3738,12 @@ jobs:
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
+                      localRequestActions?.stop();
+                      localRequestActions = installLocalRelationshipActions(extrasHttp(), id => fakeRequestIds.has(id) && (findByStoreName("RelationshipStore") as any)?.getRelationshipType?.(id) === 3, id => {
+                          fakeRequestIds.delete(id);
+                          setExtras({ ...extrasState(), fakeRequests: savedFakeRequests().filter(item => item.id !== id) } as any);
+                          FluxDispatcher.dispatch({ type: "RELATIONSHIP_REMOVE", relationship: { id, type: 3 } });
+                      });
                       try {
                           installConnectionSettings({
                               store: safeStore("ConnectedAccountsStore"), rest: extrasHttp(),
@@ -3750,7 +3762,7 @@ jobs:
                       setTimeout(() => { for (const step of [installOrbHooks, installSwitcherHook]) { try { step(); } catch {} } }, 15000);
                       const restoreLater = () => setTimeout(() => { try { restoreFakeRequests(); } catch {} }, 1500);
                       restoreLater();
-                      try { FluxDispatcher.subscribe("CONNECTION_OPEN", () => { try { applyFakeNitro(); } catch {} restoreLater(); }); } catch {}
+                      try { FluxDispatcher.subscribe("CONNECTION_OPEN", () => { fakeRequestIds.clear(); try { applyFakeNitro(); } catch {} restoreLater(); }); } catch {}
                       try { FluxDispatcher.subscribe("CURRENT_USER_UPDATE", () => { try { applyFakeNitro(); } catch {} }); } catch {}
                       for (const type of ["COLLECTIBLES_SHOP_OPEN","COLLECTIBLES_PRODUCT_DETAILS_OPEN","COLLECTIBLES_SHOP_HOME_FETCH","SKU_PURCHASE_MODAL_OPEN","PREMIUM_PAYMENT_MODAL_OPEN"]) { try { FluxDispatcher.subscribe(type, pauseForShop); } catch {} }
                       for (const type of ["SKU_PURCHASE_MODAL_CLOSE","SKU_PURCHASE_SUCCESS","PREMIUM_PAYMENT_MODAL_CLOSED","CHANNEL_SELECT"]) { try { FluxDispatcher.subscribe(type, resumeAfterShop); } catch {} }
