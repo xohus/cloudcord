@@ -7543,6 +7543,8 @@
         return real;
       var data = options.getData();
       var owner = options.ownId();
+      if (!owner)
+        return real;
       var current = JSON.stringify([
         owner,
         data?.customConnections || []
