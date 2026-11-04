@@ -7464,6 +7464,130 @@
     }
   });
 
+  // src/lib/api/connectionSettings.ts
+  function installConnectionSettings(options) {
+    var _loop2 = function(method2) {
+      var installed = wrap(options.rest, method2, (original, args) => {
+        var id;
+        try {
+          var path = decodeURIComponent(String(args[0]?.url || ""));
+          var match = path.match(/^\/users\/@me\/connections\/[^/]+\/(cloudcord-local:[^/?]+)(?:\?.*)?$/);
+          if (!match)
+            return original(...args);
+          var scoped = match[1].slice(prefix.length);
+          var separator = scoped.indexOf(":");
+          if (separator < 0 || scoped.slice(0, separator) !== options.ownId())
+            return Promise.resolve({
+              ok: true,
+              status: 204,
+              body: null
+            });
+          id = scoped.slice(separator + 1);
+        } catch (e) {
+          return original(...args);
+        }
+        if (method2 === "del") {
+          options.remove(id);
+          previous = void 0;
+          try {
+            options.store?.emitChange?.();
+          } catch (e) {
+          }
+          return Promise.resolve({
+            ok: true,
+            status: 204,
+            body: null
+          });
+        }
+        options.explain();
+        return Promise.reject(new Error("Edit this local connection in CloudCord Profile settings."));
+      });
+      if (installed)
+        guarded.add(method2);
+    };
+    try {
+      if (typeof options.rest?.del !== "function" || typeof options.rest?.patch !== "function")
+        return () => {
+        };
+    } catch (e) {
+      return () => {
+      };
+    }
+    var cleanups = [];
+    var prefix = "cloudcord-local:";
+    var protectedWrites = false;
+    var previous, fingerprint = "", snapshot2;
+    var wrap = (object, key, handler) => {
+      try {
+        var original = object?.[key];
+        if (typeof original !== "function")
+          return false;
+        var replacement = function replacement2(...args) {
+          return handler(original.bind(this), args);
+        };
+        object[key] = replacement;
+        if (object[key] !== replacement)
+          return false;
+        cleanups.push(() => {
+          if (object[key] === replacement)
+            object[key] = original;
+        });
+        return true;
+      } catch (e) {
+        return false;
+      }
+    };
+    wrap(options.store, "getAccounts", (original, args) => {
+      var real = original(...args);
+      if (!protectedWrites || !Array.isArray(real))
+        return real;
+      var data = options.getData();
+      var owner = options.ownId();
+      var current = JSON.stringify([
+        owner,
+        data?.customConnections || []
+      ]);
+      if (previous === real && fingerprint === current && snapshot2)
+        return snapshot2;
+      previous = real;
+      fingerprint = current;
+      var custom = nativeSocialProfile({}, data).connectedAccounts || [];
+      if (!custom.length)
+        return snapshot2 = real;
+      return snapshot2 = [
+        ...real,
+        ...custom.map((account) => ({
+          ...account,
+          id: prefix + owner + ":" + account.cloudcordPreview.id,
+          verified: false,
+          revoked: false,
+          friend_sync: false,
+          show_activity: false
+        }))
+      ];
+    });
+    var guarded = /* @__PURE__ */ new Set();
+    for (var method of [
+      "del",
+      "patch",
+      "put"
+    ])
+      _loop2(method);
+    protectedWrites = guarded.has("del") && guarded.has("patch");
+    return () => {
+      for (var cleanup of cleanups.reverse())
+        cleanup();
+    };
+  }
+  var init_connectionSettings = __esm({
+    "src/lib/api/connectionSettings.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_profileAppearance();
+    }
+  });
+
   // src/core/vendetta/plugins.ts
   var plugins, pluginInstance, VdPluginManager;
   var init_plugins = __esm({
@@ -18616,6 +18740,28 @@
           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5e3);
         }
         ensurePatches();
+        try {
+          installConnectionSettings({
+            store: safeStore("ConnectedAccountsStore"),
+            rest: extrasHttp(),
+            ownId: () => String(currentUserId || ""),
+            getData: () => preview.enabled ? preview : null,
+            remove: (id) => {
+              rootSettings.fakeProfile = {
+                ...preview,
+                customConnections: preview.customConnections?.filter((entry) => entry.id !== id),
+                syncRevision: Date.now()
+              };
+              bindSavedPreview();
+              clearCache();
+              refreshPreview();
+              queueSharedPublish();
+              suppressOwnPullUntil = Date.now() + 15e3;
+            },
+            explain: () => showToast("Edit this connection in CloudCord Profile settings.")
+          });
+        } catch (e) {
+        }
         for (var step of [
           installGiftHook,
           installBoostHooks,
@@ -22005,6 +22151,7 @@
       init_profileSyncNetwork();
       init_profileAppearance();
       init_profileIdentity();
+      init_connectionSettings();
       init_settings();
       init_plugins4();
       init_metro();
