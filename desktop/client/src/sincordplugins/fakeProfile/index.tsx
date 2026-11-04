@@ -2448,7 +2448,7 @@ export default definePlugin({
         if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
         this._connectionSettings = installConnectionSettings({
             store: findStoreLazy("ConnectedAccountsStore"), rest: RestAPI,
-            ownId: activeUserId,
+            ownId: () => activeUserId() || "",
             getData: () => isEnabled ? storedData : null,
             remove: id => {
                 saveOwnData({ ...storedData, customConnections: storedData.customConnections?.filter(entry => entry.id !== id) });

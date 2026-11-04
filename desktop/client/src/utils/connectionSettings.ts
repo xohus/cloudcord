@@ -33,6 +33,7 @@ export function installConnectionSettings(options: {
         if (!protectedWrites || !Array.isArray(real)) return real;
         const data = options.getData();
         const owner = options.ownId();
+        if (!owner) return real;
         const current = JSON.stringify([owner, data?.customConnections || []]);
         if (previous === real && fingerprint === current && snapshot) return snapshot;
         previous = real; fingerprint = current;
