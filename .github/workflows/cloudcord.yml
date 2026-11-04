@@ -60,6 +60,7 @@ jobs:
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-compatibility.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-media-load-races.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-media-sync-snapshot.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-banner-without-native.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-nitro-date-sync.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-auto-update.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-runtime-download-timeout.cjs
@@ -2988,10 +2989,13 @@ jobs:
 
               const bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
               addAfterPatch("getBanner", bannerComposer, (args, result) => {
-                  const uri = mediaUri("bannerMedia");
                   const id = args?.[0]?.displayProfile?.userId || args?.[0]?.userId;
-                  if (!preview.enabled || !uri || !result || !id || !isCurrentUser(id)) return;
-                  return { ...result, bannerSrc: uri, source: { uri } };
+                  if (!id) return;
+                  const uri = isCurrentUser(id) ? (preview.enabled ? mediaUri("bannerMedia") : "") : getProfileOverride(id)?.banner;
+                  if (!uri) return;
+                  // No native banner means Discord can return null. A local
+                  // image must still produce the same banner descriptor.
+                  return { ...(result && typeof result === "object" ? result : {}), bannerSrc: uri, source: { uri } };
               });
 
               diagnostics.last = `Connected ${diagnostics.patches} preview hooks`;
