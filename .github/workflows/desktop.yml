@@ -86,6 +86,7 @@ jobs:
           node scripts/test-connection-settings.cjs
           node scripts/test-profile-editor-text.cjs
           node scripts/test-partial-cosmetics-catalog.cjs
+          node scripts/test-unloaded-member-role.cjs
           node scripts/test-cloudcord-badge-sync.cjs
           node scripts/test-pc-nitro-override.cjs
           node scripts/test-profile-hook-lifecycle.cjs

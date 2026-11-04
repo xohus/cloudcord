@@ -3388,9 +3388,10 @@ jobs:
           // Your own member-list row, built from the stores when Discord hasn't loaded it.
           function selfMemberRow(guildId: string, me: string) {
               try {
-                  const member = (findByStoreName("GuildMemberStore") as any)?.getMember?.(guildId, me);
+                  const members = findByStoreName("GuildMemberStore") as any;
+                  const member = members?.getMember?.(guildId, me) ?? members?.getSelfMember?.(guildId) ?? { roles: [], nick: null, avatar: null };
                   const user = (findByStoreName("UserStore") as any)?.getUser?.(me);
-                  if (!member || !user) return null;
+                  if (!user || !(findByStoreName("GuildStore") as any)?.getGuild?.(guildId)) return null;
                   const presence = findByStoreName("PresenceStore") as any;
                   const status = presence?.getStatus?.(me) ?? "online";
                   return { ...member, type: "MEMBER", userId: me, user, status, activities: presence?.getActivities?.(me) ?? [], applicationStream: null, isOwner: (findByStoreName("GuildStore") as any)?.getGuild?.(guildId)?.ownerId === me, isMobileOnline: true, isVROnline: false };

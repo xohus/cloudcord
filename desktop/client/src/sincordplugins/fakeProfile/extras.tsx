@@ -449,9 +449,9 @@ function regroupMemberList(guildId: string, props: any) {
 // Your own member-list row, built from the stores when Discord hasn't loaded it.
 function selfMemberRow(guildId: string, me: string) {
     try {
-        const member = GuildMemberStore.getMember(guildId, me);
+        const member = GuildMemberStore.getMember(guildId, me) ?? (GuildMemberStore as any).getSelfMember?.(guildId) ?? { roles: [], nick: null, avatar: null };
         const user = UserStore.getUser(me);
-        if (!member || !user) return null;
+        if (!user || !GuildStore.getGuild(guildId)) return null;
         const status = PresenceStore?.getStatus?.(me) ?? "online";
         return { ...member, type: "MEMBER", userId: me, user, status, activities: PresenceStore?.getActivities?.(me) ?? [], applicationStream: null, isOwner: GuildStore.getGuild(guildId)?.ownerId === me, isMobileOnline: false, isVROnline: false };
     } catch { return null; }
