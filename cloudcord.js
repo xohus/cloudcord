@@ -17551,9 +17551,14 @@
   }
   function selfMemberRow(guildId, me) {
     try {
-      var member = findByStoreName("GuildMemberStore")?.getMember?.(guildId, me);
+      var members = findByStoreName("GuildMemberStore");
+      var member = members?.getMember?.(guildId, me) ?? members?.getSelfMember?.(guildId) ?? {
+        roles: [],
+        nick: null,
+        avatar: null
+      };
       var user = findByStoreName("UserStore")?.getUser?.(me);
-      if (!member || !user)
+      if (!user || !findByStoreName("GuildStore")?.getGuild?.(guildId))
         return null;
       var presence = findByStoreName("PresenceStore");
       var status = presence?.getStatus?.(me) ?? "online";
