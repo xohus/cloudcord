@@ -2195,7 +2195,7 @@ jobs:
                   selected: ([, , flag, , customId]) => customId ? ids.includes(customId) : (Number(data.badgeFlags || 0) & Number(flag)) !== 0, oldName: data.oldName, replace: shouldReplaceSharedBadges(data),
                   order: Array.isArray(data.nativeBadgeOrder) ? data.nativeBadgeOrder : [], hidden: Array.isArray(data.nativeHiddenBadges) ? data.nativeHiddenBadges : [], activity: activityFromIds(ids), amounts: data.activityAmounts && typeof data.activityAmounts === "object" ? data.activityAmounts : {} };
           }
-          const shortDate = (date: Date) => date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
+          const shortDate = (date: Date) => date.toLocaleDateString("en-US", { day: "numeric", month: "numeric", year: "2-digit" });
           function addMonths(date: Date, months: number) { const next = new Date(date); next.setMonth(next.getMonth() + months); return next; }
           // Discord picks the Nitro tier from the "since" date, so a saved date only counts inside the chosen tier.
           function nitroSinceFor(months: number, saved?: string) {
