@@ -6636,8 +6636,13 @@
   function customPreviewURL(value) {
     if (typeof value !== "string" || value.length > 2048)
       return "";
+    var text = value.trim();
+    if (/^http:\/\//i.test(text))
+      text = `https://${text.slice(7)}`;
+    else if (!/^[a-z][a-z\d+.-]*:/i.test(text) && /^(?:www\.)?[a-z\d-]+(?:\.[a-z\d-]+)+(?:[/?#]|$)/i.test(text))
+      text = `https://${text}`;
     try {
-      var url2 = new URL(value);
+      var url2 = new URL(text);
       return url2.protocol === "https:" && !url2.username && !url2.password ? url2.href : "";
     } catch (e) {
       return "";
@@ -15013,15 +15018,31 @@
       }
       var effects = yield get("/user-profile-effects").catch(() => null);
       var products = shopProducts();
-      var categories = null;
-      if (!products.length)
-        categories = yield get("/collectibles-categories/v2").catch(() => get("/collectibles-categories"));
-      products = shopProducts();
-      var parsed = parseCatalog(products.length ? [
+      var parsed = parseCatalog([
         {
           products
         }
-      ] : categories, effects);
+      ], effects);
+      if (!parsed.decorations.length || !parsed.nameplates.length || !parsed.frames.length) {
+        try {
+          var _loop2 = function(key2) {
+            var seen = new Set(parsed[key2].map((item) => item.skuId));
+            parsed[key2].push(...remote[key2].filter((item) => !seen.has(item.skuId)));
+          };
+          var categories = yield get("/collectibles-categories/v2").catch(() => get("/collectibles-categories"));
+          var remote = parseCatalog(categories, effects);
+          for (var key of [
+            "decorations",
+            "nameplates",
+            "effects",
+            "frames"
+          ])
+            _loop2(key);
+        } catch (error) {
+          if (!parsed.decorations.length && !parsed.nameplates.length && !parsed.effects.length && !parsed.frames.length)
+            throw error;
+        }
+      }
       if (!parsed.nameplates.length && !parsed.effects.length && !parsed.decorations.length && !parsed.frames.length)
         throw new Error("Discord's shop didn't return any items. Open the Shop once, then try again.");
       if (generation !== collectiblesGeneration)
