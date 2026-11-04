@@ -10,7 +10,7 @@ assert.doesNotMatch(tooltip, /(?:radial|linear)-gradient/, 'the tooltip uses the
 assert.match(css, /\.cp-native-nitro-popout > img\s*\{[^}]*width:\s*64px;/);
 const dates = vm.createContext({ Date });
 vm.runInContext(esbuild.transformSync(profileSource.slice(profileSource.indexOf('function shortProfileDate('), profileSource.indexOf('function NativeProfileBadge(')), { loader: 'ts' }).code, dates);
-assert.equal(dates.shortProfileDate(new Date(2026, 3, 20)), '20/04/2026', 'subscriber date matches the reference format');
+assert.equal(dates.shortProfileDate(new Date(2026, 3, 20)), '4/20/26', 'subscriber date uses unpadded month/day and a short year');
 assert.match(css, /prefers-reduced-motion:\s*reduce/);
 assert.match(css, /background:\s*var\(--cp-badge-sparkle\)/);
 assert.match(profileSource, /sparkleColor=\{gift.light\}/, 'gift sparkles use the selected gifting tier color');

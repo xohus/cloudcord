@@ -412,7 +412,7 @@ function isLightProfileColor(value: number | undefined): boolean {
 }
 
 function shortProfileDate(date: Date): string {
-    return date.toLocaleDateString("en-GB", { month: "2-digit", day: "2-digit", year: "numeric" });
+    return date.toLocaleDateString("en-US", { month: "numeric", day: "numeric", year: "2-digit" });
 }
 
 
@@ -1337,6 +1337,9 @@ const textRewriter = new class {
 
     private rewrite(node: Text) {
         if (!isEnabled || !node.nodeValue) return;
+        // Discord owns the text and selection in Slate, search and form editors.
+        // Mutating their DOM bypasses editor state and can trap the caret/backspace.
+        if (node.parentElement?.closest('[contenteditable]:not([contenteditable="false"]), [role="textbox"], input, textarea, select, script, style, code, pre')) return;
         const source = this.originals.get(node) ?? node.nodeValue;
         const swaps: [string, string | undefined][] = [
             [_realUsername, storedData.username],
