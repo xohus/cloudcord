@@ -50,6 +50,13 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest :app:assembleDebug --stacktrace
+      - name: Verify persistent signing certificate
+        run: |
+          set -euo pipefail
+          apk="$(find android-manager-test/app/build/outputs/apk/debug -name '*.apk' -type f | head -n 1)"
+          signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          "$signer" verify --verbose --print-certs "$apk" | tee "$RUNNER_TEMP/manager-signature.txt"
+          grep -Fq 'Signer #1 certificate SHA-256 digest: 6838080fe39db6c2506b8cc25bd8f488be2cf45f62a52766d334f0fe908666e7' "$RUNNER_TEMP/manager-signature.txt"
       - name: Upload regression test results
         if: always()
         uses: actions/upload-artifact@v4

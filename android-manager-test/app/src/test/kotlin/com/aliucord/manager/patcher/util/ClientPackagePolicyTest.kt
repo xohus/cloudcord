@@ -5,7 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ClientPackagePolicyTest {
-    private val manager = "gg.xohus.cloudcord.manager.test2"
+    private val manager = "gg.xohus.cloudcord.manager.preview"
 
     @Test fun allowsIndependentClientInstances() {
         for (name in listOf("gg.xohus.cloudcord.client.test", "gg.xohus.cloudcord.client.second", "my.custom.discordclient")) {
