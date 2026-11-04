@@ -21321,7 +21321,7 @@
                 /* @__PURE__ */ jsx(K2.Divider, {}),
                 /* @__PURE__ */ jsxs(K2.Section, {
                   title: "Profile effect",
-                  description: "An animated effect that plays over your profile card.",
+                  description: "An animated effect that plays over your profile card. Discord's Reduced Motion setting stops its animation.",
                   children: [
                     /* @__PURE__ */ jsx(K2.CurrentRow, {
                       label: preview.profileEffect ? catalog?.effects.find((item) => item.skuId === preview.profileEffect?.skuId)?.title || "Profile effect" : null,
