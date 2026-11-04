@@ -22,19 +22,19 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        // Keep the earlier tester Manager installed; its CI signing key is different.
-        applicationId = "gg.xohus.cloudcord.manager.test2"
+        // A permanent identity for the persistently signed Manager. Old testers stay installed.
+        applicationId = "gg.xohus.cloudcord.manager.preview"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1012
+        versionCode = 1013
         // InstallMetadata uses the upstream numeric-only SemVer serializer.
-        versionName = "v1.0.3"
+        versionName = "v1.0.4"
 
         vectorDrawables {
             useSupportLibrary = true
         }
 
-        buildConfigField("String", "APPLICATION_NAME", "\"CloudCord Manager Test 2\"")
+        buildConfigField("String", "APPLICATION_NAME", "\"CloudCord Manager\"")
         buildConfigField("String", "TAG", "\"CloudCordManagerTest\"")
 
         buildConfigField("String", "CODEBERG_ORG", "\"raincord\"")
@@ -52,6 +52,7 @@ android {
 
     signingConfigs {
         create("release") {
+            storeType = "PKCS12"
             enableV1Signing = true
             enableV2Signing = true
             enableV3Signing = true
@@ -69,6 +70,10 @@ android {
 
         if (isRelease && !hasReleaseSigning)
             error("Missing keystore in a release workflow!")
+
+        debug {
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
+        }
 
         release {
             isMinifyEnabled = true

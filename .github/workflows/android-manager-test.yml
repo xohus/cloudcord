@@ -1,4 +1,4 @@
-name: CloudCord experimental Manager
+name: CloudCord Manager Preview
 # Isolated tester build; never publishes over the production Android release.
 on:
   push:
@@ -17,6 +17,20 @@ jobs:
           distribution: temurin
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Restore persistent Manager signing identity
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CLOUDCORD_MANAGER_KEYSTORE }}
+        run: |
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          value = os.environ.get("KEYSTORE_BASE64", "")
+          if not value:
+              raise SystemExit("Persistent Manager signing key is missing; refusing to publish with a random debug key")
+          target = Path(os.environ["RUNNER_TEMP"]) / "cloudcord-manager.p12"
+          target.write_bytes(base64.b64decode(value, validate=True))
+          target.chmod(0o600)
+          PY
       - name: Prepare CloudCord branding and pinned module
         run: |
           node android-manager-test/prepare-cloudcord.cjs
@@ -28,6 +42,11 @@ jobs:
           unzip -l android-manager-test/app/src/main/assets/cloudcord-module.apk | grep assets/xposed_init
       - name: Build experimental Manager
         working-directory: android-manager-test
+        env:
+          SIGNING_STORE_FILE: ${{ runner.temp }}/cloudcord-manager.p12
+          SIGNING_STORE_PASSWORD: ${{ secrets.CLOUDCORD_MANAGER_KEY_PASSWORD }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.CLOUDCORD_MANAGER_KEY_PASSWORD }}
+          SIGNING_KEY_ALIAS: cloudcord-manager
         run: |
           chmod +x gradlew
           ./gradlew :app:testDebugUnitTest :app:assembleDebug --stacktrace

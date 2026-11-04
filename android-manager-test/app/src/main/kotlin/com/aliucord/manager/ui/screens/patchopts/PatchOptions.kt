@@ -116,8 +116,8 @@ data class PatchOptions(
 
     companion object {
         val Default = PatchOptions(
-            appName = "CloudCord Test",
-            packageName = "gg.xohus.cloudcord.client.test",
+            appName = "CloudCord",
+            packageName = "gg.xohus.cloudcord.client.preview",
             debuggable = false,
             iconReplacement = IconReplacement.CustomColor(IconReplacement.RainColor),
             customVersionCode = "",
