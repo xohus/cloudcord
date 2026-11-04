@@ -22907,10 +22907,10 @@
         20,
         21
       ]);
-      shortDate = (date) => date.toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric"
+      shortDate = (date) => date.toLocaleDateString("en-US", {
+        day: "numeric",
+        month: "numeric",
+        year: "2-digit"
       });
       ACTIVITY_BADGES = [
         {
