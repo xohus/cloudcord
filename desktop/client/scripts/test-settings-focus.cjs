@@ -30,6 +30,7 @@ dialog.props.onKeyDown({ key: 'a', preventDefault() { prevented = true; } });
 assert.equal(prevented, false, 'typing must not be prevented');
 dialog.props.onKeyDown({ key: 'Process', isComposing: true, preventDefault() { prevented = true; } });
 assert.equal(prevented, false, 'IME input must not be prevented');
-const botcord = fs.readFileSync('src/components/settings/tabs/botcord/index.tsx', 'utf8');
+const botcordDir = 'src/components/settings/tabs/botcord';
+const botcord = fs.readdirSync(botcordDir).filter(file => file.endsWith('.tsx')).map(file => fs.readFileSync(`${botcordDir}/${file}`, 'utf8')).join('\n');
 assert.ok(botcord.includes('typeof DiscordNative === "undefined"'));
 console.log('PASS: modal focus-scope wiring and ordinary/IME key handling; live Discord typing still requires verification');

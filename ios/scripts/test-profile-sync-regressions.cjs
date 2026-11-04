@@ -6,7 +6,7 @@ const mobile = workflow.split("cat > src/core/ui/settings/pages/FakeProfile/inde
 const compile = text => esbuild.transformSync(text, { loader: 'ts' }).code;
 const runtime = { profileRuntimeActive: true, profileRuntimeGeneration: 1 };
 function testContext(values) {
-    const context = vm.createContext(values);
+    const context = vm.createContext({ invalidateOwnUser() {}, storeAllProfiles() {}, mirrorActiveProfile() {}, mirrorAllProfiles() {}, STORE_KEYS: { legacyProfile: "customProfile_data", legacyEnabled: "customProfile_enabled", profiles: "customProfile_allData", enabled: "customProfile_allEnabled" }, ...values });
     context.fetchProfileResponse = (...args) => context.fetch(...args);
     return context;
 }
@@ -71,9 +71,11 @@ const identity = testContext({ ...runtime, otherUserCache: new WeakMap(), native
     viewedSharedProfile: () => sharedIdentity,
     isRealProfileView: () => false, isMe: () => false,
     cachedOriginalUser: null, cachedFakeUser: null, cachedDataHash: -1, _dataVersion: 0, _trueOriginalUser: null,
+    ownUserCache: null, ownRealUser: null, profileVersion: 0, profileRuntimeActive: true,
     GIFT_LEVELS: [], Date, Object, Reflect });
 vm.runInContext(compile(block(desktop, 'function hasFakeBadges(', '// Last profile pulled')
     + block(desktop, 'function decorateSharedIdentity(', 'function decorateSharedProfile(')
+    + block(desktop, 'function disguiseUser(', 'function signedInAccounts(')
     + 'const plugin = {' + block(desktop, '    fakeCurrentUser(', '    getActiveProfileColors(') + '}; this.ownUser = plugin.fakeCurrentUser; this.otherUser = plugin.fakeOtherUser;'), identity);
 for (const [decorate, mine] of [[identity.ownUser, true], [identity.otherUser, false], [value => identity.decorateSharedIdentity(value, { username: 'shared' }), false]]) {
     identity.isMe = () => mine;
@@ -130,19 +132,20 @@ assert.equal(hiddenIdentity.flags, accountFlags);
 assert.equal(hiddenIdentity.publicFlags, nativeUser.publicFlags);
 assert.equal(hiddenIdentity.premiumType, nativeUser.premiumType, 'hidden cosmetic badges cannot generate a fake native Nitro badge');
 
-const pull = block(desktop, 'async function pullOwnSharedProfile(', 'function requestSharedProfile(');
+const pull = block(desktop, 'function stableJson(', 'function requestSharedProfile(');
 let resolveResponse;
 let activeId = '123456789012345';
 let payload = { bio: 'remote', syncRevision: 3 };
-let writes = 0;
+let writes = 0, queuedUploads = 0, responseStatus = 200;
 const host = testContext({ ...runtime, storedData: { bio: 'local', syncRevision: 2, hideOtherProfiles: true }, isEnabled: true,
-    activeUserId: () => activeId, profileEditorOpen: false, suppressOwnPullUntil: 0, Date, JSON,
+    activeUserId: () => activeId, profileEditorOpen: false, suppressOwnPullUntil: 0, Date, JSON, Object,
+    profileRuntimeActive: true, profileRuntimeGeneration: 0, publishTimer: null, publishSharedProfile: {}, lastRemoteProfile: null,
+    queueSharedPublish: () => queuedUploads++, logger: { warn() {} },
     SHARED_PROFILE_API: 'https://example.test', LOCAL_ONLY_FIELDS: ['hideOtherProfiles', 'nativeEditorImages'],
-    fetch: () => new Promise(resolve => { resolveResponse = () => resolve({ ok: true, json: async () => ({ profile: payload }) }); }),
+    fetch: () => new Promise(resolve => { resolveResponse = () => resolve({ ok: responseStatus === 200, status: responseStatus, json: async () => ({ profile: payload }) }); }),
     fromSharedProfile: value => ({ ...value }), allAccountsData: {}, allAccountsEnabled: {},
-    saveDataSync: () => writes++, saveAllDataSync() {}, DataStore: { set: async () => {} },
-    DS_ALL_DATA: 'allData', DS_ALL_ENABLED: 'allEnabled',
-    cachedFakeUser: null, cachedOriginalUser: null, _dataVersion: 0, forceAccountPanelRerender() {}
+    DataStore: { set: async key => { if (key === 'customProfile_allData') writes++; } },
+    invalidateOwnUser() {}, forceAccountPanelRerender() {}
 });
 vm.runInContext(compile(pull), host);
 const nativeSave = testContext({ storedData: { syncRevision: Date.now() + 600000 }, isEnabled: true,
@@ -178,6 +181,7 @@ assert.equal(nativeSave.storedData.syncRevision, undefined, 'device-only saves n
         allAccountsData: { owner: { nitro: true }, other: untouched }, allAccountsEnabled: { owner: true, other: true },
         publishTimer: 123, clearTimeout: () => canceledTimers++, saveDataSync() {}, saveAllDataSync() {},
         DataStore: { set: async (key, value) => resetStorage.set(key, value) }, DS_KEY: 'profile', DS_ENABLED: 'enabled', DS_ALL_DATA: 'accounts', DS_ALL_ENABLED: 'accountEnabled',
+        STORE_KEYS: { legacyProfile: 'profile', legacyEnabled: 'enabled', profiles: 'accounts', enabled: 'accountEnabled' },
         cachedFakeUser: {}, cachedOriginalUser: {}, _trueOriginalUser: {}, _dataVersion: 0, forceAccountPanelRerender() {},
         fetch: async () => { resetFetches++; return { ok: true }; } });
     vm.runInContext(compile(block(desktop, 'function resetProfileAccount(', 'const isImageUri')
@@ -237,17 +241,25 @@ assert.equal(nativeSave.storedData.syncRevision, undefined, 'device-only saves n
     let pending = host.pullOwnSharedProfile();
     host.storedData = { bio: 'edited during request', syncRevision: 4 };
     resolveResponse(); await pending;
-    assert.equal(host.storedData.bio, 'edited during request');
+    assert.equal(host.storedData.bio, 'edited during request', 'an edit made while the request is in flight is kept');
     assert.equal(writes, 0);
     host.storedData = { bio: 'local', syncRevision: 2, hideOtherProfiles: true };
     pending = host.pullOwnSharedProfile(); resolveResponse(); await pending;
-    assert.equal(host.storedData.bio, 'remote');
-    assert.equal(host.storedData.hideOtherProfiles, true);
+    assert.equal(host.storedData.bio, 'remote', 'a strictly newer server revision replaces the local copy');
+    assert.equal(host.storedData.hideOtherProfiles, true, 'device-only settings survive a pull');
+    assert.equal(writes, 1);
     pending = host.pullOwnSharedProfile(); resolveResponse(); await pending;
-    assert.equal(writes, 1, 'identical remote state must not rerender every poll');
+    assert.equal(writes, 1, 'identical remote state must not rewrite or rerender every poll');
+    assert.equal(queuedUploads, 0);
+    host.storedData = { bio: 'edited here, not uploaded yet', syncRevision: 3, hideOtherProfiles: true };
+    pending = host.pullOwnSharedProfile(); resolveResponse(); await pending;
+    assert.equal(host.storedData.bio, 'edited here, not uploaded yet', 'a same-revision server copy never reverts a local edit');
+    assert.equal(queuedUploads, 1, 'the local edit is uploaded instead');
+    assert.equal(writes, 1);
     payload = { bio: 'old', syncRevision: 1 };
     pending = host.pullOwnSharedProfile(); resolveResponse(); await pending;
-    assert.equal(host.storedData.bio, 'remote');
+    assert.equal(host.storedData.bio, 'edited here, not uploaded yet', 'an older server revision is ignored');
+    payload = { bio: 'newer', syncRevision: 9 };
     pending = host.pullOwnSharedProfile(); activeId = '999999999999999'; resolveResponse(); await pending;
     assert.equal(writes, 1, 'account switches discard in-flight responses');
     activeId = '123456789012345';
@@ -255,6 +267,23 @@ assert.equal(nativeSave.storedData.syncRevision, undefined, 'device-only saves n
     host.profileRuntimeGeneration += 2;
     resolveResponse(); await pending;
     assert.equal(writes, 1, 'a quick disable/re-enable rejects responses from the previous runtime');
+    let fetched = false;
+    host.fetch = async () => { fetched = true; return { ok: true, status: 200, json: async () => ({ profile: payload }) }; };
+    host.publishTimer = 1;
+    await host.pullOwnSharedProfile();
+    host.publishTimer = null;
+    host.publishSharedProfile.pending = Promise.resolve();
+    await host.pullOwnSharedProfile();
+    delete host.publishSharedProfile.pending;
+    assert.equal(fetched, false, 'no pull while a local edit is waiting to upload or uploading');
+    host.storedData = { bio: 'local only', syncRevision: 1, localOnly: true };
+    await host.pullOwnSharedProfile();
+    assert.equal(fetched, false, 'local-only profiles never pull from the server');
+    host.storedData = { bio: 'never uploaded', syncRevision: 1 };
+    host.fetch = async () => ({ ok: false, status: 404, json: async () => ({}) });
+    await host.pullOwnSharedProfile();
+    assert.equal(queuedUploads, 2, 'a profile with no server copy yet is uploaded automatically');
+    assert.equal(writes, 1);
     assert(mobile.includes('replaceRealBadges: snapshot.replaceBadges === true'));
     let published;
     const publisher = testContext({ ...runtime, activeUserId: () => 'owner', isEnabled: true,

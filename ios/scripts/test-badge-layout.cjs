@@ -85,7 +85,7 @@ assert.match(mobile, /return applyBadgeLayout\(next,/);
 const css = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/style.css', 'utf8');
 assert.match(css, /\.cp-badge-layout-label\s*\{\s*color: var\(--text-normal/);
 assert.match(css, /\.cp-badges\s*\{[^}]*margin-bottom: 10px;/);
-assert.match(css, /\.cp-section-label\s*\{[^}]*margin-top: 14px;/);
+assert.match(css, /\.cp-section-label\s*\{[^}]*margin-(top|block): 14px/);
 for (const source of [desktop, mobile]) {
     assert.ok(source.includes('Golden Bug Hunter'));
     assert.ok(!source.includes('Bug Hunter Lvl 1'));
@@ -133,7 +133,7 @@ assert.match(mobile, /accessibilityLabel=\{direction === -1 \? "Move badge up"/)
 (async () => {
     const saved = new Map();
     const publishHost = vm.createContext({
-        profileRuntimeActive: true, profileRuntimeGeneration: 1,
+        profileRuntimeActive: true, profileRuntimeGeneration: 1, mirrorAllProfiles() {}, mirrorActiveProfile() {},
         activeUserId: () => 'owner', isEnabled: true, storedData: {}, allAccountsData: {}, lastRemoteProfile: null,
         SHARED_PROFILE_API: 'https://example.test', LS_SHARE: 'share',
         saveDataSync() {}, saveAllDataSync() {}, toSharedProfile: data => data, remoteOnlyFields: () => ({}),
