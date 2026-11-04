@@ -7590,6 +7590,65 @@
     }
   });
 
+  // src/lib/api/localRelationshipActions.ts
+  function installLocalRelationshipActions(rest, isLocal, dismiss) {
+    var _loop2 = function(method2) {
+      try {
+        var original = rest?.[method2];
+        if (typeof original !== "function")
+          return "continue";
+        var replacement = function replacement2(...args) {
+          var id = String(args[0]?.url || "").match(/^\/users\/@me\/relationships\/(\d{17,20})\/?(?:\?.*)?$/)?.[1];
+          if (!active || !id || !isLocal(id))
+            return original.apply(this, args);
+          if (method2 === "put")
+            return Promise.reject(new Error("This is a device-only preview, not a real friend request. Remove it with Ignore."));
+          dismiss(id);
+          return Promise.resolve({
+            ok: true,
+            status: 204,
+            body: null
+          });
+        };
+        rest[method2] = replacement;
+        if (rest[method2] !== replacement)
+          return "continue";
+        installed++;
+        cleanups.push(() => {
+          if (rest[method2] === replacement)
+            rest[method2] = original;
+        });
+      } catch (e) {
+      }
+    };
+    var active = true;
+    var cleanups = [];
+    var installed = 0;
+    for (var method of [
+      "put",
+      "del"
+    ])
+      _loop2(method);
+    var stop = () => {
+      active = false;
+      for (var cleanup of cleanups.reverse())
+        cleanup();
+    };
+    if (installed !== 2)
+      stop();
+    return {
+      ready: installed === 2,
+      stop
+    };
+  }
+  var init_localRelationshipActions = __esm({
+    "src/lib/api/localRelationshipActions.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+    }
+  });
+
   // src/core/vendetta/plugins.ts
   var plugins, pluginInstance, VdPluginManager;
   var init_plugins = __esm({
@@ -17166,6 +17225,8 @@
     return Array.isArray(list) ? list.filter((item) => item && /^\d{17,20}$/.test(item.id) && item.user) : [];
   }
   function showFakeRequest(item) {
+    if (!localRequestActions?.ready)
+      return;
     fakeRequestIds.add(item.id);
     FluxDispatcher.dispatch({
       type: "RELATIONSHIP_ADD",
@@ -17192,6 +17253,10 @@
   }
   function addFakeFriendRequest(input) {
     return _async_to_generator(function* () {
+      if (!localRequestActions?.ready) {
+        import_react_native20.Alert.alert("Fake friend request", "Local request previews are unavailable on this build.");
+        return false;
+      }
       var id = parseUserId(input);
       if (!id) {
         import_react_native20.Alert.alert("Fake friend request", "Paste a user ID, mention or profile link.");
@@ -18615,7 +18680,7 @@
         }),
         /* @__PURE__ */ jsxs(K2.Section, {
           title: "Fake friend request",
-          description: "Only you see it. Don't accept it: that sends them a real request.",
+          description: "Device-only preview. Accept is blocked; Ignore removes it without contacting Discord.",
           children: [
             /* @__PURE__ */ jsx(K2.Field, {
               label: "User ID, mention or profile link",
@@ -18749,6 +18814,21 @@
           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5e3);
         }
         ensurePatches();
+        localRequestActions?.stop();
+        localRequestActions = installLocalRelationshipActions(extrasHttp(), (id) => fakeRequestIds.has(id) && findByStoreName("RelationshipStore")?.getRelationshipType?.(id) === 3, (id) => {
+          fakeRequestIds.delete(id);
+          setExtras({
+            ...extrasState(),
+            fakeRequests: savedFakeRequests().filter((item) => item.id !== id)
+          });
+          FluxDispatcher.dispatch({
+            type: "RELATIONSHIP_REMOVE",
+            relationship: {
+              id,
+              type: 3
+            }
+          });
+        });
         try {
           installConnectionSettings({
             store: safeStore("ConnectedAccountsStore"),
@@ -18801,6 +18881,7 @@
         restoreLater();
         try {
           FluxDispatcher.subscribe("CONNECTION_OPEN", () => {
+            fakeRequestIds.clear();
             try {
               applyFakeNitro();
             } catch (e) {
@@ -22138,7 +22219,7 @@
       })
     });
   }
-  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, ownedNitroOverride, shopPaused, shopResumeTimer, resumeAfterShop, pauseForShop, rememberTheme, themeTimer, restoreKeptTheme, fakeNitroActive, currentUserNitroHooked, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, NamePreviewBoundary, SHARE_VISIBILITIES, shareLink, shareCodeFrom, TEMPLATE_CATEGORIES, countTemplateUse, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
+  var import_react6, import_react_native20, EXPERIMENTAL_BADGE_GROUPS, EVENT_BADGES, EXTRA_BADGES, BADGES, GIFT_LEVELS, CLOUDCORD_BADGE_ICON, CLOUDCORD_STAFF_ROLES, useBadgesModule2, useUserProfileModule, useDisplayProfileModule, badgeRenderProps, simpleSheets, openGiftingBadgeInfoActionSheet, LinearGradient, NITRO_DURATIONS, BOOST_DURATIONS, NITRO_ICONS, NITRO_LABELS, BOOST_ICONS, BOOST_ICON_BY_MONTHS, rootSettings, defaultPreview, preview, configReady, initPromise, realCordSyncTimer, realCordManagedPlugins, realCordConfigFingerprint, REALCORD_NITRO_MONTHS, diagnostics, initialized, currentUserId, realCurrentUser, userCache, profileCache, SHARED_PROFILE_API, sharedProfiles, sharedProfileFetchedAt, sharedRequests, publishTimer, sharedSyncTimer, fakeProfileEditorOpen, suppressOwnPullUntil, mediaSelections, REPLACE_BADGES_SYNC_ID, sharedProfileSeenAt, sharedRenderTimer, realProfileMenuConnected, checkingPrivacy, collectiblesCatalog, collectiblesRequest, collectiblesGeneration, decorationRequest, publishedBadges, publishedBadgeRequest, publishedBadgeFetchedAt, nativeBadgeRows, NATIVE_BADGE_IDS, DIRECTORY_BADGE_IDS, BOOST_MONTHS, DIRECTORY_ONLY_BADGES, shortDate, ACTIVITY_BADGES, ACTIVITY_ICON_HASHES, KNOWN_BADGE_INFO, nativeBadgeHooksInstalled, identityRefreshers, identityRenderers, socialRenderers, socialWrapperTypes, EXTRAS_KEY, NITRO_APP_ID, NITRO_SKU, NITRO_BASIC_SKU, GIFT_PLANS, GIFT_STYLES, fakeRequestIds, localRequestActions, ownedNitroOverride, shopPaused, shopResumeTimer, resumeAfterShop, pauseForShop, rememberTheme, themeTimer, restoreKeptTheme, fakeNitroActive, currentUserNitroHooked, giftHookInstalled, rawUser, guildOverlays, overlaySet, featureCache, boostHooksInstalled, orbHooked, fakeOrbCount, orbSearches, switcherHooked, switcherSearches, fakeMemberCache, listCache, ownerRowCache, countCache, hexNumber, visualRoleCache, visualRoleLists, roleHooksInstalled, leavingServers, NamePreviewBoundary, SHARE_VISIBILITIES, shareLink, shareCodeFrom, TEMPLATE_CATEGORIES, countTemplateUse, DISCORD_BADGE_FLAGS, PROFILE_COLORS;
   var init_FakeProfile = __esm({
     "src/core/ui/settings/pages/FakeProfile/index.tsx"() {
       "use strict";
@@ -22161,6 +22242,7 @@
       init_profileAppearance();
       init_profileIdentity();
       init_connectionSettings();
+      init_localRelationshipActions();
       init_settings();
       init_plugins4();
       init_metro();
