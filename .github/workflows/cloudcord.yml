@@ -1737,12 +1737,21 @@ jobs:
                       try { const fetcher = findByProps("fetchCollectiblesCategories") as any; await withTimeout(Promise.resolve(fetcher?.fetchCollectiblesCategories?.({ includeBundles: true })), 12000); } catch {}
                   }
                   const effects = await get("/user-profile-effects").catch(() => null);
-                  let products = shopProducts();
-                  let categories: any = null;
-                  // 2. Fall back to asking Discord directly.
-                  if (!products.length) categories = await get("/collectibles-categories/v2").catch(() => get("/collectibles-categories"));
-                  products = shopProducts();
-                  const parsed = parseCatalog(products.length ? [{ products }] : categories, effects);
+                  const products = shopProducts();
+                  const parsed = parseCatalog([{ products }], effects);
+                  // A shop store may contain just the last category visited.
+                  if (!parsed.decorations.length || !parsed.nameplates.length || !parsed.frames.length) {
+                      try {
+                          const categories = await get("/collectibles-categories/v2").catch(() => get("/collectibles-categories"));
+                          const remote = parseCatalog(categories, effects);
+                          for (const key of ["decorations", "nameplates", "effects", "frames"] as const) {
+                              const seen = new Set(parsed[key].map(item => item.skuId));
+                              (parsed[key] as any[]).push(...remote[key].filter(item => !seen.has(item.skuId)));
+                          }
+                      } catch (error) {
+                          if (!parsed.decorations.length && !parsed.nameplates.length && !parsed.effects.length && !parsed.frames.length) throw error;
+                      }
+                  }
                   if (!parsed.nameplates.length && !parsed.effects.length && !parsed.decorations.length && !parsed.frames.length) throw new Error("Discord's shop didn't return any items. Open the Shop once, then try again.");
                   if (generation !== collectiblesGeneration) throw new Error("This catalog load was superseded. Retry the current view.");
                   collectiblesCatalog = parsed;

@@ -53,9 +53,20 @@ export function loadCatalog(force = false): Promise<Catalog> {
         // Native stores can be unavailable during startup or after a Discord update.
         // Their failure must not prevent the independent REST fallback from loading.
         let parsed = await fromDiscordStore(effects).catch(() => null);
-        if (!parsed) {
-            const categories = await get("/collectibles-categories/v2").catch(() => get("/collectibles-categories"));
-            parsed = parseCatalog(categories, effects);
+        if (!parsed?.decorations.length || !parsed?.nameplates.length || !parsed?.frames.length) {
+            // Discord may have cached only the shop category last opened. A
+            // nonempty partial store must not hide every other product category.
+            try {
+                const categories = await get("/collectibles-categories/v2").catch(() => get("/collectibles-categories"));
+                const remote = parseCatalog(categories, effects);
+                if (!parsed) parsed = remote;
+                else for (const key of ["decorations", "nameplates", "effects", "frames"] as const) {
+                    const seen = new Set(parsed[key].map(item => item.skuId));
+                    (parsed[key] as any[]).push(...remote[key].filter(item => !seen.has(item.skuId)));
+                }
+            } catch (error) {
+                if (!parsed) throw error;
+            }
         }
         if (!parsed.decorations.length && !parsed.nameplates.length && !parsed.effects.length && !parsed.frames.length) throw new Error("Discord returned an empty catalog.");
         catalog = parsed;

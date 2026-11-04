@@ -9,7 +9,7 @@ assert.match(tooltip, /min-height:\s*150px;/);
 assert.doesNotMatch(tooltip, /(?:radial|linear)-gradient/, 'the tooltip uses the neutral Discord surface, not profile gradients');
 assert.match(css, /\.cp-native-nitro-popout > img\s*\{[^}]*width:\s*64px;/);
 const dates = vm.createContext({ Date });
-vm.runInContext(esbuild.transformSync(profileSource.slice(profileSource.indexOf('function shortProfileDate('), profileSource.indexOf('function NativeProfileBadge(')), { loader: 'ts' }).code, dates);
+vm.runInContext(esbuild.transformSync(profileSource.match(/function shortProfileDate\(date: Date\): string \{[\s\S]*?\n\}/)[0], { loader: 'ts' }).code, dates);
 assert.equal(dates.shortProfileDate(new Date(2026, 3, 20)), '4/20/26', 'subscriber date uses unpadded month/day and a short year');
 assert.match(css, /prefers-reduced-motion:\s*reduce/);
 assert.match(css, /background:\s*var\(--cp-badge-sparkle\)/);
