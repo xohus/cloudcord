@@ -1,6 +1,7 @@
 const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
+const esbuild = require('esbuild');
 const desktop = fs.readFileSync('desktop/client/src/sincordplugins/fakeProfile/index.tsx', 'utf8');
 const mobile = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
 for (const [source, flag] of [[desktop, 'storedData.localOnly'], [mobile, 'rootSettings.fakeProfileLocalOnly']]) {
@@ -13,7 +14,7 @@ for (const [source, flag] of [[desktop, 'storedData.localOnly'], [mobile, 'rootS
     assert(pullGuard && pullGuard.index < pull.search(/fetch(?:ProfileResponse)?\(/));
     const queue = source.slice(source.indexOf('function queueSharedPublish()'), source.indexOf('async function pullOwnSharedProfile('));
     let scheduled = 0;
-    vm.runInNewContext(queue.replace(/catch\(error => \{[\s\S]*?\}\)/, 'catch(() => {})') + '\nqueueSharedPublish();', {
+    vm.runInNewContext(esbuild.transformSync(queue.replace(/catch\(error => \{[\s\S]*?\}\)/, 'catch(() => {})') + '\nqueueSharedPublish();', { loader: 'ts' }).code, {
         storedData: { localOnly: true }, rootSettings: { fakeProfileLocalOnly: true },
         profileRuntimeActive: true,
         publishTimer: null, preview: { enabled: true }, clearTimeout() {},
