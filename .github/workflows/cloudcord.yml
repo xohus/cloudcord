@@ -11,6 +11,7 @@ concurrency:
     paths:
       - "ios/**"
       - "desktop/client/src/utils/profileAppearance.ts"
+      - "desktop/client/src/utils/connectionSettings.ts"
       - "cloudcord-favicon.png"
       - "assets/cloudcord-favicon.png"
       - "assets/cloudcord-logo.png"
