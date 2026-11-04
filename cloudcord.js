@@ -16905,12 +16905,14 @@
     connectIdentityRenderer();
     var bannerComposer = findByProps("getBanner", "getBannerColor") || findByProps("getBanner");
     addAfterPatch("getBanner", bannerComposer, (args, result) => {
-      var uri = mediaUri("bannerMedia");
       var id = args?.[0]?.displayProfile?.userId || args?.[0]?.userId;
-      if (!preview.enabled || !uri || !result || !id || !isCurrentUser(id))
+      if (!id)
+        return;
+      var uri = isCurrentUser(id) ? preview.enabled ? mediaUri("bannerMedia") : "" : getProfileOverride(id)?.banner;
+      if (!uri)
         return;
       return {
-        ...result,
+        ...result && typeof result === "object" ? result : {},
         bannerSrc: uri,
         source: {
           uri
