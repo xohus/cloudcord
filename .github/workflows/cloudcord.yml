@@ -4772,7 +4772,7 @@ jobs:
                                           noneLabel="No frame" noneSelected={!preview.profileFrame} onNone={() => update("profileFrame", null, true)} status={catalogStatus} onRetry={() => loadCatalog(true)} />
                                   </K.Section>
                                   <K.Divider />
-                                  <K.Section title="Profile effect" description="An animated effect that plays over your profile card.">
+                                  <K.Section title="Profile effect" description="An animated effect that plays over your profile card. Discord's Reduced Motion setting stops its animation.">
                                       <K.CurrentRow label={preview.profileEffect ? catalog?.effects.find(item => item.skuId === preview.profileEffect?.skuId)?.title || "Profile effect" : null} image={catalog?.effects.find(item => item.skuId === preview.profileEffect?.skuId)?.preview} onRemove={() => update("profileEffect", null, true)} />
                                       <K.ChoiceGrid SearchInput={TextInput} items={catalog?.effects || []} keyOf={item => item.skuId} labelOf={item => item.title} imageOf={item => item.preview}
                                           isSelected={item => item.skuId === preview.profileEffect?.skuId} onPick={item => update("profileEffect", { skuId: item.skuId }, true)}

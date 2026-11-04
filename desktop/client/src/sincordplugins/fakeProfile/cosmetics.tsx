@@ -313,7 +313,7 @@ export function ProfileEffectEditor({ data, set }: { data: ProfileAppearance; se
     const current = state.catalog?.effects.find(effect => effect.skuId === currentId);
     return <>
         <div className="cp-cos-section">
-            <p className="cp-cos-help">An animated effect that plays over your profile card.</p>
+            <p className="cp-cos-help">An animated effect that plays over your profile card. Discord's Reduced Motion setting stops its animation.</p>
             <Current label={currentId ? current?.title || "Profile effect" : null} image={current?.preview} onRemove={() => set("profileEffect", null)} />
             <CatalogState {...state} />
             {state.catalog && <PickerGrid items={state.catalog.effects} label="profile effects" keyOf={item => item.skuId} textOf={item => item.title}
