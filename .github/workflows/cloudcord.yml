@@ -141,6 +141,7 @@ jobs:
           cp "../ios/runtime/src/lib/addons/plugins/api.ts" "src/lib/addons/plugins/api.ts"
           cp "../ios/runtime/src/core/plugins/messagefix/index.ts" "src/core/plugins/messagefix/index.ts"
           cp "../desktop/client/src/utils/profileAppearance.ts" "src/lib/api/profileAppearance.ts"
+          cp "../desktop/client/src/utils/connectionSettings.ts" "src/lib/api/connectionSettings.ts"
           cp "../ios/runtime/src/lib/api/react/jsx.ts" "src/lib/api/react/jsx.ts"
           cp "../ios/runtime/src/lib/api/botcord.ts" "src/lib/api/botcord.ts"
           mkdir -p src/lib/api/native
@@ -380,6 +381,7 @@ jobs:
           import type { CustomFriendPreview, CustomConnectionPreview, ProfileAppearance } from "@lib/api/profileAppearance";
           function CustomSocialEditor(props: any) { const Component = require("@core/ui/settings/components/CustomSocial").CustomSocialEditor; return <Component {...props} />; }
           import { presentationIdentity, presentationName } from "@lib/api/profileIdentity";
+          import { installConnectionSettings } from "@lib/api/connectionSettings";
           import { settings } from "@lib/api/settings";
           import { disablePlugin, enablePlugin, installPlugin, isPluginEnabled, isPluginInstalled, registeredPlugins } from "@lib/addons/plugins";
           import { findByName, findByNameLazy, findByProps, findByStoreName } from "@metro";
@@ -3724,6 +3726,19 @@ jobs:
                           realCordSyncTimer = setInterval(pullRealCordConfiguration, 5000);
                       }
                       ensurePatches();
+                      try {
+                          installConnectionSettings({
+                              store: safeStore("ConnectedAccountsStore"), rest: extrasHttp(),
+                              ownId: () => String(currentUserId || ""),
+                              getData: () => preview.enabled ? preview : null,
+                              remove: id => {
+                                  rootSettings.fakeProfile = { ...preview, customConnections: preview.customConnections?.filter(entry => entry.id !== id), syncRevision: Date.now() };
+                                  bindSavedPreview(); clearCache(); refreshPreview(); queueSharedPublish();
+                                  suppressOwnPullUntil = Date.now() + 15_000;
+                              },
+                              explain: () => showToast("Edit this connection in CloudCord Profile settings."),
+                          });
+                      } catch {}
                       for (const step of [installGiftHook, installBoostHooks, applyFakeNitro]) { try { step(); } catch {} }
                       // One late retry for stores that load after startup. A miss scans every module on mobile, so no polling.
                       setTimeout(() => { for (const step of [installOrbHooks, installSwitcherHook]) { try { step(); } catch {} } }, 15000);

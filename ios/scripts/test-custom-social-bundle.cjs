@@ -14,6 +14,7 @@ for(const match of workflow.matchAll(/cp "\.\.\/ios\/runtime\/([^"]+)" "([^"]+)"
 }
 for(const match of workflow.matchAll(/          cat > (\S+) <<'TSX'\r?\n([\s\S]*?)\r?\n          TSX/g))virtual.set(canonical(path.join(runtime,match[1])),match[2].replace(/^          /gm,''));
 virtual.set(canonical(path.join(runtime,'src/lib/api/profileAppearance.ts')),fs.readFileSync(path.join(root,'desktop/client/src/utils/profileAppearance.ts'),'utf8'));
+virtual.set(canonical(path.join(runtime,'src/lib/api/connectionSettings.ts')),fs.readFileSync(path.join(root,'desktop/client/src/utils/connectionSettings.ts'),'utf8'));
 virtual.set(canonical(path.join(runtime,'src/assets/cloudcord-decorations.json')),fs.readFileSync(path.join(root,'ios/assets/cloudcord-decorations.json'),'utf8'));
 if(upstream){
     // The workflow adds this startup import/call in its Python patch stage,

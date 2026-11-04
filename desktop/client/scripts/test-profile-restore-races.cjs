@@ -7,7 +7,8 @@ async function scenario(change, legacy = false) {
     const old = { globalName: 'Old cached profile', syncRevision: 1 };
     const ctx = vm.createContext({ owner: 'account-a', profileRuntimeActive: true, profileRuntimeGeneration: 1,
         storedData: {}, isEnabled: false, allAccountsData: {}, allAccountsEnabled: {},
-        DS_ALL_DATA: 'all', DS_ALL_ENABLED: 'enabled-all', DS_KEY: 'own', DS_ENABLED: 'enabled',
+        STORE_KEYS: { profiles: 'all', enabled: 'enabled-all', legacyProfile: 'own', legacyEnabled: 'enabled' },
+        mirrorAllProfiles() {}, mirrorActiveProfile() {}, storeAllProfiles() { saves++; }, logger: { warn() {} },
         saveAllDataSync() { saves++; }, saveDataSync() { saves++; } });
     ctx.activeUserId = () => ctx.owner;
     ctx.AuthenticationStore = { getId: () => ctx.owner };

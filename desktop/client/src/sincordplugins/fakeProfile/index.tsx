@@ -17,6 +17,7 @@ import { ColorField, DiscordProfileCard, Grid2, ImageField, ProfilePreview, Sect
 import { Current, installPresenceHooks, installTagIconSwap, loadCatalog, NameplateEditor, PickerGrid, onCatalogLoaded, ProfileEffectEditor, profileEffectFor, ProfileFrameEditor, refreshPresence, StatusEditor, TagIconEditor, uninstallPresenceHooks, uninstallTagIconSwap } from "./cosmetics";
 import { popNotice, showNotice } from "@api/Notices";
 import { installNativeSocialHooks } from "@utils/nativeSocialHooks";
+import { installConnectionSettings } from "@utils/connectionSettings";
 import { appearanceOptions, availableServerTags, Catalog, customDiscordMediaURL, nameplateAssetURL, nativeCollectibles, customSocialValidationErrors, nativeSocialProfile, nativeProfileAppearance, normalizeProfileAppearance, ProfileAppearance } from "@utils/profileAppearance";
 import { findByCodeLazy, findByProps, findStoreLazy } from "@webpack";
 import { fetchProfileResponse } from "@utils/profileSyncNetwork";
@@ -2445,6 +2446,17 @@ export default definePlugin({
 
         await loadData();
         if (!profileRuntimeActive || generation !== profileRuntimeGeneration) return;
+        this._connectionSettings = installConnectionSettings({
+            store: findStoreLazy("ConnectedAccountsStore"), rest: RestAPI,
+            ownId: activeUserId,
+            getData: () => isEnabled ? storedData : null,
+            remove: id => {
+                saveOwnData({ ...storedData, customConnections: storedData.customConnections?.filter(entry => entry.id !== id) });
+                queueSharedPublish();
+                forceAccountPanelRerender();
+            },
+            explain: () => showToast("Edit this connection in CloudCord Profile settings.", Toasts.Type.MESSAGE),
+        });
         this._nativeSocial = installNativeSocialHooks({
             ownId: () => UserStore.getCurrentUser()?.id || "",
             ownData: () => isEnabled ? storedData : null,
@@ -2490,6 +2502,7 @@ export default definePlugin({
         uninstallPresenceHooks(); uninstallTagIconSwap(); this._catalogListener?.(); this._catalogListener = null;
         document.removeEventListener("click", this._socialClick, true);
         this._nativeSocial?.stop(); this._nativeSocial = null;
+        this._connectionSettings?.(); this._connectionSettings = null;
         window.removeEventListener("focus", refreshBadgesOnFocus);
         removeHeaderBarButton("profile-spoofer-btn"); removeContextMenuPatch("user-context", userContextMenuPatch); removeContextMenuPatch(["user-profile-actions", "user-profile-overflow-menu"], profileOverflowPatch);
         stopTemplatePreview();

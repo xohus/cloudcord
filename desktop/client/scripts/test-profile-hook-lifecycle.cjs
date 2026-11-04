@@ -16,7 +16,8 @@ const plugin = { fakeCurrentUser: user => { transforms++; return { ...user, user
 const ctx = vm.createContext({ profileRuntimeActive: true, profileRuntimeGeneration: 1, UserStore: users,
     otherUserCache: new WeakMap(), cachedFakeUser: null, cachedOriginalUser: null,
     Vencord: { Webpack: { findByProps: () => profiles } }, realGetUserProfile: null, realGetCurrentUser: null,
-    isEnabled: true, _dataVersion: 1, _realUsername: '', _realGlobalName: '', isMe: id => id === 'own',
+    isEnabled: true, profileVersion: 1, _realUsername: '', _realGlobalName: '', isMe: id => id === 'own',
+    invalidateOwnUser() {},
     resolveProfileUserId: id => id, requestSharedProfile() {}, viewedSharedProfile: () => ({ bio: 'shared-bio' }),
     decorateSharedProfile: (value, data) => ({ ...value, ...data }) });
 vm.runInContext(esbuild.transformSync(source.slice(source.indexOf('const profileStoreCleanups:'), source.indexOf('const isImageUri')), { loader: 'ts' }).code, ctx);

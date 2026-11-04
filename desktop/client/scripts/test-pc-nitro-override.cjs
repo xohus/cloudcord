@@ -13,29 +13,20 @@ vm.runInContext(esbuild.transformSync(profileSource.match(/function shortProfile
 assert.equal(dates.shortProfileDate(new Date(2026, 3, 20)), '4/20/26', 'subscriber date uses unpadded month/day and a short year');
 assert.match(css, /prefers-reduced-motion:\s*reduce/);
 assert.match(css, /background:\s*var\(--cp-badge-sparkle\)/);
-assert.match(profileSource, /sparkleColor=\{gift.light\}/, 'gift sparkles use the selected gifting tier color');
-assert.equal((profileSource.match(/component: NativeProfileBadge/g) || []).length, 2, 'only gifting and Early Supporter use custom cards');
 const nitroBadge = profileSource.slice(profileSource.indexOf('if (hasNitroFake) badges.push({'), profileSource.indexOf('if (gl >= 0 && gl < GIFT_LEVELS.length)', profileSource.indexOf('if (hasNitroFake) badges.push({')));
 assert.match(nitroBadge, /id: nativeNitroBadgeId\(nl\)/, 'Discord receives its native premium milestone ID');
 assert.match(nitroBadge, /link: "https:\/\/discord.com\/settings\/premium"/);
 assert.doesNotMatch(nitroBadge, /component:|NativeProfileBadge/, 'Nitro keeps Discord’s original overlay renderer');
 assert.doesNotMatch(profileSource, /function NativeNitroBadge\(/, 'the replacement Nitro card is removed');
-let cosmetic = { nitroLevel: 4, nitroSince: '2025-07-28', giftLevel: 0 };
-const cards = vm.createContext({ React: { createElement: (type, props) => ({ type, props }) },
-    isMe: id => id === 'own', storedData: cosmetic, viewedSharedProfile: () => cosmetic,
-    GIFT_LEVELS: [{ name: 'Legend', icon: 'gift.png' }], NativeBadgeCard() {}, NativeNitroBadge() {} });
-vm.runInContext(esbuild.transformSync(profileSource.slice(profileSource.indexOf('function NativeProfileBadge('), profileSource.indexOf('function NativeBadgeCard(')), { loader: 'tsx' }).code, cards);
-assert.equal(cards.NativeProfileBadge({ userId: 'own', id: 'sp_early' }).props.subtitle, 'A Nitro original');
-assert.equal(cards.NativeProfileBadge({ userId: 'other', id: 'sp_gifting' }).props.title, 'LEGEND');
-assert.equal(cards.NativeProfileBadge({ userId: 'other', id: 'premium' }), null, 'the custom card renderer does not intercept native Nitro');
-cards.viewedSharedProfile = () => null;
-assert.equal(cards.NativeProfileBadge({ userId: 'missing', id: 'premium' }), null, 'missing remote profiles cannot crash tooltip rendering');
+assert.doesNotMatch(profileSource, /component: NativeProfileBadge/, 'retired custom cards do not replace Discord overlays');
 let owner = 'account-a', emits = 0;
 let state = { premiumTypeActual: 0, premiumTypeOverride: 2 };
-const ctx = vm.createContext({ extras: { fakeNitro: false }, UserStore: { getCurrentUser: () => ({ id: owner }) },
+const users = new Map();
+const ctx = vm.createContext({ extras: { fakeNitro: false }, UserStore: { getCurrentUser: () => { if (!users.has(owner)) users.set(owner, { id: owner, premiumType: state.premiumTypeActual }); return users.get(owner); } },
+    restoreKeptTheme() {}, logger: { warn: (...args) => { throw args.at(-1); } },
     OverridePremiumTypeStore: { getState: () => state, emitChange: () => emits++ } });
 const helper = source.slice(source.indexOf('let ownedNitroOverride:'), source.indexOf('// ---- Fake gift link'));
-vm.runInContext(esbuild.transformSync(helper, { loader: 'ts' }).code, ctx);
+vm.runInContext(esbuild.transformSync(helper.replace(/^export /gm, ''), { loader: 'ts' }).code, ctx);
 ctx.applyFakeNitro();
 assert.equal(state.premiumTypeOverride, 2, 'an off switch cannot erase an unrelated existing override');
 assert.equal(emits, 0);
