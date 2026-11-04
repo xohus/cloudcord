@@ -137,7 +137,7 @@ class PatchOptionsModel(
         screenModelScope.debounce(100L, function = ::fetchPkgNameState)
 
     private suspend fun fetchPkgNameState() {
-        val state = if (packageName.length !in (3..150) || !PACKAGE_REGEX.matches(this.packageName)) {
+        val state = if (!com.aliucord.manager.patcher.util.ClientPackagePolicy.isAllowed(packageName, context.packageName)) {
             PackageNameState.Invalid
         } else {
             try {

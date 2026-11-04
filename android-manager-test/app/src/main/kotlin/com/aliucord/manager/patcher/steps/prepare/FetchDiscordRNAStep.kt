@@ -6,6 +6,8 @@ import com.aliucord.manager.patcher.StepRunner
 import com.aliucord.manager.patcher.steps.StepGroup
 import com.aliucord.manager.patcher.steps.base.Step
 import com.aliucord.manager.ui.screens.patchopts.PatchOptions
+import com.aliucord.manager.patcher.util.ClientPackagePolicy
+import dev.raincord.manager.BuildConfig
 import dev.raincord.manager.R
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
@@ -18,8 +20,8 @@ class FetchDiscordRNAStep(val options: PatchOptions) : Step(), KoinComponent {
     var targetVersion by Delegates.notNull<Int>()
         private set
     override suspend fun execute(container: StepRunner) {
-        check(options.packageName == "gg.xohus.cloudcord.client.test") {
-            "This test build only installs the separate CloudCord Test app. Existing Discord clients must not be replaced."
+        check(ClientPackagePolicy.isAllowed(options.packageName, BuildConfig.APPLICATION_ID)) {
+            "Choose a valid separate client package name. Official Discord and the Manager cannot be replaced."
         }
         targetVersion = if (options.isDevMode && options.customVersionCode.isNotBlank()) {
             options.customVersionCode.toInt()
