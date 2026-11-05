@@ -28859,6 +28859,7 @@
     var copySnapshot = () => {
       var snapshot2 = {
         cloudCord: debug.bunny.version,
+        runtimeRevision: globalThis.__CLOUDCORD_RUNTIME_REVISION__ ?? "unknown",
         discord: `${debug.discord.version} (${debug.discord.build})`,
         platform: debug.os,
         loader: debug.bunny.loader,
@@ -28888,6 +28889,7 @@
       try {
         var snapshot2 = {
           cloudCord: debug.bunny.version,
+          runtimeRevision: globalThis.__CLOUDCORD_RUNTIME_REVISION__ ?? "unknown",
           discord: `${debug.discord.version} (${debug.discord.build})`,
           platform: debug.os,
           bridgeless: globalThis.__CLOUDCORD_BRIDGELESS__ === true,
@@ -39978,6 +39980,7 @@
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "9b164a44a9ebfec4ac080278f872117687dd09e5";
   var rain = globalThis.__RAIN_LOADER__;
   if (rain && !globalThis.__CLOUDCORD_LOADER__) {
     globalThis.__CLOUDCORD_ORIGINAL_RAIN__ = true;
@@ -40056,6 +40059,7 @@
           "Failed to load CloudCord!\n",
           `Build Number: ${build}`,
           `CloudCord: ${"v1.4.3"}`,
+          `Runtime: ${String(globalThis.__CLOUDCORD_RUNTIME_REVISION__ ?? "unknown").slice(0, 12)}`,
           stack || e?.toString?.()
         ].join("\n");
         try {
