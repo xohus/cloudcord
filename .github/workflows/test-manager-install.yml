@@ -1,0 +1,61 @@
+name: Test published Manager installation
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        api: [28, 35]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CloudCordManager-test
+          run-id: 42087479720
+          github-token: ${{ github.token }}
+          path: preview
+      - name: Verify exact published APK
+        run: |
+          set -euo pipefail
+          apk="$(find preview -name '*.apk' -type f)"
+          cp "$apk" manager.apk
+          echo '9f79917f635377be32096576b4490298d7c292ccefda8159fd4199afb29231bf  manager.apk' | sha256sum --check
+          signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          "$signer" verify --verbose --print-certs manager.apk
+          "$(dirname "$signer")/zipalign" -c -P 16 -v 4 manager.apk > alignment.txt 2>&1 || true
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install, reinstall, and launch the published Manager
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api }}
+          arch: x86_64
+          target: google_apis
+          disable-animations: true
+          script: |
+            adb shell getprop ro.build.version.release | tee android-version.txt
+            adb install --no-streaming manager.apk 2>&1 | tee install.txt
+            grep -q '^Success' install.txt
+            adb install --no-streaming -r manager.apk 2>&1 | tee reinstall.txt
+            grep -q '^Success' reinstall.txt
+            adb shell am start -W -n com.getcloudcord.manager/com.aliucord.manager.MainActivity | tee launch.txt
+            sleep 10
+            adb logcat -d > logcat.txt
+            adb exec-out screencap -p > manager.png
+            adb shell pidof com.getcloudcord.manager | tee process.txt
+            test -s process.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Manager-install-android-${{ matrix.api }}
+          path: |
+            *.txt
+            manager.png
