@@ -106,3 +106,17 @@
 .vc-addon-footer {
     font-size: small;
 }
+
+@media (prefers-reduced-motion: reduce) {
+    .vc-addon-card {
+        transition: none;
+    }
+
+    .vc-addon-card:hover {
+        transform: none;
+    }
+
+    .vc-addon-title:hover {
+        animation: none;
+    }
+}

@@ -3,6 +3,63 @@
     --vc-donatebutton-secondary: #f7536fe5;
 }
 
+.cc-overview-hero {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: clamp(20px, 4vw, 32px);
+    margin-bottom: 28px;
+    border: 1px solid var(--background-modifier-accent);
+    border-radius: 20px;
+    background: linear-gradient(120deg, var(--background-secondary), var(--background-tertiary));
+    animation: cc-overview-enter 180ms ease-out;
+}
+
+.cc-overview-logo {
+    flex-shrink: 0;
+    padding: 10px;
+    background: #fff;
+    border-radius: 16px;
+    object-fit: contain;
+}
+
+.cc-overview-title {
+    margin: 0 0 4px;
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+}
+
+.cc-overview-tagline {
+    margin: 0;
+    color: var(--text-normal);
+    font-size: 16px;
+}
+
+.cc-overview-description {
+    margin: 8px 0 0;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
+@keyframes cc-overview-enter {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (width <= 600px) {
+    .cc-overview-hero {
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cc-overview-hero {
+        animation: none;
+    }
+}
+
 .vc-donatebutton {
     background-color: var(--background-base-low) !important;
     border-color: var(--vc-donatebutton) !important;

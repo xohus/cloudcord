@@ -24,6 +24,7 @@ import BadgeAPI from "@plugins/_api/badges";
 import { gitRemote } from "@shared/vencordUserAgent";
 import { DONOR_ROLE_ID, GUILD_ID, IS_WINDOWS, VC_DONOR_ROLE_ID, VC_GUILD_ID } from "@utils/constants";
 import { classNameFactory } from "@utils/css";
+import { CLOUDCORD_FAVICON } from "@utils/cloudCordAssets";
 import { Margins } from "@utils/margins";
 import { isAnyPluginDev } from "@utils/misc";
 import { relaunch } from "@utils/native";
@@ -171,9 +172,17 @@ function CloudCordSettings() {
 
     return (
         <SettingsTab>
+            <header className="cc-overview-hero">
+                <img className="cc-overview-logo" src={CLOUDCORD_FAVICON} alt="" width={64} height={64} />
+                <div>
+                    <Heading tag="h2" className="cc-overview-title">CloudCord</Heading>
+                    <Paragraph className="cc-overview-tagline">Your Discord, your way.</Paragraph>
+                    <Paragraph className="cc-overview-description">Your profile, add-ons and client settings, together.</Paragraph>
+                </div>
+            </header>
             <Heading className={Margins.top16}>Quick Actions</Heading>
             <Paragraph className={Margins.bottom16}>
-                Common actions you might want to perform. These shortcuts give you quick access to frequently used features without navigating through menus.
+                Pick up where you left off.
             </Paragraph>
 
             <QuickActionCard>
