@@ -104,8 +104,11 @@ class ReplaceIconStep : Step() {
         }
 
         runner.logger.i("Writing and compiling resources.arsc")
+        // A fresh Discord APK has no CloudCord mark yet, and deleting a missing entry throws.
+        // Only a cached APK patched by an earlier install already contains it.
+        val hasMark = ZipReader(baseApk).use { it.openEntry(markPath) != null }
         ZipWriter(baseApk, /* append = */ true).use {
-            it.deleteEntry(markPath)
+            if (hasMark) it.deleteEntry(markPath)
             it.writeEntry(markPath, markBytes)
             it.deleteEntry("resources.arsc")
             it.writeEntry("resources.arsc", arsc.toByteArray())
