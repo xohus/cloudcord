@@ -9,9 +9,14 @@ export interface CodeblockProps {
     children?: string;
 }
 
-const useStyles = createStyles({
+function codeFont() {
+    try { if (constants.Fonts?.CODE_NORMAL) return constants.Fonts.CODE_NORMAL; } catch {}
+    return Platform.OS === "ios" ? "Menlo" : "monospace";
+}
+
+const useStyles = createStyles(() => ({
     codeBlock: {
-        fontFamily: constants.Fonts.CODE_NORMAL,
+        fontFamily: codeFont(),
         fontSize: 12,
         textAlignVertical: "center",
         backgroundColor: semanticColors.CARD_BACKGROUND_DEFAULT,
@@ -21,7 +26,7 @@ const useStyles = createStyles({
         borderColor: semanticColors.BORDER_SUBTLE,
         padding: 10,
     },
-});
+}));
 
 // iOS doesn't support the selectable property on RN.Text...
 const InputBasedCodeblock = ({ style, children }: CodeblockProps) => <TextInput editable={false} multiline style={[useStyles().codeBlock, style && style]} value={children} />;

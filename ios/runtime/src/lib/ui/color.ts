@@ -1,30 +1,76 @@
-import { constants } from "@metro/common";
-import { findByProps, findByStoreNameLazy } from "@metro/wrappers";
-
-//! This module is only found on 165.0+, under the assumption that iOS 165.0 is the same as Android 165.0.
-//* In 167.1, most if not all traces of the old color modules were removed.
-//* In 168.6, Discord restructured EVERYTHING again. SemanticColor on this module no longer works when passed to a stylesheet. We must now use what you see below.
-//* In 173.10, Discord restructured a lot of the app. These changes included making the color module impossible to early-find.
-// ? To stop duplication, it is now exported in our theming code.
-// ? These comments are preserved for historical purposes.
-// const colorModule = findByPropsProxy("colors", "meta");
-
-const color = findByProps("SemanticColor");
-
-// ? SemanticColor and default.colors are effectively ThemeColorMap
-export const semanticColors = (color?.default?.colors ?? constants?.ThemeColorMap) as Record<string, any>;
-
-// ? RawColor and default.unsafe_rawColors are effectively Colors
-//* Note that constants.Colors does still appear to exist on newer versions despite Discord not internally using it - what the fuck?
-export const rawColors = (color?.default?.unsafe_rawColors ?? constants?.Colors) as Record<string, string>;
+import { findByStoreNameLazy } from "@metro/wrappers";
 
 const ThemeStore = findByStoreNameLazy("ThemeStore");
-const colorResolver = color.default.meta ??= color.default.internal;
+const fallbackSemantic: Record<string, string> = {
+    CARD_BACKGROUND_DEFAULT: "#1e1f22", CARD_SECONDARY_BG: "#1e1f22",
+    TEXT_DEFAULT: "#f2f3f5", TEXT_NORMAL: "#f2f3f5",
+    MOBILE_TEXT_HEADING_PRIMARY: "#f2f3f5", TEXT_MUTED: "#949ba4",
+    BORDER_SUBTLE: "#3f4147", INTERACTIVE_ICON_DEFAULT: "#b5bac1"
+};
+const fallbackRaw: Record<string, string> = { WHITE: "#ffffff", BLACK: "#000000" };
+let nativeColors: any;
+let legacyColors: any;
+let nextLookup = 0;
 
-export function isSemanticColor(sym: any): boolean {
-    return colorResolver.isSemanticColor(sym);
+function getColors() {
+    if (nativeColors || Date.now() < nextLookup) return;
+    // Error screens can import this before Discord's theme module is ready.
+    // Inspect only initialized exports; never force factories or cache a miss
+    // permanently. Bound repeated misses while the startup modules settle.
+    nextLookup = Date.now() + 250;
+    const registry = (globalThis as any).__CLOUDCORD_MODULE_VIEW__ ?? (globalThis as any).modules;
+    const entries = registry instanceof Map ? registry.values() : Object.values(registry ?? {});
+    for (const record of entries as Iterable<any>) {
+        if (!record?.isInitialized || record.hasError) continue;
+        try {
+            const root = record.publicModule?.exports;
+            for (const value of [root, root?.default]) {
+                if (!value || (typeof value !== "object" && typeof value !== "function")) continue;
+                if (value.colors && (value.unsafe_rawColors || value.meta || value.internal)) {
+                    nativeColors = value;
+                    return;
+                }
+                if (value.ThemeColorMap && value.Colors) legacyColors = value;
+            }
+        } catch { /* An unrelated lazy export must not prevent startup. */ }
+    }
 }
 
-export function resolveSemanticColor(sym: any, theme = ThemeStore.theme): string {
-    return colorResolver.resolveSemanticColor(theme, sym);
+function colorTable(kind: "semantic" | "raw") {
+    getColors();
+    return kind === "semantic"
+        ? nativeColors?.colors ?? legacyColors?.ThemeColorMap ?? fallbackSemantic
+        : nativeColors?.unsafe_rawColors ?? legacyColors?.Colors ?? fallbackRaw;
+}
+
+function liveColors(kind: "semantic" | "raw") {
+    return new Proxy({} as Record<string, any>, {
+        get: (_, key) => colorTable(kind)[key],
+        has: (_, key) => key in colorTable(kind),
+        ownKeys: () => Reflect.ownKeys(colorTable(kind)),
+        getOwnPropertyDescriptor: (_, key) => key in colorTable(kind)
+            ? { configurable: true, enumerable: true, value: colorTable(kind)[key] } : undefined
+    });
+}
+
+export const semanticColors = liveColors("semantic");
+export const rawColors = liveColors("raw") as Record<string, string>;
+
+function getResolver() {
+    getColors();
+    return nativeColors?.meta ?? nativeColors?.internal;
+}
+
+export function isSemanticColor(value: any): boolean {
+    const resolver = getResolver();
+    return typeof resolver?.isSemanticColor === "function" ? resolver.isSemanticColor(value) : false;
+}
+
+export function resolveSemanticColor(value: any, theme?: string): string | undefined {
+    const resolver = getResolver();
+    if (typeof resolver?.resolveSemanticColor !== "function") return typeof value === "string" ? value : undefined;
+    if (!theme) {
+        try { theme = ThemeStore.theme; } catch { /* ThemeStore may also load later. */ }
+    }
+    return resolver.resolveSemanticColor(theme ?? "dark", value);
 }

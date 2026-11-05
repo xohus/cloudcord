@@ -45,6 +45,7 @@ jobs:
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-metro-cache-recovery.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-mobile-startup-registry.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-metro-synthetic-exports.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-ui-color-startup.cjs
 
       - name: Check mobile render recursion
         run: |
@@ -173,6 +174,8 @@ jobs:
           cp "../ios/runtime/src/lib/ui/settings/patches/tabs.tsx" "src/lib/ui/settings/patches/tabs.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/panel.tsx" "src/lib/ui/settings/patches/panel.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/shared.tsx" "src/lib/ui/settings/patches/shared.tsx"
+          cp "../ios/runtime/src/lib/ui/color.ts" "src/lib/ui/color.ts"
+          cp "../ios/runtime/src/lib/ui/components/Codeblock.tsx" "src/lib/ui/components/Codeblock.tsx"
           mkdir -p src/lib/ui/components/wrappers
           cp "../ios/runtime/src/lib/ui/components/wrappers/AlertModal.tsx" "src/lib/ui/components/wrappers/AlertModal.tsx"
           cp "../ios/runtime/src/lib/api/native/loader.ts" "src/lib/api/native/loader.ts"
