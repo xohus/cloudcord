@@ -1,6 +1,12 @@
 @file:Suppress("UnstableApiUsage")
 
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 
 plugins {
@@ -16,6 +22,43 @@ val gitCurrentBranch = providers.execIgnoreCode("git", "symbolic-ref", "--quiet"
 val gitLatestCommit = providers.execIgnoreCode("git", "rev-parse", "--short", "HEAD")
 val gitHasLocalCommits = gitCurrentBranch?.let { providers.execIgnoreCode("git", "log", "origin/$gitCurrentBranch..HEAD").isNotEmpty() } ?: false
 val gitHasHasLocalChanges = providers.execIgnoreCode("git", "status", "-s").isNotEmpty()
+
+// LSPatch bundles an old apksig that silently reduces native alignment to 4 KiB.
+// Keep the upstream AAR untouched; supply the pinned Android SDK signing library instead.
+val prepareLspatch by tasks.registering {
+    val source = layout.projectDirectory.file("libs/lspatch.aar")
+    val target = layout.buildDirectory.file("prepared/lspatch.aar")
+    inputs.file(source)
+    outputs.file(target)
+    doLast {
+        val outputFile = target.get().asFile.apply { parentFile.mkdirs() }
+        ZipFile(source.asFile).use { aar ->
+            ZipOutputStream(outputFile.outputStream()).use { output ->
+                for (entry in aar.entries().asSequence()) {
+                    output.putNextEntry(ZipEntry(entry.name).apply { time = 0 })
+                    if (entry.name == "classes.jar") {
+                        val classes = ByteArrayOutputStream()
+                        ZipInputStream(aar.getInputStream(entry)).use { jar ->
+                            ZipOutputStream(classes).use { stripped ->
+                                while (true) {
+                                    val cls = jar.nextEntry ?: break
+                                    if (cls.name.startsWith("com/android/apksig/")) continue
+                                    stripped.putNextEntry(ZipEntry(cls.name).apply { time = 0 })
+                                    jar.copyTo(stripped)
+                                    stripped.closeEntry()
+                                }
+                            }
+                        }
+                        classes.writeTo(output)
+                    } else {
+                        aar.getInputStream(entry).use { it.copyTo(output) }
+                    }
+                    output.closeEntry()
+                }
+            }
+        }
+    }
+}
 
 android {
     namespace = "dev.raincord.manager"
@@ -181,7 +224,7 @@ dependencies {
     implementation(libs.bundles.ktor)
     implementation(libs.bundles.voyager)
 
-    implementation(files("libs/lspatch.aar"))
+    implementation(files(prepareLspatch))
 
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
@@ -209,9 +252,6 @@ configurations.all {
     exclude(group = "org.bouncycastle")
     exclude(group = "org.checkerframework", module = "checker-qual")
     exclude(group = "com.aliucord", module = "axml")
-
-    // Exclude apksig, as it's bundled in LSPatch
-    exclude(group = "com.android.tools.build", module = "apksig")
 
     // Exclude jcommander
     exclude(group = "com.beust", module = "jcommander")

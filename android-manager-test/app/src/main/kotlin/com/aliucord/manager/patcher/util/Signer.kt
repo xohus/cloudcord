@@ -87,6 +87,8 @@ object Signer : KoinComponent {
             .setV1SigningEnabled(false) // TODO: enable so api <24 devices can work, however zip-alignment breaks
             .setV2SigningEnabled(true)
             .setV3SigningEnabled(true)
+            .setAlignmentPreserved(false)
+            .setLibraryPageAlignmentBytes(16384)
             .setInputApk(apkFile)
             .setOutputApk(tmpApk)
             .build()

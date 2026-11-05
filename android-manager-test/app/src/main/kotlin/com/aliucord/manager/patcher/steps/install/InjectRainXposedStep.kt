@@ -83,7 +83,8 @@ class InjectRainXposedStep : Step() {
             val patched = File(tempDir, outputName).takeIf { it.isFile }
                 ?: tempDir.listFiles { file -> file.isFile && file.name.startsWith("$baseName-") && file.name.endsWith("-lspatched.apk") }?.singleOrNull()
                 ?: error("Missing patched APK for ${base.name}")
-            Signer.verifyApk(patched)
+            // Normalize the injector output with the same modern signer as the splits.
+            Signer.signApk(patched)
 
             // Configuration splits carry resources and libraries, not application
             // entry points. Sign them with the base key without embedding a loader.

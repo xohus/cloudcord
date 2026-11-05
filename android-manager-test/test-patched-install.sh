@@ -30,7 +30,7 @@ set -e
 signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
 for apk in pipeline-results/*.apk; do
   "$signer" verify --min-sdk-version 28 --verbose --print-certs "$apk" > "$apk.signature.txt"
-  "$(dirname "$signer")/zipalign" -c -P 16 -v 4 "$apk" > "$apk.alignment.txt" || true
+  "$(dirname "$signer")/zipalign" -c -P 16 -v 4 "$apk" > "$apk.alignment.txt"
   "$(dirname "$signer")/aapt" dump badging "$apk" > "$apk.package.txt"
 done
 test "$install_status" = 0
