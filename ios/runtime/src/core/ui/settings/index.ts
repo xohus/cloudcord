@@ -1,8 +1,6 @@
 import PupuIcon from "@assets/icons/cloudcord.png";
-import { Strings } from "@core/i18n";
 import { useProxy } from "@core/vendetta/storage";
 import { findAssetId } from "@lib/api/assets";
-import { isFontSupported, isThemeSupported } from "@lib/api/native/loader";
 import { settings } from "@lib/api/settings";
 import { registerSection } from "@ui/settings";
 import type { RowConfig } from "@ui/settings";
@@ -73,20 +71,6 @@ export default function initSettings() {
                 render: () => import("@core/ui/settings/pages/PluginBrowser")
             },
             {
-                key: "BUNNY_THEMES",
-                title: () => Strings.THEMES,
-                icon: safeAsset("PaintPaletteIcon", "ThemeIcon"),
-                render: () => import("@core/ui/settings/pages/Themes"),
-                usePredicate: () => isThemeSupported()
-            },
-            {
-                key: "BUNNY_FONTS",
-                title: () => Strings.FONTS,
-                icon: safeAsset("LettersIcon", "TextIcon"),
-                render: () => import("@core/ui/settings/pages/Fonts"),
-                usePredicate: () => isFontSupported()
-            },
-            {
                 key: "CLOUDCORD_DIAGNOSTICS",
                 title: () => "Diagnostics",
                 icon: safeAsset("WrenchIcon", "SettingsIcon"),
@@ -95,8 +79,7 @@ export default function initSettings() {
             }
         ];
 
-    // Themes and Fonts show as their own tabs wherever the loader supports them (Android).
-    const defaultOrder = ["CLOUDCORD", "BOTCORD", "FAKE_PROFILE", "BUNNY_PLUGINS", "BUNNY_THEMES", "BUNNY_FONTS", "CLOUDCORD_DIAGNOSTICS"];
+    const defaultOrder = ["CLOUDCORD", "BOTCORD", "FAKE_PROFILE", "BUNNY_PLUGINS", "CLOUDCORD_DIAGNOSTICS"];
     const configurableKeys = new Set(defaultOrder.filter(key => key !== "CLOUDCORD"));
     const configuredOrder = settings.cloudcordTabOrder ?? [];
     const orderIndex = new Map(configuredOrder.map((key, index) => [key, index]));

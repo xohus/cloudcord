@@ -8,12 +8,12 @@
 
 import { logger } from "@lib/utils/logger";
 import { FluxDispatcher } from "@metro/common";
-import moment from "moment";
+import { findByProps } from "@metro/wrappers";
 
 function onDispatch({ locale }: { locale: string; }) {
     // Timestamps
     try {
-        moment.locale(locale.toLowerCase());
+        findByProps("isMoment", "locale")?.locale(locale.toLowerCase());
     } catch (e) {
         logger.error("Failed to fix timestamps...", e);
     }
