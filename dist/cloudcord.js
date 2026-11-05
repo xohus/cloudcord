@@ -32340,11 +32340,23 @@
   }
   var { instead: instead3 } = require_cjs();
   globalThis.window = globalThis;
+  function isBridgeless() {
+    var runtime = globalThis;
+    if (runtime["RN$Bridgeless"] === true)
+      runtime.__CLOUDCORD_BRIDGELESS__ = true;
+    return runtime.__CLOUDCORD_BRIDGELESS__ === true;
+  }
   function initializeCloudCord() {
     return _async_to_generator(function* () {
       try {
-        if (!globalThis.__CLOUDCORD_BRIDGELESS__) {
+        if (!isBridgeless()) {
           Object.freeze = Object.seal = Object;
+        }
+        var registry = globalThis.modules ?? globalThis.__c?.();
+        if (registry instanceof Map) {
+          globalThis.__CLOUDCORD_MODULE_VIEW__ = Object.fromEntries(registry);
+        } else if (registry) {
+          globalThis.__CLOUDCORD_MODULE_VIEW__ = registry;
         }
         yield (init_caches(), __toCommonJS(caches_exports)).initMetroCache();
         var startup = (init_src(), __toCommonJS(src_exports)).default();
@@ -32456,10 +32468,13 @@
         set(v2) {
           _requireFunc = function patchedRequire(a) {
             if (a === 0) {
-              if (globalThis.modules instanceof Map)
-                globalThis.modules = Object.fromEntries(globalThis.modules);
-              onceIndexRequired(v2);
               _requireFunc = v2;
+              if (isBridgeless()) {
+                var result = v2(a);
+                setTimeout(() => void initializeCloudCord(), 0);
+                return result;
+              }
+              onceIndexRequired(v2);
             } else
               return v2(a);
           };
