@@ -11,8 +11,10 @@ function getNativeModule<T = any>(...names: string[]): T | undefined {
             } catch { /* The runtime may expose the module through the legacy proxy instead. */ }
         }
 
-        const module = nmp?.[name];
-        if (module) return module as T;
+        try {
+            const module = nmp?.[name];
+            if (module) return module as T;
+        } catch { /* Some iOS proxies throw for missing names; try the legacy alias. */ }
     }
 
     return undefined;

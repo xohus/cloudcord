@@ -1,5 +1,6 @@
 import { fileExists, readFile, writeFile } from "@lib/api/native/fs";
 import { NativeClientInfoModule } from "@lib/api/native/modules";
+import { withTimeout } from "@lib/utils/asyncTimeout";
 import { debounce } from "es-toolkit";
 
 import { ModuleFlags, ModulesMapInternal } from "./enums";
@@ -54,8 +55,11 @@ export async function initMetroCache() {
         const majorVersion = Number.parseInt(client?.Version ?? "", 10);
         preloadLegacyModules = !isBridgeless() && majorVersion > 0 && majorVersion < 344;
         canPersist = !!buildNumber && !isBridgeless();
-        if (canPersist && await fileExists(BUNNY_METRO_CACHE_PATH)) {
-            const cached = JSON.parse(await readFile(BUNNY_METRO_CACHE_PATH));
+        if (canPersist) {
+            const cached = await withTimeout((async () => {
+                if (!await fileExists(BUNNY_METRO_CACHE_PATH)) return undefined;
+                return JSON.parse(await readFile(BUNNY_METRO_CACHE_PATH));
+            })(), 1500, "Metro cache read timed out");
             if (cached?._v === CACHE_VERSION && cached._buildNumber === buildNumber &&
                 cached._modulesCount === Object.keys(getModuleView()).length &&
                 [cached.flagsIndex, cached.findIndex, cached.polyfillIndex].every(value =>

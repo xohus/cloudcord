@@ -1,9 +1,23 @@
 #import "../rain-original/CloudCordRuntimeCache.h"
+#import "../rain-original/CloudCordRuntimeUpdate.h"
 
 #define CHECK(condition, message) do { if (!(condition)) { NSLog(@"FAIL: %@", message); return 1; } } while (0)
 
 int main(void) {
     @autoreleasepool {
+        NSData *runtime = [[@"// CloudCord runtime\n" stringByPaddingToLength:600 withString:@" " startingAtIndex:0] dataUsingEncoding:NSUTF8StringEncoding];
+        NSMutableDictionary *manifest = [@{@"schema": @1, @"url": @"https://getcloudcord.com/api/proxy/raw/dist/cc.js?ref=abc",
+            @"size": @(runtime.length), @"sha256": CloudCordRuntimeHash(runtime)} mutableCopy];
+        CHECK(CloudCordVerifiedRuntime(runtime, manifest), @"verified runtime accepted");
+        CHECK(!CloudCordVerifiedRuntime([@"truncated" dataUsingEncoding:NSUTF8StringEncoding], manifest), @"truncated runtime rejected");
+        NSMutableData *wrong = [runtime mutableCopy];
+        ((char *)wrong.mutableBytes)[0] = 'x';
+        CHECK(!CloudCordVerifiedRuntime(wrong, manifest), @"wrong checksum rejected");
+        for (NSString *url in @[@"https://getcloudcord.com.evil.test/api/proxy/raw/dist/cc.js", @"http://getcloudcord.com/api/proxy/raw/dist/cc.js", @"https://getcloudcord.com/api/proxy/raw/other.js"]) {
+            manifest[@"url"] = url;
+            CHECK(!CloudCordValidRuntimeManifest(manifest), @"untrusted runtime location rejected");
+        }
+        CHECK(!CloudCordValidRuntimeManifest(@[]), @"invalid manifest rejected");
         NSFileManager *fm = NSFileManager.defaultManager;
         NSURL *root = [[NSURL fileURLWithPath:NSTemporaryDirectory() isDirectory:YES]
             URLByAppendingPathComponent:[@"cloudcord-cache-test-" stringByAppendingString:NSUUID.UUID.UUIDString]];

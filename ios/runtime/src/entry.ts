@@ -16,6 +16,13 @@ globalThis.window = globalThis;
 
 async function initializeCloudCord() {
     try {
+        // Rain can attach after Metro already exists, without setting window.modules.
+        // Prepare a private view for both early and late injection paths.
+        const registry = window.modules ?? window.__c?.();
+        if (!registry) throw new Error("Discord's module registry is not available yet");
+        (globalThis as any).__CLOUDCORD_MODULE_VIEW__ = registry instanceof Map
+            ? Object.fromEntries(registry) : { ...registry };
+
         // Legacy React Native needs mutable module exports before Discord
         // starts. On Discord 344+ this bundle is attached after startup;
         // replacing these globals then corrupts active account/navigation
@@ -39,8 +46,8 @@ async function initializeCloudCord() {
         // Reporting a startup failure must not itself import a failing native
         // module and create a second unhandled promise rejection.
         try {
-            const { ClientInfoManager } = require("@lib/api/native/modules");
-            build = String(ClientInfoManager?.getConstants?.()?.Build ?? build);
+            const { NativeClientInfoModule } = require("@lib/api/native/modules");
+            build = String(NativeClientInfoModule?.getConstants?.()?.Build ?? build);
         } catch {}
         const message = [
             "Failed to load CloudCord!\n",
@@ -152,9 +159,8 @@ if (typeof window.__r === "undefined") {
                 _requireFunc = function patchedRequire(a: number) {
                     // Initializing index.ts(x)
                     if (a === 0) {
-                        if (window.modules instanceof Map) window.modules = Object.fromEntries(window.modules);
-                        onceIndexRequired(v);
                         _requireFunc = v;
+                        onceIndexRequired(v);
                     } else return v(a);
                 };
             }

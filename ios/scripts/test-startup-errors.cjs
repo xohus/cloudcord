@@ -11,6 +11,7 @@ const initialize = source.slice(start, end).replaceAll('(globalThis as any)', 'g
         const messages = [];
         let started = false;
         const realm = vm.createContext({
+            window: { modules: { 0: { isInitialized: true } } },
             __CLOUDCORD_BRIDGELESS__: true, version: 'test',
             console: { log: (...args) => messages.push(args), error: (...args) => messages.push(args) },
             // Force the error reporter itself to fail too.

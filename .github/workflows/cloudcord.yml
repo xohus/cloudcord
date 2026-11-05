@@ -43,6 +43,7 @@ jobs:
           npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-theme-compatibility.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-metro-cache-recovery.cjs
+          CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-mobile-startup-registry.cjs
 
       - name: Check mobile render recursion
         run: |
@@ -5593,6 +5594,12 @@ jobs:
           cp dist/kettu.min.js ../dist/cc.js
           cp dist/kettu.min.js ../dist/cloudcord.min.js
 
+          # A bundled Moment must remain available even when Discord removes it.
+          grep -q 'node_modules/moment/moment.js' ../dist/cloudcord.js
+          if grep -Eq '"moment"[[:space:]]*:[[:space:]]*findByPropsLazy' shims/depsModule.ts; then
+            echo "Moment must not depend on Discord module discovery" >&2
+            exit 1
+          fi
           node --check ../dist/cc.js
           grep -q 'CloudSync' ../dist/cc.js
           grep -q 'BotCord' ../dist/cc.js

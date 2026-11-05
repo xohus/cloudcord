@@ -204,8 +204,8 @@ function onModuleRequire(moduleExports: any, id: Metro.ModuleID) {
     //
     if (moduleExports.findHostInstance_DEPRECATED) {
         const prevExports = metroModules[id - 1]?.publicModule.exports;
-        const inc = prevExports.default?.reactProfilingEnabled ? 1 : -1;
-        if (!metroModules[id + inc]?.isInitialized) {
+        const inc = prevExports?.default?.reactProfilingEnabled ? 1 : -1;
+        if (metroModules[id + inc] && !metroModules[id + inc]?.isInitialized) {
             blacklistModule(id + inc);
         }
     }
