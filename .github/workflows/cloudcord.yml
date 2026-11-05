@@ -39,6 +39,7 @@ jobs:
         run: |
           npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2 spitroast@1.4.4
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-startup-errors.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-startup-legacy-update.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-theme-compatibility.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-metro-cache-recovery.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-mobile-startup-registry.cjs
@@ -5380,11 +5381,8 @@ jobs:
                   '        ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName === "RealCord" ? Promise.resolve() : initSettings()),'
               )
 
-              if "await initLegacyRuntimeRefresh();" not in text:
-                  text = text.replace(
-                      "export default async () => {",
-                      "export default async () => {\n    await initLegacyRuntimeRefresh();"
-                  )
+              if "Promise.resolve().then(() => initLegacyRuntimeRefresh())" not in text:
+                  raise RuntimeError("CloudCord legacy update must run independently of settings startup")
               text = text.replace("        initLegacyRuntimeRefresh(),\n", "")
 
               core_marker = "// CloudCord core settings are registered before optional subsystems."

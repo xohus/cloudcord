@@ -27,7 +27,13 @@ export default async () => {
             lib.unload.push(require("@lib/api/native/runtimeUpdates").startAutoUpdates(prefs, updater));
         }).catch((error: unknown) => console.warn("CloudCord update check failed", error));
     }
-    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) await initLegacyRuntimeRefresh();
+    // Updating an older loader must never hold settings registration hostage
+    // to native storage or the reload bridge. Defer even synchronous failures.
+    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+        void Promise.resolve().then(() => initLegacyRuntimeRefresh()).catch(error => {
+            console.warn("CloudCord legacy update check failed", error);
+        });
+    }
 
     // Load everything in parallel. The shared build workflow wraps core
     // settings separately and applies the version-specific fallbacks.
