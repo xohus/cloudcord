@@ -1,4 +1,4 @@
-import { getThemeFromLoader, selectTheme, themes } from "@lib/addons/themes";
+import { getCurrentTheme, getThemeFromLoader, selectTheme, themes } from "@lib/addons/themes";
 import { findAssetId } from "@lib/api/assets";
 import { getLoaderName, getLoaderVersion, isThemeSupported, getReactDevToolsProp, isReactDevToolsPreloaded } from "@lib/api/native/loader";
 import { BundleUpdaterManager, NativeClientInfoModule, NativeDeviceModule } from "@lib/api/native/modules";
@@ -33,11 +33,11 @@ export interface RNConstants extends PlatformConstants {
 export async function toggleSafeMode() {
     settings.safeMode = { ...settings.safeMode, enabled: !settings.safeMode?.enabled };
     if (isThemeSupported()) {
-        if (getThemeFromLoader()?.id) settings.safeMode!.currentThemeId = getThemeFromLoader()!.id;
         if (settings.safeMode?.enabled) {
+            settings.safeMode.currentThemeId = (getCurrentTheme() ?? getThemeFromLoader())?.id;
             await selectTheme(null);
         } else if (settings.safeMode?.currentThemeId) {
-            await selectTheme(themes[settings.safeMode?.currentThemeId]);
+            await selectTheme(themes[settings.safeMode.currentThemeId] ?? null);
         }
     }
     setTimeout(BundleUpdaterManager.reload, 400);

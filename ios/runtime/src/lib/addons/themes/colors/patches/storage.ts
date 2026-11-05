@@ -11,8 +11,8 @@ const mmkvStorage = proxyLazy(() => {
 });
 
 export default function patchStorage() {
-    // Keep Discord's persisted/native theme enum intact on Rain's 344 loader.
-    if ((globalThis as any).__RAIN_LOADER__) return () => {};
+    // CloudCord applies custom colors in the resolver and keeps Discord's native theme enum intact.
+    if ((globalThis as any).__CLOUDCORD_LOADER__ || (globalThis as any).__RAIN_LOADER__) return () => {};
     const patchedKeys = new Set(["ThemeStore", "SelectivelySyncedUserSettingsStore"]);
 
     const patches = [

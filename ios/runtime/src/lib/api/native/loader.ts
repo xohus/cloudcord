@@ -137,12 +137,12 @@ export function isLoaderConfigSupported() {
 }
 
 export function isThemeSupported() {
+    // CloudCord can apply JavaScript color overrides without native theme support.
+    if (isCloudCordLoader()) return true;
     if (isPyonLoader()) {
         return pyonLoaderIdentity.hasThemeSupport;
     } else if (isVendettaLoader()) {
         return vendettaLoaderIdentity!!.features.themes != null;
-    } else if (isRa1nLoader()) {
-        return false; // Ra1n has theme support disabled, this is here just to make sure it doesnt think it does
     }
 
     return false;

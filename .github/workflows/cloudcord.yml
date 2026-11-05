@@ -158,10 +158,12 @@ jobs:
           mkdir -p src/lib/ui/components/wrappers
           cp "../ios/runtime/src/lib/ui/components/wrappers/AlertModal.tsx" "src/lib/ui/components/wrappers/AlertModal.tsx"
           cp "../ios/runtime/src/lib/api/native/loader.ts" "src/lib/api/native/loader.ts"
+          cp "../ios/runtime/src/lib/api/debug.ts" "src/lib/api/debug.ts"
           cp "../ios/runtime/src/lib/api/native/fs.ts" "src/lib/api/native/fs.ts"
           cp "../ios/runtime/src/lib/api/native/modules/index.ts" "src/lib/api/native/modules/index.ts"
           cp "../ios/runtime/src/lib/api/native/runtimeUpdates.ts" "src/lib/api/native/runtimeUpdates.ts"
           cp "../ios/runtime/src/lib/addons/themes/colors/updater.ts" "src/lib/addons/themes/colors/updater.ts"
+          cp "../ios/runtime/src/lib/addons/themes/index.ts" "src/lib/addons/themes/index.ts"
           cp "../ios/runtime/src/lib/addons/themes/colors/patches/resolver.ts" "src/lib/addons/themes/colors/patches/resolver.ts"
           cp "../ios/runtime/src/lib/addons/themes/colors/patches/storage.ts" "src/lib/addons/themes/colors/patches/storage.ts"
           # Discord 344 safety lives in the runtime entry and Metro internals.

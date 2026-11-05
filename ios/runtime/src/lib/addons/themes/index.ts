@@ -75,7 +75,7 @@ function validateTheme(themeJSON: any): boolean {
     return themeJSON.spec === 2 || themeJSON.spec === 3;
 }
 
-export async function fetchTheme(url: string, selected = false) {
+export async function fetchTheme(url: string, selected?: boolean, refresh = false) {
     let themeJSON: any;
 
     try {
@@ -87,16 +87,17 @@ export async function fetchTheme(url: string, selected = false) {
     // Validate theme
     if (!validateTheme(themeJSON)) throw new Error(`Invalid theme at ${url}`);
 
-    themes[url] = {
+    const previous = themes[url];
+    if (refresh && !previous) return;
+    const wasSelected = refresh ? !!previous?.selected : selected ?? !!previous?.selected;
+    const theme = {
         id: url,
-        selected: selected,
+        selected: wasSelected,
         data: processData(themeJSON),
     };
+    themes[url] = theme;
 
-    if (selected) {
-        writeThemeToNative(themes[url]);
-        updateBunnyColor(themes[url].data, { update: true });
-    }
+    if (wasSelected) await selectTheme(theme);
 }
 
 export async function installTheme(url: string) {
@@ -129,8 +130,7 @@ export async function removeTheme(id: string) {
 
 export async function updateThemes() {
     await awaitStorage(themes);
-    const currentTheme = getThemeFromLoader();
-    await Promise.allSettled(Object.keys(themes).map(id => fetchTheme(id, currentTheme?.id === id)));
+    await Promise.allSettled(Object.keys(themes).map(id => fetchTheme(id, undefined, true)));
 }
 
 export function getCurrentTheme() {
@@ -149,16 +149,17 @@ export function getThemeFromLoader(): VdThemeInfo | null {
  */
 export async function initThemes() {
     if (!isThemeSupported()) return;
-    if (settings.safeMode?.enabled) return;
 
     try {
+        await awaitStorage(settings, themes);
+        if (settings.safeMode?.enabled) return;
         if (isPyonLoader()) {
             writeFile("../vendetta_theme.json", "null");
         }
 
         await newAwaitStorage(colorsPref);
 
-        const currentTheme = getThemeFromLoader();
+        const currentTheme = getCurrentTheme() ?? getThemeFromLoader();
         initColors(currentTheme?.data ?? null);
 
         updateThemes().catch(e => console.error("Failed to update themes", e));
