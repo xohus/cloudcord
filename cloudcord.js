@@ -388,6 +388,248 @@
     }
   });
 
+  // src/recoveryGesture.ts
+  var recoveryGesture_exports = {};
+  __export(recoveryGesture_exports, {
+    attachRecoveryGesture: () => attachRecoveryGesture,
+    createSwipeDetector: () => createSwipeDetector,
+    installRecoveryGesture: () => installRecoveryGesture
+  });
+  function createSwipeDetector(open, now = Date.now) {
+    var start;
+    var began = 0, fired = false, cooldown = 0;
+    return (event) => {
+      var touches = event?.nativeEvent?.touches;
+      if (!Array.isArray(touches))
+        return;
+      if (touches.length === 0) {
+        start = void 0;
+        fired = false;
+        return;
+      }
+      if (touches.length !== 3) {
+        start = void 0;
+        return;
+      }
+      if (fired || now() < cooldown)
+        return;
+      if (!touches.every((t) => Number.isFinite(t.identifier) && Number.isFinite(t.pageX) && Number.isFinite(t.pageY)))
+        return;
+      if (!start) {
+        start = new Map(touches.map((t) => [
+          t.identifier,
+          {
+            x: t.pageX,
+            y: t.pageY
+          }
+        ]));
+        began = now();
+        return;
+      }
+      if (now() - began > 1400) {
+        fired = true;
+        return;
+      }
+      var deltas = touches.map((t) => {
+        var origin = start.get(t.identifier);
+        return origin && {
+          x: t.pageX - origin.x,
+          y: t.pageY - origin.y
+        };
+      });
+      if (deltas.some((d) => !d || Math.abs(d.x) > 65 || d.y < -25)) {
+        fired = true;
+        return;
+      }
+      if (deltas.every((d) => d.y >= 90)) {
+        fired = true;
+        cooldown = now() + 2e3;
+        open();
+      }
+    };
+  }
+  function attachRecoveryGesture(rn, open) {
+    var view = rn?.View;
+    if (!view || typeof view.render !== "function")
+      return;
+    var original = view.render;
+    var seen = /* @__PURE__ */ new WeakSet();
+    var detect = createSwipeDetector(open);
+    var observe = (event) => {
+      try {
+        var native = event?.nativeEvent;
+        if (!native || seen.has(native))
+          return;
+        seen.add(native);
+        detect(event);
+      } catch (e) {
+      }
+    };
+    var handlers = [
+      "onTouchStart",
+      "onTouchMove",
+      "onTouchEnd",
+      "onTouchCancel"
+    ];
+    var cancel = () => detect({
+      nativeEvent: {
+        touches: []
+      }
+    });
+    var wrapped = function wrapped2(props, ref) {
+      var _loop2 = function(name2) {
+        var previous = props?.[name2];
+        var listener = name2 === "onTouchCancel" ? cancel : observe;
+        next[name2] = typeof previous === "function" ? function(event) {
+          listener(event);
+          return previous.call(this, event);
+        } : listener;
+      };
+      var next = {
+        ...props
+      };
+      for (var name of handlers)
+        _loop2(name);
+      return original.call(this, next, ref);
+    };
+    view.render = wrapped;
+    if (view.render !== wrapped)
+      return;
+    return () => {
+      if (view.render === wrapped)
+        view.render = original;
+    };
+  }
+  function installRecoveryGesture() {
+    var root = globalThis;
+    if (root.__CLOUDCORD_RECOVERY_GESTURE__)
+      return;
+    var status = root.__CLOUDCORD_RECOVERY_GESTURE__ = {
+      state: "waiting",
+      stop: () => {
+      }
+    };
+    var stopped = false, attempts = 0, timer, detach;
+    var menuOpen = false, busy = false;
+    function attach(rn) {
+      if (!rn || typeof rn.Alert?.alert !== "function")
+        return false;
+      var alert2 = rn.Alert;
+      var open = () => {
+        if (menuOpen || busy || stopped)
+          return;
+        menuOpen = true;
+        setTimeout(() => {
+          if (stopped) {
+            menuOpen = false;
+            return;
+          }
+          var run = (restart) => _async_to_generator(function* () {
+            menuOpen = false;
+            if (busy)
+              return;
+            busy = true;
+            var deadline;
+            try {
+              var updater = (init_modules(), __toCommonJS(modules_exports)).BundleUpdaterManager;
+              var method = restart ? updater?.reload : updater?.download ?? updater?.checkForUpdates;
+              if (typeof method !== "function")
+                throw new Error("This loader does not expose this recovery action. Use the shake menu instead.");
+              yield Promise.race([
+                Promise.resolve().then(() => method.call(updater)),
+                new Promise((_2, reject) => {
+                  deadline = setTimeout(() => reject(new Error("Recovery timed out. Try again when connected.")), 3e4);
+                })
+              ]);
+              alert2.alert("CloudCord recovery", "Update requested. Fully close and reopen Discord to apply a downloaded update.");
+            } catch (error) {
+              alert2.alert("CloudCord recovery", String(error?.message || error));
+            } finally {
+              clearTimeout(deadline);
+              busy = false;
+            }
+          })();
+          try {
+            alert2.alert("CloudCord recovery", "Download the latest CloudCord bundle without reinstalling the app. Your account and settings stay in place.", [
+              {
+                text: "Cancel",
+                style: "cancel",
+                onPress: () => {
+                  menuOpen = false;
+                }
+              },
+              {
+                text: "Download update",
+                onPress: () => {
+                  void run(false);
+                }
+              },
+              {
+                text: "Update & restart",
+                onPress: () => {
+                  void run(true);
+                }
+              }
+            ], {
+              cancelable: true,
+              onDismiss: () => {
+                menuOpen = false;
+              }
+            });
+          } catch (e) {
+            menuOpen = false;
+          }
+        }, 0);
+      };
+      detach = attachRecoveryGesture(rn, open);
+      return Boolean(detach);
+    }
+    var checked = /* @__PURE__ */ new WeakSet();
+    function scan() {
+      if (stopped)
+        return;
+      try {
+        var registry = root.modules ?? root.__c?.();
+        var modules = registry instanceof Map ? registry.values() : Object.values(registry ?? {});
+        for (var module of modules) {
+          if (!module?.isInitialized || module.hasError)
+            continue;
+          var exports = module.publicModule?.exports;
+          if (!exports || typeof exports !== "object" || checked.has(exports))
+            continue;
+          if (!Object.prototype.hasOwnProperty.call(exports, "AppRegistry") || !Object.prototype.hasOwnProperty.call(exports, "View")) {
+            checked.add(exports);
+            continue;
+          }
+          if (attach(exports)) {
+            status.state = "ready";
+            return;
+          }
+        }
+      } catch (e) {
+      }
+      if (++attempts < 30)
+        timer = setTimeout(scan, 1e3);
+      else
+        status.state = "unavailable";
+    }
+    status.stop = () => {
+      stopped = true;
+      clearTimeout(timer);
+      detach?.();
+      status.state = "stopped";
+    };
+    scan();
+  }
+  var init_recoveryGesture = __esm({
+    "src/recoveryGesture.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+    }
+  });
+
   // src/lib/api/native/fs.ts
   var fs_exports = {};
   __export(fs_exports, {
@@ -39980,7 +40222,7 @@
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "9b164a44a9ebfec4ac080278f872117687dd09e5";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "386007f9471e2f9013a19f592ceb2ee897039fb0";
   var rain = globalThis.__RAIN_LOADER__;
   if (rain && !globalThis.__CLOUDCORD_LOADER__) {
     globalThis.__CLOUDCORD_ORIGINAL_RAIN__ = true;
@@ -40027,6 +40269,10 @@
   }
   function initializeCloudCord() {
     return _async_to_generator(function* () {
+      try {
+        (init_recoveryGesture(), __toCommonJS(recoveryGesture_exports)).installRecoveryGesture();
+      } catch (e) {
+      }
       try {
         var registry = globalThis.modules ?? globalThis.__c?.();
         if (!registry)
