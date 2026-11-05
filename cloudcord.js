@@ -39987,6 +39987,38 @@
   }
   var { instead: instead3 } = require_cjs();
   globalThis.window = globalThis;
+  var recoveryStarted = false;
+  function recoverStartupUpdate() {
+    if (recoveryStarted)
+      return;
+    recoveryStarted = true;
+    try {
+      var { BundleUpdaterManager: BundleUpdaterManager2 } = (init_modules(), __toCommonJS(modules_exports));
+      if (typeof BundleUpdaterManager2?.checkForUpdates !== "function")
+        return;
+      var state2 = {
+        status: "checking",
+        error: ""
+      };
+      globalThis.__CLOUDCORD_STARTUP_RECOVERY__ = state2;
+      var timeout;
+      void Promise.race([
+        Promise.resolve().then(() => BundleUpdaterManager2.checkForUpdates()),
+        new Promise((_2, reject) => {
+          timeout = setTimeout(() => reject(new Error("Update check timed out")), 22e3);
+        })
+      ]).then(() => {
+        state2.status = "checked";
+        console.log("CloudCord recovery update check completed; reopen Discord to apply a downloaded update.");
+      }, (error) => {
+        state2.status = "failed";
+        state2.error = String(error?.message ?? error);
+        console.log("CloudCord recovery update check failed", state2.error);
+      }).finally(() => clearTimeout(timeout));
+    } catch (error) {
+      console.log("CloudCord recovery updater unavailable", error);
+    }
+  }
   function initializeCloudCord() {
     return _async_to_generator(function* () {
       try {
@@ -40002,9 +40034,13 @@
         yield (init_caches(), __toCommonJS(caches_exports)).initMetroCache();
         var startup = (init_src(), __toCommonJS(src_exports)).default();
         if (startup && typeof startup.catch === "function") {
-          startup.catch((error) => console.error("CloudCord optional startup failed", error));
+          startup.catch((error) => {
+            console.error("CloudCord optional startup failed", error);
+            recoverStartupUpdate();
+          });
         }
       } catch (e) {
+        recoverStartupUpdate();
         var stack = e instanceof Error ? e.stack : void 0;
         console.log(stack ?? e?.toString?.() ?? e);
         var build = "unavailable";
