@@ -4,8 +4,20 @@ mkdir -p pipeline-results
 trap 'adb logcat -d > pipeline-results/logcat.txt || true' EXIT
 adb install --no-streaming app/build/outputs/apk/debug/app-debug.apk
 adb install --no-streaming app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+version="$(curl --fail --silent --show-error --retry 3 https://tracker.vendetta.rocks/tracker/index | python3 -c 'import json,sys; print(json.load(sys.stdin)["latest"]["stable"])')"
+abi="$(adb shell getprop ro.product.cpu.abi | tr -d '\r' | sed 's/-v/_v/')"
+mkdir -p pipeline-input
+for part in base config.en config.xxhdpi "config.$abi"; do
+  curl --fail --location --silent --show-error --retry 3 --max-time 300 "https://tracker.vendetta.rocks/tracker/download/$version/$part" -o "pipeline-input/$part.apk"
+done
+echo "Discord version: $version; ABI: $abi" | tee pipeline-results/input.txt
+sha256sum pipeline-input/*.apk >> pipeline-results/input.txt
+tar -C pipeline-input -cf pipeline-input.tar .
+adb push pipeline-input.tar /data/local/tmp/cloudcord-pipeline-input.tar
+adb shell run-as com.getcloudcord.manager mkdir -p "files/patching/downloads/discord/$version"
+adb shell run-as com.getcloudcord.manager tar -xf /data/local/tmp/cloudcord-pipeline-input.tar -C "files/patching/downloads/discord/$version"
 adb logcat -c
-adb shell am instrument -w -r com.getcloudcord.manager.test/androidx.test.runner.AndroidJUnitRunner | tee pipeline-results/instrumentation.txt
+adb shell am instrument -w -r -e discordVersion "$version" com.getcloudcord.manager.test/androidx.test.runner.AndroidJUnitRunner | tee pipeline-results/instrumentation.txt
 adb logcat -d > pipeline-results/logcat.txt
 adb exec-out run-as com.getcloudcord.manager tar -C files/pipeline-results -cf - . > pipeline-results/output.tar
 tar -xf pipeline-results/output.tar -C pipeline-results
