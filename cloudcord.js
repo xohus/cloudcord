@@ -9508,6 +9508,27 @@
     }
   });
 
+  // src/lib/api/ccpReport.ts
+  function copyCcpReport() {
+    return _async_to_generator(function* () {
+      var globals = globalThis;
+      var report = inspectCcpRuntime("mobile", findByStoreName, globals.modules ?? globals.__CLOUDCORD_MODULE_VIEW__);
+      yield clipboard.setString(JSON.stringify(report));
+      return report;
+    })();
+  }
+  var init_ccpReport = __esm({
+    "src/lib/api/ccpReport.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_ccpInspect();
+      init_metro();
+      init_common();
+    }
+  });
+
   // src/lib/api/commands/types.ts
   var ApplicationCommandInputType, ApplicationCommandOptionType, ApplicationCommandType;
   var init_types = __esm({
@@ -10159,10 +10180,9 @@
       init_async_to_generator();
       init_plugins3();
       init_ccp();
-      init_ccpInspect();
+      init_ccpReport();
       init_commands();
       init_types();
-      init_metro();
       init_common();
       init_character_counter();
       plugin = parseCcp(character_counter_default, ccpCommandCapabilities);
@@ -10191,7 +10211,8 @@
           unregister.push(registerCommand({
             name: plugin.command,
             description: "Count the characters in some text",
-            shouldHide: () => false,
+            // The current mobile command registry filters out false.
+            shouldHide: () => true,
             options: [
               {
                 name: "text",
@@ -10210,13 +10231,11 @@
             unregister.push(registerCommand({
               name: "ccp-inspect",
               description: "Copy a local report of the Discord functions CloudCord can see",
-              shouldHide: () => false,
+              shouldHide: () => true,
               options: [],
               execute(_args, context) {
                 return _async_to_generator(function* () {
-                  var globals = globalThis;
-                  var report = inspectCcpRuntime("mobile", findByStoreName, globals.modules ?? globals.__CLOUDCORD_MODULE_VIEW__);
-                  yield clipboard.setString(JSON.stringify(report));
+                  var report = yield copyCcpReport();
                   messageUtil.sendBotMessage(context.channel.id, `Copied the CCP report. Found ${report.modules.length} loaded modules and checked ${Object.keys(report.checks).length} read-only calls.`);
                 })();
               }
@@ -25393,6 +25412,21 @@
                 label: "Update status",
                 subLabel: settings.cloudcordUpdateStatus || "Waiting for the next update check"
               }),
+              /* @__PURE__ */ jsx(TableRow, {
+                label: "Copy CCP runtime report",
+                subLabel: "Loaded Discord functions and read-only checks",
+                icon: /* @__PURE__ */ jsx(TableRow.Icon, {
+                  source: findAssetId("CopyIcon") || findAssetId("WrenchIcon")
+                }),
+                onPress: () => _async_to_generator(function* () {
+                  try {
+                    yield copyCcpReport();
+                    showToast("CCP runtime report copied");
+                  } catch (e) {
+                    showToast("Could not copy the CCP runtime report");
+                  }
+                })()
+              }),
               settings.cloudcordDiagnosticsEnabled === true && /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
                 label: "Diagnostics",
@@ -25493,6 +25527,7 @@
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      init_async_to_generator();
       init_jsxRuntime();
       init_safeMode();
       init_i18n();
@@ -25500,11 +25535,13 @@
       init_About();
       init_storage();
       init_assets();
+      init_ccpReport();
       init_debug();
       init_modules();
       init_settings();
       init_alerts2();
       init_constants();
+      init_toasts();
       init_common();
       init_components();
       import_react_native24 = __toESM(require_react_native());
