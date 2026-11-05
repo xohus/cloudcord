@@ -20591,7 +20591,7 @@
     return props?.cloudcordPreview || source?.cloudcordPreview || source?.user?.cloudcordPreview;
   }
   function connectNativeSocialRenderer() {
-    var runtime = findByProps("jsx", "jsxs");
+    var runtime2 = findByProps("jsx", "jsxs");
     var hook = ([Component2], rendered) => {
       var entry = socialEntryFromProps(rendered?.props);
       if (!entry || typeof Component2 !== "function" || Component2.prototype?.isReactComponent || socialWrapperTypes.has(Component2))
@@ -20650,8 +20650,8 @@
       "jsx",
       "jsxs"
     ])
-      if (typeof runtime?.[method] === "function")
-        after(method, runtime, hook);
+      if (typeof runtime2?.[method] === "function")
+        after(method, runtime2, hook);
   }
   function identityRenderer(Component2) {
     if (identityRenderers.has(Component2))
@@ -39787,10 +39787,10 @@
   var { instead: instead3 } = require_cjs();
   globalThis.window = globalThis;
   function isBridgeless2() {
-    var runtime = globalThis;
-    if (runtime["RN$Bridgeless"] === true)
-      runtime.__CLOUDCORD_BRIDGELESS__ = true;
-    return runtime.__CLOUDCORD_BRIDGELESS__ === true;
+    var runtime2 = globalThis;
+    if (runtime2["RN$Bridgeless"] === true)
+      runtime2.__CLOUDCORD_BRIDGELESS__ = true;
+    return runtime2.__CLOUDCORD_BRIDGELESS__ === true;
   }
   function initializeCloudCord() {
     return _async_to_generator(function* () {
@@ -39833,7 +39833,12 @@
       }
     })();
   }
-  if (typeof globalThis.__r === "undefined") {
+  var runtime = globalThis;
+  var initialRequire = globalThis.__r;
+  var initialRegistry = !runtime.__CLOUDCORD_STARTUP_INSTALLED__ && initialRequire && isBridgeless2() ? globalThis.modules ?? globalThis.__c?.() : void 0;
+  var entryModule = initialRegistry instanceof Map ? initialRegistry.get(0) : initialRegistry?.[0];
+  if (!runtime.__CLOUDCORD_STARTUP_INSTALLED__ && (!initialRequire || entryModule?.isInitialized === false)) {
+    runtime.__CLOUDCORD_STARTUP_INSTALLED__ = true;
     deferredCalls = [];
     unpatches = [];
     deferMethodExecution = (object, method, condition, resume, returnWith) => {
@@ -39925,21 +39930,12 @@
               return v2(a);
           };
         }
-      },
-      __d: {
-        configurable: true,
-        get() {
-          if (globalThis.Object && !globalThis.modules) {
-            globalThis.modules = globalThis.__c?.();
-          }
-          return this.value;
-        },
-        set(v2) {
-          this.value = v2;
-        }
       }
     });
-  } else {
+    if (initialRequire)
+      globalThis.__r = initialRequire;
+  } else if (!runtime.__CLOUDCORD_STARTUP_INSTALLED__) {
+    runtime.__CLOUDCORD_STARTUP_INSTALLED__ = true;
     initializeCloudCord();
   }
   var _requireFunc;
