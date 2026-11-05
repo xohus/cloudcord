@@ -28,6 +28,7 @@ android {
         versionCode = 1019
         // InstallMetadata uses the upstream numeric-only SemVer serializer.
         versionName = "v1.0.10"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         vectorDrawables {
             useSupportLibrary = true
@@ -169,6 +170,8 @@ tasks.withType<JavaCompile> {
 }
 
 dependencies {
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("junit:junit:4.13.2")
     implementation(libs.bundles.accompanist)
     implementation(libs.bundles.androidx)

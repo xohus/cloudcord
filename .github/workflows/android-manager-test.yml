@@ -59,7 +59,7 @@ jobs:
           SIGNING_KEY_ALIAS: cloudcord-manager
         run: |
           chmod +x gradlew
-          ./gradlew :app:testDebugUnitTest :app:assembleDebug --stacktrace
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest --stacktrace
       - name: Verify persistent signing certificate
         run: |
           set -euo pipefail
@@ -85,3 +85,31 @@ jobs:
             android-manager-test/app/build/outputs/apk/debug/*.apk
             android-manager-test/LICENSE
             android-manager-test/CLOUDCORD-MODIFICATIONS.md
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Patch and install real Discord on Android 15
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          ram-size: 4096M
+          heap-size: 1024M
+          disk-size: 8G
+          disable-animations: true
+          script: cd android-manager-test && bash test-patched-install.sh
+      - name: Upload patched Discord diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCordManager-pipeline-results
+          path: android-manager-test/pipeline-results/*.txt
+      - name: Upload patch log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCordManager-patch-log
+          path: android-manager-test/pipeline-results/patch.log
