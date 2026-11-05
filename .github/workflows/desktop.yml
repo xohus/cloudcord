@@ -132,6 +132,7 @@ jobs:
         run: |
           node scripts/test-settings-focus.cjs
           node scripts/test-addons-navigation.cjs
+          node scripts/test-plugin-pagination.cjs
           node scripts/test-plugin-text-inputs.cjs
           node scripts/test-settings-load.cjs
           node scripts/test-settings-storage.cjs

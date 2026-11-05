@@ -38,7 +38,7 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
         "src/plugins/",
         "src/sincordplugins/",
         "src/cloudcordplugins/"
-    ].some(prefix => pluginMeta.folderName.startsWith(prefix));
+    ].some(prefix => pluginMeta?.folderName?.startsWith(prefix));
 
     const isEnabled = () => isPluginEnabled(plugin.name);
 

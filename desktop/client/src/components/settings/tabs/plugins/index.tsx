@@ -28,7 +28,6 @@ import ErrorBoundary from "@components/ErrorBoundary";
 import { HeadingTertiary } from "@components/Heading";
 import { Paragraph } from "@components/Paragraph";
 import { SettingsTab } from "@components/settings";
-import { debounce } from "@shared/debounce";
 import { ChangeList } from "@utils/ChangeList";
 import { classNameFactory } from "@utils/css";
 import { isTruthy } from "@utils/guards";
@@ -43,6 +42,7 @@ import { JSX } from "react";
 import Plugins, { ExcludedPlugins, PluginMeta } from "~plugins";
 
 import { PluginCard } from "./PluginCard";
+import { usePluginPagination } from "./usePluginPagination";
 import { openLinkInstaller } from "@sincordplugins/userpluginInstaller/components/openLinkInstaller";
 import { openWarningModal } from "./PluginModal";
 import { StockPluginsCard, UserPluginsCard } from "./PluginStatCards";
@@ -366,20 +366,9 @@ export default function PluginSettings() {
         const enabledUserPlugins = enabledPlugins.filter(p => PluginMeta[p].userPlugin).length;
         return { totalStockPlugins, totalUserPlugins, enabledStockPlugins, enabledUserPlugins, enabledPlugins };
     }, [settings.plugins]);
-    const pluginsToLoad = Math.min(36, plugins.length);
-    const [visibleCount, setVisibleCount] = React.useState(pluginsToLoad);
-    const loadMore = React.useCallback(() => {
-        setVisibleCount(v => Math.min(v + pluginsToLoad, plugins.length));
-    }, [plugins.length]);
-
-    const dLoadMore = useMemo(() => debounce(loadMore, 100), [loadMore]);
-
     const [sentinelRef, isSentinelVisible] = useIntersection();
-    React.useEffect(() => {
-        if (isSentinelVisible && visibleCount < plugins.length) {
-            dLoadMore();
-        }
-    }, [isSentinelVisible, visibleCount, plugins.length, dLoadMore]);
+    const filterKey = JSON.stringify([search, searchValue.status, searchValue.tags]);
+    const { visibleCount, loadMore } = usePluginPagination(plugins.length, filterKey, isSentinelVisible);
 
     const visiblePlugins = plugins.slice(0, visibleCount);
 
@@ -456,7 +445,10 @@ export default function PluginSettings() {
                             }
                         </div>
                         {visibleCount < plugins.length && (
-                            <div ref={sentinelRef} style={{ height: 32 }} />
+                            <div ref={sentinelRef} className={cl("load-more")}>
+                                <Paragraph>{visibleCount} of {plugins.length} plugins shown</Paragraph>
+                                <Button variant="secondary" onClick={loadMore}>Show more plugins</Button>
+                            </div>
                         )}
                     </>
                 )
