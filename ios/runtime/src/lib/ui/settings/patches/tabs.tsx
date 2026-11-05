@@ -1,26 +1,26 @@
 import { after, before } from "@lib/api/patcher";
 import { TableRow } from "@metro/common/components";
-import { findByFilePathLazy, findByNameAll, findByNameLazy, findByPropsAll, findByPropsLazy } from "@metro/wrappers";
+import { findByPropsLazy } from "@metro/wrappers";
 import { registeredSections } from "@ui/settings";
 import { settings } from "@lib/api/settings";
 import { NativeClientInfoModule } from "@lib/api/native/modules";
-import { Platform } from "react-native";
+import { observeSettingsModules } from "../observeModules";
 
 import { CustomPageRenderer, wrapOnPress } from "./shared";
 import { findInReactTree } from "@lib/utils";
 
 const settingConstants = findByPropsLazy("SETTING_RENDERER_CONFIG");
-const settingConstants344 = findByFilePathLazy("modules/user_settings/core/native/SettingsRendererConfig.tsx");
 const createListModule = findByPropsLazy("createList");
-const SettingsOverviewScreen = findByNameLazy("SettingsOverviewScreen", false);
-const SettingsOverviewScreen344 = findByFilePathLazy("modules/user_settings/overview/native/SettingsOverviewScreen.tsx");
 
 // Discord 344 moved the settings list (new renderer config, no root ACCOUNT section).
 // No loader sets __CLOUDCORD_BRIDGELESS__ reliably (Android never does), so check the
 // Discord version too; otherwise the 331 path finds nothing and CloudCord vanishes.
 export function usesModernSettings() {
     if ((globalThis as any).__CLOUDCORD_BRIDGELESS__) return true;
-    try { return parseInt(String(NativeClientInfoModule?.getConstants?.()?.Version ?? ""), 10) >= 344; } catch { return false; }
+    try {
+        const version = parseInt(String(NativeClientInfoModule?.getConstants?.()?.Version ?? ""), 10);
+        return !Number.isFinite(version) || version >= 344;
+    } catch { return true; }
 }
 
 export function patchTabsUI(unpatches: (() => void | boolean)[]) {
@@ -219,50 +219,71 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         visit(root, 0);
     };
 
-    // Discord 344 can expose this export through a frozen/lazy Metro namespace.
-    // A rejected property override must not prevent the independent section hooks below.
+    const patchedRenderers = new WeakSet<object>();
+    const patchedLists = new WeakSet<object>();
+    const patchedScreens = new WeakSet<object>();
     const patchRendererConfig = (rendererModule: any) => {
-        const origRendererConfig = rendererModule.SETTING_RENDERER_CONFIG;
-        let rendererConfigValue = rendererModule.SETTING_RENDERER_CONFIG;
-
-        // Fallback 1: mutate the live renderer table in-place. This survives
-        // Metro namespace objects whose export property cannot be redefined.
-        if (rendererConfigValue && typeof rendererConfigValue === "object") {
-            Object.assign(rendererConfigValue, getCustomRoutes(), getRows());
-        }
-
-        Object.defineProperty(rendererModule, "SETTING_RENDERER_CONFIG", {
-        enumerable: true,
-        configurable: true,
-        get: () => ({
-            ...rendererConfigValue,
-            ...getCustomRoutes(),
-            ...getRows()
-        }),
-        set: v => rendererConfigValue = v,
-        });
-
-        unpatches.push(() => {
+        if (patchedRenderers.has(rendererModule)) return;
+        const descriptor = Object.getOwnPropertyDescriptor(rendererModule, "SETTING_RENDERER_CONFIG");
+        let value = rendererModule.SETTING_RENDERER_CONFIG;
+        if (!value || typeof value !== "object") return;
+        const saved = new Map<any, Map<string, PropertyDescriptor | undefined>>();
+        const merge = (table: any) => {
+            const additions = { ...getCustomRoutes(), ...getRows() };
+            if (!table || typeof table !== "object") return additions;
+            // Preserve the live table: Discord can capture it before reading the
+            // namespace again. A copied export alone leaves those readers stale.
+            if (Object.isExtensible(table)) {
+                let originals = saved.get(table);
+                if (!originals) saved.set(table, originals = new Map());
+                for (const [key, row] of Object.entries(additions)) {
+                    if (!originals.has(key)) originals.set(key, Object.getOwnPropertyDescriptor(table, key));
+                    table[key] = row;
+                }
+                for (const [key, original] of originals) {
+                    if (key in additions) continue;
+                    if (original) Object.defineProperty(table, key, original);
+                    else delete table[key];
+                    originals.delete(key);
+                }
+                return table;
+            }
+            return { ...table, ...additions };
+        };
+        merge(value);
+        if (descriptor?.configurable !== false) {
             Object.defineProperty(rendererModule, "SETTING_RENDERER_CONFIG", {
-                value: origRendererConfig,
-                writable: true,
-                configurable: true
+                enumerable: descriptor?.enumerable ?? true,
+                configurable: true,
+                get: () => merge(descriptor?.get ? descriptor.get.call(rendererModule) : value),
+                set: next => {
+                    if (descriptor?.set) descriptor.set.call(rendererModule, next);
+                    value = next;
+                    merge(next);
+                }
             });
+        } else if (!Object.isExtensible(value)) {
+            console.warn("CloudCord settings renderer is read-only");
+            return;
+        }
+        patchedRenderers.add(rendererModule);
+        unpatches.push(() => {
+            for (const [table, originals] of saved) {
+                for (const [key, original] of originals) {
+                    if (original) Object.defineProperty(table, key, original);
+                    else delete table[key];
+                }
+            }
+            if (descriptor?.configurable !== false) {
+                Object.defineProperty(rendererModule, "SETTING_RENDERER_CONFIG", descriptor ?? {
+                    value, configurable: true, writable: true, enumerable: true
+                });
+            }
         });
     };
 
-    try {
-        // 344.1 exposes the renderer through a stable Metro file path even when
-        // its export shape/name changes. Patch that exact module as well as the
-        // generic property match used by 331 and older builds.
-        [...new Set([settingConstants344, settingConstants])].forEach(module => {
-            try { patchRendererConfig(module); } catch {}
-        });
-    } catch (error) {
-        console.error("CloudCord renderer config patch failed", error);
-    }
-
     const patchCreateListModule = (module: any) => {
+        if (patchedLists.has(module)) return;
         // Discord 344 materializes a new list from this config. Insert our rows
         // before that copy is created; the after-hook below remains a fallback
         // for builds that expose their sections only in the returned tree.
@@ -279,38 +300,45 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
             insertCloudCordSectionsInTree(ret);
             return ret;
         },));
+        patchedLists.add(module);
     };
 
-    try {
-        // The iOS 344 IPA has two createList exports. On bridged Android,
-        // findByPropsAll executes dormant Metro factories during startup.
-        const modules = Platform.OS === "android"
-            ? [createListModule]
-            : [createListModule, ...findByPropsAll("createList")].filter(Boolean);
-        [...new Set(modules)].forEach(module => {
-            try { patchCreateListModule(module); } catch {}
-        });
-    } catch {}
+    const patchOverview = (module: any) => {
+        // Newer screens are React.memo/forwardRef objects rather than a default
+        // function. Patch the render function without calling it outside React.
+        let parent = module, key = "default";
+        if (typeof parent[key] !== "function") {
+            parent = module.default;
+            key = typeof parent?.type === "function" ? "type" : "render";
+        }
+        if (!parent || typeof parent[key] !== "function" || patchedScreens.has(parent)) return;
+        unpatches.push(before(key, parent, args => {
+            args.forEach(insertCloudCordSectionsInTree);
+            return args;
+        }));
+        unpatches.push(after(key, parent, (_, ret) => {
+            const tree = findInReactTree(ret, item => Array.isArray(item?.props?.sections));
+            insertCloudCordSections(tree?.props?.sections);
+            insertCloudCordSectionsInTree(ret);
+            return ret;
+        }));
+        patchedScreens.add(parent);
+    };
 
-    try {
-        const modules = [
-            SettingsOverviewScreen344,
-            SettingsOverviewScreen,
-            ...(Platform.OS === "android" ? [] : findByNameAll("SettingsOverviewScreen", false))
-        ].filter(Boolean);
-        [...new Set(modules)].forEach(module => {
-            try {
-                unpatches.push(before("default", module, args => {
-                    args.forEach(insertCloudCordSectionsInTree);
-                    return args;
-                }));
-                unpatches.push(after("default", module, (_, ret) => {
-                    const tree = findInReactTree(ret, item => Array.isArray(item?.props?.sections));
-                    insertCloudCordSections(tree?.props?.sections);
-                    insertCloudCordSectionsInTree(ret);
-                    return ret;
-                }));
-            } catch {}
-        });
-    } catch {}
+    unpatches.push(observeSettingsModules((exports, path) => {
+        // Match exports only after their factory succeeded. Each hook is
+        // independent, so a frozen namespace cannot disable the other hooks.
+        for (const module of [exports, exports?.default]) {
+            if (!module || (typeof module !== "object" && typeof module !== "function")) continue;
+            try { if (Object.prototype.hasOwnProperty.call(module, "SETTING_RENDERER_CONFIG")) patchRendererConfig(module); }
+            catch (error) { console.warn("CloudCord settings renderer patch failed", error); }
+            try { if (Object.prototype.hasOwnProperty.call(module, "createList") && typeof module.createList === "function") patchCreateListModule(module); }
+            catch (error) { console.warn("CloudCord settings list patch failed", error); }
+        }
+        const screen = exports?.default;
+        if (path?.endsWith("/SettingsOverviewScreen.tsx") ||
+            [screen?.name, screen?.displayName, screen?.type?.name, screen?.render?.name].includes("SettingsOverviewScreen")) {
+            patchOverview(exports);
+        }
+    }));
 };

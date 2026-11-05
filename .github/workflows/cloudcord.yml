@@ -40,7 +40,7 @@ jobs:
 
       - name: Check Discord theme compatibility
         run: |
-          npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2
+          npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2 spitroast@1.4.4
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-theme-compatibility.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-metro-cache-recovery.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-mobile-startup-registry.cjs
@@ -61,6 +61,7 @@ jobs:
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-profile-sync-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-load-regressions.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-settings-route.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-settings-deferred.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-addon-loading.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-mobile-account-isolation.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-modal-compatibility.cjs
@@ -167,6 +168,7 @@ jobs:
           cp "../ios/runtime/src/lib/api/native/legacyRuntimeRefresh.ts" "src/lib/api/native/legacyRuntimeRefresh.ts"
           node ../ios/scripts/patch-kettu-storage.cjs .
           cp "../ios/runtime/src/lib/ui/settings/index.tsx" "src/lib/ui/settings/index.tsx"
+          cp "../ios/runtime/src/lib/ui/settings/observeModules.ts" "src/lib/ui/settings/observeModules.ts"
           cp "../ios/runtime/src/lib/ui/settings/patches/tabs.tsx" "src/lib/ui/settings/patches/tabs.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/panel.tsx" "src/lib/ui/settings/patches/panel.tsx"
           cp "../ios/runtime/src/lib/ui/settings/patches/shared.tsx" "src/lib/ui/settings/patches/shared.tsx"

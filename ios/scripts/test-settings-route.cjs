@@ -11,6 +11,7 @@ const tabsModule = { exports: {} };
 vm.runInNewContext(esbuild.transformSync(fs.readFileSync('ios/runtime/src/lib/ui/settings/patches/tabs.tsx', 'utf8'), { loader: 'tsx', format: 'cjs' }).code, {
     module: tabsModule, exports: tabsModule.exports,
     require(name) {
+        if (name === '@lib/api/native/modules') return { NativeClientInfoModule: { getConstants: () => ({ Version: '331.2' }) } };
         if (name === '@ui/settings') return { registeredSections: sections };
         if (name === '@lib/api/settings') return { settings: {} };
         if (name === '@metro/wrappers') return { findByPropsLazy: () => rendererModule, findByNameLazy: () => ({}), findByFilePathLazy: () => ({}) };
@@ -31,7 +32,7 @@ cleanups.forEach(cleanup => cleanup());
 assert.equal(rendererModule.SETTING_RENDERER_CONFIG, nativeConfig);
 // Discord 344 (Android never sets __CLOUDCORD_BRIDGELESS__) must use the 344 path,
 // and 331 must keep the root-list path.
-for (const [version, modern] of [['344.13', true], ['331.2', false]]) {
+for (const [version, modern] of [['344.13', true], ['352.17 - Stable', true], ['331.2', false], [undefined, true]]) {
     const m = { exports: {} };
     vm.runInNewContext(esbuild.transformSync(fs.readFileSync('ios/runtime/src/lib/ui/settings/patches/tabs.tsx', 'utf8'), { loader: 'tsx', format: 'cjs' }).code, {
         module: m, exports: m.exports,
