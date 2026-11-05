@@ -153,6 +153,7 @@ jobs:
           cp "../desktop/client/src/utils/ccp.ts" "src/lib/api/ccp.ts"
           cp "../desktop/client/src/utils/ccpInspect.ts" "src/lib/api/ccpInspect.ts"
           cp "../ios/runtime/src/lib/api/ccpReport.ts" "src/lib/api/ccpReport.ts"
+          cp "../ios/runtime/shims/depsModule.ts" "shims/depsModule.ts"
           sed -i '/"bunny.messagefix":/a\    "cloudcord.ccp.character-counter": require("./ccpCharacterCounter"),' src/core/plugins/index.ts
           grep -q '"cloudcord.ccp.character-counter":' src/core/plugins/index.ts
           cp "../desktop/client/src/utils/profileAppearance.ts" "src/lib/api/profileAppearance.ts"
@@ -5559,7 +5560,7 @@ jobs:
         run: |
           set -e
           cd _cloudcord_source
-          bun install
+          bun add --exact chroma-js@2.4.2
 
       - name: Build CloudCord runtime
         run: |
