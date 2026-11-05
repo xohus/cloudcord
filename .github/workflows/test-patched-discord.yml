@@ -1,0 +1,97 @@
+name: Check patched Discord compatibility
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Manager Preview run containing patched APKs and instrumentation
+        required: true
+permissions:
+  actions: read
+  contents: read
+jobs:
+  android-nine:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: CloudCordManager-patched-apks
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: patched
+      - name: Enable emulator acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Install and update the exact patched APKs on Android 9
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 28
+          target: google_apis
+          arch: x86_64
+          disk-size: 8G
+          disable-animations: true
+          script: |
+            adb install-multiple --no-streaming patched/*.apk > install.txt 2>&1
+            cat install.txt
+            grep -qx Success install.txt
+            adb install-multiple -r --no-streaming patched/*.apk > update.txt 2>&1
+            cat update.txt
+            grep -qx Success update.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Patched-Discord-Android-9
+          path: '*.txt'
+  original-manager:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        id: source
+        with:
+          script: |
+            const {data} = await github.rest.actions.getWorkflowRun({...context.repo, run_id: Number('${{ inputs.run_id }}')});
+            core.setOutput('sha', data.head_sha);
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.source.outputs.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: CloudCordManager-test
+          run-id: 42087479720
+          github-token: ${{ github.token }}
+          path: original-manager
+      - uses: actions/download-artifact@v4
+        with:
+          name: CloudCordManager-instrumentation
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: instrumentation
+      - name: Prepare comparison with original Manager 1.0.10
+        run: |
+          mkdir -p android-manager-test/app/build/outputs/apk/debug android-manager-test/app/build/outputs/apk/androidTest/debug
+          cp "$(find original-manager -name '*.apk' -type f)" android-manager-test/app/build/outputs/apk/debug/app-debug.apk
+          cp "$(find instrumentation -name '*.apk' -type f)" android-manager-test/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          sed -i 's/-w -r -e discordVersion/-w -r -e class com.aliucord.manager.PatchPipelineTest -e discordVersion/' android-manager-test/test-patched-install.sh
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Record whether original Manager reproduces the installation failure
+        continue-on-error: true
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          ram-size: 4096M
+          heap-size: 1024M
+          disk-size: 8G
+          disable-animations: true
+          script: cd android-manager-test && bash test-patched-install.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Original-Manager-install-comparison
+          path: |
+            android-manager-test/pipeline-results/*.txt
+            android-manager-test/pipeline-results/patch.log
