@@ -23,13 +23,15 @@ adb exec-out run-as com.getcloudcord.manager tar -C files/pipeline-results -cf -
 tar -xf pipeline-results/output.tar -C pipeline-results
 rm pipeline-results/output.tar
 grep -Eq 'OK \([0-9]+ tests?\)' pipeline-results/instrumentation.txt
+adb install-multiple --no-streaming pipeline-results/*.apk 2>&1 | tee pipeline-results/install.txt
+install_status=${PIPESTATUS[0]}
 signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
 for apk in pipeline-results/*.apk; do
-  "$signer" verify --verbose --print-certs "$apk" > "$apk.signature.txt"
+  "$signer" verify --min-sdk-version 28 --verbose --print-certs "$apk" > "$apk.signature.txt"
   "$(dirname "$signer")/zipalign" -c -P 16 -v 4 "$apk" > "$apk.alignment.txt" || true
   "$(dirname "$signer")/aapt" dump badging "$apk" > "$apk.package.txt"
 done
-adb install-multiple --no-streaming pipeline-results/*.apk 2>&1 | tee pipeline-results/install.txt
+test "$install_status" = 0
 grep -qx 'Success' pipeline-results/install.txt
 adb install-multiple -r --no-streaming pipeline-results/*.apk 2>&1 | tee pipeline-results/reinstall.txt
 grep -qx 'Success' pipeline-results/reinstall.txt
