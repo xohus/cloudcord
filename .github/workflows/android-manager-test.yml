@@ -7,6 +7,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,15 +32,24 @@ jobs:
           target.write_bytes(base64.b64decode(value, validate=True))
           target.chmod(0o600)
           PY
+      - name: Download the verified Android loader
+        uses: actions/download-artifact@v4
+        with:
+          name: CloudCord-Android-loader
+          run-id: 42029526686
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/cloudcord-loader
       - name: Prepare CloudCord branding and pinned module
         run: |
+          set -euo pipefail
           node android-manager-test/prepare-cloudcord.cjs
-          curl --fail --location --retry 3 --max-time 240 'https://github.com/xohus/cloudcord/releases/download/new_beta_android/CloudCordManager-repair-b97f560fb.apk' -o /tmp/cloudcord-module-source.apk
-          echo '8b989beb6526a113d2f834d6f060b13a1120a887be419de85032b2affb989f69  /tmp/cloudcord-module-source.apk' | sha256sum --check
+          module="$RUNNER_TEMP/cloudcord-loader/cloudcord-module.apk"
+          echo "4a7ed5d228517dfe5874969cd4ad93b4da3e1a923e07b8012b2537e045c247db  $module" | sha256sum --check
+          unzip -p "$module" assets/revenge.bundle | sha256sum | grep -q '^018f027ead966dd0d40d6fa387df4e2e14f3455472a0bbb15f4d7c34e14df1dd  '
           mkdir -p android-manager-test/app/src/main/assets
-          unzip -p /tmp/cloudcord-module-source.apk assets/cloudcord-module.apk > android-manager-test/app/src/main/assets/cloudcord-module.apk
-          test -s android-manager-test/app/src/main/assets/cloudcord-module.apk
-          unzip -l android-manager-test/app/src/main/assets/cloudcord-module.apk | grep assets/xposed_init
+          unzip -p "$module" assets/xposed_init > "$RUNNER_TEMP/cloudcord-xposed-init"
+          test -s "$RUNNER_TEMP/cloudcord-xposed-init"
+          cp "$module" android-manager-test/app/src/main/assets/cloudcord-module.apk
       - name: Build experimental Manager
         working-directory: android-manager-test
         env:
