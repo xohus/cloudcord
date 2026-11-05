@@ -14,11 +14,45 @@ import org.lsposed.patch.LSPatch
 import org.lsposed.patch.util.Logger
 import java.io.File
 import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipFile
+import java.util.zip.ZipOutputStream
 
 class InjectRainXposedStep : Step() {
     override val group: StepGroup = StepGroup.Install
     override val localizedName: Int = R.string.patch_step_inject_rain
+
+    private fun rebuildForSigning(apk: File) {
+        val rebuilt = File(apk.parentFile, apk.name + ".repacked")
+        try {
+            ZipFile(apk).use { input ->
+                ZipOutputStream(rebuilt.outputStream().buffered()).use { output ->
+                    val entries = input.entries().asSequence().toList()
+                        .sortedBy { if (it.name == "AndroidManifest.xml") 0 else 1 }
+                    for (entry in entries) {
+                        val clean = ZipEntry(entry.name).apply {
+                            time = 315619200000L
+                            method = entry.method
+                            if (method == ZipEntry.STORED) {
+                                size = entry.size
+                                crc = entry.crc
+                            }
+                        }
+                        // Do not retain the injector's 4 KiB alignment extra fields:
+                        // apksig prioritizes those over its requested 16 KiB default.
+                        output.putNextEntry(clean)
+                        input.getInputStream(entry).use { it.copyTo(output, 128 * 1024) }
+                        output.closeEntry()
+                    }
+                }
+            }
+            Files.move(rebuilt.toPath(), apk.toPath(), StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            rebuilt.delete()
+        }
+    }
 
     suspend fun patch(
         container: StepRunner,
@@ -84,6 +118,7 @@ class InjectRainXposedStep : Step() {
                 ?: tempDir.listFiles { file -> file.isFile && file.name.startsWith("$baseName-") && file.name.endsWith("-lspatched.apk") }?.singleOrNull()
                 ?: error("Missing patched APK for ${base.name}")
             // Normalize the injector output with the same modern signer as the splits.
+            rebuildForSigning(patched)
             Signer.signApk(patched)
 
             // Configuration splits carry resources and libraries, not application
