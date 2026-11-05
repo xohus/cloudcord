@@ -39924,8 +39924,11 @@
             unload.push((init_runtimeUpdates(), __toCommonJS(runtimeUpdates_exports)).startAutoUpdates(prefs, updater));
           }).catch((error) => console.warn("CloudCord update check failed", error));
         }
-        if (!globalThis.__CLOUDCORD_BRIDGELESS__)
-          yield initLegacyRuntimeRefresh();
+        if (!globalThis.__CLOUDCORD_BRIDGELESS__) {
+          void Promise.resolve().then(() => initLegacyRuntimeRefresh()).catch((error) => {
+            console.warn("CloudCord legacy update check failed", error);
+          });
+        }
         var cloudCordCoreUnloads = [];
         try {
           if (globalThis.__CLOUDCORD_LOADER__?.loaderName !== "RealCord") {
