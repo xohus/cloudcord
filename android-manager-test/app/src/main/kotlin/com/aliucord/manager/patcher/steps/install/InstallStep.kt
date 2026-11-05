@@ -74,7 +74,7 @@ open class InstallStep(private val options: PatchOptions) : Step(), KoinComponen
 
         when (result) {
             is InstallerResult.Error -> {
-                container.log("Installation failed")
+                container.log("Installation failed: ${result.getDebugReason()}")
                 throw Error("Failed to install APKs: ${result.getDebugReason()}")
             }
 

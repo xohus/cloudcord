@@ -12,8 +12,11 @@ import kotlinx.parcelize.Parcelize
  * that is captured by a receiver into something human readable.
  */
 @Parcelize
-data class PMInstallerError(val status: Int) : InstallerResult.Error(), Parcelable {
-    override fun getDebugReason() = when (status) {
+data class PMInstallerError(
+    val status: Int,
+    val statusMessage: String? = null,
+) : InstallerResult.Error(), Parcelable {
+    private fun summary() = when (status) {
         PackageInstaller.STATUS_FAILURE -> "Unknown failure"
         PackageInstaller.STATUS_FAILURE_BLOCKED -> "Blocked"
         PackageInstaller.STATUS_FAILURE_INVALID -> "Invalid package"
@@ -22,6 +25,12 @@ data class PMInstallerError(val status: Int) : InstallerResult.Error(), Parcelab
         PackageInstaller.STATUS_FAILURE_INCOMPATIBLE -> "Device incompatibility"
         /* PackageInstaller.STATUS_FAILURE_TIMEOUT */ 8 -> "Operation timeout"
         else -> "Unknown code ($status)"
+    }
+
+    override fun getDebugReason(): String = buildString {
+        append(summary())
+        append(" (status $status)")
+        statusMessage?.trim()?.takeIf { it.isNotEmpty() }?.let { append(": $it") }
     }
 
     override fun getLocalizedReason(context: Context): String {
@@ -36,6 +45,7 @@ data class PMInstallerError(val status: Int) : InstallerResult.Error(), Parcelab
             else -> R.string.install_error_unknown
         }
 
-        return context.getString(string)
+        val detail = statusMessage?.trim()?.takeIf { it.isNotEmpty() }
+        return context.getString(string) + (detail?.let { "\n\n$it" } ?: "")
     }
 }
