@@ -3,9 +3,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../runtime/src/entry.ts'), 'utf8');
-const start = source.indexOf('async function initializeCloudCord()');
+const start = source.indexOf('function isBridgeless()');
 const end = source.indexOf('\nif (typeof window.__r');
-const initialize = source.slice(start, end).replaceAll('(globalThis as any)', 'globalThis').replaceAll(': unknown', '');
+const initialize = source.slice(start, end).replaceAll('(globalThis as any)', 'globalThis').replaceAll('globalThis as any', 'globalThis').replaceAll(': unknown', '');
 (async () => {
     for (const phase of ['cache', 'runtime', 'success', 'pending']) {
         const messages = [];
@@ -27,7 +27,7 @@ const initialize = source.slice(start, end).replaceAll('(globalThis as any)', 'g
                 throw new Error('native modules unavailable');
             }
         });
-        vm.runInContext(initialize, realm);
+        vm.runInContext('globalThis.window = globalThis;\n' + initialize, realm);
         await Promise.race([
             realm.initializeCloudCord(),
             new Promise((_, reject) => setTimeout(() => reject(new Error('optional startup blocked Discord launch')), 100))

@@ -14,14 +14,27 @@ const { instead } = require("spitroast");
 // @ts-ignore - window is defined later in the bundle, so we assign it early
 globalThis.window = globalThis;
 
+function isBridgeless() {
+    const runtime = globalThis as any;
+    if (runtime["RN$Bridgeless"] === true) runtime.__CLOUDCORD_BRIDGELESS__ = true;
+    return runtime.__CLOUDCORD_BRIDGELESS__ === true;
+}
+
 async function initializeCloudCord() {
     try {
         // Legacy React Native needs mutable module exports before Discord
         // starts. On Discord 344+ this bundle is attached after startup;
         // replacing these globals then corrupts active account/navigation
         // stores and can leave the client on an infinite loading screen.
-        if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+        if (!isBridgeless()) {
             Object.freeze = Object.seal = Object;
+        }
+
+        const registry = window.modules ?? window.__c?.();
+        if (registry instanceof Map) {
+            (globalThis as any).__CLOUDCORD_MODULE_VIEW__ = Object.fromEntries(registry);
+        } else if (registry) {
+            (globalThis as any).__CLOUDCORD_MODULE_VIEW__ = registry;
         }
 
         await require("@metro/internals/caches").initMetroCache();
@@ -161,9 +174,15 @@ if (typeof window.__r === "undefined") {
                 _requireFunc = function patchedRequire(a: number) {
                     // Initializing index.ts(x)
                     if (a === 0) {
-                        if (window.modules instanceof Map) window.modules = Object.fromEntries(window.modules);
-                        onceIndexRequired(v);
                         _requireFunc = v;
+                        if (isBridgeless()) {
+                            // Let Discord own startup and AppRegistry. Loading CloudCord
+                            // before this call can initialize Discord's stores out of order.
+                            const result = v(a);
+                            setTimeout(() => void initializeCloudCord(), 0);
+                            return result;
+                        }
+                        onceIndexRequired(v);
                     } else return v(a);
                 };
             }
