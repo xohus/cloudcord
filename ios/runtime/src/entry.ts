@@ -46,6 +46,8 @@ function recoverStartupUpdate() {
 }
 
 async function initializeCloudCord() {
+    // Install recovery before any settings/profile/cache imports can fail.
+    try { require("./recoveryGesture").installRecoveryGesture(); } catch {}
     try {
         // Rain can attach after Metro already exists, without setting window.modules.
         // Prepare a private view for both early and late injection paths.
