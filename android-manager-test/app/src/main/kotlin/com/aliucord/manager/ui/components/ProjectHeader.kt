@@ -6,6 +6,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -28,8 +31,11 @@ fun ProjectHeader(
         modifier = modifier,
     ) {
         Image(
-            painter = painterResource(if (aliucord) R.drawable.ic_aliucord_logo else R.drawable.cloudcord_logo),
+            painter = painterResource(if (aliucord) R.drawable.ic_aliucord_logo else R.drawable.ic_cloudcord_mark),
             contentDescription = null,
+            colorFilter = if (aliucord) null else ColorFilter.tint(
+                if (MaterialTheme.colorScheme.background.luminance() > 0.5f) Color.Black else Color.White
+            ),
             modifier = Modifier
                 .padding(bottom = 6.dp)
                 .size(88.dp),

@@ -31,13 +31,7 @@ object Signer : KoinComponent {
     private val signerConfig: ApkSigner.SignerConfig by lazy {
         val keyStore = KeyStore.getInstance(KeyStore.getDefaultType())
 
-        // Create new keystore if it doesn't exist
-        if (!paths.keystoreFile.exists()) {
-            paths.rainDir.mkdirs()
-            newKeystore(paths.keystoreFile)
-        }
-
-        paths.keystoreFile.inputStream()
+        getKeystoreFile().inputStream()
             .use { keyStore.load(it, /* password = */ null) }
 
         val alias = keyStore.aliases().nextElement()
@@ -98,13 +92,23 @@ object Signer : KoinComponent {
             .build()
             .sign()
 
-        val result = ApkVerifier.Builder(tmpApk).setMinCheckedPlatformVersion(28).build().verify()
-        check(result.isVerified) { "Signed APK verification failed for ${apkFile.name}: ${result.errors}" }
+        verifyApk(tmpApk)
         check(tmpApk.renameTo(apkFile)) { "Could not save signed APK: ${apkFile.name}" }
     }
 
+    fun verifyApk(apk: File) {
+        val result = ApkVerifier.Builder(apk).setMinCheckedPlatformVersion(28).build().verify()
+        check(result.isVerified) { "Signed APK verification failed for ${apk.name}: ${result.errors}" }
+    }
+
+    @Synchronized
     fun getKeystoreFile(): File {
-        return paths.keystoreFile
+        val file = paths.keystoreFile
+        if (!file.exists()) {
+            paths.rainDir.mkdirs()
+            newKeystore(file)
+        }
+        return file
     }
 
     private class KeySet(val publicKey: X509Certificate, val privateKey: PrivateKey)

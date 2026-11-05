@@ -257,19 +257,19 @@
   <string name="custom_component_picker_title">Custom Component</string>
   <string name="custom_component_picker_desc">A custom local version for a patching component (%s) has been found. Would you like to use it?</string>
 
-  <string name="fun_fact_prefix">Fun Fact: %s</string>
-  <string name="fun_fact_1">Did you know that Google Play Protect is useless?</string>
-  <string name="fun_fact_2">Did you know there was a plan to support Bunny plugins</string>
-  <string name="fun_fact_3">There are a lot of discord mobile clients</string>
-  <string name="fun_fact_4">i am in your walls</string>
-  <string name="fun_fact_5">Did you know AliucordRN spawned Enmity and Vendetta?</string>
-  <string name="fun_fact_6">Having issues? Visit the #help channel in our Discord!</string>
-  <string name="fun_fact_7">CloudCord is the successor to Kettu</string>
-  <string name="fun_fact_8" translatable="false">\"@Vendicated my bad.\"</string>
-  <string name="fun_fact_9">"CloudCord CloudCord CloudCord</string>
-  <string name="fun_fact_10">Also try out Aliucord!</string>
-  <string name="fun_fact_11">CloudCord is the fastest mobile mod currently</string>
-  <string name="fun_fact_12" translatable="false">:3</string>
+  <string name="fun_fact_prefix">Install tip: %s</string>
+  <string name="fun_fact_1">Keep CloudCord Manager open so you can see the Android install prompt.</string>
+  <string name="fun_fact_2">A stable Wi-Fi connection helps when downloading Discord.</string>
+  <string name="fun_fact_3">CloudCord can run alongside official Discord.</string>
+  <string name="fun_fact_4">The installer shows which step is currently running.</string>
+  <string name="fun_fact_5">Android will ask you to confirm the install when the APKs are ready.</string>
+  <string name="fun_fact_6">If a step fails, copy the install log and post it in #reports on the CloudCord Discord.</string>
+  <string name="fun_fact_7">Keep Play Protect enabled during installation.</string>
+  <string name="fun_fact_8">Make sure your phone has space for the downloaded files and the installed app.</string>
+  <string name="fun_fact_9">CloudCord verifies the patched APKs before handing them to Android.</string>
+  <string name="fun_fact_10">You can open your CloudCord installation from the Manager home screen.</string>
+  <string name="fun_fact_11">Keep the same Manager installed to preserve the signing key for client updates.</string>
+  <string name="fun_fact_12">CloudCord downloads the current stable Discord build by default.</string>
   <string name="setting_pitch_black">Pitch Black</string>
   <string name="setting_pitch_black_desc">Enables Pitch Black Backgrounds</string>
 

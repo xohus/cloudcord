@@ -25,7 +25,6 @@ class RainPatchRunner(options: PatchOptions) : StepRunner() {
         SaveMetadataStep(options),
 
         AlignmentStep(),
-        SigningStep(),
         InjectRainXposedStep(),
 
         InstallStep(options),

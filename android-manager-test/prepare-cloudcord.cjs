@@ -6,10 +6,14 @@ for (const dir of fs.readdirSync(root).filter(n => n.startsWith('values'))) {
     const file = path.join(root, dir, 'strings.xml');
     if (!fs.existsSync(file)) continue;
     let text = fs.readFileSync(file, 'utf8');
+    if (dir !== 'values') {
+        // Fall back to the current install tips until translations are updated.
+        text = text.replace(/<string\b[^>]*name="fun_fact_(?:prefix|\d+)"[^>]*>[\s\S]*?<\/string>/g, '');
+    }
     text = text.replace(/<string\b[^>]*name="([^"]+)"[^>]*>[\s\S]*?<\/string>/g, (entry, key) => {
         if (key.startsWith('contributors_')) return entry;
         return entry.replace(/Rain Manager|RainManager|Raincord|RainXposed|\bRain\b/g,
-            value => /Manager/.test(value) ? 'CloudCord Manager Test' : value === 'RainXposed' ? 'CloudCord module' : 'CloudCord');
+            value => /Manager/.test(value) ? 'CloudCord Manager' : value === 'RainXposed' ? 'CloudCord module' : 'CloudCord');
     });
     text = text.replace(/(<string name="app_name">)[^<]+/, '$1CloudCord Manager');
     text = text.replace(/(<string name="play_protect_warning_desc">)[\s\S]*?<\/string>/,

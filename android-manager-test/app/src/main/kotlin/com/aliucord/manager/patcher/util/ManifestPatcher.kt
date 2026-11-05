@@ -36,6 +36,7 @@ object ManifestPatcher {
         useEmbeddedDex: Boolean? = true,
         extractNativeLibs: Boolean? = false,
         addManagerMetadata: Boolean? = true,
+        managerMetadataName: String = "isRain",
         modifyPermissions: Boolean? = true,
         modifyProviders: Boolean? = true,
         modifyActivities: Boolean? = true,
@@ -191,7 +192,7 @@ object ManifestPatcher {
                                                 "name",
                                                 android.R.attr.name,
                                                 TYPE_STRING,
-                                                "isRain" /* originally "isAliucord" */
+                                                managerMetadataName
                                             )
                                             attr(ANDROID_NAMESPACE, "value", android.R.attr.value, TYPE_INT_BOOLEAN, 1)
                                         }

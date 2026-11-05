@@ -12,16 +12,8 @@ import com.aliucord.manager.ui.util.InstallNotifications
 import dev.raincord.manager.BuildConfig
 import dev.raincord.manager.R
 import kotlinx.collections.immutable.ImmutableList
-import kotlinx.coroutines.delay
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-
-/**
- * The minimum time that is required to occur between step switches, to avoid
- * quickly switching the step groups in the UI. (very disorienting)
- * Larger delay leads to a perception that it's doing more work than it actually is.
- */
-private const val MINIMUM_STEP_DELAY: Long = 600L
 
 /**
  * ID used for showing error notifications emanating from this step runner.
@@ -96,12 +88,7 @@ abstract class StepRunner : KoinComponent {
                 return error
             }
 
-            // Skip minimum run time when in dev mode
             val duration = step.getDuration()
-            if (!preferences.devMode && duration < MINIMUM_STEP_DELAY) {
-                delay(MINIMUM_STEP_DELAY - duration)
-            }
-
             log("Completed step: $stepName in ${duration}ms")
         }
 

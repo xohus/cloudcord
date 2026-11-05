@@ -14,5 +14,7 @@ class PatchRainManifestStep(val options: PatchOptions) : PatchManifestStep(optio
         requestLegacyExternalStorage = false,
         appName = if (isBase) options.appName else null,
         debuggable = options.debuggable,
+        addManagerMetadata = isBase,
+        managerMetadataName = "isCloudCord",
     )
 }

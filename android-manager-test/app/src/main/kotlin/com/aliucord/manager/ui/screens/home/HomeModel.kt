@@ -13,12 +13,11 @@ import androidx.core.graphics.drawable.toBitmap
 import androidx.core.net.toUri
 import cafe.adriel.voyager.core.model.ScreenModel
 import cafe.adriel.voyager.core.model.screenModelScope
-import com.aliucord.manager.network.models.BuildInfo
 import com.aliucord.manager.network.models.RNATrackerIndex
 import com.aliucord.manager.network.services.*
-import com.aliucord.manager.network.utils.SemVer
 import com.aliucord.manager.network.utils.fold
 import com.aliucord.manager.patcher.InstallMetadata
+import com.aliucord.manager.patcher.steps.download.DownloadRainXposedStep
 import com.aliucord.manager.ui.screens.patchopts.*
 import com.aliucord.manager.ui.util.DiscordVersion
 import com.aliucord.manager.ui.util.toUnsafeImmutable
@@ -37,9 +36,6 @@ import org.json.JSONObject
 
 class HomeModel(
     private val application: Application,
-    private val github: AliucordGithubService,
-    private val maven: AliucordMavenService,
-    private val rainCodeberg: RainCodebergService,
     private val rnaTracker: RNATrackerService,
     private val json: Json,
 ) : ScreenModel {
@@ -47,10 +43,7 @@ class HomeModel(
         private set
 
     private val refreshingLock = Mutex()
-    private var remoteDataJson: BuildInfo? = null
     private var trackerIndexJson: RNATrackerIndex? = null
-    private var latestRainXposedVersion: SemVer? = null
-    private var latestAliuhookVersion: SemVer? = null
 
     init {
         refresh()
@@ -74,8 +67,7 @@ class HomeModel(
                     fetchInstallations(packages)
                 },
                 screenModelScope.launch(Dispatchers.IO) {
-                    if (remoteDataJson == null || latestAliuhookVersion == null)
-                        fetchRemoteData()
+                    fetchRemoteData()
                 }
             )
 
@@ -191,41 +183,13 @@ class HomeModel(
     }
 
     private suspend fun fetchRemoteData() {
-        listOf(
-            // // These aren't needed by Rain
-            // screenModelScope.launch(Dispatchers.IO) {
-            //     github.getBuildData().fold(
-            //         success = { remoteDataJson = it },
-            //         fail = { Log.w(BuildConfig.TAG, "Failed to fetch remote build data", it) },
-            //     )
-            // },
-            // screenModelScope.launch(Dispatchers.IO) {
-            //     maven.getAliuhookVersion().fold(
-            //         success = { latestAliuhookVersion = it },
-            //         fail = { Log.w(BuildConfig.TAG, "Failed to fetch latest Aliuhook version", it) },
-            //     )
-            // },
-            screenModelScope.launch(Dispatchers.IO) {
-                rnaTracker.getLatestDiscordVersions().fold(
-                    success = { trackerIndexJson = it },
-                    fail = { Log.w(BuildConfig.TAG, "Failed to fetch latest Discord RNA versions", it) },
-                )
-            },
-            screenModelScope.launch(Dispatchers.IO) {
-                rainCodeberg.getLatestXposedRelease().fold(
-                    success = { latestRainXposedVersion = SemVer.parse(it.name) },
-                    fail = { Log.w(BuildConfig.TAG, "Failed to fetch latest RainXposed version", it) },
-                )
-            },
-
-        ).joinAll()
+        rnaTracker.getLatestDiscordVersions().fold(
+            success = { trackerIndexJson = it },
+            fail = { Log.w(BuildConfig.TAG, "Failed to fetch latest Discord RNA versions", it) },
+        )
 
         if (trackerIndexJson == null) {
             Log.w(BuildConfig.TAG, "RNATracker index is null after fetching remote data.")
-            mainThread { application.showToast(R.string.home_network_fail) }
-        }
-        if (latestRainXposedVersion == null) {
-            Log.w(BuildConfig.TAG, "Latest RainXposed version is null after fetching remote data.")
             mainThread { application.showToast(R.string.home_network_fail) }
         }
     }
@@ -237,23 +201,12 @@ class HomeModel(
         return application.packageManager
             .getInstalledPackages(PackageManager.GET_META_DATA)
             .filter {
-                // Rain doesn't have "legacy installer" whatsoever
-                return@filter it.packageName == "gg.xohus.cloudcord.client.test" &&
-                    it.applicationInfo?.metaData?.containsKey("isRain") == true
-
-                // // Packages installed via the legacy Installer do not have the metadata marker
-                // val isAliucordPkg = it.packageName == "com.aliucord"
-                // val hasAliucordMeta = it.applicationInfo?.metaData?.containsKey("isAliucord") == true
-                // isAliucordPkg || hasAliucordMeta
+                it.applicationInfo?.metaData?.getBoolean("isCloudCord") == true
             }
     }
 
     /**
-     * Checks whether the current Rain installation is up-to-date.
-     *
-     * Currently mirrors the behavior of Bunny Manager by directly comparing against
-     * the latest available Discord and RainXposed release. This is a temporary approach and will remain
-     * in place until Rain adds support for version pinning.
+     * Checks against the Discord version selected by the installer and our bundled module.
      */
     private suspend fun isInstallationUpToDate(pkg: PackageInfo): Boolean? {
         val trackerData = trackerIndexJson ?: return null // Latest stable/beta/alpha from RNA tracker
@@ -273,40 +226,12 @@ class HomeModel(
             return false
         }
 
-        var expectedDiscordVersionCode: Int? = null
-
-        // 1. Try ControlRepo
-        var controlRepoDiscordVersion: Int? = null
-        rainCodeberg.getControlRepo().fold(
-            success = {
-                controlRepoDiscordVersion = it.firstOrNull()?.discord
-            },
-            fail = {
-                Log.w(BuildConfig.TAG, "Failed to fetch ControlRepo version for isInstallationUpToDate", it)
-            }
-        )
-
-        if (controlRepoDiscordVersion != null) {
-            expectedDiscordVersionCode = controlRepoDiscordVersion
+        val expectedDiscordVersion = if (installMetadata.options.isDevMode) {
+            installMetadata.options.customVersionCode.toIntOrNull() ?: trackerData.latest.stable
         } else {
-            // 2. If ControlRepo failed, check for Dev Override (from installed metadata)
-            if (installMetadata.options.isDevMode && installMetadata.options.customVersionCode.isNotBlank()) {
-                expectedDiscordVersionCode = installMetadata.options.customVersionCode.toIntOrNull()
-            } else {
-                // 3. If ControlRepo and Dev Override failed, fallback to RNATracker Stable
-                expectedDiscordVersionCode = trackerData.latest.stable
-            }
+            trackerData.latest.stable
         }
-
-        // If for some reason we couldn't determine an expected version, consider it not up-to-date
-        if (expectedDiscordVersionCode == null) return false
-
-        // Compare installed Discord version with the determined expected version
-        val isDiscordUpToDate = installedDiscordVersionCode == expectedDiscordVersionCode
-
-        // Compare RainXposed version
-        val isRainXposedUpToDate = installMetadata.rainXposedVersion == latestRainXposedVersion
-
-        return isDiscordUpToDate && isRainXposedUpToDate
+        return installedDiscordVersionCode == expectedDiscordVersion &&
+            installMetadata.rainXposedVersion == DownloadRainXposedStep.BUNDLED_VERSION
     }
 }

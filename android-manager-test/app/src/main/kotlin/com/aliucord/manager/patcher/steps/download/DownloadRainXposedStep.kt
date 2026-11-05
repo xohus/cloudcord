@@ -14,9 +14,13 @@ class DownloadRainXposedStep : DownloadStep() {
     private val context: Context by inject()
     private val paths: PathManager by inject()
     override val localizedName = R.string.patch_step_dl_rainxposed
-    val targetVersion = SemVer.parse("1.0.0")
+    val targetVersion = BUNDLED_VERSION
     override val targetFile get() = paths.cachedRainXposed(targetVersion)
     override val targetUrl = "bundled:cloudcord-module.apk"
+
+    companion object {
+        val BUNDLED_VERSION = SemVer.parse("1.0.0")
+    }
     override suspend fun execute(container: StepRunner) {
         container.log("Preparing bundled CloudCord Xposed module")
         targetFile.parentFile!!.mkdirs()

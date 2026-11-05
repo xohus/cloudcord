@@ -13,6 +13,7 @@ import org.lsposed.lspatch.share.LSPConfig
 import org.lsposed.patch.LSPatch
 import org.lsposed.patch.util.Logger
 import java.io.File
+import java.nio.file.Files
 import java.util.Locale
 
 class InjectRainXposedStep : Step() {
@@ -57,7 +58,7 @@ class InjectRainXposedStep : Step() {
         }
     }
 
-    override suspend fun execute(container: StepRunner) {
+    override suspend fun execute(container: StepRunner) = withContext(Dispatchers.IO) {
         val apks = container.getStep<CopyDependenciesStep>().patchedApks
         val xposed = container.getStep<DownloadRainXposedStep>().targetFile
 
@@ -65,39 +66,32 @@ class InjectRainXposedStep : Step() {
         container.log("CloudCord module path = ${xposed.absolutePath}")
 
         // Create temporary folder in working directory
-        val tempDir = apks.first().parentFile!!.resolve("lspatched")
+        val tempDir = Files.createTempDirectory(apks.first().parentFile!!.toPath(), "lspatched-").toFile()
 
-        patch(
-            container,
-            outputDir = tempDir,
-            apkPaths = apks.map { it.absolutePath },
-            embeddedModules = listOf(xposed.absolutePath)
-        )
+        try {
+            patch(
+                container,
+                outputDir = tempDir,
+                apkPaths = apks.map { it.absolutePath },
+                embeddedModules = listOf(xposed.absolutePath)
+            )
 
-        // Process each APK and replace with patched version
-        apks.forEach { originalApk ->
-            val baseName = originalApk.nameWithoutExtension
-            // https://github.com/JingMatrix/LSPatch/blob/b98eaf805018c4cc258ded12efe89212a4855e6a/patch/src/main/java/org/lsposed/patch/LSPatch.java#L159-L163
-            // String.format(
-            //     Locale.getDefault(), "%s-%d-lspatched.apk",
-            //     FilenameUtils.getBaseName(apkFileName),
-            //     LSPConfig.instance.VERSION_CODE)
-            // )
-            // Format with the device locale like LSPatch does (Arabic and similar locales use non-ASCII digits),
-            // falling back to any matching output in case the formatting ever differs.
-            val patchedApkName = String.format(Locale.getDefault(), "%s-%d-lspatched.apk", baseName, LSPConfig.instance.VERSION_CODE)
-            val patchedApk = File(tempDir, patchedApkName).takeIf { it.exists() }
-                ?: tempDir.listFiles { f -> f.name.startsWith("$baseName-") && f.name.endsWith("-lspatched.apk") }?.singleOrNull()
-                ?: File(tempDir, patchedApkName)
-
-            if (patchedApk.exists()) {
-                patchedApk.copyTo(originalApk, overwrite = true)
-                container.log("Replaced ${originalApk.name} with ${patchedApk.name}")
-            } else {
-                error("Missing patched APK for ${originalApk.name}; refusing to install an uninjected client")
+            // LSPatch signs its output with the supplied key. Verify the whole set before replacing any input.
+            val outputs = apks.map { original ->
+                val baseName = original.nameWithoutExtension
+                val outputName = String.format(Locale.getDefault(), "%s-%d-lspatched.apk", baseName, LSPConfig.instance.VERSION_CODE)
+                val patched = File(tempDir, outputName).takeIf { it.isFile }
+                    ?: tempDir.listFiles { file -> file.isFile && file.name.startsWith("$baseName-") && file.name.endsWith("-lspatched.apk") }?.singleOrNull()
+                    ?: error("Missing patched APK for ${original.name}")
+                Signer.verifyApk(patched)
+                original to patched
             }
+            for ((original, patched) in outputs) {
+                check(patched.renameTo(original)) { "Could not save patched APK: ${original.name}" }
+                container.log("Verified and saved ${original.name}")
+            }
+        } finally {
+            tempDir.deleteRecursively()
         }
-
-        tempDir.deleteRecursively()
     }
 }

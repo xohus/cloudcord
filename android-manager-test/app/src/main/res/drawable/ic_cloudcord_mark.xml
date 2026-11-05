@@ -1,0 +1,12 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="0.74" android:scaleY="0.74">
+        <path
+            android:fillColor="@color/cloudcord_splash_mark"
+            android:fillType="evenOdd"
+            android:pathData="M28,70C14,70 13,50 26,47C25,32 43,28 51,37C63,17 88,30 84,47C101,50 98,70 84,70Z M32,55C38,49 45,49 51,54C59,42 70,41 79,46C65,44 59,51 53,60C44,55 39,53 32,55Z" />
+    </group>
+</vector>

@@ -57,6 +57,8 @@ jobs:
           signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
           "$signer" verify --verbose --print-certs "$apk" | tee "$RUNNER_TEMP/manager-signature.txt"
           grep -Eq '^(Signer #[0-9]+|V[0-9.]+ Signer):? certificate SHA-256 digest: 6838080fe39db6c2506b8cc25bd8f488be2cf45f62a52766d334f0fe908666e7$' "$RUNNER_TEMP/manager-signature.txt"
+          "$(dirname "$signer")/aapt" dump badging "$apk" | tee "$RUNNER_TEMP/manager-package.txt"
+          grep -q "^package: name='com.getcloudcord.manager' " "$RUNNER_TEMP/manager-package.txt"
       - name: Upload regression test results
         if: always()
         uses: actions/upload-artifact@v4
