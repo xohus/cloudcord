@@ -37,9 +37,8 @@ var (
 	lastAutoComplete       string
 	didAutoComplete        bool
 
-	modalId      = 0
-	modalTitle   = "Oh No :("
-	modalMessage = "You should never see this"
+	noticeTitle   string
+	noticeMessage string
 
 	acceptedOpenAsar   bool
 	showedUpdatePrompt bool
@@ -145,7 +144,7 @@ func getChosenInstall() *DiscordInstall {
 			choice = ParseDiscordNew(customDir, "", strings.Contains(customDir, "com.discordapp"))
 		}
 		if choice == nil {
-			ShowModal("Discord folder not found", "Choose the folder containing your Discord installation, then try again. CloudCord has not changed any files.")
+			ShowInstallerNotice("Discord folder not found", "Choose the folder containing your Discord installation, then try again. CloudCord has not changed any files.")
 		}
 	} else {
 		if radioIdx >= 0 && radioIdx < len(discords) {
@@ -197,13 +196,14 @@ func handlePatch() {
 		return
 	}
 	copy := *choice
+	noticeTitle, noticeMessage = "", ""
 	operationStatus = "Installing CloudCord. Downloading may take a few minutes…"
 	finishOperation = func(err error) {
 		*choice = copy
 		if err != nil {
 			handleErr(choice, err, "install")
 		} else {
-			g.OpenPopup("#patched")
+			ShowInstallerNotice(patchSuccessTitle, "Open Discord, then go to Settings → CloudCord. Your plugins, themes and settings have been kept.")
 		}
 	}
 	activeOperation = startInstallerOperation(copy.patch, func() { g.Update() })
@@ -218,13 +218,14 @@ func handleUnpatch() {
 		return
 	}
 	copy := *choice
+	noticeTitle, noticeMessage = "", ""
 	operationStatus = "Removing CloudCord…"
 	finishOperation = func(err error) {
 		*choice = copy
 		if err != nil {
 			handleErr(choice, err, "uninstall")
 		} else {
-			g.OpenPopup("#unpatched")
+			ShowInstallerNotice("CloudCord Desktop removed", "CloudCord has been uninstalled. Restart Discord to return to stock.")
 		}
 	}
 	activeOperation = startInstallerOperation(copy.unpatch, func() { g.Update() })
@@ -243,31 +244,12 @@ func handleErr(di *DiscordInstall, err error, action string) {
 		}
 	}
 
-	ShowModal("Failed to "+action+" this Install", err.Error())
+	ShowInstallerNotice("Failed to "+action+" CloudCord", err.Error())
 }
 
-func ShowModal(title, desc string) {
-	modalTitle = title
-	modalMessage = desc
-	modalId++
-	g.OpenPopup("#modal" + strconv.Itoa(modalId))
-}
-
-func InfoModal(id, title, description string) g.Widget {
-	return RawInfoModal(id, title, description, false)
-}
-
-func RawInfoModal(id, title, description string, unformatted bool) g.Widget {
-	return g.PopupModal(id).
-		Flags(g.WindowFlagsAlwaysAutoResize|g.WindowFlagsNoMove).
-		Layout(
-			g.Dummy(420, 0),
-			g.Label(title),
-			g.Label(description).Wrapped(true),
-			g.Button("OK").OnClick(func() {
-				g.CloseCurrentPopup()
-			}),
-		)
+func ShowInstallerNotice(title, desc string) {
+	noticeTitle, noticeMessage = title, desc
+	g.Update()
 }
 
 func finishPendingOperation() {
@@ -285,6 +267,9 @@ func finishPendingOperation() {
 }
 
 func loop() {
+	// Consume results before constructing widgets so the same frame reflects
+	// completion, the updated installation and the enabled action buttons.
+	finishPendingOperation()
 	select {
 	case <-releaseReadySignal:
 		releaseReady = true
@@ -328,8 +313,6 @@ func loop() {
 
 	g.SingleWindow().
 		Layout(
-			// Open completion popups only inside an active ImGui window.
-			g.Custom(finishPendingOperation),
 			// 1. Top Header
 			g.Row(
 				g.Style().SetFontSize(22).SetColor(g.StyleColorText, color.White).To(
@@ -341,6 +324,17 @@ func loop() {
 			),
 
 			g.Dummy(0, 24),
+			&CondWidget{
+				predicate: noticeTitle != "",
+				ifWidget: func() g.Widget {
+					return g.Column(
+						g.Label(noticeTitle),
+						g.Label(noticeMessage).Wrapped(true),
+						g.Button("Dismiss").OnClick(func() { noticeTitle, noticeMessage = "", "" }),
+						g.Separator(),
+					)
+				},
+			},
 
 			// 2. Hero Card
 			g.Style().
@@ -447,13 +441,10 @@ func loop() {
 				),
 			),
 
-			InfoModal("#patched", patchSuccessTitle, "If Discord is still open, fully close it first.\nThen start it and verify CloudCord installed successfully in Discord Settings!"),
-			InfoModal("#unpatched", "CloudCord Desktop removed", "CloudCord has been uninstalled. Restart Discord to return to stock."),
-			InfoModal("#modal"+strconv.Itoa(modalId), modalTitle, modalMessage),
 		)
 	g.PopStyle()
 }
 
 func HandleScuffedInstall() {
-	ShowModal("Broken Discord Install", "You have a broken Discord install in ProgramData.\nPlease reinstall Discord before proceeding!")
+	ShowInstallerNotice("Broken Discord Install", "You have a broken Discord install in ProgramData.\nPlease reinstall Discord before proceeding!")
 }
