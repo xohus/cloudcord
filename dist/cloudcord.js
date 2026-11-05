@@ -3353,7 +3353,7 @@
 
   // src/lib/addons/themes/colors/patches/storage.ts
   function patchStorage() {
-    if (globalThis.__RAIN_LOADER__)
+    if (globalThis.__CLOUDCORD_LOADER__ || globalThis.__RAIN_LOADER__)
       return () => {
       };
     var patchedKeys = /* @__PURE__ */ new Set([
@@ -3485,7 +3485,7 @@
       return true;
     return themeJSON.spec === 2 || themeJSON.spec === 3;
   }
-  function fetchTheme(url2, selected = false) {
+  function fetchTheme(url2, selected, refresh = false) {
     return _async_to_generator(function* () {
       var themeJSON;
       try {
@@ -3497,17 +3497,18 @@
       }
       if (!validateTheme(themeJSON))
         throw new Error(`Invalid theme at ${url2}`);
-      themes[url2] = {
+      var previous = themes[url2];
+      if (refresh && !previous)
+        return;
+      var wasSelected = refresh ? !!previous?.selected : selected ?? !!previous?.selected;
+      var theme = {
         id: url2,
-        selected,
+        selected: wasSelected,
         data: processData(themeJSON)
       };
-      if (selected) {
-        writeThemeToNative(themes[url2]);
-        updateBunnyColor(themes[url2].data, {
-          update: true
-        });
-      }
+      themes[url2] = theme;
+      if (wasSelected)
+        yield selectTheme(theme);
     })();
   }
   function installTheme(url2) {
@@ -3545,8 +3546,7 @@
   function updateThemes() {
     return _async_to_generator(function* () {
       yield awaitStorage(themes);
-      var currentTheme = getThemeFromLoader();
-      yield allSettled(Object.keys(themes).map((id) => fetchTheme(id, currentTheme?.id === id)));
+      yield allSettled(Object.keys(themes).map((id) => fetchTheme(id, void 0, true)));
     })();
   }
   function getCurrentTheme() {
@@ -3559,14 +3559,15 @@
     return _async_to_generator(function* () {
       if (!isThemeSupported())
         return;
-      if (settings.safeMode?.enabled)
-        return;
       try {
+        yield awaitStorage(settings, themes);
+        if (settings.safeMode?.enabled)
+          return;
         if (isPyonLoader()) {
           writeFile("../vendetta_theme.json", "null");
         }
         yield awaitStorage2(colorsPref);
-        var currentTheme = getThemeFromLoader();
+        var currentTheme = getCurrentTheme() ?? getThemeFromLoader();
         initColors(currentTheme?.data ?? null);
         updateThemes().catch((e) => console.error("Failed to update themes", e));
       } catch (e) {
@@ -3605,9 +3606,6 @@
   }
   function isCloudCordLoader() {
     return cloudCordLoaderIdentity != null;
-  }
-  function isRa1nLoader() {
-    return isCloudCordLoader();
   }
   function polyfillVendettaLoaderIdentity() {
     if (!isPyonLoader() || isVendettaLoader() || !isCloudCordLoader())
@@ -3690,12 +3688,12 @@
     return false;
   }
   function isThemeSupported() {
+    if (isCloudCordLoader())
+      return true;
     if (isPyonLoader()) {
       return pyonLoaderIdentity.hasThemeSupport;
     } else if (isVendettaLoader()) {
       return vendettaLoaderIdentity.features.themes != null;
-    } else if (isRa1nLoader()) {
-      return false;
     }
     return false;
   }
@@ -9474,12 +9472,11 @@
         enabled: !settings.safeMode?.enabled
       };
       if (isThemeSupported()) {
-        if (getThemeFromLoader()?.id)
-          settings.safeMode.currentThemeId = getThemeFromLoader().id;
         if (settings.safeMode?.enabled) {
+          settings.safeMode.currentThemeId = (getCurrentTheme() ?? getThemeFromLoader())?.id;
           yield selectTheme(null);
         } else if (settings.safeMode?.currentThemeId) {
-          yield selectTheme(themes[settings.safeMode?.currentThemeId]);
+          yield selectTheme(themes[settings.safeMode.currentThemeId] ?? null);
         }
       }
       setTimeout(BundleUpdaterManager.reload, 400);
