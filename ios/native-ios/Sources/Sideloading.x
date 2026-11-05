@@ -18,6 +18,7 @@ extern OSStatus              CMSDecoderCopyContent(CMSDecoderRef cmsDecoder, CFD
 
 #define DISCORD_BUNDLE_ID @"com.hammerandchisel.discord"
 #define DISCORD_NAME      @"Discord"
+#define DISCORD_APP_GROUP @"group.com.hammerandchisel.discord"
 
 typedef NS_ENUM(NSInteger, BundleIDError) {
     BundleIDErrorIcon,
@@ -80,7 +81,7 @@ static BOOL isSelfCall(void)
 {
     NSArray *address = [NSThread callStackReturnAddresses];
     Dl_info  info    = {0};
-    if (dladdr((void *) [address[2] longLongValue], &info) == 0)
+    if (address.count <= 2 || dladdr((void *) [address[2] longLongValue], &info) == 0 || !info.dli_fname)
         return NO;
     NSString *path = [NSString stringWithUTF8String:info.dli_fname];
     return [path hasPrefix:NSBundle.mainBundle.bundlePath];
@@ -133,6 +134,15 @@ static BOOL isDiscord344OrNewer(void)
     // makes the signed-in user appear empty on the bridgeless client.
     if (isDiscord344OrNewer())
         return %orig;
+
+    // BroadcastUpload runs in another process and cannot read the host's
+    // private fallback directory. Use the shared container when provisioned.
+    if ([groupIdentifier isEqualToString:DISCORD_APP_GROUP])
+    {
+        NSURL *sharedContainer = %orig;
+        if (sharedContainer)
+            return sharedContainer;
+    }
 
     BunnyLog(@"containerURLForSecurityApplicationGroupIdentifier called! %@",
              groupIdentifier ?: @"nil");

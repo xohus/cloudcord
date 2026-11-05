@@ -1329,8 +1329,8 @@ jobs:
               (pullOwnSharedProfile as any).pending = true;
               (pullOwnSharedProfile as any).lastAttempt = now;
               const requestedUserId = currentUserId;
-              const localSnapshot = JSON.stringify(preview);
               try {
+                  const localSnapshot = JSON.stringify(preview);
                   const response = await fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
                   if (response.status === 404) {
                       if (preview.enabled) queueSharedPublish();
@@ -3777,7 +3777,9 @@ jobs:
                       AppState.addEventListener("change", state => { if (state === "active") void refreshPublishedBadges(true); });
                       if (!sharedSyncTimer) sharedSyncTimer = setInterval(() => {
                           if (AppState.currentState !== "active") return;
-                          void pullOwnSharedProfile();
+                          void pullOwnSharedProfile().catch(error => {
+                              diagnostics.last = error?.message || "Could not refresh Fake Profile";
+                          });
                           refreshSharedProfiles();
                           if (AppState.currentState === "active") void refreshPublishedBadges();
                       }, 15_000);
