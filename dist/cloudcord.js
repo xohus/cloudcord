@@ -20595,7 +20595,7 @@
     return props?.cloudcordPreview || source?.cloudcordPreview || source?.user?.cloudcordPreview;
   }
   function connectNativeSocialRenderer() {
-    var runtime2 = findByProps("jsx", "jsxs");
+    var runtime = findByProps("jsx", "jsxs");
     var hook = ([Component2], rendered) => {
       var entry = socialEntryFromProps(rendered?.props);
       if (!entry || typeof Component2 !== "function" || Component2.prototype?.isReactComponent || socialWrapperTypes.has(Component2))
@@ -20654,8 +20654,8 @@
       "jsx",
       "jsxs"
     ])
-      if (typeof runtime2?.[method] === "function")
-        after(method, runtime2, hook);
+      if (typeof runtime?.[method] === "function")
+        after(method, runtime, hook);
   }
   function identityRenderer(Component2) {
     if (identityRenderers.has(Component2))
@@ -39793,23 +39793,11 @@
   }
   var { instead: instead3 } = require_cjs();
   globalThis.window = globalThis;
-  function isBridgeless2() {
-    var runtime2 = globalThis;
-    if (runtime2["RN$Bridgeless"] === true)
-      runtime2.__CLOUDCORD_BRIDGELESS__ = true;
-    return runtime2.__CLOUDCORD_BRIDGELESS__ === true;
-  }
   function initializeCloudCord() {
     return _async_to_generator(function* () {
       try {
-        if (!isBridgeless2()) {
+        if (!globalThis.__CLOUDCORD_BRIDGELESS__) {
           Object.freeze = Object.seal = Object;
-        }
-        var registry = globalThis.modules ?? globalThis.__c?.();
-        if (registry instanceof Map) {
-          globalThis.__CLOUDCORD_MODULE_VIEW__ = Object.fromEntries(registry);
-        } else if (registry) {
-          globalThis.__CLOUDCORD_MODULE_VIEW__ = registry;
         }
         yield (init_caches(), __toCommonJS(caches_exports)).initMetroCache();
         var startup = (init_src(), __toCommonJS(src_exports)).default();
@@ -39840,12 +39828,7 @@
       }
     })();
   }
-  var runtime = globalThis;
-  var initialRequire = globalThis.__r;
-  var initialRegistry = !runtime.__CLOUDCORD_STARTUP_INSTALLED__ && initialRequire && isBridgeless2() ? globalThis.modules ?? globalThis.__c?.() : void 0;
-  var entryModule = initialRegistry instanceof Map ? initialRegistry.get(0) : initialRegistry?.[0];
-  if (!runtime.__CLOUDCORD_STARTUP_INSTALLED__ && (!initialRequire || entryModule?.isInitialized === false)) {
-    runtime.__CLOUDCORD_STARTUP_INSTALLED__ = true;
+  if (typeof globalThis.__r === "undefined") {
     deferredCalls = [];
     unpatches = [];
     deferMethodExecution = (object, method, condition, resume, returnWith) => {
@@ -39896,26 +39879,12 @@
         deferMethodExecution(globalThis.RN$AppRegistry, "runApplication");
       }
       var startDiscord = () => _async_to_generator(function* () {
-        var timer;
-        try {
-          yield Promise.race([
-            initializeCloudCord(),
-            new Promise((resolve) => {
-              timer = setTimeout(resolve, 5e3);
-            })
-          ]);
-        } finally {
-          if (timer !== void 0)
-            clearTimeout(timer);
-          for (var unpatch of unpatches)
-            unpatch();
-          unpatches.length = 0;
-          try {
-            originalRequire(0);
-          } finally {
-            resumeDeferred();
-          }
-        }
+        yield initializeCloudCord();
+        for (var unpatch of unpatches)
+          unpatch();
+        unpatches.length = 0;
+        originalRequire(0);
+        resumeDeferred();
       })();
       startDiscord();
     };
@@ -39926,23 +39895,29 @@
         set(v2) {
           _requireFunc = function patchedRequire(a) {
             if (a === 0) {
-              _requireFunc = v2;
-              if (isBridgeless2()) {
-                var result = v2(a);
-                setTimeout(() => void initializeCloudCord(), 0);
-                return result;
-              }
+              if (globalThis.modules instanceof Map)
+                globalThis.modules = Object.fromEntries(globalThis.modules);
               onceIndexRequired(v2);
+              _requireFunc = v2;
             } else
               return v2(a);
           };
         }
+      },
+      __d: {
+        configurable: true,
+        get() {
+          if (globalThis.Object && !globalThis.modules) {
+            globalThis.modules = globalThis.__c?.();
+          }
+          return this.value;
+        },
+        set(v2) {
+          this.value = v2;
+        }
       }
     });
-    if (initialRequire)
-      globalThis.__r = initialRequire;
-  } else if (!runtime.__CLOUDCORD_STARTUP_INSTALLED__) {
-    runtime.__CLOUDCORD_STARTUP_INSTALLED__ = true;
+  } else {
     initializeCloudCord();
   }
   var _requireFunc;
