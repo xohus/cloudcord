@@ -32152,12 +32152,26 @@
         deferMethodExecution(globalThis.RN$AppRegistry, "runApplication");
       }
       var startDiscord = () => _async_to_generator(function* () {
-        yield initializeCloudCord();
-        for (var unpatch of unpatches)
-          unpatch();
-        unpatches.length = 0;
-        originalRequire(0);
-        resumeDeferred();
+        var timer;
+        try {
+          yield Promise.race([
+            initializeCloudCord(),
+            new Promise((resolve) => {
+              timer = setTimeout(resolve, 5e3);
+            })
+          ]);
+        } finally {
+          if (timer !== void 0)
+            clearTimeout(timer);
+          for (var unpatch of unpatches)
+            unpatch();
+          unpatches.length = 0;
+          try {
+            originalRequire(0);
+          } finally {
+            resumeDeferred();
+          }
+        }
       })();
       startDiscord();
     };
