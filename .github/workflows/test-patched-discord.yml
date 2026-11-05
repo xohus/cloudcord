@@ -5,6 +5,10 @@ on:
       run_id:
         description: Manager Preview run containing patched APKs and instrumentation
         required: true
+      compare_original:
+        description: Also reproduce installation with original Manager 1.0.10
+        type: boolean
+        default: false
 permissions:
   actions: read
   contents: read
@@ -44,6 +48,7 @@ jobs:
           name: Patched-Discord-Android-9
           path: '*.txt'
   original-manager:
+    if: ${{ inputs.compare_original }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v7
