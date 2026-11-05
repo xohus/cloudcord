@@ -361,9 +361,12 @@
         } catch (e) {
         }
       }
-      var module1 = nmp?.[name];
-      if (module1)
-        return module1;
+      try {
+        var module1 = nmp?.[name];
+        if (module1)
+          return module1;
+      } catch (e) {
+      }
     }
     return void 0;
   }
@@ -460,6 +463,27 @@
       init_async_to_generator();
       init_modules();
       dataPrefix = globalThis.__CLOUDCORD_ORIGINAL_RAIN__ ? "rain/" : "cloudcord/";
+    }
+  });
+
+  // src/lib/utils/asyncTimeout.ts
+  function withTimeout(promise, ms = 12e3, message = "Loading took too long. Check your connection and retry.") {
+    var timer;
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error(message)), ms);
+      })
+    ]).finally(() => {
+      if (timer !== void 0)
+        clearTimeout(timer);
+    });
+  }
+  var init_asyncTimeout = __esm({
+    "src/lib/utils/asyncTimeout.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
     }
   });
 
@@ -7883,8 +7907,8 @@
     }
     if (moduleExports.findHostInstance_DEPRECATED) {
       var prevExports = metroModules[id - 1]?.publicModule.exports;
-      var inc = prevExports.default?.reactProfilingEnabled ? 1 : -1;
-      if (!metroModules[id + inc]?.isInitialized) {
+      var inc = prevExports?.default?.reactProfilingEnabled ? 1 : -1;
+      if (metroModules[id + inc] && !metroModules[id + inc]?.isInitialized) {
         blacklistModule(id + inc);
       }
     }
@@ -8181,8 +8205,12 @@
         var majorVersion = Number.parseInt(client?.Version ?? "", 10);
         preloadLegacyModules = !isBridgeless() && majorVersion > 0 && majorVersion < 344;
         canPersist = !!buildNumber && !isBridgeless();
-        if (canPersist && (yield fileExists(BUNNY_METRO_CACHE_PATH))) {
-          var cached = JSON.parse(yield readFile(BUNNY_METRO_CACHE_PATH));
+        if (canPersist) {
+          var cached = yield withTimeout((() => _async_to_generator(function* () {
+            if (!(yield fileExists(BUNNY_METRO_CACHE_PATH)))
+              return void 0;
+            return JSON.parse(yield readFile(BUNNY_METRO_CACHE_PATH));
+          })())(), 1500, "Metro cache read timed out");
           if (cached?._v === CACHE_VERSION && cached._buildNumber === buildNumber && cached._modulesCount === Object.keys(getModuleView()).length && [
             cached.flagsIndex,
             cached.findIndex,
@@ -8262,6 +8290,7 @@
       init_async_to_generator();
       init_fs();
       init_modules();
+      init_asyncTimeout();
       init_dist();
       init_enums();
       CACHE_VERSION = 103;
@@ -10306,27 +10335,6 @@
       callbacks = /* @__PURE__ */ new Map();
       warnedCallbacks = /* @__PURE__ */ new WeakSet();
       jsxRuntime2 = findByPropsLazy("jsx", "jsxs");
-    }
-  });
-
-  // src/lib/utils/asyncTimeout.ts
-  function withTimeout(promise, ms = 12e3, message = "Loading took too long. Check your connection and retry.") {
-    var timer;
-    return Promise.race([
-      Promise.resolve(promise),
-      new Promise((_resolve, reject) => {
-        timer = setTimeout(() => reject(new Error(message)), ms);
-      })
-    ]).finally(() => {
-      if (timer !== void 0)
-        clearTimeout(timer);
-    });
-  }
-  var init_asyncTimeout = __esm({
-    "src/lib/utils/asyncTimeout.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
     }
   });
 
@@ -39796,6 +39804,12 @@
   function initializeCloudCord() {
     return _async_to_generator(function* () {
       try {
+        var registry = globalThis.modules ?? globalThis.__c?.();
+        if (!registry)
+          throw new Error("Discord's module registry is not available yet");
+        globalThis.__CLOUDCORD_MODULE_VIEW__ = registry instanceof Map ? Object.fromEntries(registry) : {
+          ...registry
+        };
         if (!globalThis.__CLOUDCORD_BRIDGELESS__) {
           Object.freeze = Object.seal = Object;
         }
@@ -39809,8 +39823,8 @@
         console.log(stack ?? e?.toString?.() ?? e);
         var build = "unavailable";
         try {
-          var { ClientInfoManager } = (init_modules(), __toCommonJS(modules_exports));
-          build = String(ClientInfoManager?.getConstants?.()?.Build ?? build);
+          var { NativeClientInfoModule: NativeClientInfoModule2 } = (init_modules(), __toCommonJS(modules_exports));
+          build = String(NativeClientInfoModule2?.getConstants?.()?.Build ?? build);
         } catch (e2) {
         }
         var message = [
@@ -39895,10 +39909,8 @@
         set(v2) {
           _requireFunc = function patchedRequire(a) {
             if (a === 0) {
-              if (globalThis.modules instanceof Map)
-                globalThis.modules = Object.fromEntries(globalThis.modules);
-              onceIndexRequired(v2);
               _requireFunc = v2;
+              onceIndexRequired(v2);
             } else
               return v2(a);
           };
