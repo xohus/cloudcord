@@ -8152,7 +8152,7 @@
     indexExportsFlags: () => indexExportsFlags,
     initMetroCache: () => initMetroCache
   });
-  function buildInitCache(buildNumber) {
+  function buildInitCache(buildNumber, preloadLegacyModules) {
     var cache = {
       _v: CACHE_VERSION,
       _buildNumber: buildNumber,
@@ -8161,7 +8161,7 @@
       findIndex: {},
       polyfillIndex: {}
     };
-    if (!isBridgeless()) {
+    if (preloadLegacyModules) {
       setTimeout(() => {
         for (var id in getModuleView()) {
           (init_modules2(), __toCommonJS(modules_exports2)).requireModule(id);
@@ -8174,8 +8174,12 @@
   function initMetroCache() {
     return _async_to_generator(function* () {
       var buildNumber;
+      var preloadLegacyModules = false;
       try {
-        buildNumber = NativeClientInfoModule?.getConstants?.()?.Build;
+        var client = NativeClientInfoModule?.getConstants?.();
+        buildNumber = client?.Build;
+        var majorVersion = Number.parseInt(client?.Version ?? "", 10);
+        preloadLegacyModules = !isBridgeless() && majorVersion > 0 && majorVersion < 344;
         canPersist = !!buildNumber && !isBridgeless();
         if (canPersist && (yield fileExists(BUNNY_METRO_CACHE_PATH))) {
           var cached = JSON.parse(yield readFile(BUNNY_METRO_CACHE_PATH));
@@ -8191,7 +8195,7 @@
       } catch (e) {
         canPersist = false;
       }
-      buildInitCache(buildNumber);
+      buildInitCache(buildNumber, preloadLegacyModules);
     })();
   }
   function extractExportsFlags(moduleExports) {
