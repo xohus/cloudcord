@@ -14,6 +14,36 @@ const { instead } = require("spitroast");
 // @ts-ignore - window is defined later in the bundle, so we assign it early
 globalThis.window = globalThis;
 
+// Keep recovery outside the settings/profile import graph: that graph may be
+// the very thing that failed. Never reload Discord or hold its launch queue.
+let recoveryStarted = false;
+function recoverStartupUpdate() {
+    if (recoveryStarted) return;
+    recoveryStarted = true;
+    try {
+        const { BundleUpdaterManager } = require("@lib/api/native/modules");
+        if (typeof BundleUpdaterManager?.checkForUpdates !== "function") return;
+        const state = { status: "checking", error: "" };
+        (globalThis as any).__CLOUDCORD_STARTUP_RECOVERY__ = state;
+        let timeout: ReturnType<typeof setTimeout>;
+        void Promise.race([
+            Promise.resolve().then(() => BundleUpdaterManager.checkForUpdates()),
+            new Promise((_, reject) => {
+                timeout = setTimeout(() => reject(new Error("Update check timed out")), 22000);
+            })
+        ]).then(() => {
+            state.status = "checked";
+            console.log("CloudCord recovery update check completed; reopen Discord to apply a downloaded update.");
+        }, error => {
+            state.status = "failed";
+            state.error = String(error?.message ?? error);
+            console.log("CloudCord recovery update check failed", state.error);
+        }).finally(() => clearTimeout(timeout));
+    } catch (error) {
+        console.log("CloudCord recovery updater unavailable", error);
+    }
+}
+
 async function initializeCloudCord() {
     try {
         // Rain can attach after Metro already exists, without setting window.modules.
@@ -37,9 +67,13 @@ async function initializeCloudCord() {
         // Keep rejection handling without awaiting it before resumeDeferred().
         const startup = require(".").default();
         if (startup && typeof startup.catch === "function") {
-            startup.catch((error: unknown) => console.error("CloudCord optional startup failed", error));
+            startup.catch((error: unknown) => {
+                console.error("CloudCord optional startup failed", error);
+                recoverStartupUpdate();
+            });
         }
     } catch (e) {
+        recoverStartupUpdate();
         const stack = e instanceof Error ? e.stack : undefined;
         console.log(stack ?? e?.toString?.() ?? e);
         let build = "unavailable";

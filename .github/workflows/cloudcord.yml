@@ -35,12 +35,10 @@ jobs:
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
 
-      - name: Check startup error handling
-        run: node ios/scripts/test-startup-errors.cjs
-
       - name: Check Discord theme compatibility
         run: |
           npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2 spitroast@1.4.4
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-startup-errors.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-theme-compatibility.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-metro-cache-recovery.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-mobile-startup-registry.cjs
