@@ -10,12 +10,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
 	path "path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -47,7 +45,7 @@ func GetGithubRelease(url, fallbackUrl string) (*GithubRelease, error) {
 
 	req.Header.Set("User-Agent", UserAgent)
 
-	res, err := http.DefaultClient.Do(req)
+	res, err := releaseClient.Do(req)
 	if err != nil {
 		Log.Error("Failed to send Request", err)
 		return nil, err
@@ -189,36 +187,9 @@ func installLatestBuilds() (retErr error) {
 	}
 	req.Header.Set("User-Agent", UserAgent)
 
-	res, err := http.DefaultClient.Do(req)
-	if err == nil && res.StatusCode >= 300 {
-		err = errors.New(res.Status)
-	}
-	if err != nil {
+	if err = downloadRuntimeFile(runtimeClient, req, CloudCordDirectory); err != nil {
 		Log.Error("Failed to download desktop.asar:", err)
 		return err
-	}
-	defer res.Body.Close()
-
-	out, err := os.OpenFile(CloudCordDirectory, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		Log.Error("Failed to create", CloudCordDirectory+":", err)
-		return err
-	}
-	defer out.Close()
-
-	read, err := io.Copy(out, res.Body)
-	if err != nil {
-		Log.Error("Failed to download to", CloudCordDirectory+":", err)
-		return err
-	}
-	contentLength := res.Header.Get("Content-Length")
-	if contentLength != "" {
-		expected := strconv.FormatInt(read, 10)
-		if expected != contentLength {
-			err = errors.New("Unexpected end of input. Content-Length was " + contentLength + ", but I only read " + expected)
-			Log.Error(err.Error())
-			return err
-		}
 	}
 
 	_ = FixOwnership(CloudCordDirectory)
