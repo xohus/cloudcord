@@ -1,0 +1,57 @@
+name: Publish verified Manager preview
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful Manager Preview run
+        required: true
+      source_sha:
+        description: Full source commit of that run
+        required: true
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify build and signing gate
+        uses: actions/github-script@v7
+        env:
+          RUN_ID: ${{ inputs.run_id }}
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        with:
+          script: |
+            if (!/^\d+$/.test(process.env.RUN_ID) || !/^[a-f0-9]{40}$/.test(process.env.SOURCE_SHA)) throw Error('Invalid build reference');
+            const args = {...context.repo, run_id: Number(process.env.RUN_ID)};
+            const {data: run} = await github.rest.actions.getWorkflowRun(args);
+            if (run.name !== 'CloudCord Manager Preview' || run.conclusion !== 'success' || run.head_sha !== process.env.SOURCE_SHA) throw Error('Build is not the requested successful preview');
+            const {data} = await github.rest.actions.listJobsForWorkflowRun(args);
+            if (!data.jobs.some(j => j.steps.some(s => s.name === 'Verify persistent signing certificate' && s.conclusion === 'success'))) throw Error('Signing identity was not verified');
+      - uses: actions/download-artifact@v4
+        with:
+          name: CloudCordManager-test
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: preview
+      - name: Verify and name APK
+        env:
+          SOURCE_SHA: ${{ inputs.source_sha }}
+        run: |
+          set -euo pipefail
+          apk="$(find preview -name '*.apk' -type f)"
+          test "$(find preview -name '*.apk' -type f | wc -l)" = 1
+          signer="$(find "$ANDROID_HOME/build-tools" -name apksigner -type f | sort -V | tail -n 1)"
+          "$signer" verify --verbose --print-certs "$apk" > signature.txt
+          grep -q '6838080fe39db6c2506b8cc25bd8f488be2cf45f62a52766d334f0fe908666e7' signature.txt
+          "$(dirname "$signer")/aapt" dump badging "$apk" > package.txt
+          grep -q "^package: name='com.getcloudcord.manager' " package.txt
+          version="$(sed -n "s/^package:.*versionName='v\([0-9.]*\)'.*/\1/p" package.txt)"
+          test -n "$version"
+          name="CloudCordManager-$version-${SOURCE_SHA:0:7}.apk"
+          cp "$apk" "$name"
+          sha256sum "$name" > "$name.sha256"
+      - name: Add tester download without replacing existing assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload new_beta_android CloudCordManager-*.apk CloudCordManager-*.sha256 --repo "$GITHUB_REPOSITORY"
