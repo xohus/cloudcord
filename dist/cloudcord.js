@@ -28333,6 +28333,7 @@
           "items",
           "content",
           "list",
+          "node",
           "config",
           "result"
         ])
@@ -28437,9 +28438,9 @@
       patchedLists.add(module);
     };
     var patchOverview = (module) => {
-      var parent = module, key = "default";
+      var parent = module, key = module.SettingsOverviewScreen ? "SettingsOverviewScreen" : "default";
       if (typeof parent[key] !== "function") {
-        parent = module.default;
+        parent = parent[key];
         key = typeof parent?.type === "function" ? "type" : "render";
       }
       if (!parent || typeof parent[key] !== "function" || patchedScreens.has(parent))
@@ -28476,7 +28477,7 @@
           console.warn("CloudCord settings list patch failed", error);
         }
       }
-      var screen = exports?.default;
+      var screen = exports?.SettingsOverviewScreen ?? exports?.default;
       if (path?.endsWith("/SettingsOverviewScreen.tsx") || [
         screen?.name,
         screen?.displayName,
