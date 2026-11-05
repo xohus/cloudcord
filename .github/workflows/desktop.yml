@@ -84,6 +84,7 @@ jobs:
         run: |
           set -e
           node scripts/test-connection-settings.cjs
+          node scripts/test-ccp.cjs
           node scripts/test-local-relationship-actions.cjs
           node scripts/test-profile-editor-text.cjs
           node scripts/test-partial-cosmetics-catalog.cjs

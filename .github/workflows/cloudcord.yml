@@ -13,6 +13,9 @@ concurrency:
       - "desktop/client/src/utils/profileAppearance.ts"
       - "desktop/client/src/utils/connectionSettings.ts"
       - "desktop/client/src/utils/localRelationshipActions.ts"
+      - "desktop/client/src/utils/ccp.ts"
+      - "desktop/client/src/utils/ccpInspect.ts"
+      - "desktop/client/src/sincordplugins/ccpCharacterCounter/*.ccp"
       - "cloudcord-favicon.png"
       - "assets/cloudcord-favicon.png"
       - "assets/cloudcord-logo.png"
@@ -143,6 +146,13 @@ jobs:
           cp "../ios/runtime/src/lib/api/profileIdentity.ts" "src/lib/api/profileIdentity.ts"
           cp "../ios/runtime/src/lib/addons/plugins/api.ts" "src/lib/addons/plugins/api.ts"
           cp "../ios/runtime/src/core/plugins/messagefix/index.ts" "src/core/plugins/messagefix/index.ts"
+          mkdir -p src/core/plugins/ccpCharacterCounter
+          cp "../ios/runtime/src/core/plugins/ccpCharacterCounter/index.ts" "src/core/plugins/ccpCharacterCounter/index.ts"
+          cp "../desktop/client/src/sincordplugins/ccpCharacterCounter/character-counter.ccp" "src/core/plugins/ccpCharacterCounter/character-counter.ccp"
+          cp "../desktop/client/src/utils/ccp.ts" "src/lib/api/ccp.ts"
+          cp "../desktop/client/src/utils/ccpInspect.ts" "src/lib/api/ccpInspect.ts"
+          sed -i '/"bunny.messagefix":/a\    "cloudcord.ccp.character-counter": require("./ccpCharacterCounter"),' src/core/plugins/index.ts
+          grep -q '"cloudcord.ccp.character-counter":' src/core/plugins/index.ts
           cp "../desktop/client/src/utils/profileAppearance.ts" "src/lib/api/profileAppearance.ts"
           cp "../desktop/client/src/utils/connectionSettings.ts" "src/lib/api/connectionSettings.ts"
           cp "../desktop/client/src/utils/localRelationshipActions.ts" "src/lib/api/localRelationshipActions.ts"
@@ -5534,6 +5544,9 @@ jobs:
           build = Path("scripts/build.mjs")
           if build.exists():
               text = build.read_text(encoding="utf-8", errors="ignore")
+              if '".png": "dataurl"' not in text:
+                  raise RuntimeError("Expected Kettu text loader configuration")
+              text = text.replace('".png": "dataurl"', '".png": "dataurl", ".ccp": "text"', 1)
               text = text.replace('version: `"v1.4.2"`', 'version: `"v0.1"`')
               text = text.replace('version: `"v1.4.1"`', 'version: `"v0.1"`')
               text = text.replace('version: `"v1.4.0"`', 'version: `"v0.1"`')

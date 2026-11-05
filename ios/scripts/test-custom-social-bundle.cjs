@@ -16,8 +16,15 @@ for(const match of workflow.matchAll(/          cat > (\S+) <<'TSX'\r?\n([\s\S]*
 virtual.set(canonical(path.join(runtime,'src/lib/api/profileAppearance.ts')),fs.readFileSync(path.join(root,'desktop/client/src/utils/profileAppearance.ts'),'utf8'));
 virtual.set(canonical(path.join(runtime,'src/lib/api/connectionSettings.ts')),fs.readFileSync(path.join(root,'desktop/client/src/utils/connectionSettings.ts'),'utf8'));
 virtual.set(canonical(path.join(runtime,'src/lib/api/localRelationshipActions.ts')),fs.readFileSync(path.join(root,'desktop/client/src/utils/localRelationshipActions.ts'),'utf8'));
+virtual.set(canonical(path.join(runtime,'src/lib/api/ccp.ts')),fs.readFileSync(path.join(root,'desktop/client/src/utils/ccp.ts'),'utf8'));
+virtual.set(canonical(path.join(runtime,'src/lib/api/ccpInspect.ts')),fs.readFileSync(path.join(root,'desktop/client/src/utils/ccpInspect.ts'),'utf8'));
+virtual.set(canonical(path.join(runtime,'src/core/plugins/ccpCharacterCounter/character-counter.ccp')),fs.readFileSync(path.join(root,'desktop/client/src/sincordplugins/ccpCharacterCounter/character-counter.ccp'),'utf8'));
 virtual.set(canonical(path.join(runtime,'src/assets/cloudcord-decorations.json')),fs.readFileSync(path.join(root,'ios/assets/cloudcord-decorations.json'),'utf8'));
 if(upstream){
+    const corePlugins = fs.readFileSync(path.join(upstream,'src/core/plugins/index.ts'),'utf8');
+    const corePluginMarker = '    "bunny.messagefix": require("./messagefix"),';
+    assert.ok(corePlugins.includes(corePluginMarker));
+    virtual.set(canonical(path.join(runtime,'src/core/plugins/index.ts')),corePlugins.replace(corePluginMarker,corePluginMarker+'\n    "cloudcord.ccp.character-counter": require("./ccpCharacterCounter"),'));
     // The workflow adds this startup import/call in its Python patch stage,
     // after the heredoc pages and copied files are prepared.
     let startup=fs.readFileSync(path.join(upstream,'src/index.ts'),'utf8');
@@ -55,8 +62,9 @@ const sourcePlugin={name:'workflow-sources-and-hermes-transform',setup(build){
         }
         if(target)for(const suffix of ['', '.ts','.tsx','.js','.json','/index.ts','/index.tsx'])if(fs.existsSync(target+suffix)&&fs.statSync(target+suffix).isFile())return {path:path.resolve(target+suffix)};
     });
-    build.onLoad({filter:/\.[cm]?[jt]sx?$|cloudcord-decorations\.json$/},args=>{
+    build.onLoad({filter:/\.[cm]?[jt]sx?$|cloudcord-decorations\.json$|\.ccp$/},args=>{
         const generated=virtual.get(canonical(args.path));
+        if(args.path.endsWith('.ccp'))return {contents:generated??fs.readFileSync(args.path,'utf8'),loader:'text'};
         if(args.path.endsWith('.json'))return generated===undefined?undefined:{contents:generated,loader:'json',resolveDir:path.dirname(args.path)};
         seen.add(canonical(args.path));
         const code=generated===undefined?fs.readFileSync(args.path,'utf8'):generated;
@@ -71,6 +79,7 @@ const sourcePlugin={name:'workflow-sources-and-hermes-transform',setup(build){
         assert.ok(seen.has(canonical(path.join(runtime,'src/core/ui/settings/components/CustomSocial.tsx'))),'new mobile editor must actually be bundled');
         assert.ok(seen.has(canonical(path.join(runtime,'src/lib/api/profileAppearance.ts'))),'new shared schema must actually be bundled');
         if(entryPoint!==entry) for(const page of ['Addons','PluginBrowser']) assert.ok(seen.has(canonical(path.join(runtime,`src/core/ui/settings/pages/${page}/index.tsx`))),`${page} overlay must actually be bundled in startup`);
+        if(entryPoint!==entry&&upstream) assert.ok(seen.has(canonical(path.join(runtime,'src/core/plugins/ccpCharacterCounter/index.ts'))),'CCP adapter must be registered in mobile startup');
         console.log(`Generated mobile ${entryPoint===entry?'editor':'entrypoint'} dependency bundle (${minify?'minified':'readable'}): ${result.outputFiles[0].contents.length} bytes; Hermes transforms passed.`);
     }
 })().catch(error=>{console.error(error.message);process.exitCode=1;});

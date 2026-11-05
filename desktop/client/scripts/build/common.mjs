@@ -357,6 +357,7 @@ export const commonOpts = {
     minify: !watch && !IS_REPORTER,
     sourcemap: watch ? "inline" : "external",
     legalComments: "linked",
+    loader: { ".ccp": "text" },
     banner,
     plugins: [fileUrlPlugin, gitHashPlugin, gitRemotePlugin, stylePlugin],
     external: ["~plugins", "~git-hash", "~git-remote", "/assets/*"],

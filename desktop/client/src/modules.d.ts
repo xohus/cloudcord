@@ -42,6 +42,11 @@ declare module "file://*" {
 
 declare module "*.css";
 
+declare module "*.ccp" {
+    const source: string;
+    export default source;
+}
+
 declare module "*.css?managed" {
     const name: string;
     export default name;
