@@ -59,37 +59,40 @@ class InjectRainXposedStep : Step() {
     }
 
     override suspend fun execute(container: StepRunner) = withContext(Dispatchers.IO) {
-        val apks = container.getStep<CopyDependenciesStep>().patchedApks
+        val dependencies = container.getStep<CopyDependenciesStep>()
+        val base = dependencies.patchedApk
+        val splits = dependencies.patchedApks.filterNot { it == base }
         val xposed = container.getStep<DownloadRainXposedStep>().targetFile
 
         container.log("Adding CloudCord module with LSPatch")
         container.log("CloudCord module path = ${xposed.absolutePath}")
 
         // Create temporary folder in working directory
-        val tempDir = Files.createTempDirectory(apks.first().parentFile!!.toPath(), "lspatched-").toFile()
+        val tempDir = Files.createTempDirectory(base.parentFile!!.toPath(), "lspatched-").toFile()
 
         try {
             patch(
                 container,
                 outputDir = tempDir,
-                apkPaths = apks.map { it.absolutePath },
+                apkPaths = listOf(base.absolutePath),
                 embeddedModules = listOf(xposed.absolutePath)
             )
 
-            // LSPatch signs its output with the supplied key. Verify the whole set before replacing any input.
-            val outputs = apks.map { original ->
-                val baseName = original.nameWithoutExtension
-                val outputName = String.format(Locale.getDefault(), "%s-%d-lspatched.apk", baseName, LSPConfig.instance.VERSION_CODE)
-                val patched = File(tempDir, outputName).takeIf { it.isFile }
-                    ?: tempDir.listFiles { file -> file.isFile && file.name.startsWith("$baseName-") && file.name.endsWith("-lspatched.apk") }?.singleOrNull()
-                    ?: error("Missing patched APK for ${original.name}")
-                Signer.verifyApk(patched)
-                original to patched
+            val baseName = base.nameWithoutExtension
+            val outputName = String.format(Locale.getDefault(), "%s-%d-lspatched.apk", baseName, LSPConfig.instance.VERSION_CODE)
+            val patched = File(tempDir, outputName).takeIf { it.isFile }
+                ?: tempDir.listFiles { file -> file.isFile && file.name.startsWith("$baseName-") && file.name.endsWith("-lspatched.apk") }?.singleOrNull()
+                ?: error("Missing patched APK for ${base.name}")
+            Signer.verifyApk(patched)
+
+            // Configuration splits carry resources and libraries, not application
+            // entry points. Sign them with the base key without embedding a loader.
+            for (split in splits) {
+                Signer.signApk(split)
+                container.log("Verified configuration split ${split.name}")
             }
-            for ((original, patched) in outputs) {
-                check(patched.renameTo(original)) { "Could not save patched APK: ${original.name}" }
-                container.log("Verified and saved ${original.name}")
-            }
+            check(patched.renameTo(base)) { "Could not save patched APK: ${base.name}" }
+            container.log("Verified and saved ${base.name}")
         } finally {
             tempDir.deleteRecursively()
         }
