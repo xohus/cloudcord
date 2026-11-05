@@ -16,6 +16,7 @@ name: Build CloudCord Android Manager
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   build:
@@ -25,6 +26,28 @@ jobs:
     steps:
       - name: Checkout CloudCord
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Download the completed runtime build
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudcord-mobile-shared-runtime
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/cloudcord-runtime
+
+      - name: Verify runtime for the Android loader
+        env:
+          EXPECTED_RUNTIME_SOURCE: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ -n "$EXPECTED_RUNTIME_SOURCE" ]; then
+            python3 ios/scripts/verify-runtime-artifact.py "$RUNNER_TEMP/cloudcord-runtime/dist"
+            cp "$RUNNER_TEMP/cloudcord-runtime/dist/cc.js" dist/cc.js
+          else
+            python3 ios/scripts/verify-runtime-artifact.py dist
+          fi
 
       - name: Setup Java 21
         uses: actions/setup-java@v4
@@ -90,6 +113,12 @@ jobs:
           print("Installed checksum-verified CloudCord updater")
           PY
 
+      - name: Keep downloads outside the Android startup hook
+        run: |
+          python3 android/scripts/prepare-xposed-startup.py _kettu_xposed/app/src/main/kotlin/io/github/revenge/xposed/modules/HookScriptLoaderModule.kt
+          mkdir -p _kettu_xposed/app/src/main/assets
+          cp dist/cc.js _kettu_xposed/app/src/main/assets/revenge.bundle
+
       - name: Build KettuXposed module
         run: |
           set -euo pipefail
@@ -111,6 +140,14 @@ jobs:
           mkdir -p android/app/src/main/assets
           cp "$module_apk" android/app/src/main/assets/cloudcord-module.apk
           test -s android/app/src/main/assets/cloudcord-module.apk
+          cmp dist/cc.js <(unzip -p "$module_apk" assets/revenge.bundle)
+
+      - name: Upload verified Android loader
+        uses: actions/upload-artifact@v4
+        with:
+          name: CloudCord-Android-loader
+          path: android/app/src/main/assets/cloudcord-module.apk
+          if-no-files-found: error
 
       - name: Check Android network regression guards
         run: node android/scripts/test-network-regressions.cjs
