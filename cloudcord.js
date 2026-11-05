@@ -7077,12 +7077,12 @@
     }
     if (import_chroma_js.default.valid(colorString))
       return (0, import_chroma_js.default)(colorString).hex();
-    var color2 = Number((0, import_react_native3.processColor)(colorString));
+    var color = Number((0, import_react_native3.processColor)(colorString));
     return import_chroma_js.default.rgb(
-      color2 >> 16 & 255,
-      color2 >> 8 & 255,
-      color2 & 255,
-      color2 >> 24 & 255
+      color >> 16 & 255,
+      color >> 8 & 255,
+      color & 255,
+      color >> 24 & 255
       // alpha
     ).hex();
   }
@@ -10705,7 +10705,7 @@
       var fontId = rawFont === 0 ? 11 : rawFont;
       var effectId = rawEffect === 0 ? 1 : rawEffect;
       var colors = Array.isArray(style.colors) ? style.colors : [];
-      if (Number.isInteger(fontId) && fontId >= 0 && Number.isInteger(effectId) && effectId >= 0 && colors.length <= 3 && colors.every((color2) => Number.isInteger(color2) && color2 >= 0 && color2 <= 16777215)) {
+      if (Number.isInteger(fontId) && fontId >= 0 && Number.isInteger(effectId) && effectId >= 0 && colors.length <= 3 && colors.every((color) => Number.isInteger(color) && color >= 0 && color <= 16777215)) {
         result.displayNameStyles = {
           fontId,
           effectId,
@@ -11733,25 +11733,95 @@
   });
 
   // src/lib/ui/color.ts
-  function isSemanticColor(sym) {
-    return colorResolver.isSemanticColor(sym);
+  function getColors() {
+    if (nativeColors || Date.now() < nextLookup)
+      return;
+    nextLookup = Date.now() + 250;
+    var registry = globalThis.__CLOUDCORD_MODULE_VIEW__ ?? globalThis.modules;
+    var entries = registry instanceof Map ? registry.values() : Object.values(registry ?? {});
+    for (var record of entries) {
+      if (!record?.isInitialized || record.hasError)
+        continue;
+      try {
+        var root = record.publicModule?.exports;
+        for (var value of [
+          root,
+          root?.default
+        ]) {
+          if (!value || typeof value !== "object" && typeof value !== "function")
+            continue;
+          if (value.colors && (value.unsafe_rawColors || value.meta || value.internal)) {
+            nativeColors = value;
+            return;
+          }
+          if (value.ThemeColorMap && value.Colors)
+            legacyColors = value;
+        }
+      } catch (e) {
+      }
+    }
   }
-  function resolveSemanticColor(sym, theme = ThemeStore2.theme) {
-    return colorResolver.resolveSemanticColor(theme, sym);
+  function colorTable(kind) {
+    getColors();
+    return kind === "semantic" ? nativeColors?.colors ?? legacyColors?.ThemeColorMap ?? fallbackSemantic : nativeColors?.unsafe_rawColors ?? legacyColors?.Colors ?? fallbackRaw;
   }
-  var color, semanticColors, rawColors, ThemeStore2, colorResolver;
+  function liveColors(kind) {
+    return new Proxy({}, {
+      get: (_2, key) => colorTable(kind)[key],
+      has: (_2, key) => key in colorTable(kind),
+      ownKeys: () => Reflect.ownKeys(colorTable(kind)),
+      getOwnPropertyDescriptor: (_2, key) => key in colorTable(kind) ? {
+        configurable: true,
+        enumerable: true,
+        value: colorTable(kind)[key]
+      } : void 0
+    });
+  }
+  function getResolver() {
+    getColors();
+    return nativeColors?.meta ?? nativeColors?.internal;
+  }
+  function isSemanticColor(value) {
+    var resolver = getResolver();
+    return typeof resolver?.isSemanticColor === "function" ? resolver.isSemanticColor(value) : false;
+  }
+  function resolveSemanticColor(value, theme) {
+    var resolver = getResolver();
+    if (typeof resolver?.resolveSemanticColor !== "function")
+      return typeof value === "string" ? value : void 0;
+    if (!theme) {
+      try {
+        theme = ThemeStore2.theme;
+      } catch (e) {
+      }
+    }
+    return resolver.resolveSemanticColor(theme ?? "dark", value);
+  }
+  var ThemeStore2, fallbackSemantic, fallbackRaw, nativeColors, legacyColors, nextLookup, semanticColors, rawColors;
   var init_color = __esm({
     "src/lib/ui/color.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
-      init_common();
       init_wrappers();
-      color = findByProps("SemanticColor");
-      semanticColors = color?.default?.colors ?? constants?.ThemeColorMap;
-      rawColors = color?.default?.unsafe_rawColors ?? constants?.Colors;
       ThemeStore2 = findByStoreNameLazy("ThemeStore");
-      colorResolver = color.default.meta ??= color.default.internal;
+      fallbackSemantic = {
+        CARD_BACKGROUND_DEFAULT: "#1e1f22",
+        CARD_SECONDARY_BG: "#1e1f22",
+        TEXT_DEFAULT: "#f2f3f5",
+        TEXT_NORMAL: "#f2f3f5",
+        MOBILE_TEXT_HEADING_PRIMARY: "#f2f3f5",
+        TEXT_MUTED: "#949ba4",
+        BORDER_SUBTLE: "#3f4147",
+        INTERACTIVE_ICON_DEFAULT: "#b5bac1"
+      };
+      fallbackRaw = {
+        WHITE: "#ffffff",
+        BLACK: "#000000"
+      };
+      nextLookup = 0;
+      semanticColors = liveColors("semantic");
+      rawColors = liveColors("raw");
     }
   });
 
@@ -11800,6 +11870,14 @@
   });
 
   // src/lib/ui/components/Codeblock.tsx
+  function codeFont() {
+    try {
+      if (constants.Fonts?.CODE_NORMAL)
+        return constants.Fonts.CODE_NORMAL;
+    } catch (e) {
+    }
+    return import_react_native8.Platform.OS === "ios" ? "Menlo" : "monospace";
+  }
   function Codeblock({ selectable, style, children }) {
     if (!selectable)
       return /* @__PURE__ */ jsx(TextBasedCodeblock, {
@@ -11829,9 +11907,9 @@
       init_color();
       init_styles();
       import_react_native8 = __toESM(require_react_native());
-      useStyles = createStyles({
+      useStyles = createStyles(() => ({
         codeBlock: {
-          fontFamily: constants.Fonts.CODE_NORMAL,
+          fontFamily: codeFont(),
           fontSize: 12,
           textAlignVertical: "center",
           backgroundColor: semanticColors.CARD_BACKGROUND_DEFAULT,
@@ -11841,7 +11919,7 @@
           borderColor: semanticColors.BORDER_SUBTLE,
           padding: 10
         }
-      });
+      }));
       InputBasedCodeblock = ({ style, children }) => /* @__PURE__ */ jsx(import_react_native8.TextInput, {
         editable: false,
         multiline: true,
@@ -16824,7 +16902,7 @@
         maxLength: options.max ?? 2048
       })
     });
-    var color2 = (label, key) => /* @__PURE__ */ jsx(Field, {
+    var color = (label, key) => /* @__PURE__ */ jsx(Field, {
       label,
       hint: "Hex colour, like #5865F2. Empty keeps theirs.",
       children: /* @__PURE__ */ jsx(Input, {
@@ -16993,8 +17071,8 @@
                   multiline: true,
                   max: 190
                 }),
-                color2("Profile colour", "primaryColor"),
-                color2("Second colour", "accentColor"),
+                color("Profile colour", "primaryColor"),
+                color("Second colour", "accentColor"),
                 input("Account created", "createdAt", {
                   placeholder: "YYYY-MM-DD",
                   max: 10
@@ -21784,17 +21862,17 @@
     }
   }
   function styledRole(base, patch) {
-    var color2 = patch.color ? hexNumber(patch.color) : null;
+    var color = patch.color ? hexNumber(patch.color) : null;
     return {
       ...base,
       ...patch.name ? {
         name: patch.name
       } : {},
-      ...color2 != null ? {
-        color: color2,
+      ...color != null ? {
+        color,
         colorString: patch.color,
         colors: {
-          primary_color: color2,
+          primary_color: color,
           secondary_color: null,
           tertiary_color: null
         },
@@ -22421,11 +22499,11 @@
                 autoCapitalize: "characters",
                 maxLength: 7,
                 onChangeText: (text) => {
-                  var color2 = validColor(text);
-                  if (color2)
+                  var color = validColor(text);
+                  if (color)
                     setDraft({
                       ...draft,
-                      color: color2
+                      color
                     });
                 }
               })
@@ -24510,7 +24588,7 @@
     });
   }
   function CustomColorPicker({ title, initialColor, onApply }) {
-    var [color2, setColor] = (0, import_react6.useState)(initialColor);
+    var [color, setColor] = (0, import_react6.useState)(initialColor);
     return /* @__PURE__ */ jsxs(import_react_native20.ScrollView, {
       contentContainerStyle: {
         padding: 12,
@@ -24532,7 +24610,7 @@
               }),
               /* @__PURE__ */ jsx(TextInput4, {
                 accessibilityLabel: "Exact hex color",
-                value: color2,
+                value: color,
                 placeholder: "#5865F2",
                 autoCapitalize: "characters",
                 autoCorrect: false,
@@ -24542,15 +24620,15 @@
               /* @__PURE__ */ jsx(Button2, {
                 text: "Apply color",
                 variant: "secondary",
-                disabled: colorNumber(color2) == null,
-                onPress: () => onApply(color2.toUpperCase())
+                disabled: colorNumber(color) == null,
+                onPress: () => onApply(color.toUpperCase())
               })
             ]
           })
         }),
         /* @__PURE__ */ jsx(TableRadioGroup2, {
           title: "Presets",
-          value: color2.toUpperCase(),
+          value: color.toUpperCase(),
           onChange: setColor,
           hasIcons: true,
           children: PROFILE_COLORS.map((preset) => /* @__PURE__ */ jsx(TableRadioRow2, {
@@ -25438,8 +25516,8 @@
                             render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
                               title: "Primary profile color",
                               initialColor: preview.primaryColor,
-                              onApply: (color2) => {
-                                update("primaryColor", color2, true);
+                              onApply: (color) => {
+                                update("primaryColor", color, true);
                                 navigation2.goBack();
                               }
                             })
@@ -25454,8 +25532,8 @@
                             render: () => /* @__PURE__ */ jsx(CustomColorPicker, {
                               title: "Accent profile color",
                               initialColor: preview.accentColor,
-                              onApply: (color2) => {
-                                update("accentColor", color2, true);
+                              onApply: (color) => {
+                                update("accentColor", color, true);
                                 navigation2.goBack();
                               }
                             })
@@ -25638,7 +25716,7 @@
                           2
                         ].slice(0, Math.max(1, Math.min(3, Number(findByProps("getEffectColorCount")?.getEffectColorCount?.(preview.displayNameStyles?.effectId ?? 0)) || 1))).map((index) => {
                           var value = `#${(preview.displayNameStyles?.colors[index] ?? 16777215).toString(16).padStart(6, "0")}`;
-                          var apply = (color2) => {
+                          var apply = (color) => {
                             var style = preview.displayNameStyles || {
                               fontId: 11,
                               effectId: 1,
@@ -25651,7 +25729,7 @@
                               1,
                               2
                             ].map((i) => style.colors[i] ?? style.colors[0] ?? 16777215);
-                            colors[index] = parseInt(color2.replace("#", ""), 16);
+                            colors[index] = parseInt(color.replace("#", ""), 16);
                             update("displayNameStyles", {
                               ...style,
                               colors
@@ -30197,7 +30275,7 @@
   }
   function BotClient({ accounts, activeId, onExit }) {
     var styles = useStyles3();
-    var nativeColors = getNativeColors();
+    var nativeColors2 = getNativeColors();
     var navigation2 = NavigationNative.useNavigation();
     var state2 = useBotCordState();
     var active = accounts.find((a) => a.id === activeId) ?? accounts[0] ?? null;
@@ -30524,13 +30602,13 @@
                   borderRadius: 18,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: nativeColors.selected,
+                  backgroundColor: nativeColors2.selected,
                   opacity: pressed ? 0.7 : 1,
                   zIndex: 20
                 }),
                 children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
-                    color: nativeColors.text,
+                    color: nativeColors2.text,
                     fontSize: 15,
                     fontWeight: "600"
                   },
@@ -30633,7 +30711,7 @@
                 numberOfLines: 1,
                 style: {
                   flex: 1,
-                  color: nativeColors.text,
+                  color: nativeColors2.text,
                   fontSize: 14
                 },
                 children: selectedImage.name
@@ -30647,12 +30725,12 @@
                   borderRadius: 17,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: nativeColors.selected,
+                  backgroundColor: nativeColors2.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
                 children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
-                    color: nativeColors.text,
+                    color: nativeColors2.text,
                     fontSize: 13,
                     fontWeight: "600"
                   },
@@ -30676,12 +30754,12 @@
                   borderRadius: 22,
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: nativeColors.selected,
+                  backgroundColor: nativeColors2.selected,
                   opacity: pressed ? 0.7 : 1
                 }),
                 children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
-                    color: nativeColors.text,
+                    color: nativeColors2.text,
                     fontSize: 13,
                     fontWeight: "600"
                   },
@@ -30691,7 +30769,7 @@
               /* @__PURE__ */ jsx(import_react_native26.TextInput, {
                 value: composer,
                 placeholder: channel.botcordDM ? `Message ${displayName(dmUser)}` : `Message #${channel.name}`,
-                placeholderTextColor: nativeColors.muted,
+                placeholderTextColor: nativeColors2.muted,
                 onChangeText: setComposer,
                 maxLength: 2e3,
                 returnKeyType: "send",
@@ -30708,8 +30786,8 @@
                   paddingHorizontal: 14,
                   paddingVertical: 0,
                   borderRadius: 22,
-                  backgroundColor: nativeColors.input,
-                  color: nativeColors.text,
+                  backgroundColor: nativeColors2.input,
+                  color: nativeColors2.text,
                   fontSize: 16
                 }
               }),
@@ -30727,11 +30805,11 @@
                   alignItems: "center",
                   justifyContent: "center",
                   opacity: !composer.trim() && !selectedImage ? 0.45 : pressed ? 0.72 : 1,
-                  backgroundColor: nativeColors.brand
+                  backgroundColor: nativeColors2.brand
                 }),
                 children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                   style: {
-                    color: nativeColors.inverse,
+                    color: nativeColors2.inverse,
                     fontSize: 13,
                     fontWeight: "600"
                   },
@@ -30780,7 +30858,7 @@
               }),
               children: /* @__PURE__ */ jsx(import_react_native26.Text, {
                 style: {
-                  color: nativeColors.text,
+                  color: nativeColors2.text,
                   fontSize: 16,
                   fontWeight: "600"
                 },
