@@ -240,6 +240,12 @@ export function subscribeModule(id: number, cb: () => void): () => void {
 }
 
 export function requireModule(id: Metro.ModuleID) {
+    // -1 is CloudCord's bundled UI compatibility module, not a Metro record.
+    // Resolve it before native readiness checks (and before requiring entry 0).
+    // Otherwise findExports matches its default export, then receives undefined
+    // here on bridgeless Discord and crashes while reading `.default`.
+    if (Number(id) === -1) return require("@metro/polyfills/redesign");
+
     if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__ && !metroModules[0]?.isInitialized) metroRequire(0);
     if (blacklistedIds.has(id)) return undefined;
 
@@ -248,8 +254,6 @@ export function requireModule(id: Metro.ModuleID) {
     // navigation stores before their native dependencies are ready.
     if ((globalThis as any).__CLOUDCORD_BRIDGELESS__ && !metroModules[id]?.isInitialized)
         return undefined;
-
-    if (Number(id) === -1) return require("@metro/polyfills/redesign");
 
     if (metroModules[id]?.isInitialized && !metroModules[id]?.hasError) {
         return metroRequire(id);

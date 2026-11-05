@@ -44,6 +44,7 @@ jobs:
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-theme-compatibility.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-metro-cache-recovery.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-mobile-startup-registry.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-metro-synthetic-exports.cjs
 
       - name: Check mobile render recursion
         run: |
