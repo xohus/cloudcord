@@ -19,7 +19,7 @@ let canPersist = false;
 
 export const getMetroCache = () => _metroCache;
 
-function buildInitCache(buildNumber: string | undefined) {
+function buildInitCache(buildNumber: string | undefined, preloadLegacyModules: boolean) {
     const cache = {
         _v: CACHE_VERSION,
         _buildNumber: buildNumber,
@@ -29,9 +29,10 @@ function buildInitCache(buildNumber: string | undefined) {
         polyfillIndex: {} as Record<string, ModulesMap | undefined>
     } as const;
 
-    // Force load all modules so useful modules are pre-cached. Add a minor
-    // delay so the cache is initialized before the modules are loaded.
-    if (!isBridgeless()) {
+    // Keep prewarming for older bridged releases only. Recent Discord builds
+    // can still use the bridge, and forcing dormant modules there can run
+    // navigation or account initialization during the splash screen.
+    if (preloadLegacyModules) {
         setTimeout(() => {
             for (const id in getModuleView()) {
                 require("./modules").requireModule(id);
@@ -46,8 +47,12 @@ function buildInitCache(buildNumber: string | undefined) {
 /** @internal */
 export async function initMetroCache() {
     let buildNumber: string | undefined;
+    let preloadLegacyModules = false;
     try {
-        buildNumber = NativeClientInfoModule?.getConstants?.()?.Build;
+        const client = NativeClientInfoModule?.getConstants?.();
+        buildNumber = client?.Build;
+        const majorVersion = Number.parseInt(client?.Version ?? "", 10);
+        preloadLegacyModules = !isBridgeless() && majorVersion > 0 && majorVersion < 344;
         canPersist = !!buildNumber && !isBridgeless();
         if (canPersist && await fileExists(BUNNY_METRO_CACHE_PATH)) {
             const cached = JSON.parse(await readFile(BUNNY_METRO_CACHE_PATH));
@@ -62,7 +67,7 @@ export async function initMetroCache() {
     } catch {
         canPersist = false;
     }
-    buildInitCache(buildNumber);
+    buildInitCache(buildNumber, preloadLegacyModules);
 }
 
 const saveCache = debounce(() => {
