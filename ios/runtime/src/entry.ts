@@ -131,13 +131,22 @@ if (typeof window.__r === "undefined") {
         }
 
         const startDiscord = async () => {
-            await initializeCloudCord();
-            
-            for (const unpatch of unpatches) unpatch();
-            unpatches.length = 0;
-
-            originalRequire(0);
-            resumeDeferred();
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            try {
+                // Metro discovery must not block Discord's first module indefinitely.
+                await Promise.race([
+                    initializeCloudCord(),
+                    new Promise<void>(resolve => {
+                        timer = setTimeout(resolve, 5000);
+                    })
+                ]);
+            } finally {
+                if (timer !== undefined) clearTimeout(timer);
+                for (const unpatch of unpatches) unpatch();
+                unpatches.length = 0;
+                try { originalRequire(0); }
+                finally { resumeDeferred(); }
+            }
         };
 
         startDiscord();
