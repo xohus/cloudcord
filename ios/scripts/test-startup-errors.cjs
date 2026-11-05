@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../runtime/src/entry.ts'), 'utf8');
 const start = source.indexOf('function isBridgeless()');
-const end = source.indexOf('\nconst runtime = globalThis');
+const end = source.indexOf('\nif (typeof window.__r');
 const initialize = source.slice(start, end).replaceAll('(globalThis as any)', 'globalThis').replaceAll('globalThis as any', 'globalThis').replaceAll(': unknown', '');
 (async () => {
     for (const phase of ['cache', 'runtime', 'success', 'pending']) {

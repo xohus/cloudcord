@@ -69,14 +69,7 @@ async function initializeCloudCord() {
     }
 }
 
-const runtime = globalThis as any;
-const initialRequire = window.__r;
-const initialRegistry = !runtime.__CLOUDCORD_STARTUP_INSTALLED__ && initialRequire && isBridgeless()
-    ? window.modules ?? window.__c?.()
-    : undefined;
-const entryModule = initialRegistry instanceof Map ? initialRegistry.get(0) : initialRegistry?.[0];
-if (!runtime.__CLOUDCORD_STARTUP_INSTALLED__ && (!initialRequire || entryModule?.isInitialized === false)) {
-    runtime.__CLOUDCORD_STARTUP_INSTALLED__ = true;
+if (typeof window.__r === "undefined") {
     // Used for storing the current require function for the global.__r getter defined below
     var _requireFunc: any;
 
@@ -193,10 +186,19 @@ if (!runtime.__CLOUDCORD_STARTUP_INSTALLED__ && (!initialRequire || entryModule?
                     } else return v(a);
                 };
             }
+        },
+        __d: {
+            configurable: true,
+            get() {
+                // @ts-ignore - I got an error where 'Object' is undefined *sometimes*, which is literally never supposed to happen
+                if (window.Object && !window.modules) {
+                    window.modules = window.__c?.();
+                }
+                return this.value;
+            },
+            set(v) { this.value = v; }
         }
     });
-    if (initialRequire) window.__r = initialRequire;
-} else if (!runtime.__CLOUDCORD_STARTUP_INSTALLED__) {
-    runtime.__CLOUDCORD_STARTUP_INSTALLED__ = true;
+} else {
     initializeCloudCord();
 }
