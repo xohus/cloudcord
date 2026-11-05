@@ -138,7 +138,7 @@ func getChosenInstall() *DiscordInstall {
 			choice = ParseDiscordNew(customDir, "", strings.Contains(customDir, "com.discordapp"))
 		}
 		if choice == nil {
-			g.OpenPopup("#invalid-custom-location")
+			ShowModal("Discord folder not found", "Choose the folder containing your Discord installation, then try again. CloudCord has not changed any files.")
 		}
 	} else {
 		if radioIdx >= 0 && radioIdx < len(discords) {
@@ -146,6 +146,31 @@ func getChosenInstall() *DiscordInstall {
 		}
 	}
 	return choice
+}
+
+func installationPicker(width float32) g.Widget {
+	items := make([]string, 0, len(discords)+1)
+	for _, candidate := range discords {
+		install := candidate.(*DiscordInstall)
+		items = append(items, strings.Title(install.branch)+" Discord — "+install.path)
+	}
+	items = append(items, "Choose a custom folder")
+	selected := int32(radioIdx)
+	if radioIdx < 0 || radioIdx >= len(items) {
+		radioIdx = len(items) - 1
+		selected = int32(radioIdx)
+	}
+	return g.Column(
+		g.Combo("##discord-installation", items[radioIdx], items, &selected).
+			Size(width).
+			OnChange(func() { radioIdx = int(selected) }),
+		&CondWidget{
+			predicate: radioIdx == customChoiceIdx,
+			ifWidget: func() g.Widget {
+				return g.InputText(&customDir).Hint("Path to your Discord folder").Size(width)
+			},
+		},
+	)
 }
 
 func InstallLatestBuilds() (err error) {
@@ -289,7 +314,7 @@ func loop() {
 				),
 			),
 
-			g.Dummy(0, 110),
+			g.Dummy(0, 24),
 
 			// 2. Hero Card
 			g.Style().
@@ -320,7 +345,7 @@ func loop() {
 				SetStyleFloat(g.StyleVarChildRounding, 8).
 				SetStyle(g.StyleVarWindowPadding, 16, 12).
 				To(
-					g.Child().Size(w, 72).Layout(
+					g.Child().Size(w, 130).Layout(
 						g.Row(
 							g.Style().SetFontSize(15).SetColor(g.StyleColorText, color.White).To(
 								g.Label("Discord installation "),
@@ -333,6 +358,7 @@ func loop() {
 						g.Style().SetFontSize(14).SetColor(g.StyleColorText, color.RGBA{R: 0xCB, G: 0xD5, B: 0xE1, A: 0xFF}).To(
 							g.Label(installText),
 						),
+						installationPicker(w - 32),
 					),
 				),
 
@@ -385,7 +411,7 @@ func loop() {
 						SetColor(g.StyleColorText, color.White).
 						SetFontSize(15).
 						To(
-							g.Button("Delete").
+							g.Button("Uninstall").
 								OnClick(handleUnpatch).
 								Size(btnWidth, 42),
 						),
