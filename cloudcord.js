@@ -7935,14 +7935,14 @@
     return () => subs.delete(cb);
   }
   function requireModule(id) {
+    if (Number(id) === -1)
+      return init_redesign(), __toCommonJS(redesign_exports);
     if (!globalThis.__CLOUDCORD_BRIDGELESS__ && !metroModules[0]?.isInitialized)
       metroRequire(0);
     if (blacklistedIds.has(id))
       return void 0;
     if (globalThis.__CLOUDCORD_BRIDGELESS__ && !metroModules[id]?.isInitialized)
       return void 0;
-    if (Number(id) === -1)
-      return init_redesign(), __toCommonJS(redesign_exports);
     if (metroModules[id]?.isInitialized && !metroModules[id]?.hasError) {
       return metroRequire(id);
     }
