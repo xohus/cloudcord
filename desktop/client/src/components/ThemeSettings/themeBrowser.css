@@ -1,0 +1,24 @@
+.cc-theme-browser-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+    gap: 16px;
+}
+
+.cc-theme-browser-card {
+    overflow: hidden;
+    border: 1px solid var(--background-modifier-accent);
+    border-radius: 14px;
+    background: var(--background-secondary);
+}
+
+.cc-theme-browser-card > img {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: var(--background-tertiary);
+}
+
+.cc-theme-browser-body {
+    padding: 20px;
+    overflow-wrap: anywhere;
+}

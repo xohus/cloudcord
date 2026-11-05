@@ -10,6 +10,10 @@ import { IpcMainInvokeEvent } from "electron";
 import { existsSync, writeFileSync } from "fs";
 
 import type { Theme } from "./types";
+import { installCatalogEntry, loadCatalog } from "./catalogNative";
+
+export async function fetchCatalog(_: IpcMainInvokeEvent) { return loadCatalog(); }
+export async function installCatalogTheme(_: IpcMainInvokeEvent, id: number) { return installCatalogEntry(id); }
 
 function getThemePath(theme: Theme): string | null {
     if (!theme?.name) return null;

@@ -44,6 +44,7 @@ import { getStylusWebStoreUrl } from "@utils/web";
 import { findComponentByCodeLazy, findLazy } from "@webpack";
 import { Alerts, Menu, openModal, React, Select, showToast, TextInput, Toasts, Tooltip, useEffect, useMemo, useState } from "@webpack/common";
 import { ContextMenuApi } from "@webpack/common/menu";
+import { openSettingsTabModal } from "@components/settings/tabs/BaseTab";
 import type { ComponentType, Ref, SyntheticEvent } from "react";
 import type { UserstyleHeader } from "usercss-meta";
 
@@ -809,6 +810,12 @@ function ThemesTab() {
             </Paragraph>
 
             <QuickActionCard>
+                {!IS_WEB && <QuickAction text="Browse themes" Icon={PaintbrushIcon} action={() => {
+                    openSettingsTabModal(() => {
+                        const Browser = require("./ThemeBrowser").default;
+                        return <Browser onInstalled={refreshLocalThemes} />;
+                    });
+                }} />}
                 {IS_WEB ? (
                     <QuickAction
                         text={
