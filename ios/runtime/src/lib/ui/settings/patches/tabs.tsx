@@ -211,7 +211,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
             // Keeping these explicit avoids walking arbitrary module/store data.
             for (const key of [
                 "sections", "sectionGroups", "groups", "data", "props",
-                "children", "items", "content", "list", "config", "result"
+                "children", "items", "content", "list", "node", "config", "result"
             ]) visit(value[key], depth + 1);
         };
         visit(root, 0);
@@ -304,9 +304,9 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     const patchOverview = (module: any) => {
         // Newer screens are React.memo/forwardRef objects rather than a default
         // function. Patch the render function without calling it outside React.
-        let parent = module, key = "default";
+        let parent = module, key = module.SettingsOverviewScreen ? "SettingsOverviewScreen" : "default";
         if (typeof parent[key] !== "function") {
-            parent = module.default;
+            parent = parent[key];
             key = typeof parent?.type === "function" ? "type" : "render";
         }
         if (!parent || typeof parent[key] !== "function" || patchedScreens.has(parent)) return;
@@ -333,7 +333,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
             try { if (Object.prototype.hasOwnProperty.call(module, "createList") && typeof module.createList === "function") patchCreateListModule(module); }
             catch (error) { console.warn("CloudCord settings list patch failed", error); }
         }
-        const screen = exports?.default;
+        const screen = exports?.SettingsOverviewScreen ?? exports?.default;
         if (path?.endsWith("/SettingsOverviewScreen.tsx") ||
             [screen?.name, screen?.displayName, screen?.type?.name, screen?.render?.name].includes("SettingsOverviewScreen")) {
             patchOverview(exports);
