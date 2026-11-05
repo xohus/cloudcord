@@ -1,5 +1,6 @@
 import type { Metro } from "@metro/types";
 import { version } from "bunny-build-info";
+(globalThis as any).__CLOUDCORD_RUNTIME_REVISION__ = "development";
 // Adapt to the original Rain injector without changing its native identity.
 const rain = (globalThis as any).__RAIN_LOADER__;
 if (rain && !(globalThis as any).__CLOUDCORD_LOADER__) {
@@ -87,6 +88,7 @@ async function initializeCloudCord() {
             "Failed to load CloudCord!\n",
             `Build Number: ${build}`,
             `CloudCord: ${version}`,
+            `Runtime: ${String((globalThis as any).__CLOUDCORD_RUNTIME_REVISION__ ?? "unknown").slice(0, 12)}`,
             stack || e?.toString?.(),
         ].join("\n");
         try {

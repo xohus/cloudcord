@@ -40,10 +40,12 @@ const initialize = require(process.env.CLOUDCORD_ESBUILD || 'esbuild').transform
 
     for (const update of ['success', 'offline', 'pending', 'unavailable']) {
         let checks = 0;
+        const alerts = [];
         const timers = new Set();
         const realm = vm.createContext({
             window: { modules: {} }, __CLOUDCORD_BRIDGELESS__: true,
-            version: 'test', console: { log() {}, error() {} }, alert() {},
+            version: 'test', console: { log() {}, error() {} }, alert(message) { alerts.push(message); },
+            __CLOUDCORD_RUNTIME_REVISION__: '123456789abcdeadbeef',
             setTimeout(fn) { timers.add(fn); return fn; },
             clearTimeout(fn) { timers.delete(fn); },
             require(name) {
@@ -65,6 +67,8 @@ const initialize = require(process.env.CLOUDCORD_ESBUILD || 'esbuild').transform
         vm.runInContext(initialize, realm);
         await realm.initializeCloudCord();
         await realm.initializeCloudCord();
+        assert.equal(alerts.length, 2);
+        assert.ok(alerts.every(message => message.includes('Runtime: 123456789abc')), 'Startup failures identify the running payload');
         await new Promise(setImmediate);
         assert.equal(checks, update === 'unavailable' ? 0 : 1, 'One recovery check despite repeated errors');
         if (update === 'pending') {

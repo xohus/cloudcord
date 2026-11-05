@@ -217,6 +217,7 @@ export default function Diagnostics() {
     const copySnapshot = () => {
         const snapshot = {
             cloudCord: debug.bunny.version,
+            runtimeRevision: (globalThis as any).__CLOUDCORD_RUNTIME_REVISION__ ?? "unknown",
             discord: `${debug.discord.version} (${debug.discord.build})`,
             platform: debug.os,
             loader: debug.bunny.loader,
@@ -246,6 +247,7 @@ export default function Diagnostics() {
         try {
             const snapshot = {
                 cloudCord: debug.bunny.version,
+                runtimeRevision: (globalThis as any).__CLOUDCORD_RUNTIME_REVISION__ ?? "unknown",
                 discord: `${debug.discord.version} (${debug.discord.build})`,
                 platform: debug.os,
                 bridgeless: (globalThis as any).__CLOUDCORD_BRIDGELESS__ === true,

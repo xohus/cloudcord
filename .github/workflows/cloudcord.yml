@@ -4988,7 +4988,17 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
-          import re
+          import re, os, json
+
+          entry = Path("src/entry.ts")
+          revision = os.environ["GITHUB_SHA"]
+          if not re.fullmatch(r"[a-f0-9]{40}", revision):
+              raise RuntimeError("Invalid runtime source revision")
+          marker = '__CLOUDCORD_RUNTIME_REVISION__ = "development"'
+          entry_text = entry.read_text(encoding="utf-8")
+          if marker not in entry_text:
+              raise RuntimeError("Runtime revision marker missing")
+          entry.write_text(entry_text.replace(marker, '__CLOUDCORD_RUNTIME_REVISION__ = ' + json.dumps(revision), 1), encoding="utf-8")
 
           GITHUB_URL = "https://github.com/xohus/cloudcord"
           CLOUDCORD_ICON = "https://raw.githubusercontent.com/xohus/cloudcord/main/cloudcord-favicon.png"
