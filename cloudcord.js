@@ -347,12 +347,16 @@
   function getNativeModule(...names) {
     for (var name of names) {
       if (globalThis.__turboModuleProxy) {
-        var module = globalThis.__turboModuleProxy(name);
-        if (module)
-          return module;
+        try {
+          var module = globalThis.__turboModuleProxy(name);
+          if (module)
+            return module;
+        } catch (e) {
+        }
       }
-      if (nmp[name])
-        return nmp[name];
+      var module1 = nmp?.[name];
+      if (module1)
+        return module1;
     }
     return void 0;
   }
@@ -2892,7 +2896,7 @@
     url: () => url,
     useToken: () => useToken
   });
-  var import_react_native2, constants, channels, i18n, clipboard, assets, invites, commands, navigation, toasts, messageUtil, navigationStack, NavigationNative, semver, tokens, useToken, openURL, url, Flux, FluxDispatcher, FluxUtils, React2, ReactNative;
+  var import_react_native2, constants, channels, i18n, clipboard, assets, invites, commands, navigation, toasts, messageUtil, navigationStack, NavigationNative, semver, tokens, useToken, openURL, nativeLinking, url, Flux, FluxDispatcher, FluxUtils, React2, ReactNative;
   var init_common = __esm({
     "src/metro/common/index.ts"() {
       "use strict";
@@ -2918,7 +2922,8 @@
       tokens = findByPropsLazy("unsafe_rawColors", "colors");
       ({ useToken } = lazyDestructure(() => findByProps("useToken")));
       openURL = (url2) => import_react_native2.Linking.openURL(url2);
-      url = nativeModuleProxy.NativeLinkingModule || nativeModuleProxy.DCDLinkingManager ? {
+      nativeLinking = globalThis.nativeModuleProxy;
+      url = !nativeLinking || nativeLinking.NativeLinkingModule || nativeLinking.DCDLinkingManager ? {
         openURL,
         openDeeplink: openURL,
         handleSupportedURL: openURL,
@@ -8141,16 +8146,16 @@
     indexExportsFlags: () => indexExportsFlags,
     initMetroCache: () => initMetroCache
   });
-  function buildInitCache() {
+  function buildInitCache(buildNumber) {
     var cache = {
       _v: CACHE_VERSION,
-      _buildNumber: NativeClientInfoModule.getConstants().Build,
+      _buildNumber: buildNumber,
       _modulesCount: Object.keys(getModuleView()).length,
       flagsIndex: {},
       findIndex: {},
       polyfillIndex: {}
     };
-    if (!globalThis.__CLOUDCORD_BRIDGELESS__) {
+    if (!isBridgeless()) {
       setTimeout(() => {
         for (var id in getModuleView()) {
           (init_modules2(), __toCommonJS(modules_exports2)).requireModule(id);
@@ -8162,26 +8167,25 @@
   }
   function initMetroCache() {
     return _async_to_generator(function* () {
-      if (!(yield fileExists(BUNNY_METRO_CACHE_PATH)))
-        return void buildInitCache();
-      var rawCache = yield readFile(BUNNY_METRO_CACHE_PATH);
+      var buildNumber;
       try {
-        _metroCache = JSON.parse(rawCache);
-        if (_metroCache._v !== CACHE_VERSION) {
-          _metroCache = null;
-          throw "cache invalidated; cache version outdated";
-        }
-        if (_metroCache._buildNumber !== NativeClientInfoModule.getConstants().Build) {
-          _metroCache = null;
-          throw "cache invalidated; version mismatch";
-        }
-        if (_metroCache._modulesCount !== Object.keys(getModuleView()).length) {
-          _metroCache = null;
-          throw "cache invalidated; modules count mismatch";
+        buildNumber = NativeClientInfoModule?.getConstants?.()?.Build;
+        canPersist = !!buildNumber && !isBridgeless();
+        if (canPersist && (yield fileExists(BUNNY_METRO_CACHE_PATH))) {
+          var cached = JSON.parse(yield readFile(BUNNY_METRO_CACHE_PATH));
+          if (cached?._v === CACHE_VERSION && cached._buildNumber === buildNumber && cached._modulesCount === Object.keys(getModuleView()).length && [
+            cached.flagsIndex,
+            cached.findIndex,
+            cached.polyfillIndex
+          ].every((value) => value && typeof value === "object" && !Array.isArray(value))) {
+            _metroCache = cached;
+            return;
+          }
         }
       } catch (e) {
-        buildInitCache();
+        canPersist = false;
       }
+      buildInitCache(buildNumber);
     })();
   }
   function extractExportsFlags(moduleExports) {
@@ -8211,6 +8215,8 @@
       },
       // Finish may not be called by single find
       finish(notFound) {
+        if (isBridgeless())
+          return;
         if (allFind)
           indexObject[`_${ModulesMapInternal.FULL_LOOKUP}`] = 1;
         if (notFound)
@@ -8230,12 +8236,14 @@
         saveCache();
       },
       finish() {
+        if (isBridgeless())
+          return;
         indexObject[`_${ModulesMapInternal.FULL_LOOKUP}`] = 1;
         saveCache();
       }
     };
   }
-  var CACHE_VERSION, BUNNY_METRO_CACHE_PATH, _metroCache, getModuleView, getMetroCache, saveCache;
+  var CACHE_VERSION, BUNNY_METRO_CACHE_PATH, _metroCache, getModuleView, isBridgeless, canPersist, getMetroCache, saveCache;
   var init_caches = __esm({
     "src/metro/internals/caches.ts"() {
       "use strict";
@@ -8246,13 +8254,17 @@
       init_modules();
       init_dist();
       init_enums();
-      CACHE_VERSION = 102;
+      CACHE_VERSION = 103;
       BUNNY_METRO_CACHE_PATH = "caches/metro_modules.json";
       _metroCache = null;
-      getModuleView = () => globalThis.__CLOUDCORD_MODULE_VIEW__ ?? globalThis.modules;
+      getModuleView = () => globalThis.__CLOUDCORD_MODULE_VIEW__ ?? globalThis.modules ?? {};
+      isBridgeless = () => globalThis.__CLOUDCORD_BRIDGELESS__ === true;
+      canPersist = false;
       getMetroCache = () => _metroCache;
       saveCache = debounce(() => {
-        writeFile(BUNNY_METRO_CACHE_PATH, JSON.stringify(_metroCache));
+        if (canPersist)
+          void writeFile(BUNNY_METRO_CACHE_PATH, JSON.stringify(_metroCache)).catch(() => {
+          });
       }, 1e3);
     }
   });
@@ -36195,7 +36207,7 @@
   }
   var { instead: instead3 } = require_cjs();
   globalThis.window = globalThis;
-  function isBridgeless() {
+  function isBridgeless2() {
     var runtime = globalThis;
     if (runtime["RN$Bridgeless"] === true)
       runtime.__CLOUDCORD_BRIDGELESS__ = true;
@@ -36204,7 +36216,7 @@
   function initializeCloudCord() {
     return _async_to_generator(function* () {
       try {
-        if (!isBridgeless()) {
+        if (!isBridgeless2()) {
           Object.freeze = Object.seal = Object;
         }
         var registry = globalThis.modules ?? globalThis.__c?.();
@@ -36324,7 +36336,7 @@
           _requireFunc = function patchedRequire(a) {
             if (a === 0) {
               _requireFunc = v2;
-              if (isBridgeless()) {
+              if (isBridgeless2()) {
                 var result = v2(a);
                 setTimeout(() => void initializeCloudCord(), 0);
                 return result;
