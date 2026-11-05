@@ -14586,8 +14586,8 @@
       pullOwnSharedProfile.pending = true;
       pullOwnSharedProfile.lastAttempt = now;
       var requestedUserId = currentUserId;
-      var localSnapshot = JSON.stringify(preview);
       try {
+        var localSnapshot = JSON.stringify(preview);
         var response = yield fetchProfileResponse(`${SHARED_PROFILE_API}/v1/profiles/user/${encodeURIComponent(currentUserId)}`);
         if (response.status === 404) {
           if (preview.enabled)
@@ -18945,7 +18945,9 @@
           sharedSyncTimer = setInterval(() => {
             if (import_react_native20.AppState.currentState !== "active")
               return;
-            void pullOwnSharedProfile();
+            void pullOwnSharedProfile().catch((error) => {
+              diagnostics.last = error?.message || "Could not refresh Fake Profile";
+            });
             refreshSharedProfiles();
             if (import_react_native20.AppState.currentState === "active")
               void refreshPublishedBadges();
