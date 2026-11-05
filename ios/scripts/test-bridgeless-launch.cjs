@@ -7,10 +7,11 @@ const source = fs.readFileSync(path.join(__dirname, "../runtime/src/entry.ts"), 
 const code = esbuild.transformSync(source, { loader: "ts", format: "cjs" }).code;
 
 (async () => {
-    for (const mode of ["early", "late"]) {
+    for (const mode of ["early", "late", "native-marker", "require-installed"]) {
         const events = [];
         const realm = vm.createContext({
-            "RN$Bridgeless": true,
+            "RN$Bridgeless": mode !== "native-marker",
+            __CLOUDCORD_BRIDGELESS__: mode === "native-marker",
             exports: {},
             setTimeout,
             clearTimeout,
@@ -29,30 +30,35 @@ const code = esbuild.transformSync(source, { loader: "ts", format: "cjs" }).code
         });
         vm.runInContext(`
             const originalFreeze = Object.freeze;
-            const registry = new Map([[0, { isInitialized: true }]]);
+            const originalDefine = () => {};
+            __d = originalDefine;
+            const registry = new Map([[0, { isInitialized: false }]]);
             __c = () => registry;
             RN$AppRegistry = { runApplication() { record("app"); } };
-            function requireDiscord(id) { record("discord"); return id; }
+            function requireDiscord(id) { registry.get(id).isInitialized = true; record("discord"); return id; }
+            if ("${mode}" === "require-installed") __r = requireDiscord;
             if ("${mode}" === "late") {
-                __r = requireDiscord;
+                if ("${mode}" !== "require-installed") __r = requireDiscord;
                 __r(0);
                 RN$AppRegistry.runApplication();
             }
         `, realm);
-        vm.runInContext(code, realm);
-        if (mode === "early") {
+        const injected = `(function () { ${code} })()`;
+        vm.runInContext(injected, realm);
+        vm.runInContext(injected, realm);
+        if (mode !== "late") {
             assert.equal(vm.runInContext(`
-                __d = () => {};
-                __d();
                 __r = requireDiscord;
                 const result = __r(0);
                 RN$AppRegistry.runApplication();
                 result;
             `, realm), 0);
         }
+        vm.runInContext(injected, realm);
         await new Promise(resolve => setTimeout(resolve, 20));
         assert.deepEqual(events, ["discord", "app", "cache"], mode);
         assert.equal(vm.runInContext("Object.freeze === originalFreeze", realm), true);
+        assert.equal(vm.runInContext("__d === originalDefine && !Object.getOwnPropertyDescriptor(globalThis, '__d').get", realm), true);
         assert.equal(vm.runInContext("__c() === registry && (!window.modules || window.modules === registry)", realm), true);
         assert.equal(vm.runInContext("__CLOUDCORD_MODULE_VIEW__[0] === registry.get(0)", realm), true);
         assert.equal(vm.runInContext("__CLOUDCORD_BRIDGELESS__", realm), true);
