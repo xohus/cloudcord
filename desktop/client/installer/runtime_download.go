@@ -10,7 +10,7 @@ import (
 )
 
 var releaseClient = &http.Client{Timeout: 30 * time.Second}
-var runtimeClient = &http.Client{Timeout: 2 * time.Minute}
+var runtimeClient = &http.Client{Timeout: 10 * time.Minute}
 
 // Keep the currently installed runtime intact until the transfer completes.
 // A sibling temporary file also keeps the final rename on the same volume.

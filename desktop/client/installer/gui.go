@@ -50,6 +50,11 @@ var (
 	win *g.MasterWindow
 
 	patchSuccessTitle = "CloudCord Desktop installed"
+	activeOperation *installerOperation
+	finishOperation func(error)
+	operationStatus string
+	releaseReady bool
+	releaseReadySignal = make(chan bool, 1)
 )
 
 //go:embed winres/icon.png
@@ -98,9 +103,11 @@ func main() {
 	}
 
 	win = g.NewMasterWindow("CloudCord Desktop", 760, 480, linuxFlags)
+	win.SetCloseCallback(func() bool { return activeOperation == nil })
 
 	go func() {
 		<-GithubDoneChan
+		releaseReadySignal <- true
 		g.Update()
 	}()
 
@@ -178,25 +185,49 @@ func InstallLatestBuilds() (err error) {
 		return
 	}
 
-	err = installLatestBuilds()
-	if err != nil {
-		ShowModal("Uh Oh!", "Failed to install the latest CloudCord builds from GitHub:\n"+err.Error())
-	}
-	return
+	return installLatestBuilds()
 }
 
 func handlePatch() {
-	choice := getChosenInstall()
-	if choice != nil {
-		choice.Patch()
+	if activeOperation != nil || !releaseReady {
+		return
 	}
+	choice := getChosenInstall()
+	if choice == nil || CheckScuffedInstall() {
+		return
+	}
+	copy := *choice
+	operationStatus = "Installing CloudCord. Downloading may take a few minutes…"
+	finishOperation = func(err error) {
+		*choice = copy
+		if err != nil {
+			handleErr(choice, err, "install")
+		} else {
+			g.OpenPopup("#patched")
+		}
+	}
+	activeOperation = startInstallerOperation(copy.patch, func() { g.Update() })
 }
 
 func handleUnpatch() {
-	choice := getChosenInstall()
-	if choice != nil {
-		choice.Unpatch()
+	if activeOperation != nil {
+		return
 	}
+	choice := getChosenInstall()
+	if choice == nil {
+		return
+	}
+	copy := *choice
+	operationStatus = "Removing CloudCord…"
+	finishOperation = func(err error) {
+		*choice = copy
+		if err != nil {
+			handleErr(choice, err, "uninstall")
+		} else {
+			g.OpenPopup("#unpatched")
+		}
+	}
+	activeOperation = startInstallerOperation(copy.unpatch, func() { g.Update() })
 }
 
 func handleErr(di *DiscordInstall, err error, action string) {
@@ -215,25 +246,6 @@ func handleErr(di *DiscordInstall, err error, action string) {
 	ShowModal("Failed to "+action+" this Install", err.Error())
 }
 
-func (di *DiscordInstall) Patch() {
-	if CheckScuffedInstall() {
-		return
-	}
-	if err := di.patch(); err != nil {
-		handleErr(di, err, "patch")
-	} else {
-		g.OpenPopup("#patched")
-	}
-}
-
-func (di *DiscordInstall) Unpatch() {
-	if err := di.unpatch(); err != nil {
-		handleErr(di, err, "unpatch")
-	} else {
-		g.OpenPopup("#unpatched")
-	}
-}
-
 func ShowModal(title, desc string) {
 	modalTitle = title
 	modalMessage = desc
@@ -249,23 +261,35 @@ func RawInfoModal(id, title, description string, unformatted bool) g.Widget {
 	return g.PopupModal(id).
 		Flags(g.WindowFlagsAlwaysAutoResize|g.WindowFlagsNoMove).
 		Layout(
+			g.Dummy(420, 0),
 			g.Label(title),
-			&CondWidget{
-				unformatted,
-				func() g.Widget {
-					return g.Label(description)
-				},
-				func() g.Widget {
-					return g.Markdown(description)
-				},
-			},
+			g.Label(description).Wrapped(true),
 			g.Button("OK").OnClick(func() {
 				g.CloseCurrentPopup()
 			}),
 		)
 }
 
+func finishPendingOperation() {
+	if activeOperation != nil {
+		select {
+		case err := <-activeOperation.result:
+			activeOperation = nil
+			operationStatus = ""
+			finishOperation(err)
+			finishOperation = nil
+			g.Update()
+		default:
+		}
+	}
+}
+
 func loop() {
+	select {
+	case <-releaseReadySignal:
+		releaseReady = true
+	default:
+	}
 	if wi, hi := win.GetSize(); wi < 96 || hi < 96 {
 		return
 	}
@@ -304,6 +328,8 @@ func loop() {
 
 	g.SingleWindow().
 		Layout(
+			// Open completion popups only inside an active ImGui window.
+			g.Custom(finishPendingOperation),
 			// 1. Top Header
 			g.Row(
 				g.Style().SetFontSize(22).SetColor(g.StyleColorText, color.White).To(
@@ -322,7 +348,7 @@ func loop() {
 				SetStyleFloat(g.StyleVarChildRounding, 8).
 				SetStyle(g.StyleVarWindowPadding, 16, 12).
 				To(
-					g.Child().Size(w, 82).Layout(
+					g.Child().Size(w, 100).Layout(
 						g.Style().SetFontSize(11).SetColor(g.StyleColorText, accentCyan).To(
 							g.Label("CLOUDCORD DESKTOP"),
 						),
@@ -366,7 +392,7 @@ func loop() {
 
 			// 4. Subtitle
 			g.Style().SetFontSize(13).SetColor(g.StyleColorText, textMuted).To(
-				g.Label("Update keeps all plugins, settings, themes, fonts and CloudCord data."),
+				g.Label(Ternary(activeOperation != nil, operationStatus, "Update keeps your plugins, settings, themes, fonts and CloudCord data.")).Wrapped(true),
 			),
 
 			g.Dummy(0, 14),
@@ -382,6 +408,7 @@ func loop() {
 						SetFontSize(15).
 						To(
 							g.Button("Install").
+								Disabled(activeOperation != nil || !releaseReady).
 								OnClick(func() {
 									patchSuccessTitle = "CloudCord Desktop installed"
 									handlePatch()
@@ -397,6 +424,7 @@ func loop() {
 						SetFontSize(15).
 						To(
 							g.Button("Update / Fix").
+								Disabled(activeOperation != nil || !releaseReady).
 								OnClick(func() {
 									patchSuccessTitle = "CloudCord Desktop updated"
 									handlePatch()
@@ -412,6 +440,7 @@ func loop() {
 						SetFontSize(15).
 						To(
 							g.Button("Uninstall").
+								Disabled(activeOperation != nil).
 								OnClick(handleUnpatch).
 								Size(btnWidth, 42),
 						),

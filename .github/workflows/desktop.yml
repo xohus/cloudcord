@@ -43,7 +43,7 @@ jobs:
           cache-dependency-path: desktop/client/installer/go.sum
 
       - name: Check interrupted installer downloads
-        run: go test desktop/client/installer/runtime_download.go desktop/client/installer/runtime_download_test.go
+        run: go test desktop/client/installer/runtime_download.go desktop/client/installer/runtime_download_test.go desktop/client/installer/operation.go desktop/client/installer/operation_test.go
 
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
