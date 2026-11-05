@@ -5,11 +5,14 @@ const nmp = window.nativeModuleProxy;
 function getNativeModule<T = any>(...names: string[]): T | undefined {
     for (const name of names) {
         if (globalThis.__turboModuleProxy) {
-            const module = globalThis.__turboModuleProxy(name);
-            if (module) return module as T;
+            try {
+                const module = globalThis.__turboModuleProxy(name);
+                if (module) return module as T;
+            } catch { /* The runtime may expose the module through the legacy proxy instead. */ }
         }
 
-        if (nmp[name]) return nmp[name] as T;
+        const module = nmp?.[name];
+        if (module) return module as T;
     }
 
     return undefined;

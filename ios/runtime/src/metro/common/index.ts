@@ -27,7 +27,8 @@ export const { useToken } = lazyDestructure(() => findByProps("useToken"));
 // Polyfill LinkingUtils
 
 const openURL = (url: string) => Linking.openURL(url);
-export const url = nativeModuleProxy.NativeLinkingModule || nativeModuleProxy.DCDLinkingManager ? {
+const nativeLinking = window.nativeModuleProxy;
+export const url = !nativeLinking || nativeLinking.NativeLinkingModule || nativeLinking.DCDLinkingManager ? {
     openURL,
     openDeeplink: openURL,
     handleSupportedURL: openURL,

@@ -4,7 +4,7 @@ import { debounce } from "es-toolkit";
 
 import { ModuleFlags, ModulesMapInternal } from "./enums";
 
-const CACHE_VERSION = 102;
+const CACHE_VERSION = 103;
 const BUNNY_METRO_CACHE_PATH = "caches/metro_modules.json";
 
 type ModulesMap = {
@@ -13,14 +13,16 @@ type ModulesMap = {
 
 let _metroCache = null as unknown as ReturnType<typeof buildInitCache>;
 
-const getModuleView = () => (globalThis as any).__CLOUDCORD_MODULE_VIEW__ ?? window.modules;
+const getModuleView = () => (globalThis as any).__CLOUDCORD_MODULE_VIEW__ ?? window.modules ?? {};
+const isBridgeless = () => (globalThis as any).__CLOUDCORD_BRIDGELESS__ === true;
+let canPersist = false;
 
 export const getMetroCache = () => _metroCache;
 
-function buildInitCache() {
+function buildInitCache(buildNumber: string | undefined) {
     const cache = {
         _v: CACHE_VERSION,
-        _buildNumber: NativeClientInfoModule.getConstants().Build,
+        _buildNumber: buildNumber,
         _modulesCount: Object.keys(getModuleView()).length,
         flagsIndex: {} as Record<string, number>,
         findIndex: {} as Record<string, ModulesMap | undefined>,
@@ -29,7 +31,7 @@ function buildInitCache() {
 
     // Force load all modules so useful modules are pre-cached. Add a minor
     // delay so the cache is initialized before the modules are loaded.
-    if (!(globalThis as any).__CLOUDCORD_BRIDGELESS__) {
+    if (!isBridgeless()) {
         setTimeout(() => {
             for (const id in getModuleView()) {
                 require("./modules").requireModule(id);
@@ -43,30 +45,28 @@ function buildInitCache() {
 
 /** @internal */
 export async function initMetroCache() {
-    if (!await fileExists(BUNNY_METRO_CACHE_PATH)) return void buildInitCache();
-    const rawCache = await readFile(BUNNY_METRO_CACHE_PATH);
-
+    let buildNumber: string | undefined;
     try {
-        _metroCache = JSON.parse(rawCache);
-        if (_metroCache._v !== CACHE_VERSION) {
-            _metroCache = null!;
-            throw "cache invalidated; cache version outdated";
-        }
-        if (_metroCache._buildNumber !== NativeClientInfoModule.getConstants().Build) {
-            _metroCache = null!;
-            throw "cache invalidated; version mismatch";
-        }
-        if (_metroCache._modulesCount !== Object.keys(getModuleView()).length) {
-            _metroCache = null!;
-            throw "cache invalidated; modules count mismatch";
+        buildNumber = NativeClientInfoModule?.getConstants?.()?.Build;
+        canPersist = !!buildNumber && !isBridgeless();
+        if (canPersist && await fileExists(BUNNY_METRO_CACHE_PATH)) {
+            const cached = JSON.parse(await readFile(BUNNY_METRO_CACHE_PATH));
+            if (cached?._v === CACHE_VERSION && cached._buildNumber === buildNumber &&
+                cached._modulesCount === Object.keys(getModuleView()).length &&
+                [cached.flagsIndex, cached.findIndex, cached.polyfillIndex].every(value =>
+                    value && typeof value === "object" && !Array.isArray(value))) {
+                _metroCache = cached;
+                return;
+            }
         }
     } catch {
-        buildInitCache();
+        canPersist = false;
     }
+    buildInitCache(buildNumber);
 }
 
 const saveCache = debounce(() => {
-    writeFile(BUNNY_METRO_CACHE_PATH, JSON.stringify(_metroCache));
+    if (canPersist) void writeFile(BUNNY_METRO_CACHE_PATH, JSON.stringify(_metroCache)).catch(() => {});
 }, 1000);
 
 function extractExportsFlags(moduleExports: any) {
@@ -106,6 +106,7 @@ export function getCacherForUniq(uniq: string, allFind: boolean) {
         },
         // Finish may not be called by single find
         finish(notFound: boolean) {
+            if (isBridgeless()) return;
             if (allFind) indexObject[`_${ModulesMapInternal.FULL_LOOKUP}`] = 1;
             if (notFound) indexObject[`_${ModulesMapInternal.NOT_FOUND}`] = 1;
 
@@ -127,6 +128,7 @@ export function getPolyfillModuleCacher(name: string) {
             saveCache();
         },
         finish() {
+            if (isBridgeless()) return;
             indexObject[`_${ModulesMapInternal.FULL_LOOKUP}`] = 1;
             saveCache();
         }

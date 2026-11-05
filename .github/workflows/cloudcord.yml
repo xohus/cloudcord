@@ -43,6 +43,7 @@ jobs:
           npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-theme-compatibility.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-bridgeless-launch.cjs
+          CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-metro-cache-recovery.cjs
 
       - name: Check mobile render recursion
         run: |
@@ -185,6 +186,7 @@ jobs:
           cp "../ios/runtime/src/entry.ts" "src/entry.ts"
           cp "../ios/runtime/src/index.ts" "src/index.ts"
           cp "../ios/runtime/src/metro/internals/caches.ts" "src/metro/internals/caches.ts"
+          cp "../ios/runtime/src/metro/common/index.ts" "src/metro/common/index.ts"
           cp "../ios/runtime/src/metro/internals/modules.ts" "src/metro/internals/modules.ts"
           cp "../ios/runtime/src/core/vendetta/api.tsx" "src/core/vendetta/api.tsx"
 
