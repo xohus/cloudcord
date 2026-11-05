@@ -2,25 +2,47 @@ name: Rebuild CloudCord iOS 331
 
 permissions:
   contents: write
+  actions: read
+
+concurrency:
+  group: cloudcord-ios-331-release
+  cancel-in-progress: true
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/ios-331.yml"
-      - "ios/native-ios/**"
-      - "ios/runtime/**"
-      - "ios/scripts/package-cloudcord-ipa.py"
-      - "ios/scripts/verify-broadcast-ipa.py"
-      - "ios/scripts/test-broadcast-capabilities.py"
+  workflow_run:
+    workflows: ["Build CloudCord Runtime"]
+    branches: [main]
+    types: [completed]
 
 jobs:
   build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Download the completed runtime build
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: cloudcord-mobile-shared-runtime
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+          path: ${{ runner.temp }}/cloudcord-runtime
+
+      - name: Verify runtime for packaging
+        env:
+          EXPECTED_RUNTIME_SOURCE: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [ -n "$EXPECTED_RUNTIME_SOURCE" ]; then
+            python3 ios/scripts/verify-runtime-artifact.py "$RUNNER_TEMP/cloudcord-runtime/dist"
+            cp "$RUNNER_TEMP/cloudcord-runtime/dist/cc.js" dist/cc.js
+          else
+            python3 ios/scripts/verify-runtime-artifact.py dist
+          fi
 
       - name: Install build tools
         run: |
@@ -95,6 +117,7 @@ jobs:
           unzip -q cloudcord0-331.ipa -d "$RUNNER_TEMP/cloudcord-331-check"
           APP="$RUNNER_TEMP/cloudcord-331-check/Payload/Discord.app"
           test -f "$APP/PlugIns/BroadcastUpload.appex/BroadcastUpload"
+          cmp dist/cc.js "$APP/BunnyResources.bundle/runtime.js"
 
       - uses: actions/upload-artifact@v4
         with:
