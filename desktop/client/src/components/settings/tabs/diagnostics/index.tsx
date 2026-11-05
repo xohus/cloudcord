@@ -10,9 +10,12 @@ import UpdaterTab from "../updater";
 import CustomizationTab from "../customization";
 import { gitHashShort } from "@shared/vencordUserAgent";
 import { copyWithToast } from "@utils/discord";
+import { inspectCcpRuntime } from "@utils/ccpInspect";
 import { Margins } from "@utils/margins";
 import { localStorage } from "@utils/localStorage";
 import { React, useState } from "@webpack/common";
+import { wreq } from "@webpack";
+import * as Common from "@webpack/common";
 
 type Capture = { id: number; feature: string; method: string; target: string; queryKeys: string[]; status: number; ok: boolean; durationMs: number; at: string; error?: string; };
 const captures: Capture[] = [];
@@ -93,6 +96,9 @@ function CloudCordDiagnostics() {
         <Flex gap="8px" className={Margins.bottom20} style={{ flexWrap: "wrap" }}>
             <Button size="small" variant={enabled ? "positive" : "secondary"} onClick={toggle}>{enabled ? "Interception enabled" : "Enable interception"}</Button>
             <Button size="small" variant="secondary" onClick={copy}>Copy diagnostics</Button>
+            <Button size="small" variant="secondary" onClick={() => copyWithToast(JSON.stringify(
+                inspectCcpRuntime("desktop", name => (Common as Record<string, unknown>)[name], wreq?.c)
+            ))}>Copy CCP runtime report</Button>
             <Button size="small" variant="secondary" onClick={() => { captures.splice(0); refresh(value => value + 1); }}>Clear events</Button>
         </Flex>
         <Divider className={Margins.bottom20} />

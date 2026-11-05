@@ -152,6 +152,7 @@ jobs:
           cp "../desktop/client/src/sincordplugins/ccpCharacterCounter/character-counter.ccp" "src/core/plugins/ccpCharacterCounter/character-counter.ccp"
           cp "../desktop/client/src/utils/ccp.ts" "src/lib/api/ccp.ts"
           cp "../desktop/client/src/utils/ccpInspect.ts" "src/lib/api/ccpInspect.ts"
+          cp "../ios/runtime/src/lib/api/ccpReport.ts" "src/lib/api/ccpReport.ts"
           sed -i '/"bunny.messagefix":/a\    "cloudcord.ccp.character-counter": require("./ccpCharacterCounter"),' src/core/plugins/index.ts
           grep -q '"cloudcord.ccp.character-counter":' src/core/plugins/index.ts
           cp "../desktop/client/src/utils/profileAppearance.ts" "src/lib/api/profileAppearance.ts"

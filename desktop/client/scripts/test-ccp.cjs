@@ -53,10 +53,15 @@ const desktopPlugin = load(path.join(desktop, "index.ts"), {
 desktopPlugin.commands[0].execute(args, context);
 
 const mobileCommands = new Map();
+const mobileReport = load(path.resolve(client, "../../ios/runtime/src/lib/api/ccpReport.ts"), {
+    "@lib/api/ccpInspect": inspector,
+    "@metro": { findByStoreName: name => name === "UserStore" ? store : null },
+    "@metro/common": { clipboard: { setString: text => copied.push(JSON.parse(text)) } },
+});
 const mobilePlugin = load(path.resolve(client, "../../ios/runtime/src/core/plugins/ccpCharacterCounter/index.ts"), {
     "..": { defineCorePlugin: plugin => plugin },
     "@lib/api/ccp": runtime,
-    "@lib/api/ccpInspect": inspector,
+    "@lib/api/ccpReport": mobileReport,
     "@lib/api/commands": {
         registerCommand(command) {
             assert.equal(mobileCommands.has(command.name), false);
@@ -65,9 +70,7 @@ const mobilePlugin = load(path.resolve(client, "../../ios/runtime/src/core/plugi
         },
     },
     "@lib/api/commands/types": commandTypes,
-    "@metro": { findByStoreName: name => name === "UserStore" ? store : null },
     "@metro/common": {
-        clipboard: { setString: text => copied.push(JSON.parse(text)) },
         messageUtil: { sendBotMessage: (channel, content) => replies.push([channel, content]) },
     },
     "./character-counter.ccp": source,
@@ -75,6 +78,9 @@ const mobilePlugin = load(path.resolve(client, "../../ios/runtime/src/core/plugi
 mobilePlugin.start();
 mobilePlugin.start();
 const commandName = desktopPlugin.commands[0].name;
+for (const command of mobileCommands.values()) {
+    assert.notEqual(command.shouldHide(), false, "Mobile's command filter must show the command");
+}
 mobileCommands.get(commandName).execute(args, context);
 assert.deepEqual(replies, [["test-channel", "8 characters"], ["test-channel", "8 characters"]]);
 

@@ -4,11 +4,13 @@ import { PupuIcon } from "@core/ui/settings";
 import About from "@core/ui/settings/pages/General/About";
 import { useProxy } from "@core/vendetta/storage";
 import { findAssetId } from "@lib/api/assets";
+import { copyCcpReport } from "@lib/api/ccpReport";
 import { getDebugInfo } from "@lib/api/debug";
 import { BundleUpdaterManager } from "@lib/api/native/modules";
 import { settings } from "@lib/api/settings";
 import { openAlert } from "@lib/ui/alerts";
 import { GITHUB } from "@lib/utils/constants";
+import { showToast } from "@lib/ui/toasts";
 import { NavigationNative } from "@metro/common";
 import { AlertActionButton, AlertActions, AlertModal, Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import { Linking, ScrollView } from "react-native";
@@ -71,6 +73,16 @@ export default function General() {
                         onValueChange={(value: boolean) => (settings as any).cloudcordAutoUpdate = value}
                     />
                     <TableRow label="Update status" subLabel={(settings as any).cloudcordUpdateStatus || "Waiting for the next update check"} />
+                    <TableRow label="Copy CCP runtime report" subLabel="Loaded Discord functions and read-only checks"
+                        icon={<TableRow.Icon source={findAssetId("CopyIcon") || findAssetId("WrenchIcon")} />}
+                        onPress={async () => {
+                            try {
+                                await copyCcpReport();
+                                showToast("CCP runtime report copied");
+                            } catch {
+                                showToast("Could not copy the CCP runtime report");
+                            }
+                        }} />
                     {settings.cloudcordDiagnosticsEnabled === true && <TableRow arrow label="Diagnostics" subLabel="Runtime status and troubleshooting"
                         onPress={() => navigation.push("PUPU_CUSTOM_PAGE", { title: "Diagnostics", render: () => {
                             const Diagnostics = require("@core/ui/settings/pages/Diagnostics").default;
