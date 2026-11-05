@@ -4,6 +4,7 @@ import { findByFilePathLazy, findByNameAll, findByNameLazy, findByPropsAll, find
 import { registeredSections } from "@ui/settings";
 import { settings } from "@lib/api/settings";
 import { NativeClientInfoModule } from "@lib/api/native/modules";
+import { Platform } from "react-native";
 
 import { CustomPageRenderer, wrapOnPress } from "./shared";
 import { findInReactTree } from "@lib/utils";
@@ -281,9 +282,11 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     };
 
     try {
-        // Fallbacks 3-6: patch the lazy match plus every initialized 344 module
-        // exporting createList (the IPA currently contains two such symbols).
-        const modules = [createListModule, ...findByPropsAll("createList")].filter(Boolean);
+        // The iOS 344 IPA has two createList exports. On bridged Android,
+        // findByPropsAll executes dormant Metro factories during startup.
+        const modules = Platform.OS === "android"
+            ? [createListModule]
+            : [createListModule, ...findByPropsAll("createList")].filter(Boolean);
         [...new Set(modules)].forEach(module => {
             try { patchCreateListModule(module); } catch {}
         });
@@ -293,7 +296,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         const modules = [
             SettingsOverviewScreen344,
             SettingsOverviewScreen,
-            ...findByNameAll("SettingsOverviewScreen", false)
+            ...(Platform.OS === "android" ? [] : findByNameAll("SettingsOverviewScreen", false))
         ].filter(Boolean);
         [...new Set(modules)].forEach(module => {
             try {
