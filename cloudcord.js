@@ -7718,22 +7718,22 @@
         /**
          * @internal
          */
-        evalPlugin(plugin) {
+        evalPlugin(plugin2) {
           return _async_to_generator(function* () {
             var vendettaForPlugins = {
               ...globalThis.vendetta,
               metro: pluginIdentityMetro(globalThis.vendetta.metro),
               patcher: pluginIdentityPatcher(globalThis.vendetta.patcher),
               plugin: {
-                id: plugin.id,
-                manifest: plugin.manifest,
+                id: plugin2.id,
+                manifest: plugin2.manifest,
                 // Wrapping this with wrapSync is NOT an option.
-                storage: yield createStorage(createMMKVBackend(plugin.id))
+                storage: yield createStorage(createMMKVBackend(plugin2.id))
               },
-              logger: new LoggerClass(`CloudCord \xBB ${plugin.manifest.name}`)
+              logger: new LoggerClass(`CloudCord \xBB ${plugin2.manifest.name}`)
             };
-            var pluginString = `vendetta=>{return ${plugin.js}}
-//# sourceURL=${plugin.id}`;
+            var pluginString = `vendetta=>{return ${plugin2.js}}
+//# sourceURL=${plugin2.id}`;
             var raw = (0, eval)(pluginString)(vendettaForPlugins);
             var ret = typeof raw === "function" ? raw() : raw;
             return ret?.default ?? ret ?? {};
@@ -7743,25 +7743,25 @@
           return _async_to_generator(function* () {
             if (!id.endsWith("/"))
               id += "/";
-            var plugin = plugins[id];
-            if (!plugin)
+            var plugin2 = plugins[id];
+            if (!plugin2)
               throw new Error("Attempted to start non-existent plugin");
             try {
               if (!settings.safeMode?.enabled) {
-                var pluginRet = yield this.evalPlugin(plugin);
+                var pluginRet = yield this.evalPlugin(plugin2);
                 pluginInstance[id] = pluginRet;
                 pluginRet.onLoad?.();
               }
-              plugin.enabled = true;
+              plugin2.enabled = true;
             } catch (e) {
-              logger.error(`Plugin ${plugin.id} errored whilst loading, and will be unloaded`, e);
+              logger.error(`Plugin ${plugin2.id} errored whilst loading, and will be unloaded`, e);
               try {
-                pluginInstance[plugin.id]?.onUnload?.();
+                pluginInstance[plugin2.id]?.onUnload?.();
               } catch (e2) {
-                logger.error(`Plugin ${plugin.id} errored whilst unloading`, e2);
+                logger.error(`Plugin ${plugin2.id} errored whilst unloading`, e2);
               }
               delete pluginInstance[id];
-              plugin.enabled = false;
+              plugin2.enabled = false;
               throw e;
             }
           }).call(this);
@@ -7769,27 +7769,27 @@
         stopPlugin(id, disable = true) {
           if (!id.endsWith("/"))
             id += "/";
-          var plugin = plugins[id];
+          var plugin2 = plugins[id];
           var pluginRet = pluginInstance[id];
-          if (!plugin)
+          if (!plugin2)
             throw new Error("Attempted to stop non-existent plugin");
           if (!settings.safeMode?.enabled) {
             try {
               pluginRet?.onUnload?.();
             } catch (e) {
-              logger.error(`Plugin ${plugin.id} errored whilst unloading`, e);
+              logger.error(`Plugin ${plugin2.id} errored whilst unloading`, e);
             }
             delete pluginInstance[id];
           }
           if (disable)
-            plugin.enabled = false;
+            plugin2.enabled = false;
         },
         removePlugin(id) {
           return _async_to_generator(function* () {
             if (!id.endsWith("/"))
               id += "/";
-            var plugin = plugins[id];
-            if (plugin.enabled)
+            var plugin2 = plugins[id];
+            if (plugin2.enabled)
               this.stopPlugin(id);
             delete plugins[id];
             yield purgeStorage(id);
@@ -8963,7 +8963,7 @@
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
-      init_plugins2();
+      init_plugins3();
       init_forumPost();
       init_url();
       patches = [];
@@ -9012,7 +9012,7 @@
       init_patcher();
       init_jsx();
       init_metro();
-      init_plugins2();
+      init_plugins3();
       init_common();
       useBadgesModule = findByNameLazy("useBadges", false);
       badgesCache = /* @__PURE__ */ new Map();
@@ -9231,7 +9231,7 @@
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
-      init_plugins2();
+      init_plugins3();
       init_metro();
       init_patcher();
       init_logger();
@@ -9302,7 +9302,7 @@
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
-      init_plugins2();
+      init_plugins3();
       init_logger();
       messagefix_default = defineCorePlugin({
         manifest: {
@@ -9333,23 +9333,178 @@
     }
   });
 
-  // src/core/plugins/index.ts
-  function defineCorePlugin(instance) {
-    instance[Symbol.for("bunny.core.plugin")] = true;
-    return instance;
+  // src/lib/api/ccp.ts
+  function parseCcp(source, supported) {
+    if (source.length > 16384)
+      throw new Error("CCP file exceeds 16 KiB");
+    var lines = source.split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !line.startsWith("//"));
+    if (lines[0] !== "ccp 1")
+      throw new Error("Expected CCP language version 1");
+    var plugin2 = lines[1]?.match(declaration);
+    var permissions = lines[2]?.match(/^requires ([a-z.]+(?:,\s*[a-z.]+)*)$/)?.[1].split(/,\s*/);
+    var command = lines[3]?.match(commandHandler);
+    var reply = lines[4]?.match(replyStatement);
+    if (!plugin2 || !permissions || !command || !reply || lines[5] !== "}" || lines.length !== 6) {
+      throw new Error("Expected a plugin declaration and a single command handler with a reply");
+    }
+    for (var capability of [
+      "command.register",
+      "reply.local"
+    ]) {
+      if (!permissions.includes(capability))
+        throw new Error("CCP plugin must declare " + capability);
+    }
+    for (var permission of permissions) {
+      if (!supported.has(permission))
+        throw new Error("Unsupported CCP capability: " + permission);
+    }
+    var name = JSON.parse(plugin2[2]);
+    var version = JSON.parse(plugin2[3]);
+    var template = JSON.parse(reply[1]);
+    if (!name.trim() || name.length > 64 || !/^\d+\.\d+\.\d+$/.test(version)) {
+      throw new Error("Invalid CCP plugin name or version");
+    }
+    if (!template.trim() || template.length > 1e3 || /\$\{/.test(template.replaceAll("${length(text)}", ""))) {
+      throw new Error("CCP reply supports literal text and length(text)");
+    }
+    return {
+      id: plugin2[1],
+      name,
+      version,
+      command: command[1],
+      template
+    };
   }
-  var getCorePlugins;
-  var init_plugins2 = __esm({
-    "src/core/plugins/index.ts"() {
+  function runCcpCommand(plugin2, input) {
+    return plugin2.template.replaceAll("${length(text)}", String(input.length));
+  }
+  var quotedString, declaration, replyStatement, commandHandler, ccpCommandCapabilities;
+  var init_ccp = __esm({
+    "src/lib/api/ccp.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
-      getCorePlugins = () => ({
-        "bunny.quickinstall": (init_quickinstall(), __toCommonJS(quickinstall_exports)),
-        "bunny.badges": (init_badges(), __toCommonJS(badges_exports)),
-        "bunny.notrack": (init_notrack(), __toCommonJS(notrack_exports)),
-        "bunny.messagefix": (init_messagefix(), __toCommonJS(messagefix_exports))
-      });
+      quotedString = '"(?:[^"\\\\]|\\\\.)*"';
+      declaration = new RegExp("^plugin ([a-z][a-z0-9.-]{2,63}) (" + quotedString + ") version (" + quotedString + ")$");
+      replyStatement = new RegExp("^reply (" + quotedString + ")$");
+      commandHandler = /^on command ([a-z][a-z0-9-]{1,31})\(text\) \{$/;
+      ccpCommandCapabilities = /* @__PURE__ */ new Set([
+        "command.register",
+        "reply.local"
+      ]);
+    }
+  });
+
+  // src/lib/api/ccpInspect.ts
+  function functionNames(target, includePrototype = false) {
+    var names = /* @__PURE__ */ new Set();
+    for (var object = target; object && object !== Object.prototype; object = includePrototype ? Object.getPrototypeOf(object) : null) {
+      if (object === Function.prototype)
+        break;
+      for (var [name, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(object))) {
+        if (name !== "constructor" && typeof descriptor.value === "function")
+          names.add(name);
+      }
+    }
+    return [
+      ...names
+    ].sort();
+  }
+  function ownValue(target, key) {
+    return Object.getOwnPropertyDescriptor(target, key)?.value;
+  }
+  function inspectCcpRuntime(platform, resolveStore, cache) {
+    var stores = {};
+    var checks = {};
+    for (var name of [
+      ...Object.keys(storeChecks),
+      ...otherStores
+    ]) {
+      var method = storeChecks[name];
+      var label = name + "." + method;
+      try {
+        var store = resolveStore(name);
+        stores[name] = store && typeof store === "object" ? functionNames(store, true) : null;
+        if (!method)
+          continue;
+        var getter = store && store[method];
+        if (typeof getter !== "function") {
+          checks[label] = "unavailable";
+          continue;
+        }
+        var result = getter.call(store);
+        checks[label] = result === null ? "null" : Array.isArray(result) ? "array" : typeof result;
+      } catch (e) {
+        stores[name] ??= null;
+        if (method)
+          checks[label] = "threw";
+      }
+    }
+    var modules = [];
+    if (cache && typeof cache === "object") {
+      var entries = cache instanceof Map ? cache : Object.keys(cache).map((id2) => [
+        id2,
+        ownValue(cache, id2)
+      ]);
+      for (var [id, entry] of entries) {
+        if (!/^\d+$/.test(String(id)) || !entry || typeof entry !== "object")
+          continue;
+        try {
+          var publicModule = ownValue(entry, "publicModule");
+          var exports = ownValue(entry, "exports") ?? (publicModule && typeof publicModule === "object" ? ownValue(publicModule, "exports") : void 0);
+          if (!exports || typeof exports !== "object" && typeof exports !== "function")
+            continue;
+          var methods = functionNames(exports);
+          var accessorNames = Object.entries(Object.getOwnPropertyDescriptors(exports)).filter(([, descriptor]) => typeof descriptor.get === "function").map(([name2]) => name2);
+          if (methods.length || accessorNames.length || typeof exports === "function") {
+            modules.push({
+              id: String(id),
+              exports: typeof exports,
+              methods,
+              accessorNames
+            });
+          }
+        } catch (e) {
+        }
+      }
+    }
+    return {
+      format: 1,
+      platform,
+      stores,
+      checks,
+      modules
+    };
+  }
+  var storeChecks, otherStores;
+  var init_ccpInspect = __esm({
+    "src/lib/api/ccpInspect.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      storeChecks = {
+        UserStore: "getCurrentUser",
+        GuildStore: "getGuilds",
+        SelectedChannelStore: "getChannelId",
+        SelectedGuildStore: "getGuildId",
+        RelationshipStore: "getRelationships",
+        ConnectedAccountsStore: "getAccounts"
+      };
+      otherStores = [
+        "UserProfileStore",
+        "GuildRoleStore",
+        "GuildMemberStore",
+        "ChannelStore",
+        "MessageStore",
+        "ReadStateStore",
+        "VoiceStateStore",
+        "PresenceStore",
+        "EmojiStore",
+        "StickersStore",
+        "ThemeStore",
+        "PermissionStore",
+        "TypingStore"
+      ];
     }
   });
 
@@ -9856,7 +10011,7 @@
     default: () => plugins_default
   });
   var plugins_default;
-  var init_plugins3 = __esm({
+  var init_plugins2 = __esm({
     "src/core/commands/plugins.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
@@ -9923,7 +10078,7 @@
     [
       (init_eval(), __toCommonJS(eval_exports)),
       (init_debug2(), __toCommonJS(debug_exports2)),
-      (init_plugins3(), __toCommonJS(plugins_exports))
+      (init_plugins2(), __toCommonJS(plugins_exports))
     ].forEach((r) => registerCommand(r.default()));
     return () => {
       commands2 = [];
@@ -9978,6 +10133,125 @@
       init_logger();
       init_common();
       commands2 = [];
+    }
+  });
+
+  // src/core/plugins/ccpCharacterCounter/character-counter.ccp
+  var character_counter_default;
+  var init_character_counter = __esm({
+    "src/core/plugins/ccpCharacterCounter/character-counter.ccp"() {
+      character_counter_default = 'ccp 1\nplugin cloudcord.ccp.character-counter "CCP Character Counter" version "1.0.0"\nrequires command.register, reply.local\non command ccp-count(text) {\n    reply "${length(text)} characters"\n}\n';
+    }
+  });
+
+  // src/core/plugins/ccpCharacterCounter/index.ts
+  var ccpCharacterCounter_exports = {};
+  __export(ccpCharacterCounter_exports, {
+    default: () => ccpCharacterCounter_default,
+    preenabled: () => preenabled
+  });
+  var plugin, unregister, preenabled, ccpCharacterCounter_default;
+  var init_ccpCharacterCounter = __esm({
+    "src/core/plugins/ccpCharacterCounter/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_plugins3();
+      init_ccp();
+      init_ccpInspect();
+      init_commands();
+      init_types();
+      init_metro();
+      init_common();
+      init_character_counter();
+      plugin = parseCcp(character_counter_default, ccpCommandCapabilities);
+      unregister = [];
+      preenabled = false;
+      ccpCharacterCounter_default = defineCorePlugin({
+        manifest: {
+          id: plugin.id,
+          version: plugin.version,
+          type: "plugin",
+          spec: 3,
+          main: "",
+          display: {
+            name: plugin.name,
+            description: "Counts text with the portable /ccp-count command.",
+            authors: [
+              {
+                name: "CloudCord"
+              }
+            ]
+          }
+        },
+        start() {
+          if (unregister.length)
+            return;
+          unregister.push(registerCommand({
+            name: plugin.command,
+            description: "Count the characters in some text",
+            shouldHide: () => false,
+            options: [
+              {
+                name: "text",
+                displayName: "text",
+                description: "Text to count",
+                type: ApplicationCommandOptionType.STRING,
+                required: true
+              }
+            ],
+            execute(args, context) {
+              var input = args.find((arg) => arg.name === "text")?.value;
+              messageUtil.sendBotMessage(context.channel.id, runCcpCommand(plugin, typeof input === "string" ? input : ""));
+            }
+          }));
+          try {
+            unregister.push(registerCommand({
+              name: "ccp-inspect",
+              description: "Copy a local report of the Discord functions CloudCord can see",
+              shouldHide: () => false,
+              options: [],
+              execute(_args, context) {
+                return _async_to_generator(function* () {
+                  var globals = globalThis;
+                  var report = inspectCcpRuntime("mobile", findByStoreName, globals.modules ?? globals.__CLOUDCORD_MODULE_VIEW__);
+                  yield clipboard.setString(JSON.stringify(report));
+                  messageUtil.sendBotMessage(context.channel.id, `Copied the CCP report. Found ${report.modules.length} loaded modules and checked ${Object.keys(report.checks).length} read-only calls.`);
+                })();
+              }
+            }));
+          } catch (error) {
+            unregister.pop()?.();
+            throw error;
+          }
+        },
+        stop() {
+          for (var remove of unregister.splice(0))
+            remove();
+        }
+      });
+    }
+  });
+
+  // src/core/plugins/index.ts
+  function defineCorePlugin(instance) {
+    instance[Symbol.for("bunny.core.plugin")] = true;
+    return instance;
+  }
+  var getCorePlugins;
+  var init_plugins3 = __esm({
+    "src/core/plugins/index.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      getCorePlugins = () => ({
+        "bunny.quickinstall": (init_quickinstall(), __toCommonJS(quickinstall_exports)),
+        "bunny.badges": (init_badges(), __toCommonJS(badges_exports)),
+        "bunny.notrack": (init_notrack(), __toCommonJS(notrack_exports)),
+        "bunny.messagefix": (init_messagefix(), __toCommonJS(messagefix_exports)),
+        "cloudcord.ccp.character-counter": (init_ccpCharacterCounter(), __toCommonJS(ccpCharacterCounter_exports))
+      });
     }
   });
 
@@ -10250,9 +10524,9 @@
         updated = true;
         pluginRepositories[repoUrl] = repo;
       } else {
-        for (var plugin in storedRepo)
-          if (!repo[plugin]) {
-            delete storedRepo[plugin];
+        for (var plugin2 in storedRepo)
+          if (!repo[plugin2]) {
+            delete storedRepo[plugin2];
           }
       }
       var pluginIds = Object.keys(repo).filter((id2) => !id2.startsWith("$"));
@@ -10416,9 +10690,9 @@
       yield awaitStorage2(pluginRepositories, pluginSettings);
       var corePlugins = getCorePlugins();
       for (var id in corePlugins) {
-        var { default: instance, preenabled } = corePlugins[id];
+        var { default: instance, preenabled: preenabled2 } = corePlugins[id];
         pluginSettings[id] ??= {
-          enabled: preenabled ?? true
+          enabled: preenabled2 ?? true
         };
         registeredPlugins.set(id, instance.manifest);
         corePluginInstances.set(id, instance);
@@ -10445,7 +10719,7 @@
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_async_to_generator();
-      init_plugins2();
+      init_plugins3();
       init_fs();
       init_storage2();
       init_utils();
@@ -27117,8 +27391,8 @@
     useProxy(VdPluginManager.plugins);
     var [busy, setBusy] = (0, import_react10.useState)(false);
     var [refresh, setRefresh] = (0, import_react10.useState)(0);
-    var plugin = VdPluginManager.plugins[PLUGIN_URL];
-    var SettingsComponent = plugin?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
+    var plugin2 = VdPluginManager.plugins[PLUGIN_URL];
+    var SettingsComponent = plugin2?.enabled ? VdPluginManager.getSettings(PLUGIN_URL) : null;
     function installOrStart() {
       return _async_to_generator(function* () {
         if (busy)
@@ -27225,7 +27499,7 @@
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
-                label: plugin ? "Start StoreCloud" : "Enable StoreCloud",
+                label: plugin2 ? "Start StoreCloud" : "Enable StoreCloud",
                 subLabel: busy ? "Please wait..." : "Loads the StoreCloud sync engine",
                 icon: /* @__PURE__ */ jsx(TableRow.Icon, {
                   source: {
@@ -27234,7 +27508,7 @@
                 }),
                 onPress: installOrStart
               }),
-              plugin && /* @__PURE__ */ jsx(TableRow, {
+              plugin2 && /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
                 label: "Refresh StoreCloud",
                 subLabel: "Refreshes the StoreCloud sync engine",
@@ -27243,7 +27517,7 @@
                 }),
                 onPress: refetchPlugin
               }),
-              plugin && /* @__PURE__ */ jsx(TableRow, {
+              plugin2 && /* @__PURE__ */ jsx(TableRow, {
                 arrow: true,
                 label: "Disable StoreCloud",
                 subLabel: "Removes the StoreCloud sync engine",
@@ -28433,18 +28707,18 @@
   }
   function Title() {
     var styles = usePluginCardStyles();
-    var { plugin, result } = useCardContext();
+    var { plugin: plugin2, result } = useCardContext();
     var highlightedNode = result[0].highlight((m2, i) => /* @__PURE__ */ jsx(Text, {
       style: {
         backgroundColor: getHighlightColor()
       },
       children: m2
     }, i));
-    var icon3 = plugin.icon && findAssetId(plugin.icon);
+    var icon3 = plugin2.icon && findAssetId(plugin2.icon);
     var textNode = /* @__PURE__ */ jsx(Text, {
       numberOfLines: 1,
       variant: "heading-lg/semibold",
-      children: highlightedNode.length ? highlightedNode : plugin.name
+      children: highlightedNode.length ? highlightedNode : plugin2.name
     });
     return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
@@ -28462,9 +28736,9 @@
     });
   }
   function Authors() {
-    var { plugin, result } = useCardContext();
+    var { plugin: plugin2, result } = useCardContext();
     var styles = usePluginCardStyles();
-    if (!plugin.authors)
+    if (!plugin2.authors)
       return null;
     var highlightedNode = result[2].highlight((m2, i) => /* @__PURE__ */ jsx(Text, {
       style: {
@@ -28472,8 +28746,8 @@
       },
       children: m2
     }, i));
-    var badges = plugin.getBadges();
-    var authorText = highlightedNode.length > 0 ? highlightedNode : plugin.authors.map((a) => a.name).join(", ");
+    var badges = plugin2.getBadges();
+    var authorText = highlightedNode.length > 0 ? highlightedNode : plugin2.authors.map((a) => a.name).join(", ");
     return /* @__PURE__ */ jsxs(import_react_native30.View, {
       style: {
         flexDirection: "row",
@@ -28501,7 +28775,7 @@
     });
   }
   function Description() {
-    var { plugin, result } = useCardContext();
+    var { plugin: plugin2, result } = useCardContext();
     var highlightedNode = result[1].highlight((m2, i) => /* @__PURE__ */ jsx(Text, {
       style: {
         backgroundColor: getHighlightColor()
@@ -28510,20 +28784,20 @@
     }, i));
     return /* @__PURE__ */ jsx(Text, {
       variant: "text-md/medium",
-      children: highlightedNode.length ? highlightedNode : plugin.description
+      children: highlightedNode.length ? highlightedNode : plugin2.description
     });
   }
-  function PluginCard({ result, item: plugin }) {
-    plugin.usePluginState();
+  function PluginCard({ result, item: plugin2 }) {
+    plugin2.usePluginState();
     var [toggling, setToggling] = (0, import_react12.useState)(false);
     var cardContextValue = (0, import_react12.useMemo)(() => ({
-      plugin,
+      plugin: plugin2,
       result
     }), [
-      plugin,
+      plugin2,
       result
     ]);
-    var core = isCorePlugin(plugin.id);
+    var core = isCorePlugin(plugin2.id);
     return /* @__PURE__ */ jsx(CardContext.Provider, {
       value: cardContextValue,
       children: /* @__PURE__ */ jsx(Card, {
@@ -28556,13 +28830,13 @@
                           opacity: 0.5
                         } : void 0,
                         children: /* @__PURE__ */ jsx(TableSwitch, {
-                          value: core ? true : plugin.isEnabled(),
+                          value: core ? true : plugin2.isEnabled(),
                           disabled: core || toggling,
                           onValueChange: (v2) => _async_to_generator(function* () {
                             if (!core) {
                               setToggling(true);
                               try {
-                                yield plugin.toggle(v2);
+                                yield plugin2.toggle(v2);
                               } catch (error) {
                                 showToast(error instanceof Error ? error.message : String(error), findAssetId("CircleXIcon-primary"));
                               } finally {
@@ -28604,7 +28878,7 @@
       CardContext = /* @__PURE__ */ (0, import_react12.createContext)(null);
       useCardContext = () => (0, import_react12.useContext)(CardContext);
       Actions = () => {
-        var { plugin } = useCardContext();
+        var { plugin: plugin2 } = useCardContext();
         var navigation2 = NavigationNative.useNavigation();
         return /* @__PURE__ */ jsxs(import_react_native30.View, {
           style: {
@@ -28616,18 +28890,18 @@
               size: "sm",
               variant: "secondary",
               icon: findAssetId("WrenchIcon"),
-              disabled: !plugin.getPluginSettingsComponent(),
+              disabled: !plugin2.getPluginSettingsComponent(),
               onPress: () => navigation2.push("PUPU_CUSTOM_PAGE", {
-                title: plugin.name,
-                render: plugin.getPluginSettingsComponent()
+                title: plugin2.name,
+                render: plugin2.getPluginSettingsComponent()
               })
             }),
             /* @__PURE__ */ jsx(IconButton, {
               size: "sm",
               variant: "secondary",
               icon: findAssetId("CircleInformationIcon-primary"),
-              onPress: () => void showSheet("PluginInfoActionSheet", plugin.resolveSheetComponent(), {
-                plugin,
+              onPress: () => void showSheet("PluginInfoActionSheet", plugin2.resolveSheetComponent(), {
+                plugin: plugin2,
                 navigation: navigation2
               })
             })
@@ -28650,14 +28924,14 @@
   });
 
   // src/core/ui/settings/pages/Plugins/sheets/TitleComponent.tsx
-  function TitleComponent({ plugin }) {
+  function TitleComponent({ plugin: plugin2 }) {
     var users = FluxUtils.useStateFromStoresArray([
       UserStore
     ], () => {
-      plugin.authors?.forEach((a) => a.id && maybeFetchUser(a.id));
-      return plugin.authors?.map((a) => UserStore.getUser(a.id));
+      plugin2.authors?.forEach((a) => a.id && maybeFetchUser(a.id));
+      return plugin2.authors?.map((a) => UserStore.getUser(a.id));
     });
-    var { authors } = plugin;
+    var { authors } = plugin2;
     var authorTextNode = [];
     if (authors) {
       var _loop2 = function(author2) {
@@ -28682,7 +28956,7 @@
         /* @__PURE__ */ jsx(import_react_native31.View, {
           children: /* @__PURE__ */ jsx(Text, {
             variant: "heading-xl/semibold",
-            children: plugin.name
+            children: plugin2.name
           })
         }),
         /* @__PURE__ */ jsx(import_react_native31.View, {
@@ -28703,8 +28977,8 @@
             children: [
               users.length && /* @__PURE__ */ jsx(AvatarPile, {
                 size: "xxsmall",
-                names: plugin.authors?.map((a) => a.name),
-                totalCount: plugin.authors?.length,
+                names: plugin2.authors?.map((a) => a.name),
+                totalCount: plugin2.authors?.length,
                 children: users.map((a) => /* @__PURE__ */ jsx(Avatar, {
                   size: "xxsmall",
                   user: a
@@ -28753,26 +29027,26 @@
       ...props
     });
   }
-  function PluginInfoActionSheet({ plugin, navigation: navigation2 }) {
-    plugin.usePluginState();
+  function PluginInfoActionSheet({ plugin: plugin2, navigation: navigation2 }) {
+    plugin2.usePluginState();
     var [loading, setLoading] = (0, import_react13.useState)(false);
-    var isVendettaPlugin = plugin.id.includes("/");
-    var isCorePlugin2 = plugin.id.startsWith("bunny.") || plugin.id.startsWith("vendetta.");
+    var isVendettaPlugin = plugin2.id.includes("/");
+    var isCorePlugin2 = plugin2.id.startsWith("bunny.") || plugin2.id.startsWith("vendetta.");
     var copyPluginUrl = () => {
-      var url2 = plugin.id;
+      var url2 = plugin2.id;
       if (isVendettaPlugin) {
-        url2 = plugin.id;
+        url2 = plugin2.id;
       } else {
         try {
-          var pluginAny = plugin;
+          var pluginAny = plugin2;
           var repoUrl = (
             //@ts-expect-error
             pluginAny._manifest?.parentRepository || //@ts-expect-error
             pluginAny.manifest?.parentRepository
           );
-          url2 = repoUrl ? `${repoUrl}/builds/${plugin.id}` : plugin.id;
+          url2 = repoUrl ? `${repoUrl}/builds/${plugin2.id}` : plugin2.id;
         } catch (e) {
-          url2 = plugin.id;
+          url2 = plugin2.id;
         }
       }
       clipboard.setString(url2);
@@ -28782,12 +29056,12 @@
       setLoading(true);
       try {
         if (isVendettaPlugin) {
-          var vdPlugin = VdPluginManager.plugins[plugin.id];
+          var vdPlugin = VdPluginManager.plugins[plugin2.id];
           if (vdPlugin.enabled)
-            VdPluginManager.stopPlugin(plugin.id, false);
-          yield VdPluginManager.fetchPlugin(plugin.id);
+            VdPluginManager.stopPlugin(plugin2.id, false);
+          yield VdPluginManager.fetchPlugin(plugin2.id);
           if (vdPlugin.enabled)
-            yield VdPluginManager.startPlugin(plugin.id);
+            yield VdPluginManager.startPlugin(plugin2.id);
           showToast("Plugin refreshed successfully");
         } else {
           showToast("Plugin refreshed successfully");
@@ -28809,14 +29083,14 @@
           hideSheet("PluginInfoActionSheet");
           try {
             if (isVendettaPlugin) {
-              var vdPlugin = VdPluginManager.plugins[plugin.id];
+              var vdPlugin = VdPluginManager.plugins[plugin2.id];
               if (vdPlugin.enabled)
-                VdPluginManager.stopPlugin(plugin.id, false);
-              yield purgeStorage(plugin.id);
+                VdPluginManager.stopPlugin(plugin2.id, false);
+              yield purgeStorage(plugin2.id);
               if (vdPlugin.enabled)
-                yield VdPluginManager.startPlugin(plugin.id);
+                yield VdPluginManager.startPlugin(plugin2.id);
             } else {
-              yield purgeStorage2(`plugins/storage/${plugin.id}.json`);
+              yield purgeStorage2(`plugins/storage/${plugin2.id}.json`);
             }
             showToast("Plugin data cleared successfully");
           } catch (e) {
@@ -28840,7 +29114,7 @@
           hideSheet("PluginInfoActionSheet");
           try {
             if (isVendettaPlugin) {
-              yield VdPluginManager.removePlugin(plugin.id);
+              yield VdPluginManager.removePlugin(plugin2.id);
             } else {
             }
             showToast("Plugin uninstalled successfully");
@@ -28867,7 +29141,7 @@
               width: "100%"
             },
             children: /* @__PURE__ */ jsx(TitleComponent, {
-              plugin
+              plugin: plugin2
             })
           }),
           /* @__PURE__ */ jsxs(import_react_native32.View, {
@@ -28883,13 +29157,13 @@
               /* @__PURE__ */ jsx(PluginInfoIconButton, {
                 label: "Configure",
                 variant: "secondary",
-                disabled: !plugin.getPluginSettingsComponent(),
+                disabled: !plugin2.getPluginSettingsComponent(),
                 icon: findAssetId("WrenchIcon"),
                 onPress: () => {
                   navigation2.push("PUPU_CUSTOM_PAGE", {
-                    title: plugin.name,
+                    title: plugin2.name,
                     render: () => /* @__PURE__ */ jsx(ScaledPluginSettings, {
-                      component: plugin.getPluginSettingsComponent()
+                      component: plugin2.getPluginSettingsComponent()
                     })
                   });
                 }
@@ -28934,7 +29208,7 @@
               }),
               /* @__PURE__ */ jsx(Text, {
                 variant: "text-md/medium",
-                children: plugin.description
+                children: plugin2.description
               })
             ]
           })
@@ -29327,21 +29601,21 @@
     var promptInstall = () => {
       if (!isPluginMode)
         return installAddon();
-      var plugin = addon;
-      var needsWarn = plugin.status && plugin.status !== "working" || plugin.warningMessage && plugin.warningMessage.trim().length > 0;
+      var plugin2 = addon;
+      var needsWarn = plugin2.status && plugin2.status !== "working" || plugin2.warningMessage && plugin2.warningMessage.trim().length > 0;
       if (!needsWarn)
         return installAddon();
       var lines = [];
-      if (plugin.status && plugin.status !== "working") {
-        if (plugin.status === "broken")
+      if (plugin2.status && plugin2.status !== "working") {
+        if (plugin2.status === "broken")
           lines.push("This plugin is marked as broken, please be aware you may encounter issues");
-        else if (plugin.status === "warning")
+        else if (plugin2.status === "warning")
           lines.push("This plugin may have issues");
         else
-          lines.push(`Status: ${plugin.status}`);
+          lines.push(`Status: ${plugin2.status}`);
       }
-      if (plugin.warningMessage)
-        lines.push(plugin.warningMessage);
+      if (plugin2.warningMessage)
+        lines.push(plugin2.warningMessage);
       openAlert("plugins-list-install-warning", /* @__PURE__ */ jsx(AlertModal, {
         title: "Warning!",
         content: "This plugin may not work as expected.",
@@ -29385,8 +29659,8 @@
       showToast.showCopyToClipboard?.();
     };
     var copySourceUrl = () => {
-      var plugin = addon;
-      clipboard.setString(plugin.sourceUrl);
+      var plugin2 = addon;
+      clipboard.setString(plugin2.sourceUrl);
       showToast.showCopyToClipboard?.();
     };
     var openAddonMenu = () => {
@@ -29443,14 +29717,14 @@
   }
   function AddonCard({ addon, isPluginMode, installing, setInstalling, setRefreshTick }) {
     var { name, description, authors } = addon;
-    var plugin = addon;
+    var plugin2 = addon;
     var statusColor = "text-normal";
     if (isPluginMode) {
-      if (plugin.status === "working")
+      if (plugin2.status === "working")
         statusColor = "#4ADE80";
-      if (plugin.status === "broken")
+      if (plugin2.status === "broken")
         statusColor = "#EF4444";
-      if (plugin.status === "warning")
+      if (plugin2.status === "warning")
         statusColor = "#F59E0B";
     }
     return /* @__PURE__ */ jsx(Card, {
@@ -29489,7 +29763,7 @@
                     },
                     children: [
                       "Status: ",
-                      plugin.status
+                      plugin2.status
                     ]
                   })
                 ]
@@ -29509,12 +29783,12 @@
             variant: "text-md/medium",
             children: description
           }),
-          isPluginMode && plugin.warningMessage && /* @__PURE__ */ jsxs(Text, {
+          isPluginMode && plugin2.warningMessage && /* @__PURE__ */ jsxs(Text, {
             variant: "text-sm/medium",
             color: "text-muted",
             children: [
               "Warning: ",
-              plugin.warningMessage
+              plugin2.warningMessage
             ]
           })
         ]
