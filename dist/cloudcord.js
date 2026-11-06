@@ -36540,6 +36540,56 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               textDecorationLine: "underline"
             }
           }
+        },
+        "floating-chat-bar": {
+          plugin: "FloatingChatBar",
+          label: "lift the chat bar above the bottom edge",
+          css: 'form [class*="channelTextArea"] { margin-bottom: 8px; box-shadow: 0 4px 16px rgb(0 0 0 / 25%); }',
+          style: {
+            component: "FloatingChatInputContainer",
+            values: {
+              marginBottom: 8,
+              shadowColor: "#000000",
+              shadowOffset: {
+                width: 0,
+                height: 4
+              },
+              shadowOpacity: 0.25,
+              shadowRadius: 8,
+              elevation: 4
+            }
+          }
+        },
+        "rounded-chat-bar": {
+          plugin: "RoundedChatBar",
+          label: "round the chat bar",
+          css: '[class*="channelTextArea"] [class*="scrollableContainer"], form [class*="channelTextArea"] { border-radius: 24px !important; }',
+          style: {
+            component: "FloatingChatInputContainer",
+            values: {
+              borderRadius: 24
+            }
+          }
+        },
+        "round-server-icons": {
+          plugin: "RoundServerIcons",
+          label: "round server icons",
+          css: 'nav[aria-label="Servers sidebar"] [class*="wrapper"] foreignObject { mask: none !important; border-radius: 50%; }',
+          style: {
+            component: "GuildsBarAnimatedItemWrapper",
+            props: {
+              circle: true
+            },
+            skipWhenTrue: "preventClipping"
+          }
+        },
+        "server-unread-pills": {
+          plugin: "HideUnreadPills",
+          label: "the server sidebar unread pills",
+          css: '[class*="unreadMentionsIndicator"] { display: none !important; }',
+          mobile: [
+            "GuildsBarUnreadBars"
+          ]
         }
       };
     }
@@ -38080,6 +38130,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/floating-chat-bar.cx
+  var floating_chat_bar_default;
+  var init_floating_chat_bar = __esm({
+    "../examples/cx/catalog/plugins/floating-chat-bar.cx"() {
+      floating_chat_bar_default = 'plugin "FloatingChatBar":\n  needs appearance.style\n  style floating-chat-bar\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/google-that.cx
   var google_that_default;
   var init_google_that = __esm({
@@ -38280,6 +38338,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-unread-pills.cx
+  var hide_unread_pills_default;
+  var init_hide_unread_pills = __esm({
+    "../examples/cx/catalog/plugins/hide-unread-pills.cx"() {
+      hide_unread_pills_default = 'plugin "HideUnreadPills":\n  needs appearance.hide\n  hide server-unread-pills\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/high-contrast-text.cx
   var high_contrast_text_default;
   var init_high_contrast_text = __esm({
@@ -38389,6 +38455,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_reverse_text = __esm({
     "../examples/cx/catalog/plugins/reverse-text.cx"() {
       reverse_text_default = 'plugin "ReverseText":\n  needs commands.register\n  needs messages.send\n  on command "reverse" with text:\n    send "${reverse(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/round-server-icons.cx
+  var round_server_icons_default;
+  var init_round_server_icons = __esm({
+    "../examples/cx/catalog/plugins/round-server-icons.cx"() {
+      round_server_icons_default = 'plugin "RoundServerIcons":\n  needs appearance.style\n  style round-server-icons\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/rounded-chat-bar.cx
+  var rounded_chat_bar_default;
+  var init_rounded_chat_bar = __esm({
+    "../examples/cx/catalog/plugins/rounded-chat-bar.cx"() {
+      rounded_chat_bar_default = 'plugin "RoundedChatBar":\n  needs appearance.style\n  style rounded-chat-bar\n';
     }
   });
 
@@ -39334,6 +39416,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_copy_profile_colors();
       init_copy_user_mention();
       init_copy_user_urls();
+      init_floating_chat_bar();
       init_google_that();
       init_hide_active_now();
       init_hide_add_server_button();
@@ -39359,6 +39442,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_shop_tab();
       init_hide_stream_previews();
       init_hide_typing_indicator();
+      init_hide_unread_pills();
       init_high_contrast_text();
       init_highlight_links();
       init_ignore_calls();
@@ -39373,6 +39457,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_polish_wording();
       init_reply_ping_control();
       init_reverse_text();
+      init_round_server_icons();
+      init_rounded_chat_bar();
       init_send_timestamps();
       init_ship_calc();
       init_signature();
@@ -39551,6 +39637,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: copy_user_urls_default
           },
           {
+            name: "FloatingChatBar",
+            source: floating_chat_bar_default
+          },
+          {
             name: "GoogleThat",
             source: google_that_default
           },
@@ -39651,6 +39741,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_typing_indicator_default
           },
           {
+            name: "HideUnreadPills",
+            source: hide_unread_pills_default
+          },
+          {
             name: "HighContrastText",
             source: high_contrast_text_default
           },
@@ -39705,6 +39799,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "ReverseText",
             source: reverse_text_default
+          },
+          {
+            name: "RoundServerIcons",
+            source: round_server_icons_default
+          },
+          {
+            name: "RoundedChatBar",
+            source: rounded_chat_bar_default
           },
           {
             name: "SendTimestamps",
@@ -40178,8 +40280,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   __export(CxExtensions_exports, {
     default: () => CxExtensions
   });
-  function registerJsxAppearance(names, change) {
-    var active = true;
+  function bindAppearance(name) {
+    var revision = 0;
+    var changes = /* @__PURE__ */ new Set();
     var listeners2 = /* @__PURE__ */ new Set();
     var subscribe = (listener) => {
       listeners2.add(listener);
@@ -40187,23 +40290,56 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         listeners2.delete(listener);
       };
     };
-    var isActive = () => active && !settings.safeMode?.enabled;
+    var getRevision = () => revision;
     function Appearance({ element }) {
-      return React2.useSyncExternalStore(subscribe, isActive) ? change(element) : element;
+      React2.useSyncExternalStore(subscribe, getRevision);
+      if (settings.safeMode?.enabled)
+        return element;
+      var current = element;
+      for (var change of changes) {
+        current = change(current);
+        if (!current)
+          break;
+      }
+      return current;
     }
     var wrap = (_2, element) => /* @__PURE__ */ jsx(Appearance, {
       element
     }, element.key);
-    for (var name of names)
-      onJsxCreate(name, wrap, true);
-    return () => {
-      active = false;
-      for (var name2 of names)
-        deleteJsxCreate(name2, wrap, true);
+    function refresh() {
+      revision++;
       for (var listener of [
         ...listeners2
       ])
         listener();
+    }
+    onJsxCreate(name, wrap, true);
+    return (change) => {
+      changes.add(change);
+      refresh();
+      return () => {
+        if (!changes.delete(change))
+          return;
+        if (!changes.size) {
+          deleteJsxCreate(name, wrap, true);
+          appearanceBindings.delete(name);
+        }
+        refresh();
+      };
+    };
+  }
+  function registerJsxAppearance(names, change) {
+    var cleanups = names.map((name) => {
+      var bind = appearanceBindings.get(name);
+      if (!bind) {
+        bind = bindAppearance(name);
+        appearanceBindings.set(name, bind);
+      }
+      return bind(change);
+    });
+    return () => {
+      for (var cleanup of cleanups)
+        cleanup();
     };
   }
   function patchProfileMenus() {
@@ -40382,6 +40518,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               return registerJsxAppearance([
                 style.component
               ], (element) => {
+                if ("props" in style) {
+                  return element.props[style.skipWhenTrue] === true ? element : React2.cloneElement(element, style.props);
+                }
+                if (!("key" in style))
+                  return React2.cloneElement(element, {
+                    style: [
+                      element.props.style,
+                      style.values
+                    ]
+                  });
                 var styles2 = element.props.styles;
                 return React2.cloneElement(element, {
                   styles: {
@@ -40715,7 +40861,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, appearanceBindings, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -40746,6 +40892,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       MessageStore = findByStoreNameLazy("MessageStore");
       RelationshipStore = findByStoreNameLazy("RelationshipStore");
       UserProfileStore = findByStoreNameLazy("UserProfileStore");
+      appearanceBindings = /* @__PURE__ */ new Map();
       profileMenuActions = /* @__PURE__ */ new Set();
     }
   });
@@ -45383,7 +45530,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "ee3e5a3706ba71af2fb738c0ee094e6dd87b35cd";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "1a687078d100cfc6fc5877297df5a36db858060c";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
