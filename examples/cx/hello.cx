@@ -1,0 +1,5 @@
+plugin "Hello":
+  needs commands.register
+  needs ui.toast
+  on command "hello":
+    toast "Hey!"

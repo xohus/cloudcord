@@ -13,6 +13,8 @@ concurrency:
       - "desktop/client/src/utils/profileAppearance.ts"
       - "desktop/client/src/utils/connectionSettings.ts"
       - "desktop/client/src/utils/localRelationshipActions.ts"
+      - "desktop/client/src/utils/cx.ts"
+      - "examples/cx/**"
       - "desktop/client/src/utils/ccp.ts"
       - "desktop/client/src/utils/ccpInspect.ts"
       - "desktop/client/src/sincordplugins/ccpCharacterCounter/*.ccp"
@@ -39,6 +41,7 @@ jobs:
         run: |
           npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2 spitroast@1.4.4
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-patcher-symbol-proxy.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-cx.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-startup-errors.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-recovery-gesture.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-core-settings-bootstrap.cjs
@@ -129,6 +132,9 @@ jobs:
           cp "../ios/runtime/src/core/ui/settings/components/LocalProfiles.tsx" "src/core/ui/settings/components/LocalProfiles.tsx"
           mkdir -p src/core/ui/settings/pages/Addons
           cp "../ios/runtime/src/core/ui/settings/pages/Addons/index.tsx" "src/core/ui/settings/pages/Addons/index.tsx"
+          mkdir -p src/core/ui/settings/pages/CxExtensions
+          cp "../ios/runtime/src/core/ui/settings/pages/CxExtensions/index.tsx" "src/core/ui/settings/pages/CxExtensions/index.tsx"
+          cp "../desktop/client/src/utils/cx.ts" "src/lib/api/cx.ts"
           mkdir -p src/core/ui/settings/pages/PluginBrowser
           cp "../ios/runtime/src/core/ui/settings/pages/PluginBrowser/index.tsx" "src/core/ui/settings/pages/PluginBrowser/index.tsx"
           mkdir -p src/core/ui/settings/pages/Recovery
@@ -5622,6 +5628,7 @@ jobs:
           node --check ../dist/cc.js
           grep -q 'CloudSync' ../dist/cc.js
           grep -q 'BotCord' ../dist/cc.js
+          grep -q 'CX Extensions' ../dist/cc.js
           grep -q 'CloudCord section registration failed' ../dist/cc.js
           grep -q 'CloudCord settings renderer patch failed' ../dist/cc.js
           grep -q 'CloudCord settings module could not be attached' ../dist/cc.js
