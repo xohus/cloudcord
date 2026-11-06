@@ -1,6 +1,7 @@
 """Use the pinned maintained LSPatch engine; retain the AAR packaging shell."""
 from pathlib import Path
 import hashlib
+import io
 import urllib.request
 import zipfile
 
@@ -18,4 +19,16 @@ with zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as archive:
     archive.writestr("AndroidManifest.xml", manifest)
     archive.writestr("classes.jar", engine)
 temporary.replace(target)
+# Android assets shadow resources bundled in the dependency JAR. Keep the
+# native engine and Java loader from the same release; mixing them boots
+# Discord without any working hooks (missing nativebridge classes).
+assets = Path(__file__).parent / "app/src/main"
+with zipfile.ZipFile(io.BytesIO(engine)) as archive:
+    for entry in archive.infolist():
+        if not entry.is_dir() and entry.filename.startswith("assets/lspatch/"):
+            destination = assets / entry.filename
+            if not destination.resolve().is_relative_to((assets / "assets/lspatch").resolve()):
+                raise SystemExit("Invalid LSPatch asset path")
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            destination.write_bytes(archive.read(entry))
 print("Prepared JingMatrix LSPatch v1.2 (487), SHA-256 verified")
