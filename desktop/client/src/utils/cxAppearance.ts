@@ -31,6 +31,36 @@ export const cxAppearanceTargets = {
         css: '[class*="reactions_"] { display: none !important; }',
         mobile: ["MessageReactions", "MessageReactionsContent"],
     },
+    "profile-effects": {
+        plugin: "HideProfileEffects", label: "profile effects",
+        css: '[class*="profileEffects"] { display: none !important; }',
+        mobile: ["ProfileEffect", "WrappedProfileEffect"],
+    },
+    "new-messages-bar": {
+        plugin: "HideNewMessagesBar", label: "the new messages bar",
+        css: '[class*="newMessagesBar"] { display: none !important; }',
+        mobile: ["NewMessagesChatBar"],
+    },
+    "voice-stream-previews": {
+        plugin: "HideStreamPreviews", label: "voice-channel stream previews",
+        css: '[class*="streamPreview"] { display: none !important; }',
+        mobile: ["VoicePanelStreamPreview"],
+    },
+    "nameplates": {
+        plugin: "HideNameplates", label: "nameplates",
+        css: '[class*="nameplate"] { display: none !important; }',
+        mobile: ["Nameplate"],
+    },
+    "avatar-decorations": {
+        plugin: "HideAvatarDecorations", label: "avatar decorations",
+        css: '[class*="avatarDecoration"] { display: none !important; }',
+        mobile: ["CutoutableAvatarDecoration"],
+    },
+    "server-banner": {
+        plugin: "HideServerBanner", label: "the channel list server banner",
+        css: '[class*="animatedContainer"][class*="bannerImage"], [class*="bannerImage"] { display: none !important; }',
+        mobile: ["ReanimatedGuildBanner"],
+    },
 } as const;
 
 export type CxAppearanceTarget = keyof typeof cxAppearanceTargets;

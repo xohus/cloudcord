@@ -1,0 +1,3 @@
+plugin "HideNewMessagesBar":
+  needs appearance.hide
+  hide new-messages-bar

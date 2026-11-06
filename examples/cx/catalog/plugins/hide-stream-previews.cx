@@ -1,0 +1,3 @@
+plugin "HideStreamPreviews":
+  needs appearance.hide
+  hide voice-stream-previews
