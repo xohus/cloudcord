@@ -7377,10 +7377,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   function getThemeColors() {
     return _colorRef.current;
   }
-  function updateBunnyColor(manifest, { update = true } = {}) {
+  function updateBunnyColor(manifest, { update = true, mode } = {}) {
     if (settings.safeMode?.enabled)
       return;
-    var current = manifest ? parseColorManifest(manifest) : null;
+    var current = manifest ? parseColorManifest(manifest, mode) : null;
     var existing = String(ThemeStore?.theme ?? "darker");
     if (!_colorRef.current && !existing.startsWith("bn-theme-"))
       _colorRef.lastSetDiscordTheme = existing;
@@ -36475,12 +36475,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       for (var line of lines) {
         if (!line.trim())
           continue;
-        var field = /^  (background|surface|sidebar|text|muted|accent|wallpaper|wallpaper-opacity): (.+)$/.exec(line);
+        var field = /^  (mode|background|surface|sidebar|text|muted|accent|wallpaper|wallpaper-opacity): (.+)$/.exec(line);
         if (!field || seen.has(field[1]))
           throw new Error("Unknown or duplicate theme field");
         var [, key, value] = field;
         seen.add(key);
-        if (key === "wallpaper") {
+        if (key === "mode") {
+          if (value !== "dark" && value !== "light")
+            throw new Error("Theme mode must be dark or light");
+          theme.mode = value;
+        } else if (key === "wallpaper") {
           var uri = quoted(value, 384 * 1024);
           if (!/^data:image\/(?:png;base64,iVBORw0KGgo|jpeg;base64,\/9j\/)[A-Za-z0-9+/]+={0,2}$/.test(uri) || uri.slice(uri.indexOf(",") + 1).length % 4 !== 0)
             throw new Error("Wallpaper must be an embedded PNG or JPEG data URL");
@@ -36859,6 +36863,38 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/themes/catppuccin-frappe.cx
+  var catppuccin_frappe_default;
+  var init_catppuccin_frappe = __esm({
+    "../examples/cx/catalog/themes/catppuccin-frappe.cx"() {
+      catppuccin_frappe_default = 'theme "Catppuccin Frapp\xE9":\n  mode: dark\n  background: #303446\n  surface: #292c3c\n  sidebar: #232634\n  text: #c6d0f5\n  muted: #a5adce\n  accent: #8caaee\n';
+    }
+  });
+
+  // ../examples/cx/catalog/themes/catppuccin-latte.cx
+  var catppuccin_latte_default;
+  var init_catppuccin_latte = __esm({
+    "../examples/cx/catalog/themes/catppuccin-latte.cx"() {
+      catppuccin_latte_default = 'theme "Catppuccin Latte":\n  mode: light\n  background: #eff1f5\n  surface: #e6e9ef\n  sidebar: #dce0e8\n  text: #4c4f69\n  muted: #6c6f85\n  accent: #1e66f5\n';
+    }
+  });
+
+  // ../examples/cx/catalog/themes/catppuccin-macchiato.cx
+  var catppuccin_macchiato_default;
+  var init_catppuccin_macchiato = __esm({
+    "../examples/cx/catalog/themes/catppuccin-macchiato.cx"() {
+      catppuccin_macchiato_default = 'theme "Catppuccin Macchiato":\n  mode: dark\n  background: #24273a\n  surface: #1e2030\n  sidebar: #181926\n  text: #cad3f5\n  muted: #a5adcb\n  accent: #8aadf4\n';
+    }
+  });
+
+  // ../examples/cx/catalog/themes/catppuccin-mocha.cx
+  var catppuccin_mocha_default;
+  var init_catppuccin_mocha = __esm({
+    "../examples/cx/catalog/themes/catppuccin-mocha.cx"() {
+      catppuccin_mocha_default = 'theme "Catppuccin Mocha":\n  mode: dark\n  background: #1e1e2e\n  surface: #181825\n  sidebar: #11111b\n  text: #cdd6f4\n  muted: #a6adc8\n  accent: #89b4fa\n';
+    }
+  });
+
   // src/lib/api/cxCatalog.ts
   var cxCatalog;
   var init_cxCatalog = __esm({
@@ -36882,6 +36918,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_midnight();
       init_basic_background_chat();
       init_blue_hour();
+      init_catppuccin_frappe();
+      init_catppuccin_latte();
+      init_catppuccin_macchiato();
+      init_catppuccin_mocha();
       cxCatalog = {
         plugins: [
           {
@@ -36949,6 +36989,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "Blue Hour",
             source: blue_hour_default
+          },
+          {
+            name: "Catppuccin Frapp\xE9",
+            source: catppuccin_frappe_default
+          },
+          {
+            name: "Catppuccin Latte",
+            source: catppuccin_latte_default
+          },
+          {
+            name: "Catppuccin Macchiato",
+            source: catppuccin_macchiato_default
+          },
+          {
+            name: "Catppuccin Mocha",
+            source: catppuccin_mocha_default
           }
         ]
       };
@@ -36964,6 +37020,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var [source, setSource] = React2.useState("");
     var [showCatalog, setShowCatalog] = React2.useState(false);
     var [search, setSearch] = React2.useState("");
+    var [pages, setPages] = React2.useState({
+      Plugins: 0,
+      Themes: 0
+    });
     var [status, setStatus] = React2.useState("");
     var [candidate, setCandidate] = React2.useState();
     var searchText = search.trim().toLowerCase();
@@ -37091,11 +37151,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 BACKGROUND_BASE_LOWEST: palette2(sidebar),
                 ...theme.text ? {
                   TEXT_NORMAL: palette2(theme.text),
-                  TEXT_PRIMARY: palette2(theme.text)
+                  TEXT_PRIMARY: palette2(theme.text),
+                  TEXT_DEFAULT: palette2(theme.text),
+                  TEXT_STRONG: palette2(theme.text)
                 } : {},
                 ...theme.muted ? {
                   TEXT_MUTED: palette2(theme.muted),
-                  TEXT_SECONDARY: palette2(theme.muted)
+                  TEXT_SECONDARY: palette2(theme.muted),
+                  TEXT_SUBTLE: palette2(theme.muted)
                 } : {},
                 ...theme.accent ? {
                   TEXT_LINK: palette2(theme.accent)
@@ -37107,6 +37170,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                   alpha: theme.wallpaperOpacity ?? 0.85
                 }
               } : {}
+            }, {
+              mode: theme.mode
             });
             return () => updateBunnyColor(getCurrentTheme()?.data ?? null);
           }
@@ -37140,7 +37205,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 placeholder: "Search CX catalog",
                 placeholderTextColor: "#b5bac1",
                 value: search,
-                onChangeText: setSearch,
+                onChangeText: (value) => {
+                  setSearch(value);
+                  setPages({
+                    Plugins: 0,
+                    Themes: 0
+                  });
+                },
                 autoCorrect: false,
                 style: {
                   color: "#fff",
@@ -37159,10 +37230,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 ]
               ].map(([kind, entries]) => {
                 var matches = entries.filter((entry) => entry.name.toLowerCase().includes(searchText));
+                var page = pages[kind];
+                var start = page * 12;
                 return /* @__PURE__ */ jsxs(TableRowGroup, {
                   title: kind,
                   children: [
-                    matches.slice(0, 12).map((entry) => /* @__PURE__ */ jsx(TableRow, {
+                    matches.slice(start, start + 12).map((entry) => /* @__PURE__ */ jsx(TableRow, {
                       label: entry.name,
                       onPress: () => {
                         setShowCatalog(false);
@@ -37170,8 +37243,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                         review(entry.source);
                       }
                     }, entry.name)),
-                    matches.length > 12 && /* @__PURE__ */ jsx(TableRow, {
-                      label: "Search to narrow the results."
+                    page > 0 && /* @__PURE__ */ jsx(TableRow, {
+                      label: `Previous ${kind.toLowerCase()} page`,
+                      onPress: () => setPages({
+                        ...pages,
+                        [kind]: page - 1
+                      })
+                    }),
+                    start + 12 < matches.length && /* @__PURE__ */ jsx(TableRow, {
+                      label: `Next ${kind.toLowerCase()} page`,
+                      onPress: () => setPages({
+                        ...pages,
+                        [kind]: page + 1
+                      })
+                    }),
+                    !matches.length && /* @__PURE__ */ jsx(TableRow, {
+                      label: "No matches"
                     })
                   ]
                 }, kind);
@@ -41906,7 +41993,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "0b8d663e90820f853218d8e1ce407ed7822a5919";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "d81c5048e7c9c9aa784c5da8c5aea2414ac4a376";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
