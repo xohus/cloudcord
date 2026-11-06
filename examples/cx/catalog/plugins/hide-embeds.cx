@@ -1,0 +1,3 @@
+plugin "HideEmbeds":
+  needs appearance.hide
+  hide message-embeds

@@ -1,0 +1,56 @@
+theme "Mist":
+  mode: dark
+  background: #56626d
+  surface: #7c898b
+  sidebar: #56626d
+  text: #FFFFFF
+  muted: #f7ffdd
+  accent: #def6ca
+  semantic BACKGROUND_ACCENT: #7c898b
+  semantic BACKGROUND_FLOATING: #56626d
+  semantic BACKGROUND_MOBILE_PRIMARY: #56626d
+  semantic BACKGROUND_MOBILE_SECONDARY: #56626d
+  semantic BACKGROUND_MODIFIER_ACCENT: #7c898b
+  semantic BACKGROUND_MODIFIER_ACTIVE: #7c898b
+  semantic BACKGROUND_MODIFIER_HOVER: #7c898b
+  semantic BACKGROUND_MODIFIER_SELECTED: #7c898b
+  semantic BACKGROUND_NESTED_FLOATING: #56626d
+  semantic BACKGROUND_PRIMARY: #56626d
+  semantic BACKGROUND_SECONDARY: #7c898b
+  semantic BACKGROUND_SECONDARY_ALT: #7c898b
+  semantic BACKGROUND_TERTIARY: #56626d
+  semantic CHANNELS_DEFAULT: #def6ca
+  semantic CHANNELTEXTAREA_BACKGROUND: #00000000
+  semantic HEADER_PRIMARY: #FFFFFF
+  semantic HEADER_SECONDARY: #f7ffdd
+  semantic INTERACTIVE_ACTIVE: #FFFFFF
+  semantic INTERACTIVE_MUTED: #959393
+  semantic INTERACTIVE_NORMAL: #f7ffdd
+  semantic KEYBOARD: #56626d
+  semantic TEXT_LINK: #def6ca
+  semantic TEXT_MUTED: #f7ffdd
+  semantic TEXT_NORMAL: #FFFFFF
+  raw CHAT_GREY: #56626d
+  raw PRIMARY_100: #FFFFFF
+  raw PRIMARY_200: #FFFFFF
+  raw PRIMARY_300: #def6ca
+  raw PRIMARY_360: #bfbfbf
+  raw PRIMARY_400: #def6ca
+  raw PRIMARY_500: #7c898b
+  raw PRIMARY_600: #56626d
+  raw PRIMARY_630: #56626d
+  raw PRIMARY_700: #56626d
+  raw PRIMARY_800: #56626d
+  raw PRIMARY_900: #FFFFFF
+  raw PRIMARY_DARK: #56626d
+  raw PRIMARY_DARK_100: #FFFFFF
+  raw PRIMARY_DARK_200: #FFFFFF
+  raw PRIMARY_DARK_300: #def6ca
+  raw PRIMARY_DARK_360: #bfbfbf
+  raw PRIMARY_DARK_400: #def6ca
+  raw PRIMARY_DARK_500: #7c898b
+  raw PRIMARY_DARK_600: #56626d
+  raw PRIMARY_DARK_630: #56626d
+  raw PRIMARY_DARK_700: #56626d
+  raw PRIMARY_DARK_800: #56626d
+  raw PRIMARY_DARK_900: #FFFFFF

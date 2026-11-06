@@ -1,0 +1,8 @@
+theme "Dracula for BetterDiscord":
+  mode: dark
+  background: #282a36
+  surface: #424450
+  sidebar: #343746
+  text: #f8f8f2
+  muted: #6272a4
+  accent: #bd93f9

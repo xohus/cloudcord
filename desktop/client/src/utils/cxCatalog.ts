@@ -6,48 +6,52 @@ import plugin4 from "../../../../examples/cx/catalog/plugins/calculator.cx";
 import plugin5 from "../../../../examples/cx/catalog/plugins/clap-text.cx";
 import plugin6 from "../../../../examples/cx/catalog/plugins/clear-urls.cx";
 import plugin7 from "../../../../examples/cx/catalog/plugins/google-that.cx";
-import plugin8 from "../../../../examples/cx/catalog/plugins/hide-add-server-button.cx";
-import plugin9 from "../../../../examples/cx/catalog/plugins/hide-avatar-decorations.cx";
-import plugin10 from "../../../../examples/cx/catalog/plugins/hide-badges.cx";
-import plugin11 from "../../../../examples/cx/catalog/plugins/hide-bot-tags.cx";
-import plugin12 from "../../../../examples/cx/catalog/plugins/hide-clan-tags.cx";
-import plugin13 from "../../../../examples/cx/catalog/plugins/hide-gift-button.cx";
-import plugin14 from "../../../../examples/cx/catalog/plugins/hide-jump-to-present.cx";
-import plugin15 from "../../../../examples/cx/catalog/plugins/hide-nameplates.cx";
-import plugin16 from "../../../../examples/cx/catalog/plugins/hide-new-messages-bar.cx";
-import plugin17 from "../../../../examples/cx/catalog/plugins/hide-profile-effects.cx";
-import plugin18 from "../../../../examples/cx/catalog/plugins/hide-reactions.cx";
-import plugin19 from "../../../../examples/cx/catalog/plugins/hide-reply-previews.cx";
-import plugin20 from "../../../../examples/cx/catalog/plugins/hide-role-icons.cx";
-import plugin21 from "../../../../examples/cx/catalog/plugins/hide-server-banner.cx";
-import plugin22 from "../../../../examples/cx/catalog/plugins/hide-stream-previews.cx";
-import plugin23 from "../../../../examples/cx/catalog/plugins/hide-typing-indicator.cx";
-import plugin24 from "../../../../examples/cx/catalog/plugins/ignore-calls.cx";
-import plugin25 from "../../../../examples/cx/catalog/plugins/ingtoninator.cx";
-import plugin26 from "../../../../examples/cx/catalog/plugins/keyword-notify.cx";
-import plugin27 from "../../../../examples/cx/catalog/plugins/leet-text.cx";
-import plugin28 from "../../../../examples/cx/catalog/plugins/message-notifier.cx";
-import plugin29 from "../../../../examples/cx/catalog/plugins/more-commands.cx";
-import plugin30 from "../../../../examples/cx/catalog/plugins/no-reply-mention.cx";
-import plugin31 from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
-import plugin32 from "../../../../examples/cx/catalog/plugins/polish-wording.cx";
-import plugin33 from "../../../../examples/cx/catalog/plugins/reply-ping-control.cx";
-import plugin34 from "../../../../examples/cx/catalog/plugins/reverse-text.cx";
-import plugin35 from "../../../../examples/cx/catalog/plugins/send-timestamps.cx";
-import plugin36 from "../../../../examples/cx/catalog/plugins/ship-calc.cx";
-import plugin37 from "../../../../examples/cx/catalog/plugins/signature.cx";
-import plugin38 from "../../../../examples/cx/catalog/plugins/silence-users.cx";
-import plugin39 from "../../../../examples/cx/catalog/plugins/silent-message-toggle.cx";
-import plugin40 from "../../../../examples/cx/catalog/plugins/space-out.cx";
-import plugin41 from "../../../../examples/cx/catalog/plugins/starify.cx";
-import plugin42 from "../../../../examples/cx/catalog/plugins/sticker-blocker.cx";
-import plugin43 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
-import plugin44 from "../../../../examples/cx/catalog/plugins/text-replace.cx";
-import plugin45 from "../../../../examples/cx/catalog/plugins/unindent.cx";
-import plugin46 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
-import plugin47 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
-import plugin48 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
-import plugin49 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
+import plugin8 from "../../../../examples/cx/catalog/plugins/hide-active-now.cx";
+import plugin9 from "../../../../examples/cx/catalog/plugins/hide-add-server-button.cx";
+import plugin10 from "../../../../examples/cx/catalog/plugins/hide-apps-button.cx";
+import plugin11 from "../../../../examples/cx/catalog/plugins/hide-avatar-decorations.cx";
+import plugin12 from "../../../../examples/cx/catalog/plugins/hide-badges.cx";
+import plugin13 from "../../../../examples/cx/catalog/plugins/hide-bot-tags.cx";
+import plugin14 from "../../../../examples/cx/catalog/plugins/hide-channel-topic.cx";
+import plugin15 from "../../../../examples/cx/catalog/plugins/hide-clan-tags.cx";
+import plugin16 from "../../../../examples/cx/catalog/plugins/hide-embeds.cx";
+import plugin17 from "../../../../examples/cx/catalog/plugins/hide-gift-button.cx";
+import plugin18 from "../../../../examples/cx/catalog/plugins/hide-jump-to-present.cx";
+import plugin19 from "../../../../examples/cx/catalog/plugins/hide-nameplates.cx";
+import plugin20 from "../../../../examples/cx/catalog/plugins/hide-new-messages-bar.cx";
+import plugin21 from "../../../../examples/cx/catalog/plugins/hide-profile-effects.cx";
+import plugin22 from "../../../../examples/cx/catalog/plugins/hide-reactions.cx";
+import plugin23 from "../../../../examples/cx/catalog/plugins/hide-reply-previews.cx";
+import plugin24 from "../../../../examples/cx/catalog/plugins/hide-role-icons.cx";
+import plugin25 from "../../../../examples/cx/catalog/plugins/hide-server-banner.cx";
+import plugin26 from "../../../../examples/cx/catalog/plugins/hide-stream-previews.cx";
+import plugin27 from "../../../../examples/cx/catalog/plugins/hide-typing-indicator.cx";
+import plugin28 from "../../../../examples/cx/catalog/plugins/ignore-calls.cx";
+import plugin29 from "../../../../examples/cx/catalog/plugins/ingtoninator.cx";
+import plugin30 from "../../../../examples/cx/catalog/plugins/keyword-notify.cx";
+import plugin31 from "../../../../examples/cx/catalog/plugins/leet-text.cx";
+import plugin32 from "../../../../examples/cx/catalog/plugins/message-notifier.cx";
+import plugin33 from "../../../../examples/cx/catalog/plugins/more-commands.cx";
+import plugin34 from "../../../../examples/cx/catalog/plugins/no-reply-mention.cx";
+import plugin35 from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
+import plugin36 from "../../../../examples/cx/catalog/plugins/polish-wording.cx";
+import plugin37 from "../../../../examples/cx/catalog/plugins/reply-ping-control.cx";
+import plugin38 from "../../../../examples/cx/catalog/plugins/reverse-text.cx";
+import plugin39 from "../../../../examples/cx/catalog/plugins/send-timestamps.cx";
+import plugin40 from "../../../../examples/cx/catalog/plugins/ship-calc.cx";
+import plugin41 from "../../../../examples/cx/catalog/plugins/signature.cx";
+import plugin42 from "../../../../examples/cx/catalog/plugins/silence-users.cx";
+import plugin43 from "../../../../examples/cx/catalog/plugins/silent-message-toggle.cx";
+import plugin44 from "../../../../examples/cx/catalog/plugins/space-out.cx";
+import plugin45 from "../../../../examples/cx/catalog/plugins/starify.cx";
+import plugin46 from "../../../../examples/cx/catalog/plugins/sticker-blocker.cx";
+import plugin47 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
+import plugin48 from "../../../../examples/cx/catalog/plugins/text-replace.cx";
+import plugin49 from "../../../../examples/cx/catalog/plugins/unindent.cx";
+import plugin50 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
+import plugin51 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
+import plugin52 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
+import plugin53 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
 import theme1 from "../../../../examples/cx/midnight.cx";
 import theme2 from "../../../../examples/cx/catalog/themes/basic-background-chat.cx";
 import theme3 from "../../../../examples/cx/catalog/themes/blue-hour.cx";
@@ -55,91 +59,99 @@ import theme4 from "../../../../examples/cx/catalog/themes/catppuccin-frappe.cx"
 import theme5 from "../../../../examples/cx/catalog/themes/catppuccin-latte.cx";
 import theme6 from "../../../../examples/cx/catalog/themes/catppuccin-macchiato.cx";
 import theme7 from "../../../../examples/cx/catalog/themes/catppuccin-mocha.cx";
-import theme8 from "../../../../examples/cx/catalog/themes/edgerunners-night-city-gradient.cx";
-import theme9 from "../../../../examples/cx/catalog/themes/futuristic-aurora.cx";
-import theme10 from "../../../../examples/cx/catalog/themes/futuristic-ice.cx";
-import theme11 from "../../../../examples/cx/catalog/themes/futuristic-nebula.cx";
-import theme12 from "../../../../examples/cx/catalog/themes/futuristic-orbit.cx";
-import theme13 from "../../../../examples/cx/catalog/themes/futuristic-void.cx";
-import theme14 from "../../../../examples/cx/catalog/themes/refact0r-midnight-catppuccin-macchiato.cx";
-import theme15 from "../../../../examples/cx/catalog/themes/refact0r-midnight-catppuccin-mocha.cx";
-import theme16 from "../../../../examples/cx/catalog/themes/refact0r-midnight-default.cx";
-import theme17 from "../../../../examples/cx/catalog/themes/refact0r-midnight-light.cx";
-import theme18 from "../../../../examples/cx/catalog/themes/refact0r-midnight-lilypichu.cx";
-import theme19 from "../../../../examples/cx/catalog/themes/refact0r-midnight-nord.cx";
-import theme20 from "../../../../examples/cx/catalog/themes/refact0r-midnight-rose-pine-moon.cx";
-import theme21 from "../../../../examples/cx/catalog/themes/refact0r-midnight-rose-pine.cx";
-import theme22 from "../../../../examples/cx/catalog/themes/refact0r-midnight-tokyo-night.cx";
-import theme23 from "../../../../examples/cx/catalog/themes/refact0r-midnight-vencord.cx";
-import theme24 from "../../../../examples/cx/catalog/themes/taki-cream-yellow.cx";
-import theme25 from "../../../../examples/cx/catalog/themes/taki-gruv-yellow.cx";
-import theme26 from "../../../../examples/cx/catalog/themes/taki-ratio-redesigned.cx";
-import theme27 from "../../../../examples/cx/catalog/themes/taki-ratio.cx";
-import theme28 from "../../../../examples/cx/catalog/themes/taki-scarlet-love.cx";
-import theme29 from "../../../../examples/cx/catalog/themes/taki-vendetta-teal-amoled.cx";
-import theme30 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-flamingo.cx";
-import theme31 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-green.cx";
-import theme32 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-lavender.cx";
-import theme33 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-maroon.cx";
-import theme34 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-mauve.cx";
-import theme35 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-peach.cx";
-import theme36 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-pink.cx";
-import theme37 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-red.cx";
-import theme38 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-rosewater.cx";
-import theme39 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-sapphire.cx";
-import theme40 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-sky.cx";
-import theme41 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-teal.cx";
-import theme42 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-yellow.cx";
-import theme43 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-flamingo.cx";
-import theme44 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-green.cx";
-import theme45 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-lavender.cx";
-import theme46 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-maroon.cx";
-import theme47 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-mauve.cx";
-import theme48 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-peach.cx";
-import theme49 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-pink.cx";
-import theme50 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-red.cx";
-import theme51 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-rosewater.cx";
-import theme52 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-sapphire.cx";
-import theme53 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-sky.cx";
-import theme54 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-teal.cx";
-import theme55 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-yellow.cx";
-import theme56 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-flamingo.cx";
-import theme57 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-green.cx";
-import theme58 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-lavender.cx";
-import theme59 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-maroon.cx";
-import theme60 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-mauve.cx";
-import theme61 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-peach.cx";
-import theme62 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-pink.cx";
-import theme63 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-red.cx";
-import theme64 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-rosewater.cx";
-import theme65 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-sapphire.cx";
-import theme66 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-sky.cx";
-import theme67 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-teal.cx";
-import theme68 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-yellow.cx";
-import theme69 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-flamingo.cx";
-import theme70 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-green.cx";
-import theme71 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-lavender.cx";
-import theme72 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-maroon.cx";
-import theme73 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-mauve.cx";
-import theme74 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-peach.cx";
-import theme75 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-pink.cx";
-import theme76 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-red.cx";
-import theme77 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-rosewater.cx";
-import theme78 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-sapphire.cx";
-import theme79 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-sky.cx";
-import theme80 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-teal.cx";
-import theme81 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-yellow.cx";
-import theme82 from "../../../../examples/cx/catalog/themes/vendetta-rosepine-nobg.cx";
-import theme83 from "../../../../examples/cx/catalog/themes/vendetta-rosepine.cx";
-import theme84 from "../../../../examples/cx/catalog/themes/vendetta-rosepinedawn.cx";
-import theme85 from "../../../../examples/cx/catalog/themes/vendetta-rosepinemoon.cx";
-import theme86 from "../../../../examples/cx/catalog/themes/wizzy-amoled-orange-mountains.cx";
-import theme87 from "../../../../examples/cx/catalog/themes/wizzy-onecolor.cx";
-import theme88 from "../../../../examples/cx/catalog/themes/wizzy-orange-mountains.cx";
-import theme89 from "../../../../examples/cx/catalog/themes/wizzy-orange-oled.cx";
-import theme90 from "../../../../examples/cx/catalog/themes/wizzy-pixel-city-lite.cx";
-import theme91 from "../../../../examples/cx/catalog/themes/wizzy-purple-mountains.cx";
-import theme92 from "../../../../examples/cx/catalog/themes/wizzy-vulcan.cx";
+import theme8 from "../../../../examples/cx/catalog/themes/distra-moss.cx";
+import theme9 from "../../../../examples/cx/catalog/themes/dracula-betterdiscord.cx";
+import theme10 from "../../../../examples/cx/catalog/themes/dreamy.cx";
+import theme11 from "../../../../examples/cx/catalog/themes/edgerunners-night-city-gradient.cx";
+import theme12 from "../../../../examples/cx/catalog/themes/enmity-lotus.cx";
+import theme13 from "../../../../examples/cx/catalog/themes/enmity-mars.cx";
+import theme14 from "../../../../examples/cx/catalog/themes/enmity-mist.cx";
+import theme15 from "../../../../examples/cx/catalog/themes/enmity-nord.cx";
+import theme16 from "../../../../examples/cx/catalog/themes/futuristic-aurora.cx";
+import theme17 from "../../../../examples/cx/catalog/themes/futuristic-ice.cx";
+import theme18 from "../../../../examples/cx/catalog/themes/futuristic-nebula.cx";
+import theme19 from "../../../../examples/cx/catalog/themes/futuristic-orbit.cx";
+import theme20 from "../../../../examples/cx/catalog/themes/futuristic-void.cx";
+import theme21 from "../../../../examples/cx/catalog/themes/glorious-sunset.cx";
+import theme22 from "../../../../examples/cx/catalog/themes/refact0r-midnight-catppuccin-macchiato.cx";
+import theme23 from "../../../../examples/cx/catalog/themes/refact0r-midnight-catppuccin-mocha.cx";
+import theme24 from "../../../../examples/cx/catalog/themes/refact0r-midnight-default.cx";
+import theme25 from "../../../../examples/cx/catalog/themes/refact0r-midnight-light.cx";
+import theme26 from "../../../../examples/cx/catalog/themes/refact0r-midnight-lilypichu.cx";
+import theme27 from "../../../../examples/cx/catalog/themes/refact0r-midnight-nord.cx";
+import theme28 from "../../../../examples/cx/catalog/themes/refact0r-midnight-rose-pine-moon.cx";
+import theme29 from "../../../../examples/cx/catalog/themes/refact0r-midnight-rose-pine.cx";
+import theme30 from "../../../../examples/cx/catalog/themes/refact0r-midnight-tokyo-night.cx";
+import theme31 from "../../../../examples/cx/catalog/themes/refact0r-midnight-vencord.cx";
+import theme32 from "../../../../examples/cx/catalog/themes/taki-cream-yellow.cx";
+import theme33 from "../../../../examples/cx/catalog/themes/taki-gruv-yellow.cx";
+import theme34 from "../../../../examples/cx/catalog/themes/taki-ratio-redesigned.cx";
+import theme35 from "../../../../examples/cx/catalog/themes/taki-ratio.cx";
+import theme36 from "../../../../examples/cx/catalog/themes/taki-scarlet-love.cx";
+import theme37 from "../../../../examples/cx/catalog/themes/taki-vendetta-teal-amoled.cx";
+import theme38 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-flamingo.cx";
+import theme39 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-green.cx";
+import theme40 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-lavender.cx";
+import theme41 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-maroon.cx";
+import theme42 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-mauve.cx";
+import theme43 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-peach.cx";
+import theme44 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-pink.cx";
+import theme45 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-red.cx";
+import theme46 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-rosewater.cx";
+import theme47 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-sapphire.cx";
+import theme48 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-sky.cx";
+import theme49 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-teal.cx";
+import theme50 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-yellow.cx";
+import theme51 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-flamingo.cx";
+import theme52 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-green.cx";
+import theme53 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-lavender.cx";
+import theme54 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-maroon.cx";
+import theme55 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-mauve.cx";
+import theme56 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-peach.cx";
+import theme57 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-pink.cx";
+import theme58 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-red.cx";
+import theme59 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-rosewater.cx";
+import theme60 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-sapphire.cx";
+import theme61 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-sky.cx";
+import theme62 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-teal.cx";
+import theme63 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-yellow.cx";
+import theme64 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-flamingo.cx";
+import theme65 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-green.cx";
+import theme66 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-lavender.cx";
+import theme67 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-maroon.cx";
+import theme68 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-mauve.cx";
+import theme69 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-peach.cx";
+import theme70 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-pink.cx";
+import theme71 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-red.cx";
+import theme72 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-rosewater.cx";
+import theme73 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-sapphire.cx";
+import theme74 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-sky.cx";
+import theme75 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-teal.cx";
+import theme76 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-yellow.cx";
+import theme77 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-flamingo.cx";
+import theme78 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-green.cx";
+import theme79 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-lavender.cx";
+import theme80 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-maroon.cx";
+import theme81 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-mauve.cx";
+import theme82 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-peach.cx";
+import theme83 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-pink.cx";
+import theme84 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-red.cx";
+import theme85 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-rosewater.cx";
+import theme86 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-sapphire.cx";
+import theme87 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-sky.cx";
+import theme88 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-teal.cx";
+import theme89 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-yellow.cx";
+import theme90 from "../../../../examples/cx/catalog/themes/vendetta-rosepine-nobg.cx";
+import theme91 from "../../../../examples/cx/catalog/themes/vendetta-rosepine.cx";
+import theme92 from "../../../../examples/cx/catalog/themes/vendetta-rosepinedawn.cx";
+import theme93 from "../../../../examples/cx/catalog/themes/vendetta-rosepinemoon.cx";
+import theme94 from "../../../../examples/cx/catalog/themes/wizzy-amoled-orange-mountains.cx";
+import theme95 from "../../../../examples/cx/catalog/themes/wizzy-onecolor.cx";
+import theme96 from "../../../../examples/cx/catalog/themes/wizzy-orange-mountains.cx";
+import theme97 from "../../../../examples/cx/catalog/themes/wizzy-orange-oled.cx";
+import theme98 from "../../../../examples/cx/catalog/themes/wizzy-pixel-city-lite.cx";
+import theme99 from "../../../../examples/cx/catalog/themes/wizzy-purple-mountains.cx";
+import theme100 from "../../../../examples/cx/catalog/themes/wizzy-vulcan.cx";
 
 export const cxCatalog = {
     plugins: [
@@ -150,48 +162,52 @@ export const cxCatalog = {
         { name: "ClapText", source: plugin5 },
         { name: "ClearURLs", source: plugin6 },
         { name: "GoogleThat", source: plugin7 },
-        { name: "HideAddServerButton", source: plugin8 },
-        { name: "HideAvatarDecorations", source: plugin9 },
-        { name: "HideBadges", source: plugin10 },
-        { name: "HideBotTags", source: plugin11 },
-        { name: "HideClanTags", source: plugin12 },
-        { name: "HideGiftButton", source: plugin13 },
-        { name: "HideJumpToPresent", source: plugin14 },
-        { name: "HideNameplates", source: plugin15 },
-        { name: "HideNewMessagesBar", source: plugin16 },
-        { name: "HideProfileEffects", source: plugin17 },
-        { name: "HideReactions", source: plugin18 },
-        { name: "HideReplyPreviews", source: plugin19 },
-        { name: "HideRoleIcons", source: plugin20 },
-        { name: "HideServerBanner", source: plugin21 },
-        { name: "HideStreamPreviews", source: plugin22 },
-        { name: "HideTypingIndicator", source: plugin23 },
-        { name: "IgnoreCalls", source: plugin24 },
-        { name: "Ingtoninator", source: plugin25 },
-        { name: "KeywordNotify", source: plugin26 },
-        { name: "LeetText", source: plugin27 },
-        { name: "MessageNotifier", source: plugin28 },
-        { name: "MoreCommands", source: plugin29 },
-        { name: "NoReplyMention", source: plugin30 },
-        { name: "NormalizeMessageLinks", source: plugin31 },
-        { name: "PolishWording", source: plugin32 },
-        { name: "ReplyPingControl", source: plugin33 },
-        { name: "ReverseText", source: plugin34 },
-        { name: "SendTimestamps", source: plugin35 },
-        { name: "ShipCalc", source: plugin36 },
-        { name: "Signature", source: plugin37 },
-        { name: "SilenceUsers", source: plugin38 },
-        { name: "SilentMessageToggle", source: plugin39 },
-        { name: "SpaceOut", source: plugin40 },
-        { name: "Starify", source: plugin41 },
-        { name: "StickerBlocker", source: plugin42 },
-        { name: "TalkInReverse", source: plugin43 },
-        { name: "TextReplace", source: plugin44 },
-        { name: "Unindent", source: plugin45 },
-        { name: "UnitConverter", source: plugin46 },
-        { name: "VibeCheck", source: plugin47 },
-        { name: "WriteUpperCase", source: plugin48 },
-        { name: "ZeroWidthSanitizer", source: plugin49 },
+        { name: "HideActiveNow", source: plugin8 },
+        { name: "HideAddServerButton", source: plugin9 },
+        { name: "HideAppsButton", source: plugin10 },
+        { name: "HideAvatarDecorations", source: plugin11 },
+        { name: "HideBadges", source: plugin12 },
+        { name: "HideBotTags", source: plugin13 },
+        { name: "HideChannelTopic", source: plugin14 },
+        { name: "HideClanTags", source: plugin15 },
+        { name: "HideEmbeds", source: plugin16 },
+        { name: "HideGiftButton", source: plugin17 },
+        { name: "HideJumpToPresent", source: plugin18 },
+        { name: "HideNameplates", source: plugin19 },
+        { name: "HideNewMessagesBar", source: plugin20 },
+        { name: "HideProfileEffects", source: plugin21 },
+        { name: "HideReactions", source: plugin22 },
+        { name: "HideReplyPreviews", source: plugin23 },
+        { name: "HideRoleIcons", source: plugin24 },
+        { name: "HideServerBanner", source: plugin25 },
+        { name: "HideStreamPreviews", source: plugin26 },
+        { name: "HideTypingIndicator", source: plugin27 },
+        { name: "IgnoreCalls", source: plugin28 },
+        { name: "Ingtoninator", source: plugin29 },
+        { name: "KeywordNotify", source: plugin30 },
+        { name: "LeetText", source: plugin31 },
+        { name: "MessageNotifier", source: plugin32 },
+        { name: "MoreCommands", source: plugin33 },
+        { name: "NoReplyMention", source: plugin34 },
+        { name: "NormalizeMessageLinks", source: plugin35 },
+        { name: "PolishWording", source: plugin36 },
+        { name: "ReplyPingControl", source: plugin37 },
+        { name: "ReverseText", source: plugin38 },
+        { name: "SendTimestamps", source: plugin39 },
+        { name: "ShipCalc", source: plugin40 },
+        { name: "Signature", source: plugin41 },
+        { name: "SilenceUsers", source: plugin42 },
+        { name: "SilentMessageToggle", source: plugin43 },
+        { name: "SpaceOut", source: plugin44 },
+        { name: "Starify", source: plugin45 },
+        { name: "StickerBlocker", source: plugin46 },
+        { name: "TalkInReverse", source: plugin47 },
+        { name: "TextReplace", source: plugin48 },
+        { name: "Unindent", source: plugin49 },
+        { name: "UnitConverter", source: plugin50 },
+        { name: "VibeCheck", source: plugin51 },
+        { name: "WriteUpperCase", source: plugin52 },
+        { name: "ZeroWidthSanitizer", source: plugin53 },
     ],
     themes: [
         { name: "Midnight", source: theme1 },
@@ -201,90 +217,98 @@ export const cxCatalog = {
         { name: "Catppuccin Latte", source: theme5 },
         { name: "Catppuccin Macchiato", source: theme6 },
         { name: "Catppuccin Mocha", source: theme7 },
-        { name: "Edgerunners - Night City Gradient", source: theme8 },
-        { name: "Futuristic - Aurora", source: theme9 },
-        { name: "Futuristic - Ice", source: theme10 },
-        { name: "Futuristic - Nebula", source: theme11 },
-        { name: "Futuristic - Orbit", source: theme12 },
-        { name: "Futuristic - Void", source: theme13 },
-        { name: "Midnight - Catppuccin Macchiato", source: theme14 },
-        { name: "Midnight - Catppuccin Mocha", source: theme15 },
-        { name: "Midnight - Default", source: theme16 },
-        { name: "Midnight - Light", source: theme17 },
-        { name: "Midnight - Lilypichu", source: theme18 },
-        { name: "Midnight - Nord", source: theme19 },
-        { name: "Midnight - Rosé Pine Moon", source: theme20 },
-        { name: "Midnight - Rosé Pine", source: theme21 },
-        { name: "Midnight - Tokyo Night", source: theme22 },
-        { name: "Midnight - Vencord", source: theme23 },
-        { name: "Cream Yellow v1.3.4", source: theme24 },
-        { name: "Gruv Yellow v3.3.4", source: theme25 },
-        { name: "Ratio Redesigned v1.1.3", source: theme26 },
-        { name: "Ratio v1.1.3", source: theme27 },
-        { name: "Scarlet Love v1.0.5", source: theme28 },
-        { name: "Vendetta Teal v1.2.3", source: theme29 },
-        { name: "Catppuccin Frappé - Flamingo", source: theme30 },
-        { name: "Catppuccin Frappé - Green", source: theme31 },
-        { name: "Catppuccin Frappé - Lavender", source: theme32 },
-        { name: "Catppuccin Frappé - Maroon", source: theme33 },
-        { name: "Catppuccin Frappé - Mauve", source: theme34 },
-        { name: "Catppuccin Frappé - Peach", source: theme35 },
-        { name: "Catppuccin Frappé - Pink", source: theme36 },
-        { name: "Catppuccin Frappé - Red", source: theme37 },
-        { name: "Catppuccin Frappé - Rosewater", source: theme38 },
-        { name: "Catppuccin Frappé - Sapphire", source: theme39 },
-        { name: "Catppuccin Frappé - Sky", source: theme40 },
-        { name: "Catppuccin Frappé - Teal", source: theme41 },
-        { name: "Catppuccin Frappé - Yellow", source: theme42 },
-        { name: "Catppuccin Latte - Flamingo", source: theme43 },
-        { name: "Catppuccin Latte - Green", source: theme44 },
-        { name: "Catppuccin Latte - Lavender", source: theme45 },
-        { name: "Catppuccin Latte - Maroon", source: theme46 },
-        { name: "Catppuccin Latte - Mauve", source: theme47 },
-        { name: "Catppuccin Latte - Peach", source: theme48 },
-        { name: "Catppuccin Latte - Pink", source: theme49 },
-        { name: "Catppuccin Latte - Red", source: theme50 },
-        { name: "Catppuccin Latte - Rosewater", source: theme51 },
-        { name: "Catppuccin Latte - Sapphire", source: theme52 },
-        { name: "Catppuccin Latte - Sky", source: theme53 },
-        { name: "Catppuccin Latte - Teal", source: theme54 },
-        { name: "Catppuccin Latte - Yellow", source: theme55 },
-        { name: "Catppuccin Macchiato - Flamingo", source: theme56 },
-        { name: "Catppuccin Macchiato - Green", source: theme57 },
-        { name: "Catppuccin Macchiato - Lavender", source: theme58 },
-        { name: "Catppuccin Macchiato - Maroon", source: theme59 },
-        { name: "Catppuccin Macchiato - Mauve", source: theme60 },
-        { name: "Catppuccin Macchiato - Peach", source: theme61 },
-        { name: "Catppuccin Macchiato - Pink", source: theme62 },
-        { name: "Catppuccin Macchiato - Red", source: theme63 },
-        { name: "Catppuccin Macchiato - Rosewater", source: theme64 },
-        { name: "Catppuccin Macchiato - Sapphire", source: theme65 },
-        { name: "Catppuccin Macchiato - Sky", source: theme66 },
-        { name: "Catppuccin Macchiato - Teal", source: theme67 },
-        { name: "Catppuccin Macchiato - Yellow", source: theme68 },
-        { name: "Catppuccin Mocha - Flamingo", source: theme69 },
-        { name: "Catppuccin Mocha - Green", source: theme70 },
-        { name: "Catppuccin Mocha - Lavender", source: theme71 },
-        { name: "Catppuccin Mocha - Maroon", source: theme72 },
-        { name: "Catppuccin Mocha - Mauve", source: theme73 },
-        { name: "Catppuccin Mocha - Peach", source: theme74 },
-        { name: "Catppuccin Mocha - Pink", source: theme75 },
-        { name: "Catppuccin Mocha - Red", source: theme76 },
-        { name: "Catppuccin Mocha - Rosewater", source: theme77 },
-        { name: "Catppuccin Mocha - Sapphire", source: theme78 },
-        { name: "Catppuccin Mocha - Sky", source: theme79 },
-        { name: "Catppuccin Mocha - Teal", source: theme80 },
-        { name: "Catppuccin Mocha - Yellow", source: theme81 },
-        { name: "Rosé Pine - No Wallpaper", source: theme82 },
-        { name: "Rosé Pine", source: theme83 },
-        { name: "Rosé Pine Dawn", source: theme84 },
-        { name: "Rosé Pine Moon", source: theme85 },
-        { name: "Amoled Orange Mountains", source: theme86 },
-        { name: "OneColor", source: theme87 },
-        { name: "Orange Mountains", source: theme88 },
-        { name: "OrangeOLED", source: theme89 },
-        { name: "Pixel City Lite", source: theme90 },
-        { name: "Purple Mountains", source: theme91 },
-        { name: "Vulcan", source: theme92 },
+        { name: "Moss", source: theme8 },
+        { name: "Dracula for BetterDiscord", source: theme9 },
+        { name: "Dreamy", source: theme10 },
+        { name: "Edgerunners - Night City Gradient", source: theme11 },
+        { name: "Lotus", source: theme12 },
+        { name: "Mars", source: theme13 },
+        { name: "Mist", source: theme14 },
+        { name: "Nord for Enmity", source: theme15 },
+        { name: "Futuristic - Aurora", source: theme16 },
+        { name: "Futuristic - Ice", source: theme17 },
+        { name: "Futuristic - Nebula", source: theme18 },
+        { name: "Futuristic - Orbit", source: theme19 },
+        { name: "Futuristic - Void", source: theme20 },
+        { name: "Glorious Sunset", source: theme21 },
+        { name: "Midnight - Catppuccin Macchiato", source: theme22 },
+        { name: "Midnight - Catppuccin Mocha", source: theme23 },
+        { name: "Midnight - Default", source: theme24 },
+        { name: "Midnight - Light", source: theme25 },
+        { name: "Midnight - Lilypichu", source: theme26 },
+        { name: "Midnight - Nord", source: theme27 },
+        { name: "Midnight - Rosé Pine Moon", source: theme28 },
+        { name: "Midnight - Rosé Pine", source: theme29 },
+        { name: "Midnight - Tokyo Night", source: theme30 },
+        { name: "Midnight - Vencord", source: theme31 },
+        { name: "Cream Yellow v1.3.4", source: theme32 },
+        { name: "Gruv Yellow v3.3.4", source: theme33 },
+        { name: "Ratio Redesigned v1.1.3", source: theme34 },
+        { name: "Ratio v1.1.3", source: theme35 },
+        { name: "Scarlet Love v1.0.5", source: theme36 },
+        { name: "Vendetta Teal v1.2.3", source: theme37 },
+        { name: "Catppuccin Frappé - Flamingo", source: theme38 },
+        { name: "Catppuccin Frappé - Green", source: theme39 },
+        { name: "Catppuccin Frappé - Lavender", source: theme40 },
+        { name: "Catppuccin Frappé - Maroon", source: theme41 },
+        { name: "Catppuccin Frappé - Mauve", source: theme42 },
+        { name: "Catppuccin Frappé - Peach", source: theme43 },
+        { name: "Catppuccin Frappé - Pink", source: theme44 },
+        { name: "Catppuccin Frappé - Red", source: theme45 },
+        { name: "Catppuccin Frappé - Rosewater", source: theme46 },
+        { name: "Catppuccin Frappé - Sapphire", source: theme47 },
+        { name: "Catppuccin Frappé - Sky", source: theme48 },
+        { name: "Catppuccin Frappé - Teal", source: theme49 },
+        { name: "Catppuccin Frappé - Yellow", source: theme50 },
+        { name: "Catppuccin Latte - Flamingo", source: theme51 },
+        { name: "Catppuccin Latte - Green", source: theme52 },
+        { name: "Catppuccin Latte - Lavender", source: theme53 },
+        { name: "Catppuccin Latte - Maroon", source: theme54 },
+        { name: "Catppuccin Latte - Mauve", source: theme55 },
+        { name: "Catppuccin Latte - Peach", source: theme56 },
+        { name: "Catppuccin Latte - Pink", source: theme57 },
+        { name: "Catppuccin Latte - Red", source: theme58 },
+        { name: "Catppuccin Latte - Rosewater", source: theme59 },
+        { name: "Catppuccin Latte - Sapphire", source: theme60 },
+        { name: "Catppuccin Latte - Sky", source: theme61 },
+        { name: "Catppuccin Latte - Teal", source: theme62 },
+        { name: "Catppuccin Latte - Yellow", source: theme63 },
+        { name: "Catppuccin Macchiato - Flamingo", source: theme64 },
+        { name: "Catppuccin Macchiato - Green", source: theme65 },
+        { name: "Catppuccin Macchiato - Lavender", source: theme66 },
+        { name: "Catppuccin Macchiato - Maroon", source: theme67 },
+        { name: "Catppuccin Macchiato - Mauve", source: theme68 },
+        { name: "Catppuccin Macchiato - Peach", source: theme69 },
+        { name: "Catppuccin Macchiato - Pink", source: theme70 },
+        { name: "Catppuccin Macchiato - Red", source: theme71 },
+        { name: "Catppuccin Macchiato - Rosewater", source: theme72 },
+        { name: "Catppuccin Macchiato - Sapphire", source: theme73 },
+        { name: "Catppuccin Macchiato - Sky", source: theme74 },
+        { name: "Catppuccin Macchiato - Teal", source: theme75 },
+        { name: "Catppuccin Macchiato - Yellow", source: theme76 },
+        { name: "Catppuccin Mocha - Flamingo", source: theme77 },
+        { name: "Catppuccin Mocha - Green", source: theme78 },
+        { name: "Catppuccin Mocha - Lavender", source: theme79 },
+        { name: "Catppuccin Mocha - Maroon", source: theme80 },
+        { name: "Catppuccin Mocha - Mauve", source: theme81 },
+        { name: "Catppuccin Mocha - Peach", source: theme82 },
+        { name: "Catppuccin Mocha - Pink", source: theme83 },
+        { name: "Catppuccin Mocha - Red", source: theme84 },
+        { name: "Catppuccin Mocha - Rosewater", source: theme85 },
+        { name: "Catppuccin Mocha - Sapphire", source: theme86 },
+        { name: "Catppuccin Mocha - Sky", source: theme87 },
+        { name: "Catppuccin Mocha - Teal", source: theme88 },
+        { name: "Catppuccin Mocha - Yellow", source: theme89 },
+        { name: "Rosé Pine - No Wallpaper", source: theme90 },
+        { name: "Rosé Pine", source: theme91 },
+        { name: "Rosé Pine Dawn", source: theme92 },
+        { name: "Rosé Pine Moon", source: theme93 },
+        { name: "Amoled Orange Mountains", source: theme94 },
+        { name: "OneColor", source: theme95 },
+        { name: "Orange Mountains", source: theme96 },
+        { name: "OrangeOLED", source: theme97 },
+        { name: "Pixel City Lite", source: theme98 },
+        { name: "Purple Mountains", source: theme99 },
+        { name: "Vulcan", source: theme100 },
     ],
 };

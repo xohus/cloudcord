@@ -1,0 +1,3 @@
+plugin "HideActiveNow":
+  needs appearance.hide
+  hide active-now

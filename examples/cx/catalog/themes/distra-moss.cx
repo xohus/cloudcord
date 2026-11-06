@@ -1,0 +1,45 @@
+theme "Moss":
+  mode: dark
+  background: #253129
+  surface: #1e2922
+  sidebar: #18211b
+  text: #dde8db
+  muted: #8ea58f
+  accent: #4c9e57
+  semantic BACKGROUND_FLOATING: #1a231d
+  semantic BACKGROUND_MOBILE_PRIMARY: #253129
+  semantic BACKGROUND_MOBILE_SECONDARY: #1e2922
+  semantic BACKGROUND_PRIMARY: #253129
+  semantic BACKGROUND_SECONDARY: #1e2922
+  semantic BACKGROUND_TERTIARY: #18211b
+  semantic CHANNELTEXTAREA_BACKGROUND: #2e3d33
+  semantic CHANNEL_ICON: #8ea58f
+  semantic HEADER_PRIMARY: #eef5ec
+  semantic HEADER_SECONDARY: #a9bfa9
+  semantic INTERACTIVE_ACTIVE: #ffffff
+  semantic INTERACTIVE_NORMAL: #bcd0bb
+  semantic TEXT_LINK: #9fd99a
+  semantic TEXT_MUTED: #8ea58f
+  semantic TEXT_NORMAL: #dde8db
+  raw BRAND_360: #79c482
+  raw BRAND_500: #4c9e57
+  raw PRIMARY_100: #f3f6f4
+  raw PRIMARY_300: #becfc4
+  raw PRIMARY_360: #8aa894
+  raw PRIMARY_400: #6c9379
+  raw PRIMARY_500: #455e4e
+  raw PRIMARY_600: #253229
+  raw PRIMARY_630: #1e2922
+  raw PRIMARY_700: #18201b
+  raw PRIMARY_800: #0f1511
+  raw PRIMARY_900: #040605
+  raw PRIMARY_DARK_100: #f3f6f4
+  raw PRIMARY_DARK_300: #becfc4
+  raw PRIMARY_DARK_360: #8aa894
+  raw PRIMARY_DARK_400: #6c9379
+  raw PRIMARY_DARK_500: #455e4e
+  raw PRIMARY_DARK_600: #253229
+  raw PRIMARY_DARK_630: #1e2922
+  raw PRIMARY_DARK_700: #18201b
+  raw PRIMARY_DARK_800: #0f1511
+  raw PRIMARY_DARK_900: #040605

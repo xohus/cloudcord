@@ -81,6 +81,26 @@ export const cxAppearanceTargets = {
         css: '[class*="repliedMessage"] { display: none !important; }',
         mobile: ["ReplyMessageContent"],
     },
+    "chat-apps-button": {
+        plugin: "HideAppsButton", label: "the chat apps button",
+        css: 'button[aria-label="Apps"] { display: none !important; }',
+        mobile: ["ChatInputActionButtonApps"],
+    },
+    "message-embeds": {
+        plugin: "HideEmbeds", label: "link embeds in chat",
+        css: 'article[class*="embed"] { display: none !important; }',
+        mobile: ["EmbedCard"],
+    },
+    "active-now": {
+        plugin: "HideActiveNow", label: "the active friends panel",
+        css: '[class*="nowPlayingColumn"] { display: none !important; }',
+        mobile: ["MessagesItemHappeningNow"],
+    },
+    "channel-topic": {
+        plugin: "HideChannelTopic", label: "channel topics",
+        css: '[class*="topic_"][class*="expandable"], section[aria-label="Channel header"] [class*="topic_"] { display: none !important; }',
+        mobile: ["ChannelDetailsTopic"],
+    },
 } as const;
 
 export type CxAppearanceTarget = keyof typeof cxAppearanceTargets;

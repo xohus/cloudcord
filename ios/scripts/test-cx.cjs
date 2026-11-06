@@ -602,6 +602,28 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         if (desktop) assert.match(stylesheet.textContent, /filter: blur\(0\.6px\)/);
         else assert.equal(nativeTheme.background.blur, 0.6);
         click(render(), "Disable Purple Mountains");
+        for (const [name, background, opacity] of [
+            ["Moss", "#253129"],
+            ["Lotus", "#5e3640"],
+            ["Mars", "#36263a"],
+            ["Mist", "#56626d"],
+            ["Nord for Enmity", "#434C5E"],
+            ["Dracula for BetterDiscord", "#282a36"],
+            ["Dreamy", "#061428", 0.5],
+            ["Glorious Sunset", "#1d2021", 1],
+        ]) {
+            selectCatalog(name);
+            click(render(), "Allow for this session");
+            if (desktop) {
+                assert.ok(stylesheet.textContent.includes("--background-primary: " + background));
+                assert.equal(stylesheet.textContent.includes("data:image/jpeg;base64,"), opacity !== undefined);
+            } else {
+                assert.equal(nativeTheme.semanticColors.BACKGROUND_PRIMARY[0], background);
+                assert.equal(nativeTheme.background?.alpha, opacity);
+                if (opacity !== undefined) assert.match(nativeTheme.background.url, /^data:image\/jpeg;base64,/);
+            }
+            click(render(), "Disable " + name);
+        }
         selectCatalog("Midnight - Light");
         click(render(), "Allow for this session");
         if (desktop) assert.match(stylesheet.textContent, /color-scheme: light/);
