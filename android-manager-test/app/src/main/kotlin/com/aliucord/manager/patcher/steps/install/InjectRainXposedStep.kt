@@ -11,6 +11,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.lsposed.lspatch.share.LSPConfig
 import org.lsposed.patch.LSPatch
+import org.lsposed.patch.ApkPatcher
 import org.lsposed.patch.util.Logger
 import java.io.File
 import java.nio.file.Files
@@ -61,8 +62,7 @@ class InjectRainXposedStep : Step() {
         embeddedModules: List<String>,
     ) {
         withContext(Dispatchers.IO) {
-            LSPatch(
-                object : Logger() {
+            val logger = object : Logger() {
                     override fun d(p0: String?) {
                         container.log("[LSPatch:D] $p0")
                     }
@@ -74,7 +74,8 @@ class InjectRainXposedStep : Step() {
                     override fun i(p0: String?) {
                         container.log("[LSPatch] $p0")
                     }
-                },
+                }
+            val spec = LSPatch(
                 *apkPaths.toTypedArray(),
                 "-o",
                 outputDir.absolutePath,
@@ -88,7 +89,8 @@ class InjectRainXposedStep : Step() {
                 "password",
                 "alias",
                 "password"
-            ).doCommandLine()
+            ).toSpec()
+            ApkPatcher(logger, spec).patch()
         }
     }
 
