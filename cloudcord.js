@@ -37439,6 +37439,110 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxNativeEffects.ts
+  function overrideCxMethods(target, overrides, enabled = () => true) {
+    var cleanups = [];
+    var active = true;
+    function stop() {
+      active = false;
+      for (var cleanup of cleanups.splice(0).reverse())
+        cleanup();
+    }
+    if (!target)
+      throw new Error("Discord's module is unavailable");
+    var methods = target;
+    try {
+      var _loop2 = function(key2, override2) {
+        var original = methods[key2];
+        if (typeof original !== "function")
+          return "continue";
+        var previous = Object.getOwnPropertyDescriptor(target, key2);
+        function wrapped(...args) {
+          var invoke = (next) => Reflect.apply(original, this, next);
+          return active && enabled() ? override2(args, invoke) : invoke(args);
+        }
+        if (previous && !previous.configurable) {
+          if (!("value" in previous) || !previous.writable)
+            return "continue";
+          Object.defineProperty(target, key2, {
+            value: wrapped
+          });
+        } else {
+          Object.defineProperty(target, key2, {
+            value: wrapped,
+            writable: true,
+            configurable: true,
+            enumerable: previous?.enumerable ?? false
+          });
+        }
+        cleanups.push(() => {
+          var current = Object.getOwnPropertyDescriptor(target, key2);
+          if (current?.value !== wrapped)
+            return;
+          if (previous)
+            Object.defineProperty(target, key2, previous);
+          else
+            Reflect.deleteProperty(target, key2);
+        });
+      };
+      for (var [key, override] of Object.entries(overrides))
+        _loop2(key, override);
+      if (!cleanups.length)
+        throw new Error("Discord's methods are unavailable or read-only");
+    } catch (error) {
+      stop();
+      throw error;
+    }
+    return stop;
+  }
+  function animateCxAssets(target, bannerTakesOptions, enabled) {
+    var animateArgument = (args, invoke) => {
+      var next = [
+        ...args
+      ];
+      next[1] = true;
+      return invoke(next);
+    };
+    var animateOptions = ([options, ...args], invoke) => options && typeof options === "object" ? invoke([
+      {
+        ...options,
+        canAnimate: true
+      },
+      ...args
+    ]) : invoke([
+      options,
+      ...args
+    ]);
+    return overrideCxMethods(target, {
+      getUserAvatarURL: animateArgument,
+      getGuildMemberAvatarURL: animateArgument,
+      getUserBannerURL: bannerTakesOptions ? animateOptions : animateArgument,
+      getGuildIconURL: animateOptions
+    }, enabled);
+  }
+  var cxNativeEffects;
+  var init_cxNativeEffects = __esm({
+    "src/lib/api/cxNativeEffects.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      cxNativeEffects = {
+        "silent-typing": {
+          permission: "typing.suppress",
+          label: "Stop sending your typing indicator"
+        },
+        "pending-friend-count": {
+          permission: "appearance.hide",
+          label: "Hide the pending friend request count"
+        },
+        "animated-assets": {
+          permission: "appearance.style",
+          label: "Animate avatars, banners, and server icons"
+        }
+      };
+    }
+  });
+
   // src/lib/api/cxProfileMenu.ts
   function isCxProfileUserId(id) {
     return typeof id === "string" && /^\d{17,20}$/.test(id);
@@ -37508,7 +37612,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (!line12.trim())
         return "continue";
       var declaration2 = /^  needs ([a-z.]+)$/.exec(line12);
-      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !profileActions.size && !incoming.length) {
+      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !profileActions.size && !incoming.length) {
         var permission2 = declaration2[1];
         if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission2) || permissions.has(permission2))
           throw new Error("Unknown or duplicate CX permission");
@@ -37546,6 +37650,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
+      var effect2 = /^  use ([a-z-]+)$/.exec(line12);
+      if (effect2) {
+        var name2 = effect2[1];
+        if (!Object.prototype.hasOwnProperty.call(cxNativeEffects, name2) || nativeEffects.has(name2))
+          throw new Error("Unknown or duplicate client effect");
+        nativeEffects.add(name2);
+        current = void 0;
+        return "continue";
+      }
       if (line12 === "  before send suppressReplyPing" && !suppressReplyPing) {
         suppressReplyPing = true;
         current = void 0;
@@ -37569,17 +37682,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var transform = /^  before (send|edit) ([a-zA-Z]+)( .+)?$/.exec(line12);
       if (transform) {
         var stage1 = transform[1];
-        var name2 = transform[2];
-        if (!Object.prototype.hasOwnProperty.call(messageTransforms, name2) || transforms.some((entry) => entry.name === name2 && entry.stage === stage1))
+        var name12 = transform[2];
+        if (!Object.prototype.hasOwnProperty.call(messageTransforms, name12) || transforms.some((entry) => entry.name === name12 && entry.stage === stage1))
           throw new Error("Unknown or duplicate outgoing text transform");
-        if (transform[3] && name2 !== "capitalizeSentences" && name2 !== "signature" && name2 !== "polishWording")
+        if (transform[3] && name12 !== "capitalizeSentences" && name12 !== "signature" && name12 !== "polishWording")
           throw new Error("This transform takes no options");
         var options = transform[3] ? quoted(transform[3].trim(), 240) : void 0;
-        if (name2 === "polishWording" && options?.split(",").some((option) => !polishOptions.has(option.trim())))
+        if (name12 === "polishWording" && options?.split(",").some((option) => !polishOptions.has(option.trim())))
           throw new Error("Unknown PolishWording option");
         transforms.push({
           stage: stage1,
-          name: name2,
+          name: name12,
           options
         });
         current = void 0;
@@ -37587,11 +37700,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
       var command = /^  on command "([a-z][a-z0-9_-]{0,31})"( with text)?:$/.exec(line12);
       if (command) {
-        var name12 = command[1];
-        if (commands3.length >= 48 || commands3.some((entry) => entry.name === name12))
+        var name22 = command[1];
+        if (commands3.length >= 48 || commands3.some((entry) => entry.name === name22))
           throw new Error("Duplicate or too many commands");
         commands3.push(current = {
-          name: name12,
+          name: name22,
           text: Boolean(command[2]),
           inputs: [],
           actions: []
@@ -37600,14 +37713,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
       var input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice|user|role)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line12);
       if (input && current && !current.actions.length) {
-        var [, name22, type, list, optional] = input;
-        if (name22 === "send" || name22 === "text" && current.text || current.inputs.length >= 4 || current.inputs.some((option) => option.name === name22))
+        var [, name3, type, list, optional] = input;
+        if (name3 === "send" || name3 === "text" && current.text || current.inputs.length >= 4 || current.inputs.some((option) => option.name === name3))
           throw new Error("Reserved, duplicate, or too many command inputs");
         var choices = list ? quoted(list.trim(), 240).split(",").map((choice) => choice.trim()) : void 0;
         if (type === "choice" !== !!choices || choices && (choices.length > 16 || choices.some((choice) => !choice) || new Set(choices).size !== choices.length))
           throw new Error("Choice inputs need a list of distinct values");
         current.inputs.push({
-          name: name22,
+          name: name3,
           type,
           required: !optional,
           choices
@@ -37658,23 +37771,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         var inputs = new Set(declaredInputs.map((input2) => input2.name));
         if (current.text)
           inputs.add("text");
-        var remaining = message.replace(textExpression, (expression, name3, args) => {
+        var remaining = message.replace(textExpression, (expression, name4, args) => {
           if (args === void 0)
-            return inputs.has(name3) ? "" : expression;
+            return inputs.has(name4) ? "" : expression;
           var names = argumentNames(args);
-          if (name3 === "avatar" && names.length === 1 && declaredInputs.some((input2) => input2.name === names[0] && input2.type === "user")) {
+          if (name4 === "avatar" && names.length === 1 && declaredInputs.some((input2) => input2.name === names[0] && input2.type === "user")) {
             readsAvatar = true;
             return "";
           }
-          if (Object.prototype.hasOwnProperty.call(cxClientFunctions, name3)) {
-            var service = cxClientFunctions[name3];
+          if (Object.prototype.hasOwnProperty.call(cxClientFunctions, name4)) {
+            var service = cxClientFunctions[name4];
             var option = declaredInputs.find((input2) => input2.name === names[0]);
-            if (names.length !== 1 || option?.type !== service.input || name3 === "roleMembers" && kind2 !== "reply")
+            if (names.length !== 1 || option?.type !== service.input || name4 === "roleMembers" && kind2 !== "reply")
               return expression;
             clientPermissions.add(service.permission);
             return "";
           }
-          return Object.prototype.hasOwnProperty.call(textFunctions, name3) && textFunctions[name3].length === names.length && names.every((name4) => inputs.has(name4)) ? "" : expression;
+          return Object.prototype.hasOwnProperty.call(textFunctions, name4) && textFunctions[name4].length === names.length && names.every((name5) => inputs.has(name5)) ? "" : expression;
         });
         if (remaining.includes("${"))
           throw new Error("CX messages only support declared inputs and named text functions");
@@ -37752,6 +37865,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var transforms = [];
     var hiddenTargets = /* @__PURE__ */ new Set();
     var styledTargets = /* @__PURE__ */ new Set();
+    var nativeEffects = /* @__PURE__ */ new Set();
     var profileActions = /* @__PURE__ */ new Set();
     var incoming = [];
     var suppressReplyPing = false;
@@ -37760,7 +37874,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var current;
     for (var line1 of lines)
       _loop2(line1);
-    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !profileActions.size && !incoming.length || commands3.some((command) => !command.actions.length))
+    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !profileActions.size && !incoming.length || commands3.some((command) => !command.actions.length))
       throw new Error("A plugin needs a command or a supported behavior");
     var required = /* @__PURE__ */ new Set();
     if (commands3.length)
@@ -37771,6 +37885,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       required.add("appearance.hide");
     if (styledTargets.size)
       required.add("appearance.style");
+    for (var effect of nativeEffects)
+      required.add(cxNativeEffects[effect].permission);
     if (profileActions.size)
       required.add("profilemenu.copy");
     if (readsAvatar)
@@ -37812,6 +37928,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       styledTargets: [
         ...styledTargets
       ],
+      nativeEffects: [
+        ...nativeEffects
+      ],
       profileActions: [
         ...profileActions
       ],
@@ -37833,7 +37952,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       kind: document.kind,
       name: document.name,
       permissions: document.permissions,
-      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
+      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.nativeEffects.map((effect) => cxNativeEffects[effect].label)).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
         "Hide all stickers"
       ] : !rule.values.length && rule.kind !== "reply-pings" ? [
         "Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")
@@ -37991,6 +38110,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           throw new Error("This client cannot " + cxAppearanceTargets[target1].label);
         cleanups.push(host.styleAppearanceTarget(target1));
       }
+      for (var effect of document.nativeEffects) {
+        if (!host.registerNativeEffect)
+          throw new Error("This client cannot apply " + cxNativeEffects[effect].label.toLowerCase());
+        cleanups.push(host.registerNativeEffect(effect));
+      }
       if (document.suppressReplyPing) {
         if (!host.registerReplyPingSuppression)
           throw new Error("This client cannot suppress reply pings");
@@ -38073,9 +38197,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxIncoming();
       init_cxNumeric();
       init_cxMessageTransforms();
+      init_cxNativeEffects();
       init_cxProfileMenu();
       init_cxProfileMenu();
       init_cxClientCommands();
+      init_cxNativeEffects();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -38098,7 +38224,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "replies.controlping": "Choose whether incoming replies ping you on this device",
         "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
         "messages.watchlocal": "Match incoming messages on this device and show local notifications",
-        "messages.filterlocal": "Hide matching incoming messages and history on this device"
+        "messages.filterlocal": "Hide matching incoming messages and history on this device",
+        "typing.suppress": "Suppress your outgoing typing indicator"
       };
       leetCharacters = {
         a: "4",
@@ -38159,6 +38286,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_character_counter2 = __esm({
     "../examples/cx/pilot/character-counter.cx"() {
       character_counter_default2 = 'plugin "CX Character Counter":\n  needs commands.register\n  needs reply.local\n  on command "ccp-count" with text:\n    reply "${length(text)} characters"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/always-animate.cx
+  var always_animate_default;
+  var init_always_animate = __esm({
+    "../examples/cx/catalog/plugins/always-animate.cx"() {
+      always_animate_default = 'plugin "AlwaysAnimate":\n  needs appearance.style\n  use animated-assets\n';
     }
   });
 
@@ -38570,6 +38705,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/no-pending-count.cx
+  var no_pending_count_default;
+  var init_no_pending_count = __esm({
+    "../examples/cx/catalog/plugins/no-pending-count.cx"() {
+      no_pending_count_default = 'plugin "NoPendingCount":\n  needs appearance.hide\n  use pending-friend-count\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/no-reply-mention.cx
   var no_reply_mention_default;
   var init_no_reply_mention = __esm({
@@ -38671,6 +38814,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_silent_message_toggle = __esm({
     "../examples/cx/catalog/plugins/silent-message-toggle.cx"() {
       silent_message_toggle_default = 'plugin "SilentMessageToggle":\n  needs messages.transform\n  before send silentMessage\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/silent-typing.cx
+  var silent_typing_default;
+  var init_silent_typing = __esm({
+    "../examples/cx/catalog/plugins/silent-typing.cx"() {
+      silent_typing_default = 'plugin "SilentTyping":\n  needs typing.suppress\n  use silent-typing\n';
     }
   });
 
@@ -39570,6 +39721,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_character_counter2();
+      init_always_animate();
       init_amoled_mode();
       init_auto_vaporwave();
       init_avatar_grabber();
@@ -39621,6 +39773,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_message_notifier();
       init_more_commands();
       init_no_blocked_messages();
+      init_no_pending_count();
       init_no_reply_mention();
       init_normalize_message_links();
       init_polish_wording();
@@ -39634,6 +39787,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_signature();
       init_silence_users();
       init_silent_message_toggle();
+      init_silent_typing();
       init_space_out();
       init_spotify_share_commands();
       init_starify();
@@ -39750,6 +39904,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "CX Character Counter",
             source: character_counter_default2
+          },
+          {
+            name: "AlwaysAnimate",
+            source: always_animate_default
           },
           {
             name: "AmoledMode",
@@ -39956,6 +40114,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: no_blocked_messages_default
           },
           {
+            name: "NoPendingCount",
+            source: no_pending_count_default
+          },
+          {
             name: "NoReplyMention",
             source: no_reply_mention_default
           },
@@ -40006,6 +40168,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "SilentMessageToggle",
             source: silent_message_toggle_default
+          },
+          {
+            name: "SilentTyping",
+            source: silent_typing_default
           },
           {
             name: "SpaceOut",
@@ -40726,6 +40892,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             if (!isThemeSupported())
               throw new Error("This loader does not support color overrides");
             return registerColorOverlay(style);
+          },
+          registerNativeEffect(effect) {
+            var enabled = () => !settings.safeMode?.enabled;
+            switch (effect) {
+              case "silent-typing":
+                return overrideCxMethods(findByProps("startTyping", "stopTyping"), {
+                  startTyping: () => void 0
+                }, enabled);
+              case "pending-friend-count":
+                return overrideCxMethods(RelationshipStore, {
+                  getPendingCount: () => 0,
+                  getPendingIncomingCount: () => 0
+                }, enabled);
+              case "animated-assets":
+                return animateCxAssets(findByProps("getUserAvatarURL", "getGuildIconURL"), false, enabled);
+            }
           },
           registerReplyPingSuppression() {
             return onSendMessage((_message, options) => {
@@ -45752,7 +45934,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "ec7273211efaa930e71a69bbec003963ac976b51";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "fe6feef5f38fc2e2357a0caf6048b9998af6d1d5";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
