@@ -1,0 +1,8 @@
+theme "Midnight - Default":
+  mode: dark
+  background: #16181d
+  surface: #1c1f26
+  sidebar: #23272f
+  text: #8592ad
+  muted: #363d49
+  accent: #58bed5

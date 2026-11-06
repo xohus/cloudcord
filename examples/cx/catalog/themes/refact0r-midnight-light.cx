@@ -1,0 +1,8 @@
+theme "Midnight - Light":
+  mode: light
+  background: #dee3ed
+  surface: #d4dbe8
+  sidebar: #cad2e2
+  text: #2b303b
+  muted: #8592ad
+  accent: #339eb5

@@ -1,0 +1,8 @@
+theme "Midnight - Vencord":
+  mode: dark
+  background: #282828
+  surface: #31302f
+  sidebar: #3c3836
+  text: #d4be98
+  muted: #6d6455
+  accent: #db9aab

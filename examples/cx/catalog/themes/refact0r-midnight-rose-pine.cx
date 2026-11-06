@@ -1,0 +1,8 @@
+theme "Midnight - Rosé Pine":
+  mode: dark
+  background: #1a1825
+  surface: #201d2f
+  sidebar: #252239
+  text: #c0bddb
+  muted: #6e6986
+  accent: #f4cecd

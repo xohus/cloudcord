@@ -1,0 +1,8 @@
+theme "Midnight - Rosé Pine Moon":
+  mode: dark
+  background: #232136
+  surface: #2a273f
+  sidebar: #383450
+  text: #c0bddb
+  muted: #6e6986
+  accent: #eeadaa

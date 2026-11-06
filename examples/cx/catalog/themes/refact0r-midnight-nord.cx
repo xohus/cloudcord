@@ -1,0 +1,8 @@
+theme "Midnight - Nord":
+  mode: dark
+  background: #2e3440
+  surface: #272b35
+  sidebar: #3b4252
+  text: #d8dee9
+  muted: #4c566a
+  accent: #99c9d6

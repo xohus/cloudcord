@@ -1,0 +1,8 @@
+theme "Midnight - Catppuccin Macchiato":
+  mode: dark
+  background: #24273a
+  surface: #1e2030
+  sidebar: #363a4f
+  text: #b8c0e0
+  muted: #5b6078
+  accent: #d6b9f8

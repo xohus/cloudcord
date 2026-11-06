@@ -1,0 +1,8 @@
+theme "Midnight - Lilypichu":
+  mode: dark
+  background: #48282e
+  surface: #5e3640
+  sidebar: #754353
+  text: #efd2d8
+  muted: #974e5f
+  accent: #d2798c

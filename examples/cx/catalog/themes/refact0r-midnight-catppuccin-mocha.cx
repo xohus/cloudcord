@@ -1,0 +1,8 @@
+theme "Midnight - Catppuccin Mocha":
+  mode: dark
+  background: #1e1e2e
+  surface: #181825
+  sidebar: #313244
+  text: #bac2de
+  muted: #585b70
+  accent: #d8bdf9

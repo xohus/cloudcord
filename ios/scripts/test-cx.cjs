@@ -532,6 +532,19 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(nativeTheme.background.alpha, 0.62);
         }
         click(render(), "Disable Futuristic - Orbit");
+        selectCatalog("Rosé Pine");
+        click(render(), "Allow for this session");
+        if (desktop) assert.match(stylesheet.textContent, /url\("data:image\/png;base64,/);
+        else {
+            assert.match(nativeTheme.background.url, /^data:image\/png;base64,/);
+            assert.equal(nativeTheme.background.alpha, 1);
+        }
+        click(render(), "Disable Rosé Pine");
+        selectCatalog("Midnight - Light");
+        click(render(), "Allow for this session");
+        if (desktop) assert.match(stylesheet.textContent, /color-scheme: light/);
+        else assert.equal(nativeMode, "light");
+        click(render(), "Disable Midnight - Light");
     }
     const { migrateCxPalette } = await import("../../desktop/client/scripts/cx-migrate-palette.mjs");
     assert.equal(parseCx(migrateCxPalette(":root { --background-primary: #123; --brand-500: #8765ab; }", "Test")).background, "#112233");
@@ -560,5 +573,14 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
     assert.equal(parseCx(migrateCxVendetta(vendetta, "dark")).semanticColors.BACKGROUND_PRIMARY, "#abcdef");
     assert.equal(parseCx(migrateCxVendetta(vendetta, "light")).semanticColors.BACKGROUND_PRIMARY, "#123456");
     assert.throws(() => migrateCxVendetta({ ...vendetta, background: { url: "https://example.com/bg.jpg" } }, "dark"), /without wallpapers/);
+    const portableVendetta = parseCx(migrateCxVendetta({
+        ...vendetta, rawColors: { BRAND_500: "#abc" }, semanticColors: {
+            ...vendetta.semanticColors, SCROLLBAR_THIN_TRACK: ["transparent"],
+        }, background: { url: "https://example.com/bg.png", alpha: 5 },
+    }, "dark", "Local Wallpaper", png));
+    assert.equal(portableVendetta.accent, "#aabbcc");
+    assert.equal(portableVendetta.semanticColors.SCROLLBAR_THIN_TRACK, "#00000000");
+    assert.equal(portableVendetta.wallpaper, png);
+    assert.equal(portableVendetta.wallpaperOpacity, 1);
     console.log(`PASS shared CX catalog with ${cxCatalog.plugins.length} plugins and ${cxCatalog.themes.length} themes, permission approval, both command adapters and strict palette migration`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

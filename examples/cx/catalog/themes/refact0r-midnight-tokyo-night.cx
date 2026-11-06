@@ -1,0 +1,8 @@
+theme "Midnight - Tokyo Night":
+  mode: dark
+  background: #1a1b26
+  surface: #16161d
+  sidebar: #262a3b
+  text: #a9b1d6
+  muted: #414868
+  accent: #8fb3fe
