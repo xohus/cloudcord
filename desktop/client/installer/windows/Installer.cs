@@ -96,22 +96,59 @@ namespace CloudCord.Installer
             return c;
         }
 
-        /// Downloads the newest CloudCord build from GitHub Releases into place.
-        public static void WriteDist()
+        static string releaseJson;
+
+        static string ReleaseJson()
+        {
+            if (releaseJson == null) using (var c = Client()) releaseJson = c.DownloadString(ReleaseApi);
+            return releaseJson;
+        }
+
+        /// The version about to be installed, e.g. "build 5547dff · Nov 6", or null if offline.
+        public static string LatestVersion()
+        {
+            try
+            {
+                var json = ReleaseJson();
+                var name = System.Text.RegularExpressions.Regex.Match(json, "\"name\"\\s*:\\s*\"CloudCord Desktop ([0-9a-f]{7,40})\"");
+                var date = System.Text.RegularExpressions.Regex.Match(json, "\"published_at\"\\s*:\\s*\"([^\"]+)\"");
+                var text = name.Success ? "build " + name.Groups[1].Value.Substring(0, 7) : "latest build";
+                DateTime when;
+                if (date.Success && DateTime.TryParse(date.Groups[1].Value, out when)) text += " · " + when.ToString("MMM d");
+                return text;
+            }
+            catch { return null; }
+        }
+
+        /// Downloads the newest CloudCord build from GitHub Releases into place,
+        /// reporting (bytesSoFar, totalBytes) as it goes.
+        public static void WriteDist(Action<long, long> progress)
         {
             Directory.CreateDirectory(DataDir);
-            string url;
-            using (var c = Client())
-            {
-                var json = c.DownloadString(ReleaseApi);
-                var m = System.Text.RegularExpressions.Regex.Match(json,
-                    "\"name\"\\s*:\\s*\"(?:desktop|cloudcord)\\.asar\"[\\s\\S]*?\"browser_download_url\"\\s*:\\s*\"([^\"]+)\"");
-                if (!m.Success) throw new Exception("The latest CloudCord release has no desktop build yet. Try again later.");
-                url = m.Groups[1].Value;
-            }
+            var m = System.Text.RegularExpressions.Regex.Match(ReleaseJson(),
+                "\"name\"\\s*:\\s*\"(?:desktop|cloudcord)\\.asar\"[\\s\\S]*?\"browser_download_url\"\\s*:\\s*\"([^\"]+)\"");
+            if (!m.Success) throw new Exception("The latest CloudCord release has no desktop build yet. Try again later.");
+
             // Download next to it, then swap, so Discord never sees a half-written file.
             var tmp = AsarPath + ".new";
-            using (var c = Client()) c.DownloadFile(url, tmp);
+            System.Net.ServicePointManager.SecurityProtocol |= System.Net.SecurityProtocolType.Tls12;
+            var req = (System.Net.HttpWebRequest)System.Net.WebRequest.Create(m.Groups[1].Value);
+            req.UserAgent = "CloudCord-Installer";
+            using (var res = req.GetResponse())
+            using (var src = res.GetResponseStream())
+            using (var dst = File.Create(tmp))
+            {
+                var total = res.ContentLength;
+                var buf = new byte[81920];
+                long done = 0;
+                int read;
+                while ((read = src.Read(buf, 0, buf.Length)) > 0)
+                {
+                    dst.Write(buf, 0, read);
+                    done += read;
+                    progress(done, total);
+                }
+            }
             if (new FileInfo(tmp).Length < 100 * 1024) { File.Delete(tmp); throw new Exception("The CloudCord download was incomplete. Check your connection and try again."); }
             if (File.Exists(AsarPath)) File.Replace(tmp, AsarPath, null);
             else File.Move(tmp, AsarPath);
@@ -208,6 +245,83 @@ namespace CloudCord.Installer
         }
     }
 
+    public enum StepState { Pending, Running, Done, Failed }
+
+    /// One line of the install checklist with an animated state indicator.
+    public class StepRow
+    {
+        static readonly Color Accent = Color.FromRgb(74, 168, 255);
+        static readonly Color Green = Color.FromRgb(87, 242, 135);
+        static readonly Color Red = Color.FromRgb(242, 63, 67);
+
+        public readonly Grid Root = new Grid { Margin = new Thickness(0, 0, 0, 10), Opacity = 0.45 };
+        readonly Grid icon = new Grid { Width = 24, Height = 24, Margin = new Thickness(0, 0, 14, 0) };
+        readonly TextBlock text, detail;
+        StepState state = StepState.Pending;
+
+        public StepRow(string name)
+        {
+            Root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            Root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            Root.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            text = new TextBlock { Text = name, FontSize = 15, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+            detail = new TextBlock { FontSize = 13, Foreground = new SolidColorBrush(Color.FromRgb(160, 160, 180)), VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(icon, 0); Grid.SetColumn(text, 1); Grid.SetColumn(detail, 2);
+            Root.Children.Add(icon); Root.Children.Add(text); Root.Children.Add(detail);
+            DrawPending();
+        }
+
+        void DrawPending()
+        {
+            icon.Children.Clear();
+            icon.Children.Add(new Ellipse { Stroke = new SolidColorBrush(Color.FromArgb(110, 255, 255, 255)), StrokeThickness = 2 });
+        }
+
+        public void Set(StepState next, string detailText)
+        {
+            detail.Text = detailText ?? "";
+            if (next == state) return;
+            state = next;
+            Root.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(next == StepState.Pending ? 0.45 : 1, TimeSpan.FromMilliseconds(250)));
+            icon.Children.Clear();
+
+            if (next == StepState.Running)
+            {
+                icon.Children.Add(new Ellipse { Stroke = new SolidColorBrush(Color.FromArgb(50, 255, 255, 255)), StrokeThickness = 2.5 });
+                var arc = new System.Windows.Shapes.Path
+                {
+                    Data = Geometry.Parse("M 12,1.5 A 10.5,10.5 0 0 1 22.5,12"),
+                    Stroke = new SolidColorBrush(Accent), StrokeThickness = 2.5,
+                    StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round,
+                    RenderTransformOrigin = new Point(0.5, 0.5),
+                };
+                var spin = new RotateTransform();
+                arc.RenderTransform = spin;
+                spin.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0, 360, TimeSpan.FromSeconds(0.9)) { RepeatBehavior = RepeatBehavior.Forever });
+                icon.Children.Add(arc);
+                return;
+            }
+
+            if (next == StepState.Pending) { DrawPending(); return; }
+
+            var done = next == StepState.Done;
+            var circle = new Ellipse { Fill = new SolidColorBrush(done ? Green : Red) };
+            var mark = new System.Windows.Shapes.Path
+            {
+                Data = Geometry.Parse(done ? "M 7,12.5 L 10.5,16 L 17,8.5" : "M 8,8 L 16,16 M 16,8 L 8,16"),
+                Stroke = new SolidColorBrush(Color.FromRgb(16, 12, 30)), StrokeThickness = 2.6,
+                StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round, StrokeLineJoin = PenLineJoin.Round,
+            };
+            icon.Children.Add(circle); icon.Children.Add(mark);
+            var pop = new ScaleTransform(0.4, 0.4);
+            icon.RenderTransformOrigin = new Point(0.5, 0.5);
+            icon.RenderTransform = pop;
+            var back = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.6 };
+            pop.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.4, 1, TimeSpan.FromMilliseconds(380)) { EasingFunction = back });
+            pop.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.4, 1, TimeSpan.FromMilliseconds(380)) { EasingFunction = back });
+        }
+    }
+
     public class App : Application
     {
         [STAThread]
@@ -220,10 +334,10 @@ namespace CloudCord.Installer
 
     public class MainWindow : Window
     {
-        static readonly Color Accent = Color.FromRgb(124, 92, 255);
-        static readonly Color Accent2 = Color.FromRgb(91, 60, 230);
-        static readonly Brush TextBrush = new SolidColorBrush(Color.FromRgb(242, 243, 245));
-        static readonly Brush MutedBrush = new SolidColorBrush(Color.FromRgb(160, 160, 180));
+        static readonly Color Accent = Color.FromRgb(74, 168, 255);
+        static readonly Color Accent2 = Color.FromRgb(45, 107, 255);
+        static readonly Brush TextBrush = new SolidColorBrush(Color.FromRgb(240, 245, 255));
+        static readonly Brush MutedBrush = new SolidColorBrush(Color.FromRgb(150, 168, 200));
         static readonly FontFamily Font = new FontFamily("Segoe UI Variable Display, Segoe UI");
 
         readonly Grid root = new Grid();
@@ -232,6 +346,9 @@ namespace CloudCord.Installer
         readonly Dictionary<DiscordBuild, CheckBox> picks = new Dictionary<DiscordBuild, CheckBox>();
         Image logo;
         StackPanel brand;
+        Border sky;
+        System.Windows.Shapes.Path ring;
+        TextBlock skySub, skyPercent;
 
         public MainWindow()
         {
@@ -250,7 +367,7 @@ namespace CloudCord.Installer
                 Margin = new Thickness(20),
                 CornerRadius = new CornerRadius(22),
                 ClipToBounds = true,
-                Background = new LinearGradientBrush(Color.FromRgb(26, 16, 54), Color.FromRgb(10, 8, 20), 65),
+                Background = new LinearGradientBrush(Color.FromRgb(12, 22, 48), Color.FromRgb(6, 10, 24), 90),
                 Effect = new DropShadowEffect { BlurRadius = 40, ShadowDepth = 0, Opacity = 0.6, Color = Colors.Black },
                 Child = root,
                 Opacity = 0,
@@ -258,9 +375,14 @@ namespace CloudCord.Installer
             frame.MouseLeftButtonDown += (s, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); };
             Content = frame;
 
-            BuildBackground();
-            BuildChrome();
+            // Two columns: the sky panel (brand, clouds, progress ring) and the controls.
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(330) });
+            root.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            BuildSky();
+            Grid.SetColumn(content, 1);
+            content.Margin = new Thickness(36, 40, 36, 32);
             root.Children.Add(content);
+            BuildChrome();
 
             Loaded += (s, e) => Opening(frame);
             SetupSnapshots(frame);
@@ -269,7 +391,7 @@ namespace CloudCord.Installer
         // Test hook: FOLDCORD_SNAPSHOT=<dir> renders the window to PNGs while it runs.
         void SetupSnapshots(Border frame)
         {
-            var dir = Environment.GetEnvironmentVariable("FOLDCORD_SNAPSHOT");
+            var dir = Environment.GetEnvironmentVariable("CLOUDCORD_SNAPSHOT");
             if (string.IsNullOrEmpty(dir)) return;
             var times = new[] { 700, 1300, 3600 };
             for (var i = 0; i < times.Length; i++)
@@ -284,13 +406,17 @@ namespace CloudCord.Installer
         int panelShots;
         void SnapshotPanel()
         {
-            var dir = Environment.GetEnvironmentVariable("FOLDCORD_SNAPSHOT");
+            var dir = Environment.GetEnvironmentVariable("CLOUDCORD_SNAPSHOT");
             if (string.IsNullOrEmpty(dir)) return;
             var n = ++panelShots;
             var frame = (Border)Content;
-            var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
-            t.Tick += (s, e) => { t.Stop(); Snapshot(frame, IOPath.Combine(dir, "panel-" + n + ".png")); };
-            t.Start();
+            foreach (var ms in new[] { 900, 2600 })
+            {
+                var at = ms;
+                var t = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(at) };
+                t.Tick += (s, e) => { t.Stop(); try { Snapshot(frame, IOPath.Combine(dir, "panel-" + n + "-" + at + ".png")); } catch { } };
+                t.Start();
+            }
         }
 
         public static void Snapshot(FrameworkElement el, string file)
@@ -304,13 +430,84 @@ namespace CloudCord.Installer
 
         // ---------- visuals ----------
 
-        void BuildBackground()
+        // The left "sky": a blue gradient with clouds drifting through it, the logo inside a
+        // progress ring, and the title. It stays put while the right side changes.
+        void BuildSky()
         {
-            var canvas = new Canvas { IsHitTestVisible = false };
-            root.Children.Add(canvas);
-            AddOrb(canvas, 420, Accent, -120, -160, 60, 40, 9);
-            AddOrb(canvas, 360, Color.FromRgb(196, 77, 255), 520, 260, -70, -50, 11);
-            AddOrb(canvas, 260, Color.FromRgb(70, 120, 255), 600, -120, -40, 70, 13);
+            var grid = new Grid();
+            sky = new Border
+            {
+                CornerRadius = new CornerRadius(22, 0, 0, 22),
+                ClipToBounds = true,
+                Background = new LinearGradientBrush(
+                    new GradientStopCollection {
+                        new GradientStop(Color.FromRgb(98, 178, 255), 0),
+                        new GradientStop(Color.FromRgb(45, 107, 255), 0.55),
+                        new GradientStop(Color.FromRgb(28, 52, 160), 1),
+                    }, 90),
+                Child = grid,
+            };
+            Grid.SetColumn(sky, 0);
+            root.Children.Add(sky);
+
+            var clouds = new Canvas { IsHitTestVisible = false };
+            grid.Children.Add(clouds);
+            AddCloud(clouds, 30, 150, 34, 4, 0.22);
+            AddCloud(clouds, 150, 90, 26, 14, 0.16);
+            AddCloud(clouds, 300, 190, 42, 22, 0.20);
+            AddCloud(clouds, 420, 110, 30, 8, 0.14);
+
+            // Logo inside a ring that fills up while installing.
+            var badge = new Grid { Width = 150, Height = 150, HorizontalAlignment = HorizontalAlignment.Center };
+            badge.Children.Add(new Ellipse { Fill = new SolidColorBrush(Color.FromArgb(40, 255, 255, 255)) });
+            badge.Children.Add(new Ellipse { Stroke = new SolidColorBrush(Color.FromArgb(60, 255, 255, 255)), StrokeThickness = 6, Margin = new Thickness(3) });
+            ring = new System.Windows.Shapes.Path { Stroke = Brushes.White, StrokeThickness = 6, StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round };
+            badge.Children.Add(ring);
+            logo = new Image { Source = LoadImage("logo.png"), Width = 92, Height = 92, RenderTransformOrigin = new Point(0.5, 0.5),
+                Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 0, Color = Color.FromRgb(20, 40, 120), Opacity = 0.6 } };
+            badge.Children.Add(logo);
+
+            var title = new TextBlock { Text = "CloudCord", FontSize = 36, FontWeight = FontWeights.Bold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 22, 0, 0) };
+            skySub = new TextBlock { Text = "Discord, your way.", FontSize = 15, Foreground = new SolidColorBrush(Color.FromArgb(220, 255, 255, 255)), HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 4, 0, 0) };
+            skyPercent = new TextBlock { FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 14, 0, 0), Opacity = 0 };
+
+            brand = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
+            brand.Children.Add(badge); brand.Children.Add(title); brand.Children.Add(skySub); brand.Children.Add(skyPercent);
+            grid.Children.Add(brand);
+        }
+
+        // Fills the ring around the logo (0..1) and shows the percentage under the title.
+        void SetRing(double frac)
+        {
+            frac = Math.Max(0, Math.Min(1, frac));
+            const double r = 72, c = 75;
+            if (frac >= 0.999)
+            {
+                ring.Data = new EllipseGeometry(new Point(c, c), r, r);
+            }
+            else
+            {
+                var angle = frac * 2 * Math.PI;
+                var end = new Point(c + r * Math.Sin(angle), c - r * Math.Cos(angle));
+                var fig = new PathFigure { StartPoint = new Point(c, c - r), IsClosed = false };
+                fig.Segments.Add(new ArcSegment(end, new Size(r, r), 0, frac > 0.5, SweepDirection.Clockwise, true));
+                ring.Data = new PathGeometry(new[] { fig });
+            }
+            skyPercent.Text = frac <= 0 ? "" : (int)Math.Round(frac * 100) + "%";
+            skyPercent.Opacity = frac <= 0 ? 0 : 1;
+        }
+
+        void AddCloud(Canvas c, double y, double size, double seconds, double delay, double opacity)
+        {
+            var cloud = new Image { Source = LoadImage("logo.png"), Width = size, Height = size, Opacity = opacity };
+            Canvas.SetTop(cloud, y);
+            c.Children.Add(cloud);
+            var t = new TranslateTransform(-size, 0);
+            cloud.RenderTransform = t;
+            var a = new DoubleAnimation(-size - 20, 340, TimeSpan.FromSeconds(seconds)) { RepeatBehavior = RepeatBehavior.Forever };
+            // Start partway through so the sky isn't empty at first.
+            a.BeginTime = TimeSpan.FromSeconds(-delay);
+            t.BeginAnimation(TranslateTransform.XProperty, a);
         }
 
         void AddOrb(Canvas c, double size, Color color, double x, double y, double dx, double dy, double seconds)
@@ -336,6 +533,7 @@ namespace CloudCord.Installer
             bar.Children.Add(ChromeButton("", () => WindowState = WindowState.Minimized));
             bar.Children.Add(ChromeButton("", Close));
             Panel.SetZIndex(bar, 10);
+            Grid.SetColumn(bar, 1);
             root.Children.Add(bar);
         }
 
@@ -388,7 +586,7 @@ namespace CloudCord.Installer
             {
                 Content = new TextBlock { Text = text, FontSize = 15, FontWeight = FontWeights.SemiBold, Foreground = Brushes.White },
                 Height = 46, MinWidth = 160, Padding = new Thickness(26, 0, 26, 0), Cursor = Cursors.Hand,
-                Background = new LinearGradientBrush(Color.FromRgb(146, 118, 255), Accent2, 30),
+                Background = new LinearGradientBrush(Color.FromRgb(98, 178, 255), Accent2, 30),
                 Template = FlatTemplate(12, Accent),
                 Effect = new DropShadowEffect { BlurRadius = 24, ShadowDepth = 0, Opacity = 0.55, Color = Accent },
             };
@@ -409,6 +607,17 @@ namespace CloudCord.Installer
             return b;
         }
 
+        static void SlideIn(UIElement el, double delayMs)
+        {
+            el.Opacity = 0;
+            var t = new TranslateTransform(40, 0);
+            el.RenderTransform = t;
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+            var begin = TimeSpan.FromMilliseconds(delayMs);
+            el.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(420)) { BeginTime = begin, EasingFunction = ease });
+            t.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(40, 0, TimeSpan.FromMilliseconds(420)) { BeginTime = begin, EasingFunction = ease });
+        }
+
         static void FadeIn(UIElement el, double delayMs, double fromY = 18, double ms = 520)
         {
             el.Opacity = 0;
@@ -424,53 +633,30 @@ namespace CloudCord.Installer
 
         void Opening(Border frame)
         {
-            frame.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(350)));
+            frame.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(300)));
+            var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-            logo = new Image { Source = LoadImage("logo.png"), Width = 120, Height = 120, RenderTransformOrigin = new Point(0.5, 0.5) };
-            logo.Effect = new DropShadowEffect { BlurRadius = 50, ShadowDepth = 0, Color = Accent, Opacity = 0.9 };
-            var title = new TextBlock { Text = "CloudCord", FontSize = 46, FontWeight = FontWeights.Bold, Foreground = TextBrush, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 18, 0, 0) };
-            var sub = new TextBlock { Text = "Discord, your way.", FontSize = 16, Foreground = MutedBrush, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 6, 0, 0) };
-            brand = new StackPanel { VerticalAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Center };
-            brand.Children.Add(logo); brand.Children.Add(title); brand.Children.Add(sub);
-            content.Children.Add(brand);
+            var skyShift = new TranslateTransform(-330, 0);
+            sky.RenderTransform = skyShift;
+            skyShift.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-330, 0, TimeSpan.FromMilliseconds(700)) { EasingFunction = ease });
 
-            var group = new TransformGroup();
-            var scale = new ScaleTransform(0.3, 0.3);
-            var rot = new RotateTransform(-25);
-            group.Children.Add(scale); group.Children.Add(rot);
-            logo.RenderTransform = group;
+            var drop = new TranslateTransform(0, -70);
+            logo.RenderTransform = drop;
             logo.Opacity = 0;
-            var back = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.5 };
-            var dur = TimeSpan.FromMilliseconds(900);
-            var start = TimeSpan.FromMilliseconds(250);
-            logo.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(500)) { BeginTime = start });
-            scale.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(0.3, 1, dur) { BeginTime = start, EasingFunction = back });
-            scale.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(0.3, 1, dur) { BeginTime = start, EasingFunction = back });
-            rot.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(-25, 0, dur) { BeginTime = start, EasingFunction = back });
-            ((DropShadowEffect)logo.Effect).BeginAnimation(DropShadowEffect.BlurRadiusProperty,
-                new DoubleAnimation(20, 60, TimeSpan.FromSeconds(1.6)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, BeginTime = TimeSpan.FromMilliseconds(900) });
+            var bounce = new BounceEase { EasingMode = EasingMode.EaseOut, Bounces = 2, Bounciness = 3 };
+            var start = TimeSpan.FromMilliseconds(500);
+            logo.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(400)) { BeginTime = start });
+            var fall = new DoubleAnimation(-70, 0, TimeSpan.FromMilliseconds(900)) { BeginTime = start, EasingFunction = bounce };
+            fall.Completed += (s2, e2) =>
+                drop.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, -6, TimeSpan.FromSeconds(1.8)) { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever, EasingFunction = new SineEase { EasingMode = EasingMode.EaseInOut } });
+            drop.BeginAnimation(TranslateTransform.YProperty, fall);
 
-            FadeIn(title, 750);
-            FadeIn(sub, 950);
+            for (var i = 1; i < brand.Children.Count; i++) FadeIn(brand.Children[i], 900 + i * 120);
+            SetRing(0);
 
-            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(2100) };
-            timer.Tick += (s, e) => { timer.Stop(); ShowChooser(); };
+            var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMilliseconds(1300) };
+            timer.Tick += (s2, e2) => { timer.Stop(); ShowChooser(); };
             timer.Start();
-        }
-
-        void MoveBrandToHeader()
-        {
-            var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
-            var t = new TranslateTransform();
-            var sc = new ScaleTransform(1, 1);
-            var g = new TransformGroup(); g.Children.Add(sc); g.Children.Add(t);
-            brand.RenderTransformOrigin = new Point(0.5, 0);
-            brand.RenderTransform = g;
-            brand.VerticalAlignment = VerticalAlignment.Top;
-            brand.Margin = new Thickness(0, 90, 0, 0);
-            t.BeginAnimation(TranslateTransform.YProperty, new DoubleAnimation(0, -66, TimeSpan.FromMilliseconds(600)) { EasingFunction = ease });
-            sc.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(1, 0.62, TimeSpan.FromMilliseconds(600)) { EasingFunction = ease });
-            sc.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(1, 0.62, TimeSpan.FromMilliseconds(600)) { EasingFunction = ease });
         }
 
         UIElement panel;
@@ -486,16 +672,25 @@ namespace CloudCord.Installer
             }
             panel = el;
             content.Children.Add(el);
-            FadeIn(el, 120, 26, 480);
+            SlideIn(el, 80);
             SnapshotPanel();
         }
 
         void ShowChooser()
         {
-            if (brand.Margin.Top == 0) MoveBrandToHeader();
 
-            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 38), Width = 560 };
-            stack.Children.Add(new TextBlock { Text = "Choose where to install", FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = MutedBrush, Margin = new Thickness(4, 0, 0, 10) });
+            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            var header = new DockPanel { Margin = new Thickness(4, 0, 4, 10) };
+            var version = new TextBlock { Text = "Checking latest version…", FontSize = 12, Foreground = MutedBrush, VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(version, Dock.Right);
+            header.Children.Add(version);
+            header.Children.Add(new TextBlock { Text = "Choose where to install", FontSize = 13, FontWeight = FontWeights.SemiBold, Foreground = MutedBrush });
+            stack.Children.Add(header);
+            Task.Run(() =>
+            {
+                var v = Core.LatestVersion();
+                Dispatcher.Invoke(() => version.Text = v != null ? "Installs " + v : "Offline: can't reach GitHub");
+            });
 
             var found = builds.Where(b => b.Exists).ToList();
             if (found.Count == 0)
@@ -582,51 +777,88 @@ namespace CloudCord.Installer
             var targets = picks.Where(p => p.Value.IsChecked == true).Select(p => p.Key).ToList();
             if (targets.Count == 0) return;
 
-            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 70), Width = 520 };
-            var label = new TextBlock { Text = install ? "Getting things ready…" : "Removing CloudCord…", FontSize = 16, FontWeight = FontWeights.SemiBold, Foreground = TextBrush, Margin = new Thickness(0, 0, 0, 14) };
-            stack.Children.Add(label);
-            var track = new Border { Height = 10, CornerRadius = new CornerRadius(5), Background = new SolidColorBrush(Color.FromArgb(30, 255, 255, 255)), ClipToBounds = true };
-            var fill = new Border { Height = 10, CornerRadius = new CornerRadius(5), HorizontalAlignment = HorizontalAlignment.Left, Width = 0, Background = new LinearGradientBrush(Color.FromRgb(160, 130, 255), Accent2, 0) };
-            var shimmer = new Border { Width = 120, Background = new LinearGradientBrush(Color.FromArgb(0, 255, 255, 255), Color.FromArgb(90, 255, 255, 255), 0), HorizontalAlignment = HorizontalAlignment.Left };
-            var st = new TranslateTransform(-120, 0);
-            shimmer.RenderTransform = st;
-            st.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(-120, 540, TimeSpan.FromSeconds(1.2)) { RepeatBehavior = RepeatBehavior.Forever });
-            var g = new Grid(); g.Children.Add(fill); g.Children.Add(shimmer);
-            track.Child = g;
-            stack.Children.Add(track);
-            SetPanel(stack);
+            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            var heading = new TextBlock { Text = install ? "Installing CloudCord" : "Removing CloudCord", FontSize = 22, FontWeight = FontWeights.Bold, Foreground = TextBrush, Margin = new Thickness(0, 0, 0, 18) };
+            var label = new TextBlock { Text = "Getting things ready…", FontSize = 13, Foreground = MutedBrush, Margin = new Thickness(0, 6, 0, 0) };
 
+            // Step checklist: pending (dim), running (spinner), done (green tick).
+            var stepNames = new List<string> { "Close Discord" };
+            if (install) stepNames.Add("Download CloudCord");
+            stepNames.Add(install ? "Install into " + string.Join(", ", targets.Select(t => t.Name)) : "Remove from " + string.Join(", ", targets.Select(t => t.Name)));
+            var rows = new List<StepRow>();
+            var list = new StackPanel();
+            foreach (var name in stepNames)
+            {
+                var row = new StepRow(name);
+                rows.Add(row);
+                list.Children.Add(row.Root);
+            }
+            stack.Children.Add(heading);
+            stack.Children.Add(list);
+            stack.Children.Add(label);
+            SetPanel(stack);
+            skySub.Text = install ? "Installing…" : "Removing…";
+
+            // Progress shows in the ring around the logo on the left.
             Action<double, string> step = (frac, text) => Dispatcher.Invoke(() =>
             {
                 label.Text = text;
-                fill.BeginAnimation(WidthProperty, new DoubleAnimation(520 * frac, TimeSpan.FromMilliseconds(450)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+                SetRing(frac);
             });
+
+            Action<int, StepState, string> mark = (i, state, detail) => Dispatcher.Invoke(() => rows[i].Set(state, detail));
 
             Task.Run(() =>
             {
+                var current = 0;
                 try
                 {
                     System.Threading.Thread.Sleep(350);
-                    // Every Discord build loads the same foldcord.asar, so close them all before
+                    // Every Discord build loads the same cloudcord.asar, so close them all before
                     // touching it; a running one keeps the file locked.
-                    step(0.15, "Closing Discord…");
+                    mark(0, StepState.Running, null);
+                    step(0.1, "Closing Discord…");
                     foreach (var b in builds) Core.KillDiscord(b);
-                    System.Threading.Thread.Sleep(800);
-                    if (install) { step(0.3, "Downloading CloudCord…"); Core.WriteDist(); System.Threading.Thread.Sleep(300); }
+                    System.Threading.Thread.Sleep(500);
+                    mark(0, StepState.Done, null);
+
+                    if (install)
+                    {
+                        current = 1;
+                        mark(1, StepState.Running, null);
+                        step(0.15, "Downloading CloudCord…");
+                        var lastUpdate = DateTime.MinValue;
+                        Core.WriteDist((done, total) =>
+                        {
+                            if ((DateTime.Now - lastUpdate).TotalMilliseconds < 120 && done != total) return;
+                            lastUpdate = DateTime.Now;
+                            var frac = total > 0 ? (double)done / total : 0;
+                            var detail = (done / 1048576.0).ToString("0.0") + (total > 0 ? " / " + (total / 1048576.0).ToString("0.0") : "") + " MB";
+                            mark(1, StepState.Running, detail);
+                            step(0.15 + 0.65 * frac, "Downloading CloudCord… " + (int)(frac * 100) + "%");
+                        });
+                        mark(1, StepState.Done, null);
+                    }
+
+                    current = rows.Count - 1;
+                    mark(current, StepState.Running, null);
                     var n = 0;
                     foreach (var b in targets)
                     {
-                        step(0.45 + 0.5 * n / targets.Count, (install ? "Installing into " : "Removing from ") + b.Name + "…");
+                        step(0.82 + 0.16 * n / targets.Count, (install ? "Installing into " : "Removing from ") + b.Name + "…");
                         if (install) Core.Inject(b); else Core.Remove(b);
                         n++;
-                        System.Threading.Thread.Sleep(300);
+                        System.Threading.Thread.Sleep(250);
                     }
+                    mark(current, StepState.Done, null);
                     step(1, "Done");
-                    System.Threading.Thread.Sleep(450);
+                    System.Threading.Thread.Sleep(600);
                     Dispatcher.Invoke(() => ShowDone(install, targets));
                 }
                 catch (Exception ex)
                 {
+                    mark(current, StepState.Failed, null);
+                    System.Threading.Thread.Sleep(500);
                     Dispatcher.Invoke(() => ShowError(ex.Message));
                 }
             });
@@ -634,10 +866,12 @@ namespace CloudCord.Installer
 
         void ShowDone(bool installed, List<DiscordBuild> targets)
         {
-            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 40) };
+            SetRing(installed ? 1 : 0);
+            skySub.Text = installed ? "All set" : "Discord, your way.";
+            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
 
             var check = new Grid { Width = 74, Height = 74, HorizontalAlignment = HorizontalAlignment.Center };
-            var circle = new Ellipse { Fill = new LinearGradientBrush(Color.FromRgb(146, 118, 255), Accent2, 45), Effect = new DropShadowEffect { BlurRadius = 30, ShadowDepth = 0, Color = Accent, Opacity = 0.8 } };
+            var circle = new Ellipse { Fill = new LinearGradientBrush(Color.FromRgb(98, 178, 255), Accent2, 45), Effect = new DropShadowEffect { BlurRadius = 30, ShadowDepth = 0, Color = Accent, Opacity = 0.8 } };
             var tick = new System.Windows.Shapes.Path
             {
                 Data = Geometry.Parse("M 22,38 L 33,49 L 53,27"), Stroke = Brushes.White, StrokeThickness = 6,
@@ -677,7 +911,9 @@ namespace CloudCord.Installer
 
         void ShowError(string message)
         {
-            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Bottom, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 0, 0, 48), Width = 520 };
+            SetRing(0);
+            skySub.Text = "Discord, your way.";
+            var stack = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
             stack.Children.Add(new TextBlock { Text = "Something went wrong", FontSize = 22, FontWeight = FontWeights.Bold, Foreground = new SolidColorBrush(Color.FromRgb(242, 63, 67)), HorizontalAlignment = HorizontalAlignment.Center });
             stack.Children.Add(new TextBlock { Text = message, FontSize = 14, Foreground = TextBrush, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center, Margin = new Thickness(0, 10, 0, 18) });
             var again = PrimaryButton("Try again", ShowChooser);
