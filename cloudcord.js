@@ -7428,21 +7428,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     onJsxCreate: () => onJsxCreate,
     patchJsx: () => patchJsx
   });
-  function onJsxCreate(Component2, callback) {
-    if (!callbacks.has(Component2))
-      callbacks.set(Component2, []);
-    callbacks.get(Component2).push(callback);
+  function onJsxCreate(Component2, callback, afterOthers = false) {
+    var list = afterOthers ? finalCallbacks : callbacks;
+    if (!list.has(Component2))
+      list.set(Component2, []);
+    list.get(Component2).push(callback);
   }
-  function deleteJsxCreate(Component2, callback) {
-    if (!callbacks.has(Component2))
+  function deleteJsxCreate(Component2, callback, afterOthers = false) {
+    var list = afterOthers ? finalCallbacks : callbacks;
+    var cbs = list.get(Component2);
+    if (!cbs)
       return;
-    var cbs = callbacks.get(Component2);
     var index = cbs.indexOf(callback);
     if (index < 0)
       return;
     cbs.splice(index, 1);
     if (cbs.length === 0)
-      callbacks.delete(Component2);
+      list.delete(Component2);
   }
   function patchJsx() {
     var callback = ([Component2], ret) => {
@@ -7460,11 +7462,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         component?.displayName,
         target?.displayName,
         target?.name
-      ].find((value) => typeof value === "string" && callbacks.has(value));
+      ].find((value) => typeof value === "string" && (callbacks.has(value) || finalCallbacks.has(value)));
       if (target && name) {
-        var cbs = callbacks.get(name);
         for (var cb of [
-          ...cbs
+          ...callbacks.get(name) ?? [],
+          ...finalCallbacks.get(name) ?? []
         ]) {
           try {
             var editable = {
@@ -7494,7 +7496,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     ];
     return () => patches3.forEach((unpatch) => unpatch());
   }
-  var callbacks, warnedCallbacks, jsxRuntime2;
+  var callbacks, finalCallbacks, warnedCallbacks, jsxRuntime2;
   var init_jsx = __esm({
     "src/lib/api/react/jsx.ts"() {
       "use strict";
@@ -7503,6 +7505,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_patcher();
       init_metro();
       callbacks = /* @__PURE__ */ new Map();
+      finalCallbacks = /* @__PURE__ */ new Map();
       warnedCallbacks = /* @__PURE__ */ new WeakSet();
       jsxRuntime2 = findByPropsLazy("jsx", "jsxs");
     }
@@ -36198,6 +36201,68 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxAppearance.ts
+  var cxAppearanceTargets;
+  var init_cxAppearance = __esm({
+    "src/lib/api/cxAppearance.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      cxAppearanceTargets = {
+        "bot-tags": {
+          plugin: "HideBotTags",
+          label: "APP and BOT tags",
+          css: '[class*="botTag"] { display: none !important; }',
+          mobile: [
+            "BotTag"
+          ]
+        },
+        "role-icons": {
+          plugin: "HideRoleIcons",
+          label: "role icons",
+          css: 'img[class*="roleIcon"] { display: none !important; }',
+          mobile: [
+            "RoleIcon"
+          ]
+        },
+        "server-tags": {
+          plugin: "HideClanTags",
+          label: "server tags",
+          css: '[class*="clanTag"], [class*="chipletContainer"] { display: none !important; }',
+          mobile: [
+            "GuildTag"
+          ]
+        },
+        "typing-indicator": {
+          plugin: "HideTypingIndicator",
+          label: "the typing indicator",
+          css: '[class*="typing_"][class*="base"], [class*="typingDots"] { display: none !important; }',
+          mobile: [
+            "TypingIndicator",
+            "TypingIndicatorInner"
+          ]
+        },
+        "jump-to-present": {
+          plugin: "HideJumpToPresent",
+          label: "the jump-to-present bar",
+          css: '[class*="jumpToPresentBar"] { display: none !important; }',
+          mobile: [
+            "JumpToPresentButton"
+          ]
+        },
+        "message-reactions": {
+          plugin: "HideReactions",
+          label: "message reactions",
+          css: '[class*="reactions_"] { display: none !important; }',
+          mobile: [
+            "MessageReactions",
+            "MessageReactionsContent"
+          ]
+        }
+      };
+    }
+  });
+
   // src/lib/api/cxCommandFunctions.ts
   function chooseOne(items) {
     return items[Math.floor(Math.random() * items.length)];
@@ -36771,11 +36836,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (!line12.trim())
         return "continue";
       var declaration2 = /^  needs ([a-z.]+)$/.exec(line12);
-      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing) {
+      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size) {
         var permission2 = declaration2[1];
         if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission2) || permissions.has(permission2))
           throw new Error("Unknown or duplicate CX permission");
         permissions.add(permission2);
+        return "continue";
+      }
+      var hide = /^  hide ([a-z-]+)$/.exec(line12);
+      if (hide) {
+        var target = hide[1];
+        if (!Object.prototype.hasOwnProperty.call(cxAppearanceTargets, target) || hiddenTargets.has(target))
+          throw new Error("Unknown or duplicate appearance target");
+        hiddenTargets.add(target);
+        current = void 0;
         return "continue";
       }
       if (line12 === "  before send suppressReplyPing" && !suppressReplyPing) {
@@ -36955,17 +37029,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var permissions = /* @__PURE__ */ new Set();
     var commands3 = [];
     var transforms = [];
+    var hiddenTargets = /* @__PURE__ */ new Set();
     var suppressReplyPing = false;
     var current;
     for (var line1 of lines)
       _loop2(line1);
-    if (!commands3.length && !transforms.length && !suppressReplyPing || commands3.some((command) => !command.actions.length))
-      throw new Error("A plugin needs a command with an action or an outgoing text transform");
+    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size || commands3.some((command) => !command.actions.length))
+      throw new Error("A plugin needs a command or a supported behavior");
     var required = /* @__PURE__ */ new Set();
     if (commands3.length)
       required.add("commands.register");
     if (suppressReplyPing)
       required.add("replies.suppressping");
+    if (hiddenTargets.size)
+      required.add("appearance.hide");
     for (var { stage } of transforms)
       required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
     for (var { actions } of commands3) {
@@ -36992,7 +37069,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         ...permissions
       ],
       messageTransforms: transforms,
-      suppressReplyPing
+      suppressReplyPing,
+      hiddenTargets: [
+        ...hiddenTargets
+      ]
     };
   }
   function reviewCx(source) {
@@ -37010,7 +37090,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       kind: document.kind,
       name: document.name,
       permissions: document.permissions,
-      effects: document.permissions.map((permission) => permissionLabels[permission]),
+      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)),
       commands: document.commands.map((command) => "/" + command.name)
     };
   }
@@ -37106,6 +37186,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           return outgoing;
         }, command2.text, command2.actions.some(sendsMessage), command2.actions.some((action) => action.kind === "reply or send"), command2.inputs));
       };
+      for (var target of document.hiddenTargets) {
+        if (!host.hideAppearanceTarget)
+          throw new Error("This client cannot hide " + cxAppearanceTargets[target].label);
+        cleanups.push(host.hideAppearanceTarget(target));
+      }
       if (document.suppressReplyPing) {
         if (!host.registerReplyPingSuppression)
           throw new Error("This client cannot suppress reply pings");
@@ -37165,6 +37250,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_type_of();
+      init_cxAppearance();
       init_cxCommandFunctions();
       init_cxNumeric();
       init_cxMessageTransforms();
@@ -37177,7 +37263,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.send": "Send the result to the current chat when you run a listed command",
         "messages.transform": "Change text before Discord sends messages you compose",
         "messages.edit.transform": "Change text when you submit a message edit",
-        "replies.suppressping": "Send replies without pinging the person you reply to"
+        "replies.suppressping": "Send replies without pinging the person you reply to",
+        "appearance.hide": "Hide the listed interface elements on this device"
       };
       leetCharacters = {
         a: "4",
@@ -37282,6 +37369,54 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_google_that = __esm({
     "../examples/cx/catalog/plugins/google-that.cx"() {
       google_that_default = 'plugin "GoogleThat":\n  needs commands.register\n  needs messages.send\n  on command "googlethat":\n    input "input" text\n    input "engine" choice "Google,Bing,Yahoo,DuckDuckGo,Baidu,Yandex,Ecosia,Ask,AOL,LetMeGoogleThatForYou" optional\n    input "hyperlink" boolean optional\n    input "hide-embed" boolean optional\n    send "${searchLink(input, engine, hyperlink, hide-embed)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-bot-tags.cx
+  var hide_bot_tags_default;
+  var init_hide_bot_tags = __esm({
+    "../examples/cx/catalog/plugins/hide-bot-tags.cx"() {
+      hide_bot_tags_default = 'plugin "HideBotTags":\n  needs appearance.hide\n  hide bot-tags\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-clan-tags.cx
+  var hide_clan_tags_default;
+  var init_hide_clan_tags = __esm({
+    "../examples/cx/catalog/plugins/hide-clan-tags.cx"() {
+      hide_clan_tags_default = 'plugin "HideClanTags":\n  needs appearance.hide\n  hide server-tags\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-jump-to-present.cx
+  var hide_jump_to_present_default;
+  var init_hide_jump_to_present = __esm({
+    "../examples/cx/catalog/plugins/hide-jump-to-present.cx"() {
+      hide_jump_to_present_default = 'plugin "HideJumpToPresent":\n  needs appearance.hide\n  hide jump-to-present\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-reactions.cx
+  var hide_reactions_default;
+  var init_hide_reactions = __esm({
+    "../examples/cx/catalog/plugins/hide-reactions.cx"() {
+      hide_reactions_default = 'plugin "HideReactions":\n  needs appearance.hide\n  hide message-reactions\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-role-icons.cx
+  var hide_role_icons_default;
+  var init_hide_role_icons = __esm({
+    "../examples/cx/catalog/plugins/hide-role-icons.cx"() {
+      hide_role_icons_default = 'plugin "HideRoleIcons":\n  needs appearance.hide\n  hide role-icons\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-typing-indicator.cx
+  var hide_typing_indicator_default;
+  var init_hide_typing_indicator = __esm({
+    "../examples/cx/catalog/plugins/hide-typing-indicator.cx"() {
+      hide_typing_indicator_default = 'plugin "HideTypingIndicator":\n  needs appearance.hide\n  hide typing-indicator\n';
     }
   });
 
@@ -37979,6 +38114,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_clap_text();
       init_clear_urls();
       init_google_that();
+      init_hide_bot_tags();
+      init_hide_clan_tags();
+      init_hide_jump_to_present();
+      init_hide_reactions();
+      init_hide_role_icons();
+      init_hide_typing_indicator();
       init_ingtoninator();
       init_leet_text();
       init_more_commands();
@@ -38093,6 +38234,30 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "GoogleThat",
             source: google_that_default
+          },
+          {
+            name: "HideBotTags",
+            source: hide_bot_tags_default
+          },
+          {
+            name: "HideClanTags",
+            source: hide_clan_tags_default
+          },
+          {
+            name: "HideJumpToPresent",
+            source: hide_jump_to_present_default
+          },
+          {
+            name: "HideReactions",
+            source: hide_reactions_default
+          },
+          {
+            name: "HideRoleIcons",
+            source: hide_role_icons_default
+          },
+          {
+            name: "HideTypingIndicator",
+            source: hide_typing_indicator_default
           },
           {
             name: "Ingtoninator",
@@ -38502,6 +38667,35 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (settings.safeMode?.enabled)
           throw new Error("CX is unavailable in Safe Mode");
         session.enable(candidate.source, {
+          hideAppearanceTarget(target) {
+            var names = cxAppearanceTargets[target].mobile;
+            var hidden = true;
+            var listeners2 = /* @__PURE__ */ new Set();
+            var subscribe = (listener) => {
+              listeners2.add(listener);
+              return () => {
+                listeners2.delete(listener);
+              };
+            };
+            var isHidden = () => hidden && !settings.safeMode?.enabled;
+            function Visibility({ element }) {
+              return React2.useSyncExternalStore(subscribe, isHidden) ? null : element;
+            }
+            var wrap = (_2, element) => /* @__PURE__ */ jsx(Visibility, {
+              element
+            }, element.key);
+            for (var name of names)
+              onJsxCreate(name, wrap, true);
+            return () => {
+              hidden = false;
+              for (var name2 of names)
+                deleteJsxCreate(name2, wrap, true);
+              for (var listener of [
+                ...listeners2
+              ])
+                listener();
+            };
+          },
           registerReplyPingSuppression() {
             return onSendMessage((_message, options) => {
               if (settings.safeMode?.enabled || !options?.messageReference)
@@ -38830,6 +39024,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_updater();
       init_modules();
       init_loader();
+      init_jsx();
       init_settings();
       init_toasts();
       init_metro();
@@ -43473,7 +43668,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "264b2e4e4fcdee0b5d16a7bf28c9cda0a2f4131e";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "bd0e747604697a75fcf8639b598cb504fbea459f";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
