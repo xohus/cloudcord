@@ -306,6 +306,7 @@ jobs:
             desktop/client/dist/runtime
             desktop/client/dist/CloudCordSetup.exe
             desktop/client/dist/cloudcord.exe
+            desktop/client/dist/CloudCordInstaller.exe
             desktop/client/dist/CloudCordSetup-Test.exe
             desktop/client/dist/cloudcord-test.exe
             desktop/client/dist/desktop-test.asar
