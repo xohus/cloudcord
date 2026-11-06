@@ -36595,6 +36595,98 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxClientCommands.ts
+  function formatCxSpotify(action, text, track) {
+    if (!track)
+      return;
+    var artist = track.artists?.[0];
+    var external = artist?.external_urls?.spotify;
+    var artistId = typeof external === "string" ? /^https:\/\/open\.spotify\.com\/artist\/([a-z0-9]{22})(?:\?[^#]*)?$/i.exec(external)?.[1] : void 0;
+    var [type, id] = action === "spotifyTrack" ? [
+      "track",
+      track.id
+    ] : action === "spotifyAlbum" ? [
+      "album",
+      track.album?.id
+    ] : [
+      "artist",
+      artistId ?? artist?.id
+    ];
+    if (typeof id !== "string" || !/^[a-z0-9]{22}$/i.test(id))
+      return;
+    return [
+      text.trim(),
+      "https://open.spotify.com/" + type + "/" + id
+    ].filter(Boolean).join(" ");
+  }
+  function formatCxRoleMembers(role, guild, members, getUser) {
+    if (!guild)
+      return "Use this in a server.";
+    var matching = members.filter((member) => role === guild || member?.roles?.includes(role));
+    if (!matching.length)
+      return "Nobody loaded has that role. Open the member list to load more members.";
+    var names = matching.slice(0, 32).map(({ userId, nick }) => {
+      var user = getUser(userId);
+      return (nick || user?.globalName || user?.username || userId).slice(0, 64).replace(/[\\*_~`<>@\r\n]/g, (char) => char === "@" ? "\uFF20" : char === "\r" || char === "\n" ? " " : "\\" + char);
+    });
+    return "**" + matching.length + " loaded member" + (matching.length === 1 ? "" : "s") + "** with <@&" + role + ">:\n" + names.join(", ") + (matching.length > names.length ? ", \u2026" : "");
+  }
+  function markCxServersRead(stores, acknowledge) {
+    var channels2 = /* @__PURE__ */ new Map();
+    for (var { id } of Object.values(stores.guilds.getGuilds())) {
+      var listed = stores.channels.getChannels(id);
+      var threads = Object.values(stores.threads?.getActiveJoinedThreadsForGuild(id) ?? {}).flatMap((group) => Object.values(group));
+      for (var row of [
+        ...listed?.SELECTABLE ?? [],
+        ...listed?.VOCAL ?? [],
+        ...threads
+      ]) {
+        var channelId = row?.channel?.id;
+        if (!channelId || channels2.has(channelId) || !stores.read.hasUnread(channelId))
+          continue;
+        var messageId = stores.read.lastMessageId(channelId);
+        if (messageId)
+          channels2.set(channelId, {
+            channelId,
+            messageId,
+            readStateType: 0
+          });
+      }
+    }
+    if (!channels2.size)
+      return "Everything is already read.";
+    acknowledge([
+      ...channels2.values()
+    ]);
+    return "Marked " + channels2.size + " channel" + (channels2.size === 1 ? "" : "s") + " as read.";
+  }
+  var cxClientFunctions;
+  var init_cxClientCommands = __esm({
+    "src/lib/api/cxClientCommands.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      cxClientFunctions = {
+        roleMembers: {
+          permission: "guild.members",
+          input: "role"
+        },
+        spotifyTrack: {
+          permission: "spotify.activity",
+          input: "text"
+        },
+        spotifyAlbum: {
+          permission: "spotify.activity",
+          input: "text"
+        },
+        spotifyArtist: {
+          permission: "spotify.activity",
+          input: "text"
+        }
+      };
+    }
+  });
+
   // src/lib/api/cxCommandFunctions.ts
   function chooseOne(items) {
     return items[Math.floor(Math.random() * items.length)];
@@ -37506,7 +37598,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         });
         return "continue";
       }
-      var input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice|user)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line12);
+      var input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice|user|role)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line12);
       if (input && current && !current.actions.length) {
         var [, name22, type, list, optional] = input;
         if (name22 === "send" || name22 === "text" && current.text || current.inputs.length >= 4 || current.inputs.some((option) => option.name === name22))
@@ -37520,6 +37612,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           required: !optional,
           choices
         });
+        return "continue";
+      }
+      if (line12 === "    mark servers read" && current && !current.actions.length && !current.text && !current.inputs.length) {
+        current.actions.push({
+          kind: "mark-read",
+          message: ""
+        });
+        current = void 0;
         return "continue";
       }
       var pick = /^    send one of (\[.{1,3000}\])$/.exec(line12);
@@ -37564,6 +37664,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           var names = argumentNames(args);
           if (name3 === "avatar" && names.length === 1 && declaredInputs.some((input2) => input2.name === names[0] && input2.type === "user")) {
             readsAvatar = true;
+            return "";
+          }
+          if (Object.prototype.hasOwnProperty.call(cxClientFunctions, name3)) {
+            var service = cxClientFunctions[name3];
+            var option = declaredInputs.find((input2) => input2.name === names[0]);
+            if (names.length !== 1 || option?.type !== service.input || name3 === "roleMembers" && kind2 !== "reply")
+              return expression;
+            clientPermissions.add(service.permission);
             return "";
           }
           return Object.prototype.hasOwnProperty.call(textFunctions, name3) && textFunctions[name3].length === names.length && names.every((name4) => inputs.has(name4)) ? "" : expression;
@@ -37648,6 +37756,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var incoming = [];
     var suppressReplyPing = false;
     var readsAvatar = false;
+    var clientPermissions = /* @__PURE__ */ new Set();
     var current;
     for (var line1 of lines)
       _loop2(line1);
@@ -37666,14 +37775,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       required.add("profilemenu.copy");
     if (readsAvatar)
       required.add("profile.avatar");
+    for (var permission of clientPermissions)
+      required.add(permission);
     for (var { kind: kind1 } of incoming)
       required.add(incomingPermissions[kind1]);
     for (var { stage } of transforms)
       required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
     for (var { actions } of commands3) {
       for (var action of actions) {
-        for (var permission of actionPermissions[action.kind])
-          required.add(permission);
+        for (var permission1 of actionPermissions[action.kind])
+          required.add(permission1);
         if (action.fallback)
           required.add("reply.local");
       }
@@ -37790,6 +37901,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           var _loop3 = function(action3) {
             if (!actionPermissions[action3.kind].every((permission) => grants.has(permission)))
               return "continue";
+            if (action3.kind === "mark-read") {
+              if (invocation?.reply && invocation.markServersRead) {
+                try {
+                  invocation.reply(invocation.markServersRead());
+                } catch (e) {
+                  invocation.reply("Couldn\u2019t mark servers as read.");
+                }
+              }
+              return "continue";
+            }
             if (action3.kind === "toast") {
               host.toast(action3.message);
               return "continue";
@@ -37797,7 +37918,21 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var invalid = false;
             var message = action3.choices ? chooseOne(action3.choices) : action3.message.replace(textExpression, (_2, name, args) => {
               var values = args === void 0 ? [] : argumentNames(args).map((input2) => inputs.get(input2));
-              var value2 = args === void 0 ? inputs.get(name) : name === "avatar" ? getAvatarUrl(host, grants, values[0]) : textFunctions[name](...values);
+              var value2;
+              if (args === void 0)
+                value2 = inputs.get(name);
+              else if (name === "avatar")
+                value2 = getAvatarUrl(host, grants, values[0]);
+              else if (Object.prototype.hasOwnProperty.call(cxClientFunctions, name)) {
+                var service = name;
+                if (grants.has(cxClientFunctions[service].permission)) {
+                  try {
+                    value2 = invocation?.lookup?.(service, values[0]);
+                  } catch (e) {
+                  }
+                }
+              } else
+                value2 = textFunctions[name](...values);
               if (value2 === void 0)
                 invalid = true;
               return value2 ?? "";
@@ -37825,7 +37960,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           for (var input of command2.inputs) {
             var value = invocation?.inputs?.[input.name];
             var serialized = typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : "";
-            var valid = serialized.trim() && serialized.length <= 4e3 && (input.type === "text" ? typeof value === "string" : input.type === "boolean" ? typeof value === "boolean" : input.type === "user" ? isCxProfileUserId(value) : input.type === "integer" ? /^-?\d+$/.test(serialized) && Number.isSafeInteger(Number(serialized)) : input.choices?.includes(serialized));
+            var valid = serialized.trim() && serialized.length <= 4e3 && (input.type === "text" ? typeof value === "string" : input.type === "boolean" ? typeof value === "boolean" : input.type === "user" || input.type === "role" ? isCxProfileUserId(value) : input.type === "integer" ? /^-?\d+$/.test(serialized) && Number.isSafeInteger(Number(serialized)) : input.choices?.includes(serialized));
             if (!valid && (input.required || value !== void 0))
               return;
             inputs.set(input.name, valid ? serialized : "");
@@ -37933,12 +38068,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_promiseAllSettled();
       init_type_of();
       init_cxAppearance();
+      init_cxClientCommands();
       init_cxCommandFunctions();
       init_cxIncoming();
       init_cxNumeric();
       init_cxMessageTransforms();
       init_cxProfileMenu();
       init_cxProfileMenu();
+      init_cxClientCommands();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -37950,6 +38087,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.edit.transform": "Change text when you submit a message edit",
         "replies.suppressping": "Send replies without pinging the person you reply to",
         "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
+        "guild.members": "Read loaded members with the role you select in the current server",
+        "spotify.activity": "Read your current Spotify track, album, or artist when the command runs",
+        "servers.markread": "Mark unread server channels as read when you run the listed command",
         "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
         "appearance.hide": "Hide the listed interface elements on this device",
         "appearance.style": "Apply the listed visual changes on this device",
@@ -38004,6 +38144,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "reply or send": [
           "reply.local",
           "messages.send"
+        ],
+        "mark-read": [
+          "servers.markread",
+          "reply.local"
         ]
       };
       sendsMessage = (action) => action.kind === "send" || action.kind === "reply or send";
@@ -38370,6 +38514,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/in-role.cx
+  var in_role_default;
+  var init_in_role = __esm({
+    "../examples/cx/catalog/plugins/in-role.cx"() {
+      in_role_default = 'plugin "InRole":\n  needs commands.register\n  needs guild.members\n  needs reply.local\n  on command "inrole":\n    input "role" role\n    reply "${roleMembers(role)}"\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/ingtoninator.cx
   var ingtoninator_default;
   var init_ingtoninator = __esm({
@@ -38439,6 +38591,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_polish_wording = __esm({
     "../examples/cx/catalog/plugins/polish-wording.cx"() {
       polish_wording_default = 'plugin "PolishWording":\n  needs messages.transform\n  before send polishWording "apostrophes"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/read-all-notifications.cx
+  var read_all_notifications_default;
+  var init_read_all_notifications = __esm({
+    "../examples/cx/catalog/plugins/read-all-notifications.cx"() {
+      read_all_notifications_default = 'plugin "ReadAllNotifications":\n  needs commands.register\n  needs servers.markread\n  needs reply.local\n  on command "readall":\n    mark servers read\n';
     }
   });
 
@@ -38519,6 +38679,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_space_out = __esm({
     "../examples/cx/catalog/plugins/space-out.cx"() {
       space_out_default = 'plugin "SpaceOut":\n  needs commands.register\n  needs messages.send\n  on command "spaceout" with text:\n    send "${spaced(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/spotify-share-commands.cx
+  var spotify_share_commands_default;
+  var init_spotify_share_commands = __esm({
+    "../examples/cx/catalog/plugins/spotify-share-commands.cx"() {
+      spotify_share_commands_default = 'plugin "SpotifyShareCommands":\n  needs commands.register\n  needs spotify.activity\n  needs messages.send\n  needs reply.local\n  on command "track":\n    input "message" text optional\n    send "${spotifyTrack(message)}" else "No Spotify track to share."\n  on command "album":\n    input "message" text optional\n    send "${spotifyAlbum(message)}" else "No Spotify album to share."\n  on command "artist":\n    input "message" text optional\n    send "${spotifyArtist(message)}" else "No Spotify artist to share."\n';
     }
   });
 
@@ -39446,6 +39614,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_high_contrast_text();
       init_highlight_links();
       init_ignore_calls();
+      init_in_role();
       init_ingtoninator();
       init_keyword_notify();
       init_leet_text();
@@ -39455,6 +39624,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_no_reply_mention();
       init_normalize_message_links();
       init_polish_wording();
+      init_read_all_notifications();
       init_reply_ping_control();
       init_reverse_text();
       init_round_server_icons();
@@ -39465,6 +39635,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_silence_users();
       init_silent_message_toggle();
       init_space_out();
+      init_spotify_share_commands();
       init_starify();
       init_sticker_blocker();
       init_talk_in_reverse();
@@ -39757,6 +39928,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: ignore_calls_default
           },
           {
+            name: "InRole",
+            source: in_role_default
+          },
+          {
             name: "Ingtoninator",
             source: ingtoninator_default
           },
@@ -39791,6 +39966,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "PolishWording",
             source: polish_wording_default
+          },
+          {
+            name: "ReadAllNotifications",
+            source: read_all_notifications_default
           },
           {
             name: "ReplyPingControl",
@@ -39831,6 +40010,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "SpaceOut",
             source: space_out_default
+          },
+          {
+            name: "SpotifyShareCommands",
+            source: spotify_share_commands_default
           },
           {
             name: "Starify",
@@ -40602,7 +40785,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                   name: input.name,
                   description: input.name.replace(/[_-]/g, " "),
                   required: input.required,
-                  type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN : input.type === "user" ? ApplicationCommandOptionType.USER : ApplicationCommandOptionType.STRING,
+                  type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN : input.type === "user" ? ApplicationCommandOptionType.USER : input.type === "role" ? ApplicationCommandOptionType.ROLE : ApplicationCommandOptionType.STRING,
                   choices: input.choices?.map((value) => ({
                     name: value,
                     displayName: value,
@@ -40632,7 +40815,40 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                   reply: (message) => {
                     if (context.channel?.id)
                       messageUtil.sendBotMessage(context.channel.id, message);
-                  }
+                  },
+                  lookup(name2, input) {
+                    if (name2 === "roleMembers") {
+                      var guild = context.guild?.id ?? ChannelStore?.getChannel?.(context.channel?.id)?.guild_id;
+                      return formatCxRoleMembers(input, guild, guild ? GuildMemberStore?.getMembers?.(guild) ?? [] : [], (id) => UserStore2?.getUser?.(id));
+                    }
+                    var track = SpotifyStore?.getTrack?.();
+                    if (track)
+                      return formatCxSpotify(name2, input, track);
+                    var activity = SpotifyStore?.getActivity?.();
+                    return formatCxSpotify(name2, input, {
+                      id: activity?.sync_id,
+                      album: {
+                        id: activity?.metadata?.album_id
+                      },
+                      artists: [
+                        {
+                          id: activity?.metadata?.artist_ids?.[0]
+                        }
+                      ]
+                    });
+                  },
+                  markServersRead: () => markCxServersRead({
+                    guilds: GuildStore,
+                    channels: GuildChannelStore,
+                    threads: ActiveJoinedThreadsStore,
+                    read: ReadStateStore
+                  }, (channels2) => {
+                    FluxDispatcher.dispatch({
+                      type: "BULK_ACK",
+                      context: "APP",
+                      channels: channels2
+                    });
+                  })
                 });
                 if (outgoing !== void 0)
                   return {
@@ -40861,7 +41077,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, appearanceBindings, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, appearanceBindings, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -40892,6 +41108,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       MessageStore = findByStoreNameLazy("MessageStore");
       RelationshipStore = findByStoreNameLazy("RelationshipStore");
       UserProfileStore = findByStoreNameLazy("UserProfileStore");
+      GuildMemberStore = findByStoreNameLazy("GuildMemberStore");
+      GuildStore = findByStoreNameLazy("GuildStore");
+      GuildChannelStore = findByStoreNameLazy("GuildChannelStore");
+      ActiveJoinedThreadsStore = findByStoreNameLazy("ActiveJoinedThreadsStore");
+      ReadStateStore = findByStoreNameLazy("ReadStateStore");
+      SpotifyStore = findByStoreNameLazy("SpotifyStore");
       appearanceBindings = /* @__PURE__ */ new Map();
       profileMenuActions = /* @__PURE__ */ new Set();
     }
@@ -45530,7 +45752,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "1a687078d100cfc6fc5877297df5a36db858060c";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "ec7273211efaa930e71a69bbec003963ac976b51";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
