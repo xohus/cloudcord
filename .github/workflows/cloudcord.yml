@@ -15,6 +15,7 @@ concurrency:
       - "desktop/client/src/utils/localRelationshipActions.ts"
       - "desktop/client/src/utils/cx*.ts"
       - "desktop/client/scripts/cx-migrate-palette.mjs"
+      - "desktop/client/scripts/cx-migrate-vendetta.mjs"
       - "desktop/client/scripts/sync-cx-catalog.cjs"
       - "examples/cx/**"
       - "desktop/client/src/utils/ccp.ts"

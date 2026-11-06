@@ -127,7 +127,9 @@ export default function CxExtensions() {
                             ...(theme.text ? { TEXT_NORMAL: palette(theme.text), TEXT_PRIMARY: palette(theme.text), TEXT_DEFAULT: palette(theme.text), TEXT_STRONG: palette(theme.text) } : {}),
                             ...(theme.muted ? { TEXT_MUTED: palette(theme.muted), TEXT_SECONDARY: palette(theme.muted), TEXT_SUBTLE: palette(theme.muted) } : {}),
                             ...(theme.accent ? { TEXT_LINK: palette(theme.accent) } : {}),
+                            ...Object.fromEntries(Object.entries(theme.semanticColors ?? {}).map(([token, color]) => [token, palette(color)])),
                         },
+                        ...(theme.rawColors ? { rawColors: { ...theme.rawColors } } : {}),
                         ...(theme.wallpaper ? { background: { url: theme.wallpaper, alpha: theme.wallpaperOpacity ?? 0.85 } } : {}),
                     }, { mode: theme.mode });
                     return () => updateBunnyColor(getCurrentTheme()?.data ?? null);

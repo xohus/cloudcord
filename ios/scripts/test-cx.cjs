@@ -24,6 +24,16 @@ vm.runInNewContext(catalogCode, { module: catalogModule });
 const { cxCatalog } = catalogModule.exports;
 assert.equal(cxCatalog.plugins.length, generated.plugins);
 assert.equal(cxCatalog.themes.length, generated.themes);
+const catppuccinIndex = JSON.parse(read("themes/mobile/index.json")).themes.filter(entry =>
+    entry.repo === "https://github.com/catppuccin/vendetta");
+assert.equal(catppuccinIndex.length, 56);
+for (const entry of catppuccinIndex) {
+    const theme = parseCx(cxCatalog.themes.find(theme => theme.name === entry.name.replace(/ - Blue$/, "")).source);
+    assert.equal(theme.accent, entry.preview.accent);
+    assert.equal(theme.mode, entry.id.includes("/latte/") ? "light" : "dark");
+    assert.equal(Object.keys(theme.semanticColors).length, 46);
+    assert.equal(Object.keys(theme.rawColors).length, 144);
+}
 const basicBackground = parseCx(cxCatalog.themes.find(entry => entry.name === "BasicBackground (Chat)").source);
 assert.equal(basicBackground.wallpaperOpacity, 0.85);
 assert.match(basicBackground.wallpaper, /^data:image\/jpeg;base64,/);
@@ -71,6 +81,9 @@ for (const unsafe of ['    eval "code"', '    toast token', '    fetch "https://
 assert.throws(() => parseCx(plugin.replace("ui.toast", "tokens.read")), /permission/);
 assert.throws(() => parseCx(theme + '\n  wallpaper: "https://example.com/image.png"'), /embedded/);
 assert.throws(() => parseCx(theme + '\n  wallpaper: "data:image/svg+xml;base64,AAAA"'), /embedded/);
+assert.throws(() => parseCx(theme + '\n  semantic __proto__: #123456'), /theme field/);
+assert.throws(() => parseCx(theme + '\n  raw BRAND_500: url(https://example.com)'), /theme field/);
+assert.throws(() => parseCx(theme + '\n  semantic TEXT_PRIMARY: #123456\n  semantic TEXT_PRIMARY: #654321'), /Duplicate/);
 const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPZ0AAAAASUVORK5CYII=";
 assert.equal(parseCx(theme + '\n  wallpaper: "' + png + '"').wallpaper, png);
 assert.throws(() => parseCx(theme + '\n  wallpaper-opacity: 75'), /embedded wallpaper/);
@@ -361,7 +374,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 if (desktop) edit("channel", "message", message);
                 else edit(message);
                 assert.equal(message.content, "[link](https://example.test/)");
-                assert.throws(() => parseCx(source.replace("  needs messages.edit.transform\n", "")), /permissions/);
+                const windowsSource = source.replace(/\r?\n/g, "\r\n");
+                assert.throws(() => parseCx(windowsSource.replace(/  needs messages\.edit\.transform\r\n/, "")), /permissions/);
             } else {
                 assert.equal(editHooks.size, 0);
             }
@@ -411,12 +425,22 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.ok(stylesheet.textContent.includes("--chat-background-default: " + background));
                 assert.ok(stylesheet.textContent.includes("--text-default: " + text));
             } else {
-                assert.equal(nativeTheme.semanticColors.BACKGROUND_PRIMARY[0], background);
+                assert.equal(nativeTheme.semanticColors.BACKGROUND_PRIMARY[0], mode === "light" ? "#e6e9ef" : background);
                 assert.equal(nativeTheme.semanticColors.TEXT_DEFAULT[0], text);
                 assert.equal(nativeMode, mode);
             }
             click(render(), "Disable " + label);
         }
+        selectCatalog("Catppuccin Mocha - Mauve");
+        click(render(), "Allow for this session");
+        if (desktop) {
+            assert.ok(stylesheet.textContent.includes("--brand-500: #cba6f7;"));
+            assert.ok(stylesheet.textContent.includes("--background-mentioned: #f9e2af17;"));
+        } else {
+            assert.equal(nativeTheme.rawColors.BRAND_500, "#cba6f7");
+            assert.equal(nativeTheme.semanticColors.BACKGROUND_MENTIONED[0], "#f9e2af17");
+        }
+        click(render(), "Disable Catppuccin Mocha - Mauve");
     }
     const { migrateCxPalette } = await import("../../desktop/client/scripts/cx-migrate-palette.mjs");
     assert.equal(parseCx(migrateCxPalette(":root { --background-primary: #123; --brand-500: #8765ab; }", "Test")).background, "#112233");
@@ -428,5 +452,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
     assert.equal(migrated.surface, "#334455");
     assert.equal(migrated.wallpaper, png);
     assert.equal(migrated.wallpaperOpacity, 0.75);
+    const { migrateCxVendetta } = await import("../../desktop/client/scripts/cx-migrate-vendetta.mjs");
+    const vendetta = { name: "Sample", spec: 2, semanticColors: { BACKGROUND_PRIMARY: ["#abcdef", "#123456"] }, rawColors: { BRAND_500: "#fedcba" } };
+    assert.equal(parseCx(migrateCxVendetta(vendetta, "dark")).semanticColors.BACKGROUND_PRIMARY, "#abcdef");
+    assert.equal(parseCx(migrateCxVendetta(vendetta, "light")).semanticColors.BACKGROUND_PRIMARY, "#123456");
+    assert.throws(() => migrateCxVendetta({ ...vendetta, background: { url: "https://example.com/bg.jpg" } }, "dark"), /without wallpapers/);
     console.log(`PASS shared CX catalog with ${cxCatalog.plugins.length} plugins and ${cxCatalog.themes.length} themes, permission approval, both command adapters and strict palette migration`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

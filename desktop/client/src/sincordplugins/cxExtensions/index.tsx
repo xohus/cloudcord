@@ -80,8 +80,18 @@ export function CxSettings() {
                     const sidebar = theme.sidebar ?? surface;
                     const shade = Math.round((1 - (theme.wallpaperOpacity ?? 1)) * 255).toString(16).padStart(2, "0");
                     const tint = theme.background + shade;
+                    const colorTokens = {
+                        ...Object.fromEntries(Object.entries(theme.rawColors ?? {}).filter(([key]) =>
+                            /^(?:BRAND|PRIMARY|RED|GREEN|BLUE|YELLOW|PLUM|WHITE|BLACK)_[0-9]+$/.test(key))),
+                        ...Object.fromEntries(Object.entries(theme.semanticColors ?? {}).filter(([key]) =>
+                            /^(?:BACKGROUND|TEXT|INTERACTIVE|CHANNEL|BUTTON|STATUS|MENTION|SCROLLBAR|HEADER|BORDER|INPUT|BG)_/.test(key))),
+                    };
+                    const colorVariables = Object.entries(colorTokens)
+                        .map(([key, color]) => "--" + key.toLowerCase().replaceAll("_", "-") + ": " + color + ";")
+                        .join("\n");
                     style.textContent = `
                         .theme-dark, .theme-light {
+                            ${colorVariables}
                             ${theme.mode ? `color-scheme: ${theme.mode};` : ""}
                             --background-primary: ${theme.background};
                             --background-secondary: ${surface};

@@ -58,6 +58,8 @@ export type CxTheme = {
     accent?: string;
     wallpaper?: string;
     wallpaperOpacity?: number;
+    semanticColors?: Record<string, string>;
+    rawColors?: Record<string, string>;
 };
 type CxPlugin = {
     kind: "plugin";
@@ -93,6 +95,15 @@ export function parseCx(source: string): CxDocument {
         const seen = new Set<string>();
         for (const line of lines) {
             if (!line.trim()) continue;
+            const token = /^  (semantic|raw) ([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*): (#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?)$/.exec(line);
+            if (token) {
+                const [, kind, name, color] = token;
+                const colors = kind === "semantic" ? theme.semanticColors ??= {} : theme.rawColors ??= {};
+                if (name.length > 64 || Object.prototype.hasOwnProperty.call(colors, name) || Object.keys(colors).length >= 256)
+                    throw new Error("Duplicate, oversized, or too many theme color tokens");
+                colors[name] = color;
+                continue;
+            }
             const field = /^  (mode|background|surface|sidebar|text|muted|accent|wallpaper|wallpaper-opacity): (.+)$/.exec(line);
             if (!field || seen.has(field[1])) throw new Error("Unknown or duplicate theme field");
             const [, key, value] = field;
