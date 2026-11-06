@@ -40325,6 +40325,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         ].forEach((f) => f && unload.push(f)));
         initDebugger();
         globalThis.bunny = lib_exports;
+        console.log("CloudCord is ready!");
         logger.log("CloudCord is ready!");
       })();
     }
@@ -40334,7 +40335,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "410ab6b736c2880da9b9ce03319004c134775906";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "51ef3e2fb6c795398daf36688fba48bb40924a8e";
   var rain = globalThis.__RAIN_LOADER__;
   if (rain && !globalThis.__CLOUDCORD_LOADER__) {
     globalThis.__CLOUDCORD_ORIGINAL_RAIN__ = true;
