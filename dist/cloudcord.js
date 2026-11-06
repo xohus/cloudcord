@@ -36258,6 +36258,55 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "MessageReactions",
             "MessageReactionsContent"
           ]
+        },
+        "profile-effects": {
+          plugin: "HideProfileEffects",
+          label: "profile effects",
+          css: '[class*="profileEffects"] { display: none !important; }',
+          mobile: [
+            "ProfileEffect",
+            "WrappedProfileEffect"
+          ]
+        },
+        "new-messages-bar": {
+          plugin: "HideNewMessagesBar",
+          label: "the new messages bar",
+          css: '[class*="newMessagesBar"] { display: none !important; }',
+          mobile: [
+            "NewMessagesChatBar"
+          ]
+        },
+        "voice-stream-previews": {
+          plugin: "HideStreamPreviews",
+          label: "voice-channel stream previews",
+          css: '[class*="streamPreview"] { display: none !important; }',
+          mobile: [
+            "VoicePanelStreamPreview"
+          ]
+        },
+        "nameplates": {
+          plugin: "HideNameplates",
+          label: "nameplates",
+          css: '[class*="nameplate"] { display: none !important; }',
+          mobile: [
+            "Nameplate"
+          ]
+        },
+        "avatar-decorations": {
+          plugin: "HideAvatarDecorations",
+          label: "avatar decorations",
+          css: '[class*="avatarDecoration"] { display: none !important; }',
+          mobile: [
+            "CutoutableAvatarDecoration"
+          ]
+        },
+        "server-banner": {
+          plugin: "HideServerBanner",
+          label: "the channel list server banner",
+          css: '[class*="animatedContainer"][class*="bannerImage"], [class*="bannerImage"] { display: none !important; }',
+          mobile: [
+            "ReanimatedGuildBanner"
+          ]
         }
       };
     }
@@ -37372,6 +37421,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-avatar-decorations.cx
+  var hide_avatar_decorations_default;
+  var init_hide_avatar_decorations = __esm({
+    "../examples/cx/catalog/plugins/hide-avatar-decorations.cx"() {
+      hide_avatar_decorations_default = 'plugin "HideAvatarDecorations":\n  needs appearance.hide\n  hide avatar-decorations\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-bot-tags.cx
   var hide_bot_tags_default;
   var init_hide_bot_tags = __esm({
@@ -37396,6 +37453,30 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-nameplates.cx
+  var hide_nameplates_default;
+  var init_hide_nameplates = __esm({
+    "../examples/cx/catalog/plugins/hide-nameplates.cx"() {
+      hide_nameplates_default = 'plugin "HideNameplates":\n  needs appearance.hide\n  hide nameplates\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-new-messages-bar.cx
+  var hide_new_messages_bar_default;
+  var init_hide_new_messages_bar = __esm({
+    "../examples/cx/catalog/plugins/hide-new-messages-bar.cx"() {
+      hide_new_messages_bar_default = 'plugin "HideNewMessagesBar":\n  needs appearance.hide\n  hide new-messages-bar\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-profile-effects.cx
+  var hide_profile_effects_default;
+  var init_hide_profile_effects = __esm({
+    "../examples/cx/catalog/plugins/hide-profile-effects.cx"() {
+      hide_profile_effects_default = 'plugin "HideProfileEffects":\n  needs appearance.hide\n  hide profile-effects\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-reactions.cx
   var hide_reactions_default;
   var init_hide_reactions = __esm({
@@ -37409,6 +37490,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_role_icons = __esm({
     "../examples/cx/catalog/plugins/hide-role-icons.cx"() {
       hide_role_icons_default = 'plugin "HideRoleIcons":\n  needs appearance.hide\n  hide role-icons\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-server-banner.cx
+  var hide_server_banner_default;
+  var init_hide_server_banner = __esm({
+    "../examples/cx/catalog/plugins/hide-server-banner.cx"() {
+      hide_server_banner_default = 'plugin "HideServerBanner":\n  needs appearance.hide\n  hide server-banner\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-stream-previews.cx
+  var hide_stream_previews_default;
+  var init_hide_stream_previews = __esm({
+    "../examples/cx/catalog/plugins/hide-stream-previews.cx"() {
+      hide_stream_previews_default = 'plugin "HideStreamPreviews":\n  needs appearance.hide\n  hide voice-stream-previews\n';
     }
   });
 
@@ -38114,11 +38211,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_clap_text();
       init_clear_urls();
       init_google_that();
+      init_hide_avatar_decorations();
       init_hide_bot_tags();
       init_hide_clan_tags();
       init_hide_jump_to_present();
+      init_hide_nameplates();
+      init_hide_new_messages_bar();
+      init_hide_profile_effects();
       init_hide_reactions();
       init_hide_role_icons();
+      init_hide_server_banner();
+      init_hide_stream_previews();
       init_hide_typing_indicator();
       init_ingtoninator();
       init_leet_text();
@@ -38236,6 +38339,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: google_that_default
           },
           {
+            name: "HideAvatarDecorations",
+            source: hide_avatar_decorations_default
+          },
+          {
             name: "HideBotTags",
             source: hide_bot_tags_default
           },
@@ -38248,12 +38355,32 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_jump_to_present_default
           },
           {
+            name: "HideNameplates",
+            source: hide_nameplates_default
+          },
+          {
+            name: "HideNewMessagesBar",
+            source: hide_new_messages_bar_default
+          },
+          {
+            name: "HideProfileEffects",
+            source: hide_profile_effects_default
+          },
+          {
             name: "HideReactions",
             source: hide_reactions_default
           },
           {
             name: "HideRoleIcons",
             source: hide_role_icons_default
+          },
+          {
+            name: "HideServerBanner",
+            source: hide_server_banner_default
+          },
+          {
+            name: "HideStreamPreviews",
+            source: hide_stream_previews_default
           },
           {
             name: "HideTypingIndicator",
@@ -43668,7 +43795,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "bd0e747604697a75fcf8639b598cb504fbea459f";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "871d69d1961dcca7fca9d9379d42545a171af972";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
