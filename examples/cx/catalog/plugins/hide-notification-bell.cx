@@ -1,0 +1,3 @@
+plugin "HideNotificationBell":
+  needs appearance.hide
+  hide notification-settings

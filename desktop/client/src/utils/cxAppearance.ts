@@ -101,6 +101,26 @@ export const cxAppearanceTargets = {
         css: '[class*="topic_"][class*="expandable"], section[aria-label="Channel header"] [class*="topic_"] { display: none !important; }',
         mobile: ["ChannelDetailsTopic"],
     },
+    "shop-entry": {
+        plugin: "HideShopTab", label: "the Shop entry",
+        css: 'a[href="/shop"], [data-list-item-id$="___shop"] { display: none !important; }',
+        mobile: ["CollectiblesShopEntryButton"],
+    },
+    "inbox-button": {
+        plugin: "HideInboxButton", label: "the notifications entry",
+        css: '[aria-label="Inbox"] { display: none !important; }',
+        mobile: ["YouBarNotificationsButton"],
+    },
+    "notification-settings": {
+        plugin: "HideNotificationBell", label: "the channel notification settings shortcut",
+        css: '[aria-label="Notification Settings"] { display: none !important; }',
+        mobile: ["NotificationSettingsButton"],
+    },
+    "image-alt-text": {
+        plugin: "HideImageAltText", label: "the image description control",
+        css: '[class*="altText"] { display: none !important; }',
+        mobile: ["MediaModalOverlayAltTextButton"],
+    },
 } as const;
 
 export type CxAppearanceTarget = keyof typeof cxAppearanceTargets;

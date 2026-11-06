@@ -1,5 +1,5 @@
 const assert = require("node:assert/strict");
-const { inspectPlugin, scan } = require("./cx-bulk-plugins.cjs");
+const { buildPlan, inspectPlugin, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
 const { buildCatalog, loadCxRuntime } = require("./sync-cx-catalog.cjs");
 
 const source = [
@@ -19,6 +19,7 @@ const inspect = input => inspectPlugin("fixture.ts", input, "desktop");
 const { parseCx, cxAppearanceTargets } = loadCxRuntime();
 const candidate = inspect(source);
 assert.equal(candidate.capability, "outgoing-text");
+assert.deepEqual(candidate.hooks, ["outgoing-message"]);
 assert.equal(parseCx(candidate.cx).messageTransforms.length, 2);
 const catalog = buildCatalog();
 const prospective = buildCatalog(new Map([["literal-replace.cx", candidate.cx]]));
@@ -47,4 +48,35 @@ for (const [key, rule] of Object.entries(cxAppearanceTargets)) {
 const tweak = 'import { defineTweak } from "@utils/cloudcordTweak";\n' +
     'export default defineTweak("HideBotTags", "Hides bot tags", "body { display: none; }");';
 assert.equal(inspectPlugin("tweak.ts", tweak, "desktop", cxAppearanceTargets).cx, undefined);
+
+const styles = [cxAppearanceTargets["bot-tags"].css, cxAppearanceTargets["profile-effects"].css].join("\n");
+const bd = [
+    "/**",
+    " * @name ReduceVisualClutter",
+    " * SPDX-License-Identifier: MIT",
+    " */",
+    "module.exports = class {",
+    '    start() { BdApi.DOM.addStyle("clean", ' + JSON.stringify(styles) + '); }',
+    '    stop() { BdApi.DOM.removeStyle("clean"); }',
+    "};",
+].join("\n");
+const inspectBd = code => inspectPlugin("example.plugin.js", code, "betterdiscord", cxAppearanceTargets);
+const bdPort = inspectBd(bd);
+assert.equal(bdPort.capability, "appearance");
+assert.equal(parseCx(bdPort.cx).hiddenTargets.join(","), "bot-tags,profile-effects");
+assert.equal(inspectBd(bd.replace('removeStyle("clean")', 'removeStyle("other")')).cx, undefined);
+assert.equal(inspectBd(bd.replace("SPDX-License-Identifier: MIT", "License unavailable")).cx, undefined);
+assert.equal(inspectBd(bd.replace("start() {", "start() { fetch('/');")).cx, undefined);
+assert.equal(inspectBd(bd.replace("class {", "class extends Global {")).cx, undefined);
+assert.equal(inspectBd(bd.replace(JSON.stringify(styles), JSON.stringify(styles + " body { display: none; }"))).cx, undefined);
+verifyPorts(new Map([["reduce-visual-clutter.cx", bdPort.cx], ["literal-replace.cx", candidate.cx]]));
+assert.throws(() => verifyPorts(new Map([["bad.cx", bdPort.cx.replace("hide bot-tags", "hide everything")]])), /^Error: bad.cx:/);
+const plan = buildPlan([
+    { ...bdPort, status: "ready" },
+    { ...bdPort, file: "second.plugin.js", status: "compare-sources" },
+    { ...candidate, status: "needs-adapter" },
+]);
+assert.equal(plan.sources, 3);
+assert.equal(plan.distinctPluginNames, 2);
+assert.equal(plan.groups.find(group => group.hooks === "appearance").plugins[0].sources.length, 2);
 console.log("PASS CX bulk conversion, original command sources and unsupported hook rejection");

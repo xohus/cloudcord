@@ -1,0 +1,3 @@
+plugin "HideShopTab":
+  needs appearance.hide
+  hide shop-entry

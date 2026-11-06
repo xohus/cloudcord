@@ -1,0 +1,3 @@
+plugin "HideInboxButton":
+  needs appearance.hide
+  hide inbox-button

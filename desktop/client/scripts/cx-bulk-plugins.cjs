@@ -8,9 +8,85 @@ const catalogFolder = path.join(root, "examples/cx/catalog/plugins");
 const quotedPattern = /[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/u;
 const printer = ts.createPrinter({ removeComments: true });
 
+const hookGroups = {
+    commands: /^(commands|registerCommand|unregisterCommand)$/,
+    "outgoing-message": /^(onBeforeMessage(Send|Edit)|addMessagePre(Send|Edit)Listener|on(Send|Edit)Message)$/,
+    "incoming-event": /^(flux|FluxDispatcher|subscribeToDispatch|intercept|addInterceptor)$/,
+    "context-menu": /^(contextMenus|addContextMenuPatch|patchContextMenu|onContextMenu)$/,
+    "component-render": /^(patches|onJsxCreate|chatBarButton|renderMessage|patcher|Patcher)$/,
+    "app-state": /^(findByStoreName(Lazy)?|useStateFromStores|[A-Z]\w+Store)$/,
+    settings: /^(settings|SettingsComponent|definePluginSettings|pluginSettings|loadData|saveData)$/,
+    appearance: /^(defineTweak|addStyle|removeStyle|enableStyle|disableStyle)$/,
+    network: /^(fetch|XMLHttpRequest|RestAPI|request)$/,
+    "native-access": /^(VencordNative|DiscordNative|NativeModules|FileSystem|clipboard|Clipboard)$/,
+};
+
+function inventoryHooks(source) {
+    const hooks = new Set();
+    const visit = node => {
+        if (ts.isIdentifier(node)) for (const [group, pattern] of Object.entries(hookGroups)) {
+            if (pattern.test(node.text)) hooks.add(group);
+        }
+        ts.forEachChild(node, visit);
+    };
+    visit(source);
+    return [...hooks].sort();
+}
+
 function property(object, key) {
     if (!object || !ts.isObjectLiteralExpression(object)) return;
     return object.properties.find(entry => entry.name && ts.isIdentifier(entry.name) && entry.name.text === key);
+}
+
+function exportAssignment(node) {
+    if (!ts.isExpressionStatement(node)) return;
+    const assignment = node.expression;
+    if (!ts.isBinaryExpression(assignment) || assignment.operatorToken.kind !== ts.SyntaxKind.EqualsToken) return;
+    const target = assignment.left;
+    if (ts.isPropertyAccessExpression(target) && identifier(target.expression) === "module" && target.name.text === "exports")
+        return expression(assignment.right);
+}
+
+function styleCall(method, operation, count) {
+    if (!ts.isMethodDeclaration(method) || method.modifiers?.length || method.asteriskToken || method.parameters.length
+        || method.body?.statements.length !== 1) return;
+    const statement = method.body.statements[0];
+    if (!ts.isExpressionStatement(statement) || !ts.isCallExpression(statement.expression)) return;
+    const call = statement.expression;
+    if (call.questionDotToken || call.typeArguments?.length || call.arguments.length !== count
+        || printed(call.expression, method.getSourceFile()) !== "BdApi.DOM." + operation) return;
+    const args = call.arguments.map(literal);
+    if (args.every(arg => arg !== undefined)) return args;
+}
+
+function inspectBetterDiscord(file, code, appearance) {
+    const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
+    const header = /^\s*\/\*\*[\s\S]*?\*\//.exec(code)?.[0];
+    const name = header?.match(/^\s*\*\s*@name\s+([^\r\n*]+?)\s*$/m)?.[1];
+    if (!name || !safeText(name) || name.length > 64) return;
+    const record = { name, file, platform: "betterdiscord", hooks: inventoryHooks(source), flags: {} };
+    const license = /SPDX-License-Identifier:\s*(?:GPL-3\.0-or-later|MIT|BSD-3-Clause|Apache-2\.0)\b/.test(code);
+    const plugin = source.statements.length === 1 && exportAssignment(source.statements[0]);
+    if (!license || source.parseDiagnostics.length || !plugin || !ts.isClassExpression(plugin) || plugin.heritageClauses?.length
+        || plugin.members.length !== 2 || plugin.modifiers?.length) return record;
+    const methods = new Map(plugin.members.map(member => [identifier(member.name), member]));
+    const added = methods.has("start") && styleCall(methods.get("start"), "addStyle", 2);
+    const removed = methods.has("stop") && styleCall(methods.get("stop"), "removeStyle", 1);
+    if (!added || !removed || !added[0] || added[0] !== removed[0]) return record;
+    const targets = [];
+    let css = added[1].trim();
+    while (css) {
+        const target = Object.entries(appearance).find(([key, rule]) => !targets.includes(key) && css.startsWith(rule.css));
+        if (!target) return record;
+        targets.push(target[0]);
+        css = css.slice(target[1].css.length).trimStart();
+    }
+    if (!targets.length) return record;
+    return {
+        ...record,
+        capability: "appearance",
+        cx: ["plugin " + JSON.stringify(name) + ":", "  needs appearance.hide", ...targets.map(target => "  hide " + target), ""].join("\n"),
+    };
 }
 
 function value(object, key) {
@@ -195,6 +271,7 @@ function compileOutgoing(plugin) {
 }
 
 function inspectPlugin(file, code, platform, appearance = {}) {
+    if (platform === "betterdiscord") return inspectBetterDiscord(file, code, appearance);
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
     const entry = source.statements.find(ts.isExportAssignment);
     const call = entry && expression(entry.expression);
@@ -210,7 +287,7 @@ function inspectPlugin(file, code, platform, appearance = {}) {
                 && statement.moduleSpecifier.text === "@utils/cloudcordTweak")
             && imported(source, "defineTweak", "@utils/cloudcordTweak");
         return {
-            name, file, platform, flags: { commands: false, outgoing: false, settings: false, ui: true, styles: true },
+            name, file, platform, hooks: ["appearance"], flags: { commands: false, outgoing: false, settings: false, ui: true, styles: true },
             ...(supported ? {
                 capability: "appearance",
                 cx: "plugin " + JSON.stringify(name) + ":\n  needs appearance.hide\n  hide " + registered[0] + "\n",
@@ -254,7 +331,7 @@ function inspectPlugin(file, code, platform, appearance = {}) {
         && allowedDeclarations && simpleDependencies && !source.parseDiagnostics.length && hasLicense && safeText(name) && name.length <= 64;
     const compiled = supported && (compileCommands(plugin, source) || compileOutgoing(plugin));
     return {
-        name, file, platform, flags,
+        name, file, platform, flags, hooks: inventoryHooks(source),
         ...(compiled ? { capability: compiled.capability, cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") } : {}),
     };
 }
@@ -269,7 +346,16 @@ function entryFiles(folder) {
     });
 }
 
-function scan() {
+function betterDiscordFiles(folder) {
+    return fs.readdirSync(folder, { withFileTypes: true }).flatMap(entry => {
+        const location = path.join(folder, entry.name);
+        if (entry.isFile() && entry.name.endsWith(".plugin.js")) return [location];
+        if (entry.isDirectory() && entry.name !== "node_modules" && !entry.name.startsWith(".")) return betterDiscordFiles(location);
+        return [];
+    });
+}
+
+function scan(sourceDir) {
     const { cxAppearanceTargets } = require("./sync-cx-catalog.cjs").loadCxRuntime();
     const existing = new Set(["character counter"]);
     for (const name of fs.readdirSync(catalogFolder).filter(name => name.endsWith(".cx"))) {
@@ -287,25 +373,80 @@ function scan() {
             if (record) records.push(record);
         }
     }
-    const mobile = new Set(records.filter(record => record.platform === "mobile").map(record => record.name.toLowerCase()));
-    const nameCounts = new Map();
-    for (const { name, platform } of records) if (platform === "desktop") {
-        const key = name.toLowerCase();
-        nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
+    if (sourceDir) for (const file of betterDiscordFiles(sourceDir)) {
+        const record = inspectPlugin(path.relative(sourceDir, file).replaceAll("\\", "/"), fs.readFileSync(file, "utf8"), "betterdiscord", cxAppearanceTargets);
+        if (record) records.push(record);
+    }
+    const variants = new Map();
+    for (const record of records) {
+        const key = record.name.toLowerCase();
+        const group = variants.get(key) ?? [];
+        group.push(record);
+        variants.set(key, group);
     }
     return records.map(({ cx, ...record }) => {
         const key = record.name.toLowerCase();
         const already = existing.has(key);
         const status = already ? "in-catalog"
             : !cx ? "needs-adapter"
-                : mobile.has(key) ? "compare-mobile"
-                    : nameCounts.get(key) > 1 ? "compare-desktop"
+                : variants.get(key).some(variant => variant.platform === "mobile") ? "compare-mobile"
+                    : variants.get(key).length > 1 ? "compare-sources"
                         : "ready";
         return { ...record, status, ...(cx ? { cx } : {}) };
     });
 }
 
-const usage = "Usage: node cx-bulk-plugins.cjs [--json | --out-dir <new-folder> | --add-ready]";
+function buildPlan(records) {
+    const groups = new Map();
+    const plugins = new Set();
+    for (const { name, file, platform, hooks, status, capability } of records) {
+        const normalized = name.toLowerCase();
+        plugins.add(normalized);
+        if (status === "in-catalog") continue;
+        const key = hooks.join(" + ") || "unclassified";
+        const group = groups.get(key) ?? new Map();
+        const plugin = group.get(normalized) ?? { name, sources: [] };
+        plugin.sources.push({ file, platform, status, ...(capability ? { capability } : {}) });
+        group.set(normalized, plugin);
+        groups.set(key, group);
+    }
+    return {
+        sources: records.length,
+        distinctPluginNames: plugins.size,
+        groups: [...groups].map(([hooks, plugins]) => ({
+            hooks, count: plugins.size, plugins: [...plugins.values()],
+        })).sort((a, b) => b.count - a.count || a.hooks.localeCompare(b.hooks)),
+    };
+}
+
+function verifyPorts(files) {
+    const { parseCx, activateCx } = require("./sync-cx-catalog.cjs").loadCxRuntime();
+    for (const [file, source] of files) {
+        try {
+            const plugin = parseCx(source);
+            if (plugin.kind !== "plugin") throw new Error("Expected a plugin");
+            let registrations = 0;
+            function register() {
+                registrations++;
+                return () => registrations--;
+            }
+            const host = {
+                registerCommand: register,
+                registerMessageTransform: register,
+                registerMessageEditTransform: register,
+                hideAppearanceTarget: register,
+            };
+            const stop = activateCx(source, host, plugin.permissions);
+            if (!registrations) throw new Error("No supported behavior registered");
+            stop();
+            if (registrations) throw new Error("Plugin did not remove its hooks");
+        } catch (error) {
+            throw new Error(file + ": " + error.message);
+        }
+    }
+}
+
+const usage = "Usage: node cx-bulk-plugins.cjs [--json | --plan | --out-dir <new-folder> | --add-ready] [--source-dir <BetterDiscord sources>]";
 
 function portFiles(ports) {
     const files = new Map();
@@ -324,6 +465,7 @@ function addReady(ports) {
     }
     const { buildCatalog, catalogPath } = require("./sync-cx-catalog.cjs");
     const files = portFiles(ports);
+    verifyPorts(files);
     const catalog = buildCatalog(files);
     const created = [];
     const nextCatalog = catalogPath + "." + process.pid + ".tmp";
@@ -344,38 +486,46 @@ function addReady(ports) {
     console.log("Added " + files.size + " CX ports. Catalog has " + catalog.plugins + "/600 plugins.");
 }
 
-function main(args) {
+function main(rawArgs) {
+    const args = [...rawArgs];
     if (args.length === 1 && args[0] === "--help") {
         console.log(usage);
         console.log("Scan source patterns, export candidates for review, or add ready ports to the shared catalog.");
         return;
     }
+    const sourceIndex = args.indexOf("--source-dir");
+    const sourceDir = sourceIndex === -1 ? undefined : args.splice(sourceIndex, 2)[1];
+    if (sourceIndex !== -1 && (!sourceDir || sourceDir.startsWith("--"))) throw new Error(usage);
     const output = args.length === 2 && args[0] === "--out-dir" ? path.resolve(args[1]) : undefined;
-    if (!output && (args.length > 1 || args.length === 1 && !["--json", "--add-ready"].includes(args[0])))
+    if (!output && (args.length > 1 || args.length === 1 && !["--json", "--plan", "--add-ready"].includes(args[0])))
         throw new Error(usage);
-    const records = scan();
+    if (sourceDir && args[0] === "--add-ready") throw new Error("Export BetterDiscord candidates for source and license review first");
+    const records = scan(sourceDir && path.resolve(sourceDir));
     if (args[0] === "--add-ready") {
         addReady(records.filter(record => record.status === "ready"));
         return;
     }
     if (output) {
-        const { loadCxParser } = require("./sync-cx-catalog.cjs");
-        const parseCx = loadCxParser();
         const ports = records.filter(record => record.cx && ["ready", "in-catalog"].includes(record.status));
         const files = portFiles(ports);
-        for (const source of files.values()) parseCx(source);
+        verifyPorts(files);
         fs.mkdirSync(output);
         for (const [name, source] of files) fs.writeFileSync(path.join(output, name), source, { flag: "wx" });
-        fs.writeFileSync(path.join(output, "sources.json"), JSON.stringify(ports.map(({ name, file, status }) => ({ name, file, status })), null, 2) + "\n");
+        fs.writeFileSync(path.join(output, "sources.json"), JSON.stringify(ports.map(({ name, file, platform, status }) => ({ name, file, platform, status })), null, 2) + "\n");
         console.log("Exported " + files.size + " validated CX ports to " + output);
     }
     if (args.includes("--json")) {
         process.stdout.write(JSON.stringify(records, null, 2) + "\n");
         return;
     }
-    const counts = Object.fromEntries(["desktop", "mobile"].map(platform => [platform, records.filter(record => record.platform === platform).length]));
-    console.log("Inspected " + counts.desktop + " desktop and " + counts.mobile + " mobile plugin sources.");
-    for (const status of ["ready", "compare-mobile", "compare-desktop", "in-catalog", "needs-adapter"]) {
+    if (args.includes("--plan")) {
+        process.stdout.write(JSON.stringify(buildPlan(records), null, 2) + "\n");
+        return;
+    }
+    const counts = ["desktop", "mobile", "betterdiscord"].map(platform =>
+        records.filter(record => record.platform === platform).length + " " + platform);
+    console.log("Inspected " + counts.join(", ") + " plugin sources.");
+    for (const status of ["ready", "compare-mobile", "compare-sources", "in-catalog", "needs-adapter"]) {
         const matches = records.filter(record => record.status === status);
         console.log(status + ": " + matches.length + (matches.length && matches.length <= 20 ? " (" + matches.map(record => record.name).join(", ") + ")" : ""));
     }
@@ -388,4 +538,4 @@ if (require.main === module) {
     try { main(process.argv.slice(2)); }
     catch (error) { console.error(error.message); process.exitCode = 1; }
 }
-module.exports = { inspectPlugin, scan };
+module.exports = { buildPlan, inspectPlugin, scan, verifyPorts };

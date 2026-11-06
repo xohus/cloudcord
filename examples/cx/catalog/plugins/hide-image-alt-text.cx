@@ -1,0 +1,3 @@
+plugin "HideImageAltText":
+  needs appearance.hide
+  hide image-alt-text

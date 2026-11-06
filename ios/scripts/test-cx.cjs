@@ -313,7 +313,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const copyUrl = cxCatalog.plugins.find(entry => entry.name === "CopyUserURLs").source;
         assert.throws(() => activateCx(copyUrl, host, []), /approval/);
         assert.throws(() => parseCx(copyUrl.replace("copy user-url", "copy token")), /Unknown or duplicate profile menu/);
-        assert.throws(() => parseCx(copyUrl.replace("  needs profilemenu.copy\n", "")), /permissions/);
+        assert.throws(() => parseCx(copyUrl.replace(/^  needs profilemenu\.copy\r?\n/m, "")), /permissions/);
         for (const name of ["CopyUserURLs", "CopyUserMention"]) {
             selectCatalog(name);
             click(render(), "Allow for this session");
@@ -417,7 +417,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         }
 
         const avatarPort = cxCatalog.plugins.find(entry => entry.name === "AvatarGrabber").source;
-        assert.throws(() => parseCx(avatarPort.replace("  needs profile.avatar\n", "")), /permissions/);
+        assert.throws(() => parseCx(avatarPort.replace(/^  needs profile\.avatar\r?\n/m, "")), /permissions/);
         assert.throws(() => parseCx(avatarPort.replace('"user" user optional', '"user" text optional')), /named text functions/);
         selectCatalog("AvatarGrabber");
         click(render(), "Allow for this session");
