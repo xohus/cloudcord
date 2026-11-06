@@ -13,10 +13,12 @@ assert.match(adapter, /#import "CloudCordRuntimeCache\.h"/);
 assert.match(adapter, /if \(!CloudCordEnsureRuntimeCache\(fm, rain, data, hash\)\)/);
 assert.ok(adapter.indexOf('CloudCordEnsureRuntimeCache(fm, rain, data, hash)') < adapter.indexOf('dlopen('), 'cache recovery must finish before Rain loads');
 const entry = fs.readFileSync(path.join(root, 'runtime/src/entry.ts'), 'utf8');
-const bridge = entry.slice(entry.indexOf('const rain ='), entry.indexOf('const { instead }')).replaceAll('(globalThis as any)', 'globalThis');
+const bridge = entry.slice(entry.indexOf('const root = globalThis'), entry.indexOf('const { instead }')).replace('globalThis as any', 'globalThis');
 for (let i = 0; i < 30; i++) {
   const context = vm.createContext({ __RAIN_LOADER__: { loaderName: 'RainTweak', loaderVersion: '1.2.0', hasThemeSupport: true, fontPatch: 2 } });
+  if (i % 2) context.__CLOUDCORD_LOADER__ = context.__RAIN_LOADER__;
   vm.runInContext(bridge, context);
+  assert.equal(context.__CLOUDCORD_ORIGINAL_RAIN__, true);
   assert.equal(context.__RAIN_LOADER__.loaderName, 'RainTweak');
   assert.equal(context.__CLOUDCORD_LOADER__.hasThemeSupport, true);
   assert.equal(context.__CLOUDCORD_LOADER__.fontPatch, 2);
