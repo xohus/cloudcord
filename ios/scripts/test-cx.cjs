@@ -106,7 +106,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const states = [], registered = {}, delivered = [];
         const transformHooks = new Set();
         const selectedTheme = { name: "Previously selected" };
-        let nativeTheme = selectedTheme, stylesheet;
+        let nativeTheme = selectedTheme, nativeMode, stylesheet;
         let cursor = 0;
         const useState = initial => {
             const index = cursor++;
@@ -150,7 +150,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@lib/api/commands": commandApi,
             "@lib/api/commands/types": commandApi,
             "@lib/addons/themes": { getCurrentTheme: () => ({ data: selectedTheme }) },
-            "@lib/addons/themes/colors/updater": { updateBunnyColor: value => { nativeTheme = value; } },
+            "@lib/addons/themes/colors/updater": { updateBunnyColor: (value, options) => { nativeTheme = value; nativeMode = options?.mode; } },
             "@lib/api/native/modules": {},
             "@lib/api/native/loader": { isThemeSupported: () => true },
             "@lib/api/settings": { settings: {} },
@@ -184,6 +184,16 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         if (desktop) editor.props.onChange({ currentTarget: { value: counter } });
         else editor.props.onChangeText(counter);
         const click = (tree, label) => button(tree, label).props[desktop ? "onClick" : "onPress"]();
+        const searchFor = value => {
+            const search = find(render(), element => element.props.placeholder === "Search CX catalog");
+            if (desktop) search.props.onChange({ currentTarget: { value } });
+            else search.props.onChangeText(value);
+        };
+        const selectCatalog = name => {
+            if (!desktop) click(render(), "Browse catalog");
+            searchFor(name);
+            click(render(), name);
+        };
         click(render(), "Review CX");
         assert.equal(Object.keys(registered).length, 0, platform + " waits for approval");
         click(render(), "Allow for this session");
@@ -206,8 +216,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             const port = cxCatalog.plugins.find(entry => entry.name === name).source;
             assert.throws(() => activateCx(port, commandHost, ["commands.register"]), /approval/);
             assert.throws(() => parseCx(port + '    send "duplicate"\n'), /one outgoing message/);
-            if (!desktop) click(render(), "Browse catalog");
-            click(render(), name);
+            selectCatalog(name);
             assert.equal(Object.keys(registered).length, 0, platform + " catalog review waits for approval");
             click(render(), "Allow for this session");
             const outgoing = registered[commandName];
@@ -219,8 +228,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(invoke(input), undefined);
         }
         for (const [name, commandName] of [["Calculator", "calc"], ["UnitConverter", "convert"]]) {
-            if (!desktop) click(render(), "Browse catalog");
-            click(render(), name);
+            selectCatalog(name);
             click(render(), "Allow for this session");
             const command = registered[commandName];
             const invoke = (value, send) => command.execute([{ name: "text", value }, { name: "send", value: send }], { channel: { id: "test-channel" } });
@@ -252,11 +260,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             const source = cxCatalog.plugins.find(entry => entry.name === name).source;
             assert.throws(() => activateCx(source, commandHost, []), /approval/);
             assert.throws(() => parseCx(source + "  before send constructor\n"), /Unknown or duplicate/);
-            if (!desktop) click(render(), "Browse catalog");
-            const search = find(render(), element => element.props.placeholder === "Search CX catalog");
-            if (desktop) search.props.onChange({ currentTarget: { value: name } });
-            else search.props.onChangeText(name);
-            click(render(), name);
+            selectCatalog(name);
             assert.equal(transformHooks.size, 0);
             click(render(), "Allow for this session");
             assert.equal(transformHooks.size, 1);
@@ -274,9 +278,16 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(message.content, input);
         }
         if (!desktop) click(render(), "Browse catalog");
-        const search = find(render(), element => element.props.placeholder === "Search CX catalog");
-        if (desktop) search.props.onChange({ currentTarget: { value: "" } });
-        else search.props.onChangeText("");
+        searchFor("");
+        assert.ok(!button(render(), cxCatalog.plugins[12].name));
+        click(render(), "Next plugins page");
+        assert.ok(button(render(), cxCatalog.plugins[12].name));
+        click(render(), "Previous plugins page");
+        assert.ok(button(render(), cxCatalog.plugins[0].name));
+        click(render(), "Next plugins page");
+        searchFor(cxCatalog.plugins[0].name);
+        assert.ok(button(render(), cxCatalog.plugins[0].name));
+        searchFor("Blue Hour");
         click(render(), "Blue Hour");
         click(render(), "Allow for this session");
         if (desktop) {
@@ -289,6 +300,27 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         click(render(), "Disable Blue Hour");
         assert.equal(stylesheet, undefined);
         assert.equal(nativeTheme, selectedTheme);
+
+        for (const [name, background, text, mode] of [
+            ["Latte", "#eff1f5", "#4c4f69", "light"],
+            ["Frappé", "#303446", "#c6d0f5", "dark"],
+            ["Macchiato", "#24273a", "#cad3f5", "dark"],
+            ["Mocha", "#1e1e2e", "#cdd6f4", "dark"],
+        ]) {
+            const label = "Catppuccin " + name;
+            selectCatalog(label);
+            click(render(), "Allow for this session");
+            if (desktop) {
+                assert.ok(stylesheet.textContent.includes("color-scheme: " + mode));
+                assert.ok(stylesheet.textContent.includes("--chat-background-default: " + background));
+                assert.ok(stylesheet.textContent.includes("--text-default: " + text));
+            } else {
+                assert.equal(nativeTheme.semanticColors.BACKGROUND_PRIMARY[0], background);
+                assert.equal(nativeTheme.semanticColors.TEXT_DEFAULT[0], text);
+                assert.equal(nativeMode, mode);
+            }
+            click(render(), "Disable " + label);
+        }
     }
     const { migrateCxPalette } = await import("../../desktop/client/scripts/cx-migrate-palette.mjs");
     assert.equal(parseCx(migrateCxPalette(":root { --background-primary: #123; --brand-500: #8765ab; }", "Test")).background, "#112233");

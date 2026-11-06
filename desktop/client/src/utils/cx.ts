@@ -45,6 +45,7 @@ export type CxTheme = {
     kind: "theme";
     name: string;
     background: string;
+    mode?: "dark" | "light";
     surface?: string;
     sidebar?: string;
     text?: string;
@@ -87,11 +88,14 @@ export function parseCx(source: string): CxDocument {
         const seen = new Set<string>();
         for (const line of lines) {
             if (!line.trim()) continue;
-            const field = /^  (background|surface|sidebar|text|muted|accent|wallpaper|wallpaper-opacity): (.+)$/.exec(line);
+            const field = /^  (mode|background|surface|sidebar|text|muted|accent|wallpaper|wallpaper-opacity): (.+)$/.exec(line);
             if (!field || seen.has(field[1])) throw new Error("Unknown or duplicate theme field");
             const [, key, value] = field;
             seen.add(key);
-            if (key === "wallpaper") {
+            if (key === "mode") {
+                if (value !== "dark" && value !== "light") throw new Error("Theme mode must be dark or light");
+                theme.mode = value;
+            } else if (key === "wallpaper") {
                 const uri = quoted(value, 384 * 1024);
                 if (!/^data:image\/(?:png;base64,iVBORw0KGgo|jpeg;base64,\/9j\/)[A-Za-z0-9+/]+={0,2}$/.test(uri) ||
                     uri.slice(uri.indexOf(",") + 1).length % 4 !== 0)

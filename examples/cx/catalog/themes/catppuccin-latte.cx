@@ -1,0 +1,8 @@
+theme "Catppuccin Latte":
+  mode: light
+  background: #eff1f5
+  surface: #e6e9ef
+  sidebar: #dce0e8
+  text: #4c4f69
+  muted: #6c6f85
+  accent: #1e66f5

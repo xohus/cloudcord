@@ -11,6 +11,7 @@ const session = createCxSession();
 export function CxSettings() {
     const [source, setSource] = useState("");
     const [search, setSearch] = useState("");
+    const [pages, setPages] = useState({ Plugins: 0, Themes: 0 });
     const [candidate, setCandidate] = useState<{ source: string; review: ReturnType<typeof reviewCx>; }>();
     const [status, setStatus] = useState("");
     const searchText = search.trim().toLowerCase();
@@ -68,6 +69,7 @@ export function CxSettings() {
                     const tint = theme.background + shade;
                     style.textContent = `
                         .theme-dark, .theme-light {
+                            ${theme.mode ? `color-scheme: ${theme.mode};` : ""}
                             --background-primary: ${theme.background};
                             --background-secondary: ${surface};
                             --background-tertiary: ${sidebar};
@@ -75,8 +77,9 @@ export function CxSettings() {
                             --background-base-lower: ${surface};
                             --background-base-low: ${theme.background};
                             --bg-base-primary: ${theme.background};
-                            ${theme.text ? `--text-normal: ${theme.text}; --text-primary: ${theme.text};` : ""}
-                            ${theme.muted ? `--text-muted: ${theme.muted}; --text-secondary: ${theme.muted};` : ""}
+                            --chat-background-default: ${theme.background};
+                            ${theme.text ? `--text-normal: ${theme.text}; --text-primary: ${theme.text}; --text-default: ${theme.text}; --text-strong: ${theme.text};` : ""}
+                            ${theme.muted ? `--text-muted: ${theme.muted}; --text-secondary: ${theme.muted}; --text-subtle: ${theme.muted};` : ""}
                             ${theme.accent ? `--brand-500: ${theme.accent}; --text-link: ${theme.accent};` : ""}
                         }
                         ${theme.wallpaper ? `
@@ -101,16 +104,23 @@ export function CxSettings() {
         <h2>CX Extensions</h2>
         <details>
             <summary>CX catalog · {cxCatalog.plugins.length} plugins · {cxCatalog.themes.length} themes</summary>
-            <input aria-label="Search CX catalog" placeholder="Search CX catalog" value={search} onChange={event => setSearch(event.currentTarget.value)} />
+            <input aria-label="Search CX catalog" placeholder="Search CX catalog" value={search} onChange={event => {
+                setSearch(event.currentTarget.value);
+                setPages({ Plugins: 0, Themes: 0 });
+            }} />
             {([["Plugins", cxCatalog.plugins], ["Themes", cxCatalog.themes]] as const).map(([kind, entries]) => {
                 const matches = entries.filter(entry => entry.name.toLowerCase().includes(searchText));
+                const page = pages[kind];
+                const start = page * 12;
                 return <div key={kind}>
                     <h3>{kind}</h3>
-                    {matches.slice(0, 12).map(entry => <button key={entry.name} onClick={() => {
+                    {matches.slice(start, start + 12).map(entry => <button key={entry.name} onClick={() => {
                         setSource(entry.source);
                         review(entry.source);
                     }}>{entry.name}</button>)}
-                    {matches.length > 12 && <p>Search to narrow the results.</p>}
+                    {page > 0 && <button onClick={() => setPages({ ...pages, [kind]: page - 1 })}>{`Previous ${kind.toLowerCase()} page`}</button>}
+                    {start + 12 < matches.length && <button onClick={() => setPages({ ...pages, [kind]: page + 1 })}>{`Next ${kind.toLowerCase()} page`}</button>}
+                    {!matches.length && <p>No matches</p>}
                 </div>;
             })}
         </details>

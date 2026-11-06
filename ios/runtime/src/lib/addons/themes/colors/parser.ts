@@ -8,8 +8,8 @@ import { ColorManifest, InternalColorDefinition } from "./types";
 
 const tokenRef = findByProps("SemanticColor");
 
-export function parseColorManifest(manifest: ColorManifest): InternalColorDefinition {
-    const resolveType = (type = "dark") => (colorsPref.type ?? type) === "dark" ? "darker" : "light";
+export function parseColorManifest(manifest: ColorManifest, mode?: "dark" | "light"): InternalColorDefinition {
+    const resolveType = (type = "dark") => (mode ?? colorsPref.type ?? type) === "dark" ? "darker" : "light";
 
     if (manifest.spec === 3) {
         const semanticColorDefinitions: InternalColorDefinition["semantic"] = {};

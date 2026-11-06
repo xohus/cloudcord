@@ -48,10 +48,22 @@ assert.equal(token.RawColor.WHITE, '#fff');
 undo();
 const appearance = {updateTheme: native.updateTheme};
 const themeStore = {theme: 'darker'};
+const colorPreferences = {type: 'dark'};
+const {parseColorManifest} = load('parser.ts', {
+  '@metro': {findByProps: () => token}, 'chroma-js': {}, 'es-toolkit': {},
+  'react-native': {Platform: {OS: 'android'}}, './preferences': {colorsPref: colorPreferences}
+});
+assert.equal(parseColorManifest({spec: 2}).reference, 'darker');
 const updater = load('updater.ts', {
   '@lib/api/settings': {settings: {}}, '@metro': {findByProps: () => token, findByPropsLazy: () => appearance, findByStoreNameLazy: () => themeStore},
-  './parser': {parseColorManifest: manifest => manifest}
+  './parser': {parseColorManifest: (manifest, mode) => manifest.spec === 2 ? parseColorManifest(manifest, mode) : manifest}
 });
+updater.updateBunnyColor({spec: 2}, {mode: 'light'});
+assert.equal(calls.at(-1), 'light', 'CX light mode overrides the stored preference for this theme');
+themeStore.theme = 'light';
+updater.updateBunnyColor(null);
+assert.equal(calls.at(-1), 'darker', 'disabling a CX light theme restores the original Discord mode');
+themeStore.theme = 'darker';
 updater.updateBunnyColor(ref.current);
 assert.equal(calls.at(-1), 'darker');
 assert.equal(Object.keys(token.Theme).length, 1);

@@ -1,0 +1,8 @@
+theme "Catppuccin Frappé":
+  mode: dark
+  background: #303446
+  surface: #292c3c
+  sidebar: #232634
+  text: #c6d0f5
+  muted: #a5adce
+  accent: #8caaee

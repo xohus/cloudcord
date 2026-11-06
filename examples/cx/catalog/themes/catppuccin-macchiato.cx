@@ -1,0 +1,8 @@
+theme "Catppuccin Macchiato":
+  mode: dark
+  background: #24273a
+  surface: #1e2030
+  sidebar: #181926
+  text: #cad3f5
+  muted: #a5adcb
+  accent: #8aadf4

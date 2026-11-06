@@ -21,9 +21,12 @@ export const _colorRef: {
     key: `bn-theme-${string}`; current: InternalColorDefinition | null;
     readonly origRaw: Record<string, string>; lastSetDiscordTheme: string;
 } = { current: null, key: "bn-theme-0", origRaw: origRawColor, lastSetDiscordTheme: "darker" };
-export function updateBunnyColor(manifest: ColorManifest | null, { update = true } = {}) {
+export function updateBunnyColor(manifest: ColorManifest | null, { update = true, mode }: {
+    update?: boolean;
+    mode?: "dark" | "light";
+} = {}) {
     if (settings.safeMode?.enabled) return;
-    const current = manifest ? parseColorManifest(manifest) : null;
+    const current = manifest ? parseColorManifest(manifest, mode) : null;
     const existing = String(ThemeStore?.theme ?? "darker");
     // Capture the native theme before the first override. Switching between
     // custom themes or disabling one must not save its temporary native mode.

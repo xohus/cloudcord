@@ -15,6 +15,10 @@ import plugin13 from "../../../../examples/cx/catalog/plugins/write-upper-case.c
 import theme1 from "../../../../examples/cx/midnight.cx";
 import theme2 from "../../../../examples/cx/catalog/themes/basic-background-chat.cx";
 import theme3 from "../../../../examples/cx/catalog/themes/blue-hour.cx";
+import theme4 from "../../../../examples/cx/catalog/themes/catppuccin-frappe.cx";
+import theme5 from "../../../../examples/cx/catalog/themes/catppuccin-latte.cx";
+import theme6 from "../../../../examples/cx/catalog/themes/catppuccin-macchiato.cx";
+import theme7 from "../../../../examples/cx/catalog/themes/catppuccin-mocha.cx";
 
 export const cxCatalog = {
     plugins: [
@@ -36,5 +40,9 @@ export const cxCatalog = {
         { name: "Midnight", source: theme1 },
         { name: "BasicBackground (Chat)", source: theme2 },
         { name: "Blue Hour", source: theme3 },
+        { name: "Catppuccin Frappé", source: theme4 },
+        { name: "Catppuccin Latte", source: theme5 },
+        { name: "Catppuccin Macchiato", source: theme6 },
+        { name: "Catppuccin Mocha", source: theme7 },
     ],
 };

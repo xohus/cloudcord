@@ -20,6 +20,7 @@ export default function CxExtensions() {
     const [source, setSource] = React.useState("");
     const [showCatalog, setShowCatalog] = React.useState(false);
     const [search, setSearch] = React.useState("");
+    const [pages, setPages] = React.useState({ Plugins: 0, Themes: 0 });
     const [status, setStatus] = React.useState("");
     const [candidate, setCandidate] = React.useState<{ source: string; review: ReturnType<typeof reviewCx>; }>();
     const searchText = search.trim().toLowerCase();
@@ -111,12 +112,12 @@ export default function CxExtensions() {
                             BACKGROUND_BASE_LOW: palette(theme.background),
                             BACKGROUND_BASE_LOWER: palette(surface),
                             BACKGROUND_BASE_LOWEST: palette(sidebar),
-                            ...(theme.text ? { TEXT_NORMAL: palette(theme.text), TEXT_PRIMARY: palette(theme.text) } : {}),
-                            ...(theme.muted ? { TEXT_MUTED: palette(theme.muted), TEXT_SECONDARY: palette(theme.muted) } : {}),
+                            ...(theme.text ? { TEXT_NORMAL: palette(theme.text), TEXT_PRIMARY: palette(theme.text), TEXT_DEFAULT: palette(theme.text), TEXT_STRONG: palette(theme.text) } : {}),
+                            ...(theme.muted ? { TEXT_MUTED: palette(theme.muted), TEXT_SECONDARY: palette(theme.muted), TEXT_SUBTLE: palette(theme.muted) } : {}),
                             ...(theme.accent ? { TEXT_LINK: palette(theme.accent) } : {}),
                         },
                         ...(theme.wallpaper ? { background: { url: theme.wallpaper, alpha: theme.wallpaperOpacity ?? 0.85 } } : {}),
-                    });
+                    }, { mode: theme.mode });
                     return () => updateBunnyColor(getCurrentTheme()?.data ?? null);
                 },
             }, candidate.review.permissions);
@@ -135,16 +136,21 @@ export default function CxExtensions() {
             </TableRowGroup>
             {showCatalog && <>
                 <TextInput accessibilityLabel="Search CX catalog" placeholder="Search CX catalog" placeholderTextColor="#b5bac1"
-                    value={search} onChangeText={setSearch} autoCorrect={false} style={{ color: "#fff", backgroundColor: "#27282d", padding: 12 }} />
+                    value={search} onChangeText={value => { setSearch(value); setPages({ Plugins: 0, Themes: 0 }); }}
+                    autoCorrect={false} style={{ color: "#fff", backgroundColor: "#27282d", padding: 12 }} />
                 {([["Plugins", cxCatalog.plugins], ["Themes", cxCatalog.themes]] as const).map(([kind, entries]) => {
                     const matches = entries.filter(entry => entry.name.toLowerCase().includes(searchText));
+                    const page = pages[kind];
+                    const start = page * 12;
                     return <TableRowGroup key={kind} title={kind}>
-                        {matches.slice(0, 12).map(entry => <TableRow key={entry.name} label={entry.name} onPress={() => {
+                        {matches.slice(start, start + 12).map(entry => <TableRow key={entry.name} label={entry.name} onPress={() => {
                             setShowCatalog(false);
                             setSource(entry.source);
                             review(entry.source);
                         }} />)}
-                        {matches.length > 12 && <TableRow label="Search to narrow the results." />}
+                        {page > 0 && <TableRow label={`Previous ${kind.toLowerCase()} page`} onPress={() => setPages({ ...pages, [kind]: page - 1 })} />}
+                        {start + 12 < matches.length && <TableRow label={`Next ${kind.toLowerCase()} page`} onPress={() => setPages({ ...pages, [kind]: page + 1 })} />}
+                        {!matches.length && <TableRow label="No matches" />}
                     </TableRowGroup>;
                 })}
             </>}
