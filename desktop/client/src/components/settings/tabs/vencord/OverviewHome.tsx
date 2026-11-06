@@ -11,7 +11,7 @@ import "./OverviewHome.css";
 import { openNotificationLogModal } from "@api/Notifications/notificationLog";
 import { isPluginEnabled, plugins, startPlugin, stopPlugin } from "@api/PluginManager";
 import { Settings, useSettings } from "@api/Settings";
-import { CloudIcon, FolderIcon, LogIcon, OpenExternalIcon, PaintbrushIcon, RestartIcon, RobotIcon, UserIcon } from "@components/Icons";
+import { CloudIcon, FolderIcon, PluginsIcon, LogIcon, OpenExternalIcon, PaintbrushIcon, RestartIcon, RobotIcon, UserIcon } from "@components/Icons";
 import { Switch } from "@components/Switch";
 import { SettingsTab } from "@components/settings/tabs/BaseTab";
 import { gitHashShort } from "@shared/vencordUserAgent";
@@ -61,6 +61,7 @@ const QUICK_TWEAKS: [string, string][] = [
 ];
 
 const FEATURES: { title: string; text: string; key: string; tab?: string; Icon: ComponentType<IconProps>; }[] = [
+    { title: "Plugins", text: "592 plugins with search, sorting and one-click switches.", key: "cloudcord_cloud_sync", tab: "Plugins", Icon: PluginsIcon },
     { title: "Fake Profile", text: "Custom avatar, banner, badges and effects, shared with CloudCord users.", key: "cloudcord_fake_profile", Icon: UserIcon },
     { title: "BotCord", text: "Use bot accounts like a normal Discord client, right inside CloudCord.", key: "cloudcord_botcord", Icon: RobotIcon },
     { title: "Theme store", text: "Browse 100+ themes with previews and install one in a click.", key: "cloudcord_cloud_sync", tab: "Themes", Icon: PaintbrushIcon },
@@ -170,6 +171,7 @@ export function OverviewHome() {
                 <button className={cl("action")} onClick={() => VencordNative.quickCss.openEditor()}><PaintbrushIcon width={18} height={18} />QuickCSS</button>
                 <button className={cl("action")} onClick={openNotificationLogModal}><LogIcon width={18} height={18} />Notifications</button>
                 {!IS_WEB && <button className={cl("action")} onClick={() => VencordNative.settings.openFolder()}><FolderIcon width={18} height={18} />Settings folder</button>}
+                {!IS_WEB && <button className={cl("action")} onClick={() => VencordNative.themes.openFolder()}><PaintbrushIcon width={18} height={18} />Themes folder</button>}
                 {!IS_WEB && <button className={cl("action")} onClick={relaunch}><RestartIcon width={18} height={18} />Relaunch</button>}
                 <button className={cl("action")} onClick={() => VencordNative.native.openExternal("https://getcloudcord.com")}><OpenExternalIcon width={18} height={18} />Website</button>
             </div>
