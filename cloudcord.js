@@ -7382,7 +7382,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       return;
     var current = manifest ? parseColorManifest(manifest) : null;
     var existing = String(ThemeStore?.theme ?? "darker");
-    if (!existing.startsWith("bn-theme-"))
+    if (!_colorRef.current && !existing.startsWith("bn-theme-"))
       _colorRef.lastSetDiscordTheme = existing;
     _colorRef.current = current;
     _colorRef.key = `bn-theme-${++sequence}`;
@@ -7573,7 +7573,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       return unpatch ? element : /* @__PURE__ */ jsx(ThemeBackground, {
         direct: true,
         children: element
-      });
+      }, element.key);
     }
     onJsxCreate("MessagesRenderer", wrapRenderer);
     function attach(component) {
@@ -41212,7 +41212,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "0b262545560d8788d573b35241300dac253c232e";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "0b78da2bbf7f96162999a2ee5b4fbc00a4d33900";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
