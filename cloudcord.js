@@ -35116,6 +35116,295 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/core/ui/settings/pages/ThemeStore/index.tsx
+  var ThemeStore_exports = {};
+  __export(ThemeStore_exports, {
+    default: () => ThemeStore3
+  });
+  function loadThemes() {
+    return _async_to_generator(function* () {
+      var [index, market] = yield allSettled([
+        safeFetch(CLOUDCORD_INDEX, {
+          cache: "no-store"
+        }).then((r) => r.json()),
+        safeFetch(MARKETPLACE, {
+          cache: "no-store"
+        }).then((r) => r.json())
+      ]);
+      var list = [];
+      if (index.status === "fulfilled" && Array.isArray(index.value?.themes)) {
+        for (var t of index.value.themes) {
+          list.push({
+            url: t.id,
+            name: t.name,
+            description: t.description ?? "",
+            authors: t.authors ?? [],
+            source: t.source ?? "CloudCord",
+            hasBackground: t.hasBackground,
+            preview: t.preview
+          });
+        }
+      }
+      if (market.status === "fulfilled" && Array.isArray(market.value)) {
+        for (var t1 of market.value) {
+          if (typeof t1?.installUrl !== "string" || typeof t1?.name !== "string")
+            continue;
+          list.push({
+            url: t1.installUrl,
+            name: t1.name,
+            description: t1.description ?? "",
+            authors: Array.isArray(t1.authors) ? t1.authors : [],
+            source: "Marketplace"
+          });
+        }
+      }
+      if (!list.length)
+        throw new Error("Couldn't load the theme store. Check your connection and try again.");
+      var seen = /* @__PURE__ */ new Set();
+      return list.filter((t2) => !seen.has(t2.url) && seen.add(t2.url));
+    })();
+  }
+  function Swatches({ preview: preview2 }) {
+    if (!preview2)
+      return null;
+    var colors = [
+      preview2.background,
+      preview2.surface,
+      preview2.accent,
+      preview2.text
+    ];
+    return /* @__PURE__ */ jsx(import_react_native38.View, {
+      style: {
+        flexDirection: "row",
+        gap: 6
+      },
+      children: colors.map((c2, i) => /* @__PURE__ */ jsx(import_react_native38.View, {
+        style: {
+          width: 22,
+          height: 22,
+          borderRadius: 11,
+          backgroundColor: c2,
+          borderWidth: 1,
+          borderColor: "rgba(255,255,255,0.15)"
+        }
+      }, i))
+    });
+  }
+  function ThemeRow({ theme, refresh }) {
+    var [busy, setBusy] = React2.useState(false);
+    var installed = Boolean(themes[theme.url]);
+    var active = getCurrentTheme()?.id === theme.url;
+    var use = () => _async_to_generator(function* () {
+      setBusy(true);
+      try {
+        if (!themes[theme.url])
+          yield installTheme(theme.url);
+        yield selectTheme(themes[theme.url]);
+        showToast(`Now using ${theme.name}`, findAssetId("CheckIcon"));
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : String(e), findAssetId("CircleXIcon-primary"));
+      } finally {
+        setBusy(false);
+        refresh();
+      }
+    })();
+    var remove = () => _async_to_generator(function* () {
+      setBusy(true);
+      try {
+        yield removeTheme(theme.url);
+        showToast(`Removed ${theme.name}`, findAssetId("TrashIcon"));
+      } catch (e) {
+        showToast(e instanceof Error ? e.message : String(e), findAssetId("CircleXIcon-primary"));
+      } finally {
+        setBusy(false);
+        refresh();
+      }
+    })();
+    return /* @__PURE__ */ jsx(Card, {
+      style: {
+        borderRadius: 22
+      },
+      children: /* @__PURE__ */ jsxs(Stack, {
+        spacing: 8,
+        children: [
+          /* @__PURE__ */ jsxs(import_react_native38.View, {
+            style: {
+              flexDirection: "row",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 12
+            },
+            children: [
+              /* @__PURE__ */ jsxs(import_react_native38.View, {
+                style: {
+                  flex: 1
+                },
+                children: [
+                  /* @__PURE__ */ jsx(Text, {
+                    variant: "heading-md/semibold",
+                    numberOfLines: 1,
+                    children: theme.name
+                  }),
+                  /* @__PURE__ */ jsxs(Text, {
+                    variant: "text-sm/medium",
+                    color: "text-muted",
+                    numberOfLines: 1,
+                    children: [
+                      theme.authors.length ? `by ${theme.authors.join(", ")}` : theme.source,
+                      theme.hasBackground ? " \xB7 background" : ""
+                    ]
+                  })
+                ]
+              }),
+              /* @__PURE__ */ jsx(Swatches, {
+                preview: theme.preview
+              })
+            ]
+          }),
+          !!theme.description && /* @__PURE__ */ jsx(Text, {
+            variant: "text-sm/normal",
+            numberOfLines: 2,
+            children: theme.description
+          }),
+          /* @__PURE__ */ jsxs(import_react_native38.View, {
+            style: {
+              flexDirection: "row",
+              gap: 8
+            },
+            children: [
+              /* @__PURE__ */ jsx(import_react_native38.View, {
+                style: {
+                  flex: 1
+                },
+                children: /* @__PURE__ */ jsx(Button, {
+                  size: "md",
+                  variant: active ? "secondary" : "primary",
+                  text: active ? "In use" : busy ? "Working\u2026" : "Use",
+                  disabled: busy || active,
+                  onPress: use
+                })
+              }),
+              installed && /* @__PURE__ */ jsx(import_react_native38.View, {
+                style: {
+                  flex: 1
+                },
+                children: /* @__PURE__ */ jsx(Button, {
+                  size: "md",
+                  variant: "destructive",
+                  text: "Remove",
+                  disabled: busy,
+                  onPress: remove
+                })
+              })
+            ]
+          })
+        ]
+      })
+    });
+  }
+  function ThemeStore3() {
+    var [list, setList] = React2.useState(null);
+    var [error, setError] = React2.useState("");
+    var [query, setQuery] = React2.useState("");
+    var [, setTick] = React2.useState(0);
+    var refresh = () => setTick((t) => t + 1);
+    React2.useEffect(() => {
+      loadThemes().then(setList, (e) => setError(e instanceof Error ? e.message : String(e)));
+    }, []);
+    var q3 = query.trim().toLowerCase();
+    var shown = (list ?? []).filter((t) => !q3 || [
+      t.name,
+      t.description,
+      t.source,
+      ...t.authors
+    ].some((v2) => v2?.toLowerCase().includes(q3)));
+    return /* @__PURE__ */ jsxs(import_react_native38.View, {
+      style: {
+        flex: 1
+      },
+      children: [
+        /* @__PURE__ */ jsx(import_react_native38.View, {
+          style: {
+            paddingHorizontal: 12,
+            paddingTop: 12,
+            paddingBottom: 4
+          },
+          children: /* @__PURE__ */ jsx(Search_default, {
+            placeholder: list ? `Search ${list.length} themes` : "Search themes",
+            onChangeText: setQuery
+          })
+        }),
+        error ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-md/medium",
+          color: "text-muted",
+          style: {
+            textAlign: "center",
+            padding: 24
+          },
+          children: error
+        }) : !list ? /* @__PURE__ */ jsx(Text, {
+          variant: "text-md/medium",
+          color: "text-muted",
+          style: {
+            textAlign: "center",
+            padding: 24
+          },
+          children: "Loading themes\u2026"
+        }) : /* @__PURE__ */ jsx(FlashList, {
+          data: shown,
+          estimatedItemSize: 150,
+          keyExtractor: (t) => t.url,
+          contentContainerStyle: {
+            padding: 12,
+            paddingBottom: 48
+          },
+          ItemSeparatorComponent: () => /* @__PURE__ */ jsx(import_react_native38.View, {
+            style: {
+              height: 10
+            }
+          }),
+          ListEmptyComponent: /* @__PURE__ */ jsxs(Text, {
+            variant: "text-md/medium",
+            color: "text-muted",
+            style: {
+              textAlign: "center",
+              padding: 24
+            },
+            children: [
+              "No themes match \u201C",
+              query,
+              "\u201D."
+            ]
+          }),
+          renderItem: ({ item }) => /* @__PURE__ */ jsx(ThemeRow, {
+            theme: item,
+            refresh
+          })
+        })
+      ]
+    });
+  }
+  var import_react_native38, CLOUDCORD_INDEX, MARKETPLACE;
+  var init_ThemeStore = __esm({
+    "src/core/ui/settings/pages/ThemeStore/index.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_jsxRuntime();
+      init_themes();
+      init_assets();
+      init_safeFetch();
+      init_common();
+      init_components();
+      init_Search();
+      init_toasts();
+      import_react_native38 = __toESM(require_react_native());
+      CLOUDCORD_INDEX = "https://raw.githubusercontent.com/xohus/cloudcord/main/themes/mobile/index.json";
+      MARKETPLACE = "https://raw.githubusercontent.com/kmmiio99o/theme-marketplace/refs/heads/main/themes.json";
+    }
+  });
+
   // src/lib/addons/fonts/index.ts
   var fonts_exports = {};
   __export(fonts_exports, {
@@ -35298,7 +35587,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var themeFonts = currentTheme.fonts;
     var [fontName, setFontName] = (0, import_react15.useState)(guessFontName(Object.values(themeFonts)));
     var [error, setError] = (0, import_react15.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native38.View, {
+    return /* @__PURE__ */ jsxs(import_react_native39.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -35351,7 +35640,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var [fontLink, setFontLink] = (0, import_react15.useState)("");
     var [saving, setSaving] = (0, import_react15.useState)(false);
     var [error, setError] = (0, import_react15.useState)(void 0);
-    return /* @__PURE__ */ jsxs(import_react_native38.View, {
+    return /* @__PURE__ */ jsxs(import_react_native39.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -35394,7 +35683,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   function EntryEditorActionSheet(props) {
     var [familyName, setFamilyName] = (0, import_react15.useState)(props.name);
     var [fontUrl, setFontUrl] = (0, import_react15.useState)(props.fontEntries[props.name]);
-    return /* @__PURE__ */ jsxs(import_react_native38.View, {
+    return /* @__PURE__ */ jsxs(import_react_native39.View, {
       style: {
         padding: 8,
         paddingBottom: 16,
@@ -35452,14 +35741,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var urlRef = (0, import_react15.useRef)();
     var [nameSet, setNameSet] = (0, import_react15.useState)(false);
     var [error, setError] = (0, import_react15.useState)();
-    return /* @__PURE__ */ jsxs(import_react_native38.View, {
+    return /* @__PURE__ */ jsxs(import_react_native39.View, {
       style: {
         flexDirection: "row",
         gap: 8,
         justifyContent: "flex-start"
       },
       children: [
-        /* @__PURE__ */ jsx(import_react_native38.View, {
+        /* @__PURE__ */ jsx(import_react_native39.View, {
           style: {
             flex: 1
           },
@@ -35527,7 +35816,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var fontEntries = useProxy(memoEntry);
     var navigation2 = NavigationNative.useNavigation();
     var [, forceUpdate] = React.useReducer(() => ({}), 0);
-    return /* @__PURE__ */ jsx(import_react_native38.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native39.ScrollView, {
       style: {
         flex: 1
       },
@@ -35658,7 +35947,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             color: "text-feedback-critical",
             children: "Some font entries cannot be imported. Please modify the entries and try again."
           }),
-          /* @__PURE__ */ jsx(import_react_native38.View, {
+          /* @__PURE__ */ jsx(import_react_native39.View, {
             style: {
               flexDirection: "row",
               justifyContent: "flex-end",
@@ -35701,7 +35990,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react15, import_react_native38, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
+  var import_react15, import_react_native39, actionSheet2, openAlert3, AlertModal4, AlertActionButton4;
   var init_FontEditor = __esm({
     "src/core/ui/settings/pages/Fonts/FontEditor.tsx"() {
       "use strict";
@@ -35721,7 +36010,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_wrappers();
       init_components2();
       import_react15 = __toESM(require_react());
-      import_react_native38 = __toESM(require_react_native());
+      import_react_native39 = __toESM(require_react_native());
       actionSheet2 = findByPropsLazy("hideActionSheet");
       ({ openAlert: openAlert3 } = lazyDestructure(() => findByProps("openAlert", "dismissAlert")));
       ({ AlertModal: AlertModal4, AlertActionButton: AlertActionButton4 } = lazyDestructure(() => findByProps("AlertModal", "AlertActions")));
@@ -35736,19 +36025,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     return /* @__PURE__ */ jsx(Card, {
       children: /* @__PURE__ */ jsx(Stack, {
         spacing: 16,
-        children: /* @__PURE__ */ jsxs(import_react_native39.View, {
+        children: /* @__PURE__ */ jsxs(import_react_native40.View, {
           style: {
             flexDirection: "row",
             alignItems: "center"
           },
           children: [
-            /* @__PURE__ */ jsx(import_react_native39.View, {
+            /* @__PURE__ */ jsx(import_react_native40.View, {
               children: /* @__PURE__ */ jsx(Text, {
                 variant: "heading-lg/semibold",
                 children: font.name
               })
             }),
-            /* @__PURE__ */ jsx(import_react_native39.View, {
+            /* @__PURE__ */ jsx(import_react_native40.View, {
               style: {
                 marginLeft: "auto"
               },
@@ -35794,7 +36083,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native39, useToken2;
+  var import_react_native40, useToken2;
   var init_FontCard = __esm({
     "src/core/ui/settings/pages/Fonts/FontCard.tsx"() {
       "use strict";
@@ -35812,7 +36101,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_metro();
       init_common();
       init_components();
-      import_react_native39 = __toESM(require_react_native());
+      import_react_native40 = __toESM(require_react_native());
       init_FontEditor();
       ({ useToken: useToken2 } = lazyDestructure(() => findByProps("useToken")));
     }
@@ -36828,7 +37117,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         setStatus(String(error instanceof Error ? error.message : error));
       }
     }
-    return /* @__PURE__ */ jsx(import_react_native40.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native41.ScrollView, {
       keyboardShouldPersistTaps: "handled",
       contentContainerStyle: {
         padding: 16
@@ -36846,7 +37135,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           }),
           showCatalog && /* @__PURE__ */ jsxs(Fragment, {
             children: [
-              /* @__PURE__ */ jsx(import_react_native40.TextInput, {
+              /* @__PURE__ */ jsx(import_react_native41.TextInput, {
                 accessibilityLabel: "Search CX catalog",
                 placeholder: "Search CX catalog",
                 placeholderTextColor: "#b5bac1",
@@ -36889,13 +37178,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               })
             ]
           }),
-          /* @__PURE__ */ jsx(import_react_native40.Text, {
+          /* @__PURE__ */ jsx(import_react_native41.Text, {
             style: {
               color: "#b5bac1"
             },
             children: "Paste the contents of a .cx file to review it."
           }),
-          /* @__PURE__ */ jsx(import_react_native40.TextInput, {
+          /* @__PURE__ */ jsx(import_react_native41.TextInput, {
             accessibilityLabel: "CX source",
             placeholder: 'theme "Midnight":',
             placeholderTextColor: "#b5bac1",
@@ -36946,7 +37235,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               }, id))
             ]
           }),
-          /* @__PURE__ */ jsx(import_react_native40.Text, {
+          /* @__PURE__ */ jsx(import_react_native41.Text, {
             accessibilityLiveRegion: "polite",
             style: {
               color: "#b5bac1"
@@ -36957,7 +37246,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native40, session;
+  var import_react_native41, session;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -36979,7 +37268,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_metro();
       init_common();
       init_components();
-      import_react_native40 = __toESM(require_react_native());
+      import_react_native41 = __toESM(require_react_native());
       session = createCxSession();
     }
   });
@@ -37016,7 +37305,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }, [
       navigation2
     ]);
-    return /* @__PURE__ */ jsx(import_react_native41.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native42.ScrollView, {
       contentContainerStyle: {
         paddingBottom: 38
       },
@@ -37049,6 +37338,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               subLabel: "Manage your Discord themes",
               icon: icon2("PaintPaletteIcon", "ThemeIcon", "SettingsIcon"),
               onPress: () => open("Themes", () => (init_Themes(), __toCommonJS(Themes_exports)))
+            }),
+            isThemeSupported() && /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
+              label: "Discover themes",
+              subLabel: "Browse community themes and use one in a tap",
+              icon: icon2("ChannelListMagnifyingGlassIcon", "SearchIcon", "PaintPaletteIcon"),
+              onPress: () => open("Discover themes", () => (init_ThemeStore(), __toCommonJS(ThemeStore_exports)))
             }),
             isFontSupported() ? /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
@@ -37089,7 +37385,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41;
+  var import_react_native42;
   var init_Addons = __esm({
     "src/core/ui/settings/pages/Addons/index.tsx"() {
       "use strict";
@@ -37097,7 +37393,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_promiseAllSettled();
       init_async_to_generator();
       init_jsxRuntime();
-      import_react_native41 = __toESM(require_react_native());
+      import_react_native42 = __toESM(require_react_native());
       init_common();
       init_components();
       init_loader();
@@ -37289,7 +37585,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         children: /* @__PURE__ */ jsxs(SafeAreaView, {
           style: styles2.container,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native42.View, {
+            /* @__PURE__ */ jsxs(import_react_native43.View, {
               style: {
                 gap: 4
               },
@@ -37317,7 +37613,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 })
               ]
             }),
-            /* @__PURE__ */ jsxs(import_react_native42.ScrollView, {
+            /* @__PURE__ */ jsxs(import_react_native43.ScrollView, {
               fadingEdgeLength: 64,
               contentContainerStyle: {
                 gap: 12
@@ -37360,7 +37656,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native42, useStyles4;
+  var import_react_native43, useStyles4;
   var init_ErrorBoundaryScreen = __esm({
     "src/core/ui/reporter/components/ErrorBoundaryScreen.tsx"() {
       "use strict";
@@ -37375,7 +37671,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_styles();
       init_common();
       init_components();
-      import_react_native42 = __toESM(require_react_native());
+      import_react_native43 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
       useStyles4 = createStyles({
@@ -41072,7 +41368,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/core/vendetta/api.tsx
-  var import_react16, import_react_native43, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react16, import_react_native44, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -41103,7 +41399,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_toasts();
       init_dist();
       import_react16 = __toESM(require_react());
-      import_react_native43 = __toESM(require_react_native());
+      import_react_native44 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
       CompatRow = TableRow ?? Forms.FormRow ?? ReactNative.View;
@@ -41168,7 +41464,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
                       (0, import_react16.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react16.createElement)(import_react_native43.View, null, children);
+                      return /* @__PURE__ */ (0, import_react16.createElement)(import_react_native44.View, null, children);
                     }
                   };
                 }
@@ -41355,7 +41651,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   // src/lib/api/native/legacyRuntimeRefresh.ts
   function invokeLegacyReload() {
     return _async_to_generator(function* () {
-      var reader = import_react_native44.NativeModules.FileReaderModule ?? import_react_native44.NativeModules.RCTFileReaderModule;
+      var reader = import_react_native45.NativeModules.FileReaderModule ?? import_react_native45.NativeModules.RCTFileReaderModule;
       if (typeof reader?.readAsDataURL !== "function")
         return false;
       yield reader.readAsDataURL({
@@ -41392,7 +41688,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     })();
   }
-  var import_react_native44, CURRENT_RUNTIME_URL;
+  var import_react_native45, CURRENT_RUNTIME_URL;
   var init_legacyRuntimeRefresh = __esm({
     "src/lib/api/native/legacyRuntimeRefresh.ts"() {
       "use strict";
@@ -41401,7 +41697,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_async_to_generator();
       init_storage();
       init_settings();
-      import_react_native44 = __toESM(require_react_native());
+      import_react_native45 = __toESM(require_react_native());
       CURRENT_RUNTIME_URL = "https://getcloudcord.com/api/proxy/raw/dist/cc.js";
     }
   });
@@ -41610,7 +41906,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "f3a9343f61e79a9edde9f4519bf52ccc98a35670";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "0b8d663e90820f853218d8e1ce407ed7822a5919";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
