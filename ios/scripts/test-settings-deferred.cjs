@@ -32,8 +32,11 @@ for (const platform of ['android', 'ios']) for (const delayed of [false, true]) 
         const screenParent = screenKind === 'memo-sections' ? overview.default : overview;
         const screenKey = screenKind === 'memo-sections' ? 'type' : screenKind === 'named-node' ? 'SettingsOverviewScreen' : 'default';
         const originalOverview = screenParent[screenKey];
+        const searchList = { SearchableSettingsList: props => props.node };
+        const capturedSearchList = searchList.SearchableSettingsList;
+        const jsxCallbacks = new Map();
         let factoryCalls = 0, lookupCalls = 0;
-        const records = [renderer, ...lists, overview].map(exports => ({
+        const records = [renderer, ...lists, overview, searchList].map(exports => ({
             isInitialized: !delayed, publicModule: { exports: delayed ? {} : exports },
             factory(g, r, d, a, module) { factoryCalls++; module.exports = exports; return 'factory-result'; }
         }));
@@ -49,6 +52,10 @@ for (const platform of ['android', 'ios']) for (const delayed of [false, true]) 
             require(name) {
                 if (name === '../observeModules') return observer.exports;
                 if (name === '@lib/api/patcher') return patcher;
+                if (name === '@lib/api/react/jsx') return {
+                    onJsxCreate: (name, cb) => jsxCallbacks.set(name, cb),
+                    deleteJsxCreate: name => jsxCallbacks.delete(name)
+                };
                 if (name === '@ui/settings') return { registeredSections: rows };
                 if (name === '@lib/api/settings') return { settings: {} };
                 if (name === '@lib/api/native/modules') return { NativeClientInfoModule: { getConstants: () => ({ Version: '352.17' }) } };
@@ -72,6 +79,19 @@ for (const platform of ['android', 'ios']) for (const delayed of [false, true]) 
         }
         assert.equal(nativeTable.CLOUDCORD.key, 'CLOUDCORD', 'captured live renderer table gets rows');
         assert.equal(typeof nativeTable.PUPU_CUSTOM_PAGE.screen.getComponent(), 'function', 'custom page route registered');
+        // Actual Android 352 list props, cached before injection; frozen like
+        // a compiler-owned node. Navigation retains the original screen/list.
+        const frozenNode = Object.freeze({ sections: Object.freeze([
+            Object.freeze({ settings: Object.freeze(['ACCOUNT']) })
+        ]) });
+        const frozenProps = Object.freeze({ node: frozenNode });
+        const direct = searchList.SearchableSettingsList(frozenProps);
+        assert.equal(direct.sections[1]?.label, 'CloudCord', 'direct Android list hook inserts into cached node');
+        const element = jsxCallbacks.get('SearchableSettingsList')(capturedSearchList, { type: capturedSearchList, props: frozenProps });
+        assert.equal(capturedSearchList(element.props).sections[1]?.label, 'CloudCord', 'captured list reference also gets rows through JSX');
+        assert.equal(frozenNode.sections.length, 1, 'native frozen node remains untouched');
+        const nested = { node: { sections: [{ settings: ['PRIVACY'] }] } };
+        assert.equal(searchList.SearchableSettingsList(nested), nested.node, 'subpages do not receive root settings');
         for (const list of lists) {
             const config = { sections: [{ settings: ['ACCOUNT'] }] };
             for (let repeat = 0; repeat < 3; repeat++) {
@@ -90,6 +110,8 @@ for (const platform of ['android', 'ios']) for (const delayed of [false, true]) 
         cleanups.forEach(fn => fn());
         assert.equal(lateRecord.factory, originalLate, 'unload restores pending factories');
         assert.equal(screenParent[screenKey], originalOverview, 'unload restores screen');
+        assert.equal(searchList.SearchableSettingsList, capturedSearchList, 'unload restores direct list');
+        assert.equal(jsxCallbacks.size, 0, 'unload removes list JSX hook');
         assert.equal(nativeTable.CLOUDCORD, undefined, 'unload removes injected renderer rows');
         assert.equal(nativeTable.PUPU_CUSTOM_PAGE, undefined, 'unload removes routes');
         assert.equal(renderer.SETTING_RENDERER_CONFIG, nativeTable);

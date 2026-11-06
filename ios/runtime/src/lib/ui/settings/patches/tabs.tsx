@@ -5,6 +5,7 @@ import { registeredSections } from "@ui/settings";
 import { settings } from "@lib/api/settings";
 import { NativeClientInfoModule } from "@lib/api/native/modules";
 import { observeSettingsModules } from "../observeModules";
+import { onJsxCreate, deleteJsxCreate } from "@lib/api/react/jsx";
 
 import { CustomPageRenderer, wrapOnPress } from "./shared";
 import { findInReactTree } from "@lib/utils";
@@ -34,6 +35,7 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         "settings-overview-before",
         "settings-overview-after-direct",
         "settings-overview-after-tree",
+        "searchable-settings-list-direct",
         "legacy-settings-panel",
         "legacy-screen-route"
     ] as const;
@@ -220,6 +222,38 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
     const patchedRenderers = new WeakSet<object>();
     const patchedLists = new WeakSet<object>();
     const patchedScreens = new WeakSet<object>();
+    // Android 352 renders a cached createList node through this component.
+    // Work on a copy: React Compiler can retain/freeze the original node, and
+    // the overview function itself may already have been captured by navigation.
+    const prepareListProps = (props: any) => {
+        const node = props?.node;
+        const sections = node?.sections;
+        if (!Array.isArray(sections) || !sections.some(section => section?.settings?.includes?.("ACCOUNT"))) return props;
+        const copy = sections.map(section => ({ ...section,
+            ...(Array.isArray(section?.settings) ? { settings: [...section.settings] } : {})
+        }));
+        insertCloudCordSections(copy);
+        return { ...props, node: { ...node, sections: copy } };
+    };
+    const listJsx = (_component: any, element: any) => ({ ...element, props: prepareListProps(element.props) });
+    onJsxCreate("SearchableSettingsList", listJsx);
+    unpatches.push(() => deleteJsxCreate("SearchableSettingsList", listJsx));
+    const patchedSearchLists = new WeakSet<object>();
+    const patchSearchList = (module: any) => {
+        if (patchedSearchLists.has(module)) return;
+        const key = module.SearchableSettingsList ? "SearchableSettingsList" : "default";
+        let parent = module, renderKey = key;
+        if (typeof parent[renderKey] !== "function") {
+            parent = parent[renderKey];
+            renderKey = typeof parent?.type === "function" ? "type" : "render";
+        }
+        if (typeof parent?.[renderKey] !== "function") return;
+        unpatches.push(before(renderKey, parent, args => {
+            args[0] = prepareListProps(args[0]);
+            return args;
+        }));
+        patchedSearchLists.add(module);
+    };
     const patchRendererConfig = (rendererModule: any) => {
         if (patchedRenderers.has(rendererModule)) return;
         const descriptor = Object.getOwnPropertyDescriptor(rendererModule, "SETTING_RENDERER_CONFIG");
@@ -334,6 +368,12 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
             catch (error) { console.warn("CloudCord settings list patch failed", error); }
         }
         const screen = exports?.SettingsOverviewScreen ?? exports?.default;
+        const list = exports?.SearchableSettingsList ?? exports?.default;
+        if (exports?.SearchableSettingsList || path?.endsWith("/SearchableSettingsList.tsx") ||
+            [list?.name, list?.displayName, list?.type?.name, list?.render?.name].includes("SearchableSettingsList")) {
+            try { patchSearchList(exports); }
+            catch (error) { console.warn("CloudCord direct settings list patch failed", error); }
+        }
         if (path?.endsWith("/SettingsOverviewScreen.tsx") ||
             [screen?.name, screen?.displayName, screen?.type?.name, screen?.render?.name].includes("SettingsOverviewScreen")) {
             patchOverview(exports);
