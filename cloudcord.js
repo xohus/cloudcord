@@ -36408,6 +36408,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "ChatInputActionButtonApps"
           ]
         },
+        "chat-character-counter": {
+          plugin: "HideCharacterCount",
+          label: "the chat character counter",
+          css: '[class*="characterCount"] { display: none !important; }',
+          mobile: [
+            "ChatInputCharCounter"
+          ]
+        },
+        "chat-send-button": {
+          plugin: "HideSendButton",
+          label: "the chat send button",
+          css: 'button[aria-label="Send Message"] { display: none !important; }',
+          mobile: [
+            "ChatInputSendButton"
+          ]
+        },
         "message-embeds": {
           plugin: "HideEmbeds",
           label: "link embeds in chat",
@@ -38624,6 +38640,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-character-count.cx
+  var hide_character_count_default;
+  var init_hide_character_count = __esm({
+    "../examples/cx/catalog/plugins/hide-character-count.cx"() {
+      hide_character_count_default = 'plugin "HideCharacterCount":\n  needs appearance.hide\n  hide chat-character-counter\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-clan-tags.cx
   var hide_clan_tags_default;
   var init_hide_clan_tags = __esm({
@@ -38725,6 +38749,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_role_icons = __esm({
     "../examples/cx/catalog/plugins/hide-role-icons.cx"() {
       hide_role_icons_default = 'plugin "HideRoleIcons":\n  needs appearance.hide\n  hide role-icons\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-send-button.cx
+  var hide_send_button_default;
+  var init_hide_send_button = __esm({
+    "../examples/cx/catalog/plugins/hide-send-button.cx"() {
+      hide_send_button_default = 'plugin "HideSendButton":\n  needs appearance.hide\n  hide chat-send-button\n';
     }
   });
 
@@ -39905,6 +39937,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_badges();
       init_hide_bot_tags();
       init_hide_channel_topic();
+      init_hide_character_count();
       init_hide_clan_tags();
       init_hide_embeds();
       init_hide_gift_button();
@@ -39918,6 +39951,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_reactions();
       init_hide_reply_previews();
       init_hide_role_icons();
+      init_hide_send_button();
       init_hide_server_banner();
       init_hide_shop_tab();
       init_hide_stream_previews();
@@ -40168,6 +40202,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_channel_topic_default
           },
           {
+            name: "HideCharacterCount",
+            source: hide_character_count_default
+          },
+          {
             name: "HideClanTags",
             source: hide_clan_tags_default
           },
@@ -40218,6 +40256,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideRoleIcons",
             source: hide_role_icons_default
+          },
+          {
+            name: "HideSendButton",
+            source: hide_send_button_default
           },
           {
             name: "HideServerBanner",
@@ -46153,7 +46195,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "c98213c7270ec210a57c3dd95faab4e746a6527b";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "506c489f920d78f7f2ec058c4964b5d1d71f94e1";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
