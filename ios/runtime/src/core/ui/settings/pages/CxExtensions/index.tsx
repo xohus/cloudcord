@@ -1,5 +1,5 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
-import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, isCxProfileUserId, MAX_CX_SOURCE, reviewCx, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
+import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, getCxProfileMenuCopy, isCxProfileUserId, MAX_CX_SOURCE, reviewCx, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
@@ -20,33 +20,39 @@ const session = createCxSession();
 const UserStore = findByStoreNameLazy("UserStore");
 const ChannelStore = findByStoreNameLazy("ChannelStore");
 const MessageStore = findByStoreNameLazy("MessageStore");
+const UserProfileStore = findByStoreNameLazy("UserProfileStore");
 
 const profileMenuActions = new Set<{ action: CxProfileMenuAction; }>();
 let stopProfileMenuHooks: (() => void) | undefined;
 
 function patchProfileMenus() {
-    const ProfileUser = React.createContext<string | undefined>(undefined);
+    const ProfileUser = React.createContext<{ id: string; guildId?: string; } | undefined>(undefined);
     function ProfileMenu({ element }: { element: React.ReactElement<{ items: unknown[][]; }>; }) {
-        const id = React.useContext(ProfileUser);
-        if (!id || settings.safeMode?.enabled) return element;
+        const user = React.useContext(ProfileUser);
+        if (!user || settings.safeMode?.enabled) return element;
+        const { id, guildId } = user;
         const entries = new Map([...profileMenuActions].map(entry => [entry.action, entry]));
         if (!entries.size) return element;
-        const actions = [...entries.values()].map(entry => {
-            const { label, format } = cxProfileMenuActions[entry.action];
-            return { label, action: () => {
-                if (profileMenuActions.has(entry) && !settings.safeMode?.enabled) {
-                    clipboard.setString(format(id));
+        const actions = [...entries.values()].flatMap(entry => {
+            const { label, scope } = cxProfileMenuActions[entry.action];
+            if (scope === "server" && !getCxProfileMenuCopy(entry.action, id, UserProfileStore, guildId)) return [];
+            return [{ label, action: () => {
+                if (!profileMenuActions.has(entry) || settings.safeMode?.enabled) return;
+                const text = getCxProfileMenuCopy(entry.action, id, UserProfileStore, guildId);
+                if (text) {
+                    clipboard.setString(text);
                     showToast.showCopyToClipboard?.();
-                }
-            } };
+                } else showToast("No profile colors found.");
+            } }];
         });
-        return React.cloneElement(element, { items: [...element.props.items, actions] });
+        return actions.length ? React.cloneElement(element, { items: [...element.props.items, actions] }) : element;
     }
     const provideUser = (_: unknown, element: JSX.Element) => {
         const id = element.props.user?.id;
-        return isCxProfileUserId(id)
-            ? <ProfileUser.Provider value={id} key={element.key}>{element}</ProfileUser.Provider>
-            : element;
+        if (!isCxProfileUserId(id)) return element;
+        const guildId = element.props.displayProfile?.guildId ?? element.props.channel?.getGuildId?.();
+        const user = { id, guildId: isCxProfileUserId(guildId) ? guildId : undefined };
+        return <ProfileUser.Provider value={user} key={element.key}>{element}</ProfileUser.Provider>;
     };
     const addMenuItems = (_: unknown, element: JSX.Element) => {
         const { items, onOpen, children } = element.props;
@@ -176,6 +182,10 @@ export default function CxExtensions() {
                         if (!settings.safeMode?.enabled && typeof message.content === "string") message.content = transform(message.content);
                     });
                 },
+                getUserAvatarUrl(id) {
+                    const user = id ? UserStore?.getUser?.(id) : UserStore?.getCurrentUser?.();
+                    if (user) return findByProps("getUserAvatarURL", "getGuildIconURL")?.getUserAvatarURL(user, true, 1024);
+                },
                 registerCommand(name, execute, acceptsText, _sendsMessage, optionalSend, inputs) {
                     let builtIns;
                     try {
@@ -193,7 +203,8 @@ export default function CxExtensions() {
                             ...inputs.map(input => ({
                                 name: input.name, description: input.name.replace(/[_-]/g, " "), required: input.required,
                                 type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER
-                                    : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN : ApplicationCommandOptionType.STRING,
+                                    : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN
+                                        : input.type === "user" ? ApplicationCommandOptionType.USER : ApplicationCommandOptionType.STRING,
                                 choices: input.choices?.map(value => ({ name: value, displayName: value, label: value, value })),
                             })),
                             ...(optionalSend ? [{ name: "send", description: "Send the result to this chat", type: ApplicationCommandOptionType.BOOLEAN }] : []),

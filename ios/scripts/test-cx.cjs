@@ -152,8 +152,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const states = [], registered = {}, delivered = [];
         const incomingHooks = [], notifications = [], pendingNotifications = [];
         const me = "100000000000000001", sender = "100000000000000002", other = "100000000000000003";
+        const guildId = "100000000000000004";
+        const avatarHash = "a_0123456789abcdef0123456789abcdef";
+        const icons = { getUserAvatarURL(user, animate, size) {
+            assert.equal(animate, true);
+            assert.equal(size, 1024);
+            if (user.id === other) return "https://evil.example/avatars/" + user.id + "/" + avatarHash + ".gif";
+            return user.id === me ? "//cdn.discordapp.com/embed/avatars/0.png"
+                : "https://cdn.discordapp.com/avatars/" + user.id + "/" + avatarHash + ".gif?size=" + size;
+        } };
         const stores = {
-            UserStore: { getCurrentUser: () => ({ id: me }) },
+            UserStore: { getCurrentUser: () => ({ id: me }), getUser: id => [me, sender, other].includes(id) ? { id } : undefined },
+            UserProfileStore: {
+                getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]) } : undefined,
+                getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
+            },
             ChannelStore: { getChannel: () => ({ name: "test", recipients: [sender] }) },
             MessageStore: { getMessage: () => ({ author: { id: me } }) },
         };
@@ -175,7 +188,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const commandApi = {
             commands: registered,
             ApplicationCommandInputType: { BUILT_IN: 0, BUILT_IN_TEXT: 1 },
-            ApplicationCommandOptionType: { STRING: 3, INTEGER: 4, BOOLEAN: 5 },
+            ApplicationCommandOptionType: { STRING: 3, INTEGER: 4, BOOLEAN: 5, USER: 6 },
             ApplicationCommandType: { CHAT: 1 },
             findOption: (args, name) => args.find(option => option.name === name)?.value,
             registerCommand(command) {
@@ -210,7 +223,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@api/Notifications": { showNotification: ({ body }) => notifications.push(body) },
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
-            "@webpack/common": { useState, ...stores, Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
+            "@webpack/common": { useState, ...stores, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
             } },
@@ -236,7 +249,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 incomingHooks.push(callback);
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
-            "@metro": { findByStoreNameLazy: name => stores[name] },
+            "@metro": { findByStoreNameLazy: name => stores[name], findByProps: name => name === "getUserAvatarURL" ? icons : undefined },
             "@metro/common": { React: {
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: () => ({ Provider: "ProfileUserProvider" }), useContext: () => profileUser,
@@ -305,13 +318,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             selectCatalog(name);
             click(render(), "Allow for this session");
         }
-        const actionList = id => {
+        const actionList = (id, guild) => {
             if (desktop) {
                 const children = [];
-                for (const patch of menuPatches) patch(children, { user: { id } });
+                for (const patch of menuPatches) patch(children, { user: { id }, guildId: guild });
                 return children.map(child => child.props);
             }
-            const profile = jsx("UserProfileOverflowMenu", { user: { id } });
+            const profile = jsx("UserProfileOverflowMenu", { user: { id }, displayProfile: { guildId: guild } });
             const wrapped = appearanceHooks.get("UserProfileOverflowMenu")(null, profile);
             const originalItems = Object.freeze([Object.freeze([{ label: "Existing action" }]), Object.freeze([])]);
             const original = jsx("ContextMenu", Object.freeze({ items: originalItems, onOpen() {}, children() {} }));
@@ -340,6 +353,16 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         menuActions[1].action();
         assert.deepEqual(clipboardWrites, ["<https://discord.com/users/" + sender + ">", "<@" + sender + ">"]);
         assert.equal(menuPatches.size + appearanceHooks.size, 0);
+        selectCatalog("CopyProfileColors");
+        click(render(), "Allow for this session");
+        assert.deepEqual(Array.from(actionList(sender), item => item.label), ["Copy Profile Colors"]);
+        const colorActions = actionList(sender, guildId);
+        assert.deepEqual(Array.from(colorActions, item => item.label), ["Copy Profile Colors", "Copy Server Profile Colors"]);
+        for (const action of colorActions) action.action();
+        assert.deepEqual(clipboardWrites.slice(-2), ["Primary-color #000000, Secondary-Color #12abcd", "Primary-color #000123, Secondary-Color #ffffff"]);
+        actionList(other, guildId)[0].action();
+        assert.equal(notifications.pop(), "No profile colors found.");
+        click(render(), "Disable CopyProfileColors");
         const editor = find(render(), item => item.type === (desktop ? "textarea" : "TextInput"));
         if (desktop) editor.props.onChange({ currentTarget: { value: counter } });
         else editor.props.onChangeText(counter);
@@ -392,6 +415,22 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             click(render(), "Disable " + name);
             assert.equal(incomingHooks.length, 0);
         }
+
+        const avatarPort = cxCatalog.plugins.find(entry => entry.name === "AvatarGrabber").source;
+        assert.throws(() => parseCx(avatarPort.replace("  needs profile.avatar\n", "")), /permissions/);
+        assert.throws(() => parseCx(avatarPort.replace('"user" user optional', '"user" text optional')), /named text functions/);
+        selectCatalog("AvatarGrabber");
+        click(render(), "Allow for this session");
+        const avatar = registered.avatar;
+        assert.equal(avatar.options[0].type, commandApi.ApplicationCommandOptionType.USER);
+        const runAvatar = id => avatar.execute(id === undefined ? [] : [{ name: "user", value: id }], { channel: { id: "test-channel" } });
+        assert.equal(runAvatar().content, "https://cdn.discordapp.com/embed/avatars/0.png");
+        assert.equal(runAvatar(sender).content, "https://cdn.discordapp.com/avatars/" + sender + "/" + avatarHash + ".gif?size=1024");
+        assert.equal(runAvatar(other), undefined);
+        assert.equal(delivered.pop()[1], "Couldn't find that user.");
+        assert.equal(runAvatar("invalid"), undefined);
+        click(render(), "Disable AvatarGrabber");
+        assert.equal(runAvatar(sender), undefined);
 
         const testCases = [
             ["ReverseText", "reverse", "a🐈", "🐈a"],

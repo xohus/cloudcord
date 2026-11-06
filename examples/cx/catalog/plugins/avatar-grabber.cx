@@ -1,0 +1,8 @@
+plugin "AvatarGrabber":
+  needs commands.register
+  needs messages.send
+  needs profile.avatar
+  needs reply.local
+  on command "avatar":
+    input "user" user optional
+    send "${avatar(user)}" else "Couldn't find that user."

@@ -1,0 +1,4 @@
+plugin "CopyProfileColors":
+  needs profilemenu.copy
+  on profile menu copy profile-colors
+  on profile menu copy server-profile-colors

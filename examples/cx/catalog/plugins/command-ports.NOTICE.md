@@ -12,3 +12,6 @@ The [desktop client license](../../../../desktop/client/LICENSE) contains the GP
 
 - CopyUserURLs by castdrian.
 - CopyUserMention by Cortex and castdrian.
+- CopyProfileColors by Crxa, Cortex, and Gir0fa.
+
+AvatarGrabber is adapted from the Endcord plugin by rootpoi, kraethis, and ewlle.

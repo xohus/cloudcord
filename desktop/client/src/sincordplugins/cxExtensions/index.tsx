@@ -2,11 +2,11 @@ import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, fi
 import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, isCxProfileUserId, MAX_CX_SOURCE, reviewCx, runCxIncomingRules } from "@utils/cx";
+import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, getCxProfileMenuCopy, isCxProfileUserId, MAX_CX_SOURCE, reviewCx, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
-import { ChannelStore, FluxDispatcher, Menu, MessageStore, UserStore, useState } from "@webpack/common";
+import { ChannelStore, FluxDispatcher, IconUtils, Menu, MessageStore, SelectedGuildStore, showToast, UserProfileStore, UserStore, useState } from "@webpack/common";
 
 const session = createCxSession();
 
@@ -60,14 +60,20 @@ export function CxSettings() {
                     };
                 },
                 registerProfileMenuAction(action) {
-                    const { format, label } = cxProfileMenuActions[action];
+                    const { label, scope } = cxProfileMenuActions[action];
                     let active = true;
                     const itemId = "cx-profile-" + action;
                     const patch: NavContextMenuPatchCallback = (children, props) => {
                         const id = props?.user?.id ?? props?.userId;
                         if (!active || !isCxProfileUserId(id) || children.some(child => child?.props?.id === itemId)) return;
+                        const selectedGuild = scope === "server" ? props?.guildId ?? SelectedGuildStore?.getGuildId() : undefined;
+                        const guildId = isCxProfileUserId(selectedGuild) ? selectedGuild : undefined;
+                        if (scope === "server" && !getCxProfileMenuCopy(action, id, UserProfileStore, guildId)) return;
                         children.push(<Menu.MenuItem id={itemId} label={label} action={() => {
-                            if (active) void copyToClipboard(format(id)).catch(() => {});
+                            if (!active) return;
+                            const text = getCxProfileMenuCopy(action, id, UserProfileStore, guildId);
+                            if (text) void copyToClipboard(text).catch(() => showToast("Couldn't copy to clipboard."));
+                            else showToast("No profile colors found.");
                         }} />);
                     };
                     const menus = ["user-context", "user-profile-actions", "user-profile-overflow-menu"];
@@ -102,6 +108,10 @@ export function CxSettings() {
                     });
                     return () => { removeMessagePreEditListener(listener); };
                 },
+                getUserAvatarUrl(id) {
+                    const user = id ? UserStore?.getUser(id) : UserStore?.getCurrentUser?.();
+                    if (user) return IconUtils.getUserAvatarURL(user, true, 1024);
+                },
                 registerCommand(name, execute, acceptsText, sendsMessage, optionalSend, inputs) {
                     if (Object.prototype.hasOwnProperty.call(commands, name) || name in Object.prototype)
                         throw new Error(`Command /${name} already exists`);
@@ -114,7 +124,8 @@ export function CxSettings() {
                             ...inputs.map(input => ({
                                 name: input.name, description: input.name.replace(/[_-]/g, " "), required: input.required,
                                 type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER
-                                    : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN : ApplicationCommandOptionType.STRING,
+                                    : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN
+                                        : input.type === "user" ? ApplicationCommandOptionType.USER : ApplicationCommandOptionType.STRING,
                                 choices: input.choices?.map(value => ({ name: value, label: value, value })),
                             })),
                             ...(optionalSend ? [{ name: "send", description: "Send the result to this chat", type: ApplicationCommandOptionType.BOOLEAN }] : []),

@@ -4,9 +4,9 @@ import { applyIncomingRule, incomingPermissions, type IncomingPayload, type Inco
 import { calculate, convertUnits } from "./cxNumeric";
 import { messageTransforms, polishOptions, reverseText } from "./cxMessageTransforms";
 
-import { cxProfileMenuActions, type CxProfileMenuAction } from "./cxProfileMenu";
+import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
-export { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
+export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
 export const MAX_CX_SOURCE = 512 * 1024;
 export const CX_INLINE_EDITOR_LIMIT = 32 * 1024;
@@ -20,7 +20,8 @@ const permissionLabels = {
     "messages.transform": "Change text before Discord sends messages you compose",
     "messages.edit.transform": "Change text when you submit a message edit",
     "replies.suppressping": "Send replies without pinging the person you reply to",
-    "profilemenu.copy": "Add the listed copy actions to user menus. Writes to the clipboard only when selected.",
+    "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
+    "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
     "appearance.hide": "Hide the listed interface elements on this device",
     "messages.filterstickers": "Filter stickers from incoming messages on this device",
     "messages.silencementions": "Mute mentions from the listed senders on this device",
@@ -59,7 +60,7 @@ const actionPermissions: Record<Action["kind"], CxPermission[]> = {
     "reply or send": ["reply.local", "messages.send"],
 };
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
-type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice"; required: boolean; choices?: string[] };
+type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice" | "user"; required: boolean; choices?: string[] };
 type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: Action[] };
 type TransformStage = "send" | "edit";
 type MessageTransform = { stage: TransformStage } & (
@@ -167,6 +168,7 @@ export function parseCx(source: string): CxDocument {
     const profileActions = new Set<CxProfileMenuAction>();
     const incoming: IncomingRule[] = [];
     let suppressReplyPing = false;
+    let readsAvatar = false;
     let current: Command | undefined;
     for (const line of lines) {
         if (!line.trim()) continue;
@@ -241,7 +243,7 @@ export function parseCx(source: string): CxDocument {
             commands.push(current = { name, text: Boolean(command[2]), inputs: [], actions: [] });
             continue;
         }
-        const input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line);
+        const input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice|user)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line);
         if (input && current && !current.actions.length) {
             const [, name, type, list, optional] = input;
             if (name === "send" || (name === "text" && current.text) || current.inputs.length >= 4 || current.inputs.some(option => option.name === name))
@@ -271,11 +273,17 @@ export function parseCx(source: string): CxDocument {
             throw new Error("CX allows one outgoing message per command");
         }
         if (kind !== "toast") {
-            const inputs = new Set(current.inputs.map(input => input.name));
+            const declaredInputs = current.inputs;
+            const inputs = new Set(declaredInputs.map(input => input.name));
             if (current.text) inputs.add("text");
             const remaining = message.replace(textExpression, (expression, name: string, args: string | undefined) => {
                 if (args === undefined) return inputs.has(name) ? "" : expression;
                 const names = argumentNames(args);
+                if (name === "avatar" && names.length === 1
+                    && declaredInputs.some(input => input.name === names[0] && input.type === "user")) {
+                    readsAvatar = true;
+                    return "";
+                }
                 return Object.prototype.hasOwnProperty.call(textFunctions, name)
                     && textFunctions[name].length === names.length && names.every(name => inputs.has(name)) ? "" : expression;
             });
@@ -290,6 +298,7 @@ export function parseCx(source: string): CxDocument {
     if (suppressReplyPing) required.add("replies.suppressping");
     if (hiddenTargets.size) required.add("appearance.hide");
     if (profileActions.size) required.add("profilemenu.copy");
+    if (readsAvatar) required.add("profile.avatar");
     for (const { kind } of incoming) required.add(incomingPermissions[kind]);
     for (const { stage } of transforms) required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
     for (const { actions } of commands) {
@@ -326,6 +335,7 @@ type Invocation = { text?: string; inputs?: Record<string, unknown>; sendRequest
 type CxHost = {
     registerCommand: (name: string, execute: (invocation?: Invocation) => string | undefined, acceptsText: boolean, sendsMessage: boolean, optionalSend: boolean, inputs: readonly CommandInput[]) => () => void;
     toast: (message: string) => void;
+    getUserAvatarUrl?: (id?: string) => unknown;
     applyTheme: (theme: CxTheme) => () => void;
     registerMessageTransform?: (transform: (text: string) => string) => () => void;
     registerMessageEditTransform?: (transform: (text: string) => string) => () => void;
@@ -334,6 +344,17 @@ type CxHost = {
     hideAppearanceTarget?: (target: CxAppearanceTarget) => () => void;
     registerIncomingRules?: (rules: readonly IncomingRule[]) => () => void;
 };
+
+function getAvatarUrl(host: CxHost, grants: ReadonlySet<CxPermission>, id: string) {
+    if (!grants.has("profile.avatar")) return;
+    try {
+        const url = host.getUserAvatarUrl?.(id || undefined);
+        if (typeof url !== "string") return;
+        const https = url.startsWith("//") ? "https:" + url : url;
+        if (/^https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/(?:avatars\/\d{17,20}\/(?:a_)?[0-9a-f]{32}|embed\/avatars\/[0-5])\.(?:png|jpe?g|webp|gif)(?:\?[a-z0-9_=&-]{1,128})?$/i.test(https))
+            return https;
+    } catch { /* An unavailable user or icon module uses the local command fallback. */ }
+}
 
 /** Only trusted UI can grant access. The source never receives the host or a callback argument. */
 export function activateCx(source: string, host: CxHost, approved: readonly CxPermission[]) {
@@ -396,6 +417,7 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                     const valid = serialized.trim() && serialized.length <= 4000 && (
                         input.type === "text" ? typeof value === "string"
                             : input.type === "boolean" ? typeof value === "boolean"
+                                : input.type === "user" ? isCxProfileUserId(value)
                                 : input.type === "integer" ? /^-?\d+$/.test(serialized) && Number.isSafeInteger(Number(serialized))
                                 : input.choices?.includes(serialized)
                     );
@@ -411,7 +433,9 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                     }
                     let invalid = false;
                     const message = action.choices ? chooseOne(action.choices)! : action.message.replace(textExpression, (_, name: string, args: string | undefined) => {
-                        const value = args === undefined ? inputs.get(name) : textFunctions[name](...argumentNames(args).map(name => inputs.get(name)!));
+                        const values = args === undefined ? [] : argumentNames(args).map(input => inputs.get(input)!);
+                        const value = args === undefined ? inputs.get(name)
+                            : name === "avatar" ? getAvatarUrl(host, grants, values[0]) : textFunctions[name](...values);
                         if (value === undefined) invalid = true;
                         return value ?? "";
                     });
