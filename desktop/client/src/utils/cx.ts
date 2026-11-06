@@ -1,6 +1,6 @@
 import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { calculate, convertUnits } from "./cxNumeric";
-import { messageTransforms, reverseText } from "./cxMessageTransforms";
+import { messageTransforms, polishOptions, reverseText } from "./cxMessageTransforms";
 
 export const MAX_CX_SOURCE = 512 * 1024;
 
@@ -10,6 +10,7 @@ const permissionLabels = {
     "reply.local": "Show a command reply visible only to you",
     "messages.send": "Send the result to the current chat when you run a listed command",
     "messages.transform": "Change text before Discord sends messages you compose",
+    "messages.edit.transform": "Change text when you submit a message edit",
 };
 
 // Text transforms adapted from Endcord (Vendicated and contributors, GPL-3.0-or-later).
@@ -44,7 +45,7 @@ const actionPermissions: Record<Action["kind"], CxPermission[]> = {
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
 type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice"; required: boolean; choices?: string[] };
 type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: Action[] };
-type MessageTransform = { name: keyof typeof messageTransforms; options?: string };
+type MessageTransform = { stage: "send" | "edit"; name: keyof typeof messageTransforms; options?: string };
 export type CxTheme = {
     kind: "theme";
     name: string;
@@ -132,13 +133,18 @@ export function parseCx(source: string): CxDocument {
             permissions.add(permission);
             continue;
         }
-        const transform = /^  before send ([a-zA-Z]+)( .+)?$/.exec(line);
+        const transform = /^  before (send|edit) ([a-zA-Z]+)( .+)?$/.exec(line);
         if (transform) {
-            const name = transform[1] as MessageTransform["name"];
-            if (!Object.prototype.hasOwnProperty.call(messageTransforms, name) || transforms.some(entry => entry.name === name))
+            const stage = transform[1] as MessageTransform["stage"];
+            const name = transform[2] as MessageTransform["name"];
+            if (!Object.prototype.hasOwnProperty.call(messageTransforms, name) || transforms.some(entry => entry.name === name && entry.stage === stage))
                 throw new Error("Unknown or duplicate outgoing text transform");
-            if (transform[2] && name !== "capitalizeSentences") throw new Error("This transform takes no options");
-            transforms.push({ name, options: transform[2] ? quoted(transform[2].trim(), 240) : undefined });
+            if (transform[3] && name !== "capitalizeSentences" && name !== "signature" && name !== "polishWording")
+                throw new Error("This transform takes no options");
+            const options = transform[3] ? quoted(transform[3].trim(), 240) : undefined;
+            if (name === "polishWording" && options?.split(",").some(option => !polishOptions.has(option.trim())))
+                throw new Error("Unknown PolishWording option");
+            transforms.push({ stage, name, options });
             current = undefined;
             continue;
         }
@@ -195,7 +201,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("A plugin needs a command with an action or an outgoing text transform");
     const required = new Set<CxPermission>();
     if (commands.length) required.add("commands.register");
-    if (transforms.length) required.add("messages.transform");
+    for (const { stage } of transforms) required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
     for (const { actions } of commands) {
         for (const action of actions) {
             for (const permission of actionPermissions[action.kind]) required.add(permission);
@@ -227,6 +233,7 @@ type CxHost = {
     toast: (message: string) => void;
     applyTheme: (theme: CxTheme) => () => void;
     registerMessageTransform?: (transform: (text: string) => string) => () => void;
+    registerMessageEditTransform?: (transform: (text: string) => string) => () => void;
 };
 
 /** Only trusted UI can grant access. The source never receives the host or a callback argument. */
@@ -243,12 +250,15 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
         for (const cleanup of cleanups.splice(0).reverse()) cleanup();
     }
     try {
-        if (document.messageTransforms.length) {
-            if (!host.registerMessageTransform) throw new Error("This client cannot transform outgoing messages");
-            cleanups.push(host.registerMessageTransform(text => {
+        for (const stage of ["send", "edit"] as const) {
+            const transforms = document.messageTransforms.filter(transform => transform.stage === stage);
+            if (!transforms.length) continue;
+            const register = stage === "send" ? host.registerMessageTransform : host.registerMessageEditTransform;
+            if (!register) throw new Error("This client cannot transform message " + stage + "s");
+            cleanups.push(register(text => {
                 if (!active || text.length > 4000) return text;
                 let result = text;
-                for (const { name, options } of document.messageTransforms) result = messageTransforms[name](result, options);
+                for (const { name, options } of transforms) result = messageTransforms[name](result, options);
                 return result.trim() && result.length <= 4000 ? result : text;
             }));
         }

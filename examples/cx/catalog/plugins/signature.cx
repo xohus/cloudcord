@@ -1,0 +1,3 @@
+plugin "Signature":
+  needs messages.transform
+  before send signature "a chronic discord user"

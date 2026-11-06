@@ -1,5 +1,5 @@
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
-import { addMessagePreSendListener, removeMessagePreSendListener } from "@api/MessageEvents";
+import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
 import { createCxSession, MAX_CX_SOURCE, reviewCx } from "@utils/cx";
 import { cxCatalog } from "@utils/cxCatalog";
@@ -35,6 +35,12 @@ export function CxSettings() {
                         if (typeof message.content === "string") message.content = transform(message.content);
                     });
                     return () => { removeMessagePreSendListener(listener); };
+                },
+                registerMessageEditTransform(transform) {
+                    const listener = addMessagePreEditListener((_, _id, message) => {
+                        if (typeof message.content === "string") message.content = transform(message.content);
+                    });
+                    return () => { removeMessagePreEditListener(listener); };
                 },
                 registerCommand(name, execute, acceptsText, sendsMessage, optionalSend, inputs) {
                     if (Object.prototype.hasOwnProperty.call(commands, name) || name in Object.prototype)

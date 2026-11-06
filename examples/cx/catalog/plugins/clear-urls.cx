@@ -1,0 +1,5 @@
+plugin "ClearURLs":
+  needs messages.transform
+  needs messages.edit.transform
+  before send clearTrackingLinks
+  before edit clearTrackingLinks

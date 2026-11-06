@@ -1,4 +1,4 @@
-import { onSendMessage } from "@core/plugins/shared/sendMessage";
+import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { createCxSession, MAX_CX_SOURCE, reviewCx } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
@@ -65,6 +65,11 @@ export default function CxExtensions() {
             session.enable(candidate.source, {
                 registerMessageTransform(transform) {
                     return onSendMessage(message => {
+                        if (!settings.safeMode?.enabled && typeof message.content === "string") message.content = transform(message.content);
+                    });
+                },
+                registerMessageEditTransform(transform) {
+                    return onEditMessage(message => {
                         if (!settings.safeMode?.enabled && typeof message.content === "string") message.content = transform(message.content);
                     });
                 },

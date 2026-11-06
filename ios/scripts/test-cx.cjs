@@ -75,6 +75,33 @@ const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCA
 assert.equal(parseCx(theme + '\n  wallpaper: "' + png + '"').wallpaper, png);
 assert.throws(() => parseCx(theme + '\n  wallpaper-opacity: 75'), /embedded wallpaper/);
 assert.throws(() => parseCx(theme + '\n  wallpaper: "' + png + '"\n  wallpaper-opacity: 101'), /0 to 100/);
+const mobileEvents = { exports: {} };
+const edited = [];
+const editor = {
+    startEditMessage() {},
+    editMessage(...args) { edited.push(args); },
+};
+vm.runInNewContext(transformSync(read("ios/runtime/src/core/plugins/shared/sendMessage.ts"), { loader: "ts", format: "cjs" }).code, {
+    module: mobileEvents,
+    require(name) {
+        if (name === "@metro") return { findByProps: () => editor };
+        if (name === "@metro/common") return { messageUtil: {} };
+        if (name === "@lib/api/patcher") return {
+            before(key, target, callback) {
+                const original = target[key];
+                target[key] = (...args) => original(...callback(args));
+                return () => { target[key] = original; };
+            },
+        };
+        throw new Error("Unexpected mobile event dependency: " + name);
+    },
+});
+const unpatchEdit = mobileEvents.exports.onEditMessage(message => { message.content = "edited"; });
+editor.editMessage("channel", "id", { content: "original", attachments: ["image"] }, "option");
+assert.deepEqual(edited[0], ["channel", "id", { content: "edited", attachments: ["image"] }, "option"]);
+unpatchEdit();
+editor.editMessage("channel", "id", { content: "original" });
+assert.equal(edited[1][2].content, "original");
 console.log("PASS CX permission review, denial, revocation, rollback, plugin and theme coexistence, and safe wallpaper");
 
 (async () => {
@@ -105,6 +132,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const desktop = platform === "desktop";
         const states = [], registered = {}, delivered = [];
         const transformHooks = new Set();
+        const editHooks = new Set();
         const selectedTheme = { name: "Previously selected" };
         let nativeTheme = selectedTheme, nativeMode, stylesheet;
         let cursor = 0;
@@ -136,10 +164,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@api/Commands": commandApi,
             "@api/MessageEvents": {
                 addMessagePreSendListener(listener) { transformHooks.add(listener); return listener; },
-                removeMessagePreSendListener(listener) { transformHooks.delete(listener); }
+                removeMessagePreSendListener(listener) { transformHooks.delete(listener); },
+                addMessagePreEditListener(listener) { editHooks.add(listener); return listener; },
+                removeMessagePreEditListener(listener) { editHooks.delete(listener); }
             },
             "@core/plugins/shared/sendMessage": {
-                onSendMessage(listener) { transformHooks.add(listener); return () => { transformHooks.delete(listener); }; }
+                onSendMessage(listener) { transformHooks.add(listener); return () => { transformHooks.delete(listener); }; },
+                onEditMessage(listener) { editHooks.add(listener); return () => { editHooks.delete(listener); }; }
             },
             "@api/Notifications": {},
             "@utils/cx": moduleBox.exports,
@@ -300,6 +331,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             ["WriteUpperCase", "hello. bye! ok now", "Hello. Bye! ok now"],
             ["Unindent", "```js\n    one();\n      two();\n```", "```js\none();\n  two();\n```"],
             ["NormalizeMessageLinks", "https://ptb.discord.com/channels/1/2/3", "https://discord.com/channels/1/2/3"],
+            ["Ingtoninator", "CAT https://example.test/keep", "CATINGTON https://example.test/keep"],
+            ["PolishWording", "dont change \x60dont\x60 or https://example.test/dont", "don't change \x60dont\x60 or https://example.test/dont"],
+            ["Signature", "hello", "hello\n> a chronic discord user"],
+            ["ClearURLs", "https://example.test/?utm_source=ad&t=4&bad%XX=1#anchor", "https://example.test/?t=4&bad%XX=1#anchor"],
         ];
         for (const [name, input, expected] of transforms) {
             const source = cxCatalog.plugins.find(entry => entry.name === name).source;
@@ -315,8 +350,24 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             else hook(message);
             assert.equal(message.content, expected);
             assert.deepEqual(message.attachments, ["image"]);
+            if (name === "ClearURLs") {
+                assert.equal(editHooks.size, 1);
+                const edit = [...editHooks][0];
+                message.content = "Look at https://x.com/test?s=20&keep=1!";
+                if (desktop) edit("channel", "message", message);
+                else edit(message);
+                assert.equal(message.content, "Look at https://x.com/test?keep=1!");
+                message.content = "[link](https://example.test/?utm_source=ad)";
+                if (desktop) edit("channel", "message", message);
+                else edit(message);
+                assert.equal(message.content, "[link](https://example.test/)");
+                assert.throws(() => parseCx(source.replace("  needs messages.edit.transform\n", "")), /permissions/);
+            } else {
+                assert.equal(editHooks.size, 0);
+            }
             click(render(), "Disable " + name);
             assert.equal(transformHooks.size, 0);
+            assert.equal(editHooks.size, 0);
             message.content = input;
             if (desktop) hook("channel", message);
             else hook(message);
