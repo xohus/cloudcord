@@ -1,0 +1,12 @@
+plugin "FriendInvites":
+  needs commands.register
+  needs reply.local
+  needs friends.invites.create
+  needs friends.invites.list
+  needs friends.invites.revoke
+  on command "create-friend-invite":
+    create friend invites
+  on command "view-friend-invites":
+    list friend invites
+  on command "revoke-friend-invites":
+    revoke friend invites

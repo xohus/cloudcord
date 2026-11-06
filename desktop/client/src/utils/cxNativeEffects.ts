@@ -2,9 +2,38 @@ export const cxNativeEffects = {
     "silent-typing": { permission: "typing.suppress", label: "Stop sending your typing indicator" },
     "pending-friend-count": { permission: "appearance.hide", label: "Hide the pending friend request count" },
     "animated-assets": { permission: "appearance.style", label: "Animate avatars, banners, and server icons" },
+    "floor-relative-time": { permission: "appearance.style", label: "Round relative timestamps down" },
 } as const;
 
 export type CxNativeEffect = keyof typeof cxNativeEffects;
+
+type Rounding = (value: number) => number;
+type MomentRounding = {
+    relativeTimeRounding: { (): Rounding; (rule: Rounding): boolean; };
+};
+const roundingUsers = new WeakMap<MomentRounding, { previous: Rounding; applied: Rounding; count: number; }>();
+
+export function floorCxRelativeTime(target: MomentRounding | undefined, enabled = () => true) {
+    if (typeof target?.relativeTimeRounding !== "function") throw new Error("Discord relative timestamps are unavailable");
+    let state = roundingUsers.get(target);
+    if (!state) {
+        const previous = target.relativeTimeRounding();
+        const round = (value: number) => enabled() ? Math.floor(value) : previous(value);
+        if (!target.relativeTimeRounding(round)) throw new Error("Could not change Discord relative timestamps");
+        state = { previous, applied: round, count: 0 };
+        roundingUsers.set(target, state);
+    }
+    state.count++;
+    let active = true;
+    return () => {
+        if (!active) return;
+        active = false;
+        if (--state.count === 0) {
+            roundingUsers.delete(target);
+            if (target.relativeTimeRounding() === state.applied) target.relativeTimeRounding(state.previous);
+        }
+    };
+}
 
 type MethodOverride = (args: unknown[], invoke: (args: unknown[]) => unknown) => unknown;
 

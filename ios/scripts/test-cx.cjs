@@ -156,6 +156,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const roleId = "100000000000000005";
         const trackId = "0123456789012345678901";
         const acknowledged = [];
+        const inviteCalls = [];
+        let resolveInvite;
+        const inviteApi = {
+            createFriendInvite: () => { inviteCalls.push("create"); return new Promise(resolve => { resolveInvite = resolve; }); },
+            getAllFriendInvites: async () => { inviteCalls.push("list"); return [{ code: "abc", uses: 1, max_uses: 5 }]; },
+            revokeFriendInvites: async () => { inviteCalls.push("revoke"); },
+        };
+        let rounding = Math.ceil;
+        const relativeTime = {
+            relativeTimeRounding(next) {
+                if (!next) return rounding;
+                rounding = next;
+                return true;
+            },
+        };
         const previousEdits = [];
         const messageEditor = { editMessage: (channel, id, message) => previousEdits.push([channel, id, message.content]) };
         let latestMessage = { id: "previous", author: { id: me }, content: "Fix a.b twice: a.b", timestamp: Date.now(), channel_id: "test-channel" };
@@ -178,7 +193,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
             },
             ChannelStore: { getChannel: id => ({ name: "test", recipients: [sender], guild_id: id === "guild-channel" ? guildId : undefined }) },
-            GuildMemberStore: { getMembers: () => [{ userId: sender, roles: [roleId], nick: "Tester@everyone" }] },
+            GuildMemberStore: { getMemberIds: () => [me, sender], getMembers: () => [{ userId: sender, roles: [roleId], nick: "Tester@everyone" }] },
             GuildStore: { getGuilds: () => ({ [guildId]: { id: guildId } }) },
             GuildChannelStore: { getChannels: () => ({
                 SELECTABLE: [{ channel: { id: "first" } }, { channel: { id: "missing" } }],
@@ -253,7 +268,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@api/Notifications": { showNotification: ({ body }) => notifications.push(body) },
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
-            "@webpack": { findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons : undefined },
+            "@webpack": { findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
+                : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime : undefined },
             "@webpack/common": { useState, ...stores, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
@@ -290,7 +306,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
             "@metro": { findByStoreNameLazy: name => stores[name], findByProps: name =>
-                name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor : undefined },
+                name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
+                    : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime : undefined },
             "@metro/common": { React: {
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: () => ({ Provider: "ProfileUserProvider" }), useContext: () => profileUser,
@@ -568,10 +585,42 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         readall.execute([], { channel: { id: "guild-channel" } });
         assert.equal(acknowledged.length, 1);
 
+        const guildContext = { guild: { id: guildId }, channel: { id: "guild-channel", guild_id: guildId } };
+        selectCatalog("AtSomeone");
+        click(render(), "Allow for this session");
+        assert.equal(registered.someone.execute([{ name: "message", value: "hi" }], guildContext).content, "<@" + sender + "> hi");
+        assert.equal(registered.someone.execute([], { channel: { id: "dm" } }), undefined);
+        assert.match(delivered.pop()[1], /No other loaded members/);
+        click(render(), "Disable AtSomeone");
+
+        const friendInvites = cxCatalog.plugins.find(entry => entry.name === "FriendInvites").source;
+        assert.throws(() => parseCx(friendInvites.replace("  needs friends.invites.revoke\n", "")), /permissions/);
+        selectCatalog("FriendInvites");
+        assert.equal(registered["create-friend-invite"], undefined);
+        click(render(), "Allow for this session");
+        const createInvite = registered["create-friend-invite"];
+        assert.equal(registered["view-friend-invites"].execute([], guildContext), undefined);
+        assert.equal(registered["revoke-friend-invites"].execute([], guildContext), undefined);
+        await new Promise(setImmediate);
+        assert.deepEqual(inviteCalls, ["list", "revoke"]);
+        assert.ok(delivered.some(([, text]) => text === "discord.gg/abc · Used 1/5"));
+        assert.ok(delivered.some(([, text]) => text === "All friend invites have been revoked."));
+        assert.equal(createInvite.execute([], guildContext), undefined);
+        resolveInvite({ code: "new-invite", expires_at: "2026-11-08T00:00:00Z", max_uses: 5 });
+        await new Promise(setImmediate);
+        assert.match(delivered.at(-1)[1], /^discord\.gg\/new-invite · Expires <t:\d+:R> · Max uses: 5$/);
+        assert.equal(createInvite.execute([], guildContext), undefined);
+        click(render(), "Disable FriendInvites");
+        resolveInvite({ code: "late" });
+        await new Promise(setImmediate);
+        assert.ok(delivered.every(([, text]) => !text.includes("discord.gg/late")));
+        createInvite.execute([], guildContext);
+        assert.deepEqual(inviteCalls, ["list", "revoke", "create", "create"]);
+
         const silent = cxCatalog.plugins.find(entry => entry.name === "SilentTyping").source;
         assert.throws(() => activateCx(silent, host, []), /approval/);
         assert.throws(() => parseCx(silent.replace("use silent-typing", "use token")), /Unknown or duplicate client effect/);
-        for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate"]) {
+        for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate", "DontRoundMyTimestamps"]) {
             selectCatalog(name);
             click(render(), "Allow for this session");
         }
@@ -584,17 +633,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const iconOptions = Object.freeze({ canAnimate: false });
         assert.equal(icons.getGuildIconURL(iconOptions), true);
         assert.equal(iconOptions.canAnimate, false);
+        assert.equal(rounding(7.6), 7);
         if (!desktop) {
             settings.safeMode = { enabled: true };
             typing.startTyping();
             assert.equal(typingStarts, 1);
             assert.equal(stores.RelationshipStore.getPendingCount(), 3);
             assert.equal(icons.getGuildIconURL(iconOptions), false);
+            assert.equal(rounding(7.6), 8);
             settings.safeMode.enabled = false;
         }
         click(render(), "Disable SilentTyping");
         click(render(), "Disable NoPendingCount");
         click(render(), "Disable AlwaysAnimate");
+        click(render(), "Disable DontRoundMyTimestamps");
+        assert.equal(rounding, Math.ceil);
         assert.equal(typing.startTyping, startTyping);
         assert.equal(stores.RelationshipStore.getPendingCount(), 3);
         assert.equal(icons.getGuildIconURL(iconOptions), false);

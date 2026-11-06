@@ -1,5 +1,6 @@
 export const cxClientFunctions = {
     roleMembers: { permission: "guild.members", input: "role" },
+    randomMember: { permission: "guild.randommember", input: "text" },
     spotifyTrack: { permission: "spotify.activity", input: "text" },
     spotifyAlbum: { permission: "spotify.activity", input: "text" },
     spotifyArtist: { permission: "spotify.activity", input: "text" },
@@ -13,7 +14,7 @@ type SpotifyTrack = {
     artists?: readonly { id?: unknown; external_urls?: { spotify?: unknown; }; }[];
 };
 
-export function formatCxSpotify(action: Exclude<CxClientFunction, "roleMembers">, text: string, track?: SpotifyTrack | null) {
+export function formatCxSpotify(action: Exclude<CxClientFunction, "roleMembers" | "randomMember">, text: string, track?: SpotifyTrack | null) {
     if (!track) return;
     const artist = track.artists?.[0];
     const external = artist?.external_urls?.spotify;
@@ -22,6 +23,42 @@ export function formatCxSpotify(action: Exclude<CxClientFunction, "roleMembers">
         : action === "spotifyAlbum" ? ["album", track.album?.id] : ["artist", artistId ?? artist?.id];
     if (typeof id !== "string" || !/^[a-z0-9]{22}$/i.test(id)) return;
     return [text.trim(), "https://open.spotify.com/" + type + "/" + id].filter(Boolean).join(" ");
+}
+
+export function formatCxRandomMember(text: string, members: readonly RoleMember[], currentUser: string | undefined) {
+    const ids = members.map(member => member?.userId).filter(id => id !== currentUser && /^\d{15,22}$/.test(id));
+    const member = ids[Math.floor(Math.random() * ids.length)];
+    if (member) return ("<@" + member + "> " + text).trim();
+}
+
+export type CxFriendInviteAction = "create" | "list" | "revoke";
+type FriendInvite = { code?: unknown; expires_at?: unknown; uses?: unknown; max_uses?: unknown; };
+type FriendInvites = {
+    createFriendInvite: () => Promise<FriendInvite>;
+    getAllFriendInvites: () => Promise<FriendInvite[]>;
+    revokeFriendInvites: () => Promise<unknown>;
+};
+
+function inviteDetails(invite: FriendInvite, list: boolean) {
+    if (typeof invite?.code !== "string" || !/^[a-z0-9-]{1,48}$/i.test(invite.code)) return;
+    const timestamp = typeof invite.expires_at === "string" ? Date.parse(invite.expires_at) : NaN;
+    const expiry = Number.isFinite(timestamp) ? " · Expires <t:" + Math.round(timestamp / 1000) + ":R>" : "";
+    const max = Number.isSafeInteger(invite.max_uses) ? invite.max_uses : "?";
+    const uses = Number.isSafeInteger(invite.uses) ? invite.uses : "?";
+    return "discord.gg/" + invite.code + expiry + (list ? " · Used " + uses + "/" + max : " · Max uses: " + max);
+}
+
+export async function runCxFriendInvites(action: CxFriendInviteAction, api: FriendInvites | undefined) {
+    if (!api) throw new Error("Friend invites are unavailable");
+    if (action === "create") return inviteDetails(await api.createFriendInvite(), false) ?? "Discord did not return an invite link.";
+    if (action === "revoke") {
+        await api.revokeFriendInvites();
+        return "All friend invites have been revoked.";
+    }
+    const invites = await api.getAllFriendInvites();
+    const lines = invites.slice(0, 15).map(invite => inviteDetails(invite, true)).filter(Boolean);
+    if (!lines.length) return "You have no active friend invites.";
+    return lines.join("\n") + (invites.length > 15 ? "\n… " + (invites.length - 15) + " more." : "");
 }
 
 type RoleMember = { userId: string; roles?: readonly string[]; nick?: string | null; };

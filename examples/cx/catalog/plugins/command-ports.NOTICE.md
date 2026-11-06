@@ -17,3 +17,7 @@ The [desktop client license](../../../../desktop/client/LICENSE) contains the GP
 AvatarGrabber is adapted from the Endcord plugin by rootpoi, kraethis, and ewlle.
 
 The converter adapts the mobile command interfaces for InRole by nin0dev, ReadAllNotifications by kemo and KrystalSkull, and SpotifyShareCommands by katlyn. InRole uses a local chat reply listing loaded members. The original desktop modal, context menu and sidebar button are separate interfaces.
+
+- AtSomeone by Joona. The CX port follows the mobile `/someone` command and picks from loaded server members.
+- FriendInvites by afn and Dziurwa. The CX command names use hyphens and the private list shows up to 15 entries at a time.
+- DontRoundMyTimestamps by Lexi. The CX effect restores the previous rounding function when disabled.

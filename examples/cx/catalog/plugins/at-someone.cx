@@ -1,0 +1,8 @@
+plugin "AtSomeone":
+  needs commands.register
+  needs guild.randommember
+  needs messages.send
+  needs reply.local
+  on command "someone":
+    input "message" text optional
+    send "${randomMember(message)}" else "No other loaded members in this server."

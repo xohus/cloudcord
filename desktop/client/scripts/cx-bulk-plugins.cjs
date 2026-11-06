@@ -362,7 +362,7 @@ function compileMobileFilter(name, file, plugin, source) {
 }
 
 function compileMobileClientCommands(file, plugin, source) {
-    if (!/^ios\/runtime\/src\/core\/plugins\/(?:inrole|readallnotifications|spotifysharecommands)\/index\.ts$/.test(file)
+    if (!/^ios\/runtime\/src\/core\/plugins\/(?:atsomeone|friendinvites|inrole|readallnotifications|spotifysharecommands)\/index\.ts$/.test(file)
         || !fieldsAre(plugin, ["manifest", "start", "stop"])
         || !imported(source, "registerCommand", "@lib/api/commands")) return;
     const start = handler(plugin, "start");
@@ -384,6 +384,12 @@ function compileMobileClientCommands(file, plugin, source) {
         } else if (name === "readall" && code.includes("unreadChannels()") && code.includes('type: "BULK_ACK"')) {
             permissions = ["servers.markread", "reply.local"];
             lines = ['  on command "readall":', "    mark servers read"];
+        } else if (name === "someone" && code.includes('findByStoreName("GuildMemberStore")?.getMemberIds?.(guildId)')
+            && code.includes('ids.filter(id => id !== me)') && code.includes('others[Math.floor(Math.random() * others.length)]')
+            && code.includes('arg?.name === "message"')) {
+            permissions = ["guild.randommember", "messages.send", "reply.local"];
+            lines = ['  on command "someone":', '    input "message" text optional',
+                '    send "${randomMember(message)}" else "No other loaded members in this server."'];
         }
     } else if (/unregisters = COMMANDS\.map\(command => registerCommand\(\{ \.\.\.command, options: \[\] \} as any\)\);/.test(code)) {
         const commands = source.statements.filter(ts.isVariableStatement)
@@ -398,6 +404,19 @@ function compileMobileClientCommands(file, plugin, source) {
                 return ["  on command " + JSON.stringify(name) + ":", '    input "message" text optional',
                     '    send "${' + expression + '}" else "No Spotify ' + name + ' to share."'];
             });
+        } else if (Array.isArray(names) && names.join(",") === "create friend invite,view friend invites,revoke friend invites"
+            && imported(source, "findByProps", "@metro")) {
+            const methods = ["createFriendInvite", "getAllFriendInvites", "revokeFriendInvites"];
+            const operations = ["create", "list", "revoke"];
+            if (!commands.elements.every((item, index) => {
+                const execute = expression(value(item, "execute"));
+                return execute && ts.isCallExpression(execute) && identifier(execute.expression) === "run"
+                    && execute.arguments.length === 1 && ts.isArrowFunction(execute.arguments[0])
+                    && printed(execute.arguments[0].body, source).includes("await invitesModule()." + methods[index] + "()");
+            })) return;
+            permissions = ["reply.local", ...operations.map(operation => "friends.invites." + operation)];
+            lines = names.flatMap((name, index) => ["  on command " + JSON.stringify(name.replaceAll(" ", "-")) + ":",
+                "    " + operations[index] + " friend invites"]);
         }
     }
     if (lines) return { capability: "client-command", lines: ["  needs commands.register", ...permissions.map(permission => "  needs " + permission), ...lines] };
@@ -410,7 +429,11 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
     if (!start || !stop || !ts.isBlock(start.body)) return;
     const code = printed(start.body, source).replace(/\s+/g, " ");
     let effect;
-    if (imported(source, "instead", "@lib/api/patcher")) {
+    if (imported(source, "findByProps", "@metro")
+        && code === '{ findByProps("relativeTimeRounding", "locale")?.relativeTimeRounding?.(Math.floor); }'
+        && printed(stop.body, source).replace(/\s+/g, " ") === '{ findByProps("relativeTimeRounding", "locale")?.relativeTimeRounding?.(Math.round); }') {
+        effect = "floor-relative-time";
+    } else if (imported(source, "instead", "@lib/api/patcher")) {
         if (/^\{ const typing = findByProps\("startTyping", "stopTyping"\); if \(!typing\) return; unpatches = \["startTyping", "stopTyping"\]\.map\(name => instead\(name, typing, \(\) => undefined\)\); \}$/.test(code))
             effect = "silent-typing";
         else if (/^\{ const relationships = findByStoreName\("RelationshipStore"\); for \(const name of \["getPendingCount", "getPendingIncomingCount"\]\) \{ if \(typeof relationships\?\.\[name\] === "function"\) unpatches\.push\(instead\(name, relationships, \(\) => 0\)\); \} \}$/.test(code))

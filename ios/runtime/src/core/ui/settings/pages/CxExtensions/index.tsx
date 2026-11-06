@@ -1,6 +1,6 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
-import { animateCxAssets, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
+import { animateCxAssets, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
@@ -239,6 +239,8 @@ export default function CxExtensions() {
                             return overrideCxMethods(RelationshipStore, { getPendingCount: () => 0, getPendingIncomingCount: () => 0 }, enabled);
                         case "animated-assets":
                             return animateCxAssets(findByProps("getUserAvatarURL", "getGuildIconURL"), false, enabled);
+                        case "floor-relative-time":
+                            return floorCxRelativeTime(findByProps("relativeTimeRounding", "locale"), enabled);
                     }
                 },
                 registerReplyPingSuppression() {
@@ -327,10 +329,16 @@ export default function CxExtensions() {
                                 text: typeof text === "string" ? text : undefined,
                                 inputs: Object.fromEntries(inputs.map(input => [input.name, args.find(arg => arg?.name === input.name)?.value])),
                                 sendRequested: optionalSend && (args.find(arg => arg?.name === "send")?.value as unknown) === true,
-                                reply: message => { if (context.channel?.id) messageUtil.sendBotMessage(context.channel.id, message); },
+                                reply: message => {
+                                    if (!settings.safeMode?.enabled && context.channel?.id) messageUtil.sendBotMessage(context.channel.id, message);
+                                },
                                 lookup(name, input) {
-                                    if (name === "roleMembers") {
+                                    if (name === "roleMembers" || name === "randomMember") {
                                         const guild = context.guild?.id ?? ChannelStore?.getChannel?.(context.channel?.id)?.guild_id;
+                                        if (name === "randomMember") {
+                                            const ids: string[] = guild ? GuildMemberStore?.getMemberIds?.(guild) ?? [] : [];
+                                            return formatCxRandomMember(input, ids.map(userId => ({ userId })), UserStore?.getCurrentUser?.()?.id);
+                                        }
                                         return formatCxRoleMembers(input, guild, guild ? GuildMemberStore?.getMembers?.(guild) ?? [] : [],
                                             id => UserStore?.getUser?.(id));
                                     }
@@ -346,6 +354,7 @@ export default function CxExtensions() {
                                 markServersRead: () => markCxServersRead({
                                     guilds: GuildStore, channels: GuildChannelStore, threads: ActiveJoinedThreadsStore, read: ReadStateStore,
                                 }, channels => { FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels }); }),
+                                friendInvites: operation => runCxFriendInvites(operation, findByProps("createFriendInvite")),
                             });
                             if (outgoing !== undefined) return { content: outgoing };
                         },

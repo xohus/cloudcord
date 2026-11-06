@@ -43,12 +43,12 @@ for (const [name, kind] of [["SedEnhanced", "correct"], ["MessageBurst", "merge"
     assert.equal(port?.capability, "previous-edit");
     assert.equal(parseCx(port.cx).previousRule.kind, kind);
 }
-for (const [name, effect] of [["SilentTyping", "silent-typing"], ["NoPendingCount", "pending-friend-count"], ["AlwaysAnimate", "animated-assets"]]) {
+for (const [name, effect] of [["SilentTyping", "silent-typing"], ["NoPendingCount", "pending-friend-count"], ["AlwaysAnimate", "animated-assets"], ["DontRoundMyTimestamps", "floor-relative-time"]]) {
     const port = matches.find(record => record.name === name && record.platform === "mobile");
     assert.equal(port?.capability, "native-effect");
     assert.equal(parseCx(port.cx).nativeEffects[0], effect);
 }
-for (const [name, count] of [["InRole", 1], ["ReadAllNotifications", 1], ["SpotifyShareCommands", 3]]) {
+for (const [name, count] of [["InRole", 1], ["ReadAllNotifications", 1], ["SpotifyShareCommands", 3], ["AtSomeone", 1], ["FriendInvites", 3]]) {
     const port = matches.find(record => record.name === name && record.platform === "mobile");
     assert.equal(port?.capability, "client-command");
     assert.equal(parseCx(port.cx).commands.length, count);

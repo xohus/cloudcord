@@ -1,5 +1,5 @@
 import { cxAppearanceTargets, type CxAppearanceTarget, type CxHideTarget, type CxStyleTarget } from "./cxAppearance";
-import { cxClientFunctions, type CxClientFunction } from "./cxClientCommands";
+import { cxClientFunctions, type CxClientFunction, type CxFriendInviteAction } from "./cxClientCommands";
 import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { applyIncomingRule, incomingPermissions, type IncomingPayload, type IncomingRule, parseIncomingRule } from "./cxIncoming";
 import { calculate, convertUnits } from "./cxNumeric";
@@ -10,8 +10,8 @@ import { parseCxPreviousRule, type CxPreviousRule } from "./cxPreviousMessage";
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
 export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
-export { formatCxRoleMembers, formatCxSpotify, markCxServersRead } from "./cxClientCommands";
-export { animateCxAssets, cxNativeEffects, overrideCxMethods } from "./cxNativeEffects";
+export { formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, runCxFriendInvites } from "./cxClientCommands";
+export { animateCxAssets, cxNativeEffects, floorCxRelativeTime, overrideCxMethods } from "./cxNativeEffects";
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
 
 export const MAX_CX_SOURCE = 512 * 1024;
@@ -30,6 +30,10 @@ const permissionLabels = {
     "replies.suppressping": "Send replies without pinging the person you reply to",
     "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
     "guild.members": "Read loaded members with the role you select in the current server",
+    "guild.randommember": "Pick a loaded member of the current server to mention",
+    "friends.invites.create": "Create a friend invite when you run the listed command",
+    "friends.invites.list": "List your friend invites privately when you run the listed command",
+    "friends.invites.revoke": "Revoke all your friend invites when you run the listed command",
     "spotify.activity": "Read your current Spotify track, album, or artist when the command runs",
     "servers.markread": "Mark unread server channels as read when you run the listed command",
     "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
@@ -66,14 +70,17 @@ const textExpression = /\$\{([a-z][a-zA-Z0-9_-]*)(?:\(([a-z0-9_, -]*)\))?\}/g;
 const argumentNames = (args: string) => args ? args.split(",").map(name => name.trim()) : [];
 
 export type CxPermission = keyof typeof permissionLabels;
-type Action = { kind: "toast" | "reply" | "send" | "reply or send" | "mark-read"; message: string; fallback?: string; choices?: string[] };
-const actionPermissions: Record<Action["kind"], CxPermission[]> = {
+type BasicAction = { kind: "toast" | "reply" | "send" | "reply or send" | "mark-read"; message: string; fallback?: string; choices?: string[] };
+type Action = BasicAction | { kind: "friend-invites"; operation: CxFriendInviteAction };
+const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
     toast: ["ui.toast"],
     reply: ["reply.local"],
     send: ["messages.send"],
     "reply or send": ["reply.local", "messages.send"],
     "mark-read": ["servers.markread", "reply.local"],
 };
+const getActionPermissions = (action: Action): CxPermission[] => action.kind === "friend-invites"
+    ? ["reply.local", `friends.invites.${action.operation}`] : actionPermissions[action.kind];
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
 type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice" | "user" | "role"; required: boolean; choices?: string[] };
 type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: Action[] };
@@ -309,6 +316,12 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
+        const invites = /^    (create|list|revoke) friend invites$/.exec(line);
+        if (invites && current && !current.actions.length && !current.text && !current.inputs.length) {
+            current.actions.push({ kind: "friend-invites", operation: invites[1] as CxFriendInviteAction });
+            current = undefined;
+            continue;
+        }
         const pick = /^    send one of (\[.{1,3000}\])$/.exec(line);
         if (pick && current && current.actions.length < 4 && !current.actions.some(sendsMessage)) {
             let choices: unknown;
@@ -320,7 +333,7 @@ export function parseCx(source: string): CxDocument {
         }
         const action = /^    (toast|reply or send|reply|send) ("(?:[^"\\]|\\.)*")(?: else ("(?:[^"\\]|\\.)*"))?$/.exec(line);
         if (!action || !current || current.actions.length >= 4) throw new Error("Unknown CX instruction or too many actions");
-        const kind = action[1] as Action["kind"];
+        const kind = action[1] as BasicAction["kind"];
         const message = quoted(action[2], 240);
         const fallback = action[3] === undefined ? undefined : quoted(action[3], 240);
         if (fallback && (kind === "toast" || fallback.includes('${'))) throw new Error("A command fallback must be literal reply text");
@@ -343,7 +356,8 @@ export function parseCx(source: string): CxDocument {
                     const service = cxClientFunctions[name as CxClientFunction];
                     const option = declaredInputs.find(input => input.name === names[0]);
                     if (names.length !== 1 || option?.type !== service.input
-                        || (name === "roleMembers" && kind !== "reply")) return expression;
+                        || (name === "roleMembers" && kind !== "reply")
+                        || (name === "randomMember" && kind !== "send")) return expression;
                     clientPermissions.add(service.permission);
                     return "";
                 }
@@ -373,8 +387,8 @@ export function parseCx(source: string): CxDocument {
     }
     for (const { actions } of commands) {
         for (const action of actions) {
-            for (const permission of actionPermissions[action.kind]) required.add(permission);
-            if (action.fallback) required.add("reply.local");
+            for (const permission of getActionPermissions(action)) required.add(permission);
+            if ("fallback" in action && action.fallback) required.add("reply.local");
         }
     }
     if ([...required].some(permission => !permissions.has(permission)))
@@ -414,6 +428,7 @@ type Invocation = {
     reply?: (message: string) => void;
     lookup?: (name: CxClientFunction, input: string) => string | undefined;
     markServersRead?: () => string;
+    friendInvites?: (operation: CxFriendInviteAction) => Promise<string>;
 };
 type CxHost = {
     registerCommand: (name: string, execute: (invocation?: Invocation) => string | undefined, acceptsText: boolean, sendsMessage: boolean, optionalSend: boolean, inputs: readonly CommandInput[]) => () => void;
@@ -528,7 +543,17 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                 }
                 let outgoing: string | undefined;
                 for (const action of command.actions) {
-                    if (!actionPermissions[action.kind].every(permission => grants.has(permission))) continue;
+                    if (!getActionPermissions(action).every(permission => grants.has(permission))) continue;
+                    if (action.kind === "friend-invites") {
+                        const reply = invocation?.reply;
+                        if (reply && invocation.friendInvites) {
+                            void invocation.friendInvites(action.operation).then(
+                                result => { if (active) reply(result); },
+                                () => { if (active) reply("Friend invites failed. Try again."); },
+                            );
+                        }
+                        continue;
+                    }
                     if (action.kind === "mark-read") {
                         if (invocation?.reply && invocation.markServersRead) {
                             try { invocation.reply(invocation.markServersRead()); }

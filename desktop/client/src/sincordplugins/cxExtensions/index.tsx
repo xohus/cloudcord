@@ -2,7 +2,7 @@ import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, fi
 import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { animateCxAssets, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxIncomingRules } from "@utils/cx";
+import { animateCxAssets, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
@@ -106,6 +106,8 @@ export function CxSettings() {
                             return overrideCxMethods(RelationshipStore, { getPendingCount: () => 0, getPendingIncomingCount: () => 0 });
                         case "animated-assets":
                             return animateCxAssets(findByProps("getUserAvatarURL", "getGuildIconURL"), true);
+                        case "floor-relative-time":
+                            return floorCxRelativeTime(findByProps("relativeTimeRounding", "locale"));
                     }
                 },
                 registerReplyPingSuppression() {
@@ -178,11 +180,13 @@ export function CxSettings() {
                                 sendRequested: optionalSend && findOption<boolean>(args, "send") === true,
                                 reply: message => { if (context.channel?.id) sendBotMessage(context.channel.id, { content: message }); },
                                 lookup(name, input) {
-                                    if (name !== "roleMembers") return formatCxSpotify(name, input, SpotifyStore?.getTrack?.());
+                                    if (name !== "roleMembers" && name !== "randomMember") return formatCxSpotify(name, input, SpotifyStore?.getTrack?.());
                                     const guild = context.guild?.id ?? context.channel?.guild_id;
-                                    return formatCxRoleMembers(input, guild, guild ? GuildMemberStore?.getMembers(guild) ?? [] : [],
-                                        id => UserStore?.getUser(id));
+                                    const members = guild ? GuildMemberStore?.getMembers(guild) ?? [] : [];
+                                    return name === "randomMember" ? formatCxRandomMember(input, members, UserStore?.getCurrentUser()?.id)
+                                        : formatCxRoleMembers(input, guild, members, id => UserStore?.getUser(id));
                                 },
+                                friendInvites: operation => runCxFriendInvites(operation, findByProps("createFriendInvite")),
                                 markServersRead: () => markCxServersRead({
                                     guilds: GuildStore, channels: GuildChannelStore, threads: ActiveJoinedThreadsStore, read: ReadStateStore,
                                 }, channels => { FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels }); }),

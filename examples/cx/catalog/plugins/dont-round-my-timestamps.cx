@@ -1,0 +1,3 @@
+plugin "DontRoundMyTimestamps":
+  needs appearance.style
+  use floor-relative-time
