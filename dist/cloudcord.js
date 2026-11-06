@@ -7454,7 +7454,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
 
   // src/lib/addons/themes/colors/patches/storage.ts
   function patchStorage() {
-    if (globalThis.__CLOUDCORD_LOADER__ || globalThis.__RAIN_LOADER__)
+    if (true)
       return () => {
       };
     var patchedKeys = /* @__PURE__ */ new Set([
@@ -40831,7 +40831,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "9964b3c5e4a2a590459d6160698c80783b36a8b2";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "61f75b97d95b4ee04df5bb6aec8bf4a8a989ddba";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
