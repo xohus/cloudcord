@@ -1,0 +1,9 @@
+plugin "GoogleThat":
+  needs commands.register
+  needs messages.send
+  on command "googlethat":
+    input "input" text
+    input "engine" choice "Google,Bing,Yahoo,DuckDuckGo,Baidu,Yandex,Ecosia,Ask,AOL,LetMeGoogleThatForYou" optional
+    input "hyperlink" boolean optional
+    input "hide-embed" boolean optional
+    send "${searchLink(input, engine, hyperlink, hide-embed)}"

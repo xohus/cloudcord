@@ -1,0 +1,107 @@
+plugin "MoreCommands":
+  needs commands.register
+  needs messages.send
+  needs reply.local
+  on command "choose":
+    input "choices" text
+    send "${choose(choices)}" else "Give me some choices, separated by commas."
+  on command "flipcoin":
+    send one of ["Heads", "Tails"]
+  on command "rolldice":
+    input "sides" integer optional
+    send "${roll(sides)}" else "Enter a positive number of sides."
+  on command "randomnumber":
+    input "min" integer
+    input "max" integer
+    send "${randomNumber(min, max)}" else "Enter a smaller range."
+  on command "wordcount" with text:
+    reply "${wordCount(text)}"
+  on command "transform" with text:
+    input "style" choice "upper,lower,reverse,locale-upper,locale-lower,same"
+    input "repeat" integer optional
+    input "reverse" boolean optional
+    input "normalize" choice "NFC,NFD,NFKC,NFKD" optional
+    send "${transform(text, style, repeat, reverse, normalize)}" else "Use a positive repeat count and keep the result under 4,001 characters."
+  on command "ask" with text:
+    send "${ask(text)}"
+  on command "gettime":
+    send "${currentTime()}"
+  on command "echo":
+    input "message" text optional
+    reply "${message}"
+  on command "lenny":
+    input "message" text optional
+    send "${message} ( ͡° ͜ʖ ͡°)"
+  on command "mock" with text:
+    send "${mock(text)}"
+  on command "morse" with text:
+    send "${morse(text)}"
+  on command "dissatisfaction":
+    input "message" text optional
+    send "${message}  ＞﹏＜"
+  on command "smug":
+    input "message" text optional
+    send "${message} ಠ_ಠ"
+  on command "happy":
+    input "message" text optional
+    send "${message} ヽ(´▽`)/"
+  on command "crying":
+    input "message" text optional
+    send "${message} ಥ_ಥ"
+  on command "angry":
+    input "message" text optional
+    send "${message} ヽ(｀Д´)ﾉ"
+  on command "anger":
+    input "message" text optional
+    send "${message} ヽ(ｏ`皿′ｏ)ﾉ"
+  on command "joy":
+    input "message" text optional
+    send "${message} <(￣︶￣)>"
+  on command "blush":
+    input "message" text optional
+    send "${message} ૮ ˶ᵔ ᵕ ᵔ˶ ა"
+  on command "confused":
+    input "message" text optional
+    send "${message} (•ิ_•ิ)?"
+  on command "sleeping":
+    input "message" text optional
+    send "${message} (ᴗ_ᴗ)"
+  on command "laughing":
+    input "message" text optional
+    send "${message} o(≧▽≦)o"
+  on command "giving":
+    input "message" text optional
+    send "${message} (ﾉ◕ヮ◕)ﾉ*:･ﾟ✧"
+  on command "peace":
+    input "message" text optional
+    send "${message} ✌(◕‿-)✌"
+  on command "ending1":
+    input "message" text optional
+    send "${message} Ꮺ ָ࣪ ۰ ͙⊹"
+  on command "uwu":
+    input "message" text optional
+    send "${message} (>⩊<)"
+  on command "comfy":
+    input "message" text optional
+    send "${message} (─‿‿─)♡"
+  on command "lovehappy":
+    input "message" text optional
+    send "${message} (*≧ω≦*)"
+  on command "loveee":
+    input "message" text optional
+    send "${message} (⁄ ⁄>⁄ ▽ ⁄<⁄ ⁄)"
+  on command "give":
+    input "message" text optional
+    send "${message} (ノ= ⩊ = )ノ"
+  on command "lovegive":
+    input "message" text optional
+    send "${message} ღゝ◡╹)ノ♡"
+  on command "music":
+    input "message" text optional
+    send "${message} (￣▽￣)/♫•¨•.¸¸♪"
+  on command "stars":
+    input "message" text optional
+    send "${message} .𖥔 ݁ ˖๋ ࣭ ⭑"
+  on command "lovegiving":
+    input "message" text optional
+    send "${message} ⸜(｡˃ ᵕ ˂ )⸝♡"

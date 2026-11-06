@@ -1,0 +1,7 @@
+plugin "ShipCalc":
+  needs commands.register
+  needs messages.send
+  on command "ship":
+    input "a" text
+    input "b" text
+    send "${ship(a, b)}"

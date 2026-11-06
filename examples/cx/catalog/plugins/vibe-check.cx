@@ -1,0 +1,5 @@
+plugin "VibeCheck":
+  needs commands.register
+  needs messages.send
+  on command "vibe":
+    send one of ["✦ the vibes are immaculate ✦", "🌴 endless summer, endless mall 🌴", "📼 rewinding to a time that never was 📼", "🛍️ welcome to the mall, population: you 🛍️", "🌅 chasing a sunset that never sets 🌅", "💾 saving your aesthetic... done 💾", "🪩 disco ball energy detected 🪩", "🌊 floating on a sea of neon 🌊", "☎️ this call is being routed through 1987 ☎️", "🍹 sipping something pink by the fountain 🍹"]

@@ -36,7 +36,7 @@ export function CxSettings() {
                     });
                     return () => { removeMessagePreSendListener(listener); };
                 },
-                registerCommand(name, execute, acceptsText, sendsMessage, optionalSend) {
+                registerCommand(name, execute, acceptsText, sendsMessage, optionalSend, inputs) {
                     if (Object.prototype.hasOwnProperty.call(commands, name) || name in Object.prototype)
                         throw new Error(`Command /${name} already exists`);
                     const command: VencordCommand = {
@@ -45,11 +45,18 @@ export function CxSettings() {
                         inputType: sendsMessage ? ApplicationCommandInputType.BUILT_IN_TEXT : ApplicationCommandInputType.BUILT_IN,
                         options: [
                             ...(acceptsText ? [{ name: "text", description: "Text to use", type: ApplicationCommandOptionType.STRING, required: true }] : []),
+                            ...inputs.map(input => ({
+                                name: input.name, description: input.name.replace(/[_-]/g, " "), required: input.required,
+                                type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER
+                                    : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN : ApplicationCommandOptionType.STRING,
+                                choices: input.choices?.map(value => ({ name: value, label: value, value })),
+                            })),
                             ...(optionalSend ? [{ name: "send", description: "Send the result to this chat", type: ApplicationCommandOptionType.BOOLEAN }] : []),
                         ],
                         execute(args, context) {
                             const outgoing = execute({
                                 text: acceptsText ? findOption(args, "text", "") : undefined,
+                                inputs: Object.fromEntries(inputs.map(input => [input.name, findOption(args, input.name)])),
                                 sendRequested: optionalSend && findOption<boolean>(args, "send") === true,
                                 reply: message => { if (context.channel?.id) sendBotMessage(context.channel.id, { content: message }); },
                             });

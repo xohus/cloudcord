@@ -9,7 +9,7 @@ const read = relative => fs.readFileSync(path.join(root, relative), "utf8");
 const moduleBox = { exports: {} };
 const code = buildSync({
     entryPoints: [path.join(root, "desktop/client/src/utils/cx.ts")],
-    bundle: true, write: false, format: "cjs",
+    bundle: true, write: false, format: "cjs", minify: true,
 }).outputFiles[0].text;
 vm.runInNewContext(code, { module: moduleBox });
 const { activateCx, createCxSession, parseCx, reviewCx } = moduleBox.exports;
@@ -117,7 +117,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const commandApi = {
             commands: registered,
             ApplicationCommandInputType: { BUILT_IN: 0, BUILT_IN_TEXT: 1 },
-            ApplicationCommandOptionType: { STRING: 3, BOOLEAN: 5 },
+            ApplicationCommandOptionType: { STRING: 3, INTEGER: 4, BOOLEAN: 5 },
             ApplicationCommandType: { CHAT: 1 },
             findOption: (args, name) => args.find(option => option.name === name)?.value,
             registerCommand(command) {
@@ -250,6 +250,51 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             }
             click(render(), "Disable " + name);
         }
+        const invokeNamed = (name, values = {}) => registered[name].execute(
+            Object.entries(values).map(([name, value]) => ({ name, value })), { channel: { id: "test-channel" } }
+        )?.content;
+        selectCatalog("GoogleThat");
+        click(render(), "Allow for this session");
+        assert.equal(registered.googlethat.options.find(option => option.name === "engine").choices.length, 10);
+        assert.equal(invokeNamed("googlethat", { input: "cats & dogs" }), "https://www.google.com/search?q=cats%20%26%20dogs");
+        assert.equal(invokeNamed("googlethat", { input: "cat", engine: "Bing", hyperlink: true, "hide-embed": true }),
+            "[cat](<https://www.bing.com/search?q=cat>)");
+        assert.equal(invokeNamed("googlethat", { input: "cat", engine: "constructor" }), undefined);
+        click(render(), "Disable GoogleThat");
+        selectCatalog("ShipCalc");
+        click(render(), "Allow for this session");
+        const score = content => /\*\*(\d+)%\*\*$/.exec(content)[1];
+        assert.equal(score(invokeNamed("ship", { a: "Alice", b: "Bob" })), score(invokeNamed("ship", { a: "BOB", b: "alice" })));
+        assert.equal(invokeNamed("ship", { a: "Alice" }), undefined);
+        click(render(), "Disable ShipCalc");
+        selectCatalog("VibeCheck");
+        click(render(), "Allow for this session");
+        const vibeSource = cxCatalog.plugins.find(entry => entry.name === "VibeCheck").source;
+        const vibes = parseCx(vibeSource).commands[0].actions[0].choices;
+        assert.equal(vibes.length, 10);
+        assert.ok(vibes.includes(invokeNamed("vibe")));
+        assert.throws(() => parseCx(vibeSource.replace("✦ the vibes are immaculate ✦", "${token}")), /literal messages/);
+        click(render(), "Disable VibeCheck");
+        selectCatalog("MoreCommands");
+        click(render(), "Allow for this session");
+        assert.equal(Object.keys(registered).length, 35);
+        assert.equal(registered.randomnumber.options[0].type, 4);
+        assert.equal(invokeNamed("randomnumber", { min: "4", max: 4 }), "4");
+        assert.equal(invokeNamed("randomnumber", { min: 4.5, max: 6 }), undefined);
+        assert.equal(invokeNamed("rolldice", { sides: 1 }), "You rolled a 1");
+        assert.equal(invokeNamed("choose", { choices: "one, ," }), "one");
+        assert.ok(["Heads", "Tails"].includes(invokeNamed("flipcoin")));
+        assert.equal(invokeNamed("wordcount", { text: "one two" }), undefined);
+        assert.equal(delivered.at(-1)[1], "2 words, 7 characters");
+        assert.equal(invokeNamed("transform", { text: "a🐈", style: "upper", reverse: true, repeat: 2 }), "🐈A🐈A");
+        assert.equal(invokeNamed("transform", { text: "aa", style: "upper", repeat: 3000 }), undefined);
+        assert.match(delivered.at(-1)[1], /positive repeat count/);
+        assert.equal(invokeNamed("morse", { text: "... --- ..." }), "Sos");
+        assert.equal(invokeNamed("morse", { text: "SOS" }), "... --- ...");
+        assert.equal(invokeNamed("happy", { message: "hi" }), "hi ヽ(´▽`)/");
+        assert.equal(invokeNamed("smug"), " ಠ_ಠ");
+        click(render(), "Disable MoreCommands");
+        assert.equal(Object.keys(registered).length, 0);
         const transforms = [
             ["TalkInReverse", "a🐈", "🐈a"],
             ["WriteUpperCase", "hello. bye! ok now", "Hello. Bye! ok now"],

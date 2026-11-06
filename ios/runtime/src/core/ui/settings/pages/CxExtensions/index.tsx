@@ -68,7 +68,7 @@ export default function CxExtensions() {
                         if (!settings.safeMode?.enabled && typeof message.content === "string") message.content = transform(message.content);
                     });
                 },
-                registerCommand(name, execute, acceptsText, _sendsMessage, optionalSend) {
+                registerCommand(name, execute, acceptsText, _sendsMessage, optionalSend, inputs) {
                     let builtIns;
                     try {
                         builtIns = commands.getBuiltInCommands(ApplicationCommandType.CHAT, true, false);
@@ -82,6 +82,12 @@ export default function CxExtensions() {
                         shouldHide: () => !settings.safeMode?.enabled,
                         options: [
                             ...(acceptsText ? [{ name: "text", description: "Text to use", type: ApplicationCommandOptionType.STRING, required: true }] : []),
+                            ...inputs.map(input => ({
+                                name: input.name, description: input.name.replace(/[_-]/g, " "), required: input.required,
+                                type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER
+                                    : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN : ApplicationCommandOptionType.STRING,
+                                choices: input.choices?.map(value => ({ name: value, displayName: value, label: value, value })),
+                            })),
                             ...(optionalSend ? [{ name: "send", description: "Send the result to this chat", type: ApplicationCommandOptionType.BOOLEAN }] : []),
                         ],
                         execute(args, context) {
@@ -89,6 +95,7 @@ export default function CxExtensions() {
                             const text = acceptsText ? args.find(arg => arg?.name === "text")?.value : undefined;
                             const outgoing = execute({
                                 text: typeof text === "string" ? text : undefined,
+                                inputs: Object.fromEntries(inputs.map(input => [input.name, args.find(arg => arg?.name === input.name)?.value])),
                                 sendRequested: optionalSend && (args.find(arg => arg?.name === "send")?.value as unknown) === true,
                                 reply: message => { if (context.channel?.id) messageUtil.sendBotMessage(context.channel.id, message); },
                             });

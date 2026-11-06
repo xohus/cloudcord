@@ -1,3 +1,4 @@
+import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { calculate, convertUnits } from "./cxNumeric";
 import { messageTransforms, reverseText } from "./cxMessageTransforms";
 
@@ -13,7 +14,8 @@ const permissionLabels = {
 
 // Text transforms adapted from Endcord (Vendicated and contributors, GPL-3.0-or-later).
 const leetCharacters: Record<string, string> = { a: "4", e: "3", i: "1", o: "0", s: "5", t: "7", b: "8", g: "9", l: "1" };
-const textFunctions = {
+const textFunctions: Record<string, (...args: string[]) => string | undefined> = {
+    ...cxCommandFunctions,
     calculate,
     convert: convertUnits,
     length: (text: string) => String(text.length),
@@ -28,10 +30,11 @@ const textFunctions = {
         return String.fromCodePoint(0x1D7CE + code - 48);
     }),
 };
-const textExpression = /\$\{(?:text|([a-z]+)\(text\))\}/g;
+const textExpression = /\$\{([a-z][a-zA-Z0-9_-]*)(?:\(([a-z0-9_, -]*)\))?\}/g;
+const argumentNames = (args: string) => args ? args.split(",").map(name => name.trim()) : [];
 
 export type CxPermission = keyof typeof permissionLabels;
-type Action = { kind: "toast" | "reply" | "send" | "reply or send"; message: string; fallback?: string };
+type Action = { kind: "toast" | "reply" | "send" | "reply or send"; message: string; fallback?: string; choices?: string[] };
 const actionPermissions: Record<Action["kind"], CxPermission[]> = {
     toast: ["ui.toast"],
     reply: ["reply.local"],
@@ -39,7 +42,8 @@ const actionPermissions: Record<Action["kind"], CxPermission[]> = {
     "reply or send": ["reply.local", "messages.send"],
 };
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
-type Command = { name: string; text: boolean; actions: Action[] };
+type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice"; required: boolean; choices?: string[] };
+type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: Action[] };
 type MessageTransform = { name: keyof typeof messageTransforms; options?: string };
 export type CxTheme = {
     kind: "theme";
@@ -141,8 +145,28 @@ export function parseCx(source: string): CxDocument {
         const command = /^  on command "([a-z][a-z0-9_-]{0,31})"( with text)?:$/.exec(line);
         if (command) {
             const name = command[1];
-            if (commands.length >= 16 || commands.some(entry => entry.name === name)) throw new Error("Duplicate or too many commands");
-            commands.push(current = { name, text: Boolean(command[2]), actions: [] });
+            if (commands.length >= 48 || commands.some(entry => entry.name === name)) throw new Error("Duplicate or too many commands");
+            commands.push(current = { name, text: Boolean(command[2]), inputs: [], actions: [] });
+            continue;
+        }
+        const input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line);
+        if (input && current && !current.actions.length) {
+            const [, name, type, list, optional] = input;
+            if (name === "send" || (name === "text" && current.text) || current.inputs.length >= 4 || current.inputs.some(option => option.name === name))
+                throw new Error("Reserved, duplicate, or too many command inputs");
+            const choices = list ? quoted(list.trim(), 240).split(",").map(choice => choice.trim()) : undefined;
+            if ((type === "choice") !== !!choices || choices && (choices.length > 16 || choices.some(choice => !choice) || new Set(choices).size !== choices.length))
+                throw new Error("Choice inputs need a list of distinct values");
+            current.inputs.push({ name, type: type as CommandInput["type"], required: !optional, choices });
+            continue;
+        }
+        const pick = /^    send one of (\[.{1,3000}\])$/.exec(line);
+        if (pick && current && current.actions.length < 4 && !current.actions.some(sendsMessage)) {
+            let choices: unknown;
+            try { choices = JSON.parse(pick[1]); } catch { throw new Error("Expected a JSON list of messages"); }
+            if (!Array.isArray(choices) || !choices.length || choices.length > 24 || choices.some(choice => typeof choice !== "string" || choice.includes("${")))
+                throw new Error("Expected 1 to 24 literal messages");
+            current.actions.push({ kind: "send", message: "", choices: choices.map(choice => quoted(JSON.stringify(choice), 240)) });
             continue;
         }
         const action = /^    (toast|reply or send|reply|send) ("(?:[^"\\]|\\.)*")(?: else ("(?:[^"\\]|\\.)*"))?$/.exec(line);
@@ -151,13 +175,19 @@ export function parseCx(source: string): CxDocument {
         const message = quoted(action[2], 240);
         const fallback = action[3] === undefined ? undefined : quoted(action[3], 240);
         if (fallback && (kind === "toast" || fallback.includes('${'))) throw new Error("A command fallback must be literal reply text");
-        if (sendsMessage({ kind, message }) && (!current.text || current.actions.some(sendsMessage))) {
-            throw new Error("CX allows one outgoing message per command with text");
+        if (sendsMessage({ kind, message }) && current.actions.some(sendsMessage)) {
+            throw new Error("CX allows one outgoing message per command");
         }
         if (kind !== "toast") {
-            const remaining = current.text ? message.replace(textExpression, (expression, fn) =>
-                !fn || Object.prototype.hasOwnProperty.call(textFunctions, fn) ? "" : expression) : message;
-            if (remaining.includes('${')) throw new Error("CX messages only support text and named text functions in commands with text");
+            const inputs = new Set(current.inputs.map(input => input.name));
+            if (current.text) inputs.add("text");
+            const remaining = message.replace(textExpression, (expression, name: string, args: string | undefined) => {
+                if (args === undefined) return inputs.has(name) ? "" : expression;
+                const names = argumentNames(args);
+                return Object.prototype.hasOwnProperty.call(textFunctions, name)
+                    && textFunctions[name].length === names.length && names.every(name => inputs.has(name)) ? "" : expression;
+            });
+            if (remaining.includes('${')) throw new Error("CX messages only support declared inputs and named text functions");
         }
         current.actions.push({ kind, message, fallback });
     }
@@ -191,9 +221,9 @@ export function reviewCx(source: string) {
     };
 }
 
-type Invocation = { text?: string; sendRequested?: boolean; reply?: (message: string) => void };
+type Invocation = { text?: string; inputs?: Record<string, unknown>; sendRequested?: boolean; reply?: (message: string) => void };
 type CxHost = {
-    registerCommand: (name: string, execute: (invocation?: Invocation) => string | undefined, acceptsText: boolean, sendsMessage: boolean, optionalSend: boolean) => () => void;
+    registerCommand: (name: string, execute: (invocation?: Invocation) => string | undefined, acceptsText: boolean, sendsMessage: boolean, optionalSend: boolean, inputs: readonly CommandInput[]) => () => void;
     toast: (message: string) => void;
     applyTheme: (theme: CxTheme) => () => void;
     registerMessageTransform?: (transform: (text: string) => string) => () => void;
@@ -226,7 +256,22 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
             if (!grants.has("commands.register")) throw new Error("Command permission denied");
             cleanups.push(host.registerCommand(command.name, invocation => {
                 if (!active) return;
+                const inputs = new Map<string, string>();
                 const text = command.text && typeof invocation?.text === "string" ? invocation.text : "";
+                if (text.length > 4000) return;
+                if (command.text) inputs.set("text", text);
+                for (const input of command.inputs) {
+                    const value = invocation?.inputs?.[input.name];
+                    const serialized = typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : "";
+                    const valid = serialized.trim() && serialized.length <= 4000 && (
+                        input.type === "text" ? typeof value === "string"
+                            : input.type === "boolean" ? typeof value === "boolean"
+                                : input.type === "integer" ? /^-?\d+$/.test(serialized) && Number.isSafeInteger(Number(serialized))
+                                : input.choices?.includes(serialized)
+                    );
+                    if (!valid && (input.required || value !== undefined)) return;
+                    inputs.set(input.name, valid ? serialized : "");
+                }
                 let outgoing: string | undefined;
                 for (const action of command.actions) {
                     if (!actionPermissions[action.kind].every(permission => grants.has(permission))) continue;
@@ -235,8 +280,8 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                         continue;
                     }
                     let invalid = false;
-                    const message = action.message.replace(textExpression, (_, fn: keyof typeof textFunctions | undefined) => {
-                        const value = fn ? textFunctions[fn](text) : text;
+                    const message = action.choices ? chooseOne(action.choices)! : action.message.replace(textExpression, (_, name: string, args: string | undefined) => {
+                        const value = args === undefined ? inputs.get(name) : textFunctions[name](...argumentNames(args).map(name => inputs.get(name)!));
                         if (value === undefined) invalid = true;
                         return value ?? "";
                     });
@@ -246,10 +291,10 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                     }
                     if (message.length > 4000) continue;
                     if (action.kind === "reply" || (action.kind === "reply or send" && invocation?.sendRequested !== true)) invocation?.reply?.(message);
-                    else if (text.trim() && message.trim()) outgoing = message;
+                    else if ((!command.text || text.trim()) && message.trim()) outgoing = message;
                 }
                 return outgoing;
-            }, command.text, command.actions.some(sendsMessage), command.actions.some(action => action.kind === "reply or send")));
+            }, command.text, command.actions.some(sendsMessage), command.actions.some(action => action.kind === "reply or send"), command.inputs));
         }
         return stop;
     } catch (error) {

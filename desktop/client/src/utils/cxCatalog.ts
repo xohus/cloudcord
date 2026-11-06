@@ -3,15 +3,19 @@ import plugin1 from "../../../../examples/cx/pilot/character-counter.cx";
 import plugin2 from "../../../../examples/cx/catalog/plugins/bold-text.cx";
 import plugin3 from "../../../../examples/cx/catalog/plugins/calculator.cx";
 import plugin4 from "../../../../examples/cx/catalog/plugins/clap-text.cx";
-import plugin5 from "../../../../examples/cx/catalog/plugins/leet-text.cx";
-import plugin6 from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
-import plugin7 from "../../../../examples/cx/catalog/plugins/reverse-text.cx";
-import plugin8 from "../../../../examples/cx/catalog/plugins/space-out.cx";
-import plugin9 from "../../../../examples/cx/catalog/plugins/starify.cx";
-import plugin10 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
-import plugin11 from "../../../../examples/cx/catalog/plugins/unindent.cx";
-import plugin12 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
-import plugin13 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
+import plugin5 from "../../../../examples/cx/catalog/plugins/google-that.cx";
+import plugin6 from "../../../../examples/cx/catalog/plugins/leet-text.cx";
+import plugin7 from "../../../../examples/cx/catalog/plugins/more-commands.cx";
+import plugin8 from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
+import plugin9 from "../../../../examples/cx/catalog/plugins/reverse-text.cx";
+import plugin10 from "../../../../examples/cx/catalog/plugins/ship-calc.cx";
+import plugin11 from "../../../../examples/cx/catalog/plugins/space-out.cx";
+import plugin12 from "../../../../examples/cx/catalog/plugins/starify.cx";
+import plugin13 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
+import plugin14 from "../../../../examples/cx/catalog/plugins/unindent.cx";
+import plugin15 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
+import plugin16 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
+import plugin17 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
 import theme1 from "../../../../examples/cx/midnight.cx";
 import theme2 from "../../../../examples/cx/catalog/themes/basic-background-chat.cx";
 import theme3 from "../../../../examples/cx/catalog/themes/blue-hour.cx";
@@ -26,15 +30,19 @@ export const cxCatalog = {
         { name: "BoldText", source: plugin2 },
         { name: "Calculator", source: plugin3 },
         { name: "ClapText", source: plugin4 },
-        { name: "LeetText", source: plugin5 },
-        { name: "NormalizeMessageLinks", source: plugin6 },
-        { name: "ReverseText", source: plugin7 },
-        { name: "SpaceOut", source: plugin8 },
-        { name: "Starify", source: plugin9 },
-        { name: "TalkInReverse", source: plugin10 },
-        { name: "Unindent", source: plugin11 },
-        { name: "UnitConverter", source: plugin12 },
-        { name: "WriteUpperCase", source: plugin13 },
+        { name: "GoogleThat", source: plugin5 },
+        { name: "LeetText", source: plugin6 },
+        { name: "MoreCommands", source: plugin7 },
+        { name: "NormalizeMessageLinks", source: plugin8 },
+        { name: "ReverseText", source: plugin9 },
+        { name: "ShipCalc", source: plugin10 },
+        { name: "SpaceOut", source: plugin11 },
+        { name: "Starify", source: plugin12 },
+        { name: "TalkInReverse", source: plugin13 },
+        { name: "Unindent", source: plugin14 },
+        { name: "UnitConverter", source: plugin15 },
+        { name: "VibeCheck", source: plugin16 },
+        { name: "WriteUpperCase", source: plugin17 },
     ],
     themes: [
         { name: "Midnight", source: theme1 },
