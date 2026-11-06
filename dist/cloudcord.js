@@ -595,7 +595,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (stopped)
         return;
       try {
-        var registry = root.modules ?? root.__c?.();
+        var registry = root.modules;
         var modules = registry instanceof Map ? registry.values() : Object.values(registry ?? {});
         for (var module of modules) {
           if (!module?.isInitialized || module.hasError)
@@ -10078,7 +10078,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var result = originalDefine.apply(this, args);
       if (active)
         try {
-          var registry2 = root.__c?.() ?? root.modules;
+          var registry2 = root.modules;
           var id = args[1];
           var definition2 = registry2 instanceof Map ? registry2.get(id) : registry2?.[id];
           if (definition2) {
@@ -10098,11 +10098,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         root.__d = define2;
       } catch (e) {
       }
-    var liveModules;
-    try {
-      liveModules = root.__c?.();
-    } catch (e) {
-    }
+    var liveModules = root.modules;
     for (var registry of [
       modules,
       liveModules
@@ -40338,7 +40334,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a7469156f177c41fddbd2dc1f74a4cc6085b5865";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "cbea83a1cd490e3008582d112a3dbbd642421e6f";
   var rain = globalThis.__RAIN_LOADER__;
   if (rain && !globalThis.__CLOUDCORD_LOADER__) {
     globalThis.__CLOUDCORD_ORIGINAL_RAIN__ = true;
@@ -40390,7 +40386,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       } catch (e) {
       }
       try {
-        var registry = globalThis.modules ?? globalThis.__c?.();
+        var registry = globalThis.modules;
         if (!registry)
           throw new Error("Discord's module registry is not available yet");
         globalThis.__CLOUDCORD_MODULE_VIEW__ = registry instanceof Map ? Object.fromEntries(registry) : {
