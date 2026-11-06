@@ -64,6 +64,9 @@ export default async () => {
     window.bunny = lib;
 
     // We good :)
+    // Discord's Logger may suppress info output in production. Emit the same
+    // completion point to the native console for launch verification.
+    console.log("CloudCord is ready!");
     logger.log("CloudCord is ready!");
 
 };
