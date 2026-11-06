@@ -1,0 +1,3 @@
+plugin "TextReplace":
+  needs messages.transform
+  before send replace ":shrug:" with "¯\\_(ツ)_/¯"

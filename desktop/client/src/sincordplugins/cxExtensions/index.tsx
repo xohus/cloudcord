@@ -30,6 +30,13 @@ export function CxSettings() {
         if (!candidate) return;
         try {
             session.enable(candidate.source, {
+                registerReplyPingSuppression() {
+                    const listener = addMessagePreSendListener((_, _message, { replyOptions }) => {
+                        if (!replyOptions?.messageReference) return;
+                        replyOptions.allowedMentions = { parse: ["users", "roles", "everyone"], ...replyOptions.allowedMentions, repliedUser: false };
+                    });
+                    return () => { removeMessagePreSendListener(listener); };
+                },
                 registerMessageTransform(transform) {
                     const listener = addMessagePreSendListener((_, message) => {
                         if (typeof message.content === "string") message.content = transform(message.content);

@@ -63,6 +63,12 @@ export default function CxExtensions() {
         try {
             if (settings.safeMode?.enabled) throw new Error("CX is unavailable in Safe Mode");
             session.enable(candidate.source, {
+                registerReplyPingSuppression() {
+                    return onSendMessage((_message, options) => {
+                        if (settings.safeMode?.enabled || !options?.messageReference) return;
+                        options.allowedMentions = { parse: ["users", "roles", "everyone"], ...options.allowedMentions, replied_user: false };
+                    });
+                },
                 registerMessageTransform(transform) {
                     return onSendMessage(message => {
                         if (!settings.safeMode?.enabled && typeof message.content === "string") message.content = transform(message.content);

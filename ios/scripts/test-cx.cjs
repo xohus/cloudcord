@@ -352,6 +352,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             ["PolishWording", "dont change \x60dont\x60 or https://example.test/dont", "don't change \x60dont\x60 or https://example.test/dont"],
             ["Signature", "hello", "hello\n> a chronic discord user"],
             ["ClearURLs", "https://example.test/?utm_source=ad&t=4&bad%XX=1#anchor", "https://example.test/?t=4&bad%XX=1#anchor"],
+            ["SilentMessageToggle", "hello", "@silent hello"],
+            ["AutoVaporwave", "Hi 2", "Ｈｉ　２"],
+            ["TextReplace", "hi :shrug:", "hi ¯\\_(ツ)_/¯"],
+            ["ZeroWidthSanitizer", "hel\u200blo", "hello"],
         ];
         for (const [name, input, expected] of transforms) {
             const source = cxCatalog.plugins.find(entry => entry.name === name).source;
@@ -380,6 +384,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(message.content, "[link](https://example.test/)");
                 const windowsSource = source.replace(/\r?\n/g, "\r\n");
                 assert.throws(() => parseCx(windowsSource.replace(/  needs messages\.edit\.transform\r\n/, "")), /permissions/);
+            } else if (name === "ZeroWidthSanitizer") {
+                assert.equal(editHooks.size, 1);
+                const edit = [...editHooks][0];
+                message.content = "a\u2060b";
+                if (desktop) edit("channel", "message", message);
+                else edit(message);
+                assert.equal(message.content, "ab");
             } else {
                 assert.equal(editHooks.size, 0);
             }
@@ -391,6 +402,41 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             else hook(message);
             assert.equal(message.content, input);
         }
+        selectCatalog("SendTimestamps");
+        click(render(), "Allow for this session");
+        const timestampHook = [...transformHooks][0];
+        const draft = { content: "\x6012:30 AM\x60 \x6025:00\x60 \x60\x60\x60\x6011:05\x60\x60\x60\x60" };
+        if (desktop) timestampHook("channel", draft);
+        else timestampHook(draft);
+        assert.match(draft.content, /^<t:\d+:t> \x6025:00\x60 \x60{4}11:05\x60{4}$/);
+        click(render(), "Disable SendTimestamps");
+        selectCatalog("NoReplyMention");
+        const noReply = cxCatalog.plugins.find(entry => entry.name === "NoReplyMention").source;
+        assert.throws(() => activateCx(noReply, host, ["messages.transform"]), /approval/);
+        assert.equal(transformHooks.size, 0);
+        click(render(), "Allow for this session");
+        const replyHook = [...transformHooks][0];
+        const replyOption = desktop ? "repliedUser" : "replied_user";
+        const reply = { messageReference: { messageId: "id" }, allowedMentions: { parse: [], users: ["123"], [replyOption]: true } };
+        const runReply = options => desktop ? replyHook("channel", {}, { replyOptions: options }) : replyHook({}, options);
+        runReply(reply);
+        assert.equal(reply.allowedMentions[replyOption], false);
+        assert.deepEqual(reply.allowedMentions.parse, []);
+        assert.deepEqual(reply.allowedMentions.users, ["123"]);
+        const nonReply = {};
+        runReply(nonReply);
+        assert.equal(nonReply.allowedMentions, undefined);
+        click(render(), "Disable NoReplyMention");
+        assert.equal(transformHooks.size, 0);
+        const replacements = 'plugin "Custom Rules":\n  needs messages.transform\n  before send replace "a" with "$&"\n  before send replace "b" with ""';
+        let replaceText;
+        const stopReplace = activateCx(replacements, {
+            ...host, registerMessageTransform(transform) { replaceText = transform; return () => {}; },
+        }, ["messages.transform"]);
+        assert.equal(replaceText("ab"), "$&");
+        assert.equal(replaceText("a".repeat(3999)), "a".repeat(3999));
+        stopReplace();
+        assert.throws(() => parseCx(replacements + '\n  before send replace "a" with "again"'), /Duplicate/);
         if (!desktop) click(render(), "Browse catalog");
         searchFor("");
         assert.ok(!button(render(), cxCatalog.plugins[12].name));

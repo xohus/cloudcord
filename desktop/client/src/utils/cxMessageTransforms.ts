@@ -82,6 +82,19 @@ function polishWording(input: string, options = "apostrophes") {
     return text.replace(/\uE000(\d+)\uE000/g, (_, index) => protectedText[Number(index)]);
 }
 
+// SendTimestamps by Vee, GGTyler and Grzesiek11.
+export function formatLocalTime(hour: number, minute: number, meridiem: string | undefined, now: Date) {
+    if (minute > 59 || (meridiem ? hour < 1 || hour > 12 : hour > 23)) return;
+    if (meridiem) hour = hour % 12 + (meridiem.toUpperCase() === "PM" ? 12 : 0);
+    const target = new Date(now);
+    target.setHours(hour, minute, 0, 0);
+    if (target < now) {
+        target.setDate(target.getDate() + 1);
+        target.setHours(hour, minute, 0, 0);
+    }
+    return "<t:" + Math.floor(target.getTime() / 1000) + ":t>";
+}
+
 export const messageTransforms = {
     reverse: reverseText,
     // NormalizeMessageLinks by bb010g.
@@ -112,4 +125,14 @@ export const messageTransforms = {
     }),
     // Signature by Vee, Rini, ImBanana and KrystalSkull.
     signature: (text: string, signature = "a chronic discord user") => text.trim() ? text + "\n> " + signature : text,
+    // SilentMessageToggle by Nuckyz, CatNoir and Z1xus.
+    silentMessage: (text: string) => text.trim() && !/^@silent(?:\s|$)/.test(text) ? "@silent " + text : text,
+    // AutoVaporwave and ZeroWidthSanitizer by rootpoi, kraethis, and ewlle.
+    fullwidth: (text: string) => text.replace(/[ -~]/g, char => char === " " ? "　" : String.fromCharCode(char.charCodeAt(0) + 0xfee0)),
+    stripInvisible: (text: string) => text.replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2064\u206a-\u206f\ufeff\u00ad]/g, ""),
+    sendTimestamps: (text: string) => {
+        const now = new Date();
+        return text.replace(/\x60{3}[\s\S]*?\x60{3}|\x60{2}[\s\S]*?\x60{2}|\x60(\d{1,2}):(\d{2}) ?(am|pm)?\x60/gi,
+            (match, hour, minute, meridiem) => hour === undefined ? match : formatLocalTime(Number(hour), Number(minute), meridiem, now) ?? match);
+    },
 };

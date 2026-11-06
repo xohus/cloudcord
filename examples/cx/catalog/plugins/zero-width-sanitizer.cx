@@ -1,0 +1,5 @@
+plugin "ZeroWidthSanitizer":
+  needs messages.transform
+  needs messages.edit.transform
+  before send stripInvisible
+  before edit stripInvisible

@@ -12,6 +12,7 @@ const permissionLabels = {
     "messages.send": "Send the result to the current chat when you run a listed command",
     "messages.transform": "Change text before Discord sends messages you compose",
     "messages.edit.transform": "Change text when you submit a message edit",
+    "replies.suppressping": "Send replies without pinging the person you reply to",
 };
 
 // Text transforms adapted from Endcord (Vendicated and contributors, GPL-3.0-or-later).
@@ -46,7 +47,11 @@ const actionPermissions: Record<Action["kind"], CxPermission[]> = {
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
 type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice"; required: boolean; choices?: string[] };
 type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: Action[] };
-type MessageTransform = { stage: "send" | "edit"; name: keyof typeof messageTransforms; options?: string };
+type TransformStage = "send" | "edit";
+type MessageTransform = { stage: TransformStage } & (
+    { name: keyof typeof messageTransforms; options?: string } |
+    { name: "replaceLiteral"; find: string; replacement: string }
+);
 export type CxTheme = {
     kind: "theme";
     name: string;
@@ -68,10 +73,11 @@ type CxPlugin = {
     permissions: CxPermission[];
     commands: Command[];
     messageTransforms: MessageTransform[];
+    suppressReplyPing: boolean;
 };
 type CxDocument = CxTheme | CxPlugin;
 
-function quoted(value: string, limit: number) {
+function quoted(value: string, limit: number, allowEmpty = false) {
     if (!value.startsWith('"') || !value.endsWith('"')) throw new Error("Expected text in double quotes");
     let decoded: string;
     try {
@@ -79,7 +85,7 @@ function quoted(value: string, limit: number) {
     } catch {
         throw new Error("Invalid quoted text");
     }
-    if (!decoded.trim() || decoded.length > limit || /[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/u.test(decoded))
+    if ((!allowEmpty && !decoded.trim()) || decoded.length > limit || /[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/u.test(decoded))
         throw new Error("Invalid text or length");
     return decoded;
 }
@@ -134,21 +140,37 @@ export function parseCx(source: string): CxDocument {
     const permissions = new Set<CxPermission>();
     const commands: Command[] = [];
     const transforms: MessageTransform[] = [];
+    let suppressReplyPing = false;
     let current: Command | undefined;
     for (const line of lines) {
         if (!line.trim()) continue;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
-        if (declaration && !commands.length && !transforms.length) {
+        if (declaration && !commands.length && !transforms.length && !suppressReplyPing) {
             const permission = declaration[1] as CxPermission;
             if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
                 throw new Error("Unknown or duplicate CX permission");
             permissions.add(permission);
             continue;
         }
+        if (line === "  before send suppressReplyPing" && !suppressReplyPing) {
+            suppressReplyPing = true;
+            current = undefined;
+            continue;
+        }
+        const replace = /^  before (send|edit) replace ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line);
+        if (replace) {
+            const stage = replace[1] as TransformStage;
+            const find = quoted(replace[2], 240);
+            if (transforms.length >= 32 || transforms.some(rule => rule.stage === stage && rule.name === "replaceLiteral" && rule.find === find))
+                throw new Error("Duplicate or too many replacement rules");
+            transforms.push({ stage, name: "replaceLiteral", find, replacement: quoted(replace[3], 240, true) });
+            current = undefined;
+            continue;
+        }
         const transform = /^  before (send|edit) ([a-zA-Z]+)( .+)?$/.exec(line);
         if (transform) {
-            const stage = transform[1] as MessageTransform["stage"];
-            const name = transform[2] as MessageTransform["name"];
+            const stage = transform[1] as TransformStage;
+            const name = transform[2] as keyof typeof messageTransforms;
             if (!Object.prototype.hasOwnProperty.call(messageTransforms, name) || transforms.some(entry => entry.name === name && entry.stage === stage))
                 throw new Error("Unknown or duplicate outgoing text transform");
             if (transform[3] && name !== "capitalizeSentences" && name !== "signature" && name !== "polishWording")
@@ -209,10 +231,11 @@ export function parseCx(source: string): CxDocument {
         }
         current.actions.push({ kind, message, fallback });
     }
-    if ((!commands.length && !transforms.length) || commands.some(command => !command.actions.length))
+    if ((!commands.length && !transforms.length && !suppressReplyPing) || commands.some(command => !command.actions.length))
         throw new Error("A plugin needs a command with an action or an outgoing text transform");
     const required = new Set<CxPermission>();
     if (commands.length) required.add("commands.register");
+    if (suppressReplyPing) required.add("replies.suppressping");
     for (const { stage } of transforms) required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
     for (const { actions } of commands) {
         for (const action of actions) {
@@ -224,7 +247,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Declare the permissions used by your commands");
     if ([...permissions].some(permission => !required.has(permission)))
         throw new Error("Remove unused CX permissions");
-    return { kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms };
+    return { kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing };
 }
 
 export function reviewCx(source: string) {
@@ -246,6 +269,7 @@ type CxHost = {
     applyTheme: (theme: CxTheme) => () => void;
     registerMessageTransform?: (transform: (text: string) => string) => () => void;
     registerMessageEditTransform?: (transform: (text: string) => string) => () => void;
+    registerReplyPingSuppression?: () => () => void;
 };
 
 /** Only trusted UI can grant access. The source never receives the host or a callback argument. */
@@ -262,6 +286,10 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
         for (const cleanup of cleanups.splice(0).reverse()) cleanup();
     }
     try {
+        if (document.suppressReplyPing) {
+            if (!host.registerReplyPingSuppression) throw new Error("This client cannot suppress reply pings");
+            cleanups.push(host.registerReplyPingSuppression());
+        }
         for (const stage of ["send", "edit"] as const) {
             const transforms = document.messageTransforms.filter(transform => transform.stage === stage);
             if (!transforms.length) continue;
@@ -270,7 +298,12 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
             cleanups.push(register(text => {
                 if (!active || text.length > 4000) return text;
                 let result = text;
-                for (const { name, options } of transforms) result = messageTransforms[name](result, options);
+                for (const rule of transforms) {
+                    result = rule.name === "replaceLiteral"
+                        ? result.replaceAll(rule.find, () => rule.replacement)
+                        : messageTransforms[rule.name](result, rule.options);
+                    if (result.length > 4000) return text;
+                }
                 return result.trim() && result.length <= 4000 ? result : text;
             }));
         }
