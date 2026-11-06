@@ -7368,6 +7368,54 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/lib/addons/themes/colors/updater.ts
+  function rebuildColorOverlays() {
+    var merge = (dark) => {
+      var raw = /* @__PURE__ */ Object.create(null);
+      var semantic = /* @__PURE__ */ Object.create(null);
+      for (var entry of overlays) {
+        if (entry.darkOnly && !dark)
+          continue;
+        Object.assign(raw, entry.raw);
+        Object.assign(semantic, entry.semantic);
+      }
+      return {
+        raw,
+        semantic
+      };
+    };
+    darkOverlay = merge(true);
+    lightOverlay = merge(false);
+  }
+  function getColorOverlay(theme) {
+    if (!overlays.size || settings.safeMode?.enabled)
+      return;
+    var mode = _colorRef.current?.reference ?? theme ?? ThemeStore?.theme;
+    return typeof mode === "string" && mode.startsWith("light") ? lightOverlay : darkOverlay;
+  }
+  function registerColorOverlay(overlay) {
+    var entry = {
+      ...overlay
+    };
+    function refresh() {
+      rebuildColorOverlays();
+      if (settings.safeMode?.enabled || typeof AppearanceManager?.updateTheme !== "function")
+        return;
+      var theme = _colorRef.current?.reference ?? ThemeStore?.theme ?? _colorRef.lastSetDiscordTheme;
+      AppearanceManager.updateTheme(theme);
+    }
+    overlays.add(entry);
+    try {
+      refresh();
+    } catch (error) {
+      overlays.delete(entry);
+      rebuildColorOverlays();
+      throw error;
+    }
+    return () => {
+      if (overlays.delete(entry))
+        refresh();
+    };
+  }
   function subscribeThemeColors(listener) {
     colorListeners.add(listener);
     return () => {
@@ -7395,7 +7443,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         AppearanceManager.updateTheme(current?.reference ?? _colorRef.lastSetDiscordTheme);
     }
   }
-  var tokenRef2, origRawColor, AppearanceManager, ThemeStore, sequence, colorListeners, _colorRef;
+  var tokenRef2, origRawColor, AppearanceManager, ThemeStore, sequence, colorListeners, overlays, emptyOverlay, darkOverlay, lightOverlay, _colorRef;
   var init_updater = __esm({
     "src/lib/addons/themes/colors/updater.ts"() {
       "use strict";
@@ -7412,6 +7460,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ThemeStore = findByStoreNameLazy("ThemeStore");
       sequence = 0;
       colorListeners = /* @__PURE__ */ new Set();
+      overlays = /* @__PURE__ */ new Set();
+      emptyOverlay = {
+        raw: /* @__PURE__ */ Object.create(null),
+        semantic: /* @__PURE__ */ Object.create(null)
+      };
+      darkOverlay = emptyOverlay;
+      lightOverlay = emptyOverlay;
       _colorRef = {
         current: null,
         key: "bn-theme-0",
@@ -7649,7 +7704,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       Object.defineProperty(raw, key2, {
         configurable: true,
         enumerable: descriptor.enumerable,
-        get: () => _colorRef.current?.raw[key2] ?? _colorRef.origRaw[key2]
+        get: () => getColorOverlay()?.raw[key2] ?? _colorRef.current?.raw[key2] ?? _colorRef.origRaw[key2]
       });
       undo.push(() => Object.defineProperty(raw, key2, descriptor));
     };
@@ -7671,14 +7726,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     if (typeof resolver?.resolveSemanticColor === "function") {
       undo.push(instead("resolveSemanticColor", resolver, (args, original) => {
         var current = _colorRef.current;
-        if (!current)
+        var overlay = getColorOverlay(args[0]);
+        if (!current && !overlay)
           return original(...args);
         var object = args[1];
         if (!object || typeof object !== "object" && typeof object !== "function")
           return original(...args);
         var symbol = Object.getOwnPropertySymbols(object)[0];
         var name = symbol ? object[symbol] : object.name;
-        var semantic = typeof name === "string" ? current.semantic[name] : void 0;
+        if (typeof name !== "string")
+          return original(...args);
+        if (overlay?.semantic[name])
+          return overlay.semantic[name];
+        var semantic = current?.semantic[name];
         if (semantic?.value)
           return semantic.opacity === 1 ? semantic.value : (0, import_chroma_js3.default)(semantic.value).alpha(semantic.opacity).hex();
         return original(...args);
@@ -36403,6 +36463,83 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           mobile: [
             "MediaModalOverlayAltTextButton"
           ]
+        },
+        "contrast-text": {
+          plugin: "HighContrastText",
+          label: "increase text contrast",
+          css: ":root { --text-default: #ffffff; --text-normal: #ffffff; --text-muted: #c7c9d1; }",
+          style: {
+            semantic: {
+              TEXT_DEFAULT: "#ffffff",
+              TEXT_NORMAL: "#ffffff",
+              TEXT_MUTED: "#c7c9d1",
+              TEXT_SUBTLE: "#c7c9d1"
+            }
+          }
+        },
+        "cloudcord-accent": {
+          plugin: "CloudCordAccent",
+          label: "apply the CloudCord accent",
+          css: ":root { --brand-500: #7c5cff; --brand-560: #6d4ef0; --brand-600: #5b3ce6; --brand-experiment: #7c5cff; }",
+          style: {
+            raw: {
+              BRAND_500: "#7c5cff",
+              BRAND_560: "#6d4ef0",
+              BRAND_600: "#5b3ce6"
+            },
+            semantic: {
+              TEXT_LINK: "#7c5cff",
+              TEXT_BRAND: "#7c5cff",
+              ICON_BRAND: "#7c5cff",
+              BACKGROUND_BRAND: "#7c5cff"
+            }
+          }
+        },
+        "amoled-background": {
+          plugin: "AmoledMode",
+          label: "use black backgrounds in dark mode",
+          css: ".theme-dark, .theme-midnight { --background-primary: #000; --background-secondary: #000; --background-secondary-alt: #050505; --background-tertiary: #000; --background-base-low: #000; --background-base-lower: #000; --background-base-lowest: #000; --background-surface-high: #0a0a0a; --chat-background-default: #000; }",
+          style: {
+            darkOnly: true,
+            semantic: {
+              BACKGROUND_PRIMARY: "#000000",
+              BACKGROUND_SECONDARY: "#000000",
+              BACKGROUND_SECONDARY_ALT: "#050505",
+              BACKGROUND_TERTIARY: "#000000",
+              BACKGROUND_MOBILE_PRIMARY: "#000000",
+              BACKGROUND_MOBILE_SECONDARY: "#000000",
+              BACKGROUND_BASE_LOW: "#000000",
+              BACKGROUND_BASE_LOWER: "#000000",
+              BACKGROUND_BASE_LOWEST: "#000000",
+              BACKGROUND_SURFACE_HIGH: "#0a0a0a",
+              CHAT_BACKGROUND_DEFAULT: "#000000"
+            }
+          }
+        },
+        "code-block-size": {
+          plugin: "BiggerCodeBlocks",
+          label: "increase code block text size",
+          css: 'code[class*="hljs"], [class*="codeContainer"] code { font-size: 15px !important; line-height: 1.5 !important; }',
+          style: {
+            component: "MarkupCodeBlock",
+            key: "codeBlock",
+            values: {
+              fontSize: 15,
+              lineHeight: 22.5
+            }
+          }
+        },
+        "underlined-links": {
+          plugin: "HighlightLinks",
+          label: "underline message links",
+          css: '[class*="messageContent"] a { text-decoration: underline !important; text-underline-offset: 2px; }',
+          style: {
+            component: "MarkupLink",
+            key: "link",
+            values: {
+              textDecorationLine: "underline"
+            }
+          }
         }
       };
     }
@@ -37172,7 +37309,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (!line12.trim())
         return "continue";
       var declaration2 = /^  needs ([a-z.]+)$/.exec(line12);
-      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !profileActions.size && !incoming.length) {
+      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !profileActions.size && !incoming.length) {
         var permission2 = declaration2[1];
         if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission2) || permissions.has(permission2))
           throw new Error("Unknown or duplicate CX permission");
@@ -37197,12 +37334,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
-      var hide = /^  hide ([a-z-]+)$/.exec(line12);
-      if (hide) {
-        var target = hide[1];
-        if (!Object.prototype.hasOwnProperty.call(cxAppearanceTargets, target) || hiddenTargets.has(target))
+      var appearance = /^  (hide|style) ([a-z-]+)$/.exec(line12);
+      if (appearance) {
+        var target = appearance[2];
+        var rule1 = Object.prototype.hasOwnProperty.call(cxAppearanceTargets, target) && cxAppearanceTargets[target];
+        if (rule1 && appearance[1] === "style" && "style" in rule1 && !styledTargets.has(target))
+          styledTargets.add(target);
+        else if (rule1 && appearance[1] === "hide" && "mobile" in rule1 && !hiddenTargets.has(target))
+          hiddenTargets.add(target);
+        else
           throw new Error("Unknown or duplicate appearance target");
-        hiddenTargets.add(target);
         current = void 0;
         return "continue";
       }
@@ -37395,6 +37536,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var commands3 = [];
     var transforms = [];
     var hiddenTargets = /* @__PURE__ */ new Set();
+    var styledTargets = /* @__PURE__ */ new Set();
     var profileActions = /* @__PURE__ */ new Set();
     var incoming = [];
     var suppressReplyPing = false;
@@ -37402,7 +37544,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var current;
     for (var line1 of lines)
       _loop2(line1);
-    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !profileActions.size && !incoming.length || commands3.some((command) => !command.actions.length))
+    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !profileActions.size && !incoming.length || commands3.some((command) => !command.actions.length))
       throw new Error("A plugin needs a command or a supported behavior");
     var required = /* @__PURE__ */ new Set();
     if (commands3.length)
@@ -37411,6 +37553,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       required.add("replies.suppressping");
     if (hiddenTargets.size)
       required.add("appearance.hide");
+    if (styledTargets.size)
+      required.add("appearance.style");
     if (profileActions.size)
       required.add("profilemenu.copy");
     if (readsAvatar)
@@ -37447,6 +37591,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       hiddenTargets: [
         ...hiddenTargets
       ],
+      styledTargets: [
+        ...styledTargets
+      ],
       profileActions: [
         ...profileActions
       ],
@@ -37468,7 +37615,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       kind: document.kind,
       name: document.name,
       permissions: document.permissions,
-      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
+      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
         "Hide all stickers"
       ] : !rule.values.length && rule.kind !== "reply-pings" ? [
         "Edit the source to enter " + (rule.kind === "keywords" ? "keywords" : "Discord IDs")
@@ -37597,6 +37744,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           throw new Error("This client cannot hide " + cxAppearanceTargets[target].label);
         cleanups.push(host.hideAppearanceTarget(target));
       }
+      for (var target1 of document.styledTargets) {
+        if (!host.styleAppearanceTarget)
+          throw new Error("This client cannot " + cxAppearanceTargets[target1].label);
+        cleanups.push(host.styleAppearanceTarget(target1));
+      }
       if (document.suppressReplyPing) {
         if (!host.registerReplyPingSuppression)
           throw new Error("This client cannot suppress reply pings");
@@ -37691,6 +37843,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
         "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
         "appearance.hide": "Hide the listed interface elements on this device",
+        "appearance.style": "Apply the listed visual changes on this device",
         "messages.filterstickers": "Filter stickers from incoming messages on this device",
         "messages.silencementions": "Mute mentions from the listed senders on this device",
         "replies.controlping": "Choose whether incoming replies ping you on this device",
@@ -37755,6 +37908,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/amoled-mode.cx
+  var amoled_mode_default;
+  var init_amoled_mode = __esm({
+    "../examples/cx/catalog/plugins/amoled-mode.cx"() {
+      amoled_mode_default = 'plugin "AmoledMode":\n  needs appearance.style\n  style amoled-background\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/auto-vaporwave.cx
   var auto_vaporwave_default;
   var init_auto_vaporwave = __esm({
@@ -37768,6 +37929,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_avatar_grabber = __esm({
     "../examples/cx/catalog/plugins/avatar-grabber.cx"() {
       avatar_grabber_default = 'plugin "AvatarGrabber":\n  needs commands.register\n  needs messages.send\n  needs profile.avatar\n  needs reply.local\n  on command "avatar":\n    input "user" user optional\n    send "${avatar(user)}" else "Couldn\'t find that user."\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/bigger-code-blocks.cx
+  var bigger_code_blocks_default;
+  var init_bigger_code_blocks = __esm({
+    "../examples/cx/catalog/plugins/bigger-code-blocks.cx"() {
+      bigger_code_blocks_default = 'plugin "BiggerCodeBlocks":\n  needs appearance.style\n  style code-block-size\n';
     }
   });
 
@@ -37800,6 +37969,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_clear_urls = __esm({
     "../examples/cx/catalog/plugins/clear-urls.cx"() {
       clear_urls_default = 'plugin "ClearURLs":\n  needs messages.transform\n  needs messages.edit.transform\n  before send clearTrackingLinks\n  before edit clearTrackingLinks\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/cloud-cord-accent.cx
+  var cloud_cord_accent_default;
+  var init_cloud_cord_accent = __esm({
+    "../examples/cx/catalog/plugins/cloud-cord-accent.cx"() {
+      cloud_cord_accent_default = 'plugin "CloudCordAccent":\n  needs appearance.style\n  style cloudcord-accent\n';
     }
   });
 
@@ -38024,6 +38201,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_typing_indicator = __esm({
     "../examples/cx/catalog/plugins/hide-typing-indicator.cx"() {
       hide_typing_indicator_default = 'plugin "HideTypingIndicator":\n  needs appearance.hide\n  hide typing-indicator\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/high-contrast-text.cx
+  var high_contrast_text_default;
+  var init_high_contrast_text = __esm({
+    "../examples/cx/catalog/plugins/high-contrast-text.cx"() {
+      high_contrast_text_default = 'plugin "HighContrastText":\n  needs appearance.style\n  style contrast-text\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/highlight-links.cx
+  var highlight_links_default;
+  var init_highlight_links = __esm({
+    "../examples/cx/catalog/plugins/highlight-links.cx"() {
+      highlight_links_default = 'plugin "HighlightLinks":\n  needs appearance.style\n  style underlined-links\n';
     }
   });
 
@@ -39043,12 +39236,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_character_counter2();
+      init_amoled_mode();
       init_auto_vaporwave();
       init_avatar_grabber();
+      init_bigger_code_blocks();
       init_bold_text();
       init_calculator();
       init_clap_text();
       init_clear_urls();
+      init_cloud_cord_accent();
       init_copy_profile_colors();
       init_copy_user_mention();
       init_copy_user_urls();
@@ -39077,6 +39273,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_shop_tab();
       init_hide_stream_previews();
       init_hide_typing_indicator();
+      init_high_contrast_text();
+      init_highlight_links();
       init_ignore_calls();
       init_ingtoninator();
       init_keyword_notify();
@@ -39210,12 +39408,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: character_counter_default2
           },
           {
+            name: "AmoledMode",
+            source: amoled_mode_default
+          },
+          {
             name: "AutoVaporwave",
             source: auto_vaporwave_default
           },
           {
             name: "AvatarGrabber",
             source: avatar_grabber_default
+          },
+          {
+            name: "BiggerCodeBlocks",
+            source: bigger_code_blocks_default
           },
           {
             name: "BoldText",
@@ -39232,6 +39438,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "ClearURLs",
             source: clear_urls_default
+          },
+          {
+            name: "CloudCordAccent",
+            source: cloud_cord_accent_default
           },
           {
             name: "CopyProfileColors",
@@ -39344,6 +39554,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideTypingIndicator",
             source: hide_typing_indicator_default
+          },
+          {
+            name: "HighContrastText",
+            source: high_contrast_text_default
+          },
+          {
+            name: "HighlightLinks",
+            source: highlight_links_default
           },
           {
             name: "IgnoreCalls",
@@ -39861,6 +40079,34 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   __export(CxExtensions_exports, {
     default: () => CxExtensions
   });
+  function registerJsxAppearance(names, change) {
+    var active = true;
+    var listeners2 = /* @__PURE__ */ new Set();
+    var subscribe = (listener) => {
+      listeners2.add(listener);
+      return () => {
+        listeners2.delete(listener);
+      };
+    };
+    var isActive = () => active && !settings.safeMode?.enabled;
+    function Appearance({ element }) {
+      return React2.useSyncExternalStore(subscribe, isActive) ? change(element) : element;
+    }
+    var wrap = (_2, element) => /* @__PURE__ */ jsx(Appearance, {
+      element
+    }, element.key);
+    for (var name of names)
+      onJsxCreate(name, wrap, true);
+    return () => {
+      active = false;
+      for (var name2 of names)
+        deleteJsxCreate(name2, wrap, true);
+      for (var listener of [
+        ...listeners2
+      ])
+        listener();
+    };
+  }
   function patchProfileMenus() {
     var ProfileUser = React2.createContext(void 0);
     function ProfileMenu({ element }) {
@@ -40027,33 +40273,29 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           },
           registerProfileMenuAction,
           hideAppearanceTarget(target) {
-            var names = cxAppearanceTargets[target].mobile;
-            var hidden = true;
-            var listeners2 = /* @__PURE__ */ new Set();
-            var subscribe = (listener) => {
-              listeners2.add(listener);
-              return () => {
-                listeners2.delete(listener);
-              };
-            };
-            var isHidden = () => hidden && !settings.safeMode?.enabled;
-            function Visibility({ element }) {
-              return React2.useSyncExternalStore(subscribe, isHidden) ? null : element;
+            return registerJsxAppearance(cxAppearanceTargets[target].mobile, () => null);
+          },
+          styleAppearanceTarget(target) {
+            var style = cxAppearanceTargets[target].style;
+            if ("component" in style) {
+              return registerJsxAppearance([
+                style.component
+              ], (element) => {
+                var styles2 = element.props.styles;
+                return React2.cloneElement(element, {
+                  styles: {
+                    ...styles2,
+                    [style.key]: [
+                      styles2?.[style.key],
+                      style.values
+                    ]
+                  }
+                });
+              });
             }
-            var wrap = (_2, element) => /* @__PURE__ */ jsx(Visibility, {
-              element
-            }, element.key);
-            for (var name of names)
-              onJsxCreate(name, wrap, true);
-            return () => {
-              hidden = false;
-              for (var name2 of names)
-                deleteJsxCreate(name2, wrap, true);
-              for (var listener of [
-                ...listeners2
-              ])
-                listener();
-            };
+            if (!isThemeSupported())
+              throw new Error("This loader does not support color overrides");
+            return registerColorOverlay(style);
           },
           registerReplyPingSuppression() {
             return onSendMessage((_message, options) => {
@@ -45039,7 +45281,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "26b937438c1725eed83d4ee9944aabab50f9f612";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "6db05e65e2eaf52ff4bd3a73e3988b71ec183b07";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
