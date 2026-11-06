@@ -1,39 +1,59 @@
 const fs = require("node:fs"), vm = require("node:vm"), assert = require("node:assert/strict");
 const esbuild = require("esbuild");
-let active = null;
+let active, visibility = {};
 const imported = [];
 const React = {
     createElement: (type, props, ...children) => ({ type, props: { ...props, children } }),
-    useState: () => [active, value => { active = value; }]
+    useState(initial) {
+        active ??= initial();
+        return [active, value => { active = value; }];
+    },
 };
 const moduleObject = { exports: {} };
+const mocks = {
+    "./styles.css": {},
+    "@webpack/common": { React },
+    "@api/Settings": { useSettings: () => ({ plugins: { Settings: visibility } }) },
+    "@utils/css": { classNameFactory: prefix => suffix => prefix + suffix },
+    "../BaseTab": { wrapTab: page => page },
+    "@components/Icons": Object.fromEntries(["CloudIcon", "PaintbrushIcon", "PluginIcon", "PluginsIcon"].map(name => [name, name])),
+    "@components/ErrorBoundary": { __esModule: true, default: "Boundary" },
+    "./AddonPage": { listablePlugins: () => [], PluginsPage: "Plugins", ThemesPage: "Themes" },
+    "./TweaksPage": { tweakPlugins: () => [], TweaksPage: "Tweaks" },
+};
 const realm = { module: moduleObject, exports: moduleObject.exports, require(name) {
-    if (name === "./styles.css") return {};
-    if (name === "@webpack/common") return { React };
-    if (name === "@api/Settings") return { useSettings: () => ({ plugins: { Settings: {} } }) };
-    if (name === "../BaseTab") return { SettingsTab: "section", wrapTab: c => c };
-    if (name === "@components/Icons") return Object.fromEntries(["CloudIcon", "PaintbrushIcon", "PluginIcon", "PluginsIcon"].map(k => [k, k]));
-    if (name === "@components/ErrorBoundary") return { __esModule: true, default: "Boundary" };
-    if (name.startsWith("@components/")) return { [name.split("/").pop()]: name };
+    if (name in mocks) return mocks[name];
     imported.push(name);
     throw new Error("broken optional page");
 } };
 vm.runInNewContext(esbuild.transformSync(fs.readFileSync("src/components/settings/tabs/addons/index.tsx", "utf8"), { loader: "tsx", format: "cjs" }).code, realm);
-const Addons = moduleObject.exports.default;
-let tree = Addons();
+const { default: Addons, setNextAddonsTab } = moduleObject.exports;
+
+const labels = tree => Array.from(tree.props.children[0].props.children[0], button => button.props.children[1].props.children[0]);
+const tabs = ["Plugins", "Tweaks", "Themes", "CX Extensions", "Sync", "Extras"];
+assert.deepEqual(labels(Addons()), tabs);
 assert.equal(imported.length, 0);
-const buttons = tree.props.children[2].props.children[0];
-assert.equal(buttons.length, 4);
-for (let i = 0; i < buttons.length; i++) {
-    buttons[i].props.onClick();
-    tree = Addons();
-    assert.equal(imported.length, i, "Choosing a page does not import unrelated pages");
-    const [back, boundary] = tree.props.children;
+
+for (const [name, path] of [
+    ["CX Extensions", "@sincordplugins/cxExtensions"],
+    ["Sync", "../sync/CloudTab"],
+    ["Extras", "../extras"],
+]) {
+    const importsBefore = imported.length;
+    const buttons = Addons().props.children[0].props.children[0];
+    buttons[tabs.indexOf(name)].props.onClick();
+    const tree = Addons();
+    assert.equal(imported.length, importsBefore, "Selecting a tab does not eagerly import its page");
+    assert.deepEqual(labels(tree), tabs, "Navigation stays outside the page boundary");
+    const boundary = tree.props.children[1].props.children[0];
     assert.equal(boundary.type, "Boundary");
     assert.throws(() => boundary.props.children[0].type(), /broken optional page/);
-    back.props.onClick();
-    tree = Addons();
-    assert.equal(tree.props.children[2].props.children[0].length, 4);
+    assert.equal(imported.at(-1), path);
 }
-assert.deepEqual(imported, ["../plugins", "../../../ThemeSettings/ThemesTab", "../sync/CloudTab", "../extras"]);
-console.log("PASS Add-ons defers optional imports and keeps navigation outside failed pages");
+setNextAddonsTab("CX Extensions");
+active = undefined;
+assert.equal(Addons().props.children[0].props.children[0][3].props["aria-selected"], true);
+
+visibility = { showPluginsTab: false, showThemesTab: false, showCloudSyncTab: false };
+assert.deepEqual(labels(Addons()), ["Tweaks", "CX Extensions", "Extras"]);
+console.log("PASS Add-ons tabs, CX route, visibility and optional page isolation");

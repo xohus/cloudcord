@@ -135,7 +135,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 return mocks[name];
             },
         });
-        const page = desktop ? module.exports.default.section.Component : module.exports.default;
+        const page = desktop ? module.exports.CxSettings : module.exports.default;
         function find(tree, predicate) {
             if (Array.isArray(tree)) return tree.map(child => find(child, predicate)).find(Boolean);
             if (!tree?.props) return;

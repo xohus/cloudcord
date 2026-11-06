@@ -2,23 +2,6 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const assert = require('node:assert/strict');
 const esbuild = require('esbuild');
-let selected = null;
-const React = { createElement: (type, props, ...children) => ({ type, props: { ...props, children } }), useState: () => [selected, value => { selected = value; }] };
-const context = vm.createContext({ React, useSettings: () => ({ plugins: { Settings: {} } }), Button: 'button', SettingsTab: 'section', Heading: 'heading', Paragraph: 'paragraph', PluginsIcon: 'icon', PaintbrushIcon: 'icon', CloudIcon: 'icon', PluginsTab: 'plugins', ThemesTab: 'themes', CloudTab: 'sync', PluginIcon: 'icon', ExtrasTab: 'extras' });
-context.ErrorBoundary = 'boundary';
-context.require = path => ({ default: ({ '../plugins': 'plugins', '../../../ThemeSettings/ThemesTab': 'themes', '../sync/CloudTab': 'sync', '../extras': 'extras' })[path] });
-const source = fs.readFileSync('src/components/settings/tabs/addons/index.tsx', 'utf8').replace(/^import .*;\r?\n/gm, '').replace(/^export default .*;\r?$/gm, '');
-vm.runInContext(esbuild.transformSync(source, { loader: 'tsx', jsxFactory: 'React.createElement' }).code, context);
-for (const [index, page] of ['plugins', 'themes', 'sync', 'extras'].entries()) {
-    const listing = context.Addons();
-    listing.props.children[2].props.children[0][index].props.onClick();
-    const opened = context.Addons();
-    const boundary = opened.props.children[1];
-    assert.equal(boundary.type, 'boundary');
-    assert.equal(boundary.props.children[0].type().type, page);
-    opened.props.children[0].props.onClick();
-    assert.equal(selected, null);
-}
 const desktop = fs.readFileSync('src/plugins/_core/settings.tsx', 'utf8');
 assert.match(desktop, /settings\.store\.diagnosticsMode === true && buildEntry\(\{\s*key: "cloudcord_diagnostics"/);
 const layoutSource = desktop.slice(desktop.indexOf('    buildLayout(originalLayoutBuilder:'), desktop.indexOf('    addControlsToDeveloperPage(layout:'));
@@ -52,4 +35,4 @@ for (const enabled of [undefined, false, true, false]) {
 mobileState.cloudcordDiagnosticsEnabled = true;
 mobileState.cloudcordSectionHidden = true;
 assert.equal(diagnosticRow.usePredicate(), false);
-console.log('PASS: addon navigation opens and returns; actual desktop and mobile Diagnostics visibility follows off/on/off');
+console.log('PASS desktop and mobile Diagnostics visibility follows off/on/off');

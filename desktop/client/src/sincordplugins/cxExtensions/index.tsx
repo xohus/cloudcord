@@ -6,7 +6,7 @@ import { useState } from "@webpack/common";
 
 const session = createCxSession();
 
-function CxSettings() {
+export function CxSettings() {
     const [source, setSource] = useState("");
     const [candidate, setCandidate] = useState<{ source: string; review: ReturnType<typeof reviewCx>; }>();
     const [status, setStatus] = useState("");
@@ -123,13 +123,6 @@ export default definePlugin({
     authors: [{ name: "CloudCord", id: 0n }],
     required: true,
     dependencies: ["CommandsAPI"],
-    section: {
-        key: "cloudcord_cx",
-        title: "CX Extensions",
-        panelTitle: "CX Extensions",
-        Component: CxSettings,
-        Icon: () => null,
-    },
     stop() {
         session.clear();
     },

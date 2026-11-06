@@ -108,7 +108,7 @@ export default function CxExtensions() {
         }
     }
 
-    return <ScrollView contentContainerStyle={{ padding: 16 }}>
+    return <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 16 }}>
         <Stack spacing={16}>
             <Text style={{ color: "#b5bac1" }}>Paste the contents of a .cx file to review it.</Text>
             <TextInput
