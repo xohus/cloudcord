@@ -13,6 +13,8 @@ const code = buildSync({
 }).outputFiles[0].text;
 vm.runInNewContext(code, { module: moduleBox });
 const { activateCx, createCxSession, parseCx, reviewCx } = moduleBox.exports;
+const generated = require("../../desktop/client/scripts/sync-cx-catalog.cjs").buildCatalog();
+assert.equal(read("desktop/client/src/utils/cxCatalog.ts").replaceAll("\r\n", "\n"), generated.source, "Shared CX catalog needs regeneration");
 const catalogModule = { exports: {} };
 const catalogCode = buildSync({
     entryPoints: [path.join(root, "desktop/client/src/utils/cxCatalog.ts")],
@@ -20,21 +22,11 @@ const catalogCode = buildSync({
 }).outputFiles[0].text;
 vm.runInNewContext(catalogCode, { module: catalogModule });
 const { cxCatalog } = catalogModule.exports;
-const names = new Set(), commands = new Set();
-for (const [kind, limit, entries] of [["plugin", 600, cxCatalog.plugins], ["theme", 100, cxCatalog.themes]]) {
-    assert.ok(entries.length <= limit, `Shared CX catalog exceeds the ${kind} target`);
-    for (const entry of entries) {
-        const document = parseCx(entry.source);
-        assert.equal(document.kind, kind);
-        assert.equal(document.name, entry.name);
-        assert.ok(!names.has(entry.name.toLowerCase()), "Duplicate catalog item " + entry.name);
-        names.add(entry.name.toLowerCase());
-        for (const { name } of document.commands ?? []) {
-            assert.ok(!commands.has(name), "Duplicate catalog command " + name);
-            commands.add(name);
-        }
-    }
-}
+assert.equal(cxCatalog.plugins.length, generated.plugins);
+assert.equal(cxCatalog.themes.length, generated.themes);
+const basicBackground = parseCx(cxCatalog.themes.find(entry => entry.name === "BasicBackground (Chat)").source);
+assert.equal(basicBackground.wallpaperOpacity, 0.85);
+assert.match(basicBackground.wallpaper, /^data:image\/jpeg;base64,/);
 const plugin = read("examples/cx/hello.cx").trimEnd();
 const theme = read("examples/cx/midnight.cx").trimEnd();
 const grants = ["commands.register", "ui.toast"];

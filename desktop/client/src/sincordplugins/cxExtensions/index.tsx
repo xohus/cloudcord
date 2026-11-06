@@ -49,7 +49,7 @@ export function CxSettings() {
                         execute(args, context) {
                             const outgoing = execute({
                                 text: acceptsText ? findOption(args, "text", "") : undefined,
-                                sendRequested: optionalSend && findOption(args, "send", false) === true,
+                                sendRequested: optionalSend && findOption<boolean>(args, "send") === true,
                                 reply: message => { if (context.channel?.id) sendBotMessage(context.channel.id, { content: message }); },
                             });
                             if (outgoing !== undefined) return { content: outgoing };

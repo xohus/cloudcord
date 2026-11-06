@@ -18,6 +18,7 @@ concurrency:
       - "desktop/client/src/utils/cxNumeric.ts"
       - "desktop/client/src/utils/cxMessageTransforms.ts"
       - "desktop/client/scripts/cx-migrate-palette.mjs"
+      - "desktop/client/scripts/sync-cx-catalog.cjs"
       - "examples/cx/**"
       - "desktop/client/src/utils/ccp.ts"
       - "desktop/client/src/utils/ccpInspect.ts"
