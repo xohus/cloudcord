@@ -1,0 +1,3 @@
+plugin "HideUnreadPills":
+  needs appearance.hide
+  hide server-unread-pills

@@ -23,24 +23,58 @@ const MessageStore = findByStoreNameLazy("MessageStore");
 const RelationshipStore = findByStoreNameLazy("RelationshipStore");
 const UserProfileStore = findByStoreNameLazy("UserProfileStore");
 
-function registerJsxAppearance(names: readonly string[], change: (element: JSX.Element) => JSX.Element | null) {
-    let active = true;
+type AppearanceChange = (element: JSX.Element) => JSX.Element | null;
+const appearanceBindings = new Map<string, ReturnType<typeof bindAppearance>>();
+
+function bindAppearance(name: string) {
+    let revision = 0;
+    const changes = new Set<AppearanceChange>();
     const listeners = new Set<() => void>();
     const subscribe = (listener: () => void) => {
         listeners.add(listener);
         return () => { listeners.delete(listener); };
     };
-    const isActive = () => active && !settings.safeMode?.enabled;
+    const getRevision = () => revision;
     function Appearance({ element }: { element: JSX.Element; }) {
-        return React.useSyncExternalStore(subscribe, isActive) ? change(element) : element;
+        React.useSyncExternalStore(subscribe, getRevision);
+        if (settings.safeMode?.enabled) return element;
+        let current: JSX.Element | null = element;
+        for (const change of changes) {
+            current = change(current);
+            if (!current) break;
+        }
+        return current;
     }
     const wrap = (_: unknown, element: JSX.Element) => <Appearance key={element.key} element={element} />;
-    for (const name of names) onJsxCreate(name, wrap, true);
-    return () => {
-        active = false;
-        for (const name of names) deleteJsxCreate(name, wrap, true);
+    function refresh() {
+        revision++;
         for (const listener of [...listeners]) listener();
+    }
+    onJsxCreate(name, wrap, true);
+    return (change: AppearanceChange) => {
+        changes.add(change);
+        refresh();
+        return () => {
+            if (!changes.delete(change)) return;
+            if (!changes.size) {
+                deleteJsxCreate(name, wrap, true);
+                appearanceBindings.delete(name);
+            }
+            refresh();
+        };
     };
+}
+
+function registerJsxAppearance(names: readonly string[], change: AppearanceChange) {
+    const cleanups = names.map(name => {
+        let bind = appearanceBindings.get(name);
+        if (!bind) {
+            bind = bindAppearance(name);
+            appearanceBindings.set(name, bind);
+        }
+        return bind(change);
+    });
+    return () => { for (const cleanup of cleanups) cleanup(); };
 }
 
 const profileMenuActions = new Set<{ action: CxProfileMenuAction; }>();
@@ -176,6 +210,10 @@ export default function CxExtensions() {
                     const style = cxAppearanceTargets[target].style;
                     if ("component" in style) {
                         return registerJsxAppearance([style.component], element => {
+                            if ("props" in style) {
+                                return element.props[style.skipWhenTrue] === true ? element : React.cloneElement(element, style.props);
+                            }
+                            if (!("key" in style)) return React.cloneElement(element, { style: [element.props.style, style.values] });
                             const styles = element.props.styles;
                             return React.cloneElement(element, { styles: { ...styles, [style.key]: [styles?.[style.key], style.values] } });
                         });

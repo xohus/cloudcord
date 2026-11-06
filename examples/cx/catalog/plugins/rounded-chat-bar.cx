@@ -1,0 +1,3 @@
+plugin "RoundedChatBar":
+  needs appearance.style
+  style rounded-chat-bar

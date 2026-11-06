@@ -303,15 +303,24 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.throws(() => parseCx(appearancePort.replace(action + " " + target, action + " unknown-target")), /appearance target/);
             selectCatalog(rule.plugin);
             click(render(), "Allow for this session");
-            const originalStyles = Object.freeze(rule.style?.component ? { [rule.style.key]: Object.freeze({ color: "red" }) } : {});
-            const original = Object.freeze({ type: "NativeTarget", props: Object.freeze({ value: "original", styles: originalStyles }) });
+            const baseStyle = Object.freeze({ color: "red" });
+            const originalStyles = Object.freeze(rule.style?.key ? { [rule.style.key]: baseStyle } : {});
+            const original = Object.freeze({ type: "NativeTarget", props: Object.freeze({ value: "original", style: baseStyle, styles: originalStyles }) });
             const wraps = [];
             if (desktop) assert.equal(stylesheet.textContent, rule.css);
             else if (rule.style?.component) {
                 const wrapped = appearanceHooks.get(rule.style.component)(null, original);
                 const next = wrapped.type(wrapped.props);
-                assert.equal(next.props.styles[rule.style.key][0], originalStyles[rule.style.key]);
-                assert.equal(next.props.styles[rule.style.key][1], rule.style.values);
+                if (rule.style.props) {
+                    for (const [prop, value] of Object.entries(rule.style.props)) assert.equal(next.props[prop], value);
+                    const excluded = jsx("NativeTarget", { [rule.style.skipWhenTrue]: true });
+                    const exclusion = appearanceHooks.get(rule.style.component)(null, excluded);
+                    assert.equal(exclusion.type(exclusion.props), excluded);
+                } else {
+                    const styles = rule.style.key ? next.props.styles[rule.style.key] : next.props.style;
+                    assert.equal(styles[0], baseStyle);
+                    assert.equal(styles[1], rule.style.values);
+                }
                 wraps.push(wrapped);
             } else if (rule.style) assert.ok(colorOverlays.has(rule.style));
             else for (const name of rule.mobile) {
@@ -324,6 +333,25 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(colorOverlays.size, 0);
             assert.equal(stylesheet, undefined);
             for (const wrapped of wraps) assert.equal(wrapped.type(wrapped.props), original);
+        }
+        if (!desktop) {
+            for (const name of ["FloatingChatBar", "RoundedChatBar"]) {
+                selectCatalog(name);
+                click(render(), "Allow for this session");
+            }
+            assert.equal(appearanceHooks.size, 1);
+            const original = jsx("NativeTarget", Object.freeze({ style: Object.freeze({ padding: 2 }) }));
+            const wrapped = appearanceHooks.get("FloatingChatInputContainer")(null, original);
+            const readStyles = () => wrapped.type(wrapped.props).props.style;
+            assert.equal(readStyles().flat()[1].marginBottom, 8);
+            assert.equal(readStyles().flat()[2].borderRadius, 24);
+            click(render(), "Disable FloatingChatBar");
+            assert.equal(appearanceHooks.size, 1);
+            assert.equal(readStyles()[0], original.props.style);
+            assert.equal(readStyles()[1].borderRadius, 24);
+            click(render(), "Disable RoundedChatBar");
+            assert.equal(appearanceHooks.size, 0);
+            assert.equal(wrapped.type(wrapped.props), original);
         }
         const copyUrl = cxCatalog.plugins.find(entry => entry.name === "CopyUserURLs").source;
         assert.throws(() => activateCx(copyUrl, host, []), /approval/);

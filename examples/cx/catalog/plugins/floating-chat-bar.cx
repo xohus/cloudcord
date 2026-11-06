@@ -1,0 +1,3 @@
+plugin "FloatingChatBar":
+  needs appearance.style
+  style floating-chat-bar

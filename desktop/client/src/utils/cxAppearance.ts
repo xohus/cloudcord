@@ -159,6 +159,29 @@ export const cxAppearanceTargets = {
         css: '[class*="messageContent"] a { text-decoration: underline !important; text-underline-offset: 2px; }',
         style: { component: "MarkupLink", key: "link", values: { textDecorationLine: "underline" } },
     },
+    "floating-chat-bar": {
+        plugin: "FloatingChatBar", label: "lift the chat bar above the bottom edge",
+        css: 'form [class*="channelTextArea"] { margin-bottom: 8px; box-shadow: 0 4px 16px rgb(0 0 0 / 25%); }',
+        style: {
+            component: "FloatingChatInputContainer",
+            values: { marginBottom: 8, shadowColor: "#000000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
+        },
+    },
+    "rounded-chat-bar": {
+        plugin: "RoundedChatBar", label: "round the chat bar",
+        css: '[class*="channelTextArea"] [class*="scrollableContainer"], form [class*="channelTextArea"] { border-radius: 24px !important; }',
+        style: { component: "FloatingChatInputContainer", values: { borderRadius: 24 } },
+    },
+    "round-server-icons": {
+        plugin: "RoundServerIcons", label: "round server icons",
+        css: 'nav[aria-label="Servers sidebar"] [class*="wrapper"] foreignObject { mask: none !important; border-radius: 50%; }',
+        style: { component: "GuildsBarAnimatedItemWrapper", props: { circle: true }, skipWhenTrue: "preventClipping" },
+    },
+    "server-unread-pills": {
+        plugin: "HideUnreadPills", label: "the server sidebar unread pills",
+        css: '[class*="unreadMentionsIndicator"] { display: none !important; }',
+        mobile: ["GuildsBarUnreadBars"],
+    },
 } as const;
 
 export type CxAppearanceTarget = keyof typeof cxAppearanceTargets;
