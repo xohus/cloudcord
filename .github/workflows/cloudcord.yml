@@ -195,6 +195,7 @@ jobs:
           cp "../ios/runtime/src/lib/api/native/runtimeUpdates.ts" "src/lib/api/native/runtimeUpdates.ts"
           cp "../ios/runtime/src/lib/addons/themes/colors/updater.ts" "src/lib/addons/themes/colors/updater.ts"
           cp "../ios/runtime/src/lib/addons/themes/index.ts" "src/lib/addons/themes/index.ts"
+          cp "../ios/runtime/src/lib/addons/themes/colors/patches/background.tsx" "src/lib/addons/themes/colors/patches/background.tsx"
           cp "../ios/runtime/src/lib/addons/themes/colors/patches/resolver.ts" "src/lib/addons/themes/colors/patches/resolver.ts"
           cp "../ios/runtime/src/lib/addons/themes/colors/patches/storage.ts" "src/lib/addons/themes/colors/patches/storage.ts"
           # Discord 344 safety lives in the runtime entry and Metro internals.
@@ -4989,12 +4990,6 @@ jobs:
                       </View>
                   </ScrollView>
               );
-          }
-          TSX
-
-          cat > src/lib/addons/themes/colors/patches/background.tsx <<'TSX'
-          export default function patchChatBackground() {
-              return () => {};
           }
           TSX
 

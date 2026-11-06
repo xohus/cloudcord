@@ -7,6 +7,16 @@ const origRawColor = { ...tokenRef?.RawColor };
 const AppearanceManager = findByPropsLazy("updateTheme");
 const ThemeStore = findByStoreNameLazy("ThemeStore");
 let sequence = 0;
+const colorListeners = new Set<() => void>();
+
+export function subscribeThemeColors(listener: () => void) {
+    colorListeners.add(listener);
+    return () => { colorListeners.delete(listener); };
+}
+
+export function getThemeColors() {
+    return _colorRef.current;
+}
 export const _colorRef: {
     key: `bn-theme-${string}`; current: InternalColorDefinition | null;
     readonly origRaw: Record<string, string>; lastSetDiscordTheme: string;
@@ -18,6 +28,7 @@ export function updateBunnyColor(manifest: ColorManifest | null, { update = true
     if (!existing.startsWith("bn-theme-")) _colorRef.lastSetDiscordTheme = existing;
     _colorRef.current = current;
     _colorRef.key = `bn-theme-${++sequence}`;
+    for (const listener of colorListeners) listener();
     // Discord 344 validates its native theme enum. Custom colors override the
     // resolver; no invented theme name or new entry in frozen token tables.
     if (update) {

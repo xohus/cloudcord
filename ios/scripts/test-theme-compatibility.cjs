@@ -16,7 +16,9 @@ for (const theme of [null, [], {}, {spec: 3}, {spec: 3, main: 'invalid'}, {spec:
   assert.equal(validationRealm.validateTheme(theme), false, 'invalid theme must not install');
 }
 function load(file, dependencies) {
-  const code = esbuild.transformSync(fs.readFileSync(path.join(base, file), 'utf8'), {loader: 'ts', format: 'cjs'}).code;
+  const code = esbuild.transformSync(fs.readFileSync(path.join(base, file), 'utf8'), {
+    loader: file.endsWith('.tsx') ? 'tsx' : 'ts', format: 'cjs', jsx: 'automatic'
+  }).code;
   const module = {exports: {}};
   vm.runInNewContext(code, {module, exports: module.exports, require: name => {
     if (!(name in dependencies)) throw new Error(`unexpected dependency ${name}`);
@@ -47,9 +49,72 @@ undo();
 const appearance = {updateTheme: native.updateTheme};
 const updater = load('updater.ts', {
   '@lib/api/settings': {settings: {}}, '@metro': {findByProps: () => token, findByPropsLazy: () => appearance, findByStoreNameLazy: () => ({theme: 'darker'})},
-  './parser': {parseColorManifest: () => ref.current}
+  './parser': {parseColorManifest: manifest => manifest}
 });
-updater.updateBunnyColor({});
+updater.updateBunnyColor(ref.current);
 assert.equal(calls.at(-1), 'darker');
 assert.equal(Object.keys(token.Theme).length, 1);
 console.log('frozen color tables supported; native manager only receives real Discord theme names; semantic override and fallback passed');
+
+const jsx = (type, props) => ({type, props});
+const preferences = {customBackground: null};
+const nativeProps = Object.freeze({HACK_fixModalInteraction: false, onTapReaction() {}, style: Object.freeze({backgroundColor: '#202020'})});
+const surface = Object.freeze(jsx('NativeMessages', nativeProps));
+const root = Object.freeze(jsx('Fragment', Object.freeze({children: Object.freeze([null, surface])})));
+let androidRenderer;
+let renderUpdates = 0;
+const unsubscribe = updater.subscribeThemeColors(() => renderUpdates++);
+const wallpaper = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPZ0AAAAASUVORK5CYII=';
+const render = element => element.type(element.props).props.children;
+
+for (const component of [{render: () => root}, function MessagesConnected() {}]) {
+  const patch = load('patches/background.tsx', {
+    'react/jsx-runtime': {jsx, jsxs: jsx},
+    '@lib/addons/themes/colors/preferences': {colorsPref: preferences},
+    '@lib/addons/themes/colors/updater': updater,
+    '@lib/api/patcher': {after(name, object, callback) {
+      const original = object[name];
+      object[name] = () => callback([], original());
+      return () => { object[name] = original; };
+    }},
+    '@lib/api/react/jsx': {
+      onJsxCreate(name, callback) { assert.equal(name, 'MessagesRenderer'); androidRenderer = callback; },
+      deleteJsxCreate(name, callback) { assert.equal(callback, androidRenderer); androidRenderer = undefined; }
+    },
+    '@lib/api/storage': {useObservable() {}},
+    '@lib/utils/logger': {logger: {warn: error => assert.fail(error)}},
+    '@metro': {findByFilePathLazy: () => component},
+    '@metro/common': {React: {
+      isValidElement: value => Boolean(value?.type),
+      cloneElement: (element, props) => jsx(element.type, {...element.props, ...props}),
+      Fragment: 'Fragment',
+      useSyncExternalStore: (_, snapshot) => snapshot()
+    }},
+    '@metro/lazy': {getLazyContext: value => ({getExports: callback => { callback(value); }})},
+    'react-native': {View: 'View', Image: 'Image', StyleSheet: {absoluteFillObject: {}, create: value => value, flatten: value => value}},
+    'chroma-js': Object.assign(() => ({alpha: opacity => ({hex: () => String(opacity)})}), {valid: () => true})
+  }).default;
+  const undo = patch();
+  const wrapped = component.render ? component.render() : androidRenderer(null, surface);
+  assert.equal(render(wrapped)[0], undefined);
+  updater.updateBunnyColor({...ref.current, background: {url: wallpaper, opacity: 0.75}}, {update: false});
+  const [image, content] = render(wrapped);
+  assert.equal(image.props.pointerEvents, 'none');
+  assert.equal(image.props.children.props.source.uri, wallpaper);
+  const tinted = component.render ? content.props.children.props.children[1] : content.props.children;
+  assert.equal(tinted.props.style[1].backgroundColor, '0.25');
+  assert.equal(surface.props.style.backgroundColor, '#202020');
+  preferences.customBackground = 'hidden';
+  assert.equal(render(wrapped)[0], undefined);
+  preferences.customBackground = null;
+  updater.updateBunnyColor(null, {update: false});
+  assert.equal(render(wrapped)[0], undefined);
+  undo();
+  assert.equal(androidRenderer, undefined);
+  if (component.render) assert.equal(component.render(), root);
+}
+unsubscribe();
+assert.equal(renderUpdates, 4);
+assert.match(fs.readFileSync(path.join(__dirname, '../../.github/workflows/cloudcord.yml'), 'utf8'),
+  /cp "\.\.\/ios\/runtime\/src\/lib\/addons\/themes\/colors\/patches\/background\.tsx"/);
+console.log('mobile wallpaper renders on both Discord message surfaces and restores frozen native styles');
