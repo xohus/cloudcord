@@ -36635,6 +36635,38 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       "https://open.spotify.com/" + type + "/" + id
     ].filter(Boolean).join(" ");
   }
+  function formatCxRandomMember(text, members, currentUser) {
+    var ids = members.map((member2) => member2?.userId).filter((id) => id !== currentUser && /^\d{15,22}$/.test(id));
+    var member = ids[Math.floor(Math.random() * ids.length)];
+    if (member)
+      return ("<@" + member + "> " + text).trim();
+  }
+  function inviteDetails(invite, list) {
+    if (typeof invite?.code !== "string" || !/^[a-z0-9-]{1,48}$/i.test(invite.code))
+      return;
+    var timestamp = typeof invite.expires_at === "string" ? Date.parse(invite.expires_at) : NaN;
+    var expiry = Number.isFinite(timestamp) ? " \xB7 Expires <t:" + Math.round(timestamp / 1e3) + ":R>" : "";
+    var max = Number.isSafeInteger(invite.max_uses) ? invite.max_uses : "?";
+    var uses = Number.isSafeInteger(invite.uses) ? invite.uses : "?";
+    return "discord.gg/" + invite.code + expiry + (list ? " \xB7 Used " + uses + "/" + max : " \xB7 Max uses: " + max);
+  }
+  function runCxFriendInvites(action, api) {
+    return _async_to_generator(function* () {
+      if (!api)
+        throw new Error("Friend invites are unavailable");
+      if (action === "create")
+        return inviteDetails(yield api.createFriendInvite(), false) ?? "Discord did not return an invite link.";
+      if (action === "revoke") {
+        yield api.revokeFriendInvites();
+        return "All friend invites have been revoked.";
+      }
+      var invites2 = yield api.getAllFriendInvites();
+      var lines = invites2.slice(0, 15).map((invite) => inviteDetails(invite, true)).filter(Boolean);
+      if (!lines.length)
+        return "You have no active friend invites.";
+      return lines.join("\n") + (invites2.length > 15 ? "\n\u2026 " + (invites2.length - 15) + " more." : "");
+    })();
+  }
   function formatCxRoleMembers(role, guild, members, getUser) {
     if (!guild)
       return "Use this in a server.";
@@ -36682,10 +36714,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      init_async_to_generator();
       cxClientFunctions = {
         roleMembers: {
           permission: "guild.members",
           input: "role"
+        },
+        randomMember: {
+          permission: "guild.randommember",
+          input: "text"
         },
         spotifyTrack: {
           permission: "spotify.activity",
@@ -37470,6 +37507,35 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/lib/api/cxNativeEffects.ts
+  function floorCxRelativeTime(target, enabled = () => true) {
+    if (typeof target?.relativeTimeRounding !== "function")
+      throw new Error("Discord relative timestamps are unavailable");
+    var state2 = roundingUsers.get(target);
+    if (!state2) {
+      var previous = target.relativeTimeRounding();
+      var round = (value) => enabled() ? Math.floor(value) : previous(value);
+      if (!target.relativeTimeRounding(round))
+        throw new Error("Could not change Discord relative timestamps");
+      state2 = {
+        previous,
+        applied: round,
+        count: 0
+      };
+      roundingUsers.set(target, state2);
+    }
+    state2.count++;
+    var active = true;
+    return () => {
+      if (!active)
+        return;
+      active = false;
+      if (--state2.count === 0) {
+        roundingUsers.delete(target);
+        if (target.relativeTimeRounding() === state2.applied)
+          target.relativeTimeRounding(state2.previous);
+      }
+    };
+  }
   function overrideCxMethods(target, overrides, enabled = () => true) {
     var cleanups = [];
     var active = true;
@@ -37550,7 +37616,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       getGuildIconURL: animateOptions
     }, enabled);
   }
-  var cxNativeEffects;
+  var cxNativeEffects, roundingUsers;
   var init_cxNativeEffects = __esm({
     "src/lib/api/cxNativeEffects.ts"() {
       "use strict";
@@ -37568,8 +37634,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "animated-assets": {
           permission: "appearance.style",
           label: "Animate avatars, banners, and server icons"
+        },
+        "floor-relative-time": {
+          permission: "appearance.style",
+          label: "Round relative timestamps down"
         }
       };
+      roundingUsers = /* @__PURE__ */ new WeakMap();
     }
   });
 
@@ -37854,6 +37925,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
+      var invites2 = /^    (create|list|revoke) friend invites$/.exec(line12);
+      if (invites2 && current && !current.actions.length && !current.text && !current.inputs.length) {
+        current.actions.push({
+          kind: "friend-invites",
+          operation: invites2[1]
+        });
+        current = void 0;
+        return "continue";
+      }
       var pick = /^    send one of (\[.{1,3000}\])$/.exec(line12);
       if (pick && current && current.actions.length < 4 && !current.actions.some(sendsMessage)) {
         var choices1 = void 0;
@@ -37901,7 +37981,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           if (Object.prototype.hasOwnProperty.call(cxClientFunctions, name5)) {
             var service = cxClientFunctions[name5];
             var option = declaredInputs.find((input2) => input2.name === names[0]);
-            if (names.length !== 1 || option?.type !== service.input || name5 === "roleMembers" && kind2 !== "reply")
+            if (names.length !== 1 || option?.type !== service.input || name5 === "roleMembers" && kind2 !== "reply" || name5 === "randomMember" && kind2 !== "send")
               return expression;
             clientPermissions.add(service.permission);
             return "";
@@ -38024,9 +38104,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
     for (var { actions } of commands3) {
       for (var action of actions) {
-        for (var permission1 of actionPermissions[action.kind])
+        for (var permission1 of getActionPermissions(action))
           required.add(permission1);
-        if (action.fallback)
+        if ("fallback" in action && action.fallback)
           required.add("reply.local");
       }
     }
@@ -38160,8 +38240,21 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           throw new Error("Command permission denied");
         cleanups.push(host.registerCommand(command2.name, (invocation) => {
           var _loop3 = function(action3) {
-            if (!actionPermissions[action3.kind].every((permission) => grants.has(permission)))
+            if (!getActionPermissions(action3).every((permission) => grants.has(permission)))
               return "continue";
+            if (action3.kind === "friend-invites") {
+              var reply = invocation?.reply;
+              if (reply && invocation.friendInvites) {
+                void invocation.friendInvites(action3.operation).then((result) => {
+                  if (active)
+                    reply(result);
+                }, () => {
+                  if (active)
+                    reply("Friend invites failed. Try again.");
+                });
+              }
+              return "continue";
+            }
             if (action3.kind === "mark-read") {
               if (invocation?.reply && invocation.markServersRead) {
                 try {
@@ -38331,7 +38424,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     };
   }
-  var MAX_CX_SOURCE, CX_INLINE_EDITOR_LIMIT, permissionLabels, leetCharacters, textFunctions, textExpression, argumentNames, actionPermissions, sendsMessage;
+  var MAX_CX_SOURCE, CX_INLINE_EDITOR_LIMIT, permissionLabels, leetCharacters, textFunctions, textExpression, argumentNames, actionPermissions, getActionPermissions, sendsMessage;
   var init_cx = __esm({
     "src/lib/api/cx.ts"() {
       "use strict";
@@ -38365,6 +38458,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "replies.suppressping": "Send replies without pinging the person you reply to",
         "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
         "guild.members": "Read loaded members with the role you select in the current server",
+        "guild.randommember": "Pick a loaded member of the current server to mention",
+        "friends.invites.create": "Create a friend invite when you run the listed command",
+        "friends.invites.list": "List your friend invites privately when you run the listed command",
+        "friends.invites.revoke": "Revoke all your friend invites when you run the listed command",
         "spotify.activity": "Read your current Spotify track, album, or artist when the command runs",
         "servers.markread": "Mark unread server channels as read when you run the listed command",
         "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
@@ -38428,6 +38525,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           "reply.local"
         ]
       };
+      getActionPermissions = (action) => action.kind === "friend-invites" ? [
+        "reply.local",
+        `friends.invites.${action.operation}`
+      ] : actionPermissions[action.kind];
       sendsMessage = (action) => action.kind === "send" || action.kind === "reply or send";
     }
   });
@@ -38453,6 +38554,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_amoled_mode = __esm({
     "../examples/cx/catalog/plugins/amoled-mode.cx"() {
       amoled_mode_default = 'plugin "AmoledMode":\n  needs appearance.style\n  style amoled-background\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/at-someone.cx
+  var at_someone_default;
+  var init_at_someone = __esm({
+    "../examples/cx/catalog/plugins/at-someone.cx"() {
+      at_someone_default = 'plugin "AtSomeone":\n  needs commands.register\n  needs guild.randommember\n  needs messages.send\n  needs reply.local\n  on command "someone":\n    input "message" text optional\n    send "${randomMember(message)}" else "No other loaded members in this server."\n';
     }
   });
 
@@ -38560,6 +38669,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/dont-round-my-timestamps.cx
+  var dont_round_my_timestamps_default;
+  var init_dont_round_my_timestamps = __esm({
+    "../examples/cx/catalog/plugins/dont-round-my-timestamps.cx"() {
+      dont_round_my_timestamps_default = 'plugin "DontRoundMyTimestamps":\n  needs appearance.style\n  use floor-relative-time\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/embedded-urls.cx
   var embedded_urls_default;
   var init_embedded_urls = __esm({
@@ -38573,6 +38690,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_floating_chat_bar = __esm({
     "../examples/cx/catalog/plugins/floating-chat-bar.cx"() {
       floating_chat_bar_default = 'plugin "FloatingChatBar":\n  needs appearance.style\n  style floating-chat-bar\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/friend-invites.cx
+  var friend_invites_default;
+  var init_friend_invites = __esm({
+    "../examples/cx/catalog/plugins/friend-invites.cx"() {
+      friend_invites_default = 'plugin "FriendInvites":\n  needs commands.register\n  needs reply.local\n  needs friends.invites.create\n  needs friends.invites.list\n  needs friends.invites.revoke\n  on command "create-friend-invite":\n    create friend invites\n  on command "view-friend-invites":\n    list friend invites\n  on command "revoke-friend-invites":\n    revoke friend invites\n';
     }
   });
 
@@ -39914,6 +40039,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_character_counter2();
       init_always_animate();
       init_amoled_mode();
+      init_at_someone();
       init_auto_vaporwave();
       init_avatar_grabber();
       init_bigger_code_blocks();
@@ -39927,8 +40053,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_copy_profile_colors();
       init_copy_user_mention();
       init_copy_user_urls();
+      init_dont_round_my_timestamps();
       init_embedded_urls();
       init_floating_chat_bar();
+      init_friend_invites();
       init_google_that();
       init_hide_active_now();
       init_hide_add_server_button();
@@ -40110,6 +40238,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: amoled_mode_default
           },
           {
+            name: "AtSomeone",
+            source: at_someone_default
+          },
+          {
             name: "AutoVaporwave",
             source: auto_vaporwave_default
           },
@@ -40162,12 +40294,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: copy_user_urls_default
           },
           {
+            name: "DontRoundMyTimestamps",
+            source: dont_round_my_timestamps_default
+          },
+          {
             name: "EmbeddedURLs",
             source: embedded_urls_default
           },
           {
             name: "FloatingChatBar",
             source: floating_chat_bar_default
+          },
+          {
+            name: "FriendInvites",
+            source: friend_invites_default
           },
           {
             name: "GoogleThat",
@@ -41123,6 +41263,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 }, enabled);
               case "animated-assets":
                 return animateCxAssets(findByProps("getUserAvatarURL", "getGuildIconURL"), false, enabled);
+              case "floor-relative-time":
+                return floorCxRelativeTime(findByProps("relativeTimeRounding", "locale"), enabled);
             }
           },
           registerReplyPingSuppression() {
@@ -41255,12 +41397,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                   ])),
                   sendRequested: optionalSend && args.find((arg) => arg?.name === "send")?.value === true,
                   reply: (message) => {
-                    if (context.channel?.id)
+                    if (!settings.safeMode?.enabled && context.channel?.id)
                       messageUtil.sendBotMessage(context.channel.id, message);
                   },
                   lookup(name2, input) {
-                    if (name2 === "roleMembers") {
+                    if (name2 === "roleMembers" || name2 === "randomMember") {
                       var guild = context.guild?.id ?? ChannelStore?.getChannel?.(context.channel?.id)?.guild_id;
+                      if (name2 === "randomMember") {
+                        var ids = guild ? GuildMemberStore?.getMemberIds?.(guild) ?? [] : [];
+                        return formatCxRandomMember(input, ids.map((userId) => ({
+                          userId
+                        })), UserStore2?.getCurrentUser?.()?.id);
+                      }
                       return formatCxRoleMembers(input, guild, guild ? GuildMemberStore?.getMembers?.(guild) ?? [] : [], (id) => UserStore2?.getUser?.(id));
                     }
                     var track = SpotifyStore?.getTrack?.();
@@ -41290,7 +41438,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                       context: "APP",
                       channels: channels2
                     });
-                  })
+                  }),
+                  friendInvites: (operation) => runCxFriendInvites(operation, findByProps("createFriendInvite"))
                 });
                 if (outgoing !== void 0)
                   return {
@@ -46195,7 +46344,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "506c489f920d78f7f2ec058c4964b5d1d71f94e1";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "8f734dbc1af9bb83aa06f6e814bee0780d58df6a";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
