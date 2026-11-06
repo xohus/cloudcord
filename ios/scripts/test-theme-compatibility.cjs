@@ -47,13 +47,20 @@ assert.equal(token.default.meta.resolveSemanticColor('darker', {}), '#original')
 assert.equal(token.RawColor.WHITE, '#fff');
 undo();
 const appearance = {updateTheme: native.updateTheme};
+const themeStore = {theme: 'darker'};
 const updater = load('updater.ts', {
-  '@lib/api/settings': {settings: {}}, '@metro': {findByProps: () => token, findByPropsLazy: () => appearance, findByStoreNameLazy: () => ({theme: 'darker'})},
+  '@lib/api/settings': {settings: {}}, '@metro': {findByProps: () => token, findByPropsLazy: () => appearance, findByStoreNameLazy: () => themeStore},
   './parser': {parseColorManifest: manifest => manifest}
 });
 updater.updateBunnyColor(ref.current);
 assert.equal(calls.at(-1), 'darker');
 assert.equal(Object.keys(token.Theme).length, 1);
+updater.updateBunnyColor(null, {update: false});
+themeStore.theme = 'light';
+updater.updateBunnyColor(ref.current);
+themeStore.theme = 'darker';
+updater.updateBunnyColor(null);
+assert.equal(calls.at(-1), 'light', 'disabling a custom theme must restore the original Discord mode');
 console.log('frozen color tables supported; native manager only receives real Discord theme names; semantic override and fallback passed');
 
 const jsx = (type, props) => ({type, props});

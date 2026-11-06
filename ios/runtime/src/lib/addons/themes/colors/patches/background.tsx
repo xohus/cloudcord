@@ -63,7 +63,7 @@ export default function patchChatBackground() {
     // Recent Android builds use a function component for the native message
     // renderer. Earlier builds expose MessagesConnected as a forward ref.
     function wrapRenderer(_: unknown, element: React.ReactElement) {
-        return unpatch ? element : <ThemeBackground direct>{element}</ThemeBackground>;
+        return unpatch ? element : <ThemeBackground key={element.key} direct>{element}</ThemeBackground>;
     }
     onJsxCreate("MessagesRenderer", wrapRenderer);
 

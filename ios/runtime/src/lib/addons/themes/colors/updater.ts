@@ -25,7 +25,9 @@ export function updateBunnyColor(manifest: ColorManifest | null, { update = true
     if (settings.safeMode?.enabled) return;
     const current = manifest ? parseColorManifest(manifest) : null;
     const existing = String(ThemeStore?.theme ?? "darker");
-    if (!existing.startsWith("bn-theme-")) _colorRef.lastSetDiscordTheme = existing;
+    // Capture the native theme before the first override. Switching between
+    // custom themes or disabling one must not save its temporary native mode.
+    if (!_colorRef.current && !existing.startsWith("bn-theme-")) _colorRef.lastSetDiscordTheme = existing;
     _colorRef.current = current;
     _colorRef.key = `bn-theme-${++sequence}`;
     for (const listener of colorListeners) listener();
