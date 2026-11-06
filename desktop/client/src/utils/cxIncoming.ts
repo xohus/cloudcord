@@ -9,6 +9,9 @@ export const incomingPermissions = {
     "hide-users": "messages.filterlocal",
     "hide-keywords": "messages.filterlocal",
     "hide-blocked": "messages.filterlocal",
+    "friends-voice": "voice.notifyfriends",
+    "follow-voice": "voice.followfriend",
+    "friend-removals": "friends.notifyremoval",
 } as const;
 
 type IncomingKind = keyof typeof incomingPermissions;
@@ -27,6 +30,8 @@ export function parseIncomingRule(name: string, input: string): IncomingRule {
     const textual = kind === "keywords" || kind === "hide-keywords";
     const values = [...new Set(input.split(textual ? /,/ : /[\s,]+/).map(value => value.trim()).filter(Boolean))];
     if (values.length > 24) throw new Error("Too many incoming rule values");
+    if (kind === "follow-voice" && values.length > 1) throw new Error("Choose one friend ID to follow");
+    if (kind === "friend-removals" && values.length) throw new Error("Friend removal notices take no options");
     if (kind === "hide-blocked") {
         if (!values.length || values.some(value => value !== "blocked" && value !== "ignored"))
             throw new Error("Choose blocked, ignored, or both");
@@ -60,6 +65,7 @@ function stripStickers(message: IncomingPayload["message"], rule: IncomingRule) 
 
 export function applyIncomingRule(rule: IncomingRule, payload: IncomingPayload, context: IncomingContext) {
     const { type, message } = payload;
+    if (rule.kind === "friends-voice" || rule.kind === "follow-voice" || rule.kind === "friend-removals") return;
     if (rule.kind === "hide-users" || rule.kind === "hide-keywords" || rule.kind === "hide-blocked") {
         if (!rule.values.length || payload.optimistic) return;
         if (type !== "MESSAGE_CREATE" && type !== "MESSAGE_UPDATE" && type !== "LOAD_MESSAGES_SUCCESS") return;

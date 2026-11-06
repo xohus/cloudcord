@@ -13,6 +13,7 @@ export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxP
 export { formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, runCxFriendInvites } from "./cxClientCommands";
 export { animateCxAssets, cxNativeEffects, floorCxRelativeTime, overrideCxMethods } from "./cxNativeEffects";
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
+export { bindCxSocialEvents } from "./cxSocialEvents";
 
 export const MAX_CX_SOURCE = 512 * 1024;
 export const CX_INLINE_EDITOR_LIMIT = 32 * 1024;
@@ -43,6 +44,9 @@ const permissionLabels = {
     "messages.silencementions": "Mute mentions from the listed senders on this device",
     "replies.controlping": "Choose whether incoming replies ping you on this device",
     "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
+    "voice.notifyfriends": "Show local notifications when friends join or move between voice channels",
+    "voice.followfriend": "Move you to the listed friend’s voice channel while you are already connected to voice",
+    "friends.notifyremoval": "Show a local notification when a friend removes you",
     "messages.watchlocal": "Match incoming messages on this device and show local notifications",
     "messages.filterlocal": "Hide matching incoming messages and history on this device",
     "typing.suppress": "Suppress your outgoing typing indicator",
@@ -415,7 +419,8 @@ export function reviewCx(source: string) {
             .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label))
             .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" ? [rule.find + " → " + rule.replacement] : []))
             .concat(document.incoming.flatMap(rule => rule.kind === "stickers" && rule.values[0] === "*"
-                ? ["Hide all stickers"] : !rule.values.length && rule.kind !== "reply-pings"
+                ? ["Hide all stickers"] : rule.kind === "follow-voice" && rule.values[0]
+                    ? ["Follow friend ID " + rule.values[0]] : !rule.values.length && !["reply-pings", "friends-voice", "friend-removals"].includes(rule.kind)
                     ? ["Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")] : [])),
         commands: document.commands.map(command => "/" + command.name),
     };

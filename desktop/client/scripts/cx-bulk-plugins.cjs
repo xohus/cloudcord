@@ -452,6 +452,29 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
     };
 }
 
+const mobileSocialRecipes = {
+    voicejoinmessages: { event: "VOICE_STATE_UPDATES", rule: "friends-voice", permission: "voice.notifyfriends",
+        signatures: ['relationships?.isFriend?.(state.userId)', 'lastChannel.set(state.userId, state.channelId ?? null)', 'showToast('] },
+    followvoiceuser: { event: "VOICE_STATE_UPDATES", rule: "follow-voice", permission: "voice.followfriend",
+        signatures: ['settings.get("userId")', 's.userId === target', 'joinVoice(state.channelId!)'] },
+    relationshipnotifier: { event: "RELATIONSHIP_REMOVE", rule: "friend-removals", permission: "friends.notifyremoval",
+        signatures: ['before("removeRelationship", actions', 'removedByMe.get(id)', 'payload.relationship?.type === FRIEND'] },
+};
+
+function compileMobileSocialEvents(file, plugin, source) {
+    const key = /^ios\/runtime\/src\/core\/plugins\/([a-z]+)\/index\.ts$/.exec(file)?.[1];
+    if (!key || !Object.prototype.hasOwnProperty.call(mobileSocialRecipes, key)
+        || !fieldsAre(plugin, ["manifest", "start", "stop", "SettingsComponent"])
+        || !imported(source, "intercept", "@lib/api/flux")) return;
+    const start = handler(plugin, "start");
+    if (!start || !handler(plugin, "stop")) return;
+    const code = printed(start.body, source);
+    const recipe = mobileSocialRecipes[key];
+    if (!code.includes("intercept(payload =>") || !code.includes('payload.type !== "' + recipe.event + '"')
+        || !recipe.signatures.every(signature => code.includes(signature))) return;
+    return { capability: "social-event", lines: ["  needs " + recipe.permission, '  on incoming ' + recipe.rule + ' ""'] };
+}
+
 function compileMobilePreviousEdit(file, plugin, source) {
     if (!/^ios\/runtime\/src\/core\/plugins\/(?:sedenhanced|messageburst)\/index\.ts$/.test(file)
         || !fieldsAre(plugin, ["manifest", "start", "stop", "SettingsComponent"])
@@ -544,6 +567,7 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
     const compiled = platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
             || compileMobileNativeEffect(file, plugin, source, nativeEffects) || compileMobilePreviousEdit(file, plugin, source)
+            || compileMobileSocialEvents(file, plugin, source)
         : supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin));
     return {
         name, file, platform, flags, hooks: inventoryHooks(source),
@@ -604,7 +628,7 @@ function scan(sourceDir) {
         const already = existing.has(key);
         const status = already ? "in-catalog"
             : !cx ? "needs-adapter"
-                : record.platform === "mobile" && ["incoming-filter", "client-command", "native-effect", "previous-edit"].includes(record.capability) ? "ready"
+                : record.platform === "mobile" && ["incoming-filter", "client-command", "native-effect", "previous-edit", "social-event"].includes(record.capability) ? "ready"
                     : variants.get(key).some(variant => variant.platform === "mobile") ? "compare-mobile"
                     : variants.get(key).length > 1 ? "compare-sources"
                         : "ready";

@@ -1,6 +1,6 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
-import { animateCxAssets, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
+import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
@@ -29,6 +29,7 @@ const GuildChannelStore = findByStoreNameLazy("GuildChannelStore");
 const ActiveJoinedThreadsStore = findByStoreNameLazy("ActiveJoinedThreadsStore");
 const ReadStateStore = findByStoreNameLazy("ReadStateStore");
 const SpotifyStore = findByStoreNameLazy("SpotifyStore");
+const SelectedChannelStore = findByStoreNameLazy("SelectedChannelStore");
 
 type AppearanceChange = (element: JSX.Element) => JSX.Element | null;
 const appearanceBindings = new Map<string, ReturnType<typeof bindAppearance>>();
@@ -202,12 +203,29 @@ export default function CxExtensions() {
                             if (active && !settings.safeMode?.enabled) showToast(body);
                         }, 0),
                     };
-                    const stop = intercept(payload => {
-                        try {
-                            if (active && !settings.safeMode?.enabled) return runCxIncomingRules(rules, payload, context);
-                        } catch { /* Discord must still receive its original event. */ }
+                    const social = bindCxSocialEvents(rules, {
+                        currentUser: context.currentUser, notify: context.notify,
+                        isFriend: id => RelationshipStore?.isFriend?.(id) === true,
+                        userName: id => { const user = UserStore?.getUser?.(id); return user?.globalName || user?.username; },
+                        channelName: id => ChannelStore?.getChannel?.(id)?.name,
+                        voiceChannel: () => SelectedChannelStore?.getVoiceChannelId?.(),
+                        joinVoice: id => findByProps("selectVoiceChannel")?.selectVoiceChannel?.(id),
+                        removalActions: () => findByProps("removeRelationship"),
+                        enabled: () => active && !settings.safeMode?.enabled,
                     });
-                    return () => { active = false; stop(); };
+                    const onIncoming: Parameters<typeof intercept>[0] = payload => {
+                        try {
+                            if (active && !settings.safeMode?.enabled) {
+                                const patch = runCxIncomingRules(rules, payload, context);
+                                if (patch !== false) social?.observe(payload);
+                                return patch;
+                            }
+                        } catch { /* Discord must still receive its original event. */ }
+                    };
+                    let stop: () => void;
+                    try { stop = intercept(onIncoming); }
+                    catch (error) { social?.stop(); throw error; }
+                    return () => { active = false; stop(); social?.stop(); };
                 },
                 registerProfileMenuAction,
                 hideAppearanceTarget(target) {

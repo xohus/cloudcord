@@ -2,12 +2,12 @@ import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, fi
 import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { animateCxAssets, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
+import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
 import { findByProps } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, ReadStateStore, RelationshipStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, ReadStateStore, RelationshipStore, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useState } from "@webpack/common";
 
 const session = createCxSession();
 
@@ -53,21 +53,34 @@ export function CxSettings() {
                             if (active) void showNotification({ title: candidate.review.name, body });
                         }, 0),
                     };
+                    const social = bindCxSocialEvents(rules, {
+                        currentUser: context.currentUser, notify: context.notify,
+                        isFriend: id => RelationshipStore?.isFriend?.(id) === true,
+                        userName: id => { const user = UserStore?.getUser(id); return user?.globalName || user?.username; },
+                        channelName: id => ChannelStore?.getChannel(id)?.name,
+                        voiceChannel: () => SelectedChannelStore?.getVoiceChannelId(),
+                        joinVoice: id => ChannelActions.selectVoiceChannel(id),
+                        removalActions: () => findByProps("removeRelationship"),
+                        enabled: () => active,
+                    });
                     const interceptor = (payload: Parameters<typeof runCxIncomingRules>[1]) => {
                         try {
                             if (active) {
                                 const patch = runCxIncomingRules(rules, payload, context);
                                 if (patch === false) return true;
                                 if (patch) Object.assign(payload, patch);
+                                social?.observe(payload);
                             }
                         } catch { /* Discord must still receive its original event. */ }
                     };
-                    FluxDispatcher.addInterceptor(interceptor);
+                    try { FluxDispatcher.addInterceptor(interceptor); }
+                    catch (error) { social?.stop(); throw error; }
                     return () => {
                         active = false;
                         const interceptors = FluxDispatcher._interceptors;
                         const index = interceptors?.indexOf(interceptor) ?? -1;
                         if (index !== -1) interceptors.splice(index, 1);
+                        social?.stop();
                     };
                 },
                 registerProfileMenuAction(action) {

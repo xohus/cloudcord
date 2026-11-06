@@ -1,0 +1,3 @@
+plugin "RelationshipNotifier":
+  needs friends.notifyremoval
+  on incoming friend-removals ""

@@ -35,6 +35,11 @@ assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralRe
 assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", name: "Other",')).cx, undefined);
 
 const matches = scan().filter(record => record.cx);
+for (const [name, kind] of [["VoiceJoinMessages", "friends-voice"], ["FollowVoiceUser", "follow-voice"], ["RelationshipNotifier", "friend-removals"]]) {
+    const port = matches.find(record => record.name === name && record.platform === "mobile");
+    assert.equal(port?.capability, "social-event");
+    assert.equal(parseCx(port.cx).incoming[0].kind, kind);
+}
 const embedded = matches.find(record => record.name === "EmbeddedURLs");
 assert.equal(embedded?.capability, "origin-rewrite");
 assert.equal(parseCx(embedded.cx).messageTransforms.length, 5);

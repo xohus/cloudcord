@@ -1,0 +1,3 @@
+plugin "FollowVoiceUser":
+  needs voice.followfriend
+  on incoming follow-voice ""

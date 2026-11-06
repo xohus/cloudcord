@@ -1,0 +1,3 @@
+plugin "VoiceJoinMessages":
+  needs voice.notifyfriends
+  on incoming friends-voice ""

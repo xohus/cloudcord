@@ -22,3 +22,9 @@ BlockKeywords by catcraft and secp192k1 matches literal words and phrases in mes
 - SilentTyping by Vee, Rini, ImBanana, and Etorix uses a session-wide switch for outgoing typing.
 - NoPendingCount by amia hides friend request counts. The original desktop plugin also has separate controls for message requests and Nitro offers.
 - AlwaysAnimate by FieryFlames adapts the mobile animation hooks for avatars, banners, and server icons.
+
+## Voice and relationships
+
+- VoiceJoinMessages by Sqaaakoi and thororen shows local notices when friends join voice channels.
+- FollowVoiceUser by TheArmagan follows one configured friend while the local user is connected to voice.
+- RelationshipNotifier by nick shows when a friend removes you and skips removals you initiate.

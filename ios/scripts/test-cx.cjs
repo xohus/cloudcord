@@ -154,6 +154,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const me = "100000000000000001", sender = "100000000000000002", other = "100000000000000003";
         const guildId = "100000000000000004";
         const roleId = "100000000000000005";
+        const voiceTarget = "100000000000000006", secondVoice = "100000000000000007";
+        let currentVoice = null;
+        const voiceJoins = [];
+        const voiceActions = { selectVoiceChannel: channel => voiceJoins.push(channel) };
+        const removals = [];
+        const relationshipActions = { removeRelationship: id => removals.push(id) };
+        const removeRelationship = relationshipActions.removeRelationship;
         const trackId = "0123456789012345678901";
         const acknowledged = [];
         const inviteCalls = [];
@@ -210,8 +217,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             },
             RelationshipStore: {
                 isBlocked: id => id === sender, isIgnored: id => id === other,
+                isFriend: id => id === sender,
                 getPendingCount: () => 3, getPendingIncomingCount: () => 2,
             },
+            SelectedChannelStore: { getVoiceChannelId: () => currentVoice },
         };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
@@ -269,8 +278,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
             "@webpack": { findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
-                : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime : undefined },
-            "@webpack/common": { useState, ...stores, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
+                : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime
+                    : key === "removeRelationship" ? relationshipActions : undefined },
+            "@webpack/common": { useState, ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
                 dispatch,
@@ -307,7 +317,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             } },
             "@metro": { findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
-                    : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime : undefined },
+                    : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
+                        : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions : undefined },
             "@metro/common": { React: {
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: () => ({ Provider: "ProfileUserProvider" }), useContext: () => profileUser,
@@ -511,6 +522,57 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             click(render(), "Disable " + name);
             assert.equal(incomingHooks.length, 0);
         }
+        const voice = (channelId, userId = sender) => ({ type: "VOICE_STATE_UPDATES", voiceStates: [{ userId, channelId }] });
+        selectCatalog("VoiceJoinMessages");
+        click(render(), "Allow for this session");
+        const observeVoice = incomingHooks[0];
+        observeVoice(voice(voiceTarget, other));
+        observeVoice(voice(voiceTarget));
+        observeVoice(voice(voiceTarget));
+        assert.equal(pendingNotifications.length, 1);
+        pendingNotifications.shift()();
+        assert.equal(notifications.pop(), "A friend joined test");
+        click(render(), "Disable VoiceJoinMessages");
+        observeVoice(voice(secondVoice));
+        assert.equal(pendingNotifications.length, 0);
+
+        selectCatalog("FollowVoiceUser");
+        const followSource = find(render(), item => item.props[desktop ? "aria-label" : "accessibilityLabel"] === "CX source");
+        const configuredFollow = followSource.props.value.replace('""', JSON.stringify(sender));
+        if (desktop) followSource.props.onChange({ currentTarget: { value: configuredFollow } });
+        else followSource.props.onChangeText(configuredFollow);
+        click(render(), "Review CX");
+        click(render(), "Allow for this session");
+        const observeFollow = incomingHooks[0];
+        observeFollow(voice(voiceTarget));
+        await new Promise(setImmediate);
+        assert.equal(voiceJoins.length, 0);
+        currentVoice = voiceTarget;
+        observeFollow(voice(secondVoice, other));
+        observeFollow(voice(secondVoice));
+        await new Promise(setImmediate);
+        assert.deepEqual(voiceJoins, [secondVoice]);
+        currentVoice = secondVoice;
+        observeFollow(voice(voiceTarget));
+        click(render(), "Disable FollowVoiceUser");
+        await new Promise(setImmediate);
+        assert.deepEqual(voiceJoins, [secondVoice]);
+
+        selectCatalog("RelationshipNotifier");
+        click(render(), "Allow for this session");
+        const observeRelationships = incomingHooks[0];
+        const removal = { type: "RELATIONSHIP_REMOVE", relationship: { id: sender, type: 1 } };
+        relationshipActions.removeRelationship(sender);
+        observeRelationships(removal);
+        observeRelationships(removal);
+        assert.deepEqual(removals, [sender]);
+        assert.equal(pendingNotifications.length, 0);
+        observeRelationships({ ...removal, relationship: { id: other, type: 1 } });
+        pendingNotifications.shift()();
+        assert.equal(notifications.pop(), "Someone removed you as a friend");
+        click(render(), "Disable RelationshipNotifier");
+        assert.equal(relationshipActions.removeRelationship, removeRelationship);
+        assert.equal(incomingHooks.length, 0);
         for (const [name, configuration, matched, kept] of [
             ["NoBlockedMessages", null, { author: { id: other } }, { author: { id: guildId } }],
             ["ClientSideBlock", sender, { author: { id: sender } }, { author: { id: other } }],
