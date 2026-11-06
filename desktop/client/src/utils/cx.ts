@@ -1,5 +1,6 @@
 import { cxAppearanceTargets, type CxAppearanceTarget } from "./cxAppearance";
 import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
+import { applyIncomingRule, incomingPermissions, type IncomingPayload, type IncomingRule, parseIncomingRule } from "./cxIncoming";
 import { calculate, convertUnits } from "./cxNumeric";
 import { messageTransforms, polishOptions, reverseText } from "./cxMessageTransforms";
 
@@ -16,6 +17,11 @@ const permissionLabels = {
     "messages.edit.transform": "Change text when you submit a message edit",
     "replies.suppressping": "Send replies without pinging the person you reply to",
     "appearance.hide": "Hide the listed interface elements on this device",
+    "messages.filterstickers": "Filter stickers from incoming messages on this device",
+    "messages.silencementions": "Mute mentions from the listed senders on this device",
+    "replies.controlping": "Choose whether incoming replies ping you on this device",
+    "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
+    "messages.watchlocal": "Match incoming messages on this device and show local notifications",
 };
 
 // Text transforms adapted from Endcord (Vendicated and contributors, GPL-3.0-or-later).
@@ -78,6 +84,7 @@ type CxPlugin = {
     messageTransforms: MessageTransform[];
     suppressReplyPing: boolean;
     hiddenTargets: CxAppearanceTarget[];
+    incoming: IncomingRule[];
 };
 type CxDocument = CxTheme | CxPlugin;
 
@@ -145,16 +152,25 @@ export function parseCx(source: string): CxDocument {
     const commands: Command[] = [];
     const transforms: MessageTransform[] = [];
     const hiddenTargets = new Set<CxAppearanceTarget>();
+    const incoming: IncomingRule[] = [];
     let suppressReplyPing = false;
     let current: Command | undefined;
     for (const line of lines) {
         if (!line.trim()) continue;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
-        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size) {
+        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !incoming.length) {
             const permission = declaration[1] as CxPermission;
             if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
                 throw new Error("Unknown or duplicate CX permission");
             permissions.add(permission);
+            continue;
+        }
+        const incomingRule = /^  on incoming ([a-z-]+) ("(?:[^"\\]|\\.)*")$/.exec(line);
+        if (incomingRule) {
+            const rule = parseIncomingRule(incomingRule[1], quoted(incomingRule[2], 240, true));
+            if (incoming.some(existing => existing.kind === rule.kind)) throw new Error("Duplicate incoming rule");
+            incoming.push(rule);
+            current = undefined;
             continue;
         }
         const hide = /^  hide ([a-z-]+)$/.exec(line);
@@ -245,12 +261,13 @@ export function parseCx(source: string): CxDocument {
         }
         current.actions.push({ kind, message, fallback });
     }
-    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size) || commands.some(command => !command.actions.length))
+    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !incoming.length) || commands.some(command => !command.actions.length))
         throw new Error("A plugin needs a command or a supported behavior");
     const required = new Set<CxPermission>();
     if (commands.length) required.add("commands.register");
     if (suppressReplyPing) required.add("replies.suppressping");
     if (hiddenTargets.size) required.add("appearance.hide");
+    for (const { kind } of incoming) required.add(incomingPermissions[kind]);
     for (const { stage } of transforms) required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
     for (const { actions } of commands) {
         for (const action of actions) {
@@ -262,7 +279,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Declare the permissions used by your commands");
     if ([...permissions].some(permission => !required.has(permission)))
         throw new Error("Remove unused CX permissions");
-    return { kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing, hiddenTargets: [...hiddenTargets] };
+    return { kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing, hiddenTargets: [...hiddenTargets], incoming };
 }
 
 export function reviewCx(source: string) {
@@ -273,7 +290,10 @@ export function reviewCx(source: string) {
         name: document.name,
         permissions: document.permissions,
         effects: document.permissions.map(permission => permissionLabels[permission])
-            .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label)),
+            .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label))
+            .concat(document.incoming.flatMap(rule => rule.kind === "stickers" && rule.values[0] === "*"
+                ? ["Hide all stickers"] : !rule.values.length && rule.kind !== "reply-pings"
+                    ? ["Edit the source to enter " + (rule.kind === "keywords" ? "keywords" : "Discord IDs")] : [])),
         commands: document.commands.map(command => "/" + command.name),
     };
 }
@@ -287,6 +307,7 @@ type CxHost = {
     registerMessageEditTransform?: (transform: (text: string) => string) => () => void;
     registerReplyPingSuppression?: () => () => void;
     hideAppearanceTarget?: (target: CxAppearanceTarget) => () => void;
+    registerIncomingRules?: (rules: readonly IncomingRule[]) => () => void;
 };
 
 /** Only trusted UI can grant access. The source never receives the host or a callback argument. */
@@ -303,6 +324,10 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
         for (const cleanup of cleanups.splice(0).reverse()) cleanup();
     }
     try {
+        if (document.incoming.length) {
+            if (!host.registerIncomingRules) throw new Error("This client cannot run incoming rules");
+            cleanups.push(host.registerIncomingRules(document.incoming));
+        }
         for (const target of document.hiddenTargets) {
             if (!host.hideAppearanceTarget) throw new Error("This client cannot hide " + cxAppearanceTargets[target].label);
             cleanups.push(host.hideAppearanceTarget(target));
@@ -377,6 +402,15 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
         stop();
         throw error;
     }
+}
+
+export function runCxIncomingRules(rules: readonly IncomingRule[], payload: IncomingPayload, context: Parameters<typeof applyIncomingRule>[2]) {
+    let patch: Partial<IncomingPayload> | undefined;
+    for (const rule of rules) {
+        const result = applyIncomingRule(rule, patch ? { ...payload, ...patch } : payload, context);
+        if (result) patch = { ...patch, ...result };
+    }
+    return patch;
 }
 
 

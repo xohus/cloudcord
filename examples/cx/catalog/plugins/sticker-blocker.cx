@@ -1,0 +1,3 @@
+plugin "StickerBlocker":
+  needs messages.filterstickers
+  on incoming stickers "*"

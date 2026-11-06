@@ -1,0 +1,3 @@
+plugin "KeywordNotify":
+  needs messages.watchlocal
+  on incoming keywords ""

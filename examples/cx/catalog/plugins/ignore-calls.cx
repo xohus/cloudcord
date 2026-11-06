@@ -1,0 +1,3 @@
+plugin "IgnoreCalls":
+  needs calls.suppressring
+  on incoming calls ""

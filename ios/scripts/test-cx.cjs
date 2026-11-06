@@ -148,6 +148,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
     for (const platform of ["desktop", "mobile"]) {
         const desktop = platform === "desktop";
         const states = [], registered = {}, delivered = [];
+        const incomingHooks = [], notifications = [], pendingNotifications = [];
+        const me = "100000000000000001", sender = "100000000000000002", other = "100000000000000003";
+        const stores = {
+            UserStore: { getCurrentUser: () => ({ id: me }) },
+            ChannelStore: { getChannel: () => ({ name: "test", recipients: [sender] }) },
+            MessageStore: { getMessage: () => ({ author: { id: me } }) },
+        };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
         const editHooks = new Set();
@@ -190,10 +197,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 onSendMessage(listener) { transformHooks.add(listener); return () => { transformHooks.delete(listener); }; },
                 onEditMessage(listener) { editHooks.add(listener); return () => { editHooks.delete(listener); }; }
             },
-            "@api/Notifications": {},
+            "@api/Notifications": { showNotification: ({ body }) => notifications.push(body) },
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
-            "@webpack/common": { useState },
+            "@webpack/common": { useState, ...stores, FluxDispatcher: {
+                _interceptors: incomingHooks,
+                addInterceptor: callback => incomingHooks.push(callback),
+            } },
             "@lib/api/cx": moduleBox.exports,
             "@lib/api/cxCatalog": { cxCatalog },
             "@lib/api/commands": commandApi,
@@ -211,8 +221,12 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     appearanceHooks.delete(name);
                 },
             },
-            "@lib/ui/toasts": {},
-            "@metro": {},
+            "@lib/ui/toasts": { showToast: message => notifications.push(message) },
+            "@lib/api/flux": { intercept(callback) {
+                incomingHooks.push(callback);
+                return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
+            } },
+            "@metro": { findByStoreNameLazy: name => stores[name] },
             "@metro/common": { React: { useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot() },
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup" },
@@ -220,6 +234,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         vm.runInNewContext(transformSync(read(adapter), { loader: "tsx", format: "cjs", jsx: "automatic" }).code, {
             module,
+            setTimeout: callback => pendingNotifications.push(callback),
             document: {
                 createElement: () => ({ remove() { stylesheet = undefined; } }),
                 head: { append: value => { stylesheet = value; } }
@@ -280,6 +295,46 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         command.execute([{ name: "text", value: "abc" }], { channel: { id: "test-channel" } });
         assert.deepEqual(delivered, [["test-channel", "3 characters"]]);
         assert.equal(Object.keys(registered).length, 0, platform + " unregisters on disable");
+
+        const incomingCases = [
+            ["StickerBlocker", null, () => ({
+                type: "LOAD_MESSAGES_SUCCESS",
+                messages: [{ content: "a", sticker_items: [{ id: "sticker" }] }, { content: "b" }],
+            }), result => { assert.equal(result.messages[0].sticker_items.length, 0); assert.equal(result.messages[0].content, "a"); }],
+            ["SilenceUsers", sender, () => ({
+                type: "MESSAGE_CREATE", message: { author: { id: sender }, mentions: [{ id: me }, { id: other }], mention_everyone: true },
+            }), result => { assert.equal(result.message.mention_everyone, false); assert.equal(result.message.mentions[0].id, other); }],
+            ["ReplyPingControl", null, () => ({
+                type: "MESSAGE_CREATE", message: { author: { id: sender }, mentions: [{ id: me }], message_reference: { channel_id: "test-channel", message_id: "reply" } },
+            }), result => assert.equal(result.message.mentions.length, 0)],
+            ["IgnoreCalls", sender, () => ({
+                type: "CALL_UPDATE", channelId: "test-channel", ringing: [me, other],
+            }), result => { assert.equal(result.ringing.length, 1); assert.equal(result.ringing[0], other); }],
+            ["KeywordNotify", "deploy", () => ({
+                type: "MESSAGE_CREATE", message: { author: { id: sender, username: "Tester" }, content: "DEPLOY done", channel_id: "test-channel" },
+            }), () => { pendingNotifications.shift()(); assert.equal(notifications.at(-1), "Tester in #test: DEPLOY done"); }],
+            ["MessageNotifier", sender, () => ({
+                type: "MESSAGE_CREATE", message: { author: { id: sender, username: "Tester" }, content: "hello", channel_id: "test-channel" },
+            }), () => { pendingNotifications.shift()(); assert.equal(notifications.at(-1), "Tester in #test: hello"); }],
+        ];
+        for (const [name, configuration, event, check] of incomingCases) {
+            selectCatalog(name);
+            if (configuration !== null) {
+                const input = find(render(), item => item.props[desktop ? "aria-label" : "accessibilityLabel"] === "CX source");
+                const source = input.props.value.replace('""', JSON.stringify(configuration));
+                if (desktop) input.props.onChange({ currentTarget: { value: source } });
+                else input.props.onChangeText(source);
+                click(render(), "Review CX");
+            }
+            assert.equal(incomingHooks.length, 0);
+            click(render(), "Allow for this session");
+            assert.equal(incomingHooks.length, 1);
+            const payload = event();
+            const next = incomingHooks[0](payload);
+            check(next ? { ...payload, ...next } : payload);
+            click(render(), "Disable " + name);
+            assert.equal(incomingHooks.length, 0);
+        }
 
         const testCases = [
             ["ReverseText", "reverse", "a🐈", "🐈a"],

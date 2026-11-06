@@ -1,8 +1,9 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
-import { createCxSession, cxAppearanceTargets, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx } from "@lib/api/cx";
+import { createCxSession, cxAppearanceTargets, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx, runCxIncomingRules } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
+import { intercept } from "@lib/api/flux";
 import { getCurrentTheme } from "@lib/addons/themes";
 import { updateBunnyColor } from "@lib/addons/themes/colors/updater";
 import { NativeFileModule } from "@lib/api/native/modules";
@@ -10,12 +11,15 @@ import { isThemeSupported } from "@lib/api/native/loader";
 import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
 import { settings } from "@lib/api/settings";
 import { showToast } from "@lib/ui/toasts";
-import { findByProps } from "@metro";
+import { findByProps, findByStoreNameLazy } from "@metro";
 import { commands, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import { ScrollView, Text, TextInput } from "react-native";
 
 const session = createCxSession();
+const UserStore = findByStoreNameLazy("UserStore");
+const ChannelStore = findByStoreNameLazy("ChannelStore");
+const MessageStore = findByStoreNameLazy("MessageStore");
 
 export default function CxExtensions() {
     const [source, setSource] = React.useState("");
@@ -64,6 +68,23 @@ export default function CxExtensions() {
         try {
             if (settings.safeMode?.enabled) throw new Error("CX is unavailable in Safe Mode");
             session.enable(candidate.source, {
+                registerIncomingRules(rules) {
+                    let active = true;
+                    const context = {
+                        currentUser: () => UserStore?.getCurrentUser?.()?.id,
+                        channel: (id: string) => ChannelStore?.getChannel?.(id),
+                        replyAuthor: (channel: string, id: string) => MessageStore?.getMessage?.(channel, id)?.author,
+                        notify: (body: string) => setTimeout(() => {
+                            if (active && !settings.safeMode?.enabled) showToast(body);
+                        }, 0),
+                    };
+                    const stop = intercept(payload => {
+                        try {
+                            if (active && !settings.safeMode?.enabled) return runCxIncomingRules(rules, payload, context);
+                        } catch { /* Discord must still receive its original event. */ }
+                    });
+                    return () => { active = false; stop(); };
+                },
                 hideAppearanceTarget(target) {
                     const names = cxAppearanceTargets[target].mobile;
                     let hidden = true;

@@ -1,0 +1,3 @@
+plugin "SilenceUsers":
+  needs messages.silencementions
+  on incoming silence-users ""

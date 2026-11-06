@@ -1,0 +1,3 @@
+plugin "MessageNotifier":
+  needs messages.watchlocal
+  on incoming users ""

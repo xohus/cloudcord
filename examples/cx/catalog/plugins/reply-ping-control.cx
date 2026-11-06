@@ -1,0 +1,3 @@
+plugin "ReplyPingControl":
+  needs replies.controlping
+  on incoming reply-pings "never"

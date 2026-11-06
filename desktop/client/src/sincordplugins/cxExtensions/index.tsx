@@ -1,10 +1,10 @@
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { createCxSession, cxAppearanceTargets, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx } from "@utils/cx";
+import { createCxSession, cxAppearanceTargets, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx, runCxIncomingRules } from "@utils/cx";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
-import { useState } from "@webpack/common";
+import { ChannelStore, FluxDispatcher, MessageStore, UserStore, useState } from "@webpack/common";
 
 const session = createCxSession();
 
@@ -30,6 +30,33 @@ export function CxSettings() {
         if (!candidate) return;
         try {
             session.enable(candidate.source, {
+                registerIncomingRules(rules) {
+                    if (typeof FluxDispatcher?.addInterceptor !== "function") throw new Error("Discord events are unavailable");
+                    let active = true;
+                    const context = {
+                        currentUser: () => UserStore.getCurrentUser()?.id,
+                        channel: (id: string) => ChannelStore.getChannel(id),
+                        replyAuthor: (channel: string, id: string) => MessageStore.getMessage(channel, id)?.author,
+                        notify: (body: string) => setTimeout(() => {
+                            if (active) void showNotification({ title: candidate.review.name, body });
+                        }, 0),
+                    };
+                    const interceptor = (payload: Parameters<typeof runCxIncomingRules>[1]) => {
+                        try {
+                            if (active) {
+                                const patch = runCxIncomingRules(rules, payload, context);
+                                if (patch) Object.assign(payload, patch);
+                            }
+                        } catch { /* Discord must still receive its original event. */ }
+                    };
+                    FluxDispatcher.addInterceptor(interceptor);
+                    return () => {
+                        active = false;
+                        const interceptors = FluxDispatcher._interceptors;
+                        const index = interceptors?.indexOf(interceptor) ?? -1;
+                        if (index !== -1) interceptors.splice(index, 1);
+                    };
+                },
                 hideAppearanceTarget(target) {
                     const style = document.createElement("style");
                     style.textContent = cxAppearanceTargets[target].css;
