@@ -37075,6 +37075,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   function isCxProfileUserId(id) {
     return typeof id === "string" && /^\d{17,20}$/.test(id);
   }
+  function getCxProfileMenuCopy(action, id, profiles, guildId) {
+    var entry = cxProfileMenuActions[action];
+    if (entry.scope === "none")
+      return entry.format(id);
+    if (entry.scope === "server" && !guildId)
+      return;
+    try {
+      var profile = entry.scope === "server" ? profiles?.getGuildMemberProfile?.(id, guildId) : profiles?.getUserProfile?.(id);
+      var colors = profile?.themeColors;
+      if (!Array.isArray(colors) || colors.length < 2)
+        return;
+      var hex = colors.slice(0, 2).map((color) => Number.isInteger(color) && color >= 0 && color <= 16777215 ? "#" + color.toString(16).padStart(6, "0") : void 0);
+      if (hex[0] && hex[1])
+        return "Primary-color " + hex[0] + ", Secondary-Color " + hex[1];
+    } catch (e) {
+    }
+  }
   var cxProfileMenuActions;
   var init_cxProfileMenu = __esm({
     "src/lib/api/cxProfileMenu.ts"() {
@@ -37084,11 +37101,21 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       cxProfileMenuActions = {
         "user-url": {
           label: "Copy User URL",
+          scope: "none",
           format: (id) => "<https://discord.com/users/" + id + ">"
         },
         "user-mention": {
           label: "Copy User Mention",
+          scope: "none",
           format: (id) => "<@" + id + ">"
+        },
+        "profile-colors": {
+          label: "Copy Profile Colors",
+          scope: "user"
+        },
+        "server-profile-colors": {
+          label: "Copy Server Profile Colors",
+          scope: "server"
         }
       };
     }
@@ -37199,7 +37226,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         });
         return "continue";
       }
-      var input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line12);
+      var input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice|user)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line12);
       if (input && current && !current.actions.length) {
         var [, name22, type, list, optional] = input;
         if (name22 === "send" || name22 === "text" && current.text || current.inputs.length >= 4 || current.inputs.some((option) => option.name === name22))
@@ -37247,13 +37274,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         throw new Error("CX allows one outgoing message per command");
       }
       if (kind2 !== "toast") {
-        var inputs = new Set(current.inputs.map((input2) => input2.name));
+        var declaredInputs = current.inputs;
+        var inputs = new Set(declaredInputs.map((input2) => input2.name));
         if (current.text)
           inputs.add("text");
         var remaining = message.replace(textExpression, (expression, name3, args) => {
           if (args === void 0)
             return inputs.has(name3) ? "" : expression;
           var names = argumentNames(args);
+          if (name3 === "avatar" && names.length === 1 && declaredInputs.some((input2) => input2.name === names[0] && input2.type === "user")) {
+            readsAvatar = true;
+            return "";
+          }
           return Object.prototype.hasOwnProperty.call(textFunctions, name3) && textFunctions[name3].length === names.length && names.every((name4) => inputs.has(name4)) ? "" : expression;
         });
         if (remaining.includes("${"))
@@ -37334,6 +37366,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var profileActions = /* @__PURE__ */ new Set();
     var incoming = [];
     var suppressReplyPing = false;
+    var readsAvatar = false;
     var current;
     for (var line1 of lines)
       _loop2(line1);
@@ -37348,6 +37381,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       required.add("appearance.hide");
     if (profileActions.size)
       required.add("profilemenu.copy");
+    if (readsAvatar)
+      required.add("profile.avatar");
     for (var { kind: kind1 } of incoming)
       required.add(incomingPermissions[kind1]);
     for (var { stage } of transforms)
@@ -37409,6 +37444,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       commands: document.commands.map((command) => "/" + command.name)
     };
   }
+  function getAvatarUrl(host, grants, id) {
+    if (!grants.has("profile.avatar"))
+      return;
+    try {
+      var url2 = host.getUserAvatarUrl?.(id || void 0);
+      if (typeof url2 !== "string")
+        return;
+      var https = url2.startsWith("//") ? "https:" + url2 : url2;
+      if (/^https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/(?:avatars\/\d{17,20}\/(?:a_)?[0-9a-f]{32}|embed\/avatars\/[0-5])\.(?:png|jpe?g|webp|gif)(?:\?[a-z0-9_=&-]{1,128})?$/i.test(https))
+        return https;
+    } catch (e) {
+    }
+  }
   function activateCx(source, host, approved) {
     var document = parseCx(source);
     if (document.kind === "theme")
@@ -37462,7 +37510,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             }
             var invalid = false;
             var message = action3.choices ? chooseOne(action3.choices) : action3.message.replace(textExpression, (_2, name, args) => {
-              var value2 = args === void 0 ? inputs.get(name) : textFunctions[name](...argumentNames(args).map((name2) => inputs.get(name2)));
+              var values = args === void 0 ? [] : argumentNames(args).map((input2) => inputs.get(input2));
+              var value2 = args === void 0 ? inputs.get(name) : name === "avatar" ? getAvatarUrl(host, grants, values[0]) : textFunctions[name](...values);
               if (value2 === void 0)
                 invalid = true;
               return value2 ?? "";
@@ -37490,7 +37539,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           for (var input of command2.inputs) {
             var value = invocation?.inputs?.[input.name];
             var serialized = typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : "";
-            var valid = serialized.trim() && serialized.length <= 4e3 && (input.type === "text" ? typeof value === "string" : input.type === "boolean" ? typeof value === "boolean" : input.type === "integer" ? /^-?\d+$/.test(serialized) && Number.isSafeInteger(Number(serialized)) : input.choices?.includes(serialized));
+            var valid = serialized.trim() && serialized.length <= 4e3 && (input.type === "text" ? typeof value === "string" : input.type === "boolean" ? typeof value === "boolean" : input.type === "user" ? isCxProfileUserId(value) : input.type === "integer" ? /^-?\d+$/.test(serialized) && Number.isSafeInteger(Number(serialized)) : input.choices?.includes(serialized));
             if (!valid && (input.required || value !== void 0))
               return;
             inputs.set(input.name, valid ? serialized : "");
@@ -37607,7 +37656,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.transform": "Change text before Discord sends messages you compose",
         "messages.edit.transform": "Change text when you submit a message edit",
         "replies.suppressping": "Send replies without pinging the person you reply to",
-        "profilemenu.copy": "Add the listed copy actions to user menus. Writes to the clipboard only when selected.",
+        "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
+        "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
         "appearance.hide": "Hide the listed interface elements on this device",
         "messages.filterstickers": "Filter stickers from incoming messages on this device",
         "messages.silencementions": "Mute mentions from the listed senders on this device",
@@ -37681,6 +37731,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/avatar-grabber.cx
+  var avatar_grabber_default;
+  var init_avatar_grabber = __esm({
+    "../examples/cx/catalog/plugins/avatar-grabber.cx"() {
+      avatar_grabber_default = 'plugin "AvatarGrabber":\n  needs commands.register\n  needs messages.send\n  needs profile.avatar\n  needs reply.local\n  on command "avatar":\n    input "user" user optional\n    send "${avatar(user)}" else "Couldn\'t find that user."\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/bold-text.cx
   var bold_text_default;
   var init_bold_text = __esm({
@@ -37710,6 +37768,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_clear_urls = __esm({
     "../examples/cx/catalog/plugins/clear-urls.cx"() {
       clear_urls_default = 'plugin "ClearURLs":\n  needs messages.transform\n  needs messages.edit.transform\n  before send clearTrackingLinks\n  before edit clearTrackingLinks\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/copy-profile-colors.cx
+  var copy_profile_colors_default;
+  var init_copy_profile_colors = __esm({
+    "../examples/cx/catalog/plugins/copy-profile-colors.cx"() {
+      copy_profile_colors_default = 'plugin "CopyProfileColors":\n  needs profilemenu.copy\n  on profile menu copy profile-colors\n  on profile menu copy server-profile-colors\n';
     }
   });
 
@@ -38914,10 +38980,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_promiseAllSettled();
       init_character_counter2();
       init_auto_vaporwave();
+      init_avatar_grabber();
       init_bold_text();
       init_calculator();
       init_clap_text();
       init_clear_urls();
+      init_copy_profile_colors();
       init_copy_user_mention();
       init_copy_user_urls();
       init_google_that();
@@ -39078,6 +39146,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: auto_vaporwave_default
           },
           {
+            name: "AvatarGrabber",
+            source: avatar_grabber_default
+          },
+          {
             name: "BoldText",
             source: bold_text_default
           },
@@ -39092,6 +39164,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "ClearURLs",
             source: clear_urls_default
+          },
+          {
+            name: "CopyProfileColors",
+            source: copy_profile_colors_default
           },
           {
             name: "CopyUserMention",
@@ -39704,9 +39780,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   function patchProfileMenus() {
     var ProfileUser = React2.createContext(void 0);
     function ProfileMenu({ element }) {
-      var id = React2.useContext(ProfileUser);
-      if (!id || settings.safeMode?.enabled)
+      var user = React2.useContext(ProfileUser);
+      if (!user || settings.safeMode?.enabled)
         return element;
+      var { id, guildId } = user;
       var entries = new Map([
         ...profileMenuActions
       ].map((entry) => [
@@ -39717,31 +39794,46 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         return element;
       var actions = [
         ...entries.values()
-      ].map((entry) => {
-        var { label, format } = cxProfileMenuActions[entry.action];
-        return {
-          label,
-          action: () => {
-            if (profileMenuActions.has(entry) && !settings.safeMode?.enabled) {
-              clipboard.setString(format(id));
-              showToast.showCopyToClipboard?.();
+      ].flatMap((entry) => {
+        var { label, scope } = cxProfileMenuActions[entry.action];
+        if (scope === "server" && !getCxProfileMenuCopy(entry.action, id, UserProfileStore, guildId))
+          return [];
+        return [
+          {
+            label,
+            action: () => {
+              if (!profileMenuActions.has(entry) || settings.safeMode?.enabled)
+                return;
+              var text = getCxProfileMenuCopy(entry.action, id, UserProfileStore, guildId);
+              if (text) {
+                clipboard.setString(text);
+                showToast.showCopyToClipboard?.();
+              } else
+                showToast("No profile colors found.");
             }
           }
-        };
+        ];
       });
-      return React2.cloneElement(element, {
+      return actions.length ? React2.cloneElement(element, {
         items: [
           ...element.props.items,
           actions
         ]
-      });
+      }) : element;
     }
     var provideUser = (_2, element) => {
       var id = element.props.user?.id;
-      return isCxProfileUserId(id) ? /* @__PURE__ */ jsx(ProfileUser.Provider, {
-        value: id,
+      if (!isCxProfileUserId(id))
+        return element;
+      var guildId = element.props.displayProfile?.guildId ?? element.props.channel?.getGuildId?.();
+      var user = {
+        id,
+        guildId: isCxProfileUserId(guildId) ? guildId : void 0
+      };
+      return /* @__PURE__ */ jsx(ProfileUser.Provider, {
+        value: user,
         children: element
-      }, element.key) : element;
+      }, element.key);
     };
     var addMenuItems = (_2, element) => {
       var { items, onOpen, children } = element.props;
@@ -39906,6 +39998,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 message.content = transform(message.content);
             });
           },
+          getUserAvatarUrl(id) {
+            var user = id ? UserStore2?.getUser?.(id) : UserStore2?.getCurrentUser?.();
+            if (user)
+              return findByProps("getUserAvatarURL", "getGuildIconURL")?.getUserAvatarURL(user, true, 1024);
+          },
           registerCommand(name, execute, acceptsText, _sendsMessage, optionalSend, inputs) {
             var builtIns;
             try {
@@ -39932,7 +40029,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                   name: input.name,
                   description: input.name.replace(/[_-]/g, " "),
                   required: input.required,
-                  type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN : ApplicationCommandOptionType.STRING,
+                  type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN : input.type === "user" ? ApplicationCommandOptionType.USER : ApplicationCommandOptionType.STRING,
                   choices: input.choices?.map((value) => ({
                     name: value,
                     displayName: value,
@@ -40191,7 +40288,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, UserProfileStore, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -40220,6 +40317,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       UserStore2 = findByStoreNameLazy("UserStore");
       ChannelStore = findByStoreNameLazy("ChannelStore");
       MessageStore = findByStoreNameLazy("MessageStore");
+      UserProfileStore = findByStoreNameLazy("UserProfileStore");
       profileMenuActions = /* @__PURE__ */ new Set();
     }
   });
@@ -44857,7 +44955,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "74c8dfee900b0655bd7c5874475e98586c66b065";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "e4649efce422a4516c987a0a6ccbc56eaed371a8";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
