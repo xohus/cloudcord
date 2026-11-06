@@ -37071,6 +37071,29 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxProfileMenu.ts
+  function isCxProfileUserId(id) {
+    return typeof id === "string" && /^\d{17,20}$/.test(id);
+  }
+  var cxProfileMenuActions;
+  var init_cxProfileMenu = __esm({
+    "src/lib/api/cxProfileMenu.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      cxProfileMenuActions = {
+        "user-url": {
+          label: "Copy User URL",
+          format: (id) => "<https://discord.com/users/" + id + ">"
+        },
+        "user-mention": {
+          label: "Copy User Mention",
+          format: (id) => "<@" + id + ">"
+        }
+      };
+    }
+  });
+
   // src/lib/api/cx.ts
   function quoted(value, limit, allowEmpty = false) {
     if (!value.startsWith('"') || !value.endsWith('"'))
@@ -37090,7 +37113,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (!line12.trim())
         return "continue";
       var declaration2 = /^  needs ([a-z.]+)$/.exec(line12);
-      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !incoming.length) {
+      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !profileActions.size && !incoming.length) {
         var permission2 = declaration2[1];
         if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission2) || permissions.has(permission2))
           throw new Error("Unknown or duplicate CX permission");
@@ -37103,6 +37126,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (incoming.some((existing) => existing.kind === rule.kind))
           throw new Error("Duplicate incoming rule");
         incoming.push(rule);
+        current = void 0;
+        return "continue";
+      }
+      var profileAction = /^  on profile menu copy ([a-z-]+)$/.exec(line12);
+      if (profileAction) {
+        var action2 = profileAction[1];
+        if (!Object.prototype.hasOwnProperty.call(cxProfileMenuActions, action2) || profileActions.has(action2))
+          throw new Error("Unknown or duplicate profile menu action");
+        profileActions.add(action2);
         current = void 0;
         return "continue";
       }
@@ -37200,12 +37232,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         });
         return "continue";
       }
-      var action2 = /^    (toast|reply or send|reply|send) ("(?:[^"\\]|\\.)*")(?: else ("(?:[^"\\]|\\.)*"))?$/.exec(line12);
-      if (!action2 || !current || current.actions.length >= 4)
+      var action1 = /^    (toast|reply or send|reply|send) ("(?:[^"\\]|\\.)*")(?: else ("(?:[^"\\]|\\.)*"))?$/.exec(line12);
+      if (!action1 || !current || current.actions.length >= 4)
         throw new Error("Unknown CX instruction or too many actions");
-      var kind2 = action2[1];
-      var message = quoted(action2[2], 240);
-      var fallback = action2[3] === void 0 ? void 0 : quoted(action2[3], 240);
+      var kind2 = action1[1];
+      var message = quoted(action1[2], 240);
+      var fallback = action1[3] === void 0 ? void 0 : quoted(action1[3], 240);
       if (fallback && (kind2 === "toast" || fallback.includes("${")))
         throw new Error("A command fallback must be literal reply text");
       if (sendsMessage({
@@ -37299,12 +37331,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var commands3 = [];
     var transforms = [];
     var hiddenTargets = /* @__PURE__ */ new Set();
+    var profileActions = /* @__PURE__ */ new Set();
     var incoming = [];
     var suppressReplyPing = false;
     var current;
     for (var line1 of lines)
       _loop2(line1);
-    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !incoming.length || commands3.some((command) => !command.actions.length))
+    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !profileActions.size && !incoming.length || commands3.some((command) => !command.actions.length))
       throw new Error("A plugin needs a command or a supported behavior");
     var required = /* @__PURE__ */ new Set();
     if (commands3.length)
@@ -37313,6 +37346,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       required.add("replies.suppressping");
     if (hiddenTargets.size)
       required.add("appearance.hide");
+    if (profileActions.size)
+      required.add("profilemenu.copy");
     for (var { kind: kind1 } of incoming)
       required.add(incomingPermissions[kind1]);
     for (var { stage } of transforms)
@@ -37345,6 +37380,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       hiddenTargets: [
         ...hiddenTargets
       ],
+      profileActions: [
+        ...profileActions
+      ],
       incoming
     };
   }
@@ -37363,7 +37401,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       kind: document.kind,
       name: document.name,
       permissions: document.permissions,
-      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
+      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
         "Hide all stickers"
       ] : !rule.values.length && rule.kind !== "reply-pings" ? [
         "Edit the source to enter " + (rule.kind === "keywords" ? "keywords" : "Discord IDs")
@@ -37415,28 +37453,28 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (!grants.has("commands.register"))
           throw new Error("Command permission denied");
         cleanups.push(host.registerCommand(command2.name, (invocation) => {
-          var _loop3 = function(action2) {
-            if (!actionPermissions[action2.kind].every((permission) => grants.has(permission)))
+          var _loop3 = function(action3) {
+            if (!actionPermissions[action3.kind].every((permission) => grants.has(permission)))
               return "continue";
-            if (action2.kind === "toast") {
-              host.toast(action2.message);
+            if (action3.kind === "toast") {
+              host.toast(action3.message);
               return "continue";
             }
             var invalid = false;
-            var message = action2.choices ? chooseOne(action2.choices) : action2.message.replace(textExpression, (_2, name, args) => {
+            var message = action3.choices ? chooseOne(action3.choices) : action3.message.replace(textExpression, (_2, name, args) => {
               var value2 = args === void 0 ? inputs.get(name) : textFunctions[name](...argumentNames(args).map((name2) => inputs.get(name2)));
               if (value2 === void 0)
                 invalid = true;
               return value2 ?? "";
             });
             if (invalid) {
-              if (action2.fallback && grants.has("reply.local"))
-                invocation?.reply?.(action2.fallback);
+              if (action3.fallback && grants.has("reply.local"))
+                invocation?.reply?.(action3.fallback);
               return "continue";
             }
             if (message.length > 4e3)
               return "continue";
-            if (action2.kind === "reply" || action2.kind === "reply or send" && invocation?.sendRequested !== true)
+            if (action3.kind === "reply" || action3.kind === "reply or send" && invocation?.sendRequested !== true)
               invocation?.reply?.(message);
             else if ((!command2.text || text.trim()) && message.trim())
               outgoing = message;
@@ -37458,15 +37496,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             inputs.set(input.name, valid ? serialized : "");
           }
           var outgoing;
-          for (var action of command2.actions)
-            _loop3(action);
+          for (var action2 of command2.actions)
+            _loop3(action2);
           return outgoing;
-        }, command2.text, command2.actions.some(sendsMessage), command2.actions.some((action) => action.kind === "reply or send"), command2.inputs));
+        }, command2.text, command2.actions.some(sendsMessage), command2.actions.some((action2) => action2.kind === "reply or send"), command2.inputs));
       };
       if (document.incoming.length) {
         if (!host.registerIncomingRules)
           throw new Error("This client cannot run incoming rules");
         cleanups.push(host.registerIncomingRules(document.incoming));
+      }
+      for (var action of document.profileActions) {
+        if (!host.registerProfileMenuAction)
+          throw new Error("This client cannot add profile copy actions");
+        cleanups.push(host.registerProfileMenuAction(action));
       }
       for (var target of document.hiddenTargets) {
         if (!host.hideAppearanceTarget)
@@ -37552,6 +37595,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxIncoming();
       init_cxNumeric();
       init_cxMessageTransforms();
+      init_cxProfileMenu();
+      init_cxProfileMenu();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -37562,6 +37607,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.transform": "Change text before Discord sends messages you compose",
         "messages.edit.transform": "Change text when you submit a message edit",
         "replies.suppressping": "Send replies without pinging the person you reply to",
+        "profilemenu.copy": "Add the listed copy actions to user menus. Writes to the clipboard only when selected.",
         "appearance.hide": "Hide the listed interface elements on this device",
         "messages.filterstickers": "Filter stickers from incoming messages on this device",
         "messages.silencementions": "Mute mentions from the listed senders on this device",
@@ -37664,6 +37710,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_clear_urls = __esm({
     "../examples/cx/catalog/plugins/clear-urls.cx"() {
       clear_urls_default = 'plugin "ClearURLs":\n  needs messages.transform\n  needs messages.edit.transform\n  before send clearTrackingLinks\n  before edit clearTrackingLinks\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/copy-user-mention.cx
+  var copy_user_mention_default;
+  var init_copy_user_mention = __esm({
+    "../examples/cx/catalog/plugins/copy-user-mention.cx"() {
+      copy_user_mention_default = 'plugin "CopyUserMention":\n  needs profilemenu.copy\n  on profile menu copy user-mention\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/copy-user-urls.cx
+  var copy_user_urls_default;
+  var init_copy_user_urls = __esm({
+    "../examples/cx/catalog/plugins/copy-user-urls.cx"() {
+      copy_user_urls_default = 'plugin "CopyUserURLs":\n  needs profilemenu.copy\n  on profile menu copy user-url\n';
     }
   });
 
@@ -38856,6 +38918,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_calculator();
       init_clap_text();
       init_clear_urls();
+      init_copy_user_mention();
+      init_copy_user_urls();
       init_google_that();
       init_hide_active_now();
       init_hide_add_server_button();
@@ -39028,6 +39092,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "ClearURLs",
             source: clear_urls_default
+          },
+          {
+            name: "CopyUserMention",
+            source: copy_user_mention_default
+          },
+          {
+            name: "CopyUserURLs",
+            source: copy_user_urls_default
           },
           {
             name: "GoogleThat",
@@ -39629,6 +39701,75 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   __export(CxExtensions_exports, {
     default: () => CxExtensions
   });
+  function patchProfileMenus() {
+    var ProfileUser = React2.createContext(void 0);
+    function ProfileMenu({ element }) {
+      var id = React2.useContext(ProfileUser);
+      if (!id || settings.safeMode?.enabled)
+        return element;
+      var entries = new Map([
+        ...profileMenuActions
+      ].map((entry) => [
+        entry.action,
+        entry
+      ]));
+      if (!entries.size)
+        return element;
+      var actions = [
+        ...entries.values()
+      ].map((entry) => {
+        var { label, format } = cxProfileMenuActions[entry.action];
+        return {
+          label,
+          action: () => {
+            if (profileMenuActions.has(entry) && !settings.safeMode?.enabled) {
+              clipboard.setString(format(id));
+              showToast.showCopyToClipboard?.();
+            }
+          }
+        };
+      });
+      return React2.cloneElement(element, {
+        items: [
+          ...element.props.items,
+          actions
+        ]
+      });
+    }
+    var provideUser = (_2, element) => {
+      var id = element.props.user?.id;
+      return isCxProfileUserId(id) ? /* @__PURE__ */ jsx(ProfileUser.Provider, {
+        value: id,
+        children: element
+      }, element.key) : element;
+    };
+    var addMenuItems = (_2, element) => {
+      var { items, onOpen, children } = element.props;
+      return typeof onOpen === "function" && typeof children === "function" && Array.isArray(items) && items.every(Array.isArray) ? /* @__PURE__ */ jsx(ProfileMenu, {
+        element
+      }, element.key) : element;
+    };
+    onJsxCreate("UserProfileOverflowMenu", provideUser, true);
+    onJsxCreate("ContextMenu", addMenuItems, true);
+    return () => {
+      deleteJsxCreate("ContextMenu", addMenuItems, true);
+      deleteJsxCreate("UserProfileOverflowMenu", provideUser, true);
+    };
+  }
+  function registerProfileMenuAction(action) {
+    stopProfileMenuHooks ??= patchProfileMenus();
+    var entry = {
+      action
+    };
+    profileMenuActions.add(entry);
+    return () => {
+      profileMenuActions.delete(entry);
+      if (!profileMenuActions.size) {
+        stopProfileMenuHooks?.();
+        stopProfileMenuHooks = void 0;
+      }
+    };
+  }
   function CxExtensions() {
     var [source, setSource] = React2.useState("");
     var [showCatalog, setShowCatalog] = React2.useState(false);
@@ -39708,6 +39849,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               stop();
             };
           },
+          registerProfileMenuAction,
           hideAppearanceTarget(target) {
             var names = cxAppearanceTargets[target].mobile;
             var hidden = true;
@@ -40049,7 +40191,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -40078,6 +40220,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       UserStore2 = findByStoreNameLazy("UserStore");
       ChannelStore = findByStoreNameLazy("ChannelStore");
       MessageStore = findByStoreNameLazy("MessageStore");
+      profileMenuActions = /* @__PURE__ */ new Set();
     }
   });
 
@@ -44714,7 +44857,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "20aa852cf851b1fbe5924b3b281cf8e5cb62888e";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "74c8dfee900b0655bd7c5874475e98586c66b065";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
