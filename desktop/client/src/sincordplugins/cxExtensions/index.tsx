@@ -2,10 +2,11 @@ import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, fi
 import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, reviewCx, runCxIncomingRules } from "@utils/cx";
+import { animateCxAssets, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
+import { findByProps } from "@webpack";
 import { ActiveJoinedThreadsStore, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageStore, ReadStateStore, RelationshipStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useState } from "@webpack/common";
 
 const session = createCxSession();
@@ -95,6 +96,18 @@ export function CxSettings() {
                 },
                 hideAppearanceTarget: applyAppearanceCss,
                 styleAppearanceTarget: applyAppearanceCss,
+                registerNativeEffect(effect) {
+                    switch (effect) {
+                        case "silent-typing":
+                            return overrideCxMethods(findByProps("startTyping", "stopTyping"), {
+                                startTyping: () => Promise.resolve(),
+                            });
+                        case "pending-friend-count":
+                            return overrideCxMethods(RelationshipStore, { getPendingCount: () => 0, getPendingIncomingCount: () => 0 });
+                        case "animated-assets":
+                            return animateCxAssets(findByProps("getUserAvatarURL", "getGuildIconURL"), true);
+                    }
+                },
                 registerReplyPingSuppression() {
                     const listener = addMessagePreSendListener((_, _message, { replyOptions }) => {
                         if (!replyOptions?.messageReference) return;

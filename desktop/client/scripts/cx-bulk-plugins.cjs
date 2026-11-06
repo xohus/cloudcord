@@ -355,7 +355,33 @@ function compileMobileClientCommands(file, plugin, source) {
     if (lines) return { capability: "client-command", lines: ["  needs commands.register", ...permissions.map(permission => "  needs " + permission), ...lines] };
 }
 
-function inspectPlugin(file, code, platform, appearance = {}) {
+function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
+    if (!file.startsWith("ios/runtime/src/core/plugins/") || !fieldsAre(plugin, ["manifest", "start", "stop"])) return;
+    const start = handler(plugin, "start");
+    const stop = handler(plugin, "stop");
+    if (!start || !stop || !ts.isBlock(start.body)) return;
+    const code = printed(start.body, source).replace(/\s+/g, " ");
+    let effect;
+    if (imported(source, "instead", "@lib/api/patcher")) {
+        if (/^\{ const typing = findByProps\("startTyping", "stopTyping"\); if \(!typing\) return; unpatches = \["startTyping", "stopTyping"\]\.map\(name => instead\(name, typing, \(\) => undefined\)\); \}$/.test(code))
+            effect = "silent-typing";
+        else if (/^\{ const relationships = findByStoreName\("RelationshipStore"\); for \(const name of \["getPendingCount", "getPendingIncomingCount"\]\) \{ if \(typeof relationships\?\.\[name\] === "function"\) unpatches\.push\(instead\(name, relationships, \(\) => 0\)\); \} \}$/.test(code))
+            effect = "pending-friend-count";
+    } else if (imported(source, "before", "@lib/api/patcher")) {
+        const animate = '{ const icons = findByProps("getUserAvatarURL", "getGuildIconURL"); if (!icons) return; '
+            + 'for (const name of ["getUserAvatarURL", "getUserBannerURL", "getGuildMemberAvatarURL"]) { '
+            + 'if (typeof icons[name] === "function") unpatches.push(before(name, icons, args => { args[1] = true; return args; })); } '
+            + 'if (typeof icons.getGuildIconURL === "function") unpatches.push(before("getGuildIconURL", icons, args => { '
+            + 'if (args[0] && typeof args[0] === "object") args[0] = { ...args[0], canAnimate: true }; return args; })); }';
+        if (code === animate) effect = "animated-assets";
+    }
+    if (effect && nativeEffects[effect]) return {
+        capability: "native-effect",
+        lines: ["  needs " + nativeEffects[effect].permission, "  use " + effect],
+    };
+}
+
+function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}) {
     if (platform === "betterdiscord") return inspectBetterDiscord(file, code, appearance);
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
     const entry = source.statements.find(ts.isExportAssignment);
@@ -416,6 +442,7 @@ function inspectPlugin(file, code, platform, appearance = {}) {
         && allowedDeclarations && simpleDependencies && !source.parseDiagnostics.length && hasLicense && safeText(name) && name.length <= 64;
     const compiled = platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
+            || compileMobileNativeEffect(file, plugin, source, nativeEffects)
         : supported && (compileCommands(plugin, source) || compileOutgoing(plugin));
     return {
         name, file, platform, flags, hooks: inventoryHooks(source),
@@ -443,7 +470,7 @@ function betterDiscordFiles(folder) {
 }
 
 function scan(sourceDir) {
-    const { cxAppearanceTargets } = require("./sync-cx-catalog.cjs").loadCxRuntime();
+    const { cxAppearanceTargets, cxNativeEffects } = require("./sync-cx-catalog.cjs").loadCxRuntime();
     const existing = new Set(["character counter"]);
     for (const name of fs.readdirSync(catalogFolder).filter(name => name.endsWith(".cx"))) {
         const source = fs.readFileSync(path.join(catalogFolder, name), "utf8");
@@ -456,7 +483,7 @@ function scan(sourceDir) {
         ["mobile", ["ios/runtime/src/core/plugins"]],
     ]) {
         for (const folder of folders) for (const file of entryFiles(path.join(root, folder))) {
-            const record = inspectPlugin(path.relative(root, file).replaceAll("\\", "/"), fs.readFileSync(file, "utf8"), platform, cxAppearanceTargets);
+            const record = inspectPlugin(path.relative(root, file).replaceAll("\\", "/"), fs.readFileSync(file, "utf8"), platform, cxAppearanceTargets, cxNativeEffects);
             if (record) records.push(record);
         }
     }
@@ -476,7 +503,7 @@ function scan(sourceDir) {
         const already = existing.has(key);
         const status = already ? "in-catalog"
             : !cx ? "needs-adapter"
-                : record.platform === "mobile" && ["incoming-filter", "client-command"].includes(record.capability) ? "ready"
+                : record.platform === "mobile" && ["incoming-filter", "client-command", "native-effect"].includes(record.capability) ? "ready"
                     : variants.get(key).some(variant => variant.platform === "mobile") ? "compare-mobile"
                     : variants.get(key).length > 1 ? "compare-sources"
                         : "ready";
@@ -523,6 +550,7 @@ function verifyPorts(files) {
                 registerMessageTransform: register,
                 registerMessageEditTransform: register,
                 registerIncomingRules: register,
+                registerNativeEffect: register,
                 hideAppearanceTarget: register,
                 styleAppearanceTarget: register,
             };

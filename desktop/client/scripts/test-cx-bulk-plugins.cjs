@@ -35,6 +35,11 @@ assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralRe
 assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", name: "Other",')).cx, undefined);
 
 const matches = scan().filter(record => record.cx);
+for (const [name, effect] of [["SilentTyping", "silent-typing"], ["NoPendingCount", "pending-friend-count"], ["AlwaysAnimate", "animated-assets"]]) {
+    const port = matches.find(record => record.name === name && record.platform === "mobile");
+    assert.equal(port?.capability, "native-effect");
+    assert.equal(parseCx(port.cx).nativeEffects[0], effect);
+}
 for (const [name, count] of [["InRole", 1], ["ReadAllNotifications", 1], ["SpotifyShareCommands", 3]]) {
     const port = matches.find(record => record.name === name && record.platform === "mobile");
     assert.equal(port?.capability, "client-command");

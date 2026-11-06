@@ -4,11 +4,13 @@ import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { applyIncomingRule, incomingPermissions, type IncomingPayload, type IncomingRule, parseIncomingRule } from "./cxIncoming";
 import { calculate, convertUnits } from "./cxNumeric";
 import { messageTransforms, polishOptions, reverseText } from "./cxMessageTransforms";
+import { cxNativeEffects, type CxNativeEffect } from "./cxNativeEffects";
 
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
 export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 export { formatCxRoleMembers, formatCxSpotify, markCxServersRead } from "./cxClientCommands";
+export { animateCxAssets, cxNativeEffects, overrideCxMethods } from "./cxNativeEffects";
 
 export const MAX_CX_SOURCE = 512 * 1024;
 export const CX_INLINE_EDITOR_LIMIT = 32 * 1024;
@@ -35,6 +37,7 @@ const permissionLabels = {
     "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
     "messages.watchlocal": "Match incoming messages on this device and show local notifications",
     "messages.filterlocal": "Hide matching incoming messages and history on this device",
+    "typing.suppress": "Suppress your outgoing typing indicator",
 };
 
 // Text transforms adapted from Endcord (Vendicated and contributors, GPL-3.0-or-later).
@@ -100,6 +103,7 @@ type CxPlugin = {
     suppressReplyPing: boolean;
     hiddenTargets: CxHideTarget[];
     styledTargets: CxStyleTarget[];
+    nativeEffects: CxNativeEffect[];
     profileActions: CxProfileMenuAction[];
     incoming: IncomingRule[];
 };
@@ -175,6 +179,7 @@ export function parseCx(source: string): CxDocument {
     const transforms: MessageTransform[] = [];
     const hiddenTargets = new Set<CxHideTarget>();
     const styledTargets = new Set<CxStyleTarget>();
+    const nativeEffects = new Set<CxNativeEffect>();
     const profileActions = new Set<CxProfileMenuAction>();
     const incoming: IncomingRule[] = [];
     let suppressReplyPing = false;
@@ -184,7 +189,7 @@ export function parseCx(source: string): CxDocument {
     for (const line of lines) {
         if (!line.trim()) continue;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
-        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !profileActions.size && !incoming.length) {
+        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !profileActions.size && !incoming.length) {
             const permission = declaration[1] as CxPermission;
             if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
                 throw new Error("Unknown or duplicate CX permission");
@@ -218,6 +223,15 @@ export function parseCx(source: string): CxDocument {
                 hiddenTargets.add(target as CxHideTarget);
             else
                 throw new Error("Unknown or duplicate appearance target");
+            current = undefined;
+            continue;
+        }
+        const effect = /^  use ([a-z-]+)$/.exec(line);
+        if (effect) {
+            const name = effect[1] as CxNativeEffect;
+            if (!Object.prototype.hasOwnProperty.call(cxNativeEffects, name) || nativeEffects.has(name))
+                throw new Error("Unknown or duplicate client effect");
+            nativeEffects.add(name);
             current = undefined;
             continue;
         }
@@ -319,13 +333,14 @@ export function parseCx(source: string): CxDocument {
         }
         current.actions.push({ kind, message, fallback });
     }
-    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !profileActions.size && !incoming.length) || commands.some(command => !command.actions.length))
+    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !profileActions.size && !incoming.length) || commands.some(command => !command.actions.length))
         throw new Error("A plugin needs a command or a supported behavior");
     const required = new Set<CxPermission>();
     if (commands.length) required.add("commands.register");
     if (suppressReplyPing) required.add("replies.suppressping");
     if (hiddenTargets.size) required.add("appearance.hide");
     if (styledTargets.size) required.add("appearance.style");
+    for (const effect of nativeEffects) required.add(cxNativeEffects[effect].permission);
     if (profileActions.size) required.add("profilemenu.copy");
     if (readsAvatar) required.add("profile.avatar");
     for (const permission of clientPermissions) required.add(permission);
@@ -343,7 +358,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Remove unused CX permissions");
     return {
         kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing,
-        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], profileActions: [...profileActions], incoming,
+        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], nativeEffects: [...nativeEffects], profileActions: [...profileActions], incoming,
     };
 }
 
@@ -358,6 +373,7 @@ export function reviewCx(source: string) {
             .concat(document.profileActions.map(action => cxProfileMenuActions[action].label))
             .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label))
             .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
+            .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label))
             .concat(document.incoming.flatMap(rule => rule.kind === "stickers" && rule.values[0] === "*"
                 ? ["Hide all stickers"] : !rule.values.length && rule.kind !== "reply-pings"
                     ? ["Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")] : [])),
@@ -384,6 +400,7 @@ type CxHost = {
     registerProfileMenuAction?: (action: CxProfileMenuAction) => () => void;
     hideAppearanceTarget?: (target: CxHideTarget) => () => void;
     styleAppearanceTarget?: (target: CxStyleTarget) => () => void;
+    registerNativeEffect?: (effect: CxNativeEffect) => () => void;
     registerIncomingRules?: (rules: readonly IncomingRule[]) => () => void;
 };
 
@@ -427,6 +444,10 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
         for (const target of document.styledTargets) {
             if (!host.styleAppearanceTarget) throw new Error("This client cannot " + cxAppearanceTargets[target].label);
             cleanups.push(host.styleAppearanceTarget(target));
+        }
+        for (const effect of document.nativeEffects) {
+            if (!host.registerNativeEffect) throw new Error("This client cannot apply " + cxNativeEffects[effect].label.toLowerCase());
+            cleanups.push(host.registerNativeEffect(effect));
         }
         if (document.suppressReplyPing) {
             if (!host.registerReplyPingSuppression) throw new Error("This client cannot suppress reply pings");

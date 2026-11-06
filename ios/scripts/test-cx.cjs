@@ -157,6 +157,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const trackId = "0123456789012345678901";
         const acknowledged = [];
         const dispatch = event => acknowledged.push(event);
+        let typingStarts = 0, typingStops = 0;
+        const typing = { startTyping() { typingStarts++; }, stopTyping() { typingStops++; } };
+        const startTyping = typing.startTyping;
         const avatarHash = "a_0123456789abcdef0123456789abcdef";
         const icons = { getUserAvatarURL(user, animate, size) {
             assert.equal(animate, true);
@@ -164,7 +167,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             if (user.id === other) return "https://evil.example/avatars/" + user.id + "/" + avatarHash + ".gif";
             return user.id === me ? "//cdn.discordapp.com/embed/avatars/0.png"
                 : "https://cdn.discordapp.com/avatars/" + user.id + "/" + avatarHash + ".gif?size=" + size;
-        } };
+        }, getGuildIconURL(options) { return options.canAnimate; } };
         const stores = {
             UserStore: { getCurrentUser: () => ({ id: me }), getUser: id => [me, sender, other].includes(id) ? { id } : undefined },
             UserProfileStore: {
@@ -184,7 +187,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 id: trackId, album: { id: trackId }, artists: [{ id: trackId, external_urls: { spotify: "https://untrusted.example" } }],
             }) },
             MessageStore: { getMessage: (_channel, id) => ({ author: { id: id === "partial" ? sender : me } }) },
-            RelationshipStore: { isBlocked: id => id === sender, isIgnored: id => id === other },
+            RelationshipStore: {
+                isBlocked: id => id === sender, isIgnored: id => id === other,
+                getPendingCount: () => 3, getPendingIncomingCount: () => 2,
+            },
         };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
@@ -240,6 +246,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@api/Notifications": { showNotification: ({ body }) => notifications.push(body) },
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
+            "@webpack": { findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons : undefined },
             "@webpack/common": { useState, ...stores, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
@@ -270,7 +277,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 incomingHooks.push(callback);
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
-            "@metro": { findByStoreNameLazy: name => stores[name], findByProps: name => name === "getUserAvatarURL" ? icons : undefined },
+            "@metro": { findByStoreNameLazy: name => stores[name], findByProps: name => name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : undefined },
             "@metro/common": { React: {
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: () => ({ Provider: "ProfileUserProvider" }), useContext: () => profileUser,
@@ -547,6 +554,37 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         click(render(), "Disable SpotifyShareCommands");
         readall.execute([], { channel: { id: "guild-channel" } });
         assert.equal(acknowledged.length, 1);
+
+        const silent = cxCatalog.plugins.find(entry => entry.name === "SilentTyping").source;
+        assert.throws(() => activateCx(silent, host, []), /approval/);
+        assert.throws(() => parseCx(silent.replace("use silent-typing", "use token")), /Unknown or duplicate client effect/);
+        for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate"]) {
+            selectCatalog(name);
+            click(render(), "Allow for this session");
+        }
+        typing.startTyping();
+        typing.stopTyping();
+        assert.equal(typingStarts, 0);
+        assert.equal(typingStops, 1);
+        assert.equal(stores.RelationshipStore.getPendingCount(), 0);
+        assert.equal(stores.RelationshipStore.getPendingIncomingCount(), 0);
+        const iconOptions = Object.freeze({ canAnimate: false });
+        assert.equal(icons.getGuildIconURL(iconOptions), true);
+        assert.equal(iconOptions.canAnimate, false);
+        if (!desktop) {
+            settings.safeMode = { enabled: true };
+            typing.startTyping();
+            assert.equal(typingStarts, 1);
+            assert.equal(stores.RelationshipStore.getPendingCount(), 3);
+            assert.equal(icons.getGuildIconURL(iconOptions), false);
+            settings.safeMode.enabled = false;
+        }
+        click(render(), "Disable SilentTyping");
+        click(render(), "Disable NoPendingCount");
+        click(render(), "Disable AlwaysAnimate");
+        assert.equal(typing.startTyping, startTyping);
+        assert.equal(stores.RelationshipStore.getPendingCount(), 3);
+        assert.equal(icons.getGuildIconURL(iconOptions), false);
 
         const testCases = [
             ["ReverseText", "reverse", "a🐈", "🐈a"],

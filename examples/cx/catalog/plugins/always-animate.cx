@@ -1,0 +1,3 @@
+plugin "AlwaysAnimate":
+  needs appearance.style
+  use animated-assets

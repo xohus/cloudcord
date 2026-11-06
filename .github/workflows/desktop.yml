@@ -296,8 +296,36 @@ jobs:
           cp desktop/client/dist/desktop.asar desktop/client/dist/cloudcord-test.asar
           test -f desktop/client/dist/desktop.asar
 
-      - name: Upload binaries to GitHub Release (Production)
+      - name: Check desktop release order
+        id: desktop_release
         if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! published=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/new_beta_t_desktop" --jq .name 2>&1); then
+            if [[ "$published" != *"HTTP 404"* ]]; then
+              printf '%s\n' "$published" >&2
+              exit 1
+            fi
+            published=
+          fi
+          if [[ "$published" =~ ^CloudCord[[:space:]]Desktop[[:space:]]([0-9a-f]{40})$ ]]; then
+            published_sha=${BASH_REMATCH[1]}
+            if [[ "$published_sha" != "$GITHUB_SHA" ]]; then
+              # A queued or rerun build can be older than the public release.
+              order=$(gh api "repos/$GITHUB_REPOSITORY/compare/$GITHUB_SHA...$published_sha" --jq .status)
+              if [[ "$order" == "ahead" ]]; then
+                echo "Skipping release upload because $published_sha is already published."
+                echo "publish=false" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+            fi
+          fi
+          echo "publish=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload binaries to GitHub Release (Production)
+        if: github.ref == 'refs/heads/main' && steps.desktop_release.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: new_beta_t_desktop
@@ -322,7 +350,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload binaries to GitHub Release (Isolated Test Channel)
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && steps.desktop_release.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: new_beta_test_desktop

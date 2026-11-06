@@ -1,5 +1,5 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
-import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, reviewCx, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
+import { animateCxAssets, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
@@ -226,6 +226,19 @@ export default function CxExtensions() {
                     }
                     if (!isThemeSupported()) throw new Error("This loader does not support color overrides");
                     return registerColorOverlay(style);
+                },
+                registerNativeEffect(effect) {
+                    const enabled = () => !settings.safeMode?.enabled;
+                    switch (effect) {
+                        case "silent-typing":
+                            return overrideCxMethods(findByProps("startTyping", "stopTyping"), {
+                                startTyping: () => undefined,
+                            }, enabled);
+                        case "pending-friend-count":
+                            return overrideCxMethods(RelationshipStore, { getPendingCount: () => 0, getPendingIncomingCount: () => 0 }, enabled);
+                        case "animated-assets":
+                            return animateCxAssets(findByProps("getUserAvatarURL", "getGuildIconURL"), false, enabled);
+                    }
                 },
                 registerReplyPingSuppression() {
                     return onSendMessage((_message, options) => {
