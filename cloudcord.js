@@ -36182,6 +36182,204 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxCommandFunctions.ts
+  function chooseOne(items) {
+    return items[Math.floor(Math.random() * items.length)];
+  }
+  function randomInteger(low, high) {
+    var range = high - low + 1;
+    if (Number.isSafeInteger(range) && range > 0)
+      return low + Math.floor(Math.random() * range);
+  }
+  var searchEngines, morseCodes, morseLetters, normalizations, cxCommandFunctions;
+  var init_cxCommandFunctions = __esm({
+    "src/lib/api/cxCommandFunctions.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      searchEngines = /* @__PURE__ */ new Map([
+        [
+          "Google",
+          "https://www.google.com/search?q="
+        ],
+        [
+          "Bing",
+          "https://www.bing.com/search?q="
+        ],
+        [
+          "Yahoo",
+          "https://search.yahoo.com/search?p="
+        ],
+        [
+          "DuckDuckGo",
+          "https://duckduckgo.com/?q="
+        ],
+        [
+          "Baidu",
+          "https://www.baidu.com/s?wd="
+        ],
+        [
+          "Yandex",
+          "https://yandex.com/search/?text="
+        ],
+        [
+          "Ecosia",
+          "https://www.ecosia.org/search?q="
+        ],
+        [
+          "Ask",
+          "https://www.ask.com/web?q="
+        ],
+        [
+          "AOL",
+          "https://search.aol.com/aol/search?q="
+        ],
+        [
+          "LetMeGoogleThatForYou",
+          "https://letmegooglethat.com/?q="
+        ]
+      ]);
+      morseCodes = new Map(Object.entries({
+        A: ".-",
+        B: "-...",
+        C: "-.-.",
+        D: "-..",
+        E: ".",
+        F: "..-.",
+        G: "--.",
+        H: "....",
+        I: "..",
+        J: ".---",
+        K: "-.-",
+        L: ".-..",
+        M: "--",
+        N: "-.",
+        O: "---",
+        P: ".--.",
+        Q: "--.-",
+        R: ".-.",
+        S: "...",
+        T: "-",
+        U: "..-",
+        V: "...-",
+        W: ".--",
+        X: "-..-",
+        Y: "-.--",
+        Z: "--..",
+        0: "-----",
+        1: ".----",
+        2: "..---",
+        3: "...--",
+        4: "....-",
+        5: ".....",
+        6: "-....",
+        7: "--...",
+        8: "---..",
+        9: "----.",
+        " ": "/"
+      }));
+      morseLetters = new Map([
+        ...morseCodes
+      ].map(([letter, code]) => [
+        code,
+        letter
+      ]));
+      normalizations = [
+        "NFC",
+        "NFD",
+        "NFKC",
+        "NFKD"
+      ];
+      cxCommandFunctions = {
+        searchLink(input, engine, hyperlink, hideEmbed) {
+          if (!input.trim())
+            return;
+          try {
+            var encoded = encodeURIComponent(input).replaceAll("(", "%28").replaceAll(")", "%29");
+            var url2 = (searchEngines.get(engine) ?? searchEngines.get("Google")) + encoded;
+            var destination = hideEmbed === "true" ? "<" + url2 + ">" : url2;
+            return hyperlink === "true" ? "[" + input.replace(/[\\[\]]/g, "\\$&") + "](" + destination + ")" : destination;
+          } catch (e) {
+            return;
+          }
+        },
+        // ShipCalc by rootpoi, kraethis, and ewlle.
+        ship(a, b3) {
+          var pair = [
+            a.trim().toLowerCase(),
+            b3.trim().toLowerCase()
+          ].sort().join("\u{1F495}");
+          var hash = 0;
+          for (var i = 0; i < pair.length; i++)
+            hash = hash * 31 + pair.charCodeAt(i) >>> 0;
+          var score = hash % 101;
+          var heart = score > 80 ? "\u{1F49E}" : score > 50 ? "\u{1F496}" : score > 25 ? "\u{1F497}" : "\u{1F494}";
+          return `${heart} **${a}** + **${b3}** = **${score}%**`;
+        },
+        choose: (choices) => chooseOne(choices.split(",").map((choice) => choice.trim()).filter(Boolean)),
+        roll(sides) {
+          var result = randomInteger(1, sides ? Number(sides) : 6);
+          if (result !== void 0)
+            return `You rolled a ${result}`;
+        },
+        randomNumber(minimum, maximum) {
+          var min = Number(minimum);
+          var max = Number(maximum);
+          var number = randomInteger(Math.min(min, max), Math.max(min, max));
+          if (number !== void 0)
+            return String(number);
+        },
+        wordCount(text) {
+          var words = text.trim().split(/\s+/).filter(Boolean).length;
+          return `${words} word${words === 1 ? "" : "s"}, ${text.length} character${text.length === 1 ? "" : "s"}`;
+        },
+        transform(text, style, repeat, reverse, normalize) {
+          if (style === "upper")
+            text = text.toUpperCase();
+          if (style === "lower")
+            text = text.toLowerCase();
+          if (style === "locale-upper")
+            text = text.toLocaleUpperCase();
+          if (style === "locale-lower")
+            text = text.toLocaleLowerCase();
+          if (normalizations.includes(normalize))
+            text = text.normalize(normalize);
+          if (style === "reverse" !== (reverse === "true"))
+            text = [
+              ...text
+            ].reverse().join("");
+          var count = repeat ? Number(repeat) : 1;
+          if (count > 0 && count <= 4e3 && text.length * count <= 4e3)
+            return text.repeat(count);
+        },
+        ask(question) {
+          return question + " - " + chooseOne([
+            "Yes",
+            "No",
+            "Maybe",
+            "Ask again later",
+            "Definitely not",
+            "It is certain"
+          ]);
+        },
+        currentTime() {
+          return "> **Current Time**: " + (/* @__PURE__ */ new Date()).toLocaleString();
+        },
+        mock(text) {
+          return text.split("").map((char, i) => i % 2 ? char.toUpperCase() : char.toLowerCase()).join("");
+        },
+        morse(text) {
+          if (!/^[.\-/ ]+$/.test(text))
+            return [
+              ...text.toUpperCase()
+            ].map((char) => morseCodes.get(char) ?? "").join(" ");
+          var decoded = text.split(" ").map((code) => morseLetters.get(code) ?? "").join("").toLowerCase();
+          return decoded.charAt(0).toUpperCase() + decoded.slice(1);
+        }
+      };
+    }
+  });
+
   // src/lib/api/cxNumeric.ts
   function convertUnits(input) {
     if (input.length > 192)
@@ -36424,12 +36622,46 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var command = /^  on command "([a-z][a-z0-9_-]{0,31})"( with text)?:$/.exec(line12);
       if (command) {
         var name1 = command[1];
-        if (commands3.length >= 16 || commands3.some((entry) => entry.name === name1))
+        if (commands3.length >= 48 || commands3.some((entry) => entry.name === name1))
           throw new Error("Duplicate or too many commands");
         commands3.push(current = {
           name: name1,
           text: Boolean(command[2]),
+          inputs: [],
           actions: []
+        });
+        return "continue";
+      }
+      var input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line12);
+      if (input && current && !current.actions.length) {
+        var [, name22, type, list, optional] = input;
+        if (name22 === "send" || name22 === "text" && current.text || current.inputs.length >= 4 || current.inputs.some((option) => option.name === name22))
+          throw new Error("Reserved, duplicate, or too many command inputs");
+        var choices = list ? quoted(list.trim(), 240).split(",").map((choice) => choice.trim()) : void 0;
+        if (type === "choice" !== !!choices || choices && (choices.length > 16 || choices.some((choice) => !choice) || new Set(choices).size !== choices.length))
+          throw new Error("Choice inputs need a list of distinct values");
+        current.inputs.push({
+          name: name22,
+          type,
+          required: !optional,
+          choices
+        });
+        return "continue";
+      }
+      var pick = /^    send one of (\[.{1,3000}\])$/.exec(line12);
+      if (pick && current && current.actions.length < 4 && !current.actions.some(sendsMessage)) {
+        var choices1 = void 0;
+        try {
+          choices1 = JSON.parse(pick[1]);
+        } catch (e) {
+          throw new Error("Expected a JSON list of messages");
+        }
+        if (!Array.isArray(choices1) || !choices1.length || choices1.length > 24 || choices1.some((choice) => typeof choice !== "string" || choice.includes("${")))
+          throw new Error("Expected 1 to 24 literal messages");
+        current.actions.push({
+          kind: "send",
+          message: "",
+          choices: choices1.map((choice) => quoted(JSON.stringify(choice), 240))
         });
         return "continue";
       }
@@ -36444,13 +36676,21 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (sendsMessage({
         kind,
         message
-      }) && (!current.text || current.actions.some(sendsMessage))) {
-        throw new Error("CX allows one outgoing message per command with text");
+      }) && current.actions.some(sendsMessage)) {
+        throw new Error("CX allows one outgoing message per command");
       }
       if (kind !== "toast") {
-        var remaining = current.text ? message.replace(textExpression, (expression, fn) => !fn || Object.prototype.hasOwnProperty.call(textFunctions, fn) ? "" : expression) : message;
+        var inputs = new Set(current.inputs.map((input2) => input2.name));
+        if (current.text)
+          inputs.add("text");
+        var remaining = message.replace(textExpression, (expression, name3, args) => {
+          if (args === void 0)
+            return inputs.has(name3) ? "" : expression;
+          var names = argumentNames(args);
+          return Object.prototype.hasOwnProperty.call(textFunctions, name3) && textFunctions[name3].length === names.length && names.every((name4) => inputs.has(name4)) ? "" : expression;
+        });
         if (remaining.includes("${"))
-          throw new Error("CX messages only support text and named text functions in commands with text");
+          throw new Error("CX messages only support declared inputs and named text functions");
       }
       current.actions.push({
         kind,
@@ -36590,11 +36830,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               return "continue";
             }
             var invalid = false;
-            var message = action2.message.replace(textExpression, (_2, fn) => {
-              var value = fn ? textFunctions[fn](text) : text;
-              if (value === void 0)
+            var message = action2.choices ? chooseOne(action2.choices) : action2.message.replace(textExpression, (_2, name, args) => {
+              var value2 = args === void 0 ? inputs.get(name) : textFunctions[name](...argumentNames(args).map((name2) => inputs.get(name2)));
+              if (value2 === void 0)
                 invalid = true;
-              return value ?? "";
+              return value2 ?? "";
             });
             if (invalid) {
               if (action2.fallback && grants.has("reply.local"))
@@ -36605,17 +36845,30 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               return "continue";
             if (action2.kind === "reply" || action2.kind === "reply or send" && invocation?.sendRequested !== true)
               invocation?.reply?.(message);
-            else if (text.trim() && message.trim())
+            else if ((!command2.text || text.trim()) && message.trim())
               outgoing = message;
           };
           if (!active)
             return;
+          var inputs = /* @__PURE__ */ new Map();
           var text = command2.text && typeof invocation?.text === "string" ? invocation.text : "";
+          if (text.length > 4e3)
+            return;
+          if (command2.text)
+            inputs.set("text", text);
+          for (var input of command2.inputs) {
+            var value = invocation?.inputs?.[input.name];
+            var serialized = typeof value === "string" || typeof value === "number" || typeof value === "boolean" ? String(value) : "";
+            var valid = serialized.trim() && serialized.length <= 4e3 && (input.type === "text" ? typeof value === "string" : input.type === "boolean" ? typeof value === "boolean" : input.type === "integer" ? /^-?\d+$/.test(serialized) && Number.isSafeInteger(Number(serialized)) : input.choices?.includes(serialized));
+            if (!valid && (input.required || value !== void 0))
+              return;
+            inputs.set(input.name, valid ? serialized : "");
+          }
           var outgoing;
           for (var action of command2.actions)
             _loop3(action);
           return outgoing;
-        }, command2.text, command2.actions.some(sendsMessage), command2.actions.some((action) => action.kind === "reply or send")));
+        }, command2.text, command2.actions.some(sendsMessage), command2.actions.some((action) => action.kind === "reply or send"), command2.inputs));
       };
       if (document.messageTransforms.length) {
         if (!host.registerMessageTransform)
@@ -36671,12 +36924,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     };
   }
-  var MAX_CX_SOURCE, permissionLabels, leetCharacters, textFunctions, textExpression, actionPermissions, sendsMessage;
+  var MAX_CX_SOURCE, permissionLabels, leetCharacters, textFunctions, textExpression, argumentNames, actionPermissions, sendsMessage;
   var init_cx = __esm({
     "src/lib/api/cx.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      init_cxCommandFunctions();
       init_cxNumeric();
       init_cxMessageTransforms();
       MAX_CX_SOURCE = 512 * 1024;
@@ -36699,6 +36953,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         l: "1"
       };
       textFunctions = {
+        ...cxCommandFunctions,
         calculate,
         convert: convertUnits,
         length: (text) => String(text.length),
@@ -36715,7 +36970,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           return String.fromCodePoint(120782 + code - 48);
         })
       };
-      textExpression = /\$\{(?:text|([a-z]+)\(text\))\}/g;
+      textExpression = /\$\{([a-z][a-zA-Z0-9_-]*)(?:\(([a-z0-9_, -]*)\))?\}/g;
+      argumentNames = (args) => args ? args.split(",").map((name) => name.trim()) : [];
       actionPermissions = {
         toast: [
           "ui.toast"
@@ -36767,11 +37023,27 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/google-that.cx
+  var google_that_default;
+  var init_google_that = __esm({
+    "../examples/cx/catalog/plugins/google-that.cx"() {
+      google_that_default = 'plugin "GoogleThat":\n  needs commands.register\n  needs messages.send\n  on command "googlethat":\n    input "input" text\n    input "engine" choice "Google,Bing,Yahoo,DuckDuckGo,Baidu,Yandex,Ecosia,Ask,AOL,LetMeGoogleThatForYou" optional\n    input "hyperlink" boolean optional\n    input "hide-embed" boolean optional\n    send "${searchLink(input, engine, hyperlink, hide-embed)}"\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/leet-text.cx
   var leet_text_default;
   var init_leet_text = __esm({
     "../examples/cx/catalog/plugins/leet-text.cx"() {
       leet_text_default = 'plugin "LeetText":\n  needs commands.register\n  needs messages.send\n  on command "leet" with text:\n    send "${leet(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/more-commands.cx
+  var more_commands_default;
+  var init_more_commands = __esm({
+    "../examples/cx/catalog/plugins/more-commands.cx"() {
+      more_commands_default = 'plugin "MoreCommands":\n  needs commands.register\n  needs messages.send\n  needs reply.local\n  on command "choose":\n    input "choices" text\n    send "${choose(choices)}" else "Give me some choices, separated by commas."\n  on command "flipcoin":\n    send one of ["Heads", "Tails"]\n  on command "rolldice":\n    input "sides" integer optional\n    send "${roll(sides)}" else "Enter a positive number of sides."\n  on command "randomnumber":\n    input "min" integer\n    input "max" integer\n    send "${randomNumber(min, max)}" else "Enter a smaller range."\n  on command "wordcount" with text:\n    reply "${wordCount(text)}"\n  on command "transform" with text:\n    input "style" choice "upper,lower,reverse,locale-upper,locale-lower,same"\n    input "repeat" integer optional\n    input "reverse" boolean optional\n    input "normalize" choice "NFC,NFD,NFKC,NFKD" optional\n    send "${transform(text, style, repeat, reverse, normalize)}" else "Use a positive repeat count and keep the result under 4,001 characters."\n  on command "ask" with text:\n    send "${ask(text)}"\n  on command "gettime":\n    send "${currentTime()}"\n  on command "echo":\n    input "message" text optional\n    reply "${message}"\n  on command "lenny":\n    input "message" text optional\n    send "${message} ( \u0361\xB0 \u035C\u0296 \u0361\xB0)"\n  on command "mock" with text:\n    send "${mock(text)}"\n  on command "morse" with text:\n    send "${morse(text)}"\n  on command "dissatisfaction":\n    input "message" text optional\n    send "${message}  \uFF1E\uFE4F\uFF1C"\n  on command "smug":\n    input "message" text optional\n    send "${message} \u0CA0_\u0CA0"\n  on command "happy":\n    input "message" text optional\n    send "${message} \u30FD(\xB4\u25BD`)/"\n  on command "crying":\n    input "message" text optional\n    send "${message} \u0CA5_\u0CA5"\n  on command "angry":\n    input "message" text optional\n    send "${message} \u30FD(\uFF40\u0414\xB4)\uFF89"\n  on command "anger":\n    input "message" text optional\n    send "${message} \u30FD(\uFF4F`\u76BF\u2032\uFF4F)\uFF89"\n  on command "joy":\n    input "message" text optional\n    send "${message} <(\uFFE3\uFE36\uFFE3)>"\n  on command "blush":\n    input "message" text optional\n    send "${message} \u0AEE \u02F6\u1D54 \u1D55 \u1D54\u02F6 \u10D0"\n  on command "confused":\n    input "message" text optional\n    send "${message} (\u2022\u0E34_\u2022\u0E34)?"\n  on command "sleeping":\n    input "message" text optional\n    send "${message} (\u1D17_\u1D17)"\n  on command "laughing":\n    input "message" text optional\n    send "${message} o(\u2267\u25BD\u2266)o"\n  on command "giving":\n    input "message" text optional\n    send "${message} (\uFF89\u25D5\u30EE\u25D5)\uFF89*:\uFF65\uFF9F\u2727"\n  on command "peace":\n    input "message" text optional\n    send "${message} \u270C(\u25D5\u203F-)\u270C"\n  on command "ending1":\n    input "message" text optional\n    send "${message} \u13EA \u08EA\u05B8 \u06F0 \u0359\u22B9"\n  on command "uwu":\n    input "message" text optional\n    send "${message} (>\u2A4A<)"\n  on command "comfy":\n    input "message" text optional\n    send "${message} (\u2500\u203F\u203F\u2500)\u2661"\n  on command "lovehappy":\n    input "message" text optional\n    send "${message} (*\u2267\u03C9\u2266*)"\n  on command "loveee":\n    input "message" text optional\n    send "${message} (\u2044 \u2044>\u2044 \u25BD \u2044<\u2044 \u2044)"\n  on command "give":\n    input "message" text optional\n    send "${message} (\u30CE= \u2A4A = )\u30CE"\n  on command "lovegive":\n    input "message" text optional\n    send "${message} \u10E6\u309D\u25E1\u2579)\u30CE\u2661"\n  on command "music":\n    input "message" text optional\n    send "${message} (\uFFE3\u25BD\uFFE3)/\u266B\u2022\xA8\u2022.\xB8\xB8\u266A"\n  on command "stars":\n    input "message" text optional\n    send "${message} .\u{16954} \u0741 \u02D6\u0E4B \u08ED \u2B51"\n  on command "lovegiving":\n    input "message" text optional\n    send "${message} \u2E1C(\uFF61\u02C3 \u1D55 \u02C2 )\u2E1D\u2661"\n';
     }
   });
 
@@ -36788,6 +37060,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_reverse_text = __esm({
     "../examples/cx/catalog/plugins/reverse-text.cx"() {
       reverse_text_default = 'plugin "ReverseText":\n  needs commands.register\n  needs messages.send\n  on command "reverse" with text:\n    send "${reverse(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/ship-calc.cx
+  var ship_calc_default;
+  var init_ship_calc = __esm({
+    "../examples/cx/catalog/plugins/ship-calc.cx"() {
+      ship_calc_default = 'plugin "ShipCalc":\n  needs commands.register\n  needs messages.send\n  on command "ship":\n    input "a" text\n    input "b" text\n    send "${ship(a, b)}"\n';
     }
   });
 
@@ -36828,6 +37108,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_unit_converter = __esm({
     "../examples/cx/catalog/plugins/unit-converter.cx"() {
       unit_converter_default = 'plugin "UnitConverter":\n  needs commands.register\n  needs messages.send\n  needs reply.local\n  on command "convert" with text:\n    reply or send "${convert(text)}" else "Try something like 5 km, 70 F or 2 lb."\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/vibe-check.cx
+  var vibe_check_default;
+  var init_vibe_check = __esm({
+    "../examples/cx/catalog/plugins/vibe-check.cx"() {
+      vibe_check_default = 'plugin "VibeCheck":\n  needs commands.register\n  needs messages.send\n  on command "vibe":\n    send one of ["\u2726 the vibes are immaculate \u2726", "\u{1F334} endless summer, endless mall \u{1F334}", "\u{1F4FC} rewinding to a time that never was \u{1F4FC}", "\u{1F6CD}\uFE0F welcome to the mall, population: you \u{1F6CD}\uFE0F", "\u{1F305} chasing a sunset that never sets \u{1F305}", "\u{1F4BE} saving your aesthetic... done \u{1F4BE}", "\u{1FAA9} disco ball energy detected \u{1FAA9}", "\u{1F30A} floating on a sea of neon \u{1F30A}", "\u260E\uFE0F this call is being routed through 1987 \u260E\uFE0F", "\u{1F379} sipping something pink by the fountain \u{1F379}"]\n';
     }
   });
 
@@ -36906,14 +37194,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_bold_text();
       init_calculator();
       init_clap_text();
+      init_google_that();
       init_leet_text();
+      init_more_commands();
       init_normalize_message_links();
       init_reverse_text();
+      init_ship_calc();
       init_space_out();
       init_starify();
       init_talk_in_reverse();
       init_unindent();
       init_unit_converter();
+      init_vibe_check();
       init_write_upper_case();
       init_midnight();
       init_basic_background_chat();
@@ -36941,8 +37233,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: clap_text_default
           },
           {
+            name: "GoogleThat",
+            source: google_that_default
+          },
+          {
             name: "LeetText",
             source: leet_text_default
+          },
+          {
+            name: "MoreCommands",
+            source: more_commands_default
           },
           {
             name: "NormalizeMessageLinks",
@@ -36951,6 +37251,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "ReverseText",
             source: reverse_text_default
+          },
+          {
+            name: "ShipCalc",
+            source: ship_calc_default
           },
           {
             name: "SpaceOut",
@@ -36971,6 +37275,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "UnitConverter",
             source: unit_converter_default
+          },
+          {
+            name: "VibeCheck",
+            source: vibe_check_default
           },
           {
             name: "WriteUpperCase",
@@ -37078,7 +37386,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 message.content = transform(message.content);
             });
           },
-          registerCommand(name, execute, acceptsText, _sendsMessage, optionalSend) {
+          registerCommand(name, execute, acceptsText, _sendsMessage, optionalSend, inputs) {
             var builtIns;
             try {
               builtIns = commands.getBuiltInCommands(ApplicationCommandType.CHAT, true, false);
@@ -37100,6 +37408,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                     required: true
                   }
                 ] : [],
+                ...inputs.map((input) => ({
+                  name: input.name,
+                  description: input.name.replace(/[_-]/g, " "),
+                  required: input.required,
+                  type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN : ApplicationCommandOptionType.STRING,
+                  choices: input.choices?.map((value) => ({
+                    name: value,
+                    displayName: value,
+                    label: value,
+                    value
+                  }))
+                })),
                 ...optionalSend ? [
                   {
                     name: "send",
@@ -37114,6 +37434,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 var text = acceptsText ? args.find((arg) => arg?.name === "text")?.value : void 0;
                 var outgoing = execute({
                   text: typeof text === "string" ? text : void 0,
+                  inputs: Object.fromEntries(inputs.map((input) => [
+                    input.name,
+                    args.find((arg) => arg?.name === input.name)?.value
+                  ])),
                   sendRequested: optionalSend && args.find((arg) => arg?.name === "send")?.value === true,
                   reply: (message) => {
                     if (context.channel?.id)
@@ -41993,7 +42317,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "d81c5048e7c9c9aa784c5da8c5aea2414ac4a376";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "c25960efe82d67c8465bee46dacce93a912d2b3b";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
