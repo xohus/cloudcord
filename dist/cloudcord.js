@@ -35768,21 +35768,32 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         permissions.add(permission);
         return "continue";
       }
-      var command = /^  on command "([a-z][a-z0-9_-]{0,31})":$/.exec(line12);
+      var command = /^  on command "([a-z][a-z0-9_-]{0,31})"( with text)?:$/.exec(line12);
       if (command) {
         var name2 = command[1];
         if (commands3.length >= 16 || commands3.some((entry) => entry.name === name2))
           throw new Error("Duplicate or too many commands");
         commands3.push(current = {
           name: name2,
-          messages: []
+          text: Boolean(command[2]),
+          actions: []
         });
         return "continue";
       }
-      var toast = /^    toast (.+)$/.exec(line12);
-      if (!toast || !current || current.messages.length >= 4)
-        throw new Error("Unknown CX instruction or too many popups");
-      current.messages.push(quoted(toast[1], 240));
+      var action2 = /^    (toast|reply) (.+)$/.exec(line12);
+      if (!action2 || !current || current.actions.length >= 4)
+        throw new Error("Unknown CX instruction or too many actions");
+      var kind = action2[1];
+      var message = quoted(action2[2], 240);
+      if (kind === "reply") {
+        var remaining = current.text ? message.replaceAll("${length(text)}", "") : message;
+        if (remaining.includes("${"))
+          throw new Error("CX replies support only length(text) in commands with text");
+      }
+      current.actions.push({
+        kind,
+        message
+      });
     };
     if (source.length > MAX_CX_SOURCE)
       throw new Error("CX file is too large");
@@ -35829,10 +35840,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var current;
     for (var line1 of lines)
       _loop2(line1);
-    if (!commands3.length || commands3.some((command) => !command.messages.length))
-      throw new Error("A plugin needs at least one command with a toast");
-    if (!permissions.has("commands.register") || !permissions.has("ui.toast"))
-      throw new Error("Declare commands.register and ui.toast before the commands");
+    if (!commands3.length || commands3.some((command) => !command.actions.length))
+      throw new Error("A plugin needs at least one command with an action");
+    var required = /* @__PURE__ */ new Set([
+      "commands.register"
+    ]);
+    for (var { actions } of commands3) {
+      for (var action of actions)
+        required.add(action.kind === "toast" ? "ui.toast" : "reply.local");
+    }
+    if ([
+      ...required
+    ].some((permission) => !permissions.has(permission)))
+      throw new Error("Declare the permissions used by your commands");
+    if ([
+      ...permissions
+    ].some((permission) => !required.has(permission)))
+      throw new Error("Remove unused CX permissions");
     return {
       kind: "plugin",
       name,
@@ -35848,6 +35872,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       return {
         kind: document.kind,
         name: document.name,
+        permissions: [],
         effects: [
           "Change the app colors and background"
         ]
@@ -35855,6 +35880,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     return {
       kind: document.kind,
       name: document.name,
+      permissions: document.permissions,
       effects: document.permissions.map((permission) => permissionLabels[permission]),
       commands: document.commands.map((command) => "/" + command.name)
     };
@@ -35877,12 +35903,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var _loop2 = function(command2) {
         if (!grants.has("commands.register"))
           throw new Error("Command permission denied");
-        cleanups.push(host.registerCommand(command2.name, () => {
-          if (active && grants.has("ui.toast")) {
-            for (var message of command2.messages)
-              host.toast(message);
+        cleanups.push(host.registerCommand(command2.name, (invocation) => {
+          if (!active)
+            return;
+          for (var action of command2.actions) {
+            if (action.kind === "toast" && grants.has("ui.toast"))
+              host.toast(action.message);
+            if (action.kind === "reply" && grants.has("reply.local")) {
+              var text = command2.text && typeof invocation?.text === "string" ? invocation.text : "";
+              invocation?.reply?.(action.message.replaceAll("${length(text)}", String(text.length)));
+            }
           }
-        }));
+        }, command2.text));
       };
       for (var command of document.commands)
         _loop2(command);
@@ -35935,7 +35967,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       MAX_CX_SOURCE = 512 * 1024;
       permissionLabels = {
         "commands.register": "Register the listed slash commands",
-        "ui.toast": "Show local popups"
+        "ui.toast": "Show local popups",
+        "reply.local": "Show a command reply visible only to you"
       };
     }
   });
@@ -35994,7 +36027,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (settings.safeMode?.enabled)
           throw new Error("CX is unavailable in Safe Mode");
         session.enable(candidate.source, {
-          registerCommand(name, execute) {
+          registerCommand(name, execute, acceptsText) {
             var builtIns;
             try {
               builtIns = commands.getBuiltInCommands(ApplicationCommandType.CHAT, true, false);
@@ -36006,10 +36039,26 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             return registerCommand({
               name,
               description: "Local CX command",
-              options: [],
-              execute() {
-                if (!settings.safeMode?.enabled)
-                  execute();
+              shouldHide: () => !settings.safeMode?.enabled,
+              options: acceptsText ? [
+                {
+                  name: "text",
+                  description: "Text to use",
+                  type: ApplicationCommandOptionType.STRING,
+                  required: true
+                }
+              ] : [],
+              execute(args, context) {
+                if (settings.safeMode?.enabled)
+                  return;
+                var text = acceptsText ? args.find((arg) => arg?.name === "text")?.value : void 0;
+                execute({
+                  text: typeof text === "string" ? text : void 0,
+                  reply: (message) => {
+                    if (context.channel?.id)
+                      messageUtil.sendBotMessage(context.channel.id, message);
+                  }
+                });
               }
             });
           },
@@ -36049,10 +36098,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             });
             return () => updateBunnyColor(getCurrentTheme()?.data ?? null);
           }
-        }, [
-          "commands.register",
-          "ui.toast"
-        ]);
+        }, candidate.review.permissions);
         setStatus(`${candidate.review.name} is active for this session.`);
         setCandidate(void 0);
       } catch (error) {
@@ -40785,7 +40831,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "aed7e3db22f551475d4bceb44942466c3cd701cb";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "9964b3c5e4a2a590459d6160698c80783b36a8b2";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
