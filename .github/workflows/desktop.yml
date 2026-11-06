@@ -139,6 +139,7 @@ jobs:
           node scripts/test-theme-catalog.cjs
           node scripts/test-plugin-text-inputs.cjs
           node scripts/test-settings-load.cjs
+          node scripts/test-titlebar.cjs
           node scripts/test-settings-storage.cjs
           node scripts/test-addon-navigation.cjs
 
