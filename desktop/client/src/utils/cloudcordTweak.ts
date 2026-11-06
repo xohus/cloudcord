@@ -18,7 +18,7 @@ export function defineTweak(name: string, description: string, css: string, tags
         name,
         description,
         authors: [CLOUDCORD],
-        tags,
+        tags: tags as any,
         start() {
             if (document.getElementById(id)) return;
             const style = document.createElement("style");
