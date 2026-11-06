@@ -3,6 +3,7 @@
 
   <h1>CloudCord</h1>
   <p><strong>A modern, privacy-minded Discord client experience for mobile and desktop.</strong></p>
+  <p>600+ plugins · 100 instant tweaks · a built-in theme store · Fake Profile · BotCord</p>
 
   <p>
     <img alt="iOS" src="https://img.shields.io/badge/iOS-supported-111111?style=for-the-badge&logo=apple" />
@@ -48,15 +49,60 @@ For machine-readable project guidance and entity disambiguation, see [CloudCord 
   <img src="assets/readme/platforms/windows.svg" width="88" height="88" alt="Windows desktop" />
   <h3>Windows</h3>
   <br /><br />
-  <a href="https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/cloudcord.exe"><strong>Download cloudcord.exe</strong></a>
+  <a href="https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/CloudCordInstaller.exe"><strong>Download CloudCord Installer</strong></a>
   <br />
-  <sub><a href="https://github.com/xohus/cloudcord/releases/tag/new_beta_t_desktop">View Windows desktop release</a></sub>
+  <sub><a href="https://github.com/xohus/cloudcord/releases/download/new_beta_t_desktop/cloudcord.exe">Classic installer</a> · <a href="https://github.com/xohus/cloudcord/releases/tag/new_beta_t_desktop">View release</a></sub>
 </td>
 </tr>
 </table>
 </div>
 
-> Download CloudCord only from this repository's releases. iOS uses an `.ipa`, Android uses an `.apk`, and Windows uses `cloudcord.exe`. On Windows, close Discord completely, run the installer, and choose Install or Update / Fix.
+> Download CloudCord only from this repository's releases. iOS uses an `.ipa`, Android uses an `.apk`, and Windows uses `CloudCordInstaller.exe`. On Windows, run the installer, pick your Discord (Stable, PTB or Canary) and click **Install CloudCord**. It closes Discord for you, always installs the newest build, and can repair or uninstall later.
+
+## New on desktop
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+### 600+ plugins
+
+Every plugin in one fast list with search, sorting and list or grid view. Cards load as you scroll, so the page opens instantly even with hundreds of plugins.
+
+<img src="assets/readme/desktop/plugins.webp" alt="Plugins" />
+
+</td>
+<td width="50%" valign="top">
+
+### 100 instant tweaks
+
+Hide the Nitro, Shop and gift buttons, go AMOLED black, center the chat, enlarge text and more. Each tweak is one switch and applies without a restart.
+
+<img src="assets/readme/desktop/tweaks.webp" alt="Tweaks" />
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+### Theme store
+
+Browse 100+ community themes with previews and install one in a click. BetterDiscord `.theme.css` files work too, and CloudCord asks once before a theme may load styles from its author's site.
+
+<img src="assets/readme/desktop/themes.webp" alt="Theme store" />
+
+</td>
+<td width="50%" valign="top">
+
+### A better installer
+
+A 100 KB animated installer for Windows. It closes Discord safely, downloads the latest CloudCord, swaps files without ever leaving a half-written install, and falls back to plain Discord if anything goes wrong.
+
+<img src="assets/readme/desktop/installer.webp" alt="Installer" />
+
+</td>
+</tr>
+</table>
 
 ## Live CloudCord numbers
 
@@ -146,7 +192,9 @@ The CloudCord runtime can refresh independently of a full native rebuild. On Win
 
 ### Plugin ecosystem
 
-CloudCord includes plugin management and a plugin browser, alongside the broader desktop plugin codebase included in this repository.
+CloudCord Desktop ships 600+ plugins: Vencord's, the Sincord and Equicord collection, extra plugins from Endcord, and 100 original CloudCord tweaks. Each plugin keeps its authors' credit on its card and in its source. The Add-ons page brings Plugins, Tweaks, Themes, Sync and Extras together behind one tab bar.
+
+Credits: [Vencord](https://github.com/Vendicated/Vencord), [Equicord](https://github.com/Equicord/Equicord), [Endcord](https://github.com/Endcord/Endcord) and Sincord contributors (GPL-3.0), and [BetterDiscord](https://github.com/BetterDiscord/BetterDiscord) for the addon card style and theme store (Apache-2.0).
 
 ## Platform layout
 
