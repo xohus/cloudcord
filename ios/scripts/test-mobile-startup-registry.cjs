@@ -27,7 +27,14 @@ const code = esbuild.transformSync(fs.readFileSync(path.join(root,'src/entry.ts'
             modules=registry; __c=()=>{ throw Error("must not clear Metro"); };
             ${early ? '' : '__r=()=>{};'}
         `,realm);
+        const rain = { loaderName: "RainTweak" };
+        const independentLoader = { loaderName: "CloudCord", cloudcordAutoUpdateVersion: 3 };
+        realm.__RAIN_LOADER__ = rain;
+        // The iOS bootstrap can alias Rain's exact object under CloudCord.
+        if (map) realm.__CLOUDCORD_LOADER__ = early ? rain : independentLoader;
         vm.runInContext(code,realm);
+        assert.equal(Boolean(realm.__CLOUDCORD_ORIGINAL_RAIN__), !map || early);
+        if (map) assert.equal(realm.__CLOUDCORD_LOADER__, early ? rain : independentLoader);
         if (early) vm.runInContext('__r=()=>{}; __r(0);',realm);
         await new Promise(resolve=>setTimeout(resolve,5));
         assert.equal(started,1,`early=${early} map=${map} ${errors}`);

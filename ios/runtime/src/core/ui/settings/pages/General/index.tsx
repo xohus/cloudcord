@@ -73,6 +73,20 @@ export default function General() {
                         onValueChange={(value: boolean) => (settings as any).cloudcordAutoUpdate = value}
                     />
                     <TableRow label="Update status" subLabel={(settings as any).cloudcordUpdateStatus || "Waiting for the next update check"} />
+                    <TableRow label="Loaded runtime" subLabel={String((globalThis as any).__CLOUDCORD_RUNTIME_REVISION__ ?? "Unknown").slice(0, 12)} />
+                    <TableRow label="Fetch Runtime" subLabel="Download the latest runtime. Reopen Discord to apply it." onPress={async () => {
+                        (settings as any).cloudcordUpdateStatus = "Checking for updates…";
+                        try {
+                            const fetchRuntime = BundleUpdaterManager?.checkForUpdates ?? BundleUpdaterManager?.download;
+                            if (typeof fetchRuntime !== "function") throw new Error("This loader cannot fetch from settings. Use Refetch Bundle in the recovery menu.");
+                            await fetchRuntime.call(BundleUpdaterManager);
+                            (settings as any).cloudcordUpdateStatus = "Latest runtime saved. Reopen Discord to apply it.";
+                        } catch (error) {
+                            const message = error instanceof Error ? error.message : "Runtime download failed";
+                            (settings as any).cloudcordUpdateStatus = message;
+                            showToast(message);
+                        }
+                    }} />
                     <TableRow label="Copy CCP runtime report" subLabel="Loaded Discord functions and read-only checks"
                         icon={<TableRow.Icon source={findAssetId("CopyIcon") || findAssetId("WrenchIcon")} />}
                         onPress={async () => {

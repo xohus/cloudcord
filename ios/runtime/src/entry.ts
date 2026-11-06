@@ -1,14 +1,16 @@
 import type { Metro } from "@metro/types";
 import { version } from "bunny-build-info";
 (globalThis as any).__CLOUDCORD_RUNTIME_REVISION__ = "development";
-// Adapt to the original Rain injector without changing its native identity.
-const rain = (globalThis as any).__RAIN_LOADER__;
-if (rain && !(globalThis as any).__CLOUDCORD_LOADER__) {
-    (globalThis as any).__CLOUDCORD_ORIGINAL_RAIN__ = true;
-    (globalThis as any).__CLOUDCORD_LOADER__ = {
+// Rain can expose its identity directly or alias it under CloudCord in native code.
+const root = globalThis as any;
+const rain = root.__RAIN_LOADER__;
+const existingLoader = root.__CLOUDCORD_LOADER__;
+if (rain && (!existingLoader || existingLoader === rain)) {
+    root.__CLOUDCORD_ORIGINAL_RAIN__ = true;
+    root.__CLOUDCORD_LOADER__ = existingLoader ?? {
         ...rain, loaderName: "CloudCord", cloudcordAutoUpdateVersion: 3
     };
-    (globalThis as any).__PYON_LOADER__ = (globalThis as any).__CLOUDCORD_LOADER__;
+    root.__PYON_LOADER__ = root.__CLOUDCORD_LOADER__;
 }
 const { instead } = require("spitroast");
 
