@@ -36172,12 +36172,28 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       return args;
     });
   }
+  function onEditMessage(transform) {
+    var editor = findByProps("editMessage", "startEditMessage");
+    if (typeof editor?.editMessage !== "function")
+      throw new Error("Discord message edits are unavailable");
+    return before("editMessage", editor, (args) => {
+      var message = args[2];
+      if (message && typeof message === "object") {
+        try {
+          transform(message);
+        } catch (e) {
+        }
+      }
+      return args;
+    });
+  }
   var init_sendMessage = __esm({
     "src/core/plugins/shared/sendMessage.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_patcher();
+      init_metro();
       init_common();
     }
   });
@@ -36548,12 +36564,136 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ...text
     ].reverse().join("");
   }
-  var messageTransforms;
+  function ingtonify(text) {
+    var links = [
+      ...text.matchAll(/https?:\/\/[^\s]+\.[^\s]+/gi)
+    ];
+    var words = [
+      ...text.matchAll(RegExp("\\p{L}+", "gu"))
+    ].filter(({ 0: word2, index }) => !/^(?:i)$/i.test(word2) && !/[aeouy]$/i.test(word2) && !links.some((link) => index >= link.index && index < link.index + link[0].length));
+    var match = words[Math.floor(Math.random() * words.length)];
+    if (!match)
+      return text;
+    var word = match[0];
+    var upper = word.toUpperCase();
+    var overlap = upper.match(/(?:INGTON|INGTO|INGT|ING|IN|I)$/)?.[0].length ?? 0;
+    var suffix = "INGTON".slice(overlap);
+    var end = match.index + word.length;
+    return text.slice(0, end) + (word === upper ? suffix : suffix.toLowerCase()) + text.slice(end);
+  }
+  function cleanTrackingLink(url2) {
+    var match = /^(https?:\/\/([^/?#]+)[^?#]*)\?([^#]*)(#.*)?$/i.exec(url2);
+    if (!match)
+      return url2;
+    var [, base, host, query, fragment = ""] = match;
+    var pairs = query.split("&");
+    var kept = pairs.filter((pair) => {
+      var name = pair.split("=")[0];
+      try {
+        var key = decodeURIComponent(name.replace(/\+/g, " "));
+        if (/^[st]$/i.test(key))
+          return !/(^|\.)(?:twitter\.com|x\.com)(?::\d+)?$/i.test(host);
+        return !tracking.test(key);
+      } catch (e) {
+        return true;
+      }
+    });
+    var rest = kept.filter(Boolean).join("&");
+    return kept.length === pairs.length ? url2 : base + (rest ? "?" + rest : "") + fragment;
+  }
+  function preserveCase(original, replacement) {
+    if (original === original.toUpperCase())
+      return replacement.toUpperCase();
+    if (original[0] === original[0].toUpperCase())
+      return replacement[0].toUpperCase() + replacement.slice(1);
+    return replacement;
+  }
+  function polishWording(input, options = "apostrophes") {
+    if (input.includes("\uE000"))
+      return input;
+    var selected = new Set(options.split(",").map((option) => option.trim()));
+    var protectedText = [];
+    var text = input.replace(/\x60{3}[\s\S]*?\x60{3}|\x60[^\x60]*\x60|https?:\/\/[^\s<>]+|<(?:[@#:][^>\s]+|a:[^>\s]+)>/gi, (match) => "\uE000" + (protectedText.push(match) - 1) + "\uE000");
+    if (selected.has("apostrophes") || selected.has("expand"))
+      text = text.replace(missingPattern, (word) => preserveCase(word, missing.get(word.toLowerCase())));
+    if (selected.has("capitalize"))
+      text = text.replace(/(^\s*|[.!?]\s+)([a-z])/g, (_2, before3, letter) => before3 + letter.toUpperCase()).replace(/\bi\b/g, "I");
+    if (selected.has("expand"))
+      text = text.replace(expandedPattern, (word) => preserveCase(word, expanded.get(word.toLowerCase())));
+    if (selected.has("punctuation") && text.trim() && !RegExp(`[\\uE000.!?\u2026:;)\\]"'*_~\\x60]\\s*$|\\p{Extended_Pictographic}\\s*$`, "u").test(text))
+      text = text.replace(/\s*$/, ".");
+    return text.replace(/\uE000(\d+)\uE000/g, (_2, index) => protectedText[Number(index)]);
+  }
+  var tracking, contractions, expanded, missing, wordPattern, missingPattern, expandedPattern, polishOptions, messageTransforms;
   var init_cxMessageTransforms = __esm({
     "src/lib/api/cxMessageTransforms.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      tracking = /^(?:utm_.*|fbclid|gclid|dclid|msclkid|mc_(?:cid|eid)|igshid|igsh|si|feature|ref_src|ref_url|_hsenc|_hsmi|yclid|twclid|share_id|spm|vero_(?:id|conv)|wt_?mc|oly_(?:anon|enc)_id|rb_clickid)$/i;
+      contractions = {
+        "wasn't": "was not",
+        "can't": "cannot",
+        "don't": "do not",
+        "won't": "will not",
+        "isn't": "is not",
+        "aren't": "are not",
+        "haven't": "have not",
+        "hasn't": "has not",
+        "hadn't": "had not",
+        "doesn't": "does not",
+        "didn't": "did not",
+        "shouldn't": "should not",
+        "wouldn't": "would not",
+        "couldn't": "could not",
+        "that's": "that is",
+        "what's": "what is",
+        "there's": "there is",
+        "how's": "how is",
+        "where's": "where is",
+        "when's": "when is",
+        "who's": "who is",
+        "why's": "why is",
+        "you'll": "you will",
+        "i'll": "I will",
+        "they'll": "they will",
+        "it'll": "it will",
+        "i'm": "I am",
+        "you're": "you are",
+        "they're": "they are",
+        "he's": "he is",
+        "she's": "she is",
+        "i've": "I have",
+        "you've": "you have",
+        "we've": "we have",
+        "they've": "they have",
+        "you'd": "you would",
+        "he'd": "he would",
+        "she'd": "she would",
+        "it'd": "it would",
+        "we'd": "we would",
+        "they'd": "they would",
+        "y'all": "you all",
+        "here's": "here is"
+      };
+      expanded = new Map(Object.entries(contractions));
+      missing = new Map([
+        ...expanded.keys()
+      ].map((word) => [
+        word.replace("'", ""),
+        word
+      ]));
+      wordPattern = (words) => new RegExp("\\b(?:" + [
+        ...words.keys()
+      ].join("|") + ")\\b", "gi");
+      missingPattern = wordPattern(missing);
+      expandedPattern = wordPattern(expanded);
+      polishOptions = /* @__PURE__ */ new Set([
+        "apostrophes",
+        "expand",
+        "capitalize",
+        "punctuation"
+      ]);
       messageTransforms = {
         reverse: reverseText,
         // NormalizeMessageLinks by bb010g.
@@ -36574,7 +36714,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         capitalizeSentences: (text, exclusions = "http, https, ok") => {
           var prefixes = exclusions.split(",").map((prefix) => prefix.trim().toLowerCase()).filter(Boolean);
           return text.split(/([.!?]+['")\]]*\s+)/).map((part, index) => index % 2 || prefixes.some((prefix) => part.toLowerCase().startsWith(prefix)) ? part : part.charAt(0).toUpperCase() + part.slice(1)).join("");
-        }
+        },
+        ingtonify,
+        polishWording,
+        clearTrackingLinks: (text) => text.replace(/https?:\/\/[^\s<>]+/gi, (match) => {
+          var url2 = match.replace(/[.,;!?]+$/, "");
+          var extraClosing = (url2.match(/\)/g)?.length ?? 0) - (url2.match(/\(/g)?.length ?? 0);
+          if (extraClosing > 0)
+            url2 = url2.replace(/\)+$/, (ending) => ending.slice(0, -extraClosing));
+          return cleanTrackingLink(url2) + match.slice(url2.length);
+        }),
+        // Signature by Vee, Rini, ImBanana and KrystalSkull.
+        signature: (text, signature = "a chronic discord user") => text.trim() ? text + "\n> " + signature : text
       };
     }
   });
@@ -36605,16 +36756,21 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         permissions.add(permission2);
         return "continue";
       }
-      var transform = /^  before send ([a-zA-Z]+)( .+)?$/.exec(line12);
+      var transform = /^  before (send|edit) ([a-zA-Z]+)( .+)?$/.exec(line12);
       if (transform) {
-        var name2 = transform[1];
-        if (!Object.prototype.hasOwnProperty.call(messageTransforms, name2) || transforms.some((entry) => entry.name === name2))
+        var stage2 = transform[1];
+        var name2 = transform[2];
+        if (!Object.prototype.hasOwnProperty.call(messageTransforms, name2) || transforms.some((entry) => entry.name === name2 && entry.stage === stage2))
           throw new Error("Unknown or duplicate outgoing text transform");
-        if (transform[2] && name2 !== "capitalizeSentences")
+        if (transform[3] && name2 !== "capitalizeSentences" && name2 !== "signature" && name2 !== "polishWording")
           throw new Error("This transform takes no options");
+        var options = transform[3] ? quoted(transform[3].trim(), 240) : void 0;
+        if (name2 === "polishWording" && options?.split(",").some((option) => !polishOptions.has(option.trim())))
+          throw new Error("Unknown PolishWording option");
         transforms.push({
+          stage: stage2,
           name: name2,
-          options: transform[2] ? quoted(transform[2].trim(), 240) : void 0
+          options
         });
         current = void 0;
         return "continue";
@@ -36756,8 +36912,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var required = /* @__PURE__ */ new Set();
     if (commands3.length)
       required.add("commands.register");
-    if (transforms.length)
-      required.add("messages.transform");
+    for (var { stage } of transforms)
+      required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
     for (var { actions } of commands3) {
       for (var action of actions) {
         for (var permission of actionPermissions[action.kind])
@@ -36818,7 +36974,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         cleanup();
     }
     try {
-      var _loop2 = function(command2) {
+      var _loop2 = function(stage2) {
+        var transforms = document.messageTransforms.filter((transform) => transform.stage === stage2);
+        if (!transforms.length)
+          return "continue";
+        var register = stage2 === "send" ? host.registerMessageTransform : host.registerMessageEditTransform;
+        if (!register)
+          throw new Error("This client cannot transform message " + stage2 + "s");
+        cleanups.push(register((text) => {
+          if (!active || text.length > 4e3)
+            return text;
+          var result = text;
+          for (var { name, options } of transforms)
+            result = messageTransforms[name](result, options);
+          return result.trim() && result.length <= 4e3 ? result : text;
+        }));
+      }, _loop1 = function(command2) {
         if (!grants.has("commands.register"))
           throw new Error("Command permission denied");
         cleanups.push(host.registerCommand(command2.name, (invocation) => {
@@ -36870,20 +37041,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           return outgoing;
         }, command2.text, command2.actions.some(sendsMessage), command2.actions.some((action) => action.kind === "reply or send"), command2.inputs));
       };
-      if (document.messageTransforms.length) {
-        if (!host.registerMessageTransform)
-          throw new Error("This client cannot transform outgoing messages");
-        cleanups.push(host.registerMessageTransform((text) => {
-          if (!active || text.length > 4e3)
-            return text;
-          var result = text;
-          for (var { name, options } of document.messageTransforms)
-            result = messageTransforms[name](result, options);
-          return result.trim() && result.length <= 4e3 ? result : text;
-        }));
-      }
+      for (var stage of [
+        "send",
+        "edit"
+      ])
+        _loop2(stage);
       for (var command of document.commands)
-        _loop2(command);
+        _loop1(command);
       return stop;
     } catch (error) {
       stop();
@@ -36939,7 +37103,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "ui.toast": "Show local popups",
         "reply.local": "Show a command reply visible only to you",
         "messages.send": "Send the result to the current chat when you run a listed command",
-        "messages.transform": "Change text before Discord sends messages you compose"
+        "messages.transform": "Change text before Discord sends messages you compose",
+        "messages.edit.transform": "Change text when you submit a message edit"
       };
       leetCharacters = {
         a: "4",
@@ -37023,11 +37188,27 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/clear-urls.cx
+  var clear_urls_default;
+  var init_clear_urls = __esm({
+    "../examples/cx/catalog/plugins/clear-urls.cx"() {
+      clear_urls_default = 'plugin "ClearURLs":\n  needs messages.transform\n  needs messages.edit.transform\n  before send clearTrackingLinks\n  before edit clearTrackingLinks\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/google-that.cx
   var google_that_default;
   var init_google_that = __esm({
     "../examples/cx/catalog/plugins/google-that.cx"() {
       google_that_default = 'plugin "GoogleThat":\n  needs commands.register\n  needs messages.send\n  on command "googlethat":\n    input "input" text\n    input "engine" choice "Google,Bing,Yahoo,DuckDuckGo,Baidu,Yandex,Ecosia,Ask,AOL,LetMeGoogleThatForYou" optional\n    input "hyperlink" boolean optional\n    input "hide-embed" boolean optional\n    send "${searchLink(input, engine, hyperlink, hide-embed)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/ingtoninator.cx
+  var ingtoninator_default;
+  var init_ingtoninator = __esm({
+    "../examples/cx/catalog/plugins/ingtoninator.cx"() {
+      ingtoninator_default = 'plugin "Ingtoninator":\n  needs messages.transform\n  before send ingtonify\n';
     }
   });
 
@@ -37055,6 +37236,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/polish-wording.cx
+  var polish_wording_default;
+  var init_polish_wording = __esm({
+    "../examples/cx/catalog/plugins/polish-wording.cx"() {
+      polish_wording_default = 'plugin "PolishWording":\n  needs messages.transform\n  before send polishWording "apostrophes"\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/reverse-text.cx
   var reverse_text_default;
   var init_reverse_text = __esm({
@@ -37068,6 +37257,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_ship_calc = __esm({
     "../examples/cx/catalog/plugins/ship-calc.cx"() {
       ship_calc_default = 'plugin "ShipCalc":\n  needs commands.register\n  needs messages.send\n  on command "ship":\n    input "a" text\n    input "b" text\n    send "${ship(a, b)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/signature.cx
+  var signature_default;
+  var init_signature = __esm({
+    "../examples/cx/catalog/plugins/signature.cx"() {
+      signature_default = 'plugin "Signature":\n  needs messages.transform\n  before send signature "a chronic discord user"\n';
     }
   });
 
@@ -37194,12 +37391,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_bold_text();
       init_calculator();
       init_clap_text();
+      init_clear_urls();
       init_google_that();
+      init_ingtoninator();
       init_leet_text();
       init_more_commands();
       init_normalize_message_links();
+      init_polish_wording();
       init_reverse_text();
       init_ship_calc();
+      init_signature();
       init_space_out();
       init_starify();
       init_talk_in_reverse();
@@ -37233,8 +37434,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: clap_text_default
           },
           {
+            name: "ClearURLs",
+            source: clear_urls_default
+          },
+          {
             name: "GoogleThat",
             source: google_that_default
+          },
+          {
+            name: "Ingtoninator",
+            source: ingtoninator_default
           },
           {
             name: "LeetText",
@@ -37249,12 +37458,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: normalize_message_links_default
           },
           {
+            name: "PolishWording",
+            source: polish_wording_default
+          },
+          {
             name: "ReverseText",
             source: reverse_text_default
           },
           {
             name: "ShipCalc",
             source: ship_calc_default
+          },
+          {
+            name: "Signature",
+            source: signature_default
           },
           {
             name: "SpaceOut",
@@ -37382,6 +37599,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         session.enable(candidate.source, {
           registerMessageTransform(transform) {
             return onSendMessage((message) => {
+              if (!settings.safeMode?.enabled && typeof message.content === "string")
+                message.content = transform(message.content);
+            });
+          },
+          registerMessageEditTransform(transform) {
+            return onEditMessage((message) => {
               if (!settings.safeMode?.enabled && typeof message.content === "string")
                 message.content = transform(message.content);
             });
@@ -42317,7 +42540,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "c25960efe82d67c8465bee46dacce93a912d2b3b";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "46216a09fae9084b2fae78be403279c8443d2d36";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
