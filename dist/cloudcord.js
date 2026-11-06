@@ -10609,16 +10609,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (!module || typeof module !== "object" && typeof module !== "function")
           continue;
         try {
-          if (Object.prototype.hasOwnProperty.call(module, "SETTING_RENDERER_CONFIG"))
+          if (Object.getOwnPropertyNames(module).includes("SETTING_RENDERER_CONFIG"))
             patchRendererConfig(module);
         } catch (error) {
           console.warn("CloudCord settings renderer patch failed", error);
         }
         try {
-          if (Object.prototype.hasOwnProperty.call(module, "createList") && typeof module.createList === "function")
+          if (Object.getOwnPropertyNames(module).includes("createList") && typeof module.createList === "function")
             patchCreateListModule(module);
         } catch (error) {
-          console.warn("CloudCord settings list patch failed", error);
+          console.warn("CloudCord settings list patch failed", error?.stack ?? error);
         }
       }
       var screen = exports?.SettingsOverviewScreen ?? exports?.default;
@@ -40334,7 +40334,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "cbea83a1cd490e3008582d112a3dbbd642421e6f";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "410ab6b736c2880da9b9ce03319004c134775906";
   var rain = globalThis.__RAIN_LOADER__;
   if (rain && !globalThis.__CLOUDCORD_LOADER__) {
     globalThis.__CLOUDCORD_ORIGINAL_RAIN__ = true;
