@@ -1,0 +1,5 @@
+plugin "SpaceOut":
+  needs commands.register
+  needs messages.send
+  on command "spaceout" with text:
+    send "${spaced(text)}"

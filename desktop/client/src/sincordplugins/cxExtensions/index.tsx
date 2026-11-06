@@ -1,6 +1,7 @@
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
 import { showNotification } from "@api/Notifications";
 import { createCxSession, MAX_CX_SOURCE, reviewCx } from "@utils/cx";
+import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
 import { useState } from "@webpack/common";
 
@@ -8,8 +9,10 @@ const session = createCxSession();
 
 export function CxSettings() {
     const [source, setSource] = useState("");
+    const [search, setSearch] = useState("");
     const [candidate, setCandidate] = useState<{ source: string; review: ReturnType<typeof reviewCx>; }>();
     const [status, setStatus] = useState("");
+    const searchText = search.trim().toLowerCase();
 
     function review(next: string) {
         setCandidate(undefined);
@@ -25,19 +28,20 @@ export function CxSettings() {
         if (!candidate) return;
         try {
             session.enable(candidate.source, {
-                registerCommand(name, execute, acceptsText) {
+                registerCommand(name, execute, acceptsText, sendsMessage) {
                     if (Object.prototype.hasOwnProperty.call(commands, name) || name in Object.prototype)
                         throw new Error(`Command /${name} already exists`);
                     const command: VencordCommand = {
                         name,
                         description: "Local CX command",
-                        inputType: ApplicationCommandInputType.BUILT_IN,
+                        inputType: sendsMessage ? ApplicationCommandInputType.BUILT_IN_TEXT : ApplicationCommandInputType.BUILT_IN,
                         options: acceptsText ? [{ name: "text", description: "Text to use", type: ApplicationCommandOptionType.STRING, required: true }] : [],
                         execute(args, context) {
-                            execute({
+                            const outgoing = execute({
                                 text: acceptsText ? findOption(args, "text", "") : undefined,
                                 reply: message => { if (context.channel?.id) sendBotMessage(context.channel.id, { content: message }); },
                             });
+                            if (outgoing !== undefined) return { content: outgoing };
                         },
                     };
                     registerCommand(command, "CxExtensions");
@@ -47,20 +51,26 @@ export function CxSettings() {
                 toast: body => { void showNotification({ title: candidate.review.name, body }); },
                 applyTheme(theme) {
                     const style = document.createElement("style");
+                    const surface = theme.surface ?? theme.background;
+                    const sidebar = theme.sidebar ?? surface;
+                    const shade = Math.round((1 - (theme.wallpaperOpacity ?? 1)) * 255).toString(16).padStart(2, "0");
+                    const tint = theme.background + shade;
                     style.textContent = `
                         .theme-dark, .theme-light {
                             --background-primary: ${theme.background};
-                            --background-secondary: ${theme.background};
-                            --background-tertiary: ${theme.background};
-                            --background-base-lowest: ${theme.background};
-                            --background-base-lower: ${theme.background};
+                            --background-secondary: ${surface};
+                            --background-tertiary: ${sidebar};
+                            --background-base-lowest: ${sidebar};
+                            --background-base-lower: ${surface};
                             --background-base-low: ${theme.background};
                             --bg-base-primary: ${theme.background};
+                            ${theme.text ? `--text-normal: ${theme.text}; --text-primary: ${theme.text};` : ""}
+                            ${theme.muted ? `--text-muted: ${theme.muted}; --text-secondary: ${theme.muted};` : ""}
                             ${theme.accent ? `--brand-500: ${theme.accent}; --text-link: ${theme.accent};` : ""}
                         }
                         ${theme.wallpaper ? `
                             [class^="chatContent_"] {
-                                background: ${theme.background} url("${theme.wallpaper}") center / cover no-repeat;
+                                background: linear-gradient(${tint}, ${tint}), ${theme.background} url("${theme.wallpaper}") center / cover no-repeat;
                             }
                             [class^="chatContent_"] [class^="messagesWrapper_"] { background: transparent; }
                         ` : ""}
@@ -78,6 +88,21 @@ export function CxSettings() {
 
     return <section style={{ display: "grid", gap: 12 }}>
         <h2>CX Extensions</h2>
+        <details>
+            <summary>CX catalog · {cxCatalog.plugins.length} plugins · {cxCatalog.themes.length} themes</summary>
+            <input aria-label="Search CX catalog" placeholder="Search CX catalog" value={search} onChange={event => setSearch(event.currentTarget.value)} />
+            {([["Plugins", cxCatalog.plugins], ["Themes", cxCatalog.themes]] as const).map(([kind, entries]) => {
+                const matches = entries.filter(entry => entry.name.toLowerCase().includes(searchText));
+                return <div key={kind}>
+                    <h3>{kind}</h3>
+                    {matches.slice(0, 12).map(entry => <button key={entry.name} onClick={() => {
+                        setSource(entry.source);
+                        review(entry.source);
+                    }}>{entry.name}</button>)}
+                    {matches.length > 12 && <p>Search to narrow the results.</p>}
+                </div>;
+            })}
+        </details>
         <label>
             Open a .cx file
             <input type="file" accept=".cx" onChange={async event => {
@@ -98,7 +123,9 @@ export function CxSettings() {
                 }
             }} />
         </label>
-        <textarea aria-label="CX source" value={source} maxLength={MAX_CX_SOURCE} rows={8} onChange={event => {
+        <textarea aria-label="CX source" value={source} maxLength={MAX_CX_SOURCE} rows={8} style={{
+            background: "var(--background-secondary, #2b2d31)", color: "var(--text-normal, #f2f3f5)", padding: 12, fontFamily: "monospace",
+        }} onChange={event => {
             setCandidate(undefined);
             setSource(event.currentTarget.value);
         }} />

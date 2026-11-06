@@ -1,0 +1,5 @@
+plugin "Starify":
+  needs commands.register
+  needs messages.send
+  on command "starify" with text:
+    send "✦ﾟ｡⋆ ${text} ⋆｡ﾟ✦"

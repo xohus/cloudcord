@@ -47,6 +47,11 @@ declare module "*.ccp" {
     export default source;
 }
 
+declare module "*.cx" {
+    const source: string;
+    export default source;
+}
+
 declare module "*.css?managed" {
     const name: string;
     export default name;

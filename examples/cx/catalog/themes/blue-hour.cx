@@ -1,0 +1,9 @@
+theme "Blue Hour":
+  background: #12192d
+  surface: #1c2746
+  sidebar: #0c1120
+  text: #f0f4ff
+  muted: #b5c2dd
+  accent: #8cbfff
+  wallpaper: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAUCAIAAABj86gYAAAAg0lEQVR4nLXNvQmAQAxA4UxgZWF5lViJtY2FG9g5gK1TOIETGzgIKNGc+YFXfw+qutPVpLkkCHKx1K9Y6eCvSwkDtSsM7C4/cHRvgwi3nfYcBLlFA4v7NXBxmYGvmxuWA4JcSh7oXHlgdF8HXu5z4O5i43ZiEORSwkDtCgO7yw8cXeoCWm7IRbUhJjIAAAAASUVORK5CYII="
+  wallpaper-opacity: 75

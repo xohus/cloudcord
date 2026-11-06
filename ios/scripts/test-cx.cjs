@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-const { transformSync } = require("esbuild");
+const { buildSync, transformSync } = require("esbuild");
 
 const root = path.join(__dirname, "../..");
 const read = relative => fs.readFileSync(path.join(root, relative), "utf8");
@@ -10,6 +10,28 @@ const moduleBox = { exports: {} };
 const code = transformSync(read("desktop/client/src/utils/cx.ts"), { loader: "ts", format: "cjs" }).code;
 vm.runInNewContext(code, { module: moduleBox });
 const { activateCx, createCxSession, parseCx, reviewCx } = moduleBox.exports;
+const catalogModule = { exports: {} };
+const catalogCode = buildSync({
+    entryPoints: [path.join(root, "desktop/client/src/utils/cxCatalog.ts")],
+    bundle: true, write: false, format: "cjs", loader: { ".cx": "text" },
+}).outputFiles[0].text;
+vm.runInNewContext(catalogCode, { module: catalogModule });
+const { cxCatalog } = catalogModule.exports;
+const names = new Set(), commands = new Set();
+for (const [kind, limit, entries] of [["plugin", 600, cxCatalog.plugins], ["theme", 100, cxCatalog.themes]]) {
+    assert.ok(entries.length <= limit, `Shared CX catalog exceeds the ${kind} target`);
+    for (const entry of entries) {
+        const document = parseCx(entry.source);
+        assert.equal(document.kind, kind);
+        assert.equal(document.name, entry.name);
+        assert.ok(!names.has(entry.name.toLowerCase()), "Duplicate catalog item " + entry.name);
+        names.add(entry.name.toLowerCase());
+        for (const { name } of document.commands ?? []) {
+            assert.ok(!commands.has(name), "Duplicate catalog command " + name);
+            commands.add(name);
+        }
+    }
+}
 const plugin = read("examples/cx/hello.cx").trimEnd();
 const theme = read("examples/cx/midnight.cx").trimEnd();
 const grants = ["commands.register", "ui.toast"];
@@ -56,6 +78,8 @@ assert.throws(() => parseCx(theme + '\n  wallpaper: "https://example.com/image.p
 assert.throws(() => parseCx(theme + '\n  wallpaper: "data:image/svg+xml;base64,AAAA"'), /embedded/);
 const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPZ0AAAAASUVORK5CYII=";
 assert.equal(parseCx(theme + '\n  wallpaper: "' + png + '"').wallpaper, png);
+assert.throws(() => parseCx(theme + '\n  wallpaper-opacity: 75'), /embedded wallpaper/);
+assert.throws(() => parseCx(theme + '\n  wallpaper: "' + png + '"\n  wallpaper-opacity: 101'), /0 to 100/);
 console.log("PASS CX permission review, denial, revocation, rollback, plugin and theme coexistence, and safe wallpaper");
 
 (async () => {
@@ -77,13 +101,16 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
     stop();
     run({ text: "test", reply: value => localReplies.push(value) });
     assert.deepEqual(localReplies, ["3 characters"]);
-    assert.throws(() => parseCx(counter.replace("length(text)", "token")), /only length/);
+    assert.throws(() => parseCx(counter.replace("length(text)", "token")), /named text functions/);
+    assert.throws(() => parseCx(counter.replace("length(text)", "constructor(text)")), /named text functions/);
     assert.throws(() => parseCx(counter.replace('  needs reply.local', '  needs ui.toast')), /permissions/);
     assert.throws(() => parseCx(counter.replace('  needs reply.local', '  needs reply.local\n  needs ui.toast')), /unused/);
 
     for (const platform of ["desktop", "mobile"]) {
         const desktop = platform === "desktop";
         const states = [], registered = {}, delivered = [];
+        const selectedTheme = { name: "Previously selected" };
+        let nativeTheme = selectedTheme, stylesheet;
         let cursor = 0;
         const useState = initial => {
             const index = cursor++;
@@ -93,7 +120,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const jsx = (type, props) => ({ type, props });
         const commandApi = {
             commands: registered,
-            ApplicationCommandInputType: { BUILT_IN: 0 },
+            ApplicationCommandInputType: { BUILT_IN: 0, BUILT_IN_TEXT: 1 },
             ApplicationCommandOptionType: { STRING: 3 },
             ApplicationCommandType: { CHAT: 1 },
             findOption: (args, name) => args.find(option => option.name === name)?.value,
@@ -108,19 +135,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const adapter = desktop ? "desktop/client/src/sincordplugins/cxExtensions/index.tsx"
             : "ios/runtime/src/core/ui/settings/pages/CxExtensions/index.tsx";
         const mocks = {
-            "react/jsx-runtime": { jsx, jsxs: jsx },
+            "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
+            "@utils/cxCatalog": { cxCatalog },
             "@api/Commands": commandApi,
             "@api/Notifications": {},
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
             "@webpack/common": { useState },
             "@lib/api/cx": moduleBox.exports,
+            "@lib/api/cxCatalog": { cxCatalog },
             "@lib/api/commands": commandApi,
             "@lib/api/commands/types": commandApi,
-            "@lib/addons/themes": {},
-            "@lib/addons/themes/colors/updater": {},
+            "@lib/addons/themes": { getCurrentTheme: () => ({ data: selectedTheme }) },
+            "@lib/addons/themes/colors/updater": { updateBunnyColor: value => { nativeTheme = value; } },
             "@lib/api/native/modules": {},
-            "@lib/api/native/loader": {},
+            "@lib/api/native/loader": { isThemeSupported: () => true },
             "@lib/api/settings": { settings: {} },
             "@lib/ui/toasts": {},
             "@metro": {},
@@ -130,6 +159,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         vm.runInNewContext(transformSync(read(adapter), { loader: "tsx", format: "cjs", jsx: "automatic" }).code, {
             module,
+            document: {
+                createElement: () => ({ remove() { stylesheet = undefined; } }),
+                head: { append: value => { stylesheet = value; } }
+            },
             require(name) {
                 assert.ok(name in mocks, "Unmocked adapter dependency: " + name);
                 return mocks[name];
@@ -157,11 +190,54 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         command.execute([{ name: "text", value: "abc" }], { channel: { id: "test-channel" } });
         assert.deepEqual(delivered, [["test-channel", "3 characters"]]);
         assert.equal(Object.keys(registered).length, 0, platform + " unregisters on disable");
+
+        const testCases = [
+            ["ReverseText", "reverse", "a🐈", "🐈a"],
+            ["SpaceOut", "spaceout", "abc", "a b c"],
+            ["ClapText", "clap", " a\t b ", "a 👏 b"],
+            ["LeetText", "leet", "LEET", "1337"],
+            ["BoldText", "bold", "Aa0 !", "𝐀𝐚𝟎 !"],
+            ["Starify", "starify", "hi", "✦ﾟ｡⋆ hi ⋆｡ﾟ✦"],
+        ];
+        for (const [name, commandName, input, result] of testCases) {
+            const port = cxCatalog.plugins.find(entry => entry.name === name).source;
+            assert.throws(() => activateCx(port, commandHost, ["commands.register"]), /approval/);
+            assert.throws(() => parseCx(port + '    send "duplicate"\n'), /one outgoing message/);
+            if (!desktop) click(render(), "Browse catalog");
+            click(render(), name);
+            assert.equal(Object.keys(registered).length, 0, platform + " catalog review waits for approval");
+            click(render(), "Allow for this session");
+            const outgoing = registered[commandName];
+            if (desktop) assert.equal(outgoing.inputType, commandApi.ApplicationCommandInputType.BUILT_IN_TEXT);
+            const invoke = value => outgoing.execute([{ name: "text", value }], { channel: { id: "test-channel" } });
+            assert.equal(invoke(input).content, result);
+            assert.equal(invoke(""), undefined);
+            click(render(), "Disable " + name);
+            assert.equal(invoke(input), undefined);
+        }
+        if (!desktop) click(render(), "Browse catalog");
+        click(render(), "Blue Hour");
+        click(render(), "Allow for this session");
+        if (desktop) {
+            assert.match(stylesheet.textContent, /--background-secondary: #1c2746/);
+            assert.match(stylesheet.textContent, /linear-gradient\(#12192d40, #12192d40\)/);
+        } else {
+            assert.equal(nativeTheme.semanticColors.BACKGROUND_SECONDARY[0], "#1c2746");
+            assert.equal(nativeTheme.background.alpha, 0.75);
+        }
+        click(render(), "Disable Blue Hour");
+        assert.equal(stylesheet, undefined);
+        assert.equal(nativeTheme, selectedTheme);
     }
     const { migrateCxPalette } = await import("../../desktop/client/scripts/cx-migrate-palette.mjs");
     assert.equal(parseCx(migrateCxPalette(":root { --background-primary: #123; --brand-500: #8765ab; }", "Test")).background, "#112233");
     assert.throws(() => migrateCxPalette('@import "https://example.com/a.css"; :root { --background-primary: #123; }', "Test"), /manual port/);
     assert.throws(() => migrateCxPalette(":root { --background-primary: #123; } .chat { display: none; }", "Test"), /manual port/);
     assert.throws(() => migrateCxPalette(":root { --background-primary: #123; --bg: url(a); }", "Test"), /manual port/);
-    console.log("PASS CX counter parity, both approval and reply adapters, and strict palette migration");
+    const migrated = parseCx(migrateCxPalette(`:root { --background-primary: #123; --background-secondary: #345;
+        --background-image: url("${png}"); --background-opacity: 75%; }`, "Wallpaper"));
+    assert.equal(migrated.surface, "#334455");
+    assert.equal(migrated.wallpaper, png);
+    assert.equal(migrated.wallpaperOpacity, 0.75);
+    console.log(`PASS shared CX catalog with ${cxCatalog.plugins.length} plugins and ${cxCatalog.themes.length} themes, permission approval, both command adapters and strict palette migration`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

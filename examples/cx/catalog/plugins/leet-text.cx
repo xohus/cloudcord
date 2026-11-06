@@ -1,0 +1,5 @@
+plugin "LeetText":
+  needs commands.register
+  needs messages.send
+  on command "leet" with text:
+    send "${leet(text)}"

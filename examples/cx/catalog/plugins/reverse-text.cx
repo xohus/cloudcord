@@ -1,0 +1,5 @@
+plugin "ReverseText":
+  needs commands.register
+  needs messages.send
+  on command "reverse" with text:
+    send "${reverse(text)}"

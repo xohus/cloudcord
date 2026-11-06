@@ -1,0 +1,5 @@
+plugin "BoldText":
+  needs commands.register
+  needs messages.send
+  on command "bold" with text:
+    send "${bold(text)}"

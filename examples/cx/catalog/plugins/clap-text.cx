@@ -1,0 +1,5 @@
+plugin "ClapText":
+  needs commands.register
+  needs messages.send
+  on command "clap" with text:
+    send "${clap(text)}"
