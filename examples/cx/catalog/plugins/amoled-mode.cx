@@ -1,0 +1,3 @@
+plugin "AmoledMode":
+  needs appearance.style
+  style amoled-background

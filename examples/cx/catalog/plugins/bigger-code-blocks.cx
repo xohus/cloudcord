@@ -1,0 +1,3 @@
+plugin "BiggerCodeBlocks":
+  needs appearance.style
+  style code-block-size

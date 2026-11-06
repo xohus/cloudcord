@@ -10,6 +10,13 @@ import { ChannelStore, FluxDispatcher, IconUtils, Menu, MessageStore, SelectedGu
 
 const session = createCxSession();
 
+function applyAppearanceCss(target: keyof typeof cxAppearanceTargets) {
+    const style = document.createElement("style");
+    style.textContent = cxAppearanceTargets[target].css;
+    document.head.append(style);
+    return () => style.remove();
+}
+
 export function CxSettings() {
     const [source, setSource] = useState("");
     const [search, setSearch] = useState("");
@@ -83,12 +90,8 @@ export function CxSettings() {
                         removeContextMenuPatch(menus, patch);
                     };
                 },
-                hideAppearanceTarget(target) {
-                    const style = document.createElement("style");
-                    style.textContent = cxAppearanceTargets[target].css;
-                    document.head.append(style);
-                    return () => style.remove();
-                },
+                hideAppearanceTarget: applyAppearanceCss,
+                styleAppearanceTarget: applyAppearanceCss,
                 registerReplyPingSuppression() {
                     const listener = addMessagePreSendListener((_, _message, { replyOptions }) => {
                         if (!replyOptions?.messageReference) return;

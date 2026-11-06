@@ -9,6 +9,52 @@ const ThemeStore = findByStoreNameLazy("ThemeStore");
 let sequence = 0;
 const colorListeners = new Set<() => void>();
 
+type ColorOverlay = { darkOnly?: boolean; raw?: Readonly<Record<string, string>>; semantic?: Readonly<Record<string, string>>; };
+const overlays = new Set<ColorOverlay>();
+const emptyOverlay = { raw: Object.create(null), semantic: Object.create(null) };
+let darkOverlay = emptyOverlay;
+let lightOverlay = emptyOverlay;
+
+function rebuildColorOverlays() {
+    const merge = (dark: boolean) => {
+        const raw: Record<string, string> = Object.create(null);
+        const semantic: Record<string, string> = Object.create(null);
+        for (const entry of overlays) {
+            if (entry.darkOnly && !dark) continue;
+            Object.assign(raw, entry.raw);
+            Object.assign(semantic, entry.semantic);
+        }
+        return { raw, semantic };
+    };
+    darkOverlay = merge(true);
+    lightOverlay = merge(false);
+}
+
+export function getColorOverlay(theme?: unknown): { raw: Record<string, string>; semantic: Record<string, string>; } | undefined {
+    if (!overlays.size || settings.safeMode?.enabled) return;
+    const mode = _colorRef.current?.reference ?? theme ?? ThemeStore?.theme;
+    return typeof mode === "string" && mode.startsWith("light") ? lightOverlay : darkOverlay;
+}
+
+export function registerColorOverlay(overlay: ColorOverlay) {
+    const entry = { ...overlay };
+    function refresh() {
+        rebuildColorOverlays();
+        if (settings.safeMode?.enabled || typeof AppearanceManager?.updateTheme !== "function") return;
+        const theme = _colorRef.current?.reference ?? ThemeStore?.theme ?? _colorRef.lastSetDiscordTheme;
+        AppearanceManager.updateTheme(theme);
+    }
+    overlays.add(entry);
+    try {
+        refresh();
+    } catch (error) {
+        overlays.delete(entry);
+        rebuildColorOverlays();
+        throw error;
+    }
+    return () => { if (overlays.delete(entry)) refresh(); };
+}
+
 export function subscribeThemeColors(listener: () => void) {
     colorListeners.add(listener);
     return () => { colorListeners.delete(listener); };

@@ -121,6 +121,49 @@ export const cxAppearanceTargets = {
         css: '[class*="altText"] { display: none !important; }',
         mobile: ["MediaModalOverlayAltTextButton"],
     },
+    "contrast-text": {
+        plugin: "HighContrastText", label: "increase text contrast",
+        css: ":root { --text-default: #ffffff; --text-normal: #ffffff; --text-muted: #c7c9d1; }",
+        style: {
+            semantic: { TEXT_DEFAULT: "#ffffff", TEXT_NORMAL: "#ffffff", TEXT_MUTED: "#c7c9d1", TEXT_SUBTLE: "#c7c9d1" },
+        },
+    },
+    "cloudcord-accent": {
+        plugin: "CloudCordAccent", label: "apply the CloudCord accent",
+        css: ":root { --brand-500: #7c5cff; --brand-560: #6d4ef0; --brand-600: #5b3ce6; --brand-experiment: #7c5cff; }",
+        style: {
+            raw: { BRAND_500: "#7c5cff", BRAND_560: "#6d4ef0", BRAND_600: "#5b3ce6" },
+            semantic: { TEXT_LINK: "#7c5cff", TEXT_BRAND: "#7c5cff", ICON_BRAND: "#7c5cff", BACKGROUND_BRAND: "#7c5cff" },
+        },
+    },
+    "amoled-background": {
+        plugin: "AmoledMode", label: "use black backgrounds in dark mode",
+        css: ".theme-dark, .theme-midnight { --background-primary: #000; --background-secondary: #000; --background-secondary-alt: #050505; --background-tertiary: #000; --background-base-low: #000; --background-base-lower: #000; --background-base-lowest: #000; --background-surface-high: #0a0a0a; --chat-background-default: #000; }",
+        style: {
+            darkOnly: true,
+            semantic: {
+                BACKGROUND_PRIMARY: "#000000", BACKGROUND_SECONDARY: "#000000", BACKGROUND_SECONDARY_ALT: "#050505",
+                BACKGROUND_TERTIARY: "#000000", BACKGROUND_MOBILE_PRIMARY: "#000000", BACKGROUND_MOBILE_SECONDARY: "#000000",
+                BACKGROUND_BASE_LOW: "#000000", BACKGROUND_BASE_LOWER: "#000000", BACKGROUND_BASE_LOWEST: "#000000",
+                BACKGROUND_SURFACE_HIGH: "#0a0a0a", CHAT_BACKGROUND_DEFAULT: "#000000",
+            },
+        },
+    },
+    "code-block-size": {
+        plugin: "BiggerCodeBlocks", label: "increase code block text size",
+        css: 'code[class*="hljs"], [class*="codeContainer"] code { font-size: 15px !important; line-height: 1.5 !important; }',
+        style: { component: "MarkupCodeBlock", key: "codeBlock", values: { fontSize: 15, lineHeight: 22.5 } },
+    },
+    "underlined-links": {
+        plugin: "HighlightLinks", label: "underline message links",
+        css: '[class*="messageContent"] a { text-decoration: underline !important; text-underline-offset: 2px; }',
+        style: { component: "MarkupLink", key: "link", values: { textDecorationLine: "underline" } },
+    },
 } as const;
 
 export type CxAppearanceTarget = keyof typeof cxAppearanceTargets;
+type TargetOf<Kind extends "mobile" | "style"> = {
+    [Key in CxAppearanceTarget]: Kind extends keyof typeof cxAppearanceTargets[Key] ? Key : never;
+}[CxAppearanceTarget];
+export type CxHideTarget = TargetOf<"mobile">;
+export type CxStyleTarget = TargetOf<"style">;

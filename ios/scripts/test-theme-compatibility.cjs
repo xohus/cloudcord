@@ -35,7 +35,7 @@ const patcher = {
   instead(name, object, callback) { const original = object[name]; object[name] = (...args) => callback(args, original); return () => object[name] = original; }
 };
 const resolver = load('patches/resolver.ts', {
-  '@lib/addons/themes/colors/updater': {_colorRef: ref}, '@lib/api/native/modules': {NativeThemeModule: native},
+  '@lib/addons/themes/colors/updater': {_colorRef: ref, getColorOverlay: () => undefined}, '@lib/api/native/modules': {NativeThemeModule: native},
   '@lib/api/patcher': patcher, '@metro': {findByProps: () => token}, 'chroma-js': () => {throw new Error('unexpected opacity conversion');}
 });
 const undo = resolver.default();
@@ -73,6 +73,25 @@ updater.updateBunnyColor(ref.current);
 themeStore.theme = 'darker';
 updater.updateBunnyColor(null);
 assert.equal(calls.at(-1), 'light', 'disabling a custom theme must restore the original Discord mode');
+const overlayResolver = load('patches/resolver.ts', {
+  '@lib/addons/themes/colors/updater': updater, '@lib/api/native/modules': {NativeThemeModule: native},
+  '@lib/api/patcher': patcher, '@metro': {findByProps: () => token}, 'chroma-js': () => {throw new Error('unexpected opacity conversion');}
+}).default();
+themeStore.theme = 'darker';
+const removeDark = updater.registerColorOverlay({darkOnly: true, semantic: {TEST: '#000000'}});
+assert.equal(token.default.meta.resolveSemanticColor('light', {[symbol]: 'TEST'}), '#original');
+assert.equal(token.default.meta.resolveSemanticColor('darker', {[symbol]: 'TEST'}), '#000000');
+updater.updateBunnyColor({...ref.current, background: {url: 'example'}}, {update: false});
+const removeAccent = updater.registerColorOverlay({semantic: {TEST: '#7c5cff'}, raw: {BRAND_500: '#7c5cff'}});
+assert.equal(token.default.meta.resolveSemanticColor('darker', {[symbol]: 'TEST'}), '#7c5cff');
+assert.equal(updater.getColorOverlay().raw.BRAND_500, '#7c5cff');
+assert.equal(updater.getThemeColors().background.url, 'example');
+removeDark();
+removeAccent();
+assert.equal(updater.getColorOverlay(), undefined);
+assert.equal(token.default.meta.resolveSemanticColor('darker', {[symbol]: 'TEST'}), '#123456');
+overlayResolver();
+updater.updateBunnyColor(null, {update: false});
 console.log('frozen color tables supported; native manager only receives real Discord theme names; semantic override and fallback passed');
 
 const jsx = (type, props) => ({type, props});

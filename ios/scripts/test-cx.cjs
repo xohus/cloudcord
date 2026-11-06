@@ -172,6 +172,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
+        const colorOverlays = new Set();
         const menuPatches = new Set(), clipboardWrites = [];
         const settings = {};
         let profileUser;
@@ -232,7 +233,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@lib/api/commands": commandApi,
             "@lib/api/commands/types": commandApi,
             "@lib/addons/themes": { getCurrentTheme: () => ({ data: selectedTheme }) },
-            "@lib/addons/themes/colors/updater": { updateBunnyColor: (value, options) => { nativeTheme = value; nativeMode = options?.mode; } },
+            "@lib/addons/themes/colors/updater": {
+                updateBunnyColor: (value, options) => { nativeTheme = value; nativeMode = options?.mode; },
+                registerColorOverlay(value) { colorOverlays.add(value); return () => colorOverlays.delete(value); },
+            },
             "@lib/api/native/modules": {},
             "@lib/api/native/loader": { isThemeSupported: () => true },
             "@lib/api/settings": { settings },
@@ -294,12 +298,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         for (const [target, rule] of Object.entries(moduleBox.exports.cxAppearanceTargets)) {
             const appearancePort = cxCatalog.plugins.find(entry => entry.name === rule.plugin).source;
             assert.throws(() => activateCx(appearancePort, host, []), /approval/);
-            assert.throws(() => parseCx(appearancePort.replace("hide " + target, "hide unknown-target")), /appearance target/);
+            const action = rule.style ? "style" : "hide";
+            assert.throws(() => parseCx(appearancePort.replace(action + " " + target, action + " unknown-target")), /appearance target/);
             selectCatalog(rule.plugin);
             click(render(), "Allow for this session");
-            const original = Object.freeze({ type: "NativeTarget", props: Object.freeze({ value: "original" }) });
+            const originalStyles = Object.freeze(rule.style?.component ? { [rule.style.key]: Object.freeze({ color: "red" }) } : {});
+            const original = Object.freeze({ type: "NativeTarget", props: Object.freeze({ value: "original", styles: originalStyles }) });
             const wraps = [];
             if (desktop) assert.equal(stylesheet.textContent, rule.css);
+            else if (rule.style?.component) {
+                const wrapped = appearanceHooks.get(rule.style.component)(null, original);
+                const next = wrapped.type(wrapped.props);
+                assert.equal(next.props.styles[rule.style.key][0], originalStyles[rule.style.key]);
+                assert.equal(next.props.styles[rule.style.key][1], rule.style.values);
+                wraps.push(wrapped);
+            } else if (rule.style) assert.ok(colorOverlays.has(rule.style));
             else for (const name of rule.mobile) {
                 const wrapped = appearanceHooks.get(name)(null, original);
                 assert.equal(wrapped.type(wrapped.props), null);
@@ -307,6 +320,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             }
             click(render(), "Disable " + rule.plugin);
             assert.equal(appearanceHooks.size, 0);
+            assert.equal(colorOverlays.size, 0);
             assert.equal(stylesheet, undefined);
             for (const wrapped of wraps) assert.equal(wrapped.type(wrapped.props), original);
         }

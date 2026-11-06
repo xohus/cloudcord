@@ -43,7 +43,8 @@ for (const name of ["ReverseText", "ClapText", "SpaceOut", "Starify", "VibeCheck
 for (const [key, rule] of Object.entries(cxAppearanceTargets)) {
     const port = matches.find(record => record.name === rule.plugin);
     assert.ok(port, rule.plugin + " should compile from the original stylesheet");
-    assert.equal(parseCx(port.cx).hiddenTargets[0], key);
+    const document = parseCx(port.cx);
+    assert.equal(("style" in rule ? document.styledTargets : document.hiddenTargets)[0], key);
 }
 const tweak = 'import { defineTweak } from "@utils/cloudcordTweak";\n' +
     'export default defineTweak("HideBotTags", "Hides bot tags", "body { display: none; }");';
@@ -70,6 +71,9 @@ assert.equal(inspectBd(bd.replace("start() {", "start() { fetch('/');")).cx, und
 assert.equal(inspectBd(bd.replace("class {", "class extends Global {")).cx, undefined);
 assert.equal(inspectBd(bd.replace(JSON.stringify(styles), JSON.stringify(styles + " body { display: none; }"))).cx, undefined);
 verifyPorts(new Map([["reduce-visual-clutter.cx", bdPort.cx], ["literal-replace.cx", candidate.cx]]));
+const mixedPort = inspectBd(bd.replace(JSON.stringify(styles), JSON.stringify(styles + "\n" + cxAppearanceTargets["underlined-links"].css)));
+assert.equal(parseCx(mixedPort.cx).styledTargets[0], "underlined-links");
+verifyPorts(new Map([["mixed-appearance.cx", mixedPort.cx]]));
 assert.throws(() => verifyPorts(new Map([["bad.cx", bdPort.cx.replace("hide bot-tags", "hide everything")]])), /^Error: bad.cx:/);
 const plan = buildPlan([
     { ...bdPort, status: "ready" },

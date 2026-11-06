@@ -1,0 +1,3 @@
+plugin "HighlightLinks":
+  needs appearance.style
+  style underlined-links

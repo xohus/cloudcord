@@ -59,6 +59,12 @@ function styleCall(method, operation, count) {
     if (args.every(arg => arg !== undefined)) return args;
 }
 
+function appearanceLines(targets) {
+    const instructions = targets.map(([target, rule]) => ("style" in rule ? "style " : "hide ") + target);
+    const permissions = new Set(instructions.map(instruction => "  needs appearance." + instruction.split(" ")[0]));
+    return [...permissions, ...instructions.map(instruction => "  " + instruction)];
+}
+
 function inspectBetterDiscord(file, code, appearance) {
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
     const header = /^\s*\/\*\*[\s\S]*?\*\//.exec(code)?.[0];
@@ -76,16 +82,16 @@ function inspectBetterDiscord(file, code, appearance) {
     const targets = [];
     let css = added[1].trim();
     while (css) {
-        const target = Object.entries(appearance).find(([key, rule]) => !targets.includes(key) && css.startsWith(rule.css));
+        const target = Object.entries(appearance).find(([key, rule]) => !targets.some(([used]) => used === key) && css.startsWith(rule.css));
         if (!target) return record;
-        targets.push(target[0]);
+        targets.push(target);
         css = css.slice(target[1].css.length).trimStart();
     }
     if (!targets.length) return record;
     return {
         ...record,
         capability: "appearance",
-        cx: ["plugin " + JSON.stringify(name) + ":", "  needs appearance.hide", ...targets.map(target => "  hide " + target), ""].join("\n"),
+        cx: ["plugin " + JSON.stringify(name) + ":", ...appearanceLines(targets), ""].join("\n"),
     };
 }
 
@@ -290,7 +296,7 @@ function inspectPlugin(file, code, platform, appearance = {}) {
             name, file, platform, hooks: ["appearance"], flags: { commands: false, outgoing: false, settings: false, ui: true, styles: true },
             ...(supported ? {
                 capability: "appearance",
-                cx: "plugin " + JSON.stringify(name) + ":\n  needs appearance.hide\n  hide " + registered[0] + "\n",
+                cx: ["plugin " + JSON.stringify(name) + ":", ...appearanceLines([registered]), ""].join("\n"),
             } : {}),
         };
     }
@@ -435,6 +441,7 @@ function verifyPorts(files) {
                 registerMessageTransform: register,
                 registerMessageEditTransform: register,
                 hideAppearanceTarget: register,
+                styleAppearanceTarget: register,
             };
             const stop = activateCx(source, host, plugin.permissions);
             if (!registrations) throw new Error("No supported behavior registered");

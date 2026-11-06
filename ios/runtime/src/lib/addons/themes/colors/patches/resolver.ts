@@ -1,4 +1,4 @@
-import { _colorRef } from "@lib/addons/themes/colors/updater";
+import { _colorRef, getColorOverlay } from "@lib/addons/themes/colors/updater";
 import { NativeThemeModule } from "@lib/api/native/modules";
 import { before, instead } from "@lib/api/patcher";
 import { findByProps } from "@metro";
@@ -11,7 +11,7 @@ export default function patchDefinitionAndResolver() {
         const descriptor = Object.getOwnPropertyDescriptor(raw, key);
         if (!descriptor?.configurable) continue;
         Object.defineProperty(raw, key, { configurable: true, enumerable: descriptor.enumerable,
-            get: () => _colorRef.current?.raw[key] ?? _colorRef.origRaw[key] });
+            get: () => getColorOverlay()?.raw[key] ?? _colorRef.current?.raw[key] ?? _colorRef.origRaw[key] });
         undo.push(() => Object.defineProperty(raw, key, descriptor));
     }
     if (typeof NativeThemeModule?.updateTheme === "function") {
@@ -24,12 +24,15 @@ export default function patchDefinitionAndResolver() {
     if (typeof resolver?.resolveSemanticColor === "function") {
         undo.push(instead("resolveSemanticColor", resolver, (args: any[], original: any) => {
             const current = _colorRef.current;
-            if (!current) return original(...args);
+            const overlay = getColorOverlay(args[0]);
+            if (!current && !overlay) return original(...args);
             const object = args[1];
             if (!object || (typeof object !== "object" && typeof object !== "function")) return original(...args);
             const symbol = Object.getOwnPropertySymbols(object)[0];
             const name = symbol ? object[symbol] : object.name;
-            const semantic = typeof name === "string" ? current.semantic[name] : undefined;
+            if (typeof name !== "string") return original(...args);
+            if (overlay?.semantic[name]) return overlay.semantic[name];
+            const semantic = current?.semantic[name];
             if (semantic?.value) return semantic.opacity === 1 ? semantic.value : chroma(semantic.value).alpha(semantic.opacity).hex();
             return original(...args);
         }));

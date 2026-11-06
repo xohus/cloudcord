@@ -5,7 +5,7 @@ import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
 import { intercept } from "@lib/api/flux";
 import { getCurrentTheme } from "@lib/addons/themes";
-import { updateBunnyColor } from "@lib/addons/themes/colors/updater";
+import { registerColorOverlay, updateBunnyColor } from "@lib/addons/themes/colors/updater";
 import { NativeFileModule } from "@lib/api/native/modules";
 import { isThemeSupported } from "@lib/api/native/loader";
 import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
@@ -21,6 +21,26 @@ const UserStore = findByStoreNameLazy("UserStore");
 const ChannelStore = findByStoreNameLazy("ChannelStore");
 const MessageStore = findByStoreNameLazy("MessageStore");
 const UserProfileStore = findByStoreNameLazy("UserProfileStore");
+
+function registerJsxAppearance(names: readonly string[], change: (element: JSX.Element) => JSX.Element | null) {
+    let active = true;
+    const listeners = new Set<() => void>();
+    const subscribe = (listener: () => void) => {
+        listeners.add(listener);
+        return () => { listeners.delete(listener); };
+    };
+    const isActive = () => active && !settings.safeMode?.enabled;
+    function Appearance({ element }: { element: JSX.Element; }) {
+        return React.useSyncExternalStore(subscribe, isActive) ? change(element) : element;
+    }
+    const wrap = (_: unknown, element: JSX.Element) => <Appearance key={element.key} element={element} />;
+    for (const name of names) onJsxCreate(name, wrap, true);
+    return () => {
+        active = false;
+        for (const name of names) deleteJsxCreate(name, wrap, true);
+        for (const listener of [...listeners]) listener();
+    };
+}
 
 const profileMenuActions = new Set<{ action: CxProfileMenuAction; }>();
 let stopProfileMenuHooks: (() => void) | undefined;
@@ -147,24 +167,18 @@ export default function CxExtensions() {
                 },
                 registerProfileMenuAction,
                 hideAppearanceTarget(target) {
-                    const names = cxAppearanceTargets[target].mobile;
-                    let hidden = true;
-                    const listeners = new Set<() => void>();
-                    const subscribe = (listener: () => void) => {
-                        listeners.add(listener);
-                        return () => { listeners.delete(listener); };
-                    };
-                    const isHidden = () => hidden && !settings.safeMode?.enabled;
-                    function Visibility({ element }: { element: JSX.Element; }) {
-                        return React.useSyncExternalStore(subscribe, isHidden) ? null : element;
+                    return registerJsxAppearance(cxAppearanceTargets[target].mobile, () => null);
+                },
+                styleAppearanceTarget(target) {
+                    const style = cxAppearanceTargets[target].style;
+                    if ("component" in style) {
+                        return registerJsxAppearance([style.component], element => {
+                            const styles = element.props.styles;
+                            return React.cloneElement(element, { styles: { ...styles, [style.key]: [styles?.[style.key], style.values] } });
+                        });
                     }
-                    const wrap = (_: unknown, element: JSX.Element) => <Visibility key={element.key} element={element} />;
-                    for (const name of names) onJsxCreate(name, wrap, true);
-                    return () => {
-                        hidden = false;
-                        for (const name of names) deleteJsxCreate(name, wrap, true);
-                        for (const listener of [...listeners]) listener();
-                    };
+                    if (!isThemeSupported()) throw new Error("This loader does not support color overrides");
+                    return registerColorOverlay(style);
                 },
                 registerReplyPingSuppression() {
                     return onSendMessage((_message, options) => {

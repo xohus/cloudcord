@@ -1,4 +1,4 @@
-import { cxAppearanceTargets, type CxAppearanceTarget } from "./cxAppearance";
+import { cxAppearanceTargets, type CxAppearanceTarget, type CxHideTarget, type CxStyleTarget } from "./cxAppearance";
 import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { applyIncomingRule, incomingPermissions, type IncomingPayload, type IncomingRule, parseIncomingRule } from "./cxIncoming";
 import { calculate, convertUnits } from "./cxNumeric";
@@ -23,6 +23,7 @@ const permissionLabels = {
     "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
     "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
     "appearance.hide": "Hide the listed interface elements on this device",
+    "appearance.style": "Apply the listed visual changes on this device",
     "messages.filterstickers": "Filter stickers from incoming messages on this device",
     "messages.silencementions": "Mute mentions from the listed senders on this device",
     "replies.controlping": "Choose whether incoming replies ping you on this device",
@@ -90,7 +91,8 @@ type CxPlugin = {
     commands: Command[];
     messageTransforms: MessageTransform[];
     suppressReplyPing: boolean;
-    hiddenTargets: CxAppearanceTarget[];
+    hiddenTargets: CxHideTarget[];
+    styledTargets: CxStyleTarget[];
     profileActions: CxProfileMenuAction[];
     incoming: IncomingRule[];
 };
@@ -164,7 +166,8 @@ export function parseCx(source: string): CxDocument {
     const permissions = new Set<CxPermission>();
     const commands: Command[] = [];
     const transforms: MessageTransform[] = [];
-    const hiddenTargets = new Set<CxAppearanceTarget>();
+    const hiddenTargets = new Set<CxHideTarget>();
+    const styledTargets = new Set<CxStyleTarget>();
     const profileActions = new Set<CxProfileMenuAction>();
     const incoming: IncomingRule[] = [];
     let suppressReplyPing = false;
@@ -173,7 +176,7 @@ export function parseCx(source: string): CxDocument {
     for (const line of lines) {
         if (!line.trim()) continue;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
-        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !profileActions.size && !incoming.length) {
+        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !profileActions.size && !incoming.length) {
             const permission = declaration[1] as CxPermission;
             if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
                 throw new Error("Unknown or duplicate CX permission");
@@ -197,12 +200,16 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
-        const hide = /^  hide ([a-z-]+)$/.exec(line);
-        if (hide) {
-            const target = hide[1] as CxAppearanceTarget;
-            if (!Object.prototype.hasOwnProperty.call(cxAppearanceTargets, target) || hiddenTargets.has(target))
+        const appearance = /^  (hide|style) ([a-z-]+)$/.exec(line);
+        if (appearance) {
+            const target = appearance[2] as CxAppearanceTarget;
+            const rule = Object.prototype.hasOwnProperty.call(cxAppearanceTargets, target) && cxAppearanceTargets[target];
+            if (rule && appearance[1] === "style" && "style" in rule && !styledTargets.has(target as CxStyleTarget))
+                styledTargets.add(target as CxStyleTarget);
+            else if (rule && appearance[1] === "hide" && "mobile" in rule && !hiddenTargets.has(target as CxHideTarget))
+                hiddenTargets.add(target as CxHideTarget);
+            else
                 throw new Error("Unknown or duplicate appearance target");
-            hiddenTargets.add(target);
             current = undefined;
             continue;
         }
@@ -291,12 +298,13 @@ export function parseCx(source: string): CxDocument {
         }
         current.actions.push({ kind, message, fallback });
     }
-    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !profileActions.size && !incoming.length) || commands.some(command => !command.actions.length))
+    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !profileActions.size && !incoming.length) || commands.some(command => !command.actions.length))
         throw new Error("A plugin needs a command or a supported behavior");
     const required = new Set<CxPermission>();
     if (commands.length) required.add("commands.register");
     if (suppressReplyPing) required.add("replies.suppressping");
     if (hiddenTargets.size) required.add("appearance.hide");
+    if (styledTargets.size) required.add("appearance.style");
     if (profileActions.size) required.add("profilemenu.copy");
     if (readsAvatar) required.add("profile.avatar");
     for (const { kind } of incoming) required.add(incomingPermissions[kind]);
@@ -311,7 +319,10 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Declare the permissions used by your commands");
     if ([...permissions].some(permission => !required.has(permission)))
         throw new Error("Remove unused CX permissions");
-    return { kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing, hiddenTargets: [...hiddenTargets], profileActions: [...profileActions], incoming };
+    return {
+        kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing,
+        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], profileActions: [...profileActions], incoming,
+    };
 }
 
 export function reviewCx(source: string) {
@@ -324,6 +335,7 @@ export function reviewCx(source: string) {
         effects: document.permissions.map(permission => permissionLabels[permission])
             .concat(document.profileActions.map(action => cxProfileMenuActions[action].label))
             .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label))
+            .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
             .concat(document.incoming.flatMap(rule => rule.kind === "stickers" && rule.values[0] === "*"
                 ? ["Hide all stickers"] : !rule.values.length && rule.kind !== "reply-pings"
                     ? ["Edit the source to enter " + (rule.kind === "keywords" ? "keywords" : "Discord IDs")] : [])),
@@ -341,7 +353,8 @@ type CxHost = {
     registerMessageEditTransform?: (transform: (text: string) => string) => () => void;
     registerReplyPingSuppression?: () => () => void;
     registerProfileMenuAction?: (action: CxProfileMenuAction) => () => void;
-    hideAppearanceTarget?: (target: CxAppearanceTarget) => () => void;
+    hideAppearanceTarget?: (target: CxHideTarget) => () => void;
+    styleAppearanceTarget?: (target: CxStyleTarget) => () => void;
     registerIncomingRules?: (rules: readonly IncomingRule[]) => () => void;
 };
 
@@ -381,6 +394,10 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
         for (const target of document.hiddenTargets) {
             if (!host.hideAppearanceTarget) throw new Error("This client cannot hide " + cxAppearanceTargets[target].label);
             cleanups.push(host.hideAppearanceTarget(target));
+        }
+        for (const target of document.styledTargets) {
+            if (!host.styleAppearanceTarget) throw new Error("This client cannot " + cxAppearanceTargets[target].label);
+            cleanups.push(host.styleAppearanceTarget(target));
         }
         if (document.suppressReplyPing) {
             if (!host.registerReplyPingSuppression) throw new Error("This client cannot suppress reply pings");

@@ -1,0 +1,3 @@
+plugin "CloudCordAccent":
+  needs appearance.style
+  style cloudcord-accent
