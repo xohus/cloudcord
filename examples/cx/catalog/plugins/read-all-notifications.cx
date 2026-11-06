@@ -1,0 +1,6 @@
+plugin "ReadAllNotifications":
+  needs commands.register
+  needs servers.markread
+  needs reply.local
+  on command "readall":
+    mark servers read

@@ -1,4 +1,5 @@
 import { cxAppearanceTargets, type CxAppearanceTarget, type CxHideTarget, type CxStyleTarget } from "./cxAppearance";
+import { cxClientFunctions, type CxClientFunction } from "./cxClientCommands";
 import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { applyIncomingRule, incomingPermissions, type IncomingPayload, type IncomingRule, parseIncomingRule } from "./cxIncoming";
 import { calculate, convertUnits } from "./cxNumeric";
@@ -7,6 +8,7 @@ import { messageTransforms, polishOptions, reverseText } from "./cxMessageTransf
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
 export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
+export { formatCxRoleMembers, formatCxSpotify, markCxServersRead } from "./cxClientCommands";
 
 export const MAX_CX_SOURCE = 512 * 1024;
 export const CX_INLINE_EDITOR_LIMIT = 32 * 1024;
@@ -21,6 +23,9 @@ const permissionLabels = {
     "messages.edit.transform": "Change text when you submit a message edit",
     "replies.suppressping": "Send replies without pinging the person you reply to",
     "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
+    "guild.members": "Read loaded members with the role you select in the current server",
+    "spotify.activity": "Read your current Spotify track, album, or artist when the command runs",
+    "servers.markread": "Mark unread server channels as read when you run the listed command",
     "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
     "appearance.hide": "Hide the listed interface elements on this device",
     "appearance.style": "Apply the listed visual changes on this device",
@@ -54,15 +59,16 @@ const textExpression = /\$\{([a-z][a-zA-Z0-9_-]*)(?:\(([a-z0-9_, -]*)\))?\}/g;
 const argumentNames = (args: string) => args ? args.split(",").map(name => name.trim()) : [];
 
 export type CxPermission = keyof typeof permissionLabels;
-type Action = { kind: "toast" | "reply" | "send" | "reply or send"; message: string; fallback?: string; choices?: string[] };
+type Action = { kind: "toast" | "reply" | "send" | "reply or send" | "mark-read"; message: string; fallback?: string; choices?: string[] };
 const actionPermissions: Record<Action["kind"], CxPermission[]> = {
     toast: ["ui.toast"],
     reply: ["reply.local"],
     send: ["messages.send"],
     "reply or send": ["reply.local", "messages.send"],
+    "mark-read": ["servers.markread", "reply.local"],
 };
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
-type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice" | "user"; required: boolean; choices?: string[] };
+type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice" | "user" | "role"; required: boolean; choices?: string[] };
 type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: Action[] };
 type TransformStage = "send" | "edit";
 type MessageTransform = { stage: TransformStage } & (
@@ -173,6 +179,7 @@ export function parseCx(source: string): CxDocument {
     const incoming: IncomingRule[] = [];
     let suppressReplyPing = false;
     let readsAvatar = false;
+    const clientPermissions = new Set<CxPermission>();
     let current: Command | undefined;
     for (const line of lines) {
         if (!line.trim()) continue;
@@ -251,7 +258,7 @@ export function parseCx(source: string): CxDocument {
             commands.push(current = { name, text: Boolean(command[2]), inputs: [], actions: [] });
             continue;
         }
-        const input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice|user)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line);
+        const input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice|user|role)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line);
         if (input && current && !current.actions.length) {
             const [, name, type, list, optional] = input;
             if (name === "send" || (name === "text" && current.text) || current.inputs.length >= 4 || current.inputs.some(option => option.name === name))
@@ -260,6 +267,11 @@ export function parseCx(source: string): CxDocument {
             if ((type === "choice") !== !!choices || choices && (choices.length > 16 || choices.some(choice => !choice) || new Set(choices).size !== choices.length))
                 throw new Error("Choice inputs need a list of distinct values");
             current.inputs.push({ name, type: type as CommandInput["type"], required: !optional, choices });
+            continue;
+        }
+        if (line === "    mark servers read" && current && !current.actions.length && !current.text && !current.inputs.length) {
+            current.actions.push({ kind: "mark-read", message: "" });
+            current = undefined;
             continue;
         }
         const pick = /^    send one of (\[.{1,3000}\])$/.exec(line);
@@ -292,6 +304,14 @@ export function parseCx(source: string): CxDocument {
                     readsAvatar = true;
                     return "";
                 }
+                if (Object.prototype.hasOwnProperty.call(cxClientFunctions, name)) {
+                    const service = cxClientFunctions[name as CxClientFunction];
+                    const option = declaredInputs.find(input => input.name === names[0]);
+                    if (names.length !== 1 || option?.type !== service.input
+                        || (name === "roleMembers" && kind !== "reply")) return expression;
+                    clientPermissions.add(service.permission);
+                    return "";
+                }
                 return Object.prototype.hasOwnProperty.call(textFunctions, name)
                     && textFunctions[name].length === names.length && names.every(name => inputs.has(name)) ? "" : expression;
             });
@@ -308,6 +328,7 @@ export function parseCx(source: string): CxDocument {
     if (styledTargets.size) required.add("appearance.style");
     if (profileActions.size) required.add("profilemenu.copy");
     if (readsAvatar) required.add("profile.avatar");
+    for (const permission of clientPermissions) required.add(permission);
     for (const { kind } of incoming) required.add(incomingPermissions[kind]);
     for (const { stage } of transforms) required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
     for (const { actions } of commands) {
@@ -344,7 +365,14 @@ export function reviewCx(source: string) {
     };
 }
 
-type Invocation = { text?: string; inputs?: Record<string, unknown>; sendRequested?: boolean; reply?: (message: string) => void };
+type Invocation = {
+    text?: string;
+    inputs?: Record<string, unknown>;
+    sendRequested?: boolean;
+    reply?: (message: string) => void;
+    lookup?: (name: CxClientFunction, input: string) => string | undefined;
+    markServersRead?: () => string;
+};
 type CxHost = {
     registerCommand: (name: string, execute: (invocation?: Invocation) => string | undefined, acceptsText: boolean, sendsMessage: boolean, optionalSend: boolean, inputs: readonly CommandInput[]) => () => void;
     toast: (message: string) => void;
@@ -435,7 +463,7 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                     const valid = serialized.trim() && serialized.length <= 4000 && (
                         input.type === "text" ? typeof value === "string"
                             : input.type === "boolean" ? typeof value === "boolean"
-                                : input.type === "user" ? isCxProfileUserId(value)
+                                : input.type === "user" || input.type === "role" ? isCxProfileUserId(value)
                                 : input.type === "integer" ? /^-?\d+$/.test(serialized) && Number.isSafeInteger(Number(serialized))
                                 : input.choices?.includes(serialized)
                     );
@@ -445,6 +473,13 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                 let outgoing: string | undefined;
                 for (const action of command.actions) {
                     if (!actionPermissions[action.kind].every(permission => grants.has(permission))) continue;
+                    if (action.kind === "mark-read") {
+                        if (invocation?.reply && invocation.markServersRead) {
+                            try { invocation.reply(invocation.markServersRead()); }
+                            catch { invocation.reply("Couldn’t mark servers as read."); }
+                        }
+                        continue;
+                    }
                     if (action.kind === "toast") {
                         host.toast(action.message);
                         continue;
@@ -452,8 +487,15 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                     let invalid = false;
                     const message = action.choices ? chooseOne(action.choices)! : action.message.replace(textExpression, (_, name: string, args: string | undefined) => {
                         const values = args === undefined ? [] : argumentNames(args).map(input => inputs.get(input)!);
-                        const value = args === undefined ? inputs.get(name)
-                            : name === "avatar" ? getAvatarUrl(host, grants, values[0]) : textFunctions[name](...values);
+                        let value: string | undefined;
+                        if (args === undefined) value = inputs.get(name);
+                        else if (name === "avatar") value = getAvatarUrl(host, grants, values[0]);
+                        else if (Object.prototype.hasOwnProperty.call(cxClientFunctions, name)) {
+                            const service = name as CxClientFunction;
+                            if (grants.has(cxClientFunctions[service].permission)) {
+                                try { value = invocation?.lookup?.(service, values[0]); } catch { /* Use the local fallback. */ }
+                            }
+                        } else value = textFunctions[name](...values);
                         if (value === undefined) invalid = true;
                         return value ?? "";
                     });

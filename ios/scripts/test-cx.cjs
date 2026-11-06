@@ -153,6 +153,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const incomingHooks = [], notifications = [], pendingNotifications = [];
         const me = "100000000000000001", sender = "100000000000000002", other = "100000000000000003";
         const guildId = "100000000000000004";
+        const roleId = "100000000000000005";
+        const trackId = "0123456789012345678901";
+        const acknowledged = [];
+        const dispatch = event => acknowledged.push(event);
         const avatarHash = "a_0123456789abcdef0123456789abcdef";
         const icons = { getUserAvatarURL(user, animate, size) {
             assert.equal(animate, true);
@@ -167,7 +171,18 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getUserProfile: id => id === sender ? { themeColors: Object.freeze([0, 0x12abcd]) } : undefined,
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
             },
-            ChannelStore: { getChannel: () => ({ name: "test", recipients: [sender] }) },
+            ChannelStore: { getChannel: id => ({ name: "test", recipients: [sender], guild_id: id === "guild-channel" ? guildId : undefined }) },
+            GuildMemberStore: { getMembers: () => [{ userId: sender, roles: [roleId], nick: "Tester@everyone" }] },
+            GuildStore: { getGuilds: () => ({ [guildId]: { id: guildId } }) },
+            GuildChannelStore: { getChannels: () => ({
+                SELECTABLE: [{ channel: { id: "first" } }, { channel: { id: "missing" } }],
+                VOCAL: [{ channel: { id: "first" } }],
+            }) },
+            ActiveJoinedThreadsStore: { getActiveJoinedThreadsForGuild: () => ({ group: { thread: { channel: { id: "thread" } } } }) },
+            ReadStateStore: { hasUnread: () => true, lastMessageId: id => id === "missing" ? null : "last-" + id },
+            SpotifyStore: { getTrack: () => ({
+                id: trackId, album: { id: trackId }, artists: [{ id: trackId, external_urls: { spotify: "https://untrusted.example" } }],
+            }) },
             MessageStore: { getMessage: (_channel, id) => ({ author: { id: id === "partial" ? sender : me } }) },
             RelationshipStore: { isBlocked: id => id === sender, isIgnored: id => id === other },
         };
@@ -190,7 +205,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const commandApi = {
             commands: registered,
             ApplicationCommandInputType: { BUILT_IN: 0, BUILT_IN_TEXT: 1 },
-            ApplicationCommandOptionType: { STRING: 3, INTEGER: 4, BOOLEAN: 5, USER: 6 },
+            ApplicationCommandOptionType: { STRING: 3, INTEGER: 4, BOOLEAN: 5, USER: 6, ROLE: 8 },
             ApplicationCommandType: { CHAT: 1 },
             findOption: (args, name) => args.find(option => option.name === name)?.value,
             registerCommand(command) {
@@ -228,6 +243,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@webpack/common": { useState, ...stores, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
+                dispatch,
             } },
             "@lib/api/cx": moduleBox.exports,
             "@lib/api/cxCatalog": { cxCatalog },
@@ -259,7 +275,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: () => ({ Provider: "ProfileUserProvider" }), useContext: () => profileUser,
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
-            }, clipboard: { setString: value => clipboardWrites.push(value) },
+            }, clipboard: { setString: value => clipboardWrites.push(value) }, FluxDispatcher: { dispatch },
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup" },
             "react-native": { ScrollView: "ScrollView", Text: "Text", TextInput: "TextInput" },
@@ -505,6 +521,32 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(runAvatar("invalid"), undefined);
         click(render(), "Disable AvatarGrabber");
         assert.equal(runAvatar(sender), undefined);
+
+        for (const name of ["InRole", "ReadAllNotifications", "SpotifyShareCommands"]) {
+            selectCatalog(name);
+            click(render(), "Allow for this session");
+        }
+        const inrole = registered.inrole;
+        assert.equal(inrole.options[0].type, commandApi.ApplicationCommandOptionType.ROLE);
+        assert.equal(inrole.execute([{ name: "role", value: roleId }], { guild: { id: guildId }, channel: { id: "guild-channel" } }), undefined);
+        assert.match(delivered.pop()[1], /1 loaded member.*Tester＠everyone/s);
+        assert.equal(inrole.execute([{ name: "role", value: roleId }], { channel: { id: "dm" } }), undefined);
+        assert.equal(delivered.pop()[1], "Use this in a server.");
+        const readall = registered.readall;
+        assert.equal(acknowledged.length, 0);
+        assert.equal(readall.execute([], { channel: { id: "guild-channel" } }), undefined);
+        assert.equal(delivered.pop()[1], "Marked 2 channels as read.");
+        assert.equal(acknowledged[0].type, "BULK_ACK");
+        assert.deepEqual(Array.from(acknowledged[0].channels, row => row.channelId), ["first", "thread"]);
+        for (const name of ["track", "album", "artist"]) {
+            const result = registered[name].execute([{ name: "message", value: "Now playing" }], { channel: { id: "guild-channel" } });
+            assert.equal(result.content, "Now playing https://open.spotify.com/" + name + "/" + trackId);
+        }
+        click(render(), "Disable InRole");
+        click(render(), "Disable ReadAllNotifications");
+        click(render(), "Disable SpotifyShareCommands");
+        readall.execute([], { channel: { id: "guild-channel" } });
+        assert.equal(acknowledged.length, 1);
 
         const testCases = [
             ["ReverseText", "reverse", "a🐈", "🐈a"],

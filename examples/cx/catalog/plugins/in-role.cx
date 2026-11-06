@@ -1,0 +1,7 @@
+plugin "InRole":
+  needs commands.register
+  needs guild.members
+  needs reply.local
+  on command "inrole":
+    input "role" role
+    reply "${roleMembers(role)}"

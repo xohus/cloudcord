@@ -35,6 +35,11 @@ assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralRe
 assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", name: "Other",')).cx, undefined);
 
 const matches = scan().filter(record => record.cx);
+for (const [name, count] of [["InRole", 1], ["ReadAllNotifications", 1], ["SpotifyShareCommands", 3]]) {
+    const port = matches.find(record => record.name === name && record.platform === "mobile");
+    assert.equal(port?.capability, "client-command");
+    assert.equal(parseCx(port.cx).commands.length, count);
+}
 for (const name of ["NoBlockedMessages", "BlockKeywords", "ClientSideBlock"]) {
     const port = matches.find(record => record.name === name && record.platform === "mobile");
     assert.equal(port?.capability, "incoming-filter");

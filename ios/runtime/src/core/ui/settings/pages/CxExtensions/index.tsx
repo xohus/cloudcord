@@ -1,5 +1,5 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
-import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, getCxProfileMenuCopy, isCxProfileUserId, MAX_CX_SOURCE, reviewCx, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
+import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, reviewCx, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
@@ -12,7 +12,7 @@ import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
 import { settings } from "@lib/api/settings";
 import { showToast } from "@lib/ui/toasts";
 import { findByProps, findByStoreNameLazy } from "@metro";
-import { clipboard, commands, messageUtil, React } from "@metro/common";
+import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import { ScrollView, Text, TextInput } from "react-native";
 
@@ -22,6 +22,12 @@ const ChannelStore = findByStoreNameLazy("ChannelStore");
 const MessageStore = findByStoreNameLazy("MessageStore");
 const RelationshipStore = findByStoreNameLazy("RelationshipStore");
 const UserProfileStore = findByStoreNameLazy("UserProfileStore");
+const GuildMemberStore = findByStoreNameLazy("GuildMemberStore");
+const GuildStore = findByStoreNameLazy("GuildStore");
+const GuildChannelStore = findByStoreNameLazy("GuildChannelStore");
+const ActiveJoinedThreadsStore = findByStoreNameLazy("ActiveJoinedThreadsStore");
+const ReadStateStore = findByStoreNameLazy("ReadStateStore");
+const SpotifyStore = findByStoreNameLazy("SpotifyStore");
 
 type AppearanceChange = (element: JSX.Element) => JSX.Element | null;
 const appearanceBindings = new Map<string, ReturnType<typeof bindAppearance>>();
@@ -259,7 +265,8 @@ export default function CxExtensions() {
                                 name: input.name, description: input.name.replace(/[_-]/g, " "), required: input.required,
                                 type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER
                                     : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN
-                                        : input.type === "user" ? ApplicationCommandOptionType.USER : ApplicationCommandOptionType.STRING,
+                                        : input.type === "user" ? ApplicationCommandOptionType.USER
+                                            : input.type === "role" ? ApplicationCommandOptionType.ROLE : ApplicationCommandOptionType.STRING,
                                 choices: input.choices?.map(value => ({ name: value, displayName: value, label: value, value })),
                             })),
                             ...(optionalSend ? [{ name: "send", description: "Send the result to this chat", type: ApplicationCommandOptionType.BOOLEAN }] : []),
@@ -272,6 +279,24 @@ export default function CxExtensions() {
                                 inputs: Object.fromEntries(inputs.map(input => [input.name, args.find(arg => arg?.name === input.name)?.value])),
                                 sendRequested: optionalSend && (args.find(arg => arg?.name === "send")?.value as unknown) === true,
                                 reply: message => { if (context.channel?.id) messageUtil.sendBotMessage(context.channel.id, message); },
+                                lookup(name, input) {
+                                    if (name === "roleMembers") {
+                                        const guild = context.guild?.id ?? ChannelStore?.getChannel?.(context.channel?.id)?.guild_id;
+                                        return formatCxRoleMembers(input, guild, guild ? GuildMemberStore?.getMembers?.(guild) ?? [] : [],
+                                            id => UserStore?.getUser?.(id));
+                                    }
+                                    const track = SpotifyStore?.getTrack?.();
+                                    if (track) return formatCxSpotify(name, input, track);
+                                    const activity = SpotifyStore?.getActivity?.();
+                                    return formatCxSpotify(name, input, {
+                                        id: activity?.sync_id,
+                                        album: { id: activity?.metadata?.album_id },
+                                        artists: [{ id: activity?.metadata?.artist_ids?.[0] }],
+                                    });
+                                },
+                                markServersRead: () => markCxServersRead({
+                                    guilds: GuildStore, channels: GuildChannelStore, threads: ActiveJoinedThreadsStore, read: ReadStateStore,
+                                }, channels => { FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels }); }),
                             });
                             if (outgoing !== undefined) return { content: outgoing };
                         },

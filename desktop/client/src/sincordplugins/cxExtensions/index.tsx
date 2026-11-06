@@ -2,11 +2,11 @@ import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, fi
 import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, getCxProfileMenuCopy, isCxProfileUserId, MAX_CX_SOURCE, reviewCx, runCxIncomingRules } from "@utils/cx";
+import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, reviewCx, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
-import { ChannelStore, FluxDispatcher, IconUtils, Menu, MessageStore, RelationshipStore, SelectedGuildStore, showToast, UserProfileStore, UserStore, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageStore, ReadStateStore, RelationshipStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useState } from "@webpack/common";
 
 const session = createCxSession();
 
@@ -131,7 +131,8 @@ export function CxSettings() {
                                 name: input.name, description: input.name.replace(/[_-]/g, " "), required: input.required,
                                 type: input.type === "integer" ? ApplicationCommandOptionType.INTEGER
                                     : input.type === "boolean" ? ApplicationCommandOptionType.BOOLEAN
-                                        : input.type === "user" ? ApplicationCommandOptionType.USER : ApplicationCommandOptionType.STRING,
+                                        : input.type === "user" ? ApplicationCommandOptionType.USER
+                                            : input.type === "role" ? ApplicationCommandOptionType.ROLE : ApplicationCommandOptionType.STRING,
                                 choices: input.choices?.map(value => ({ name: value, label: value, value })),
                             })),
                             ...(optionalSend ? [{ name: "send", description: "Send the result to this chat", type: ApplicationCommandOptionType.BOOLEAN }] : []),
@@ -142,6 +143,15 @@ export function CxSettings() {
                                 inputs: Object.fromEntries(inputs.map(input => [input.name, findOption(args, input.name)])),
                                 sendRequested: optionalSend && findOption<boolean>(args, "send") === true,
                                 reply: message => { if (context.channel?.id) sendBotMessage(context.channel.id, { content: message }); },
+                                lookup(name, input) {
+                                    if (name !== "roleMembers") return formatCxSpotify(name, input, SpotifyStore?.getTrack?.());
+                                    const guild = context.guild?.id ?? context.channel?.guild_id;
+                                    return formatCxRoleMembers(input, guild, guild ? GuildMemberStore?.getMembers(guild) ?? [] : [],
+                                        id => UserStore?.getUser(id));
+                                },
+                                markServersRead: () => markCxServersRead({
+                                    guilds: GuildStore, channels: GuildChannelStore, threads: ActiveJoinedThreadsStore, read: ReadStateStore,
+                                }, channels => { FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels }); }),
                             });
                             if (outgoing !== undefined) return { content: outgoing };
                         },

@@ -313,6 +313,48 @@ function compileMobileFilter(name, file, plugin, source) {
     };
 }
 
+function compileMobileClientCommands(file, plugin, source) {
+    if (!/^ios\/runtime\/src\/core\/plugins\/(?:inrole|readallnotifications|spotifysharecommands)\/index\.ts$/.test(file)
+        || !fieldsAre(plugin, ["manifest", "start", "stop"])
+        || !imported(source, "registerCommand", "@lib/api/commands")) return;
+    const start = handler(plugin, "start");
+    if (!start || !ts.isBlock(start.body) || start.body.statements.length !== 1) return;
+    const code = printed(start.body, source);
+    const startStatement = start.body.statements[0];
+    if (!ts.isExpressionStatement(startStatement) || !ts.isBinaryExpression(startStatement.expression)
+        || startStatement.expression.operatorToken.kind !== ts.SyntaxKind.EqualsToken) return;
+    const call = startStatement.expression.right;
+    if (!ts.isCallExpression(call)) return;
+    let permissions, lines;
+    if (identifier(call.expression) === "registerCommand" && call.arguments.length === 1 && ts.isAsExpression(call.arguments[0])) {
+        const command = call.arguments[0].expression;
+        const name = literal(value(command, "name"));
+        if (!fieldsAre(command, ["name", "description", "options", "execute"])) return;
+        if (name === "inrole" && code.includes('findByStoreName("GuildMemberStore")') && code.includes("ApplicationCommandOptionType.ROLE")) {
+            permissions = ["guild.members", "reply.local"];
+            lines = ['  on command "inrole":', '    input "role" role', '    reply "${roleMembers(role)}"'];
+        } else if (name === "readall" && code.includes("unreadChannels()") && code.includes('type: "BULK_ACK"')) {
+            permissions = ["servers.markread", "reply.local"];
+            lines = ['  on command "readall":', "    mark servers read"];
+        }
+    } else if (/unregisters = COMMANDS\.map\(command => registerCommand\(\{ \.\.\.command, options: \[\] \} as any\)\);/.test(code)) {
+        const commands = source.statements.filter(ts.isVariableStatement)
+            .flatMap(statement => [...statement.declarationList.declarations])
+            .find(declaration => identifier(declaration.name) === "COMMANDS")?.initializer;
+        const names = commands && ts.isArrayLiteralExpression(commands) && commands.elements.map(item =>
+            fieldsAre(item, ["name", "description", "execute"]) && literal(value(item, "name")));
+        if (Array.isArray(names) && names.join(",") === "track,album,artist") {
+            permissions = ["spotify.activity", "messages.send", "reply.local"];
+            lines = names.flatMap(name => {
+                const expression = "spotify" + name[0].toUpperCase() + name.slice(1) + "(message)";
+                return ["  on command " + JSON.stringify(name) + ":", '    input "message" text optional',
+                    '    send "${' + expression + '}" else "No Spotify ' + name + ' to share."'];
+            });
+        }
+    }
+    if (lines) return { capability: "client-command", lines: ["  needs commands.register", ...permissions.map(permission => "  needs " + permission), ...lines] };
+}
+
 function inspectPlugin(file, code, platform, appearance = {}) {
     if (platform === "betterdiscord") return inspectBetterDiscord(file, code, appearance);
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
@@ -373,7 +415,7 @@ function inspectPlugin(file, code, platform, appearance = {}) {
     const supported = platform === "desktop" && factory === "definePlugin" && imported(source, "definePlugin", "@utils/types")
         && allowedDeclarations && simpleDependencies && !source.parseDiagnostics.length && hasLicense && safeText(name) && name.length <= 64;
     const compiled = platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
-        ? compileMobileFilter(name, file, plugin, source)
+        ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
         : supported && (compileCommands(plugin, source) || compileOutgoing(plugin));
     return {
         name, file, platform, flags, hooks: inventoryHooks(source),
@@ -434,7 +476,7 @@ function scan(sourceDir) {
         const already = existing.has(key);
         const status = already ? "in-catalog"
             : !cx ? "needs-adapter"
-                : record.platform === "mobile" && record.capability === "incoming-filter" ? "ready"
+                : record.platform === "mobile" && ["incoming-filter", "client-command"].includes(record.capability) ? "ready"
                     : variants.get(key).some(variant => variant.platform === "mobile") ? "compare-mobile"
                     : variants.get(key).length > 1 ? "compare-sources"
                         : "ready";

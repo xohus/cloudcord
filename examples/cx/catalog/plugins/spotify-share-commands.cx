@@ -1,0 +1,14 @@
+plugin "SpotifyShareCommands":
+  needs commands.register
+  needs spotify.activity
+  needs messages.send
+  needs reply.local
+  on command "track":
+    input "message" text optional
+    send "${spotifyTrack(message)}" else "No Spotify track to share."
+  on command "album":
+    input "message" text optional
+    send "${spotifyAlbum(message)}" else "No Spotify album to share."
+  on command "artist":
+    input "message" text optional
+    send "${spotifyArtist(message)}" else "No Spotify artist to share."
