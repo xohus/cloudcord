@@ -36756,16 +36756,29 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       always = match[1] === "always";
       input = match[2] ?? "";
     }
-    var values = input.split(kind === "keywords" ? /,/ : /[\s,]+/).map((value) => value.trim()).filter(Boolean);
+    var textual = kind === "keywords" || kind === "hide-keywords";
+    var values = [
+      ...new Set(input.split(textual ? /,/ : /[\s,]+/).map((value) => value.trim()).filter(Boolean))
+    ];
     if (values.length > 24)
       throw new Error("Too many incoming rule values");
-    if (kind !== "keywords" && !(kind === "stickers" && input === "*") && values.some((value) => !/^\d{17,20}$/.test(value)))
+    if (kind === "hide-blocked") {
+      if (!values.length || values.some((value) => value !== "blocked" && value !== "ignored"))
+        throw new Error("Choose blocked, ignored, or both");
+    } else if (!textual && !(kind === "stickers" && input === "*") && values.some((value) => !/^\d{17,20}$/.test(value))) {
       throw new Error("Incoming rules need Discord IDs");
+    }
+    if (kind === "hide-keywords" && values.length) {
+      var phrases = values.map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      return {
+        kind,
+        values,
+        matcher: new RegExp("\\b(?:" + phrases.join("|") + ")\\b", "i")
+      };
+    }
     return {
       kind,
-      values: [
-        ...new Set(values)
-      ],
+      values,
       always
     };
   }
@@ -36785,6 +36798,47 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   }
   function applyIncomingRule(rule, payload, context) {
     var { type, message } = payload;
+    if (rule.kind === "hide-users" || rule.kind === "hide-keywords" || rule.kind === "hide-blocked") {
+      if (!rule.values.length || payload.optimistic)
+        return;
+      if (type !== "MESSAGE_CREATE" && type !== "MESSAGE_UPDATE" && type !== "LOAD_MESSAGES_SUCCESS")
+        return;
+      var me = context.currentUser();
+      if (!me)
+        return;
+      var hide = (item) => {
+        if (!item)
+          return false;
+        var channel2 = item.channel_id ?? item.channelId ?? payload.channelId ?? payload.channel_id;
+        var user = item.author?.id ?? (type === "MESSAGE_UPDATE" && typeof channel2 === "string" && typeof item.id === "string" ? context.replyAuthor(channel2, item.id)?.id : void 0);
+        if (typeof user !== "string" || user === me)
+          return false;
+        if (rule.kind === "hide-users")
+          return rule.values.includes(user);
+        if (rule.kind === "hide-blocked")
+          return rule.values.includes("blocked") && context.blocked?.(user) === true || rule.values.includes("ignored") && context.ignored?.(user) === true;
+        var fields = [
+          item.content
+        ];
+        if (Array.isArray(item.embeds))
+          for (var embed of item.embeds.slice(0, 10)) {
+            fields.push(embed?.title ?? embed?.rawTitle, embed?.description ?? embed?.rawDescription);
+          }
+        return fields.some((field) => typeof field === "string" && rule.matcher?.test(field.slice(0, 4e3)));
+      };
+      if (type === "LOAD_MESSAGES_SUCCESS") {
+        if (!Array.isArray(payload.messages))
+          return;
+        var messages = payload.messages.filter((item) => !hide(item));
+        if (messages.length !== payload.messages.length)
+          return {
+            messages
+          };
+      } else if (hide(message)) {
+        return false;
+      }
+      return;
+    }
     if (rule.kind === "stickers") {
       if (type === "MESSAGE_CREATE" || type === "MESSAGE_UPDATE") {
         var next = stripStickers(message, rule);
@@ -36793,10 +36847,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         } : void 0;
       }
       if (type === "LOAD_MESSAGES_SUCCESS" && Array.isArray(payload.messages)) {
-        var messages = payload.messages.map((item) => stripStickers(item, rule));
-        if (messages.some((item, index) => item !== payload.messages[index]))
+        var messages1 = payload.messages.map((item) => stripStickers(item, rule));
+        if (messages1.some((item, index) => item !== payload.messages[index]))
           return {
-            messages
+            messages: messages1
           };
       }
       return;
@@ -36804,8 +36858,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     if (rule.kind === "calls") {
       if (type !== "CALL_CREATE" && type !== "CALL_UPDATE" || !Array.isArray(payload.ringing) || !rule.values.length)
         return;
-      var me = context.currentUser();
-      if (!me || !payload.ringing.includes(me))
+      var me1 = context.currentUser();
+      if (!me1 || !payload.ringing.includes(me1))
         return;
       var id = payload.channelId ?? payload.channel_id;
       if (typeof id !== "string")
@@ -36814,18 +36868,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var peer = recipients?.length === 1 ? recipients[0] : void 0;
       if (rule.values.includes(id) || rule.values.includes(typeof peer === "string" ? peer : peer?.id ?? ""))
         return {
-          ringing: payload.ringing.filter((user) => user !== me)
+          ringing: payload.ringing.filter((user) => user !== me1)
         };
       return;
     }
     if (type !== "MESSAGE_CREATE" || payload.optimistic || typeof message?.author?.id !== "string")
       return;
-    var me1 = context.currentUser();
+    var me2 = context.currentUser();
     var author = message.author.id;
-    if (!me1 || author === me1)
+    if (!me2 || author === me2)
       return;
     var mentions = Array.isArray(message.mentions) ? message.mentions : [];
-    var isMe = (mention) => (typeof mention === "string" ? mention : mention?.id) === me1;
+    var isMe = (mention) => (typeof mention === "string" ? mention : mention?.id) === me2;
     if (rule.kind === "silence-users") {
       if (rule.values.includes(author)) {
         return {
@@ -36844,7 +36898,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var channelId = ref?.channel_id ?? ref?.channelId ?? message.channel_id;
       var messageId = ref?.message_id ?? ref?.messageId;
       var replyAuthor = (message.referenced_message ?? message.referencedMessage)?.author ?? (typeof channelId === "string" && typeof messageId === "string" ? context.replyAuthor(channelId, messageId) : void 0);
-      if (replyAuthor?.id !== me1)
+      if (replyAuthor?.id !== me2)
         return;
       var shouldPing = rule.always !== rule.values.includes(author);
       if (shouldPing === mentions.some(isMe))
@@ -36879,7 +36933,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "reply-pings": "replies.controlping",
         calls: "calls.suppressring",
         keywords: "messages.watchlocal",
-        users: "messages.watchlocal"
+        users: "messages.watchlocal",
+        "hide-users": "messages.filterlocal",
+        "hide-keywords": "messages.filterlocal",
+        "hide-blocked": "messages.filterlocal"
       };
     }
   });
@@ -37618,7 +37675,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
         "Hide all stickers"
       ] : !rule.values.length && rule.kind !== "reply-pings" ? [
-        "Edit the source to enter " + (rule.kind === "keywords" ? "keywords" : "Discord IDs")
+        "Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")
       ] : [])),
       commands: document.commands.map((command) => "/" + command.name)
     };
@@ -37774,6 +37831,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         ...payload,
         ...patch
       } : payload, context);
+      if (result === false)
+        return false;
       if (result)
         patch = {
           ...patch,
@@ -37848,7 +37907,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.silencementions": "Mute mentions from the listed senders on this device",
         "replies.controlping": "Choose whether incoming replies ping you on this device",
         "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
-        "messages.watchlocal": "Match incoming messages on this device and show local notifications"
+        "messages.watchlocal": "Match incoming messages on this device and show local notifications",
+        "messages.filterlocal": "Hide matching incoming messages and history on this device"
       };
       leetCharacters = {
         a: "4",
@@ -37940,6 +38000,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/block-keywords.cx
+  var block_keywords_default;
+  var init_block_keywords = __esm({
+    "../examples/cx/catalog/plugins/block-keywords.cx"() {
+      block_keywords_default = 'plugin "BlockKeywords":\n  needs messages.filterlocal\n  on incoming hide-keywords ""\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/bold-text.cx
   var bold_text_default;
   var init_bold_text = __esm({
@@ -37969,6 +38037,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_clear_urls = __esm({
     "../examples/cx/catalog/plugins/clear-urls.cx"() {
       clear_urls_default = 'plugin "ClearURLs":\n  needs messages.transform\n  needs messages.edit.transform\n  before send clearTrackingLinks\n  before edit clearTrackingLinks\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/client-side-block.cx
+  var client_side_block_default;
+  var init_client_side_block = __esm({
+    "../examples/cx/catalog/plugins/client-side-block.cx"() {
+      client_side_block_default = 'plugin "ClientSideBlock":\n  needs messages.filterlocal\n  on incoming hide-users ""\n';
     }
   });
 
@@ -38265,6 +38341,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_more_commands = __esm({
     "../examples/cx/catalog/plugins/more-commands.cx"() {
       more_commands_default = 'plugin "MoreCommands":\n  needs commands.register\n  needs messages.send\n  needs reply.local\n  on command "choose":\n    input "choices" text\n    send "${choose(choices)}" else "Give me some choices, separated by commas."\n  on command "flipcoin":\n    send one of ["Heads", "Tails"]\n  on command "rolldice":\n    input "sides" integer optional\n    send "${roll(sides)}" else "Enter a positive number of sides."\n  on command "randomnumber":\n    input "min" integer\n    input "max" integer\n    send "${randomNumber(min, max)}" else "Enter a smaller range."\n  on command "wordcount" with text:\n    reply "${wordCount(text)}"\n  on command "transform" with text:\n    input "style" choice "upper,lower,reverse,locale-upper,locale-lower,same"\n    input "repeat" integer optional\n    input "reverse" boolean optional\n    input "normalize" choice "NFC,NFD,NFKC,NFKD" optional\n    send "${transform(text, style, repeat, reverse, normalize)}" else "Use a positive repeat count and keep the result under 4,001 characters."\n  on command "ask" with text:\n    send "${ask(text)}"\n  on command "gettime":\n    send "${currentTime()}"\n  on command "echo":\n    input "message" text optional\n    reply "${message}"\n  on command "lenny":\n    input "message" text optional\n    send "${message} ( \u0361\xB0 \u035C\u0296 \u0361\xB0)"\n  on command "mock" with text:\n    send "${mock(text)}"\n  on command "morse" with text:\n    send "${morse(text)}"\n  on command "dissatisfaction":\n    input "message" text optional\n    send "${message}  \uFF1E\uFE4F\uFF1C"\n  on command "smug":\n    input "message" text optional\n    send "${message} \u0CA0_\u0CA0"\n  on command "happy":\n    input "message" text optional\n    send "${message} \u30FD(\xB4\u25BD`)/"\n  on command "crying":\n    input "message" text optional\n    send "${message} \u0CA5_\u0CA5"\n  on command "angry":\n    input "message" text optional\n    send "${message} \u30FD(\uFF40\u0414\xB4)\uFF89"\n  on command "anger":\n    input "message" text optional\n    send "${message} \u30FD(\uFF4F`\u76BF\u2032\uFF4F)\uFF89"\n  on command "joy":\n    input "message" text optional\n    send "${message} <(\uFFE3\uFE36\uFFE3)>"\n  on command "blush":\n    input "message" text optional\n    send "${message} \u0AEE \u02F6\u1D54 \u1D55 \u1D54\u02F6 \u10D0"\n  on command "confused":\n    input "message" text optional\n    send "${message} (\u2022\u0E34_\u2022\u0E34)?"\n  on command "sleeping":\n    input "message" text optional\n    send "${message} (\u1D17_\u1D17)"\n  on command "laughing":\n    input "message" text optional\n    send "${message} o(\u2267\u25BD\u2266)o"\n  on command "giving":\n    input "message" text optional\n    send "${message} (\uFF89\u25D5\u30EE\u25D5)\uFF89*:\uFF65\uFF9F\u2727"\n  on command "peace":\n    input "message" text optional\n    send "${message} \u270C(\u25D5\u203F-)\u270C"\n  on command "ending1":\n    input "message" text optional\n    send "${message} \u13EA \u08EA\u05B8 \u06F0 \u0359\u22B9"\n  on command "uwu":\n    input "message" text optional\n    send "${message} (>\u2A4A<)"\n  on command "comfy":\n    input "message" text optional\n    send "${message} (\u2500\u203F\u203F\u2500)\u2661"\n  on command "lovehappy":\n    input "message" text optional\n    send "${message} (*\u2267\u03C9\u2266*)"\n  on command "loveee":\n    input "message" text optional\n    send "${message} (\u2044 \u2044>\u2044 \u25BD \u2044<\u2044 \u2044)"\n  on command "give":\n    input "message" text optional\n    send "${message} (\u30CE= \u2A4A = )\u30CE"\n  on command "lovegive":\n    input "message" text optional\n    send "${message} \u10E6\u309D\u25E1\u2579)\u30CE\u2661"\n  on command "music":\n    input "message" text optional\n    send "${message} (\uFFE3\u25BD\uFFE3)/\u266B\u2022\xA8\u2022.\xB8\xB8\u266A"\n  on command "stars":\n    input "message" text optional\n    send "${message} .\u{16954} \u0741 \u02D6\u0E4B \u08ED \u2B51"\n  on command "lovegiving":\n    input "message" text optional\n    send "${message} \u2E1C(\uFF61\u02C3 \u1D55 \u02C2 )\u2E1D\u2661"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/no-blocked-messages.cx
+  var no_blocked_messages_default;
+  var init_no_blocked_messages = __esm({
+    "../examples/cx/catalog/plugins/no-blocked-messages.cx"() {
+      no_blocked_messages_default = 'plugin "NoBlockedMessages":\n  needs messages.filterlocal\n  on incoming hide-blocked "blocked,ignored"\n';
     }
   });
 
@@ -39240,10 +39324,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_auto_vaporwave();
       init_avatar_grabber();
       init_bigger_code_blocks();
+      init_block_keywords();
       init_bold_text();
       init_calculator();
       init_clap_text();
       init_clear_urls();
+      init_client_side_block();
       init_cloud_cord_accent();
       init_copy_profile_colors();
       init_copy_user_mention();
@@ -39281,6 +39367,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_leet_text();
       init_message_notifier();
       init_more_commands();
+      init_no_blocked_messages();
       init_no_reply_mention();
       init_normalize_message_links();
       init_polish_wording();
@@ -39424,6 +39511,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: bigger_code_blocks_default
           },
           {
+            name: "BlockKeywords",
+            source: block_keywords_default
+          },
+          {
             name: "BoldText",
             source: bold_text_default
           },
@@ -39438,6 +39529,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "ClearURLs",
             source: clear_urls_default
+          },
+          {
+            name: "ClientSideBlock",
+            source: client_side_block_default
           },
           {
             name: "CloudCordAccent",
@@ -39586,6 +39681,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "MoreCommands",
             source: more_commands_default
+          },
+          {
+            name: "NoBlockedMessages",
+            source: no_blocked_messages_default
           },
           {
             name: "NoReplyMention",
@@ -40254,6 +40353,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               currentUser: () => UserStore2?.getCurrentUser?.()?.id,
               channel: (id) => ChannelStore?.getChannel?.(id),
               replyAuthor: (channel, id) => MessageStore?.getMessage?.(channel, id)?.author,
+              blocked: (id) => RelationshipStore?.isBlocked?.(id) === true,
+              ignored: (id) => RelationshipStore?.isIgnored?.(id) === true,
               notify: (body) => setTimeout(() => {
                 if (active && !settings.safeMode?.enabled)
                   showToast(body);
@@ -40614,7 +40715,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, UserProfileStore, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -40643,6 +40744,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       UserStore2 = findByStoreNameLazy("UserStore");
       ChannelStore = findByStoreNameLazy("ChannelStore");
       MessageStore = findByStoreNameLazy("MessageStore");
+      RelationshipStore = findByStoreNameLazy("RelationshipStore");
       UserProfileStore = findByStoreNameLazy("UserProfileStore");
       profileMenuActions = /* @__PURE__ */ new Set();
     }
@@ -45281,7 +45383,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "6db05e65e2eaf52ff4bd3a73e3988b71ec183b07";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "ee3e5a3706ba71af2fb738c0ee094e6dd87b35cd";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
