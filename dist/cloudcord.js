@@ -36106,6 +36106,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     }
     return /* @__PURE__ */ jsx(import_react_native39.ScrollView, {
+      keyboardShouldPersistTaps: "handled",
       contentContainerStyle: {
         padding: 16
       },
@@ -40831,7 +40832,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "61f75b97d95b4ee04df5bb6aec8bf4a8a989ddba";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "268b1ee9b59099dccd96853ba82773c26d960a68";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
