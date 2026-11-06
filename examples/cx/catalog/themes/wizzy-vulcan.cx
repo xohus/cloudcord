@@ -1,0 +1,59 @@
+theme "Vulcan":
+  mode: dark
+  background: #1f1f1f
+  surface: #1f1f1f
+  sidebar: #1f1f1f
+  text: #ffffff
+  muted: #d5787b
+  accent: #d5787b
+  semantic BACKGROUND_ACCENT: #d5787b
+  semantic BACKGROUND_FLOATING: #1f1f1f
+  semantic BACKGROUND_MENTIONED: #1f1f1f
+  semantic BACKGROUND_MOBILE_PRIMARY: #1f1f1f
+  semantic BACKGROUND_MOBILE_SECONDARY: #1f1f1f
+  semantic BACKGROUND_MODIFIER_ACCENT: #1f1f1f
+  semantic BACKGROUND_MODIFIER_ACTIVE: #1f1f1f
+  semantic BACKGROUND_MODIFIER_SELECTED: #d5787b
+  semantic BACKGROUND_NESTED_FLOATING: #1f1f1f
+  semantic BACKGROUND_PRIMARY: #1f1f1f
+  semantic BACKGROUND_SECONDARY: #1f1f1f
+  semantic BACKGROUND_SECONDARY_ALT: #1f1f1f
+  semantic BACKGROUND_TERTIARY: #1f1f1f
+  semantic CHANNELS_DEFAULT: #cfcfcf
+  semantic CHANNELTEXTAREA_BACKGROUND: #1f1f1f
+  semantic CHANNEL_ICON: #ffffff
+  semantic CHANNEL_TEXT_AREA_PLACEHOLDER: #999999
+  semantic CHAT_BACKGROUND: #1f1f1f
+  semantic HEADER_PRIMARY: #ffffff
+  semantic HEADER_SECONDARY: #d5787b
+  semantic INTERACTIVE_ACTIVE: #ffffff
+  semantic INTERACTIVE_MUTED: #545454
+  semantic INTERACTIVE_NORMAL: #ffffff
+  semantic SPOILER_HIDDEN_BACKGROUND: #1f1f1f
+  semantic SPOILER_REVEALED_BACKGROUND: #00000000
+  semantic TEXT_DANGER: #d5787b
+  semantic TEXT_LINK: #d5787b
+  semantic TEXT_MUTED: #d5787b
+  semantic TEXT_NORMAL: #ffffff
+  raw BLUE_345: #d5787b
+  raw BRAND_260: #d5787b
+  raw BRAND_360: #d5787b
+  raw BRAND_500: #d5787b
+  raw BRAND_560: #ffffff
+  raw GREEN_345: #d5787b
+  raw GREEN_360: #d5787b
+  raw ORANGE_345: #d5787b
+  raw PRIMARY_100: #ffffff
+  raw PRIMARY_200: #ffffff
+  raw PRIMARY_300: #ffffff
+  raw PRIMARY_360: #d5787b
+  raw PRIMARY_500: #d5787b
+  raw PRIMARY_600: #1f1f1f
+  raw PRIMARY_630: #1f1f1f
+  raw PRIMARY_660: #1f1f1f
+  raw PRIMARY_700: #1f1f1f
+  raw PRIMARY_800: #1f1f1f
+  raw RED_400: #d5787b
+  raw RED_560: #d5787b
+  raw WHITE_500: #ffffff
+  raw YELLOW_300: #d5787b

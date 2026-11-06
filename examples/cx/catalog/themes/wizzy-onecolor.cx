@@ -1,0 +1,59 @@
+theme "OneColor":
+  mode: dark
+  background: #1a1c1b
+  surface: #1a1c1b
+  sidebar: #1a1c1b
+  text: #ffffff
+  muted: #95d2b0
+  accent: #95d2b0
+  semantic BACKGROUND_ACCENT: #95d2b0
+  semantic BACKGROUND_FLOATING: #1a1c1b
+  semantic BACKGROUND_MENTIONED: #1a1c1b
+  semantic BACKGROUND_MOBILE_PRIMARY: #1a1c1b
+  semantic BACKGROUND_MOBILE_SECONDARY: #1a1c1b
+  semantic BACKGROUND_MODIFIER_ACCENT: #1a1c1b
+  semantic BACKGROUND_MODIFIER_ACTIVE: #1a1c1b
+  semantic BACKGROUND_MODIFIER_SELECTED: #95d2b0
+  semantic BACKGROUND_NESTED_FLOATING: #1a1c1b
+  semantic BACKGROUND_PRIMARY: #1a1c1b
+  semantic BACKGROUND_SECONDARY: #1a1c1b
+  semantic BACKGROUND_SECONDARY_ALT: #1a1c1b
+  semantic BACKGROUND_TERTIARY: #1a1c1b
+  semantic CHANNELS_DEFAULT: #999999
+  semantic CHANNELTEXTAREA_BACKGROUND: #1a1c1b
+  semantic CHANNEL_ICON: #ffffff
+  semantic CHANNEL_TEXT_AREA_PLACEHOLDER: #999999
+  semantic CHAT_BACKGROUND: #1a1c1b
+  semantic HEADER_PRIMARY: #ffffff
+  semantic HEADER_SECONDARY: #95d2b0
+  semantic INTERACTIVE_ACTIVE: #ffffff
+  semantic INTERACTIVE_MUTED: #95d2b0
+  semantic INTERACTIVE_NORMAL: #ffffff
+  semantic SPOILER_HIDDEN_BACKGROUND: #1a1c1b
+  semantic SPOILER_REVEALED_BACKGROUND: #00000000
+  semantic TEXT_DANGER: #95d2b0
+  semantic TEXT_LINK: #95d2b0
+  semantic TEXT_MUTED: #95d2b0
+  semantic TEXT_NORMAL: #ffffff
+  raw BLUE_345: #95d2b0
+  raw BRAND_260: #95d2b0
+  raw BRAND_360: #95d2b0
+  raw BRAND_500: #95d2b0
+  raw BRAND_560: #ffffff
+  raw GREEN_345: #95d2b0
+  raw GREEN_360: #95d2b0
+  raw ORANGE_345: #95d2b0
+  raw PRIMARY_100: #ffffff
+  raw PRIMARY_200: #ffffff
+  raw PRIMARY_300: #ffffff
+  raw PRIMARY_360: #95d2b0
+  raw PRIMARY_500: #95d2b0
+  raw PRIMARY_600: #1a1c1b
+  raw PRIMARY_630: #1a1c1b
+  raw PRIMARY_660: #1a1c1b
+  raw PRIMARY_700: #1a1c1b
+  raw PRIMARY_800: #1a1c1b
+  raw RED_400: #95d2b0
+  raw RED_560: #95d2b0
+  raw WHITE_500: #ffffff
+  raw YELLOW_300: #95d2b0

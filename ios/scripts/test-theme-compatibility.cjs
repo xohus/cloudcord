@@ -116,10 +116,11 @@ for (const component of [{render: () => root}, function MessagesConnected() {}])
   const undo = patch();
   const wrapped = component.render ? component.render() : androidRenderer(null, surface);
   assert.equal(render(wrapped)[0], undefined);
-  updater.updateBunnyColor({...ref.current, background: {url: wallpaper, opacity: 0.75}}, {update: false});
+  updater.updateBunnyColor({...ref.current, background: {url: wallpaper, opacity: 0.75, blur: 0.6}}, {update: false});
   const [image, content] = render(wrapped);
   assert.equal(image.props.pointerEvents, 'none');
   assert.equal(image.props.children.props.source.uri, wallpaper);
+  assert.equal(image.props.children.props.blurRadius, 0.6);
   const tinted = component.render ? content.props.children.props.children[1] : content.props.children;
   assert.equal(tinted.props.style[1].backgroundColor, '0.25');
   assert.equal(surface.props.style.backgroundColor, '#202020');

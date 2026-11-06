@@ -73,6 +73,7 @@ export type CxTheme = {
     accent?: string;
     wallpaper?: string;
     wallpaperOpacity?: number;
+    wallpaperBlur?: number;
     semanticColors?: Record<string, string>;
     rawColors?: Record<string, string>;
 };
@@ -122,7 +123,7 @@ export function parseCx(source: string): CxDocument {
                 colors[name] = color;
                 continue;
             }
-            const field = /^  (mode|background|surface|sidebar|text|muted|accent|wallpaper|wallpaper-opacity): (.+)$/.exec(line);
+            const field = /^  (mode|background|surface|sidebar|text|muted|accent|wallpaper|wallpaper-opacity|wallpaper-blur): (.+)$/.exec(line);
             if (!field || seen.has(field[1])) throw new Error("Unknown or duplicate theme field");
             const [, key, value] = field;
             seen.add(key);
@@ -138,6 +139,10 @@ export function parseCx(source: string): CxDocument {
             } else if (key === "wallpaper-opacity") {
                 if (!/^(?:100|[1-9]?[0-9])$/.test(value)) throw new Error("Wallpaper opacity must be an integer from 0 to 100");
                 theme.wallpaperOpacity = Number(value) / 100;
+            } else if (key === "wallpaper-blur") {
+                if (!/^(?:0|[1-9]\d?)(?:\.\d{1,2})?$/.test(value) || Number(value) > 32)
+                    throw new Error("Wallpaper blur must be from 0 to 32 pixels");
+                theme.wallpaperBlur = Number(value);
             } else {
                 if (!/^#[0-9a-f]{6}$/i.test(value)) throw new Error("Use a six-digit hex color");
                 theme[key as "background" | "surface" | "sidebar" | "text" | "muted" | "accent"] = value;
@@ -145,6 +150,7 @@ export function parseCx(source: string): CxDocument {
         }
         if (!theme.background) throw new Error("A theme needs a background color");
         if (theme.wallpaperOpacity !== undefined && !theme.wallpaper) throw new Error("Wallpaper opacity requires an embedded wallpaper");
+        if (theme.wallpaperBlur !== undefined && !theme.wallpaper) throw new Error("Wallpaper blur requires an embedded wallpaper");
         return theme;
     }
 

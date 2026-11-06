@@ -91,6 +91,8 @@ assert.throws(() => parseCx(theme + '\n  semantic TEXT_PRIMARY: #123456\n  seman
 const png = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPZ0AAAAASUVORK5CYII=";
 assert.equal(parseCx(theme + '\n  wallpaper: "' + png + '"').wallpaper, png);
 assert.throws(() => parseCx(theme + '\n  wallpaper-opacity: 75'), /embedded wallpaper/);
+assert.throws(() => parseCx(theme + '\n  wallpaper-blur: 0.6'), /embedded wallpaper/);
+assert.throws(() => parseCx(theme + '\n  wallpaper: "' + png + '"\n  wallpaper-blur: 32.01'), /0 to 32/);
 assert.throws(() => parseCx(theme + '\n  wallpaper: "' + png + '"\n  wallpaper-opacity: 101'), /0 to 100/);
 const mobileEvents = { exports: {} };
 const edited = [];
@@ -595,6 +597,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(nativeTheme.background.alpha, 1);
         }
         click(render(), "Disable Rosé Pine");
+        selectCatalog("Purple Mountains");
+        click(render(), "Allow for this session");
+        if (desktop) assert.match(stylesheet.textContent, /filter: blur\(0\.6px\)/);
+        else assert.equal(nativeTheme.background.blur, 0.6);
+        click(render(), "Disable Purple Mountains");
         selectCatalog("Midnight - Light");
         click(render(), "Allow for this session");
         if (desktop) assert.match(stylesheet.textContent, /color-scheme: light/);
@@ -631,11 +638,12 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
     const portableVendetta = parseCx(migrateCxVendetta({
         ...vendetta, rawColors: { BRAND_500: "#abc" }, semanticColors: {
             ...vendetta.semanticColors, SCROLLBAR_THIN_TRACK: ["transparent"],
-        }, background: { url: "https://example.com/bg.png", alpha: 5 },
+        }, background: { url: "https://example.com/bg.png", alpha: 5, blur: 0.6 },
     }, "dark", "Local Wallpaper", png));
     assert.equal(portableVendetta.accent, "#aabbcc");
     assert.equal(portableVendetta.semanticColors.SCROLLBAR_THIN_TRACK, "#00000000");
     assert.equal(portableVendetta.wallpaper, png);
     assert.equal(portableVendetta.wallpaperOpacity, 1);
+    assert.equal(portableVendetta.wallpaperBlur, 0.6);
     console.log(`PASS shared CX catalog with ${cxCatalog.plugins.length} plugins and ${cxCatalog.themes.length} themes, permission approval, both command adapters and strict palette migration`);
 })().catch(error => { console.error(error); process.exitCode = 1; });

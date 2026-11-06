@@ -11,13 +11,15 @@ export function migrateCxVendetta(manifest, mode, name = manifest?.name, wallpap
     if (typeof name !== "string" || !name.trim() || name.length > 64 || /[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/u.test(name))
         throw new Error("Enter a theme name between 1 and 64 characters");
     if (manifest?.spec !== 2) throw new Error("This converter accepts spec 2 color themes");
-    if (manifest.background && !wallpaper) throw new Error("Convert wallpaper themes with an explicit local image, or use a source without wallpapers");
-    if (wallpaper && (!manifest.background || wallpaper.length > 384 * 1024
+    if (manifest.background?.url && !wallpaper) throw new Error("Convert wallpaper themes with an explicit local image, or use a source without wallpapers");
+    if (wallpaper && (!manifest.background?.url || wallpaper.length > 384 * 1024
         || !/^data:image\/(?:png;base64,iVBORw0KGgo|jpeg;base64,\/9j\/)[A-Za-z0-9+/]+={0,2}$/.test(wallpaper)
         || wallpaper.slice(wallpaper.indexOf(",") + 1).length % 4 !== 0))
         throw new Error("Expected an embedded PNG or JPEG for the theme wallpaper");
     const opacity = manifest.background?.alpha;
     if (wallpaper && opacity !== undefined && !Number.isFinite(opacity)) throw new Error("Invalid wallpaper opacity");
+    const blur = manifest.background?.blur;
+    if (wallpaper && blur !== undefined && (!Number.isFinite(blur) || blur < 0 || blur > 32)) throw new Error("Invalid wallpaper blur");
     const { semanticColors = {}, rawColors } = manifest;
     const semantic = tokenEntries(semanticColors, (colors, token) => {
         if (!Array.isArray(colors) || !colors.length || colors.length > 3 || colors.some(color => !normalizeColor(color)))
@@ -25,13 +27,14 @@ export function migrateCxVendetta(manifest, mode, name = manifest?.name, wallpap
         return colors[mode === "light" ? 1 : 0] ?? colors[0];
     });
     const raw = tokenEntries(rawColors, color => color);
+    const accents = [rawColors?.BRAND_500, semanticColors.TEXT_LINK?.[0]];
     const palette = {
         background: semanticColors.BACKGROUND_PRIMARY?.[0],
         surface: semanticColors.BACKGROUND_SECONDARY?.[0],
         sidebar: semanticColors.BACKGROUND_TERTIARY?.[0],
         text: semanticColors.TEXT_NORMAL?.[0],
         muted: semanticColors.TEXT_MUTED?.[0],
-        accent: rawColors?.BRAND_500 ?? semanticColors.TEXT_LINK?.[0],
+        accent: accents.find(color => normalizeColor(color)?.length === 7),
     };
     if (!palette.background) throw new Error("Theme is missing BACKGROUND_PRIMARY");
     return [
@@ -47,6 +50,7 @@ export function migrateCxVendetta(manifest, mode, name = manifest?.name, wallpap
         ...(wallpaper ? [
             '  wallpaper: ' + JSON.stringify(wallpaper),
             '  wallpaper-opacity: ' + Math.round(Math.min(1, Math.max(0, opacity ?? 1)) * 100),
+            ...(blur ? ['  wallpaper-blur: ' + Math.round(blur * 100) / 100] : []),
         ] : []),
     ].join("\n") + "\n";
 }

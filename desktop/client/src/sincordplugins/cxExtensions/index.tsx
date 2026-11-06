@@ -120,6 +120,8 @@ export function CxSettings() {
                     const sidebar = theme.sidebar ?? surface;
                     const shade = Math.round((1 - (theme.wallpaperOpacity ?? 1)) * 255).toString(16).padStart(2, "0");
                     const tint = theme.background + shade;
+                    const wallpaper = `linear-gradient(${tint}, ${tint}), ${theme.background} url("${theme.wallpaper}") center / cover no-repeat`;
+                    const blur = theme.wallpaperBlur ?? 0;
                     const colorTokens = {
                         ...Object.fromEntries(Object.entries(theme.rawColors ?? {}).filter(([key]) =>
                             /^(?:BRAND|PRIMARY|RED|GREEN|BLUE|YELLOW|PLUM|WHITE|BLACK)_[0-9]+$/.test(key))),
@@ -147,8 +149,20 @@ export function CxSettings() {
                         }
                         ${theme.wallpaper ? `
                             [class^="chatContent_"] {
-                                background: linear-gradient(${tint}, ${tint}), ${theme.background} url("${theme.wallpaper}") center / cover no-repeat;
+                                ${blur ? `position: relative; isolation: isolate; background: ${theme.background};` : `background: ${wallpaper};`}
                             }
+                            ${blur ? `
+                                [class^="chatContent_"]::before {
+                                    content: "";
+                                    position: absolute;
+                                    inset: 0;
+                                    pointer-events: none;
+                                    z-index: -1;
+                                    clip-path: inset(0);
+                                    background: ${wallpaper};
+                                    filter: blur(${blur}px);
+                                }
+                            ` : ""}
                             [class^="chatContent_"] [class^="messagesWrapper_"] { background: transparent; }
                         ` : ""}
                     `;
