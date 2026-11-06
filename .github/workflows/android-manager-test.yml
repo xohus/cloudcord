@@ -96,7 +96,7 @@ jobs:
           name: CloudCordManager-instrumentation
           retention-days: 3
           path: android-manager-test/app/build/outputs/apk/androidTest/debug/*.apk
-      - name: Patch and install real Discord on Android 15
+      - name: Patch, install and launch real Discord on Android 15
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 35
@@ -112,7 +112,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: CloudCordManager-pipeline-results
-          path: android-manager-test/pipeline-results/*.txt
+          path: |
+            android-manager-test/pipeline-results/*.txt
+            android-manager-test/pipeline-results/startup-ui.xml
+            android-manager-test/pipeline-results/startup-screen.png
       - name: Upload patch log
         if: always()
         uses: actions/upload-artifact@v4

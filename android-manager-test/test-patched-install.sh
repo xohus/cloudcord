@@ -37,3 +37,23 @@ test "$install_status" = 0
 grep -qx 'Success' pipeline-results/install.txt
 adb install-multiple -r --no-streaming pipeline-results/*.apk 2>&1 | tee pipeline-results/reinstall.txt
 grep -qx 'Success' pipeline-results/reinstall.txt
+
+# Installation success does not prove that the loader or runtime executes.
+# Launch the exact patched package, retaining native logs and the visible screen.
+package="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" pipeline-results/patched-base.apk.package.txt | head -n 1)"
+test -n "$package"
+adb shell am force-stop "$package"
+adb logcat -c
+adb shell monkey -p "$package" -c android.intent.category.LAUNCHER 1 > pipeline-results/launch.txt 2>&1
+for attempt in $(seq 1 20); do
+  sleep 3
+  adb logcat -d > pipeline-results/startup-logcat.txt
+  if grep -q 'CloudCord is ready!' pipeline-results/startup-logcat.txt; then break; fi
+done
+adb shell pidof "$package" > pipeline-results/startup-pid.txt || true
+adb shell uiautomator dump /data/local/tmp/cloudcord-startup.xml || true
+adb pull /data/local/tmp/cloudcord-startup.xml pipeline-results/startup-ui.xml || true
+adb exec-out screencap -p > pipeline-results/startup-screen.png
+test -s pipeline-results/startup-pid.txt
+grep -q 'Running custom scripts' pipeline-results/startup-logcat.txt
+grep -q 'CloudCord is ready!' pipeline-results/startup-logcat.txt
