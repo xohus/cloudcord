@@ -36371,6 +36371,38 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           mobile: [
             "ChannelDetailsTopic"
           ]
+        },
+        "shop-entry": {
+          plugin: "HideShopTab",
+          label: "the Shop entry",
+          css: 'a[href="/shop"], [data-list-item-id$="___shop"] { display: none !important; }',
+          mobile: [
+            "CollectiblesShopEntryButton"
+          ]
+        },
+        "inbox-button": {
+          plugin: "HideInboxButton",
+          label: "the notifications entry",
+          css: '[aria-label="Inbox"] { display: none !important; }',
+          mobile: [
+            "YouBarNotificationsButton"
+          ]
+        },
+        "notification-settings": {
+          plugin: "HideNotificationBell",
+          label: "the channel notification settings shortcut",
+          css: '[aria-label="Notification Settings"] { display: none !important; }',
+          mobile: [
+            "NotificationSettingsButton"
+          ]
+        },
+        "image-alt-text": {
+          plugin: "HideImageAltText",
+          label: "the image description control",
+          css: '[class*="altText"] { display: none !important; }',
+          mobile: [
+            "MediaModalOverlayAltTextButton"
+          ]
         }
       };
     }
@@ -37883,6 +37915,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-image-alt-text.cx
+  var hide_image_alt_text_default;
+  var init_hide_image_alt_text = __esm({
+    "../examples/cx/catalog/plugins/hide-image-alt-text.cx"() {
+      hide_image_alt_text_default = 'plugin "HideImageAltText":\n  needs appearance.hide\n  hide image-alt-text\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-inbox-button.cx
+  var hide_inbox_button_default;
+  var init_hide_inbox_button = __esm({
+    "../examples/cx/catalog/plugins/hide-inbox-button.cx"() {
+      hide_inbox_button_default = 'plugin "HideInboxButton":\n  needs appearance.hide\n  hide inbox-button\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-jump-to-present.cx
   var hide_jump_to_present_default;
   var init_hide_jump_to_present = __esm({
@@ -37904,6 +37952,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_new_messages_bar = __esm({
     "../examples/cx/catalog/plugins/hide-new-messages-bar.cx"() {
       hide_new_messages_bar_default = 'plugin "HideNewMessagesBar":\n  needs appearance.hide\n  hide new-messages-bar\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-notification-bell.cx
+  var hide_notification_bell_default;
+  var init_hide_notification_bell = __esm({
+    "../examples/cx/catalog/plugins/hide-notification-bell.cx"() {
+      hide_notification_bell_default = 'plugin "HideNotificationBell":\n  needs appearance.hide\n  hide notification-settings\n';
     }
   });
 
@@ -37944,6 +38000,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_server_banner = __esm({
     "../examples/cx/catalog/plugins/hide-server-banner.cx"() {
       hide_server_banner_default = 'plugin "HideServerBanner":\n  needs appearance.hide\n  hide server-banner\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-shop-tab.cx
+  var hide_shop_tab_default;
+  var init_hide_shop_tab = __esm({
+    "../examples/cx/catalog/plugins/hide-shop-tab.cx"() {
+      hide_shop_tab_default = 'plugin "HideShopTab":\n  needs appearance.hide\n  hide shop-entry\n';
     }
   });
 
@@ -38999,14 +39063,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_clan_tags();
       init_hide_embeds();
       init_hide_gift_button();
+      init_hide_image_alt_text();
+      init_hide_inbox_button();
       init_hide_jump_to_present();
       init_hide_nameplates();
       init_hide_new_messages_bar();
+      init_hide_notification_bell();
       init_hide_profile_effects();
       init_hide_reactions();
       init_hide_reply_previews();
       init_hide_role_icons();
       init_hide_server_banner();
+      init_hide_shop_tab();
       init_hide_stream_previews();
       init_hide_typing_indicator();
       init_ignore_calls();
@@ -39222,6 +39290,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_gift_button_default
           },
           {
+            name: "HideImageAltText",
+            source: hide_image_alt_text_default
+          },
+          {
+            name: "HideInboxButton",
+            source: hide_inbox_button_default
+          },
+          {
             name: "HideJumpToPresent",
             source: hide_jump_to_present_default
           },
@@ -39232,6 +39308,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideNewMessagesBar",
             source: hide_new_messages_bar_default
+          },
+          {
+            name: "HideNotificationBell",
+            source: hide_notification_bell_default
           },
           {
             name: "HideProfileEffects",
@@ -39252,6 +39332,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideServerBanner",
             source: hide_server_banner_default
+          },
+          {
+            name: "HideShopTab",
+            source: hide_shop_tab_default
           },
           {
             name: "HideStreamPreviews",
@@ -44955,7 +45039,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "e4649efce422a4516c987a0a6ccbc56eaed371a8";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "26b937438c1725eed83d4ee9944aabab50f9f612";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
