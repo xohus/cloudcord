@@ -65,6 +65,27 @@ async function initializeCloudCord() {
         }
 
         await require("@metro/internals/caches").initMetroCache();
+        // Register core navigation before importing the optional runtime graph.
+        // A top-level import failure in fonts/plugins/profile code otherwise
+        // prevents index.ts's supposedly independent settings block from running.
+        const core = (globalThis as any).__CLOUDCORD_CORE_SETTINGS_BOOTSTRAP__ ??= {
+            registered: false, patched: false, errors: [] as string[], unloads: [] as (() => void)[]
+        };
+        if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName !== "RealCord") {
+            for (const [key, load] of [
+                ["registered", () => require("@core/ui/settings").default()],
+                ["patched", () => require("@ui/settings").patchSettings()]
+            ] as const) {
+                if (core[key]) continue;
+                try {
+                    const cleanup = load();
+                    if (typeof cleanup === "function") core.unloads.push(cleanup);
+                    core[key] = true;
+                } catch (error: any) {
+                    core.errors.push(`${key}: ${String(error?.message || error)}`);
+                }
+            }
+        }
         // Rain injects before AppRegistry starts. Optional async work (plugins,
         // theme setup, network updates) must not hold Discord's launch queue.
         // Keep rejection handling without awaiting it before resumeDeferred().

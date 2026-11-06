@@ -97,7 +97,10 @@ export function installRecoveryGesture() {
                     } finally { clearTimeout(deadline); busy = false; }
                 };
                 try {
-                    alert.alert("CloudCord recovery", "Download the latest CloudCord bundle without reinstalling the app. Your account and settings stay in place.", [
+                    const core = root.__CLOUDCORD_CORE_SETTINGS_BOOTSTRAP__;
+                    const revision = String(root.__CLOUDCORD_RUNTIME_REVISION__ ?? "unknown").slice(0, 12);
+                    const settingsState = core?.registered && core?.patched ? "registered" : core?.errors?.length ? "failed to attach" : "not ready";
+                    alert.alert("CloudCord recovery", `Runtime: ${revision}\nSettings: ${settingsState}\n\nDownload the latest CloudCord bundle without reinstalling the app. Your account and settings stay in place.`, [
                         { text: "Cancel", style: "cancel", onPress: () => { menuOpen = false; } },
                         { text: "Download update", onPress: () => { void run(false); } },
                         { text: "Update & restart", onPress: () => { void run(true); } }

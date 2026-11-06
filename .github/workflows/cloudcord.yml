@@ -40,6 +40,7 @@ jobs:
           npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2 spitroast@1.4.4
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-startup-errors.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-recovery-gesture.cjs
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-core-settings-bootstrap.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-startup-legacy-update.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-theme-compatibility.cjs
           CLOUDCORD_ESBUILD=/tmp/cloudcord-theme-tests/node_modules/esbuild node ios/scripts/test-metro-cache-recovery.cjs
@@ -5409,7 +5410,7 @@ jobs:
           // must never prevent the CloudCord section from being installed.
           const cloudCordCoreUnloads: any[] = [];
           try {
-              if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName !== "RealCord") {
+              if ((globalThis as any).__CLOUDCORD_LOADER__?.loaderName !== "RealCord" && !(globalThis as any).__CLOUDCORD_CORE_SETTINGS_BOOTSTRAP__?.registered) {
                   const cleanup = initSettings();
                   if (cleanup) cloudCordCoreUnloads.push(cleanup);
               }
@@ -5417,12 +5418,15 @@ jobs:
               console.error("CloudCord section registration failed", error);
           }
           try {
-              const cleanup = patchSettings();
-              if (cleanup) cloudCordCoreUnloads.push(cleanup);
+              if (!(globalThis as any).__CLOUDCORD_CORE_SETTINGS_BOOTSTRAP__?.patched) {
+                  const cleanup = patchSettings();
+                  if (cleanup) cloudCordCoreUnloads.push(cleanup);
+              }
           } catch (error) {
               console.error("CloudCord settings patch failed", error);
           }
 
+          cloudCordCoreUnloads.push(...((globalThis as any).__CLOUDCORD_CORE_SETTINGS_BOOTSTRAP__?.unloads ?? []));
           // Load everything else in parallel
           await Promise.all([''',
                       1
