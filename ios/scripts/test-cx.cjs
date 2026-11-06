@@ -168,7 +168,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 getGuildMemberProfile: (id, guild) => id === sender && guild === guildId ? { themeColors: [0x123, 0xffffff] } : undefined,
             },
             ChannelStore: { getChannel: () => ({ name: "test", recipients: [sender] }) },
-            MessageStore: { getMessage: () => ({ author: { id: me } }) },
+            MessageStore: { getMessage: (_channel, id) => ({ author: { id: id === "partial" ? sender : me } }) },
+            RelationshipStore: { isBlocked: id => id === sender, isIgnored: id => id === other },
         };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
@@ -427,6 +428,37 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             const next = incomingHooks[0](payload);
             check(next ? { ...payload, ...next } : payload);
             click(render(), "Disable " + name);
+            assert.equal(incomingHooks.length, 0);
+        }
+        for (const [name, configuration, matched, kept] of [
+            ["NoBlockedMessages", null, { author: { id: other } }, { author: { id: guildId } }],
+            ["ClientSideBlock", sender, { author: { id: sender } }, { author: { id: other } }],
+            ["BlockKeywords", "spoiler,c.a", { author: { id: sender }, embeds: [{ title: "Plot SPOILER!" }] },
+                { author: { id: sender }, content: "spoilers and cXa" }],
+        ]) {
+            selectCatalog(name);
+            if (configuration) {
+                const editor = find(render(), item => item.props[desktop ? "aria-label" : "accessibilityLabel"] === "CX source");
+                const configured = editor.props.value.replace('""', JSON.stringify(configuration));
+                if (desktop) editor.props.onChange({ currentTarget: { value: configured } });
+                else editor.props.onChangeText(configured);
+                click(render(), "Review CX");
+            }
+            click(render(), "Allow for this session");
+            const [hook] = incomingHooks;
+            const blocked = desktop ? true : false;
+            assert.equal(hook({ type: "MESSAGE_CREATE", message: matched }), blocked);
+            assert.equal(hook({ type: "MESSAGE_UPDATE", message: matched }), blocked);
+            if (name === "ClientSideBlock" || name === "NoBlockedMessages")
+                assert.equal(hook({ type: "MESSAGE_UPDATE", message: { id: "partial", channel_id: "test-channel" } }), blocked);
+            assert.equal(hook({ type: "MESSAGE_CREATE", message: kept }), undefined);
+            assert.equal(hook({ type: "MESSAGE_CREATE", optimistic: true, message: matched }), undefined);
+            const own = { ...matched, author: { id: me } };
+            assert.equal(hook({ type: "MESSAGE_CREATE", message: own }), undefined);
+            const history = { type: "LOAD_MESSAGES_SUCCESS", messages: [matched, own, kept] };
+            assert.deepEqual(Array.from((hook(history) ?? history).messages), [own, kept]);
+            click(render(), "Disable " + name);
+            assert.equal(hook({ type: "MESSAGE_CREATE", message: matched }), undefined);
             assert.equal(incomingHooks.length, 0);
         }
 

@@ -1,0 +1,3 @@
+plugin "BlockKeywords":
+  needs messages.filterlocal
+  on incoming hide-keywords ""

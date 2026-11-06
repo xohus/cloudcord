@@ -276,6 +276,43 @@ function compileOutgoing(plugin) {
     if (rules.length) return { capability: "outgoing-text", lines: [...permissions, ...rules] };
 }
 
+// These three built-in mobile plugins share the same event filter. Match the
+// original start hook before generating its portable CX counterpart.
+const mobileFilterRecipes = {
+    NoBlockedMessages: {
+        start: '{ const relationships = findByStoreName("RelationshipStore"); '
+            + 'stopFilter = filterMessages(message => !!message.author?.id && relationships?.isBlocked?.(message.author.id) === true); }',
+        rule: "hide-blocked", value: "blocked,ignored",
+    },
+    ClientSideBlock: {
+        start: '{ stop = filterMessages(message => !!message.author?.id && '
+            + 'new Set(String(settings.get("usersToBlock") || "").split(/[\\s,]+/).filter(Boolean)).has(message.author.id)); }',
+        rule: "hide-users", value: "",
+    },
+    BlockKeywords: {
+        start: '{ void awaitStorage(storage).then(() => { stopFilter = filterMessages(message => { '
+            + 'const tests = matchers(); if (!tests.length) return false; '
+            + 'const texts = [message.content || "", ...(message.embeds || []).flatMap(embed => [embed.title || "", embed.description || ""])]; '
+            + 'return texts.some(text => text && tests.some(test => test(text))); }); }); }',
+        rule: "hide-keywords", value: "",
+    },
+};
+
+function compileMobileFilter(name, file, plugin, source) {
+    if (!/^ios\/runtime\/src\/core\/plugins\/(?:noblockedmessages|clientsideblock|blockkeywords)\/index\.tsx?$/.test(file)
+        || !Object.prototype.hasOwnProperty.call(mobileFilterRecipes, name)
+        || !fieldsAre(plugin, ["manifest", "start", "stop", "SettingsComponent"])
+        || !imported(source, "filterMessages", "../shared/messageFilter")) return;
+    const start = handler(plugin, "start");
+    const stop = handler(plugin, "stop");
+    const recipe = mobileFilterRecipes[name];
+    if (!start || !stop || printed(start.body, source).replace(/\s+/g, " ") !== recipe.start) return;
+    return {
+        capability: "incoming-filter",
+        lines: ["  needs messages.filterlocal", "  on incoming " + recipe.rule + " " + JSON.stringify(recipe.value)],
+    };
+}
+
 function inspectPlugin(file, code, platform, appearance = {}) {
     if (platform === "betterdiscord") return inspectBetterDiscord(file, code, appearance);
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
@@ -335,7 +372,9 @@ function inspectPlugin(file, code, platform, appearance = {}) {
     const hasLicense = /SPDX-License-Identifier:\s*GPL-3\.0-or-later\b|GNU General Public License/.test(code);
     const supported = platform === "desktop" && factory === "definePlugin" && imported(source, "definePlugin", "@utils/types")
         && allowedDeclarations && simpleDependencies && !source.parseDiagnostics.length && hasLicense && safeText(name) && name.length <= 64;
-    const compiled = supported && (compileCommands(plugin, source) || compileOutgoing(plugin));
+    const compiled = platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
+        ? compileMobileFilter(name, file, plugin, source)
+        : supported && (compileCommands(plugin, source) || compileOutgoing(plugin));
     return {
         name, file, platform, flags, hooks: inventoryHooks(source),
         ...(compiled ? { capability: compiled.capability, cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") } : {}),
@@ -395,7 +434,8 @@ function scan(sourceDir) {
         const already = existing.has(key);
         const status = already ? "in-catalog"
             : !cx ? "needs-adapter"
-                : variants.get(key).some(variant => variant.platform === "mobile") ? "compare-mobile"
+                : record.platform === "mobile" && record.capability === "incoming-filter" ? "ready"
+                    : variants.get(key).some(variant => variant.platform === "mobile") ? "compare-mobile"
                     : variants.get(key).length > 1 ? "compare-sources"
                         : "ready";
         return { ...record, status, ...(cx ? { cx } : {}) };
@@ -440,6 +480,7 @@ function verifyPorts(files) {
                 registerCommand: register,
                 registerMessageTransform: register,
                 registerMessageEditTransform: register,
+                registerIncomingRules: register,
                 hideAppearanceTarget: register,
                 styleAppearanceTarget: register,
             };

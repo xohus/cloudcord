@@ -6,7 +6,7 @@ import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_E
 import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
-import { ChannelStore, FluxDispatcher, IconUtils, Menu, MessageStore, SelectedGuildStore, showToast, UserProfileStore, UserStore, useState } from "@webpack/common";
+import { ChannelStore, FluxDispatcher, IconUtils, Menu, MessageStore, RelationshipStore, SelectedGuildStore, showToast, UserProfileStore, UserStore, useState } from "@webpack/common";
 
 const session = createCxSession();
 
@@ -46,6 +46,8 @@ export function CxSettings() {
                         currentUser: () => UserStore.getCurrentUser()?.id,
                         channel: (id: string) => ChannelStore.getChannel(id),
                         replyAuthor: (channel: string, id: string) => MessageStore.getMessage(channel, id)?.author,
+                        blocked: (id: string) => RelationshipStore?.isBlocked(id) === true,
+                        ignored: (id: string) => RelationshipStore?.isIgnored?.(id) === true,
                         notify: (body: string) => setTimeout(() => {
                             if (active) void showNotification({ title: candidate.review.name, body });
                         }, 0),
@@ -54,6 +56,7 @@ export function CxSettings() {
                         try {
                             if (active) {
                                 const patch = runCxIncomingRules(rules, payload, context);
+                                if (patch === false) return true;
                                 if (patch) Object.assign(payload, patch);
                             }
                         } catch { /* Discord must still receive its original event. */ }

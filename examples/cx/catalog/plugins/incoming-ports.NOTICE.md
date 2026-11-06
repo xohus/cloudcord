@@ -10,3 +10,9 @@ These GPL-3.0-or-later ports adapt behavior from existing CloudCord plugins.
 - MessageNotifier by cassie and mochie.
 
 The [desktop client license](../../../../desktop/client/LICENSE) contains the GPL text.
+
+## Message filtering
+
+NoBlockedMessages adapts the chat filtering feature by rushii, Samu, jamesbt365, Elvyra, and Etorix. The CX rule can target blocked users, ignored users, or both.
+
+BlockKeywords by catcraft and secp192k1 matches literal words and phrases in message text and embed titles or descriptions. ClientSideBlock by Samwich and KamiRu filters chat by author ID. Both use CX source settings. Regular expressions, profile and voice filtering, and changes to content outside chat remain features of their original plugins.

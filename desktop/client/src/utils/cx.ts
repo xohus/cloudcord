@@ -29,6 +29,7 @@ const permissionLabels = {
     "replies.controlping": "Choose whether incoming replies ping you on this device",
     "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
     "messages.watchlocal": "Match incoming messages on this device and show local notifications",
+    "messages.filterlocal": "Hide matching incoming messages and history on this device",
 };
 
 // Text transforms adapted from Endcord (Vendicated and contributors, GPL-3.0-or-later).
@@ -338,7 +339,7 @@ export function reviewCx(source: string) {
             .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
             .concat(document.incoming.flatMap(rule => rule.kind === "stickers" && rule.values[0] === "*"
                 ? ["Hide all stickers"] : !rule.values.length && rule.kind !== "reply-pings"
-                    ? ["Edit the source to enter " + (rule.kind === "keywords" ? "keywords" : "Discord IDs")] : [])),
+                    ? ["Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")] : [])),
         commands: document.commands.map(command => "/" + command.name),
     };
 }
@@ -478,6 +479,7 @@ export function runCxIncomingRules(rules: readonly IncomingRule[], payload: Inco
     let patch: Partial<IncomingPayload> | undefined;
     for (const rule of rules) {
         const result = applyIncomingRule(rule, patch ? { ...payload, ...patch } : payload, context);
+        if (result === false) return false as const;
         if (result) patch = { ...patch, ...result };
     }
     return patch;

@@ -20,6 +20,7 @@ const session = createCxSession();
 const UserStore = findByStoreNameLazy("UserStore");
 const ChannelStore = findByStoreNameLazy("ChannelStore");
 const MessageStore = findByStoreNameLazy("MessageStore");
+const RelationshipStore = findByStoreNameLazy("RelationshipStore");
 const UserProfileStore = findByStoreNameLazy("UserProfileStore");
 
 function registerJsxAppearance(names: readonly string[], change: (element: JSX.Element) => JSX.Element | null) {
@@ -154,6 +155,8 @@ export default function CxExtensions() {
                         currentUser: () => UserStore?.getCurrentUser?.()?.id,
                         channel: (id: string) => ChannelStore?.getChannel?.(id),
                         replyAuthor: (channel: string, id: string) => MessageStore?.getMessage?.(channel, id)?.author,
+                        blocked: (id: string) => RelationshipStore?.isBlocked?.(id) === true,
+                        ignored: (id: string) => RelationshipStore?.isIgnored?.(id) === true,
                         notify: (body: string) => setTimeout(() => {
                             if (active && !settings.safeMode?.enabled) showToast(body);
                         }, 0),

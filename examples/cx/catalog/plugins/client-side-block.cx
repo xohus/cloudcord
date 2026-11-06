@@ -1,0 +1,3 @@
+plugin "ClientSideBlock":
+  needs messages.filterlocal
+  on incoming hide-users ""

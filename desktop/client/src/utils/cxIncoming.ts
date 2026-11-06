@@ -6,10 +6,13 @@ export const incomingPermissions = {
     calls: "calls.suppressring",
     keywords: "messages.watchlocal",
     users: "messages.watchlocal",
+    "hide-users": "messages.filterlocal",
+    "hide-keywords": "messages.filterlocal",
+    "hide-blocked": "messages.filterlocal",
 } as const;
 
 type IncomingKind = keyof typeof incomingPermissions;
-export type IncomingRule = { kind: IncomingKind; values: string[]; always?: boolean };
+export type IncomingRule = { kind: IncomingKind; values: string[]; always?: boolean; matcher?: RegExp };
 
 export function parseIncomingRule(name: string, input: string): IncomingRule {
     if (!Object.prototype.hasOwnProperty.call(incomingPermissions, name)) throw new Error("Unknown incoming rule");
@@ -21,11 +24,20 @@ export function parseIncomingRule(name: string, input: string): IncomingRule {
         always = match[1] === "always";
         input = match[2] ?? "";
     }
-    const values = input.split(kind === "keywords" ? /,/ : /[\s,]+/).map(value => value.trim()).filter(Boolean);
+    const textual = kind === "keywords" || kind === "hide-keywords";
+    const values = [...new Set(input.split(textual ? /,/ : /[\s,]+/).map(value => value.trim()).filter(Boolean))];
     if (values.length > 24) throw new Error("Too many incoming rule values");
-    if (kind !== "keywords" && !(kind === "stickers" && input === "*") && values.some(value => !/^\d{17,20}$/.test(value)))
+    if (kind === "hide-blocked") {
+        if (!values.length || values.some(value => value !== "blocked" && value !== "ignored"))
+            throw new Error("Choose blocked, ignored, or both");
+    } else if (!textual && !(kind === "stickers" && input === "*") && values.some(value => !/^\d{17,20}$/.test(value))) {
         throw new Error("Incoming rules need Discord IDs");
-    return { kind, values: [...new Set(values)], always };
+    }
+    if (kind === "hide-keywords" && values.length) {
+        const phrases = values.map(value => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+        return { kind, values, matcher: new RegExp("\\b(?:" + phrases.join("|") + ")\\b", "i") };
+    }
+    return { kind, values, always };
 }
 
 export type IncomingPayload = Record<string, any> & { type: string };
@@ -34,6 +46,8 @@ type IncomingContext = {
     channel: (id: string) => { name?: string; recipients?: readonly (string | { id: string })[] } | undefined;
     replyAuthor: (channel: string, message: string) => { id: string } | undefined;
     notify: (body: string) => void;
+    blocked?: (user: string) => boolean;
+    ignored?: (user: string) => boolean;
 };
 
 function stripStickers(message: IncomingPayload["message"], rule: IncomingRule) {
@@ -46,6 +60,36 @@ function stripStickers(message: IncomingPayload["message"], rule: IncomingRule) 
 
 export function applyIncomingRule(rule: IncomingRule, payload: IncomingPayload, context: IncomingContext) {
     const { type, message } = payload;
+    if (rule.kind === "hide-users" || rule.kind === "hide-keywords" || rule.kind === "hide-blocked") {
+        if (!rule.values.length || payload.optimistic) return;
+        if (type !== "MESSAGE_CREATE" && type !== "MESSAGE_UPDATE" && type !== "LOAD_MESSAGES_SUCCESS") return;
+        const me = context.currentUser();
+        if (!me) return;
+        const hide = (item: IncomingPayload["message"]) => {
+            if (!item) return false;
+            const channel = item.channel_id ?? item.channelId ?? payload.channelId ?? payload.channel_id;
+            const user = item.author?.id ?? (type === "MESSAGE_UPDATE" && typeof channel === "string" && typeof item.id === "string"
+                ? context.replyAuthor(channel, item.id)?.id : undefined);
+            if (typeof user !== "string" || user === me) return false;
+            if (rule.kind === "hide-users") return rule.values.includes(user);
+            if (rule.kind === "hide-blocked")
+                return rule.values.includes("blocked") && context.blocked?.(user) === true
+                    || rule.values.includes("ignored") && context.ignored?.(user) === true;
+            const fields = [item.content];
+            if (Array.isArray(item.embeds)) for (const embed of item.embeds.slice(0, 10)) {
+                fields.push(embed?.title ?? embed?.rawTitle, embed?.description ?? embed?.rawDescription);
+            }
+            return fields.some(field => typeof field === "string" && rule.matcher?.test(field.slice(0, 4000)));
+        };
+        if (type === "LOAD_MESSAGES_SUCCESS") {
+            if (!Array.isArray(payload.messages)) return;
+            const messages = payload.messages.filter(item => !hide(item));
+            if (messages.length !== payload.messages.length) return { messages };
+        } else if (hide(message)) {
+            return false as const;
+        }
+        return;
+    }
     if (rule.kind === "stickers") {
         if (type === "MESSAGE_CREATE" || type === "MESSAGE_UPDATE") {
             const next = stripStickers(message, rule);

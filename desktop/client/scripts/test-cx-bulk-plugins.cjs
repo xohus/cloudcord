@@ -35,6 +35,13 @@ assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralRe
 assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", name: "Other",')).cx, undefined);
 
 const matches = scan().filter(record => record.cx);
+for (const name of ["NoBlockedMessages", "BlockKeywords", "ClientSideBlock"]) {
+    const port = matches.find(record => record.name === name && record.platform === "mobile");
+    assert.equal(port?.capability, "incoming-filter");
+    assert.equal(parseCx(port.cx).incoming.length, 1);
+    const source = require("node:fs").readFileSync(require("node:path").resolve(__dirname, "../../..", port.file), "utf8");
+    assert.equal(inspectPlugin(port.file, source.replace("start() {", 'start() { fetch("/");'), "mobile").cx, undefined);
+}
 for (const name of ["ReverseText", "ClapText", "SpaceOut", "Starify", "VibeCheck"]) {
     const port = matches.find(record => record.name === name);
     assert.ok(port, name + " should compile");
