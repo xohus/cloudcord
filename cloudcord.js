@@ -10130,6 +10130,93 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/react/jsx.ts
+  var jsx_exports = {};
+  __export(jsx_exports, {
+    deleteJsxCreate: () => deleteJsxCreate,
+    onJsxCreate: () => onJsxCreate,
+    patchJsx: () => patchJsx
+  });
+  function onJsxCreate(Component2, callback) {
+    if (!callbacks.has(Component2))
+      callbacks.set(Component2, []);
+    callbacks.get(Component2).push(callback);
+  }
+  function deleteJsxCreate(Component2, callback) {
+    if (!callbacks.has(Component2))
+      return;
+    var cbs = callbacks.get(Component2);
+    var index = cbs.indexOf(callback);
+    if (index < 0)
+      return;
+    cbs.splice(index, 1);
+    if (cbs.length === 0)
+      callbacks.delete(Component2);
+  }
+  function patchJsx() {
+    var callback = ([Component2], ret) => {
+      if (!ret || typeof ret !== "object")
+        return;
+      if (typeof ret.type === "undefined") {
+        return {
+          ...ret,
+          type: "RCTView"
+        };
+      }
+      var component = Component2;
+      var target = typeof component === "function" ? component : component?.$$typeof === Symbol.for("react.memo") && typeof component.type === "function" ? component.type : null;
+      var name = [
+        component?.displayName,
+        target?.displayName,
+        target?.name
+      ].find((value) => typeof value === "string" && callbacks.has(value));
+      if (target && name) {
+        var cbs = callbacks.get(name);
+        for (var cb of [
+          ...cbs
+        ]) {
+          try {
+            var editable = {
+              ...ret,
+              props: {
+                ...ret.props
+              }
+            };
+            var changed = cb(target, editable);
+            var next = changed === void 0 ? editable : changed;
+            if (!next || typeof next !== "object" || next.type == null)
+              throw new Error("Profile hook returned an invalid React element");
+            ret = next;
+          } catch (error) {
+            if (!warnedCallbacks.has(cb)) {
+              warnedCallbacks.add(cb);
+              console.warn(`[CloudCord] Skipped failed JSX hook for ${name}`, error);
+            }
+          }
+        }
+        return ret;
+      }
+    };
+    var patches3 = [
+      after("jsx", jsxRuntime2, callback),
+      after("jsxs", jsxRuntime2, callback)
+    ];
+    return () => patches3.forEach((unpatch) => unpatch());
+  }
+  var callbacks, warnedCallbacks, jsxRuntime2;
+  var init_jsx = __esm({
+    "src/lib/api/react/jsx.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_patcher();
+      init_metro();
+      callbacks = /* @__PURE__ */ new Map();
+      warnedCallbacks = /* @__PURE__ */ new WeakSet();
+      jsxRuntime2 = findByPropsLazy("jsx", "jsxs");
+    }
+  });
+
   // src/lib/ui/settings/patches/tabs.tsx
   function usesModernSettings() {
     if (globalThis.__CLOUDCORD_BRIDGELESS__)
@@ -10152,6 +10239,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       "settings-overview-before",
       "settings-overview-after-direct",
       "settings-overview-after-tree",
+      "searchable-settings-list-direct",
       "legacy-settings-panel",
       "legacy-screen-route"
     ];
@@ -10358,6 +10446,52 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var patchedRenderers = /* @__PURE__ */ new WeakSet();
     var patchedLists = /* @__PURE__ */ new WeakSet();
     var patchedScreens = /* @__PURE__ */ new WeakSet();
+    var prepareListProps = (props) => {
+      var node = props?.node;
+      var sections = node?.sections;
+      if (!Array.isArray(sections) || !sections.some((section) => section?.settings?.includes?.("ACCOUNT")))
+        return props;
+      var copy = sections.map((section) => ({
+        ...section,
+        ...Array.isArray(section?.settings) ? {
+          settings: [
+            ...section.settings
+          ]
+        } : {}
+      }));
+      insertCloudCordSections(copy);
+      return {
+        ...props,
+        node: {
+          ...node,
+          sections: copy
+        }
+      };
+    };
+    var listJsx = (_component, element) => ({
+      ...element,
+      props: prepareListProps(element.props)
+    });
+    onJsxCreate("SearchableSettingsList", listJsx);
+    unpatches.push(() => deleteJsxCreate("SearchableSettingsList", listJsx));
+    var patchedSearchLists = /* @__PURE__ */ new WeakSet();
+    var patchSearchList = (module) => {
+      if (patchedSearchLists.has(module))
+        return;
+      var key = module.SearchableSettingsList ? "SearchableSettingsList" : "default";
+      var parent = module, renderKey = key;
+      if (typeof parent[renderKey] !== "function") {
+        parent = parent[renderKey];
+        renderKey = typeof parent?.type === "function" ? "type" : "render";
+      }
+      if (typeof parent?.[renderKey] !== "function")
+        return;
+      unpatches.push(before(renderKey, parent, (args) => {
+        args[0] = prepareListProps(args[0]);
+        return args;
+      }));
+      patchedSearchLists.add(module);
+    };
     var patchRendererConfig = (rendererModule) => {
       if (patchedRenderers.has(rendererModule))
         return;
@@ -10492,6 +10626,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         }
       }
       var screen = exports?.SettingsOverviewScreen ?? exports?.default;
+      var list = exports?.SearchableSettingsList ?? exports?.default;
+      if (exports?.SearchableSettingsList || path?.endsWith("/SearchableSettingsList.tsx") || [
+        list?.name,
+        list?.displayName,
+        list?.type?.name,
+        list?.render?.name
+      ].includes("SearchableSettingsList")) {
+        try {
+          patchSearchList(exports);
+        } catch (error) {
+          console.warn("CloudCord direct settings list patch failed", error);
+        }
+      }
       if (path?.endsWith("/SettingsOverviewScreen.tsx") || [
         screen?.name,
         screen?.displayName,
@@ -10516,6 +10663,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_settings();
       init_modules();
       init_observeModules();
+      init_jsx();
       init_shared();
       init_utils();
       settingConstants = findByPropsLazy("SETTING_RENDERER_CONFIG");
@@ -10941,93 +11089,6 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       rdtConnected = false;
       changeHooks = /* @__PURE__ */ new Set();
       versionHash = "v1.4.3";
-    }
-  });
-
-  // src/lib/api/react/jsx.ts
-  var jsx_exports = {};
-  __export(jsx_exports, {
-    deleteJsxCreate: () => deleteJsxCreate,
-    onJsxCreate: () => onJsxCreate,
-    patchJsx: () => patchJsx
-  });
-  function onJsxCreate(Component2, callback) {
-    if (!callbacks.has(Component2))
-      callbacks.set(Component2, []);
-    callbacks.get(Component2).push(callback);
-  }
-  function deleteJsxCreate(Component2, callback) {
-    if (!callbacks.has(Component2))
-      return;
-    var cbs = callbacks.get(Component2);
-    var index = cbs.indexOf(callback);
-    if (index < 0)
-      return;
-    cbs.splice(index, 1);
-    if (cbs.length === 0)
-      callbacks.delete(Component2);
-  }
-  function patchJsx() {
-    var callback = ([Component2], ret) => {
-      if (!ret || typeof ret !== "object")
-        return;
-      if (typeof ret.type === "undefined") {
-        return {
-          ...ret,
-          type: "RCTView"
-        };
-      }
-      var component = Component2;
-      var target = typeof component === "function" ? component : component?.$$typeof === Symbol.for("react.memo") && typeof component.type === "function" ? component.type : null;
-      var name = [
-        component?.displayName,
-        target?.displayName,
-        target?.name
-      ].find((value) => typeof value === "string" && callbacks.has(value));
-      if (target && name) {
-        var cbs = callbacks.get(name);
-        for (var cb of [
-          ...cbs
-        ]) {
-          try {
-            var editable = {
-              ...ret,
-              props: {
-                ...ret.props
-              }
-            };
-            var changed = cb(target, editable);
-            var next = changed === void 0 ? editable : changed;
-            if (!next || typeof next !== "object" || next.type == null)
-              throw new Error("Profile hook returned an invalid React element");
-            ret = next;
-          } catch (error) {
-            if (!warnedCallbacks.has(cb)) {
-              warnedCallbacks.add(cb);
-              console.warn(`[CloudCord] Skipped failed JSX hook for ${name}`, error);
-            }
-          }
-        }
-        return ret;
-      }
-    };
-    var patches3 = [
-      after("jsx", jsxRuntime2, callback),
-      after("jsxs", jsxRuntime2, callback)
-    ];
-    return () => patches3.forEach((unpatch) => unpatch());
-  }
-  var callbacks, warnedCallbacks, jsxRuntime2;
-  var init_jsx = __esm({
-    "src/lib/api/react/jsx.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      init_patcher();
-      init_metro();
-      callbacks = /* @__PURE__ */ new Map();
-      warnedCallbacks = /* @__PURE__ */ new WeakSet();
-      jsxRuntime2 = findByPropsLazy("jsx", "jsxs");
     }
   });
 
@@ -40277,7 +40338,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "2a2da9938e8cf7c44c86bb8125f438a2b052d439";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a7469156f177c41fddbd2dc1f74a4cc6085b5865";
   var rain = globalThis.__RAIN_LOADER__;
   if (rain && !globalThis.__CLOUDCORD_LOADER__) {
     globalThis.__CLOUDCORD_ORIGINAL_RAIN__ = true;
