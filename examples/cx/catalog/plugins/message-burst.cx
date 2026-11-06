@@ -1,0 +1,3 @@
+plugin "MessageBurst":
+  needs messages.editprevious
+  before send merge-previous 3

@@ -11,5 +11,8 @@ These GPL-3.0-or-later examples adapt features from the existing CloudCord plugi
 - SendTimestamps by Vee, GGTyler, and Grzesiek11.
 - SilentMessageToggle by Nuckyz, CatNoir, and Z1xus.
 - TextReplace by AutumnVN, TheKodeToad, Etorix, and Ape.
+- EmbeddedURLs by rootpoi, kraethis, and ewlle (Endcord).
+- SedEnhanced by dawn, Willow, and kat. The CX correction uses literal text with the `g` and `i` flags and keeps the original message if the replacement would be empty.
+- MessageBurst by port. The CX rule merges ordinary text from the same author and channel inside the configured window.
 
 The [desktop client license](../../../../desktop/client/LICENSE) contains the GPL text.

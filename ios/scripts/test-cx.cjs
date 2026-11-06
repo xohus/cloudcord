@@ -156,6 +156,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const roleId = "100000000000000005";
         const trackId = "0123456789012345678901";
         const acknowledged = [];
+        const previousEdits = [];
+        const messageEditor = { editMessage: (channel, id, message) => previousEdits.push([channel, id, message.content]) };
+        let latestMessage = { id: "previous", author: { id: me }, content: "Fix a.b twice: a.b", timestamp: Date.now(), channel_id: "test-channel" };
         const dispatch = event => acknowledged.push(event);
         let typingStarts = 0, typingStops = 0;
         const typing = { startTyping() { typingStarts++; }, stopTyping() { typingStops++; } };
@@ -186,7 +189,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             SpotifyStore: { getTrack: () => ({
                 id: trackId, album: { id: trackId }, artists: [{ id: trackId, external_urls: { spotify: "https://untrusted.example" } }],
             }) },
-            MessageStore: { getMessage: (_channel, id) => ({ author: { id: id === "partial" ? sender : me } }) },
+            MessageStore: {
+                getMessage: (_channel, id) => ({ author: { id: id === "partial" ? sender : me } }),
+                getLastMessage: () => latestMessage, getLastEditableMessage: () => latestMessage,
+            },
             RelationshipStore: {
                 isBlocked: id => id === sender, isIgnored: id => id === other,
                 getPendingCount: () => 3, getPendingIncomingCount: () => 2,
@@ -219,6 +225,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 return () => { delete registered[command.name]; };
             },
             unregisterCommand(name) { delete registered[name]; },
+            sendMessage() { return "sent normally"; },
             sendBotMessage: (channel, message) => delivered.push([channel, typeof message === "string" ? message : message.content]),
         };
         const module = { exports: {} };
@@ -247,7 +254,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
             "@webpack": { findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons : undefined },
-            "@webpack/common": { useState, ...stores, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
+            "@webpack/common": { useState, ...stores, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
                 dispatch,
@@ -264,6 +271,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@lib/api/native/modules": {},
             "@lib/api/native/loader": { isThemeSupported: () => true },
             "@lib/api/settings": { settings },
+            "@lib/api/patcher": { instead(name, owner, callback) {
+                const original = owner[name];
+                owner[name] = function (...args) { return callback.call(this, args, original); };
+                return () => { owner[name] = original; };
+            } },
             "@lib/api/react/jsx": {
                 onJsxCreate(name, hook, afterOthers) { assert.equal(afterOthers, true); appearanceHooks.set(name, hook); },
                 deleteJsxCreate(name, hook, afterOthers) {
@@ -277,7 +289,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 incomingHooks.push(callback);
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
-            "@metro": { findByStoreNameLazy: name => stores[name], findByProps: name => name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : undefined },
+            "@metro": { findByStoreNameLazy: name => stores[name], findByProps: name =>
+                name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor : undefined },
             "@metro/common": { React: {
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: () => ({ Provider: "ProfileUserProvider" }), useContext: () => profileUser,
@@ -585,6 +598,47 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(typing.startTyping, startTyping);
         assert.equal(stores.RelationshipStore.getPendingCount(), 3);
         assert.equal(icons.getGuildIconURL(iconOptions), false);
+
+        const embedded = cxCatalog.plugins.find(entry => entry.name === "EmbeddedURLs").source;
+        assert.throws(() => parseCx(embedded.replace(/^  needs messages\.redirectlinks\r?\n/m, "")), /permissions/);
+        assert.throws(() => parseCx(embedded.replace('"https://x.com"', '"https://x.com/path"')), /bare HTTPS domain/);
+        assert.ok(moduleBox.exports.reviewCx(embedded).effects.includes("https://x.com → https://www.fxtwitter.com"));
+        selectCatalog("EmbeddedURLs");
+        click(render(), "Allow for this session");
+        const redirect = [...transformHooks][0];
+        const redirectDraft = content => {
+            const message = { content };
+            if (desktop) redirect("test-channel", message);
+            else redirect(message);
+            return message.content;
+        };
+        assert.equal(redirectDraft("https://x.com/user/status/1?lang=en#anchor"), "https://www.fxtwitter.com/user/status/1?lang=en");
+        assert.equal(redirectDraft("https://x.com.evil.example/user"), "https://x.com.evil.example/user");
+        assert.equal(redirectDraft("look https://x.com/user"), "look https://x.com/user");
+        click(render(), "Disable EmbeddedURLs");
+
+        for (const [name, content, expected] of [
+            ["SedEnhanced", "s/a.b/done/g", "Fix done twice: done"],
+            ["MessageBurst", "one more line", "Fix a.b twice: a.b\none more line"],
+        ]) {
+            selectCatalog(name);
+            click(render(), "Allow for this session");
+            latestMessage = { ...latestMessage, timestamp: Date.now() };
+            const listener = [...transformHooks][0];
+            const send = async (draft, extra = false) => desktop
+                ? listener("test-channel", { content: draft }, extra ? { uploads: ["file"] } : {})
+                : commandApi.sendMessage("test-channel", { content: draft, attachments: extra ? ["file"] : [] });
+            await send(content, true);
+            assert.equal(previousEdits.length, 0);
+            const result = await send(content);
+            if (desktop) assert.equal(result.cancel, true);
+            assert.deepEqual(previousEdits.pop(), ["test-channel", "previous", expected]);
+            latestMessage = { ...latestMessage, author: { id: sender } };
+            await send(content);
+            assert.equal(previousEdits.length, 0);
+            latestMessage = { ...latestMessage, author: { id: me } };
+            click(render(), "Disable " + name);
+        }
 
         const testCases = [
             ["ReverseText", "reverse", "a🐈", "🐈a"],

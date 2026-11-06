@@ -1,0 +1,8 @@
+plugin "EmbeddedURLs":
+  needs messages.transform
+  needs messages.redirectlinks
+  before send rewrite-origin "https://www.tiktok.com" with "https://www.tnktok.com"
+  before send rewrite-origin "https://vt.tiktok.com" with "https://www.tnktok.com"
+  before send rewrite-origin "https://x.com" with "https://www.fxtwitter.com"
+  before send rewrite-origin "https://www.twitter.com" with "https://www.fxtwitter.com"
+  before send rewrite-origin "https://www.instagram.com" with "https://www.kkinstagram.com"

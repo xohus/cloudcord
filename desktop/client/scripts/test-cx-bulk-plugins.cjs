@@ -35,6 +35,14 @@ assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralRe
 assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", name: "Other",')).cx, undefined);
 
 const matches = scan().filter(record => record.cx);
+const embedded = matches.find(record => record.name === "EmbeddedURLs");
+assert.equal(embedded?.capability, "origin-rewrite");
+assert.equal(parseCx(embedded.cx).messageTransforms.length, 5);
+for (const [name, kind] of [["SedEnhanced", "correct"], ["MessageBurst", "merge"]]) {
+    const port = matches.find(record => record.name === name && record.platform === "mobile");
+    assert.equal(port?.capability, "previous-edit");
+    assert.equal(parseCx(port.cx).previousRule.kind, kind);
+}
 for (const [name, effect] of [["SilentTyping", "silent-typing"], ["NoPendingCount", "pending-friend-count"], ["AlwaysAnimate", "animated-assets"]]) {
     const port = matches.find(record => record.name === name && record.platform === "mobile");
     assert.equal(port?.capability, "native-effect");

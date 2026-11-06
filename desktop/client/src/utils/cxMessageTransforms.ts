@@ -2,6 +2,21 @@ export function reverseText(text: string) {
     return [...text].reverse().join("");
 }
 
+const httpsOrigin = /^https:\/\/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}$/i;
+
+export function parseCxHttpsOrigin(value: string) {
+    if (!httpsOrigin.test(value)) throw new Error("Use a bare HTTPS domain for link rewrites");
+    return value.toLowerCase();
+}
+
+export function rewriteCxOrigin(text: string, rules: ReadonlyMap<string, string>) {
+    const match = /^(https:\/\/[^/?#\s]+)(\/[^?#\s]*)?(\?[^#\s]*)?(?:#[^\s]*)?$/i.exec(text.trim());
+    if (!match || /[\x00-\x20\x7f\\<>"']/u.test(match[0])) return text;
+    const [, origin, path = "/", query = ""] = match;
+    const destination = rules.get(origin.toLowerCase());
+    return destination ? destination + path + query : text;
+}
+
 // Ingtoninator by zyqunix and BioTomateDE.
 function ingtonify(text: string) {
     const links = [...text.matchAll(/https?:\/\/[^\s]+\.[^\s]+/gi)];

@@ -1,5 +1,6 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
-import { animateCxAssets, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
+import { instead } from "@lib/api/patcher";
+import { animateCxAssets, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
@@ -245,6 +246,41 @@ export default function CxExtensions() {
                         if (settings.safeMode?.enabled || !options?.messageReference) return;
                         options.allowedMentions = { parse: ["users", "roles", "everyone"], ...options.allowedMentions, replied_user: false };
                     });
+                },
+                registerPreviousMessageRule(rule) {
+                    let active = true;
+                    const editor = findByProps("editMessage", "startEditMessage");
+                    if (typeof editor?.editMessage !== "function") throw new Error("Discord message edits are unavailable");
+                    const currentUser = () => UserStore?.getCurrentUser?.()?.id;
+                    const handle = createCxPreviousSendHandler(rule, {
+                        currentUser,
+                        previous(channel, own) {
+                            const existing = own ? MessageStore?.getLastEditableMessage?.(channel) : MessageStore?.getLastMessage?.(channel);
+                            if (existing) return existing;
+                            const cache = MessageStore?.getMessages?.(channel);
+                            const list = cache?.toArray?.() ?? cache?._array;
+                            if (!Array.isArray(list)) return;
+                            if (!own) return list[list.length - 1];
+                            const me = currentUser();
+                            for (let i = list.length - 1; i >= 0; i--) if (list[i]?.author?.id === me) return list[i];
+                        },
+                        edit: (channel, id, content) => editor.editMessage(channel, id, { content }),
+                        error: () => { showToast("Couldn’t edit the previous message."); },
+                    });
+                    const unpatch = instead("sendMessage", messageUtil, function (this: unknown, args, original) {
+                        const [channel, message, , options] = args;
+                        if (active && !settings.safeMode?.enabled && typeof channel === "string") {
+                            const edit = handle(channel, message?.content, Boolean(message?.tts || message?.attachments?.length
+                                || message?.stickers?.length || message?.stickerIds?.length || options?.uploads?.length
+                                || options?.stickers?.length || options?.messageReference || options?.replyOptions?.messageReference));
+                            if (edit) return edit;
+                        }
+                        return original.apply(this, args);
+                    });
+                    return () => {
+                        active = false;
+                        unpatch();
+                    };
                 },
                 registerMessageTransform(transform) {
                     return onSendMessage(message => {

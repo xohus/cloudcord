@@ -3,14 +3,16 @@ import { cxClientFunctions, type CxClientFunction } from "./cxClientCommands";
 import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { applyIncomingRule, incomingPermissions, type IncomingPayload, type IncomingRule, parseIncomingRule } from "./cxIncoming";
 import { calculate, convertUnits } from "./cxNumeric";
-import { messageTransforms, polishOptions, reverseText } from "./cxMessageTransforms";
+import { messageTransforms, parseCxHttpsOrigin, polishOptions, reverseText, rewriteCxOrigin } from "./cxMessageTransforms";
 import { cxNativeEffects, type CxNativeEffect } from "./cxNativeEffects";
+import { parseCxPreviousRule, type CxPreviousRule } from "./cxPreviousMessage";
 
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
 export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 export { formatCxRoleMembers, formatCxSpotify, markCxServersRead } from "./cxClientCommands";
 export { animateCxAssets, cxNativeEffects, overrideCxMethods } from "./cxNativeEffects";
+export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
 
 export const MAX_CX_SOURCE = 512 * 1024;
 export const CX_INLINE_EDITOR_LIMIT = 32 * 1024;
@@ -23,6 +25,8 @@ const permissionLabels = {
     "messages.send": "Send the result to the current chat when you run a listed command",
     "messages.transform": "Change text before Discord sends messages you compose",
     "messages.edit.transform": "Change text when you submit a message edit",
+    "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
+    "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
     "replies.suppressping": "Send replies without pinging the person you reply to",
     "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
     "guild.members": "Read loaded members with the role you select in the current server",
@@ -76,7 +80,8 @@ type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: A
 type TransformStage = "send" | "edit";
 type MessageTransform = { stage: TransformStage } & (
     { name: keyof typeof messageTransforms; options?: string } |
-    { name: "replaceLiteral"; find: string; replacement: string }
+    { name: "replaceLiteral"; find: string; replacement: string } |
+    { name: "rewriteOrigin"; find: string; replacement: string }
 );
 export type CxTheme = {
     kind: "theme";
@@ -104,6 +109,7 @@ type CxPlugin = {
     hiddenTargets: CxHideTarget[];
     styledTargets: CxStyleTarget[];
     nativeEffects: CxNativeEffect[];
+    previousRule?: CxPreviousRule;
     profileActions: CxProfileMenuAction[];
     incoming: IncomingRule[];
 };
@@ -180,6 +186,7 @@ export function parseCx(source: string): CxDocument {
     const hiddenTargets = new Set<CxHideTarget>();
     const styledTargets = new Set<CxStyleTarget>();
     const nativeEffects = new Set<CxNativeEffect>();
+    let previousRule: CxPreviousRule | undefined;
     const profileActions = new Set<CxProfileMenuAction>();
     const incoming: IncomingRule[] = [];
     let suppressReplyPing = false;
@@ -189,7 +196,7 @@ export function parseCx(source: string): CxDocument {
     for (const line of lines) {
         if (!line.trim()) continue;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
-        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !profileActions.size && !incoming.length) {
+        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length) {
             const permission = declaration[1] as CxPermission;
             if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
                 throw new Error("Unknown or duplicate CX permission");
@@ -240,13 +247,27 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
-        const replace = /^  before (send|edit) replace ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line);
+        const previous = parseCxPreviousRule(line);
+        if (previous) {
+            if (previousRule) throw new Error("Choose one previous-message rule per plugin");
+            previousRule = previous;
+            current = undefined;
+            continue;
+        }
+        const replace = /^  before (send|edit) (replace|rewrite-origin) ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line);
         if (replace) {
             const stage = replace[1] as TransformStage;
-            const find = quoted(replace[2], 240);
-            if (transforms.length >= 32 || transforms.some(rule => rule.stage === stage && rule.name === "replaceLiteral" && rule.find === find))
+            const name = replace[2] === "replace" ? "replaceLiteral" : "rewriteOrigin";
+            let find = quoted(replace[3], 240);
+            let replacement = quoted(replace[4], 240, true);
+            if (name === "rewriteOrigin") {
+                find = parseCxHttpsOrigin(find);
+                replacement = parseCxHttpsOrigin(replacement);
+                if (find === replacement) throw new Error("Use a different destination for link rewrites");
+            }
+            if (transforms.length >= 32 || transforms.some(rule => rule.stage === stage && rule.name === name && rule.find === find))
                 throw new Error("Duplicate or too many replacement rules");
-            transforms.push({ stage, name: "replaceLiteral", find, replacement: quoted(replace[3], 240, true) });
+            transforms.push({ stage, name, find, replacement });
             current = undefined;
             continue;
         }
@@ -333,7 +354,7 @@ export function parseCx(source: string): CxDocument {
         }
         current.actions.push({ kind, message, fallback });
     }
-    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !profileActions.size && !incoming.length) || commands.some(command => !command.actions.length))
+    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length) || commands.some(command => !command.actions.length))
         throw new Error("A plugin needs a command or a supported behavior");
     const required = new Set<CxPermission>();
     if (commands.length) required.add("commands.register");
@@ -341,11 +362,15 @@ export function parseCx(source: string): CxDocument {
     if (hiddenTargets.size) required.add("appearance.hide");
     if (styledTargets.size) required.add("appearance.style");
     for (const effect of nativeEffects) required.add(cxNativeEffects[effect].permission);
+    if (previousRule) required.add("messages.editprevious");
     if (profileActions.size) required.add("profilemenu.copy");
     if (readsAvatar) required.add("profile.avatar");
     for (const permission of clientPermissions) required.add(permission);
     for (const { kind } of incoming) required.add(incomingPermissions[kind]);
-    for (const { stage } of transforms) required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
+    for (const { stage, name } of transforms) {
+        required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
+        if (name === "rewriteOrigin") required.add("messages.redirectlinks");
+    }
     for (const { actions } of commands) {
         for (const action of actions) {
             for (const permission of actionPermissions[action.kind]) required.add(permission);
@@ -358,7 +383,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Remove unused CX permissions");
     return {
         kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing,
-        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], nativeEffects: [...nativeEffects], profileActions: [...profileActions], incoming,
+        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], nativeEffects: [...nativeEffects], previousRule, profileActions: [...profileActions], incoming,
     };
 }
 
@@ -374,6 +399,7 @@ export function reviewCx(source: string) {
             .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label))
             .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
             .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label))
+            .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" ? [rule.find + " → " + rule.replacement] : []))
             .concat(document.incoming.flatMap(rule => rule.kind === "stickers" && rule.values[0] === "*"
                 ? ["Hide all stickers"] : !rule.values.length && rule.kind !== "reply-pings"
                     ? ["Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")] : [])),
@@ -401,6 +427,7 @@ type CxHost = {
     hideAppearanceTarget?: (target: CxHideTarget) => () => void;
     styleAppearanceTarget?: (target: CxStyleTarget) => () => void;
     registerNativeEffect?: (effect: CxNativeEffect) => () => void;
+    registerPreviousMessageRule?: (rule: CxPreviousRule) => () => void;
     registerIncomingRules?: (rules: readonly IncomingRule[]) => () => void;
 };
 
@@ -453,18 +480,26 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
             if (!host.registerReplyPingSuppression) throw new Error("This client cannot suppress reply pings");
             cleanups.push(host.registerReplyPingSuppression());
         }
+        if (document.previousRule) {
+            if (!host.registerPreviousMessageRule) throw new Error("This client cannot edit previous messages");
+            cleanups.push(host.registerPreviousMessageRule(document.previousRule));
+        }
         for (const stage of ["send", "edit"] as const) {
             const transforms = document.messageTransforms.filter(transform => transform.stage === stage);
             if (!transforms.length) continue;
             const register = stage === "send" ? host.registerMessageTransform : host.registerMessageEditTransform;
             if (!register) throw new Error("This client cannot transform message " + stage + "s");
+            const origins = new Map(transforms.flatMap(rule => rule.name === "rewriteOrigin" ? [[rule.find, rule.replacement] as const] : []));
             cleanups.push(register(text => {
                 if (!active || text.length > 4000) return text;
                 let result = text;
+                let rewrote = false;
                 for (const rule of transforms) {
-                    result = rule.name === "replaceLiteral"
-                        ? result.replaceAll(rule.find, () => rule.replacement)
-                        : messageTransforms[rule.name](result, rule.options);
+                    if (rule.name === "rewriteOrigin") {
+                        if (!rewrote) result = rewriteCxOrigin(result, origins);
+                        rewrote = true;
+                    } else if (rule.name === "replaceLiteral") result = result.replaceAll(rule.find, () => rule.replacement);
+                    else result = messageTransforms[rule.name](result, rule.options);
                     if (result.length > 4000) return text;
                 }
                 return result.trim() && result.length <= 4000 ? result : text;

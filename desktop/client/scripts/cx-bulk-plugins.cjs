@@ -276,6 +276,47 @@ function compileOutgoing(plugin) {
     if (rules.length) return { capability: "outgoing-text", lines: [...permissions, ...rules] };
 }
 
+function compileOriginRewrites(plugin, source) {
+    if (!fieldsAre(plugin, ["name", "description", "authors", "tags", "searchTerms", "dependencies", "replaceUrl", "onBeforeMessageSend"])) return;
+    const declarations = source.statements.filter(ts.isVariableStatement);
+    if (declarations.length !== 1) return;
+    const list = declarations[0].declarationList;
+    if (!(list.flags & ts.NodeFlags.Const) || list.declarations.length !== 1) return;
+    const { name, initializer } = list.declarations[0];
+    const map = identifier(name);
+    if (!map || !initializer || !ts.isNewExpression(initializer) || identifier(initializer.expression) !== "Map"
+        || initializer.arguments?.length !== 1 || !ts.isArrayLiteralExpression(initializer.arguments[0])) return;
+    const entries = initializer.arguments[0].elements.map(item => ts.isArrayLiteralExpression(item) && item.elements.map(literal));
+    const origin = /^https:\/\/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}$/i;
+    if (!entries.length || entries.length > 32 || entries.some(pair => !pair || pair.length !== 2
+        || pair.some(value => !safeText(value) || !origin.test(value)) || pair[0].toLowerCase() === pair[1].toLowerCase())
+        || new Set(entries.map(([key]) => key.toLowerCase())).size !== entries.length) return;
+    const replace = handler(plugin, "replaceUrl");
+    const send = handler(plugin, "onBeforeMessageSend");
+    const arg = identifier(replace?.parameters[0]?.name);
+    const draft = identifier(send?.parameters[1]?.name);
+    if (!arg || !draft || replace.parameters.length !== 1 || send.parameters.length !== 2) return;
+    const helper = printed(replace.body, source).replace(/\s+/g, " ");
+    const match = /^\{ try \{ var ([a-zA-Z_$][\w$]*) = new URL\(/.exec(helper);
+    if (!match) return;
+    const url = match[1];
+    const expected = "{ try { var " + url + " = new URL(" + arg + "); } catch (error) { return " + arg + "; } "
+        + "if (" + map + ".has(" + url + ".origin)) { return " + map + ".get(" + url + ".origin) + "
+        + url + ".pathname + " + url + ".search; } return " + arg + "; }";
+    if (helper !== expected) return;
+    const content = draft + ".content";
+    const assignment = content + " = this.replaceUrl(" + content + ");";
+    const hook = printed(send.body, source).replace(/\s+/g, " ");
+    if (hook !== "{ " + assignment + " }" && hook !== "{ if (/https:\\/\\//.test(" + content + ")) { " + assignment + " } }") return;
+    return {
+        declaration: declarations[0],
+        capability: "origin-rewrite",
+        lines: ["  needs messages.transform", "  needs messages.redirectlinks", ...entries.map(([from, to]) =>
+            "  before send rewrite-origin " + JSON.stringify(from) + " with " + JSON.stringify(to)
+        )],
+    };
+}
+
 // These three built-in mobile plugins share the same event filter. Match the
 // original start hook before generating its portable CX counterpart.
 const mobileFilterRecipes = {
@@ -381,6 +422,31 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
     };
 }
 
+function compileMobilePreviousEdit(file, plugin, source) {
+    if (!/^ios\/runtime\/src\/core\/plugins\/(?:sedenhanced|messageburst)\/index\.ts$/.test(file)
+        || !fieldsAre(plugin, ["manifest", "start", "stop", "SettingsComponent"])
+        || !imported(source, "instead", "@lib/api/patcher")
+        || !imported(source, "messageUtil", "@metro/common")) return;
+    const start = handler(plugin, "start");
+    if (!start || !ts.isBlock(start.body) || start.body.statements.length !== 1) return;
+    const code = printed(start.body, source);
+    if (!code.includes('unpatch = instead("sendMessage", messageUtil,') || !code.includes('findByProps("editMessage", "startEditMessage")')) return;
+    let rule;
+    if (code.includes("applySed(content.trim(), mine.content)") && code.includes("m.author?.id === me")) {
+        rule = "correct-previous";
+    } else if (code.includes("last.author?.id === me") && code.includes("last.content + (settings.get(\"useSpace\")")) {
+        const settings = source.statements.filter(ts.isVariableStatement).flatMap(statement => [...statement.declarationList.declarations])
+            .find(declaration => identifier(declaration.name) === "settings")?.initializer;
+        if (!settings || !ts.isCallExpression(settings) || identifier(settings.expression) !== "pluginSettings") return;
+        const defaults = settings.arguments[1];
+        const seconds = literal(value(defaults, "seconds"));
+        const space = value(defaults, "useSpace")?.kind;
+        if (!seconds || !/^([1-9]|[12][0-9]|30)$/.test(seconds) || ![ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword].includes(space)) return;
+        rule = "merge-previous " + seconds + (space === ts.SyntaxKind.TrueKeyword ? " space" : "");
+    }
+    if (rule) return { capability: "previous-edit", lines: ["  needs messages.editprevious", "  before send " + rule] };
+}
+
 function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}) {
     if (platform === "betterdiscord") return inspectBetterDiscord(file, code, appearance);
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
@@ -417,13 +483,14 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
         ui: /\b(?:contextMenus|chatBarButton|patches|renderMessage|onJsxCreate)\b/.test(code),
     };
     const dependencies = value(plugin, "dependencies");
+    const originRewrite = platform === "desktop" && compileOriginRewrites(plugin, source);
     const importModules = new Map([
         ["@api/Commands", ["findOption", "RequiredMessageOption", "OptionalMessageOption"]],
         ["@utils/constants", ["Devs", "SincordDevs"]],
         ["@utils/types", ["definePlugin"]],
     ]);
     const allowedDeclarations = !entry.isExportEquals && source.statements.every(node => {
-        if (node === entry) return true;
+        if (node === entry || node === originRewrite?.declaration) return true;
         if (ts.isVariableStatement(node)) return node.declarationList.flags & ts.NodeFlags.Const
             && node.declarationList.declarations.every(declaration => identifier(declaration.name) && declaration.initializer
                 && ts.isArrayLiteralExpression(declaration.initializer) && declaration.initializer.elements.every(item => literal(item) !== undefined));
@@ -442,8 +509,8 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
         && allowedDeclarations && simpleDependencies && !source.parseDiagnostics.length && hasLicense && safeText(name) && name.length <= 64;
     const compiled = platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
-            || compileMobileNativeEffect(file, plugin, source, nativeEffects)
-        : supported && (compileCommands(plugin, source) || compileOutgoing(plugin));
+            || compileMobileNativeEffect(file, plugin, source, nativeEffects) || compileMobilePreviousEdit(file, plugin, source)
+        : supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin));
     return {
         name, file, platform, flags, hooks: inventoryHooks(source),
         ...(compiled ? { capability: compiled.capability, cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") } : {}),
@@ -503,7 +570,7 @@ function scan(sourceDir) {
         const already = existing.has(key);
         const status = already ? "in-catalog"
             : !cx ? "needs-adapter"
-                : record.platform === "mobile" && ["incoming-filter", "client-command", "native-effect"].includes(record.capability) ? "ready"
+                : record.platform === "mobile" && ["incoming-filter", "client-command", "native-effect", "previous-edit"].includes(record.capability) ? "ready"
                     : variants.get(key).some(variant => variant.platform === "mobile") ? "compare-mobile"
                     : variants.get(key).length > 1 ? "compare-sources"
                         : "ready";
@@ -551,6 +618,7 @@ function verifyPorts(files) {
                 registerMessageEditTransform: register,
                 registerIncomingRules: register,
                 registerNativeEffect: register,
+                registerPreviousMessageRule: register,
                 hideAppearanceTarget: register,
                 styleAppearanceTarget: register,
             };

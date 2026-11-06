@@ -2,12 +2,12 @@ import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, fi
 import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { animateCxAssets, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxIncomingRules } from "@utils/cx";
+import { animateCxAssets, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, reviewCx, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
 import { findByProps } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageStore, ReadStateStore, RelationshipStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, ReadStateStore, RelationshipStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useState } from "@webpack/common";
 
 const session = createCxSession();
 
@@ -114,6 +114,27 @@ export function CxSettings() {
                         replyOptions.allowedMentions = { parse: ["users", "roles", "everyone"], ...replyOptions.allowedMentions, repliedUser: false };
                     });
                     return () => { removeMessagePreSendListener(listener); };
+                },
+                registerPreviousMessageRule(rule) {
+                    let active = true;
+                    const handle = createCxPreviousSendHandler(rule, {
+                        currentUser: () => UserStore?.getCurrentUser()?.id,
+                        previous: (channel, own) => own ? MessageStore?.getLastEditableMessage(channel) : MessageStore?.getLastMessage(channel),
+                        edit: (channel, id, content) => MessageActions.editMessage(channel, id, { content }),
+                        error: () => { showToast("Couldn’t edit the previous message."); },
+                    });
+                    const listener = addMessagePreSendListener(async (channel, message, options) => {
+                        if (!active) return;
+                        const edit = handle(channel, message.content, Boolean(message.tts || options?.replyOptions?.messageReference
+                            || options?.uploads?.length || options?.stickers?.length));
+                        if (!edit) return;
+                        await edit;
+                        return { cancel: true };
+                    });
+                    return () => {
+                        active = false;
+                        removeMessagePreSendListener(listener);
+                    };
                 },
                 registerMessageTransform(transform) {
                     const listener = addMessagePreSendListener((_, message) => {
