@@ -66,6 +66,11 @@ export interface Dev {
  * If you are fine with attribution but don't want the badge, add badge: false
  */
 export const Devs = /* #__PURE__*/ Object.freeze({
+    // Endcord authors, credited on the plugins in src/endcordplugins
+    ewlle: { name: "ewlle", id: 1097880625513496586n },
+    rootpoi: { name: "rootpoi", id: 1390609041897554050n },
+    kraethis: { name: "kraethis", id: 904384828143706164n },
+    vpg: { name: "vpg", id: 1374807824479162369n },
     Davri: {
         name: "Davri",
         id: 457579346282938368n
