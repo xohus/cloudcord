@@ -35908,15 +35908,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         });
         return "continue";
       }
-      var action2 = /^    (toast|reply) (.+)$/.exec(line12);
+      var action2 = /^    (toast|reply|send) (.+)$/.exec(line12);
       if (!action2 || !current || current.actions.length >= 4)
         throw new Error("Unknown CX instruction or too many actions");
       var kind = action2[1];
       var message = quoted(action2[2], 240);
-      if (kind === "reply") {
-        var remaining = current.text ? message.replaceAll("${length(text)}", "") : message;
+      if (kind === "send" && (!current.text || current.actions.some((action3) => action3.kind === "send"))) {
+        throw new Error("CX allows one outgoing message per command with text");
+      }
+      if (kind !== "toast") {
+        var remaining = current.text ? message.replace(textExpression, (expression, fn) => !fn || Object.prototype.hasOwnProperty.call(textFunctions, fn) ? "" : expression) : message;
         if (remaining.includes("${"))
-          throw new Error("CX replies support only length(text) in commands with text");
+          throw new Error("CX messages only support text and named text functions in commands with text");
       }
       current.actions.push({
         kind,
@@ -35940,7 +35943,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       for (var line of lines) {
         if (!line.trim())
           continue;
-        var field = /^  (background|accent|wallpaper): (.+)$/.exec(line);
+        var field = /^  (background|surface|sidebar|text|muted|accent|wallpaper|wallpaper-opacity): (.+)$/.exec(line);
         if (!field || seen.has(field[1]))
           throw new Error("Unknown or duplicate theme field");
         var [, key, value] = field;
@@ -35950,17 +35953,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           if (!/^data:image\/(?:png;base64,iVBORw0KGgo|jpeg;base64,\/9j\/)[A-Za-z0-9+/]+={0,2}$/.test(uri) || uri.slice(uri.indexOf(",") + 1).length % 4 !== 0)
             throw new Error("Wallpaper must be an embedded PNG or JPEG data URL");
           theme.wallpaper = uri;
+        } else if (key === "wallpaper-opacity") {
+          if (!/^(?:100|[1-9]?[0-9])$/.test(value))
+            throw new Error("Wallpaper opacity must be an integer from 0 to 100");
+          theme.wallpaperOpacity = Number(value) / 100;
         } else {
           if (!/^#[0-9a-f]{6}$/i.test(value))
             throw new Error("Use a six-digit hex color");
-          if (key === "background")
-            theme.background = value;
-          else
-            theme.accent = value;
+          theme[key] = value;
         }
       }
       if (!theme.background)
         throw new Error("A theme needs a background color");
+      if (theme.wallpaperOpacity !== void 0 && !theme.wallpaper)
+        throw new Error("Wallpaper opacity requires an embedded wallpaper");
       return theme;
     }
     var permissions = /* @__PURE__ */ new Set();
@@ -35975,7 +35981,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     ]);
     for (var { actions } of commands3) {
       for (var action of actions)
-        required.add(action.kind === "toast" ? "ui.toast" : "reply.local");
+        required.add(actionPermissions[action.kind]);
     }
     if ([
       ...required
@@ -36034,15 +36040,25 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         cleanups.push(host.registerCommand(command2.name, (invocation) => {
           if (!active)
             return;
+          var text = command2.text && typeof invocation?.text === "string" ? invocation.text : "";
+          var outgoing;
           for (var action of command2.actions) {
-            if (action.kind === "toast" && grants.has("ui.toast"))
+            if (!grants.has(actionPermissions[action.kind]))
+              continue;
+            if (action.kind === "toast") {
               host.toast(action.message);
-            if (action.kind === "reply" && grants.has("reply.local")) {
-              var text = command2.text && typeof invocation?.text === "string" ? invocation.text : "";
-              invocation?.reply?.(action.message.replaceAll("${length(text)}", String(text.length)));
+              continue;
             }
+            var message = action.message.replace(textExpression, (_2, fn) => fn ? textFunctions[fn](text) : text);
+            if (message.length > 4e3)
+              continue;
+            if (action.kind === "reply")
+              invocation?.reply?.(message);
+            else if (text.trim() && message.trim())
+              outgoing = message;
           }
-        }, command2.text));
+          return outgoing;
+        }, command2.text, command2.actions.some((action) => action.kind === "send")));
       };
       for (var command of document.commands)
         _loop2(command);
@@ -36086,7 +36102,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     };
   }
-  var MAX_CX_SOURCE, permissionLabels;
+  var MAX_CX_SOURCE, permissionLabels, leetCharacters, textFunctions, textExpression, actionPermissions;
   var init_cx = __esm({
     "src/lib/api/cx.ts"() {
       "use strict";
@@ -36096,7 +36112,175 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       permissionLabels = {
         "commands.register": "Register the listed slash commands",
         "ui.toast": "Show local popups",
-        "reply.local": "Show a command reply visible only to you"
+        "reply.local": "Show a command reply visible only to you",
+        "messages.send": "Send the result to the current chat when you run a listed command"
+      };
+      leetCharacters = {
+        a: "4",
+        e: "3",
+        i: "1",
+        o: "0",
+        s: "5",
+        t: "7",
+        b: "8",
+        g: "9",
+        l: "1"
+      };
+      textFunctions = {
+        length: (text) => String(text.length),
+        reverse: (text) => [
+          ...text
+        ].reverse().join(""),
+        spaced: (text) => text.split("").join(" "),
+        clap: (text) => text.split(/\s+/).filter(Boolean).join(" \u{1F44F} "),
+        leet: (text) => text.replace(/[aeiostbgl]/gi, (char) => leetCharacters[char.toLowerCase()]),
+        bold: (text) => text.replace(/[A-Za-z0-9]/g, (char) => {
+          var code = char.charCodeAt(0);
+          if (code >= 97)
+            return String.fromCodePoint(119834 + code - 97);
+          if (code >= 65)
+            return String.fromCodePoint(119808 + code - 65);
+          return String.fromCodePoint(120782 + code - 48);
+        })
+      };
+      textExpression = /\$\{(?:text|([a-z]+)\(text\))\}/g;
+      actionPermissions = {
+        toast: "ui.toast",
+        reply: "reply.local",
+        send: "messages.send"
+      };
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/bold-text.cx
+  var bold_text_default;
+  var init_bold_text = __esm({
+    "../examples/cx/catalog/plugins/bold-text.cx"() {
+      bold_text_default = 'plugin "BoldText":\n  needs commands.register\n  needs messages.send\n  on command "bold" with text:\n    send "${bold(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/clap-text.cx
+  var clap_text_default;
+  var init_clap_text = __esm({
+    "../examples/cx/catalog/plugins/clap-text.cx"() {
+      clap_text_default = 'plugin "ClapText":\n  needs commands.register\n  needs messages.send\n  on command "clap" with text:\n    send "${clap(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/leet-text.cx
+  var leet_text_default;
+  var init_leet_text = __esm({
+    "../examples/cx/catalog/plugins/leet-text.cx"() {
+      leet_text_default = 'plugin "LeetText":\n  needs commands.register\n  needs messages.send\n  on command "leet" with text:\n    send "${leet(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/reverse-text.cx
+  var reverse_text_default;
+  var init_reverse_text = __esm({
+    "../examples/cx/catalog/plugins/reverse-text.cx"() {
+      reverse_text_default = 'plugin "ReverseText":\n  needs commands.register\n  needs messages.send\n  on command "reverse" with text:\n    send "${reverse(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/space-out.cx
+  var space_out_default;
+  var init_space_out = __esm({
+    "../examples/cx/catalog/plugins/space-out.cx"() {
+      space_out_default = 'plugin "SpaceOut":\n  needs commands.register\n  needs messages.send\n  on command "spaceout" with text:\n    send "${spaced(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/starify.cx
+  var starify_default;
+  var init_starify = __esm({
+    "../examples/cx/catalog/plugins/starify.cx"() {
+      starify_default = 'plugin "Starify":\n  needs commands.register\n  needs messages.send\n  on command "starify" with text:\n    send "\u2726\uFF9F\uFF61\u22C6 ${text} \u22C6\uFF61\uFF9F\u2726"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/themes/blue-hour.cx
+  var blue_hour_default;
+  var init_blue_hour = __esm({
+    "../examples/cx/catalog/themes/blue-hour.cx"() {
+      blue_hour_default = 'theme "Blue Hour":\n  background: #12192d\n  surface: #1c2746\n  sidebar: #0c1120\n  text: #f0f4ff\n  muted: #b5c2dd\n  accent: #8cbfff\n  wallpaper: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAUCAIAAABj86gYAAAAg0lEQVR4nLXNvQmAQAxA4UxgZWF5lViJtY2FG9g5gK1TOIETGzgIKNGc+YFXfw+qutPVpLkkCHKx1K9Y6eCvSwkDtSsM7C4/cHRvgwi3nfYcBLlFA4v7NXBxmYGvmxuWA4JcSh7oXHlgdF8HXu5z4O5i43ZiEORSwkDtCgO7yw8cXeoCWm7IRbUhJjIAAAAASUVORK5CYII="\n  wallpaper-opacity: 75\n';
+    }
+  });
+
+  // ../examples/cx/midnight.cx
+  var midnight_default;
+  var init_midnight = __esm({
+    "../examples/cx/midnight.cx"() {
+      midnight_default = 'theme "Midnight":\n  background: #101018\n  accent: #8b5cf6\n';
+    }
+  });
+
+  // ../examples/cx/pilot/character-counter.cx
+  var character_counter_default2;
+  var init_character_counter2 = __esm({
+    "../examples/cx/pilot/character-counter.cx"() {
+      character_counter_default2 = 'plugin "CX Character Counter":\n  needs commands.register\n  needs reply.local\n  on command "ccp-count" with text:\n    reply "${length(text)} characters"\n';
+    }
+  });
+
+  // src/lib/api/cxCatalog.ts
+  var cxCatalog;
+  var init_cxCatalog = __esm({
+    "src/lib/api/cxCatalog.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_bold_text();
+      init_clap_text();
+      init_leet_text();
+      init_reverse_text();
+      init_space_out();
+      init_starify();
+      init_blue_hour();
+      init_midnight();
+      init_character_counter2();
+      cxCatalog = {
+        plugins: [
+          {
+            name: "CX Character Counter",
+            source: character_counter_default2
+          },
+          {
+            name: "ReverseText",
+            source: reverse_text_default
+          },
+          {
+            name: "SpaceOut",
+            source: space_out_default
+          },
+          {
+            name: "ClapText",
+            source: clap_text_default
+          },
+          {
+            name: "LeetText",
+            source: leet_text_default
+          },
+          {
+            name: "BoldText",
+            source: bold_text_default
+          },
+          {
+            name: "Starify",
+            source: starify_default
+          }
+        ],
+        themes: [
+          {
+            name: "Blue Hour",
+            source: blue_hour_default
+          },
+          {
+            name: "Midnight",
+            source: midnight_default
+          }
+        ]
       };
     }
   });
@@ -36108,8 +36292,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
   function CxExtensions() {
     var [source, setSource] = React2.useState("");
+    var [showCatalog, setShowCatalog] = React2.useState(false);
+    var [search, setSearch] = React2.useState("");
     var [status, setStatus] = React2.useState("");
     var [candidate, setCandidate] = React2.useState();
+    var searchText = search.trim().toLowerCase();
     function review(next) {
       setCandidate(void 0);
       try {
@@ -36180,13 +36367,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 if (settings.safeMode?.enabled)
                   return;
                 var text = acceptsText ? args.find((arg) => arg?.name === "text")?.value : void 0;
-                execute({
+                var outgoing = execute({
                   text: typeof text === "string" ? text : void 0,
                   reply: (message) => {
                     if (context.channel?.id)
                       messageUtil.sendBotMessage(context.channel.id, message);
                   }
                 });
+                if (outgoing !== void 0)
+                  return {
+                    content: outgoing
+                  };
               }
             });
           },
@@ -36196,31 +36387,38 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           applyTheme(theme) {
             if (!isThemeSupported())
               throw new Error("This loader does not support themes");
-            var palette2 = [
-              theme.background,
-              theme.background
+            var palette2 = (value) => [
+              value,
+              value
             ];
+            var surface = theme.surface ?? theme.background;
+            var sidebar = theme.sidebar ?? surface;
             updateBunnyColor({
               name: theme.name,
               spec: 2,
               semanticColors: {
-                BACKGROUND_PRIMARY: palette2,
-                BACKGROUND_SECONDARY: palette2,
-                BACKGROUND_TERTIARY: palette2,
-                BACKGROUND_BASE_LOW: palette2,
-                BACKGROUND_BASE_LOWER: palette2,
-                BACKGROUND_BASE_LOWEST: palette2,
+                BACKGROUND_PRIMARY: palette2(theme.background),
+                BACKGROUND_SECONDARY: palette2(surface),
+                BACKGROUND_TERTIARY: palette2(sidebar),
+                BACKGROUND_BASE_LOW: palette2(theme.background),
+                BACKGROUND_BASE_LOWER: palette2(surface),
+                BACKGROUND_BASE_LOWEST: palette2(sidebar),
+                ...theme.text ? {
+                  TEXT_NORMAL: palette2(theme.text),
+                  TEXT_PRIMARY: palette2(theme.text)
+                } : {},
+                ...theme.muted ? {
+                  TEXT_MUTED: palette2(theme.muted),
+                  TEXT_SECONDARY: palette2(theme.muted)
+                } : {},
                 ...theme.accent ? {
-                  TEXT_LINK: [
-                    theme.accent,
-                    theme.accent
-                  ]
+                  TEXT_LINK: palette2(theme.accent)
                 } : {}
               },
               ...theme.wallpaper ? {
                 background: {
                   url: theme.wallpaper,
-                  alpha: 0.85
+                  alpha: theme.wallpaperOpacity ?? 0.85
                 }
               } : {}
             });
@@ -36241,6 +36439,59 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       children: /* @__PURE__ */ jsxs(Stack, {
         spacing: 16,
         children: [
+          /* @__PURE__ */ jsx(TableRowGroup, {
+            title: "CX catalog",
+            children: /* @__PURE__ */ jsx(TableRow, {
+              label: showCatalog ? "Hide catalog" : "Browse catalog",
+              subLabel: `${cxCatalog.plugins.length} plugins \xB7 ${cxCatalog.themes.length} themes`,
+              onPress: () => setShowCatalog(!showCatalog)
+            })
+          }),
+          showCatalog && /* @__PURE__ */ jsxs(Fragment, {
+            children: [
+              /* @__PURE__ */ jsx(import_react_native40.TextInput, {
+                accessibilityLabel: "Search CX catalog",
+                placeholder: "Search CX catalog",
+                placeholderTextColor: "#b5bac1",
+                value: search,
+                onChangeText: setSearch,
+                autoCorrect: false,
+                style: {
+                  color: "#fff",
+                  backgroundColor: "#27282d",
+                  padding: 12
+                }
+              }),
+              [
+                [
+                  "Plugins",
+                  cxCatalog.plugins
+                ],
+                [
+                  "Themes",
+                  cxCatalog.themes
+                ]
+              ].map(([kind, entries]) => {
+                var matches = entries.filter((entry) => entry.name.toLowerCase().includes(searchText));
+                return /* @__PURE__ */ jsxs(TableRowGroup, {
+                  title: kind,
+                  children: [
+                    matches.slice(0, 12).map((entry) => /* @__PURE__ */ jsx(TableRow, {
+                      label: entry.name,
+                      onPress: () => {
+                        setShowCatalog(false);
+                        setSource(entry.source);
+                        review(entry.source);
+                      }
+                    }, entry.name)),
+                    matches.length > 12 && /* @__PURE__ */ jsx(TableRow, {
+                      label: "Search to narrow the results."
+                    })
+                  ]
+                }, kind);
+              })
+            ]
+          }),
           /* @__PURE__ */ jsx(import_react_native40.Text, {
             style: {
               color: "#b5bac1"
@@ -36318,6 +36569,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_async_to_generator();
       init_jsxRuntime();
       init_cx();
+      init_cxCatalog();
       init_commands();
       init_types();
       init_themes();
@@ -40960,7 +41212,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "005f12c56254a0672eaea71813add4f4e289edba";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "0b262545560d8788d573b35241300dac253c232e";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
