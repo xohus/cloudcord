@@ -1,0 +1,3 @@
+plugin "HideRoleIcons":
+  needs appearance.hide
+  hide role-icons

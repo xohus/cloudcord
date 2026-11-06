@@ -1,0 +1,3 @@
+plugin "HideBotTags":
+  needs appearance.hide
+  hide bot-tags

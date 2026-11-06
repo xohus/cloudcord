@@ -1,5 +1,5 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
-import { createCxSession, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx } from "@lib/api/cx";
+import { createCxSession, cxAppearanceTargets, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
@@ -7,6 +7,7 @@ import { getCurrentTheme } from "@lib/addons/themes";
 import { updateBunnyColor } from "@lib/addons/themes/colors/updater";
 import { NativeFileModule } from "@lib/api/native/modules";
 import { isThemeSupported } from "@lib/api/native/loader";
+import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
 import { settings } from "@lib/api/settings";
 import { showToast } from "@lib/ui/toasts";
 import { findByProps } from "@metro";
@@ -63,6 +64,26 @@ export default function CxExtensions() {
         try {
             if (settings.safeMode?.enabled) throw new Error("CX is unavailable in Safe Mode");
             session.enable(candidate.source, {
+                hideAppearanceTarget(target) {
+                    const names = cxAppearanceTargets[target].mobile;
+                    let hidden = true;
+                    const listeners = new Set<() => void>();
+                    const subscribe = (listener: () => void) => {
+                        listeners.add(listener);
+                        return () => { listeners.delete(listener); };
+                    };
+                    const isHidden = () => hidden && !settings.safeMode?.enabled;
+                    function Visibility({ element }: { element: JSX.Element; }) {
+                        return React.useSyncExternalStore(subscribe, isHidden) ? null : element;
+                    }
+                    const wrap = (_: unknown, element: JSX.Element) => <Visibility key={element.key} element={element} />;
+                    for (const name of names) onJsxCreate(name, wrap, true);
+                    return () => {
+                        hidden = false;
+                        for (const name of names) deleteJsxCreate(name, wrap, true);
+                        for (const listener of [...listeners]) listener();
+                    };
+                },
                 registerReplyPingSuppression() {
                     return onSendMessage((_message, options) => {
                         if (settings.safeMode?.enabled || !options?.messageReference) return;

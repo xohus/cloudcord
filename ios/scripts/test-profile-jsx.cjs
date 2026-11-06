@@ -31,6 +31,12 @@ const cloned = patches.jsx([FrozenHeader], frozenElement);
 assert.equal(cloned.props.children, 'custom', 'profile hooks can edit a presentation copy even when React freezes native props');
 assert.equal(frozenProps.children, 'native');
 assert.notEqual(cloned, frozenElement);
+const visibility = (_component, element) => ({ ...element, finalChild: element.props.children });
+api.onJsxCreate('FrozenHeader', visibility, true);
+api.onJsxCreate('FrozenHeader', (_component, element) => { element.props.children = 'later hook'; });
+assert.equal(patches.jsx([FrozenHeader], frozenElement).finalChild, 'later hook');
+api.deleteJsxCreate('FrozenHeader', visibility, true);
+assert.equal(patches.jsx([FrozenHeader], frozenElement).finalChild, undefined);
 function BrokenHeader() {}
 api.onJsxCreate('BrokenHeader', (_component, element) => { element.props.children = 'partial'; throw Error('hook failed'); });
 api.onJsxCreate('BrokenHeader', (_component, element) => { element.props.after = 'working'; });

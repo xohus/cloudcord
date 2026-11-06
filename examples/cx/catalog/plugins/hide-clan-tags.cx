@@ -1,0 +1,3 @@
+plugin "HideClanTags":
+  needs appearance.hide
+  hide server-tags

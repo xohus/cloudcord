@@ -6,14 +6,22 @@ const { buildSync } = require("esbuild");
 const root = path.resolve(__dirname, "../../..");
 const catalogPath = path.join(root, "desktop/client/src/utils/cxCatalog.ts");
 
-function buildCatalog() {
+function loadCxRuntime() {
     const interpreter = { exports: {} };
     const { outputFiles } = buildSync({
         entryPoints: [path.join(root, "desktop/client/src/utils/cx.ts")],
         bundle: true, write: false, format: "cjs",
     });
     vm.runInNewContext(outputFiles[0].text, { module: interpreter });
-    const { parseCx } = interpreter.exports;
+    return interpreter.exports;
+}
+
+function loadCxParser() {
+    return loadCxRuntime().parseCx;
+}
+
+function buildCatalog() {
+    const parseCx = loadCxParser();
     const names = new Set();
     const commands = new Set();
     const groups = {};
@@ -75,4 +83,4 @@ if (require.main === module) {
     }
 }
 
-module.exports = { buildCatalog };
+module.exports = { buildCatalog, loadCxParser, loadCxRuntime };

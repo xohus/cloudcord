@@ -1,7 +1,7 @@
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { createCxSession, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx } from "@utils/cx";
+import { createCxSession, cxAppearanceTargets, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx } from "@utils/cx";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
 import { useState } from "@webpack/common";
@@ -30,6 +30,12 @@ export function CxSettings() {
         if (!candidate) return;
         try {
             session.enable(candidate.source, {
+                hideAppearanceTarget(target) {
+                    const style = document.createElement("style");
+                    style.textContent = cxAppearanceTargets[target].css;
+                    document.head.append(style);
+                    return () => style.remove();
+                },
                 registerReplyPingSuppression() {
                     const listener = addMessagePreSendListener((_, _message, { replyOptions }) => {
                         if (!replyOptions?.messageReference) return;

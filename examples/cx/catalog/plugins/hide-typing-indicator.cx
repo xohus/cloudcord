@@ -1,0 +1,3 @@
+plugin "HideTypingIndicator":
+  needs appearance.hide
+  hide typing-indicator

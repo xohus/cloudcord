@@ -136,6 +136,7 @@ jobs:
           node scripts/test-settings-focus.cjs
           node scripts/test-addons-navigation.cjs
           NODE_PATH="$PWD/node_modules" node ../../ios/scripts/test-cx.cjs
+          node scripts/test-cx-bulk-plugins.cjs
           node scripts/test-plugin-pagination.cjs
           node scripts/test-theme-catalog.cjs
           node scripts/test-plugin-text-inputs.cjs

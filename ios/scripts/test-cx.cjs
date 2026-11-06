@@ -149,6 +149,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const desktop = platform === "desktop";
         const states = [], registered = {}, delivered = [];
         const transformHooks = new Set();
+        const appearanceHooks = new Map();
         const editHooks = new Set();
         const selectedTheme = { name: "Previously selected" };
         let nativeTheme = selectedTheme, nativeMode, stylesheet;
@@ -202,9 +203,18 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@lib/api/native/modules": {},
             "@lib/api/native/loader": { isThemeSupported: () => true },
             "@lib/api/settings": { settings: {} },
+            "@lib/api/react/jsx": {
+                onJsxCreate(name, hook, afterOthers) { assert.equal(afterOthers, true); appearanceHooks.set(name, hook); },
+                deleteJsxCreate(name, hook, afterOthers) {
+                    assert.equal(afterOthers, true);
+                    assert.equal(appearanceHooks.get(name), hook);
+                    appearanceHooks.delete(name);
+                },
+            },
             "@lib/ui/toasts": {},
             "@metro": {},
-            "@metro/common": { React: { useState }, commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
+            "@metro/common": { React: { useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot() },
+                commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup" },
             "react-native": { ScrollView: "ScrollView", Text: "Text", TextInput: "TextInput" },
         };
@@ -228,9 +238,6 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const render = () => { cursor = 0; return page(); };
         const button = (tree, label) => find(tree, item => item.props.label === label || [].concat(item.props.children).every(part => typeof part === "string")
             && [].concat(item.props.children).join("") === label);
-        const editor = find(render(), item => item.type === (desktop ? "textarea" : "TextInput"));
-        if (desktop) editor.props.onChange({ currentTarget: { value: counter } });
-        else editor.props.onChangeText(counter);
         const click = (tree, label) => button(tree, label).props[desktop ? "onClick" : "onPress"]();
         const searchFor = value => {
             const search = find(render(), element => element.props.placeholder === "Search CX catalog");
@@ -242,6 +249,28 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             searchFor(name);
             click(render(), name);
         };
+        for (const [target, rule] of Object.entries(moduleBox.exports.cxAppearanceTargets)) {
+            const appearancePort = cxCatalog.plugins.find(entry => entry.name === rule.plugin).source;
+            assert.throws(() => activateCx(appearancePort, host, []), /approval/);
+            assert.throws(() => parseCx(appearancePort.replace("hide " + target, "hide unknown-target")), /appearance target/);
+            selectCatalog(rule.plugin);
+            click(render(), "Allow for this session");
+            const original = Object.freeze({ type: "NativeTarget", props: Object.freeze({ value: "original" }) });
+            const wraps = [];
+            if (desktop) assert.equal(stylesheet.textContent, rule.css);
+            else for (const name of rule.mobile) {
+                const wrapped = appearanceHooks.get(name)(null, original);
+                assert.equal(wrapped.type(wrapped.props), null);
+                wraps.push(wrapped);
+            }
+            click(render(), "Disable " + rule.plugin);
+            assert.equal(appearanceHooks.size, 0);
+            assert.equal(stylesheet, undefined);
+            for (const wrapped of wraps) assert.equal(wrapped.type(wrapped.props), original);
+        }
+        const editor = find(render(), item => item.type === (desktop ? "textarea" : "TextInput"));
+        if (desktop) editor.props.onChange({ currentTarget: { value: counter } });
+        else editor.props.onChangeText(counter);
         click(render(), "Review CX");
         assert.equal(Object.keys(registered).length, 0, platform + " waits for approval");
         click(render(), "Allow for this session");
