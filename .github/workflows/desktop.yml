@@ -270,6 +270,13 @@ jobs:
             desktop/client/CLOUDCORD_NOTES.md
             desktop/client/README.md
 
+      - name: Build animated Windows installer
+        shell: bash
+        run: |
+          set -e
+          bash desktop/client/installer/windows/build.sh
+          cp desktop/client/installer/windows/out/CloudCordInstaller.exe desktop/client/dist/CloudCordInstaller.exe
+
       - name: Package desktop.asar for updater
         shell: bash
         run: |

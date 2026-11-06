@@ -119,6 +119,7 @@ export function PluginCard({ plugin, disabled, onRestartNeeded, onMouseEnter, on
         <AddonCard
             name={plugin.name}
             sourceBadge={sourceBadge}
+            author={plugin.authors?.map(a => a.name).join(", ") || undefined}
             tooltip={tooltip}
             description={plugin.description}
             isNew={isNew}

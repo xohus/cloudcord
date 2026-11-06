@@ -35720,6 +35720,423 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cx.ts
+  function quoted(value, limit) {
+    if (!value.startsWith('"') || !value.endsWith('"'))
+      throw new Error("Expected text in double quotes");
+    var decoded;
+    try {
+      decoded = JSON.parse(value);
+    } catch (e) {
+      throw new Error("Invalid quoted text");
+    }
+    if (!decoded.trim() || decoded.length > limit || RegExp("[\\x00-\\x1f\\x7f-\\x9f\\u202a-\\u202e\\u2066-\\u2069]", "u").test(decoded))
+      throw new Error("Invalid text or length");
+    return decoded;
+  }
+  function parseCx(source) {
+    var _loop2 = function(line12) {
+      if (!line12.trim())
+        return "continue";
+      var declaration2 = /^  needs ([a-z.]+)$/.exec(line12);
+      if (declaration2 && !current) {
+        var permission = declaration2[1];
+        if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
+          throw new Error("Unknown or duplicate CX permission");
+        permissions.add(permission);
+        return "continue";
+      }
+      var command = /^  on command "([a-z][a-z0-9_-]{0,31})":$/.exec(line12);
+      if (command) {
+        var name2 = command[1];
+        if (commands3.length >= 16 || commands3.some((entry) => entry.name === name2))
+          throw new Error("Duplicate or too many commands");
+        commands3.push(current = {
+          name: name2,
+          messages: []
+        });
+        return "continue";
+      }
+      var toast = /^    toast (.+)$/.exec(line12);
+      if (!toast || !current || current.messages.length >= 4)
+        throw new Error("Unknown CX instruction or too many popups");
+      current.messages.push(quoted(toast[1], 240));
+    };
+    if (source.length > MAX_CX_SOURCE)
+      throw new Error("CX file is too large");
+    var lines = source.replace(/^\uFEFF/, "").split(/\r?\n/);
+    var header = /^(plugin|theme) (.+):$/.exec(lines.shift() ?? "");
+    if (!header)
+      throw new Error('Start with plugin "Name": or theme "Name":');
+    var name = quoted(header[2], 64);
+    if (header[1] === "theme") {
+      var theme = {
+        kind: "theme",
+        name,
+        background: ""
+      };
+      var seen = /* @__PURE__ */ new Set();
+      for (var line of lines) {
+        if (!line.trim())
+          continue;
+        var field = /^  (background|accent|wallpaper): (.+)$/.exec(line);
+        if (!field || seen.has(field[1]))
+          throw new Error("Unknown or duplicate theme field");
+        var [, key, value] = field;
+        seen.add(key);
+        if (key === "wallpaper") {
+          var uri = quoted(value, 384 * 1024);
+          if (!/^data:image\/(?:png;base64,iVBORw0KGgo|jpeg;base64,\/9j\/)[A-Za-z0-9+/]+={0,2}$/.test(uri) || uri.slice(uri.indexOf(",") + 1).length % 4 !== 0)
+            throw new Error("Wallpaper must be an embedded PNG or JPEG data URL");
+          theme.wallpaper = uri;
+        } else {
+          if (!/^#[0-9a-f]{6}$/i.test(value))
+            throw new Error("Use a six-digit hex color");
+          if (key === "background")
+            theme.background = value;
+          else
+            theme.accent = value;
+        }
+      }
+      if (!theme.background)
+        throw new Error("A theme needs a background color");
+      return theme;
+    }
+    var permissions = /* @__PURE__ */ new Set();
+    var commands3 = [];
+    var current;
+    for (var line1 of lines)
+      _loop2(line1);
+    if (!commands3.length || commands3.some((command) => !command.messages.length))
+      throw new Error("A plugin needs at least one command with a toast");
+    if (!permissions.has("commands.register") || !permissions.has("ui.toast"))
+      throw new Error("Declare commands.register and ui.toast before the commands");
+    return {
+      kind: "plugin",
+      name,
+      commands: commands3,
+      permissions: [
+        ...permissions
+      ]
+    };
+  }
+  function reviewCx(source) {
+    var document = parseCx(source);
+    if (document.kind === "theme")
+      return {
+        kind: document.kind,
+        name: document.name,
+        effects: [
+          "Change the app colors and background"
+        ]
+      };
+    return {
+      kind: document.kind,
+      name: document.name,
+      effects: document.permissions.map((permission) => permissionLabels[permission]),
+      commands: document.commands.map((command) => "/" + command.name)
+    };
+  }
+  function activateCx(source, host, approved) {
+    var document = parseCx(source);
+    if (document.kind === "theme")
+      return host.applyTheme(document);
+    var grants = new Set(approved);
+    if (!document.permissions.every((permission) => grants.has(permission)))
+      throw new Error("CX permission approval is required");
+    var cleanups = [];
+    var active = true;
+    function stop() {
+      active = false;
+      for (var cleanup of cleanups.splice(0).reverse())
+        cleanup();
+    }
+    try {
+      var _loop2 = function(command2) {
+        if (!grants.has("commands.register"))
+          throw new Error("Command permission denied");
+        cleanups.push(host.registerCommand(command2.name, () => {
+          if (active && grants.has("ui.toast")) {
+            for (var message of command2.messages)
+              host.toast(message);
+          }
+        }));
+      };
+      for (var command of document.commands)
+        _loop2(command);
+      return stop;
+    } catch (error) {
+      stop();
+      throw error;
+    }
+  }
+  function createCxSession() {
+    var active = /* @__PURE__ */ new Map();
+    return {
+      list: () => [
+        ...active
+      ].map(([id, { name }]) => ({
+        id,
+        name
+      })),
+      enable(source, host, approved) {
+        var review = reviewCx(source);
+        var id = review.kind === "theme" ? "theme" : "plugin:" + review.name;
+        if (active.has(id))
+          throw new Error(review.kind === "theme" ? "Disable the active CX theme first" : "This CX plugin is already active");
+        if (active.size >= 16)
+          throw new Error("Disable an extension before adding another");
+        active.set(id, {
+          name: review.name,
+          stop: activateCx(source, host, approved)
+        });
+      },
+      disable(id) {
+        var entry = active.get(id);
+        active.delete(id);
+        entry?.stop();
+      },
+      clear() {
+        for (var [id, entry] of active) {
+          active.delete(id);
+          entry.stop();
+        }
+      }
+    };
+  }
+  var MAX_CX_SOURCE, permissionLabels;
+  var init_cx = __esm({
+    "src/lib/api/cx.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      MAX_CX_SOURCE = 512 * 1024;
+      permissionLabels = {
+        "commands.register": "Register the listed slash commands",
+        "ui.toast": "Show local popups"
+      };
+    }
+  });
+
+  // src/core/ui/settings/pages/CxExtensions/index.tsx
+  var CxExtensions_exports = {};
+  __export(CxExtensions_exports, {
+    default: () => CxExtensions
+  });
+  function CxExtensions() {
+    var [source, setSource] = React2.useState("");
+    var [status, setStatus] = React2.useState("");
+    var [candidate, setCandidate] = React2.useState();
+    function review(next) {
+      setCandidate(void 0);
+      try {
+        setCandidate({
+          source: next,
+          review: reviewCx(next)
+        });
+        setStatus("");
+      } catch (error) {
+        setStatus(String(error instanceof Error ? error.message : error));
+      }
+    }
+    function openFile() {
+      return _async_to_generator(function* () {
+        var picker;
+        setCandidate(void 0);
+        try {
+          picker = findByProps("pickSingle", "isCancel");
+          if (!picker?.pickSingle || typeof NativeFileModule?.readFile !== "function")
+            throw new Error("The file picker is unavailable. Paste the .cx contents below.");
+          var file = yield picker.pickSingle({
+            type: picker.types?.allFiles ?? "*/*",
+            mode: "import",
+            copyTo: "cachesDirectory"
+          });
+          if (!/\.cx$/i.test(file?.name ?? "") || !(file.size > 0 && file.size <= MAX_CX_SOURCE))
+            throw new Error("Choose a .cx file under 512 KB.");
+          if (!file.fileCopyUri?.startsWith("file:///"))
+            throw new Error("Could not copy the selected .cx file.");
+          var next = yield NativeFileModule.readFile(decodeURIComponent(file.fileCopyUri.slice(7)), "utf8");
+          setSource(next);
+          review(next);
+        } catch (error) {
+          if (!picker?.isCancel?.(error))
+            setStatus(String(error instanceof Error ? error.message : error));
+        }
+      })();
+    }
+    function enable() {
+      if (!candidate)
+        return;
+      try {
+        if (settings.safeMode?.enabled)
+          throw new Error("CX is unavailable in Safe Mode");
+        session.enable(candidate.source, {
+          registerCommand(name, execute) {
+            var builtIns;
+            try {
+              builtIns = commands.getBuiltInCommands(ApplicationCommandType.CHAT, true, false);
+            } catch (e) {
+              builtIns = commands.getBuiltInCommands(Object.values(ApplicationCommandType), true, false);
+            }
+            if (builtIns.some((command) => command.name === name))
+              throw new Error(`Command /${name} already exists`);
+            return registerCommand({
+              name,
+              description: "Local CX command",
+              options: [],
+              execute() {
+                if (!settings.safeMode?.enabled)
+                  execute();
+              }
+            });
+          },
+          toast: (message) => {
+            showToast(message);
+          },
+          applyTheme(theme) {
+            if (!isThemeSupported())
+              throw new Error("This loader does not support themes");
+            var palette2 = [
+              theme.background,
+              theme.background
+            ];
+            updateBunnyColor({
+              name: theme.name,
+              spec: 2,
+              semanticColors: {
+                BACKGROUND_PRIMARY: palette2,
+                BACKGROUND_SECONDARY: palette2,
+                BACKGROUND_TERTIARY: palette2,
+                BACKGROUND_BASE_LOW: palette2,
+                BACKGROUND_BASE_LOWER: palette2,
+                BACKGROUND_BASE_LOWEST: palette2,
+                ...theme.accent ? {
+                  TEXT_LINK: [
+                    theme.accent,
+                    theme.accent
+                  ]
+                } : {}
+              },
+              ...theme.wallpaper ? {
+                background: {
+                  url: theme.wallpaper,
+                  alpha: 0.85
+                }
+              } : {}
+            });
+            return () => updateBunnyColor(getCurrentTheme()?.data ?? null);
+          }
+        }, [
+          "commands.register",
+          "ui.toast"
+        ]);
+        setStatus(`${candidate.review.name} is active for this session.`);
+        setCandidate(void 0);
+      } catch (error) {
+        setStatus(String(error instanceof Error ? error.message : error));
+      }
+    }
+    return /* @__PURE__ */ jsx(import_react_native39.ScrollView, {
+      contentContainerStyle: {
+        padding: 16
+      },
+      children: /* @__PURE__ */ jsxs(Stack, {
+        spacing: 16,
+        children: [
+          /* @__PURE__ */ jsx(import_react_native39.Text, {
+            style: {
+              color: "#b5bac1"
+            },
+            children: "Paste the contents of a .cx file to review it."
+          }),
+          /* @__PURE__ */ jsx(import_react_native39.TextInput, {
+            accessibilityLabel: "CX source",
+            placeholder: 'theme "Midnight":',
+            placeholderTextColor: "#b5bac1",
+            value: source,
+            maxLength: MAX_CX_SOURCE,
+            multiline: true,
+            autoCapitalize: "none",
+            autoCorrect: false,
+            style: {
+              color: "#fff",
+              backgroundColor: "#27282d",
+              minHeight: 140,
+              padding: 12
+            },
+            onChangeText: (value) => {
+              setCandidate(void 0);
+              setSource(value);
+            }
+          }),
+          /* @__PURE__ */ jsxs(TableRowGroup, {
+            title: "CX Extensions",
+            children: [
+              /* @__PURE__ */ jsx(TableRow, {
+                label: "Open a .cx file",
+                onPress: openFile
+              }),
+              /* @__PURE__ */ jsx(TableRow, {
+                label: "Review CX",
+                onPress: () => review(source)
+              }),
+              candidate && /* @__PURE__ */ jsx(TableRow, {
+                label: candidate.review.name,
+                subLabel: [
+                  ...candidate.review.effects,
+                  ...candidate.review.commands ?? []
+                ].join("\n")
+              }),
+              candidate && /* @__PURE__ */ jsx(TableRow, {
+                label: "Allow for this session",
+                onPress: enable
+              }),
+              session.list().map(({ id, name }) => /* @__PURE__ */ jsx(TableRow, {
+                label: `Disable ${name}`,
+                onPress: () => {
+                  session.disable(id);
+                  setStatus(`${name} disabled.`);
+                }
+              }, id))
+            ]
+          }),
+          /* @__PURE__ */ jsx(import_react_native39.Text, {
+            accessibilityLiveRegion: "polite",
+            style: {
+              color: "#b5bac1"
+            },
+            children: status
+          })
+        ]
+      })
+    });
+  }
+  var import_react_native39, session;
+  var init_CxExtensions = __esm({
+    "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_async_to_generator();
+      init_jsxRuntime();
+      init_cx();
+      init_commands();
+      init_types();
+      init_themes();
+      init_updater();
+      init_modules();
+      init_loader();
+      init_settings();
+      init_toasts();
+      init_metro();
+      init_common();
+      init_components();
+      import_react_native39 = __toESM(require_react_native());
+      session = createCxSession();
+    }
+  });
+
   // src/core/ui/settings/pages/Addons/index.tsx
   var Addons_exports = {};
   __export(Addons_exports, {
@@ -35752,7 +36169,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }, [
       navigation2
     ]);
-    return /* @__PURE__ */ jsx(import_react_native39.ScrollView, {
+    return /* @__PURE__ */ jsx(import_react_native40.ScrollView, {
       contentContainerStyle: {
         paddingBottom: 38
       },
@@ -35795,6 +36212,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             }),
             /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
+              label: "CX Extensions",
+              subLabel: "Review and activate .cx plugins and themes",
+              icon: icon2("AppsIcon", "SettingsIcon"),
+              onPress: () => open("CX Extensions", () => (init_CxExtensions(), __toCommonJS(CxExtensions_exports)))
+            }),
+            /* @__PURE__ */ jsx(TableRow, {
+              arrow: true,
               label: "Extras",
               subLabel: "Fake Nitro, gift links, boosts, friend requests and account tools",
               icon: icon2("GiftIcon", "NitroWheelIcon", "StarIcon", "SettingsIcon"),
@@ -35814,7 +36238,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native39;
+  var import_react_native40;
   var init_Addons = __esm({
     "src/core/ui/settings/pages/Addons/index.tsx"() {
       "use strict";
@@ -35822,7 +36246,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_promiseAllSettled();
       init_async_to_generator();
       init_jsxRuntime();
-      import_react_native39 = __toESM(require_react_native());
+      import_react_native40 = __toESM(require_react_native());
       init_common();
       init_components();
       init_loader();
@@ -36014,7 +36438,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         children: /* @__PURE__ */ jsxs(SafeAreaView, {
           style: styles.container,
           children: [
-            /* @__PURE__ */ jsxs(import_react_native40.View, {
+            /* @__PURE__ */ jsxs(import_react_native41.View, {
               style: {
                 gap: 4
               },
@@ -36042,7 +36466,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 })
               ]
             }),
-            /* @__PURE__ */ jsxs(import_react_native40.ScrollView, {
+            /* @__PURE__ */ jsxs(import_react_native41.ScrollView, {
               fadingEdgeLength: 64,
               contentContainerStyle: {
                 gap: 12
@@ -36085,7 +36509,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native40, useStyles4;
+  var import_react_native41, useStyles4;
   var init_ErrorBoundaryScreen = __esm({
     "src/core/ui/reporter/components/ErrorBoundaryScreen.tsx"() {
       "use strict";
@@ -36100,7 +36524,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_styles();
       init_common();
       init_components();
-      import_react_native40 = __toESM(require_react_native());
+      import_react_native41 = __toESM(require_react_native());
       init_ErrorComponentStackCard();
       init_ErrorStackCard();
       useStyles4 = createStyles({
@@ -39797,7 +40221,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/core/vendetta/api.tsx
-  var import_react16, import_react_native41, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
+  var import_react16, import_react_native42, makeIcon, CompatRow, CompatSwitchRow, CompatSection, PatchedFormRow, PatchedFormSwitchRow, PatchedFormSection, PatchedForms, initVendettaObject;
   var init_api3 = __esm({
     "src/core/vendetta/api.tsx"() {
       "use strict";
@@ -39828,7 +40252,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_toasts();
       init_dist();
       import_react16 = __toESM(require_react());
-      import_react_native41 = __toESM(require_react_native());
+      import_react_native42 = __toESM(require_react_native());
       init_plugins();
       makeIcon = (leading) => leading;
       CompatRow = TableRow ?? Forms.FormRow ?? ReactNative.View;
@@ -39893,7 +40317,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                     ActionSheetTitleHeader: module.BottomSheetTitleHeader,
                     ActionSheetContentContainer: ({ children }) => {
                       (0, import_react16.useEffect)(() => console.warn("Discord has removed 'ActionSheetContentContainer', please move into something else. This has been temporarily replaced with View"), []);
-                      return /* @__PURE__ */ (0, import_react16.createElement)(import_react_native41.View, null, children);
+                      return /* @__PURE__ */ (0, import_react16.createElement)(import_react_native42.View, null, children);
                     }
                   };
                 }
@@ -40080,7 +40504,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   // src/lib/api/native/legacyRuntimeRefresh.ts
   function invokeLegacyReload() {
     return _async_to_generator(function* () {
-      var reader = import_react_native42.NativeModules.FileReaderModule ?? import_react_native42.NativeModules.RCTFileReaderModule;
+      var reader = import_react_native43.NativeModules.FileReaderModule ?? import_react_native43.NativeModules.RCTFileReaderModule;
       if (typeof reader?.readAsDataURL !== "function")
         return false;
       yield reader.readAsDataURL({
@@ -40117,7 +40541,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     })();
   }
-  var import_react_native42, CURRENT_RUNTIME_URL;
+  var import_react_native43, CURRENT_RUNTIME_URL;
   var init_legacyRuntimeRefresh = __esm({
     "src/lib/api/native/legacyRuntimeRefresh.ts"() {
       "use strict";
@@ -40126,7 +40550,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_async_to_generator();
       init_storage();
       init_settings();
-      import_react_native42 = __toESM(require_react_native());
+      import_react_native43 = __toESM(require_react_native());
       CURRENT_RUNTIME_URL = "https://getcloudcord.com/api/proxy/raw/dist/cc.js";
     }
   });
@@ -40335,7 +40759,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "51ef3e2fb6c795398daf36688fba48bb40924a8e";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "8779096132e70769a3d5d7012b9c40f6da053763";
   var rain = globalThis.__RAIN_LOADER__;
   if (rain && !globalThis.__CLOUDCORD_LOADER__) {
     globalThis.__CLOUDCORD_ORIGINAL_RAIN__ = true;
