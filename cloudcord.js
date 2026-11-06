@@ -7576,15 +7576,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     return data;
   }
   function validateTheme(themeJSON) {
-    if (typeof themeJSON !== "object" || themeJSON === null)
+    if (typeof themeJSON !== "object" || themeJSON === null || Array.isArray(themeJSON))
       return false;
-    if (themeJSON.spec === 3 && !themeJSON.main)
+    var record = (value) => value != null && typeof value === "object" && !Array.isArray(value);
+    if (themeJSON.spec === 3)
+      return record(themeJSON.main);
+    if (themeJSON.spec !== void 0 && themeJSON.spec !== 2)
       return false;
-    if (themeJSON.spec === 2)
-      return true;
-    if (themeJSON.theme_color_map)
-      return true;
-    return themeJSON.spec === 2 || themeJSON.spec === 3;
+    return themeJSON.spec === 2 || record(themeJSON.theme_color_map) || record(themeJSON.semanticColors) || record(themeJSON.rawColors);
   }
   function fetchTheme(url2, selected, refresh = false) {
     return _async_to_generator(function* () {
@@ -10032,19 +10031,36 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
 
   // src/lib/ui/settings/observeModules.ts
   function observeSettingsModules(visit) {
-    var _loop2 = function(definition2) {
-      if (!definition2 || definition2.hasError)
-        return "continue";
+    var root = globalThis;
+    var modules = root.__CLOUDCORD_MODULE_VIEW__ ?? root.modules;
+    var pending2 = /* @__PURE__ */ new Map();
+    var seen = /* @__PURE__ */ new WeakSet();
+    var active = true;
+    var inspect = (exports, path) => {
+      if (!active || exports == null)
+        return;
+      try {
+        visit(exports, path);
+      } catch (error) {
+        console.warn("CloudCord settings module could not be attached", error);
+      }
+    };
+    var observe = (definition2) => {
+      if (!definition2 || typeof definition2 !== "object" || definition2.hasError || seen.has(definition2))
+        return;
+      seen.add(definition2);
       if (definition2.isInitialized) {
         inspect(definition2.publicModule?.exports, definition2.__filePath);
-        return "continue";
+        return;
       }
       var original = definition2.factory;
       if (typeof original !== "function")
-        return "continue";
-      var observed = function observed2(...args) {
+        return;
+      var observed = function observed1(...args) {
         var result = original.apply(this, args);
         pending2.delete(definition2);
+        if (definition2.factory === observed)
+          definition2.factory = original;
         inspect(args[4]?.exports ?? definition2.publicModule?.exports, definition2.__filePath);
         return result;
       };
@@ -10057,23 +10073,48 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       } catch (e) {
       }
     };
-    var modules = globalThis.__CLOUDCORD_MODULE_VIEW__ ?? globalThis.modules;
-    var pending2 = /* @__PURE__ */ new Map();
-    var active = true;
-    var inspect = (exports, path) => {
-      if (!active || exports == null)
-        return;
-      try {
-        visit(exports, path);
-      } catch (error) {
-        console.warn("CloudCord settings module could not be attached", error);
-      }
+    var originalDefine = root.__d;
+    var define2 = function define3(...args) {
+      var result = originalDefine.apply(this, args);
+      if (active)
+        try {
+          var registry2 = root.__c?.() ?? root.modules;
+          var id = args[1];
+          var definition2 = registry2 instanceof Map ? registry2.get(id) : registry2?.[id];
+          if (definition2) {
+            if (modules instanceof Map)
+              modules.set(id, definition2);
+            else if (modules)
+              modules[id] = definition2;
+            observe(definition2);
+          }
+        } catch (error) {
+          console.warn("CloudCord settings definition could not be observed", error);
+        }
+      return result;
     };
-    var entries = modules instanceof Map ? modules.values() : Object.values(modules ?? {});
-    for (var definition of entries)
-      _loop2(definition);
+    if (typeof originalDefine === "function")
+      try {
+        root.__d = define2;
+      } catch (e) {
+      }
+    var liveModules;
+    try {
+      liveModules = root.__c?.();
+    } catch (e) {
+    }
+    for (var registry of [
+      modules,
+      liveModules
+    ]) {
+      var entries = registry instanceof Map ? registry.values() : Object.values(registry ?? {});
+      for (var definition of entries)
+        observe(definition);
+    }
     return () => {
       active = false;
+      if (root.__d === define2)
+        root.__d = originalDefine;
       for (var [definition2, { original, observed }] of pending2) {
         if (definition2.factory === observed)
           definition2.factory = original;
@@ -40236,7 +40277,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "c5d824282d5a31ad83d5e2c241a69b783ff1b226";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "2a2da9938e8cf7c44c86bb8125f438a2b052d439";
   var rain = globalThis.__RAIN_LOADER__;
   if (rain && !globalThis.__CLOUDCORD_LOADER__) {
     globalThis.__CLOUDCORD_ORIGINAL_RAIN__ = true;
