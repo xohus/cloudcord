@@ -1,6 +1,6 @@
 import { createCxSession, MAX_CX_SOURCE, reviewCx } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
-import { ApplicationCommandType } from "@lib/api/commands/types";
+import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
 import { getCurrentTheme } from "@lib/addons/themes";
 import { updateBunnyColor } from "@lib/addons/themes/colors/updater";
 import { NativeFileModule } from "@lib/api/native/modules";
@@ -8,7 +8,7 @@ import { isThemeSupported } from "@lib/api/native/loader";
 import { settings } from "@lib/api/settings";
 import { showToast } from "@lib/ui/toasts";
 import { findByProps } from "@metro";
-import { commands, React } from "@metro/common";
+import { commands, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import { ScrollView, Text, TextInput } from "react-native";
 
@@ -57,7 +57,7 @@ export default function CxExtensions() {
         try {
             if (settings.safeMode?.enabled) throw new Error("CX is unavailable in Safe Mode");
             session.enable(candidate.source, {
-                registerCommand(name, execute) {
+                registerCommand(name, execute, acceptsText) {
                     let builtIns;
                     try {
                         builtIns = commands.getBuiltInCommands(ApplicationCommandType.CHAT, true, false);
@@ -67,8 +67,17 @@ export default function CxExtensions() {
                     if (builtIns.some((command: { name: string; }) => command.name === name))
                         throw new Error(`Command /${name} already exists`);
                     return registerCommand({
-                        name, description: "Local CX command", options: [],
-                        execute() { if (!settings.safeMode?.enabled) execute(); },
+                        name, description: "Local CX command",
+                        shouldHide: () => !settings.safeMode?.enabled,
+                        options: acceptsText ? [{ name: "text", description: "Text to use", type: ApplicationCommandOptionType.STRING, required: true }] : [],
+                        execute(args, context) {
+                            if (settings.safeMode?.enabled) return;
+                            const text = acceptsText ? args.find(arg => arg?.name === "text")?.value : undefined;
+                            execute({
+                                text: typeof text === "string" ? text : undefined,
+                                reply: message => { if (context.channel?.id) messageUtil.sendBotMessage(context.channel.id, message); },
+                            });
+                        },
                     });
                 },
                 toast: message => { showToast(message); },
@@ -91,7 +100,7 @@ export default function CxExtensions() {
                     });
                     return () => updateBunnyColor(getCurrentTheme()?.data ?? null);
                 },
-            }, ["commands.register", "ui.toast"]);
+            }, candidate.review.permissions);
             setStatus(`${candidate.review.name} is active for this session.`);
             setCandidate(undefined);
         } catch (error) {

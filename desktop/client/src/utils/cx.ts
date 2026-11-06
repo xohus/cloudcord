@@ -3,10 +3,12 @@ export const MAX_CX_SOURCE = 512 * 1024;
 const permissionLabels = {
     "commands.register": "Register the listed slash commands",
     "ui.toast": "Show local popups",
+    "reply.local": "Show a command reply visible only to you",
 };
 
 export type CxPermission = keyof typeof permissionLabels;
-type Command = { name: string; messages: string[] };
+type Action = { kind: "toast" | "reply"; message: string };
+type Command = { name: string; text: boolean; actions: Action[] };
 export type CxTheme = {
     kind: "theme";
     name: string;
@@ -80,37 +82,51 @@ export function parseCx(source: string): CxDocument {
             permissions.add(permission);
             continue;
         }
-        const command = /^  on command "([a-z][a-z0-9_-]{0,31})":$/.exec(line);
+        const command = /^  on command "([a-z][a-z0-9_-]{0,31})"( with text)?:$/.exec(line);
         if (command) {
             const name = command[1];
             if (commands.length >= 16 || commands.some(entry => entry.name === name)) throw new Error("Duplicate or too many commands");
-            commands.push(current = { name, messages: [] });
+            commands.push(current = { name, text: Boolean(command[2]), actions: [] });
             continue;
         }
-        const toast = /^    toast (.+)$/.exec(line);
-        if (!toast || !current || current.messages.length >= 4) throw new Error("Unknown CX instruction or too many popups");
-        current.messages.push(quoted(toast[1], 240));
+        const action = /^    (toast|reply) (.+)$/.exec(line);
+        if (!action || !current || current.actions.length >= 4) throw new Error("Unknown CX instruction or too many actions");
+        const kind = action[1] as Action["kind"];
+        const message = quoted(action[2], 240);
+        if (kind === "reply") {
+            const remaining = current.text ? message.replaceAll('${length(text)}', "") : message;
+            if (remaining.includes('${')) throw new Error("CX replies support only length(text) in commands with text");
+        }
+        current.actions.push({ kind, message });
     }
-    if (!commands.length || commands.some(command => !command.messages.length))
-        throw new Error("A plugin needs at least one command with a toast");
-    if (!permissions.has("commands.register") || !permissions.has("ui.toast"))
-        throw new Error("Declare commands.register and ui.toast before the commands");
+    if (!commands.length || commands.some(command => !command.actions.length))
+        throw new Error("A plugin needs at least one command with an action");
+    const required = new Set<CxPermission>(["commands.register"]);
+    for (const { actions } of commands) {
+        for (const action of actions) required.add(action.kind === "toast" ? "ui.toast" : "reply.local");
+    }
+    if ([...required].some(permission => !permissions.has(permission)))
+        throw new Error("Declare the permissions used by your commands");
+    if ([...permissions].some(permission => !required.has(permission)))
+        throw new Error("Remove unused CX permissions");
     return { kind: "plugin", name, commands, permissions: [...permissions] };
 }
 
 export function reviewCx(source: string) {
     const document = parseCx(source);
-    if (document.kind === "theme") return { kind: document.kind, name: document.name, effects: ["Change the app colors and background"] };
+    if (document.kind === "theme") return { kind: document.kind, name: document.name, permissions: [] as CxPermission[], effects: ["Change the app colors and background"] };
     return {
         kind: document.kind,
         name: document.name,
+        permissions: document.permissions,
         effects: document.permissions.map(permission => permissionLabels[permission]),
         commands: document.commands.map(command => "/" + command.name),
     };
 }
 
+type Invocation = { text?: string; reply?: (message: string) => void };
 type CxHost = {
-    registerCommand: (name: string, execute: () => void) => () => void;
+    registerCommand: (name: string, execute: (invocation?: Invocation) => void, acceptsText: boolean) => () => void;
     toast: (message: string) => void;
     applyTheme: (theme: CxTheme) => () => void;
 };
@@ -131,11 +147,16 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
     try {
         for (const command of document.commands) {
             if (!grants.has("commands.register")) throw new Error("Command permission denied");
-            cleanups.push(host.registerCommand(command.name, () => {
-                if (active && grants.has("ui.toast")) {
-                    for (const message of command.messages) host.toast(message);
+            cleanups.push(host.registerCommand(command.name, invocation => {
+                if (!active) return;
+                for (const action of command.actions) {
+                    if (action.kind === "toast" && grants.has("ui.toast")) host.toast(action.message);
+                    if (action.kind === "reply" && grants.has("reply.local")) {
+                        const text = command.text && typeof invocation?.text === "string" ? invocation.text : "";
+                        invocation?.reply?.(action.message.replaceAll('${length(text)}', String(text.length)));
+                    }
                 }
-            }));
+            }, command.text));
         }
         return stop;
     } catch (error) {

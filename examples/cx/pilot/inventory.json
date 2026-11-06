@@ -1,0 +1,149 @@
+{
+  "catalogSize": 114,
+  "examples": [
+    {
+      "name": "OldCord",
+      "source": "https://raw.githubusercontent.com/milbits/oldcord/cb656082b31267f3e8adbdef5839b53d8075e55d/OldCord.theme.css",
+      "imports": 1,
+      "customSelectors": 1,
+      "externalAssets": true,
+      "modeRules": 0
+    },
+    {
+      "name": "MixPack",
+      "source": "https://raw.githubusercontent.com/Mixter213/Discord/239b85bce411de74c5bb4ed18071e091f3ec99ec/Theme/MixPack.theme.css",
+      "imports": 1,
+      "customSelectors": 0,
+      "externalAssets": true,
+      "modeRules": 0
+    },
+    {
+      "name": "RoundmoledV2",
+      "source": "https://raw.githubusercontent.com/TheoEwzZer/RoundmoledV2/f6d0c56c118f3e8158ee1a44bf96341bc5f8004d/roundmoledV2.theme.css",
+      "imports": 4,
+      "customSelectors": 297,
+      "externalAssets": true,
+      "modeRules": 5
+    },
+    {
+      "name": "Tritone",
+      "source": "https://raw.githubusercontent.com/Saltssaumure/ieytd-discord-theme/f9487410c07d9a1b7aa292383021406e8d0989d8/Tritone.theme.css",
+      "imports": 1,
+      "customSelectors": 1,
+      "externalAssets": true,
+      "modeRules": 0
+    },
+    {
+      "name": "Spotify Discord",
+      "source": "https://raw.githubusercontent.com/CapnKitten/Spotify-Discord/9984ccda043f3fc9b715991eadd81db62c153026/Spotify-Discord.theme.css",
+      "imports": 1,
+      "customSelectors": 1,
+      "externalAssets": true,
+      "modeRules": 0
+    },
+    {
+      "name": "Dark Neon",
+      "source": "https://raw.githubusercontent.com/B4T3S/DiscordDarkNeon/ae8485b6bbf995481ce569ed8d8c7dc928150901/DarkNeon.theme.css",
+      "imports": 2,
+      "customSelectors": 1,
+      "externalAssets": true,
+      "modeRules": 0
+    },
+    {
+      "name": "MinimalImprovement (Without Borders)",
+      "source": "https://raw.githubusercontent.com/Juicysteak117/MinimalImprovement/143a006d440cadd18cfb25ba0e982a9aadaab172/MinimalImprovementBorderless.theme.css",
+      "imports": 1,
+      "customSelectors": 0,
+      "externalAssets": true,
+      "modeRules": 0
+    },
+    {
+      "name": "SpotiCord",
+      "source": "https://raw.githubusercontent.com/Slddev/SpotiCord/661ae15f4b835664291f4b9764886d06ea8f67a6/SpotiCord.theme.css",
+      "imports": 2,
+      "customSelectors": 1,
+      "externalAssets": true,
+      "modeRules": 1
+    },
+    {
+      "name": "Ultra",
+      "source": "https://raw.githubusercontent.com/TheCommieAxolotl/BetterDiscord-Stuff/0cef4643ae6a0ea9cc4914c41d9a42c51295e532/Ultra/Ultra.theme.css",
+      "imports": 7,
+      "customSelectors": 1,
+      "externalAssets": true,
+      "modeRules": 0
+    },
+    {
+      "name": "DTM-08",
+      "source": "https://raw.githubusercontent.com/XYZenix/DTM-08/2fcf10fbdd544f6ef4ded65c3f0c45f1d52afdd9/dtm-08.theme.css",
+      "imports": 1,
+      "customSelectors": 0,
+      "externalAssets": true,
+      "modeRules": 0
+    }
+  ],
+  "themeStatus": "The sampled themes require manual ports because their source files import external CSS.",
+  "plugins": [
+    {
+      "name": "Character Counter",
+      "source": "desktop/client/src/sincordplugins/ccpCharacterCounter/character-counter.ccp",
+      "status": "CX port available",
+      "port": "character-counter.cx",
+      "credit": "CloudCord"
+    },
+    {
+      "name": "MoreCommands",
+      "source": "ios/runtime/src/core/plugins/morecommands/index.ts",
+      "status": "needs bounded randomness, typed command arguments and explicit message sending"
+    },
+    {
+      "name": "UnitConverter",
+      "source": "ios/runtime/src/core/plugins/unitconverter/index.ts",
+      "status": "needs bounded numeric conversions and an explicit opt-in to send results"
+    },
+    {
+      "name": "InRole",
+      "source": "ios/runtime/src/core/plugins/inrole/index.ts",
+      "status": "needs a read-only view of loaded role members"
+    },
+    {
+      "name": "KeywordNotify",
+      "source": "ios/runtime/src/core/plugins/keywordnotify/index.ts",
+      "status": "needs scoped incoming-message events and local configuration"
+    },
+    {
+      "name": "ReadAllNotifications",
+      "source": "ios/runtime/src/core/plugins/readallnotifications/index.ts",
+      "status": "needs permission to change read state across channels"
+    },
+    {
+      "name": "ScheduledMessages",
+      "source": "ios/runtime/src/core/plugins/scheduledmessages/index.ts",
+      "status": "needs cancellable timers and explicit message-send permission"
+    },
+    {
+      "name": "Translate",
+      "source": "ios/runtime/src/core/plugins/translate/index.ts",
+      "status": "needs an approved translation service and opt-in to transmit selected text"
+    },
+    {
+      "name": "CustomCommands",
+      "source": "ios/runtime/src/core/plugins/customcommands/index.tsx",
+      "status": "needs persistent user-managed settings and explicit message sending for non-local replies"
+    },
+    {
+      "name": "VoiceJoinMessages",
+      "source": "ios/runtime/src/core/plugins/voicejoinmessages/index.ts",
+      "status": "needs scoped voice events and friend membership data"
+    }
+  ],
+  "catalogAudit": {
+    "source": "https://api.betterdiscord.app/v3/store/themes",
+    "entries": 114,
+    "checked": 114,
+    "imports": 104,
+    "manual": 114,
+    "unavailable": 0,
+    "compatiblePalettes": []
+  }
+}

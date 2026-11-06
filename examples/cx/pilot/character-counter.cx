@@ -1,0 +1,5 @@
+plugin "CX Character Counter":
+  needs commands.register
+  needs reply.local
+  on command "ccp-count" with text:
+    reply "${length(text)} characters"

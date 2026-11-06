@@ -1,4 +1,4 @@
-import { commands, registerCommand, unregisterCommand } from "@api/Commands";
+import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
 import { showNotification } from "@api/Notifications";
 import { createCxSession, MAX_CX_SOURCE, reviewCx } from "@utils/cx";
 import definePlugin from "@utils/types";
@@ -25,10 +25,21 @@ function CxSettings() {
         if (!candidate) return;
         try {
             session.enable(candidate.source, {
-                registerCommand(name, execute) {
+                registerCommand(name, execute, acceptsText) {
                     if (Object.prototype.hasOwnProperty.call(commands, name) || name in Object.prototype)
                         throw new Error(`Command /${name} already exists`);
-                    const command = { name, description: "Local CX command", execute };
+                    const command: VencordCommand = {
+                        name,
+                        description: "Local CX command",
+                        inputType: ApplicationCommandInputType.BUILT_IN,
+                        options: acceptsText ? [{ name: "text", description: "Text to use", type: ApplicationCommandOptionType.STRING, required: true }] : [],
+                        execute(args, context) {
+                            execute({
+                                text: acceptsText ? findOption(args, "text", "") : undefined,
+                                reply: message => { if (context.channel?.id) sendBotMessage(context.channel.id, { content: message }); },
+                            });
+                        },
+                    };
                     registerCommand(command, "CxExtensions");
                     if (commands[name] !== command) throw new Error("Discord commands are not ready yet");
                     return () => { if (commands[name] === command) unregisterCommand(name); };
@@ -57,7 +68,7 @@ function CxSettings() {
                     document.head.append(style);
                     return () => style.remove();
                 },
-            }, ["commands.register", "ui.toast"]);
+            }, candidate.review.permissions);
             setStatus(`${candidate.review.name} is active for this session.`);
             setCandidate(undefined);
         } catch (error) {

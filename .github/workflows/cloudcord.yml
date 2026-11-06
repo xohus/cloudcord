@@ -14,6 +14,7 @@ concurrency:
       - "desktop/client/src/utils/connectionSettings.ts"
       - "desktop/client/src/utils/localRelationshipActions.ts"
       - "desktop/client/src/utils/cx.ts"
+      - "desktop/client/scripts/cx-migrate-palette.mjs"
       - "examples/cx/**"
       - "desktop/client/src/utils/ccp.ts"
       - "desktop/client/src/utils/ccpInspect.ts"
