@@ -38,6 +38,7 @@ jobs:
       - name: Check Discord theme compatibility
         run: |
           npm install --prefix /tmp/cloudcord-theme-tests --no-audit --no-fund esbuild@0.20.2 spitroast@1.4.4
+          NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-patcher-symbol-proxy.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-startup-errors.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-recovery-gesture.cjs
           NODE_PATH=/tmp/cloudcord-theme-tests/node_modules node ios/scripts/test-core-settings-bootstrap.cjs

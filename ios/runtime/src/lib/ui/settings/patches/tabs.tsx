@@ -362,10 +362,10 @@ export function patchTabsUI(unpatches: (() => void | boolean)[]) {
         // independent, so a frozen namespace cannot disable the other hooks.
         for (const module of [exports, exports?.default]) {
             if (!module || (typeof module !== "object" && typeof module !== "function")) continue;
-            try { if (Object.prototype.hasOwnProperty.call(module, "SETTING_RENDERER_CONFIG")) patchRendererConfig(module); }
+            try { if (Object.getOwnPropertyNames(module).includes("SETTING_RENDERER_CONFIG")) patchRendererConfig(module); }
             catch (error) { console.warn("CloudCord settings renderer patch failed", error); }
-            try { if (Object.prototype.hasOwnProperty.call(module, "createList") && typeof module.createList === "function") patchCreateListModule(module); }
-            catch (error) { console.warn("CloudCord settings list patch failed", error); }
+            try { if (Object.getOwnPropertyNames(module).includes("createList") && typeof module.createList === "function") patchCreateListModule(module); }
+            catch (error) { console.warn("CloudCord settings list patch failed", error?.stack ?? error); }
         }
         const screen = exports?.SettingsOverviewScreen ?? exports?.default;
         const list = exports?.SearchableSettingsList ?? exports?.default;

@@ -22,8 +22,11 @@ type AfterFn = PatchFn<(args: any[], ret: any) => unknown>;
 
 function create(fn: Function) {
     function patchFn(this: any, ...args: any[]) {
-        if (typeof args[1][_patcherDelaySymbol] === "function") {
-            const delayCallback: DelayCallback = args[1][_patcherDelaySymbol];
+        // Some Discord namespace proxies only accept string keys. Probing our
+        // optional lazy marker must not prevent patching their real methods.
+        let delayCallback: DelayCallback | undefined;
+        try { delayCallback = args[1][_patcherDelaySymbol]; } catch {}
+        if (typeof delayCallback === "function") {
 
             let cancel = false;
             let unpatch = () => cancel = true;

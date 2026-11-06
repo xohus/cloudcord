@@ -36,7 +36,16 @@ for (const platform of ['android', 'ios']) for (const delayed of [false, true]) 
         const capturedSearchList = searchList.SearchableSettingsList;
         const jsxCallbacks = new Map();
         let factoryCalls = 0, lookupCalls = 0;
-        const records = [renderer, ...lists, overview, searchList].map(exports => ({
+        // Native/intl proxies can claim every requested property exists. They are
+        // not settings namespaces and must never be patched as createList.
+        let syntheticWrites = 0;
+        const synthetic = new Proxy({}, {
+            ownKeys: () => [],
+            getOwnPropertyDescriptor: () => ({configurable:true, enumerable:true}),
+            get: (_, key) => { if (typeof key === 'symbol') throw TypeError('Cannot convert Symbol to string'); return function generated() {}; },
+            set: () => { syntheticWrites++; return true; }
+        });
+        const records = [renderer, ...lists, overview, searchList, synthetic].map(exports => ({
             isInitialized: !delayed, publicModule: { exports: delayed ? {} : exports },
             factory(g, r, d, a, module) { factoryCalls++; module.exports = exports; return 'factory-result'; }
         }));
@@ -108,6 +117,7 @@ for (const platform of ['android', 'ios']) for (const delayed of [false, true]) 
         }
         assert.throws(() => lateRecord.factory(), /native factory failure/, 'native errors must not be swallowed');
         cleanups.forEach(fn => fn());
+        assert.equal(syntheticWrites, 0, "synthetic properties are not settings exports");
         assert.equal(lateRecord.factory, originalLate, 'unload restores pending factories');
         assert.equal(screenParent[screenKey], originalOverview, 'unload restores screen');
         assert.equal(searchList.SearchableSettingsList, capturedSearchList, 'unload restores direct list');

@@ -1,0 +1,18 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const esbuild = require('esbuild');
+const moduleBox = {exports:{}};
+vm.runInNewContext(esbuild.transformSync(fs.readFileSync('ios/runtime/src/lib/api/patcher.ts','utf8'),{loader:'ts',format:'cjs'}).code,{module:moduleBox,require,Symbol});
+const {before,_patcherDelaySymbol}=moduleBox.exports;
+const original = value => value + 1;
+const target = new Proxy({createList:original},{get(o,k){if(typeof k==='symbol')throw TypeError('Cannot convert Symbol to string');return o[k];}});
+const stop=before('createList',target,([value])=>[value*2]);
+assert.equal(target.createList(3),7);
+stop();assert.equal(target.createList,original);
+let resolve;
+const lazy={[_patcherDelaySymbol]:cb=>{resolve=cb;}};
+const unpatch=before('createList',lazy,([value])=>[value*3]);
+resolve(target);assert.equal(target.createList(3),10);
+unpatch();assert.equal(target.createList,original);
+console.log('PASS string-only namespace proxy and deferred lazy patch/unpatch');
