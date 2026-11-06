@@ -36307,6 +36307,38 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           mobile: [
             "ReanimatedGuildBanner"
           ]
+        },
+        "chat-gift-button": {
+          plugin: "HideGiftButton",
+          label: "the chat gift button",
+          css: 'button[aria-label="Send a gift"] { display: none !important; }',
+          mobile: [
+            "PremiumAnimatedGiftButton"
+          ]
+        },
+        "add-server-button": {
+          plugin: "HideAddServerButton",
+          label: "the add-a-server button",
+          css: '[data-list-item-id="guildsnav___create-join-button"] { display: none !important; }',
+          mobile: [
+            "GuildsBarCreateJoinButton"
+          ]
+        },
+        "profile-badges": {
+          plugin: "HideBadges",
+          label: "profile badge rows",
+          css: '[class*="badgeList"] { display: none !important; }',
+          mobile: [
+            "ProfileBadgeRows"
+          ]
+        },
+        "reply-previews": {
+          plugin: "HideReplyPreviews",
+          label: "reply previews in chat",
+          css: '[class*="repliedMessage"] { display: none !important; }',
+          mobile: [
+            "ReplyMessageContent"
+          ]
         }
       };
     }
@@ -37421,11 +37453,27 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-add-server-button.cx
+  var hide_add_server_button_default;
+  var init_hide_add_server_button = __esm({
+    "../examples/cx/catalog/plugins/hide-add-server-button.cx"() {
+      hide_add_server_button_default = 'plugin "HideAddServerButton":\n  needs appearance.hide\n  hide add-server-button\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-avatar-decorations.cx
   var hide_avatar_decorations_default;
   var init_hide_avatar_decorations = __esm({
     "../examples/cx/catalog/plugins/hide-avatar-decorations.cx"() {
       hide_avatar_decorations_default = 'plugin "HideAvatarDecorations":\n  needs appearance.hide\n  hide avatar-decorations\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-badges.cx
+  var hide_badges_default;
+  var init_hide_badges = __esm({
+    "../examples/cx/catalog/plugins/hide-badges.cx"() {
+      hide_badges_default = 'plugin "HideBadges":\n  needs appearance.hide\n  hide profile-badges\n';
     }
   });
 
@@ -37442,6 +37490,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_clan_tags = __esm({
     "../examples/cx/catalog/plugins/hide-clan-tags.cx"() {
       hide_clan_tags_default = 'plugin "HideClanTags":\n  needs appearance.hide\n  hide server-tags\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-gift-button.cx
+  var hide_gift_button_default;
+  var init_hide_gift_button = __esm({
+    "../examples/cx/catalog/plugins/hide-gift-button.cx"() {
+      hide_gift_button_default = 'plugin "HideGiftButton":\n  needs appearance.hide\n  hide chat-gift-button\n';
     }
   });
 
@@ -37482,6 +37538,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_reactions = __esm({
     "../examples/cx/catalog/plugins/hide-reactions.cx"() {
       hide_reactions_default = 'plugin "HideReactions":\n  needs appearance.hide\n  hide message-reactions\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-reply-previews.cx
+  var hide_reply_previews_default;
+  var init_hide_reply_previews = __esm({
+    "../examples/cx/catalog/plugins/hide-reply-previews.cx"() {
+      hide_reply_previews_default = 'plugin "HideReplyPreviews":\n  needs appearance.hide\n  hide reply-previews\n';
     }
   });
 
@@ -38211,14 +38275,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_clap_text();
       init_clear_urls();
       init_google_that();
+      init_hide_add_server_button();
       init_hide_avatar_decorations();
+      init_hide_badges();
       init_hide_bot_tags();
       init_hide_clan_tags();
+      init_hide_gift_button();
       init_hide_jump_to_present();
       init_hide_nameplates();
       init_hide_new_messages_bar();
       init_hide_profile_effects();
       init_hide_reactions();
+      init_hide_reply_previews();
       init_hide_role_icons();
       init_hide_server_banner();
       init_hide_stream_previews();
@@ -38339,8 +38407,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: google_that_default
           },
           {
+            name: "HideAddServerButton",
+            source: hide_add_server_button_default
+          },
+          {
             name: "HideAvatarDecorations",
             source: hide_avatar_decorations_default
+          },
+          {
+            name: "HideBadges",
+            source: hide_badges_default
           },
           {
             name: "HideBotTags",
@@ -38349,6 +38425,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideClanTags",
             source: hide_clan_tags_default
+          },
+          {
+            name: "HideGiftButton",
+            source: hide_gift_button_default
           },
           {
             name: "HideJumpToPresent",
@@ -38369,6 +38449,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideReactions",
             source: hide_reactions_default
+          },
+          {
+            name: "HideReplyPreviews",
+            source: hide_reply_previews_default
           },
           {
             name: "HideRoleIcons",
@@ -43795,7 +43879,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "871d69d1961dcca7fca9d9379d42545a171af972";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "052be74c0be5a981ff6f324d0d3c5f6f49d78196";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
