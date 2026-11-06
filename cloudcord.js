@@ -37251,6 +37251,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ...text
     ].reverse().join("");
   }
+  function parseCxHttpsOrigin(value) {
+    if (!httpsOrigin.test(value))
+      throw new Error("Use a bare HTTPS domain for link rewrites");
+    return value.toLowerCase();
+  }
+  function rewriteCxOrigin(text, rules) {
+    var match = /^(https:\/\/[^/?#\s]+)(\/[^?#\s]*)?(\?[^#\s]*)?(?:#[^\s]*)?$/i.exec(text.trim());
+    if (!match || RegExp(`[\\x00-\\x20\\x7f\\\\<>"']`, "u").test(match[0]))
+      return text;
+    var [, origin, path = "/", query = ""] = match;
+    var destination = rules.get(origin.toLowerCase());
+    return destination ? destination + path + query : text;
+  }
   function ingtonify(text) {
     var links = [
       ...text.matchAll(/https?:\/\/[^\s]+\.[^\s]+/gi)
@@ -37324,12 +37337,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
     return "<t:" + Math.floor(target.getTime() / 1e3) + ":t>";
   }
-  var tracking, contractions, expanded, missing, wordPattern, missingPattern, expandedPattern, polishOptions, messageTransforms;
+  var httpsOrigin, tracking, contractions, expanded, missing, wordPattern, missingPattern, expandedPattern, polishOptions, messageTransforms;
   var init_cxMessageTransforms = __esm({
     "src/lib/api/cxMessageTransforms.ts"() {
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      httpsOrigin = /^https:\/\/(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,62}$/i;
       tracking = /^(?:utm_.*|fbclid|gclid|dclid|msclkid|mc_(?:cid|eid)|igshid|igsh|si|feature|ref_src|ref_url|_hsenc|_hsmi|yclid|twclid|share_id|spm|vero_(?:id|conv)|wt_?mc|oly_(?:anon|enc)_id|rb_clickid)$/i;
       contractions = {
         "wasn't": "was not",
@@ -37543,6 +37557,79 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxPreviousMessage.ts
+  function parseCxPreviousRule(line) {
+    if (line === "  before send correct-previous")
+      return {
+        kind: "correct"
+      };
+    var match = /^  before send merge-previous ([1-9]|[12][0-9]|30)( space)?$/.exec(line);
+    if (match)
+      return {
+        kind: "merge",
+        seconds: Number(match[1]),
+        space: Boolean(match[2])
+      };
+  }
+  function planCxPreviousEdit(rule, channel, currentUser, draft, previous, now) {
+    if (!currentUser || !draft.trim() || draft.length > 2e3)
+      return;
+    var sed = correction.exec(draft.trim());
+    if (rule.kind === "correct" && (!sed || sed[1].length > 240 || sed[3].length !== new Set(sed[3]).size))
+      return;
+    if (rule.kind === "merge" && sed)
+      return;
+    var message = previous();
+    if (!message?.id || message.author?.id !== currentUser || typeof message.content !== "string" || message.attachments?.length || (message.channel_id ?? message.channelId ?? channel) !== channel)
+      return;
+    var content;
+    if (rule.kind === "correct" && sed) {
+      var literal = unescapeSed(sed[1]).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      content = message.content.replace(new RegExp(literal, sed[3]), () => unescapeSed(sed[2]));
+    } else if (rule.kind === "merge") {
+      if (message.type !== void 0 && message.type !== 0)
+        return;
+      var time = Number(new Date(message.timestamp));
+      var age = now - time;
+      if (!(age >= 0 && age < rule.seconds * 1e3))
+        return;
+      content = message.content + (rule.space ? " " : "\n") + draft;
+    }
+    if (!content?.trim() || content.length > 2e3 || content === message.content)
+      return;
+    return {
+      id: message.id,
+      content
+    };
+  }
+  function createCxPreviousSendHandler(rule, host) {
+    var editing = /* @__PURE__ */ new Set();
+    return (channel, draft, hasExtraContent) => {
+      if (hasExtraContent || typeof draft !== "string" || editing.has(channel))
+        return;
+      var plan = planCxPreviousEdit(rule, channel, host.currentUser(), draft, () => host.previous(channel, rule.kind === "correct"), Date.now());
+      if (!plan)
+        return;
+      editing.add(channel);
+      return Promise.resolve().then(() => host.edit(channel, plan.id, plan.content)).catch(() => {
+        try {
+          host.error();
+        } catch (e) {
+        }
+      }).finally(() => editing.delete(channel));
+    };
+  }
+  var correction, unescapeSed;
+  var init_cxPreviousMessage = __esm({
+    "src/lib/api/cxPreviousMessage.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      correction = /^s\/((?:\\.|[^/])+)\/((?:\\.|[^/])*)\/([gi]*)$/;
+      unescapeSed = (text) => text.replace(/\\([/\\])/g, "$1");
+    }
+  });
+
   // src/lib/api/cxProfileMenu.ts
   function isCxProfileUserId(id) {
     return typeof id === "string" && /^\d{17,20}$/.test(id);
@@ -37612,7 +37699,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (!line12.trim())
         return "continue";
       var declaration2 = /^  needs ([a-z.]+)$/.exec(line12);
-      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !profileActions.size && !incoming.length) {
+      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length) {
         var permission2 = declaration2[1];
         if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission2) || permissions.has(permission2))
           throw new Error("Unknown or duplicate CX permission");
@@ -37652,10 +37739,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
       var effect2 = /^  use ([a-z-]+)$/.exec(line12);
       if (effect2) {
-        var name2 = effect2[1];
-        if (!Object.prototype.hasOwnProperty.call(cxNativeEffects, name2) || nativeEffects.has(name2))
+        var name3 = effect2[1];
+        if (!Object.prototype.hasOwnProperty.call(cxNativeEffects, name3) || nativeEffects.has(name3))
           throw new Error("Unknown or duplicate client effect");
-        nativeEffects.add(name2);
+        nativeEffects.add(name3);
         current = void 0;
         return "continue";
       }
@@ -37664,17 +37751,33 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
-      var replace = /^  before (send|edit) replace ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line12);
+      var previous = parseCxPreviousRule(line12);
+      if (previous) {
+        if (previousRule)
+          throw new Error("Choose one previous-message rule per plugin");
+        previousRule = previous;
+        current = void 0;
+        return "continue";
+      }
+      var replace = /^  before (send|edit) (replace|rewrite-origin) ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line12);
       if (replace) {
         var stage2 = replace[1];
-        var find = quoted(replace[2], 240);
-        if (transforms.length >= 32 || transforms.some((rule2) => rule2.stage === stage2 && rule2.name === "replaceLiteral" && rule2.find === find))
+        var name12 = replace[2] === "replace" ? "replaceLiteral" : "rewriteOrigin";
+        var find = quoted(replace[3], 240);
+        var replacement = quoted(replace[4], 240, true);
+        if (name12 === "rewriteOrigin") {
+          find = parseCxHttpsOrigin(find);
+          replacement = parseCxHttpsOrigin(replacement);
+          if (find === replacement)
+            throw new Error("Use a different destination for link rewrites");
+        }
+        if (transforms.length >= 32 || transforms.some((rule2) => rule2.stage === stage2 && rule2.name === name12 && rule2.find === find))
           throw new Error("Duplicate or too many replacement rules");
         transforms.push({
           stage: stage2,
-          name: "replaceLiteral",
+          name: name12,
           find,
-          replacement: quoted(replace[3], 240, true)
+          replacement
         });
         current = void 0;
         return "continue";
@@ -37682,17 +37785,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var transform = /^  before (send|edit) ([a-zA-Z]+)( .+)?$/.exec(line12);
       if (transform) {
         var stage1 = transform[1];
-        var name12 = transform[2];
-        if (!Object.prototype.hasOwnProperty.call(messageTransforms, name12) || transforms.some((entry) => entry.name === name12 && entry.stage === stage1))
+        var name22 = transform[2];
+        if (!Object.prototype.hasOwnProperty.call(messageTransforms, name22) || transforms.some((entry) => entry.name === name22 && entry.stage === stage1))
           throw new Error("Unknown or duplicate outgoing text transform");
-        if (transform[3] && name12 !== "capitalizeSentences" && name12 !== "signature" && name12 !== "polishWording")
+        if (transform[3] && name22 !== "capitalizeSentences" && name22 !== "signature" && name22 !== "polishWording")
           throw new Error("This transform takes no options");
         var options = transform[3] ? quoted(transform[3].trim(), 240) : void 0;
-        if (name12 === "polishWording" && options?.split(",").some((option) => !polishOptions.has(option.trim())))
+        if (name22 === "polishWording" && options?.split(",").some((option) => !polishOptions.has(option.trim())))
           throw new Error("Unknown PolishWording option");
         transforms.push({
           stage: stage1,
-          name: name12,
+          name: name22,
           options
         });
         current = void 0;
@@ -37700,11 +37803,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
       var command = /^  on command "([a-z][a-z0-9_-]{0,31})"( with text)?:$/.exec(line12);
       if (command) {
-        var name22 = command[1];
-        if (commands3.length >= 48 || commands3.some((entry) => entry.name === name22))
+        var name32 = command[1];
+        if (commands3.length >= 48 || commands3.some((entry) => entry.name === name32))
           throw new Error("Duplicate or too many commands");
         commands3.push(current = {
-          name: name22,
+          name: name32,
           text: Boolean(command[2]),
           inputs: [],
           actions: []
@@ -37713,14 +37816,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
       var input = /^    input "([a-z][a-z0-9_-]{0,31})" (text|integer|boolean|choice|user|role)( "(?:[^"\\]|\\.)*")?( optional)?$/.exec(line12);
       if (input && current && !current.actions.length) {
-        var [, name3, type, list, optional] = input;
-        if (name3 === "send" || name3 === "text" && current.text || current.inputs.length >= 4 || current.inputs.some((option) => option.name === name3))
+        var [, name4, type, list, optional] = input;
+        if (name4 === "send" || name4 === "text" && current.text || current.inputs.length >= 4 || current.inputs.some((option) => option.name === name4))
           throw new Error("Reserved, duplicate, or too many command inputs");
         var choices = list ? quoted(list.trim(), 240).split(",").map((choice) => choice.trim()) : void 0;
         if (type === "choice" !== !!choices || choices && (choices.length > 16 || choices.some((choice) => !choice) || new Set(choices).size !== choices.length))
           throw new Error("Choice inputs need a list of distinct values");
         current.inputs.push({
-          name: name3,
+          name: name4,
           type,
           required: !optional,
           choices
@@ -37771,23 +37874,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         var inputs = new Set(declaredInputs.map((input2) => input2.name));
         if (current.text)
           inputs.add("text");
-        var remaining = message.replace(textExpression, (expression, name4, args) => {
+        var remaining = message.replace(textExpression, (expression, name5, args) => {
           if (args === void 0)
-            return inputs.has(name4) ? "" : expression;
+            return inputs.has(name5) ? "" : expression;
           var names = argumentNames(args);
-          if (name4 === "avatar" && names.length === 1 && declaredInputs.some((input2) => input2.name === names[0] && input2.type === "user")) {
+          if (name5 === "avatar" && names.length === 1 && declaredInputs.some((input2) => input2.name === names[0] && input2.type === "user")) {
             readsAvatar = true;
             return "";
           }
-          if (Object.prototype.hasOwnProperty.call(cxClientFunctions, name4)) {
-            var service = cxClientFunctions[name4];
+          if (Object.prototype.hasOwnProperty.call(cxClientFunctions, name5)) {
+            var service = cxClientFunctions[name5];
             var option = declaredInputs.find((input2) => input2.name === names[0]);
-            if (names.length !== 1 || option?.type !== service.input || name4 === "roleMembers" && kind2 !== "reply")
+            if (names.length !== 1 || option?.type !== service.input || name5 === "roleMembers" && kind2 !== "reply")
               return expression;
             clientPermissions.add(service.permission);
             return "";
           }
-          return Object.prototype.hasOwnProperty.call(textFunctions, name4) && textFunctions[name4].length === names.length && names.every((name5) => inputs.has(name5)) ? "" : expression;
+          return Object.prototype.hasOwnProperty.call(textFunctions, name5) && textFunctions[name5].length === names.length && names.every((name6) => inputs.has(name6)) ? "" : expression;
         });
         if (remaining.includes("${"))
           throw new Error("CX messages only support declared inputs and named text functions");
@@ -37866,6 +37969,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var hiddenTargets = /* @__PURE__ */ new Set();
     var styledTargets = /* @__PURE__ */ new Set();
     var nativeEffects = /* @__PURE__ */ new Set();
+    var previousRule;
     var profileActions = /* @__PURE__ */ new Set();
     var incoming = [];
     var suppressReplyPing = false;
@@ -37874,7 +37978,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var current;
     for (var line1 of lines)
       _loop2(line1);
-    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !profileActions.size && !incoming.length || commands3.some((command) => !command.actions.length))
+    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length || commands3.some((command) => !command.actions.length))
       throw new Error("A plugin needs a command or a supported behavior");
     var required = /* @__PURE__ */ new Set();
     if (commands3.length)
@@ -37887,6 +37991,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       required.add("appearance.style");
     for (var effect of nativeEffects)
       required.add(cxNativeEffects[effect].permission);
+    if (previousRule)
+      required.add("messages.editprevious");
     if (profileActions.size)
       required.add("profilemenu.copy");
     if (readsAvatar)
@@ -37895,8 +38001,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       required.add(permission);
     for (var { kind: kind1 } of incoming)
       required.add(incomingPermissions[kind1]);
-    for (var { stage } of transforms)
+    for (var { stage, name: name2 } of transforms) {
       required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
+      if (name2 === "rewriteOrigin")
+        required.add("messages.redirectlinks");
+    }
     for (var { actions } of commands3) {
       for (var action of actions) {
         for (var permission1 of actionPermissions[action.kind])
@@ -37931,6 +38040,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       nativeEffects: [
         ...nativeEffects
       ],
+      previousRule,
       profileActions: [
         ...profileActions
       ],
@@ -37952,7 +38062,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       kind: document.kind,
       name: document.name,
       permissions: document.permissions,
-      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.nativeEffects.map((effect) => cxNativeEffects[effect].label)).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
+      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.nativeEffects.map((effect) => cxNativeEffects[effect].label)).concat(document.messageTransforms.flatMap((rule) => rule.name === "rewriteOrigin" ? [
+        rule.find + " \u2192 " + rule.replacement
+      ] : [])).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
         "Hide all stickers"
       ] : !rule.values.length && rule.kind !== "reply-pings" ? [
         "Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")
@@ -37995,9 +38107,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         var register = stage2 === "send" ? host.registerMessageTransform : host.registerMessageEditTransform;
         if (!register)
           throw new Error("This client cannot transform message " + stage2 + "s");
+        var origins = new Map(transforms.flatMap((rule) => rule.name === "rewriteOrigin" ? [
+          [
+            rule.find,
+            rule.replacement
+          ]
+        ] : []));
         cleanups.push(register((text) => {
           var _loop3 = function(rule2) {
-            result = rule2.name === "replaceLiteral" ? result.replaceAll(rule2.find, () => rule2.replacement) : messageTransforms[rule2.name](result, rule2.options);
+            if (rule2.name === "rewriteOrigin") {
+              if (!rewrote)
+                result = rewriteCxOrigin(result, origins);
+              rewrote = true;
+            } else if (rule2.name === "replaceLiteral")
+              result = result.replaceAll(rule2.find, () => rule2.replacement);
+            else
+              result = messageTransforms[rule2.name](result, rule2.options);
             if (result.length > 4e3)
               return {
                 v: text
@@ -38006,6 +38131,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           if (!active || text.length > 4e3)
             return text;
           var result = text;
+          var rewrote = false;
           for (var rule of transforms) {
             var _ret = _loop3(rule);
             if (_type_of(_ret) === "object")
@@ -38120,6 +38246,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           throw new Error("This client cannot suppress reply pings");
         cleanups.push(host.registerReplyPingSuppression());
       }
+      if (document.previousRule) {
+        if (!host.registerPreviousMessageRule)
+          throw new Error("This client cannot edit previous messages");
+        cleanups.push(host.registerPreviousMessageRule(document.previousRule));
+      }
       for (var stage of [
         "send",
         "edit"
@@ -38198,10 +38329,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxNumeric();
       init_cxMessageTransforms();
       init_cxNativeEffects();
+      init_cxPreviousMessage();
       init_cxProfileMenu();
       init_cxProfileMenu();
       init_cxClientCommands();
       init_cxNativeEffects();
+      init_cxPreviousMessage();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -38211,6 +38344,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.send": "Send the result to the current chat when you run a listed command",
         "messages.transform": "Change text before Discord sends messages you compose",
         "messages.edit.transform": "Change text when you submit a message edit",
+        "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
+        "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
         "replies.suppressping": "Send replies without pinging the person you reply to",
         "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
         "guild.members": "Read loaded members with the role you select in the current server",
@@ -38406,6 +38541,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_copy_user_urls = __esm({
     "../examples/cx/catalog/plugins/copy-user-urls.cx"() {
       copy_user_urls_default = 'plugin "CopyUserURLs":\n  needs profilemenu.copy\n  on profile menu copy user-url\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/embedded-urls.cx
+  var embedded_urls_default;
+  var init_embedded_urls = __esm({
+    "../examples/cx/catalog/plugins/embedded-urls.cx"() {
+      embedded_urls_default = 'plugin "EmbeddedURLs":\n  needs messages.transform\n  needs messages.redirectlinks\n  before send rewrite-origin "https://www.tiktok.com" with "https://www.tnktok.com"\n  before send rewrite-origin "https://vt.tiktok.com" with "https://www.tnktok.com"\n  before send rewrite-origin "https://x.com" with "https://www.fxtwitter.com"\n  before send rewrite-origin "https://www.twitter.com" with "https://www.fxtwitter.com"\n  before send rewrite-origin "https://www.instagram.com" with "https://www.kkinstagram.com"\n';
     }
   });
 
@@ -38681,6 +38824,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/message-burst.cx
+  var message_burst_default;
+  var init_message_burst = __esm({
+    "../examples/cx/catalog/plugins/message-burst.cx"() {
+      message_burst_default = 'plugin "MessageBurst":\n  needs messages.editprevious\n  before send merge-previous 3\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/message-notifier.cx
   var message_notifier_default;
   var init_message_notifier = __esm({
@@ -38774,6 +38925,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_rounded_chat_bar = __esm({
     "../examples/cx/catalog/plugins/rounded-chat-bar.cx"() {
       rounded_chat_bar_default = 'plugin "RoundedChatBar":\n  needs appearance.style\n  style rounded-chat-bar\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/sed-enhanced.cx
+  var sed_enhanced_default;
+  var init_sed_enhanced = __esm({
+    "../examples/cx/catalog/plugins/sed-enhanced.cx"() {
+      sed_enhanced_default = 'plugin "SedEnhanced":\n  needs messages.editprevious\n  before send correct-previous\n';
     }
   });
 
@@ -39736,6 +39895,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_copy_profile_colors();
       init_copy_user_mention();
       init_copy_user_urls();
+      init_embedded_urls();
       init_floating_chat_bar();
       init_google_that();
       init_hide_active_now();
@@ -39770,6 +39930,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_ingtoninator();
       init_keyword_notify();
       init_leet_text();
+      init_message_burst();
       init_message_notifier();
       init_more_commands();
       init_no_blocked_messages();
@@ -39782,6 +39943,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_reverse_text();
       init_round_server_icons();
       init_rounded_chat_bar();
+      init_sed_enhanced();
       init_send_timestamps();
       init_ship_calc();
       init_signature();
@@ -39966,6 +40128,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: copy_user_urls_default
           },
           {
+            name: "EmbeddedURLs",
+            source: embedded_urls_default
+          },
+          {
             name: "FloatingChatBar",
             source: floating_chat_bar_default
           },
@@ -40102,6 +40268,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: leet_text_default
           },
           {
+            name: "MessageBurst",
+            source: message_burst_default
+          },
+          {
             name: "MessageNotifier",
             source: message_notifier_default
           },
@@ -40148,6 +40318,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "RoundedChatBar",
             source: rounded_chat_bar_default
+          },
+          {
+            name: "SedEnhanced",
+            source: sed_enhanced_default
           },
           {
             name: "SendTimestamps",
@@ -40924,6 +41098,50 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               };
             });
           },
+          registerPreviousMessageRule(rule) {
+            var active = true;
+            var editor = findByProps("editMessage", "startEditMessage");
+            if (typeof editor?.editMessage !== "function")
+              throw new Error("Discord message edits are unavailable");
+            var currentUser = () => UserStore2?.getCurrentUser?.()?.id;
+            var handle = createCxPreviousSendHandler(rule, {
+              currentUser,
+              previous(channel, own) {
+                var existing = own ? MessageStore?.getLastEditableMessage?.(channel) : MessageStore?.getLastMessage?.(channel);
+                if (existing)
+                  return existing;
+                var cache = MessageStore?.getMessages?.(channel);
+                var list = cache?.toArray?.() ?? cache?._array;
+                if (!Array.isArray(list))
+                  return;
+                if (!own)
+                  return list[list.length - 1];
+                var me = currentUser();
+                for (var i = list.length - 1; i >= 0; i--)
+                  if (list[i]?.author?.id === me)
+                    return list[i];
+              },
+              edit: (channel, id, content) => editor.editMessage(channel, id, {
+                content
+              }),
+              error: () => {
+                showToast("Couldn\u2019t edit the previous message.");
+              }
+            });
+            var unpatch = instead("sendMessage", messageUtil, function(args, original) {
+              var [channel, message, , options] = args;
+              if (active && !settings.safeMode?.enabled && typeof channel === "string") {
+                var edit = handle(channel, message?.content, Boolean(message?.tts || message?.attachments?.length || message?.stickers?.length || message?.stickerIds?.length || options?.uploads?.length || options?.stickers?.length || options?.messageReference || options?.replyOptions?.messageReference));
+                if (edit)
+                  return edit;
+              }
+              return original.apply(this, args);
+            });
+            return () => {
+              active = false;
+              unpatch();
+            };
+          },
           registerMessageTransform(transform) {
             return onSendMessage((message) => {
               if (!settings.safeMode?.enabled && typeof message.content === "string")
@@ -41268,6 +41486,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_async_to_generator();
       init_jsxRuntime();
       init_sendMessage();
+      init_patcher();
       init_cx();
       init_cxCatalog();
       init_commands();
@@ -45934,7 +46153,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "fe6feef5f38fc2e2357a0caf6048b9998af6d1d5";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "c98213c7270ec210a57c3dd95faab4e746a6527b";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
