@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
+const { inflateSync } = require("node:zlib");
 const { buildSync, transformSync } = require("esbuild");
 
 const root = path.join(__dirname, "../..");
@@ -37,6 +38,9 @@ for (const entry of catppuccinIndex) {
 const basicBackground = parseCx(cxCatalog.themes.find(entry => entry.name === "BasicBackground (Chat)").source);
 assert.equal(basicBackground.wallpaperOpacity, 0.85);
 assert.match(basicBackground.wallpaper, /^data:image\/jpeg;base64,/);
+const futuristic = cxCatalog.themes.filter(entry => entry.name.startsWith("Futuristic - "));
+assert.equal(futuristic.length, 5);
+assert.equal(new Set(futuristic.map(entry => parseCx(entry.source).wallpaper)).size, 5);
 const plugin = read("examples/cx/hello.cx").trimEnd();
 const theme = read("examples/cx/midnight.cx").trimEnd();
 const grants = ["commands.register", "ui.toast"];
@@ -441,6 +445,18 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(nativeTheme.semanticColors.BACKGROUND_MENTIONED[0], "#f9e2af17");
         }
         click(render(), "Disable Catppuccin Mocha - Mauve");
+        selectCatalog("Futuristic - Orbit");
+        const themeSource = find(render(), item => item.props[desktop ? "aria-label" : "accessibilityLabel"] === "CX source");
+        assert.equal(themeSource.props.value, "");
+        click(render(), "Edit CX source");
+        assert.ok(find(render(), item => item.props[desktop ? "aria-label" : "accessibilityLabel"] === "CX source").props.value.length > 300000);
+        click(render(), "Allow for this session");
+        if (desktop) assert.match(stylesheet.textContent, /url\("data:image\/jpeg;base64,/);
+        else {
+            assert.match(nativeTheme.background.url, /^data:image\/jpeg;base64,/);
+            assert.equal(nativeTheme.background.alpha, 0.62);
+        }
+        click(render(), "Disable Futuristic - Orbit");
     }
     const { migrateCxPalette } = await import("../../desktop/client/scripts/cx-migrate-palette.mjs");
     assert.equal(parseCx(migrateCxPalette(":root { --background-primary: #123; --brand-500: #8765ab; }", "Test")).background, "#112233");
@@ -452,6 +468,18 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
     assert.equal(migrated.surface, "#334455");
     assert.equal(migrated.wallpaper, png);
     assert.equal(migrated.wallpaperOpacity, 0.75);
+    const gradient = parseCx(migrateCxPalette(
+        ":root { --background-primary: #123; --background-image: linear-gradient(180deg, #ff0000 0%, #0000ff 100%); }", "Gradient"
+    ));
+    const gradientPng = Buffer.from(gradient.wallpaper.split(",")[1], "base64");
+    const width = gradientPng.readUInt32BE(16), height = gradientPng.readUInt32BE(20);
+    const pixels = inflateSync(gradientPng.subarray(41, 41 + gradientPng.readUInt32BE(33)));
+    const bottom = (height - 1) * (width * 3 + 1) + 1;
+    assert.deepEqual([...pixels.subarray(1, 4)], [255, 0, 0]);
+    assert.deepEqual([...pixels.subarray(bottom, bottom + 3)], [0, 0, 255]);
+    assert.throws(() => migrateCxPalette(
+        ":root { --background-primary: #123; --background-image: linear-gradient(180deg, #123456 80%, #abcdef 20%); }", "Invalid"
+    ), /manual port/);
     const { migrateCxVendetta } = await import("../../desktop/client/scripts/cx-migrate-vendetta.mjs");
     const vendetta = { name: "Sample", spec: 2, semanticColors: { BACKGROUND_PRIMARY: ["#abcdef", "#123456"] }, rawColors: { BRAND_500: "#fedcba" } };
     assert.equal(parseCx(migrateCxVendetta(vendetta, "dark")).semanticColors.BACKGROUND_PRIMARY, "#abcdef");

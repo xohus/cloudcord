@@ -27,58 +27,64 @@ import theme4 from "../../../../examples/cx/catalog/themes/catppuccin-frappe.cx"
 import theme5 from "../../../../examples/cx/catalog/themes/catppuccin-latte.cx";
 import theme6 from "../../../../examples/cx/catalog/themes/catppuccin-macchiato.cx";
 import theme7 from "../../../../examples/cx/catalog/themes/catppuccin-mocha.cx";
-import theme8 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-flamingo.cx";
-import theme9 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-green.cx";
-import theme10 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-lavender.cx";
-import theme11 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-maroon.cx";
-import theme12 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-mauve.cx";
-import theme13 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-peach.cx";
-import theme14 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-pink.cx";
-import theme15 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-red.cx";
-import theme16 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-rosewater.cx";
-import theme17 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-sapphire.cx";
-import theme18 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-sky.cx";
-import theme19 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-teal.cx";
-import theme20 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-yellow.cx";
-import theme21 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-flamingo.cx";
-import theme22 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-green.cx";
-import theme23 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-lavender.cx";
-import theme24 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-maroon.cx";
-import theme25 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-mauve.cx";
-import theme26 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-peach.cx";
-import theme27 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-pink.cx";
-import theme28 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-red.cx";
-import theme29 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-rosewater.cx";
-import theme30 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-sapphire.cx";
-import theme31 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-sky.cx";
-import theme32 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-teal.cx";
-import theme33 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-yellow.cx";
-import theme34 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-flamingo.cx";
-import theme35 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-green.cx";
-import theme36 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-lavender.cx";
-import theme37 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-maroon.cx";
-import theme38 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-mauve.cx";
-import theme39 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-peach.cx";
-import theme40 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-pink.cx";
-import theme41 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-red.cx";
-import theme42 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-rosewater.cx";
-import theme43 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-sapphire.cx";
-import theme44 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-sky.cx";
-import theme45 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-teal.cx";
-import theme46 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-yellow.cx";
-import theme47 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-flamingo.cx";
-import theme48 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-green.cx";
-import theme49 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-lavender.cx";
-import theme50 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-maroon.cx";
-import theme51 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-mauve.cx";
-import theme52 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-peach.cx";
-import theme53 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-pink.cx";
-import theme54 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-red.cx";
-import theme55 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-rosewater.cx";
-import theme56 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-sapphire.cx";
-import theme57 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-sky.cx";
-import theme58 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-teal.cx";
-import theme59 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-yellow.cx";
+import theme8 from "../../../../examples/cx/catalog/themes/edgerunners-night-city-gradient.cx";
+import theme9 from "../../../../examples/cx/catalog/themes/futuristic-aurora.cx";
+import theme10 from "../../../../examples/cx/catalog/themes/futuristic-ice.cx";
+import theme11 from "../../../../examples/cx/catalog/themes/futuristic-nebula.cx";
+import theme12 from "../../../../examples/cx/catalog/themes/futuristic-orbit.cx";
+import theme13 from "../../../../examples/cx/catalog/themes/futuristic-void.cx";
+import theme14 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-flamingo.cx";
+import theme15 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-green.cx";
+import theme16 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-lavender.cx";
+import theme17 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-maroon.cx";
+import theme18 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-mauve.cx";
+import theme19 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-peach.cx";
+import theme20 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-pink.cx";
+import theme21 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-red.cx";
+import theme22 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-rosewater.cx";
+import theme23 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-sapphire.cx";
+import theme24 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-sky.cx";
+import theme25 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-teal.cx";
+import theme26 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-frappe-yellow.cx";
+import theme27 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-flamingo.cx";
+import theme28 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-green.cx";
+import theme29 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-lavender.cx";
+import theme30 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-maroon.cx";
+import theme31 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-mauve.cx";
+import theme32 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-peach.cx";
+import theme33 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-pink.cx";
+import theme34 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-red.cx";
+import theme35 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-rosewater.cx";
+import theme36 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-sapphire.cx";
+import theme37 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-sky.cx";
+import theme38 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-teal.cx";
+import theme39 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-latte-yellow.cx";
+import theme40 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-flamingo.cx";
+import theme41 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-green.cx";
+import theme42 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-lavender.cx";
+import theme43 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-maroon.cx";
+import theme44 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-mauve.cx";
+import theme45 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-peach.cx";
+import theme46 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-pink.cx";
+import theme47 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-red.cx";
+import theme48 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-rosewater.cx";
+import theme49 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-sapphire.cx";
+import theme50 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-sky.cx";
+import theme51 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-teal.cx";
+import theme52 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-macchiato-yellow.cx";
+import theme53 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-flamingo.cx";
+import theme54 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-green.cx";
+import theme55 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-lavender.cx";
+import theme56 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-maroon.cx";
+import theme57 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-mauve.cx";
+import theme58 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-peach.cx";
+import theme59 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-pink.cx";
+import theme60 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-red.cx";
+import theme61 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-rosewater.cx";
+import theme62 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-sapphire.cx";
+import theme63 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-sky.cx";
+import theme64 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-teal.cx";
+import theme65 from "../../../../examples/cx/catalog/themes/vendetta-catppuccin-mocha-yellow.cx";
 
 export const cxCatalog = {
     plugins: [
@@ -112,57 +118,63 @@ export const cxCatalog = {
         { name: "Catppuccin Latte", source: theme5 },
         { name: "Catppuccin Macchiato", source: theme6 },
         { name: "Catppuccin Mocha", source: theme7 },
-        { name: "Catppuccin Frappé - Flamingo", source: theme8 },
-        { name: "Catppuccin Frappé - Green", source: theme9 },
-        { name: "Catppuccin Frappé - Lavender", source: theme10 },
-        { name: "Catppuccin Frappé - Maroon", source: theme11 },
-        { name: "Catppuccin Frappé - Mauve", source: theme12 },
-        { name: "Catppuccin Frappé - Peach", source: theme13 },
-        { name: "Catppuccin Frappé - Pink", source: theme14 },
-        { name: "Catppuccin Frappé - Red", source: theme15 },
-        { name: "Catppuccin Frappé - Rosewater", source: theme16 },
-        { name: "Catppuccin Frappé - Sapphire", source: theme17 },
-        { name: "Catppuccin Frappé - Sky", source: theme18 },
-        { name: "Catppuccin Frappé - Teal", source: theme19 },
-        { name: "Catppuccin Frappé - Yellow", source: theme20 },
-        { name: "Catppuccin Latte - Flamingo", source: theme21 },
-        { name: "Catppuccin Latte - Green", source: theme22 },
-        { name: "Catppuccin Latte - Lavender", source: theme23 },
-        { name: "Catppuccin Latte - Maroon", source: theme24 },
-        { name: "Catppuccin Latte - Mauve", source: theme25 },
-        { name: "Catppuccin Latte - Peach", source: theme26 },
-        { name: "Catppuccin Latte - Pink", source: theme27 },
-        { name: "Catppuccin Latte - Red", source: theme28 },
-        { name: "Catppuccin Latte - Rosewater", source: theme29 },
-        { name: "Catppuccin Latte - Sapphire", source: theme30 },
-        { name: "Catppuccin Latte - Sky", source: theme31 },
-        { name: "Catppuccin Latte - Teal", source: theme32 },
-        { name: "Catppuccin Latte - Yellow", source: theme33 },
-        { name: "Catppuccin Macchiato - Flamingo", source: theme34 },
-        { name: "Catppuccin Macchiato - Green", source: theme35 },
-        { name: "Catppuccin Macchiato - Lavender", source: theme36 },
-        { name: "Catppuccin Macchiato - Maroon", source: theme37 },
-        { name: "Catppuccin Macchiato - Mauve", source: theme38 },
-        { name: "Catppuccin Macchiato - Peach", source: theme39 },
-        { name: "Catppuccin Macchiato - Pink", source: theme40 },
-        { name: "Catppuccin Macchiato - Red", source: theme41 },
-        { name: "Catppuccin Macchiato - Rosewater", source: theme42 },
-        { name: "Catppuccin Macchiato - Sapphire", source: theme43 },
-        { name: "Catppuccin Macchiato - Sky", source: theme44 },
-        { name: "Catppuccin Macchiato - Teal", source: theme45 },
-        { name: "Catppuccin Macchiato - Yellow", source: theme46 },
-        { name: "Catppuccin Mocha - Flamingo", source: theme47 },
-        { name: "Catppuccin Mocha - Green", source: theme48 },
-        { name: "Catppuccin Mocha - Lavender", source: theme49 },
-        { name: "Catppuccin Mocha - Maroon", source: theme50 },
-        { name: "Catppuccin Mocha - Mauve", source: theme51 },
-        { name: "Catppuccin Mocha - Peach", source: theme52 },
-        { name: "Catppuccin Mocha - Pink", source: theme53 },
-        { name: "Catppuccin Mocha - Red", source: theme54 },
-        { name: "Catppuccin Mocha - Rosewater", source: theme55 },
-        { name: "Catppuccin Mocha - Sapphire", source: theme56 },
-        { name: "Catppuccin Mocha - Sky", source: theme57 },
-        { name: "Catppuccin Mocha - Teal", source: theme58 },
-        { name: "Catppuccin Mocha - Yellow", source: theme59 },
+        { name: "Edgerunners - Night City Gradient", source: theme8 },
+        { name: "Futuristic - Aurora", source: theme9 },
+        { name: "Futuristic - Ice", source: theme10 },
+        { name: "Futuristic - Nebula", source: theme11 },
+        { name: "Futuristic - Orbit", source: theme12 },
+        { name: "Futuristic - Void", source: theme13 },
+        { name: "Catppuccin Frappé - Flamingo", source: theme14 },
+        { name: "Catppuccin Frappé - Green", source: theme15 },
+        { name: "Catppuccin Frappé - Lavender", source: theme16 },
+        { name: "Catppuccin Frappé - Maroon", source: theme17 },
+        { name: "Catppuccin Frappé - Mauve", source: theme18 },
+        { name: "Catppuccin Frappé - Peach", source: theme19 },
+        { name: "Catppuccin Frappé - Pink", source: theme20 },
+        { name: "Catppuccin Frappé - Red", source: theme21 },
+        { name: "Catppuccin Frappé - Rosewater", source: theme22 },
+        { name: "Catppuccin Frappé - Sapphire", source: theme23 },
+        { name: "Catppuccin Frappé - Sky", source: theme24 },
+        { name: "Catppuccin Frappé - Teal", source: theme25 },
+        { name: "Catppuccin Frappé - Yellow", source: theme26 },
+        { name: "Catppuccin Latte - Flamingo", source: theme27 },
+        { name: "Catppuccin Latte - Green", source: theme28 },
+        { name: "Catppuccin Latte - Lavender", source: theme29 },
+        { name: "Catppuccin Latte - Maroon", source: theme30 },
+        { name: "Catppuccin Latte - Mauve", source: theme31 },
+        { name: "Catppuccin Latte - Peach", source: theme32 },
+        { name: "Catppuccin Latte - Pink", source: theme33 },
+        { name: "Catppuccin Latte - Red", source: theme34 },
+        { name: "Catppuccin Latte - Rosewater", source: theme35 },
+        { name: "Catppuccin Latte - Sapphire", source: theme36 },
+        { name: "Catppuccin Latte - Sky", source: theme37 },
+        { name: "Catppuccin Latte - Teal", source: theme38 },
+        { name: "Catppuccin Latte - Yellow", source: theme39 },
+        { name: "Catppuccin Macchiato - Flamingo", source: theme40 },
+        { name: "Catppuccin Macchiato - Green", source: theme41 },
+        { name: "Catppuccin Macchiato - Lavender", source: theme42 },
+        { name: "Catppuccin Macchiato - Maroon", source: theme43 },
+        { name: "Catppuccin Macchiato - Mauve", source: theme44 },
+        { name: "Catppuccin Macchiato - Peach", source: theme45 },
+        { name: "Catppuccin Macchiato - Pink", source: theme46 },
+        { name: "Catppuccin Macchiato - Red", source: theme47 },
+        { name: "Catppuccin Macchiato - Rosewater", source: theme48 },
+        { name: "Catppuccin Macchiato - Sapphire", source: theme49 },
+        { name: "Catppuccin Macchiato - Sky", source: theme50 },
+        { name: "Catppuccin Macchiato - Teal", source: theme51 },
+        { name: "Catppuccin Macchiato - Yellow", source: theme52 },
+        { name: "Catppuccin Mocha - Flamingo", source: theme53 },
+        { name: "Catppuccin Mocha - Green", source: theme54 },
+        { name: "Catppuccin Mocha - Lavender", source: theme55 },
+        { name: "Catppuccin Mocha - Maroon", source: theme56 },
+        { name: "Catppuccin Mocha - Mauve", source: theme57 },
+        { name: "Catppuccin Mocha - Peach", source: theme58 },
+        { name: "Catppuccin Mocha - Pink", source: theme59 },
+        { name: "Catppuccin Mocha - Red", source: theme60 },
+        { name: "Catppuccin Mocha - Rosewater", source: theme61 },
+        { name: "Catppuccin Mocha - Sapphire", source: theme62 },
+        { name: "Catppuccin Mocha - Sky", source: theme63 },
+        { name: "Catppuccin Mocha - Teal", source: theme64 },
+        { name: "Catppuccin Mocha - Yellow", source: theme65 },
     ],
 };

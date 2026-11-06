@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { pathToFileURL } from "node:url";
+import { deflateSync } from "node:zlib";
 
 const colorFields = new Map([
     ["background-primary", "background"],
@@ -9,6 +10,63 @@ const colorFields = new Map([
     ["text-muted", "muted"],
     ["brand-500", "accent"],
 ]);
+
+function pngChunk(type, data) {
+    const payload = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    let crc = 0xffffffff;
+    for (const byte of payload) {
+        crc ^= byte;
+        for (let bit = 0; bit < 8; bit++) crc = (crc >>> 1) ^ ((crc & 1) ? 0xedb88320 : 0);
+    }
+    const length = Buffer.alloc(4);
+    const checksum = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    checksum.writeUInt32BE((crc ^ 0xffffffff) >>> 0);
+    return Buffer.concat([length, payload, checksum]);
+}
+
+// Bake the strict CSS gradient subset into the same offline PNG that both
+// renderers can load. The chat's normal cover sizing applies to this image.
+function gradientWallpaper(value) {
+    const gradient = /^linear-gradient\(\s*(-?\d{1,3}(?:\.\d{1,3})?)deg\s*,\s*(.+)\)$/i.exec(value);
+    if (!gradient) return;
+    const stops = gradient[2].split(",").map(stop => {
+        const match = /^\s*#([0-9a-f]{6})\s+(\d{1,3}(?:\.\d{1,3})?)%\s*$/i.exec(stop);
+        if (!match) return;
+        return { rgb: Buffer.from(match[1], "hex"), position: Number(match[2]) };
+    });
+    if (stops.length < 2 || stops.length > 8 || stops.some((stop, i) =>
+        !stop || stop.position > 100 || (i > 0 && stop.position <= stops[i - 1]?.position)
+    )) return;
+    const angle = Number(gradient[1]) * Math.PI / 180;
+    const xDirection = Math.sin(angle);
+    const yDirection = -Math.cos(angle);
+    const extent = Math.abs(xDirection) + Math.abs(yDirection);
+    const size = 256;
+    const stride = size * 3 + 1;
+    const pixels = Buffer.alloc(size * stride);
+    for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
+        const position = 50 + 100 * ((x / (size - 1) - 0.5) * xDirection + (y / (size - 1) - 0.5) * yDirection) / extent;
+        const end = stops.findIndex(stop => stop.position >= position);
+        const right = stops[end < 0 ? stops.length - 1 : end];
+        const left = stops[end > 0 ? end - 1 : end < 0 ? stops.length - 1 : 0];
+        const blend = left === right ? 0 : (position - left.position) / (right.position - left.position);
+        for (let channel = 0; channel < 3; channel++)
+            pixels[y * stride + x * 3 + 1 + channel] = Math.round(left.rgb[channel] * (1 - blend) + right.rgb[channel] * blend);
+    }
+    const header = Buffer.alloc(13);
+    header.writeUInt32BE(size, 0);
+    header.writeUInt32BE(size, 4);
+    header[8] = 8;
+    header[9] = 2;
+    const png = Buffer.concat([
+        Buffer.from("89504e470d0a1a0a", "hex"),
+        pngChunk("IHDR", header),
+        pngChunk("IDAT", deflateSync(pixels)),
+        pngChunk("IEND", Buffer.alloc(0)),
+    ]);
+    return "data:image/png;base64," + png.toString("base64");
+}
 
 // Only the CSS palette subset with an equivalent CX representation is accepted.
 export function migrateCxPalette(css, name) {
@@ -34,7 +92,8 @@ export function migrateCxPalette(css, name) {
             continue;
         }
         if (key === "background-image" && !wallpaper) {
-            const image = /^url\((["']?)(data:image\/(?:png;base64,iVBORw0KGgo|jpeg;base64,\/9j\/)[A-Za-z0-9+/]+={0,2})\1\)$/.exec(value)?.[2];
+            const image = /^url\((["']?)(data:image\/(?:png;base64,iVBORw0KGgo|jpeg;base64,\/9j\/)[A-Za-z0-9+/]+={0,2})\1\)$/.exec(value)?.[2]
+                ?? gradientWallpaper(value);
             if (image && image.length <= 384 * 1024 && image.slice(image.indexOf(",") + 1).length % 4 === 0) {
                 wallpaper = image;
                 continue;

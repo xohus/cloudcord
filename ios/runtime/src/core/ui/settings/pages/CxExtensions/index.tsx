@@ -1,5 +1,5 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
-import { createCxSession, MAX_CX_SOURCE, reviewCx } from "@lib/api/cx";
+import { createCxSession, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
@@ -51,7 +51,7 @@ export default function CxExtensions() {
                 throw new Error("Choose a .cx file under 512 KB.");
             if (!file.fileCopyUri?.startsWith("file:///")) throw new Error("Could not copy the selected .cx file.");
             const next = await NativeFileModule.readFile(decodeURIComponent(file.fileCopyUri.slice(7)), "utf8");
-            setSource(next);
+            setSource(next.length <= CX_INLINE_EDITOR_LIMIT ? next : "");
             review(next);
         } catch (error) {
             if (!picker?.isCancel?.(error)) setStatus(String(error instanceof Error ? error.message : error));
@@ -159,7 +159,7 @@ export default function CxExtensions() {
                     return <TableRowGroup key={kind} title={kind}>
                         {matches.slice(start, start + 12).map(entry => <TableRow key={entry.name} label={entry.name} onPress={() => {
                             setShowCatalog(false);
-                            setSource(entry.source);
+                            setSource(entry.source.length <= CX_INLINE_EDITOR_LIMIT ? entry.source : "");
                             review(entry.source);
                         }} />)}
                         {page > 0 && <TableRow label={`Previous ${kind.toLowerCase()} page`} onPress={() => setPages({ ...pages, [kind]: page - 1 })} />}
@@ -189,6 +189,7 @@ export default function CxExtensions() {
                     subLabel={[...candidate.review.effects, ...(candidate.review.commands ?? [])].join("\n")}
                 />}
                 {candidate && <TableRow label="Allow for this session" onPress={enable} />}
+                {candidate && !source && <TableRow label="Edit CX source" onPress={() => setSource(candidate.source)} />}
                 {session.list().map(({ id, name }) => <TableRow key={id} label={`Disable ${name}`} onPress={() => {
                     session.disable(id);
                     setStatus(`${name} disabled.`);

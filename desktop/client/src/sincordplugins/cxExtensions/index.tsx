@@ -1,7 +1,7 @@
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { createCxSession, MAX_CX_SOURCE, reviewCx } from "@utils/cx";
+import { createCxSession, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx } from "@utils/cx";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
 import { useState } from "@webpack/common";
@@ -138,7 +138,7 @@ export function CxSettings() {
                 return <div key={kind}>
                     <h3>{kind}</h3>
                     {matches.slice(start, start + 12).map(entry => <button key={entry.name} onClick={() => {
-                        setSource(entry.source);
+                        setSource(entry.source.length <= CX_INLINE_EDITOR_LIMIT ? entry.source : "");
                         review(entry.source);
                     }}>{entry.name}</button>)}
                     {page > 0 && <button onClick={() => setPages({ ...pages, [kind]: page - 1 })}>{`Previous ${kind.toLowerCase()} page`}</button>}
@@ -160,7 +160,7 @@ export function CxSettings() {
                 }
                 try {
                     const next = await file.text();
-                    setSource(next);
+                    setSource(next.length <= CX_INLINE_EDITOR_LIMIT ? next : "");
                     review(next);
                 } catch {
                     setStatus("Could not read the CX file.");
@@ -179,6 +179,7 @@ export function CxSettings() {
             <ul>{candidate.review.effects.map(effect => <li key={effect}>{effect}</li>)}</ul>
             {candidate.review.commands && <p>{candidate.review.commands.join(", ")}</p>}
             <button onClick={enable}>Allow for this session</button>
+            {!source && <button onClick={() => setSource(candidate.source)}>Edit CX source</button>}
         </div>}
         {session.list().map(({ id, name }) => <button key={id} onClick={() => {
             session.disable(id);

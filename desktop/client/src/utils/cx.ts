@@ -3,6 +3,7 @@ import { calculate, convertUnits } from "./cxNumeric";
 import { messageTransforms, polishOptions, reverseText } from "./cxMessageTransforms";
 
 export const MAX_CX_SOURCE = 512 * 1024;
+export const CX_INLINE_EDITOR_LIMIT = 32 * 1024;
 
 const permissionLabels = {
     "commands.register": "Register the listed slash commands",
