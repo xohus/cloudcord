@@ -76,6 +76,11 @@ const tweak = 'import { defineTweak } from "@utils/cloudcordTweak";\n' +
 assert.equal(inspectPlugin("tweak.ts", tweak, "desktop", cxAppearanceTargets).cx, undefined);
 
 const styles = [cxAppearanceTargets["bot-tags"].css, cxAppearanceTargets["profile-effects"].css].join("\n");
+const combinedTweak = tweak.replace('"HideBotTags"', '"CompactProfiles"').replace('"body { display: none; }"', JSON.stringify(styles));
+const inspectTweak = code => inspectPlugin("tweak.ts", code, "desktop", cxAppearanceTargets);
+assert.deepEqual([...parseCx(inspectTweak(combinedTweak).cx).hiddenTargets], ["bot-tags", "profile-effects"]);
+assert.equal(inspectTweak(combinedTweak.replace(JSON.stringify(styles), JSON.stringify(styles + "body { display: none; }"))).cx, undefined);
+assert.equal(inspectTweak(combinedTweak.replace(');', ', getOptions());')).cx, undefined);
 const bd = [
     "/**",
     " * @name ReduceVisualClutter",

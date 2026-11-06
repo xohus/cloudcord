@@ -1,0 +1,3 @@
+plugin "HideSendButton":
+  needs appearance.hide
+  hide chat-send-button

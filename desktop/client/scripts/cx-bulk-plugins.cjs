@@ -65,6 +65,20 @@ function appearanceLines(targets) {
     return [...permissions, ...instructions.map(instruction => "  " + instruction)];
 }
 
+function matchAppearanceStyles(stylesheet, appearance) {
+    if (!stylesheet) return;
+    const rules = Object.entries(appearance).sort((a, b) => b[1].css.length - a[1].css.length);
+    const targets = [];
+    let css = stylesheet.trim();
+    while (css) {
+        const target = rules.find(([, rule]) => css.startsWith(rule.css));
+        if (!target || targets.includes(target)) return;
+        targets.push(target);
+        css = css.slice(target[1].css.length).trimStart();
+    }
+    if (targets.length) return targets;
+}
+
 function inspectBetterDiscord(file, code, appearance) {
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true, ts.ScriptKind.JS);
     const header = /^\s*\/\*\*[\s\S]*?\*\//.exec(code)?.[0];
@@ -79,15 +93,8 @@ function inspectBetterDiscord(file, code, appearance) {
     const added = methods.has("start") && styleCall(methods.get("start"), "addStyle", 2);
     const removed = methods.has("stop") && styleCall(methods.get("stop"), "removeStyle", 1);
     if (!added || !removed || !added[0] || added[0] !== removed[0]) return record;
-    const targets = [];
-    let css = added[1].trim();
-    while (css) {
-        const target = Object.entries(appearance).find(([key, rule]) => !targets.some(([used]) => used === key) && css.startsWith(rule.css));
-        if (!target) return record;
-        targets.push(target);
-        css = css.slice(target[1].css.length).trimStart();
-    }
-    if (!targets.length) return record;
+    const targets = matchAppearanceStyles(added[1], appearance);
+    if (!targets) return record;
     return {
         ...record,
         capability: "appearance",
@@ -457,9 +464,13 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
     if (factory === "defineTweak") {
         const name = literal(call.arguments[0]);
         if (!name) return;
-        const registered = Object.entries(appearance).find(([, target]) => target.plugin === name && target.css === literal(call.arguments[2]));
-        const supported = registered && platform === "desktop" && !entry.isExportEquals && !source.parseDiagnostics.length
+        const targets = matchAppearanceStyles(literal(call.arguments[2]), appearance);
+        const supported = targets && platform === "desktop" && !entry.isExportEquals && !source.parseDiagnostics.length
+            && safeText(name) && name.length <= 64
             && call.arguments.length >= 3 && call.arguments.length <= 4
+            && literal(call.arguments[1]) !== undefined
+            && (call.arguments.length === 3 || ts.isArrayLiteralExpression(call.arguments[3])
+                && call.arguments[3].elements.every(element => literal(element) !== undefined))
             && source.statements.every(statement => statement === entry || ts.isImportDeclaration(statement)
                 && statement.moduleSpecifier.text === "@utils/cloudcordTweak")
             && imported(source, "defineTweak", "@utils/cloudcordTweak");
@@ -467,7 +478,7 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
             name, file, platform, hooks: ["appearance"], flags: { commands: false, outgoing: false, settings: false, ui: true, styles: true },
             ...(supported ? {
                 capability: "appearance",
-                cx: ["plugin " + JSON.stringify(name) + ":", ...appearanceLines([registered]), ""].join("\n"),
+                cx: ["plugin " + JSON.stringify(name) + ":", ...appearanceLines(targets), ""].join("\n"),
             } : {}),
         };
     }

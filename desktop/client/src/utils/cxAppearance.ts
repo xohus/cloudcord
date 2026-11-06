@@ -86,6 +86,16 @@ export const cxAppearanceTargets = {
         css: 'button[aria-label="Apps"] { display: none !important; }',
         mobile: ["ChatInputActionButtonApps"],
     },
+    "chat-character-counter": {
+        plugin: "HideCharacterCount", label: "the chat character counter",
+        css: '[class*="characterCount"] { display: none !important; }',
+        mobile: ["ChatInputCharCounter"],
+    },
+    "chat-send-button": {
+        plugin: "HideSendButton", label: "the chat send button",
+        css: 'button[aria-label="Send Message"] { display: none !important; }',
+        mobile: ["ChatInputSendButton"],
+    },
     "message-embeds": {
         plugin: "HideEmbeds", label: "link embeds in chat",
         css: 'article[class*="embed"] { display: none !important; }',
