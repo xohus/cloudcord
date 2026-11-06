@@ -1,0 +1,3 @@
+plugin "HideGiftButton":
+  needs appearance.hide
+  hide chat-gift-button

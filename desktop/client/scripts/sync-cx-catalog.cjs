@@ -20,7 +20,7 @@ function loadCxParser() {
     return loadCxRuntime().parseCx;
 }
 
-function buildCatalog() {
+function buildCatalog(additions = new Map()) {
     const parseCx = loadCxParser();
     const names = new Set();
     const commands = new Set();
@@ -31,11 +31,17 @@ function buildCatalog() {
         ["theme", 100, "examples/cx/midnight.cx"],
     ]) {
         const folder = `examples/cx/catalog/${kind}s`;
-        const files = [original, ...fs.readdirSync(path.join(root, folder))
-            .filter(name => name.endsWith(".cx")).sort().map(name => `${folder}/${name}`)];
+        const filenames = fs.readdirSync(path.join(root, folder)).filter(name => name.endsWith(".cx"));
+        if (kind === "plugin") for (const name of additions.keys()) {
+            if (!/^[a-z][a-z0-9-]*\.cx$/.test(name) || filenames.some(existing => existing.toLowerCase() === name))
+                throw new Error("Invalid or existing CX filename: " + name);
+            filenames.push(name);
+        }
+        const files = [original, ...filenames.sort().map(name => folder + "/" + name)];
         if (files.length > target) throw new Error(`CX ${kind} catalog exceeds ${target} entries`);
         groups[kind + "s"] = files.map((file, index) => {
-            const { kind: actualKind, name, commands: declaredCommands } = parseCx(fs.readFileSync(path.join(root, file), "utf8"));
+            const extra = kind === "plugin" && file !== original ? additions.get(path.basename(file)) : undefined;
+            const { kind: actualKind, name, commands: declaredCommands } = parseCx(extra ?? fs.readFileSync(path.join(root, file), "utf8"));
             if (actualKind !== kind) throw new Error(`Unexpected CX kind in ${file}`);
             const normalized = name.trim().toLowerCase();
             if (names.has(normalized)) throw new Error(`Duplicate CX name in ${file}: ${name}`);
@@ -83,4 +89,4 @@ if (require.main === module) {
     }
 }
 
-module.exports = { buildCatalog, loadCxParser, loadCxRuntime };
+module.exports = { buildCatalog, catalogPath, loadCxParser, loadCxRuntime };

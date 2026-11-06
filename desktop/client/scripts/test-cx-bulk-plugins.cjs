@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { inspectPlugin, scan } = require("./cx-bulk-plugins.cjs");
-const { loadCxRuntime } = require("./sync-cx-catalog.cjs");
+const { buildCatalog, loadCxRuntime } = require("./sync-cx-catalog.cjs");
 
 const source = [
     '/* SPDX-License-Identifier: GPL-3.0-or-later */',
@@ -20,6 +20,13 @@ const { parseCx, cxAppearanceTargets } = loadCxRuntime();
 const candidate = inspect(source);
 assert.equal(candidate.capability, "outgoing-text");
 assert.equal(parseCx(candidate.cx).messageTransforms.length, 2);
+const catalog = buildCatalog();
+const prospective = buildCatalog(new Map([["literal-replace.cx", candidate.cx]]));
+assert.equal(prospective.plugins, catalog.plugins + 1);
+assert.equal(prospective.themes, catalog.themes);
+assert.throws(() => buildCatalog(new Map([["../invalid.cx", candidate.cx]])), /Invalid or existing CX filename/);
+assert.throws(() => buildCatalog(new Map([["clap-text.cx", candidate.cx]])), /Invalid or existing CX filename/);
+assert.throws(() => buildCatalog(new Map([["duplicate-probe.cx", candidate.cx.replace("LiteralReplace", "ClapText")]])), /Duplicate CX name/);
 assert.equal(inspect(source.replace('"a.b"', "/a.b/g")).cx, undefined);
 assert.equal(inspect(source.replace('"x"', '"$&x"')).cx, undefined);
 assert.equal(inspect(source.replace('import definePlugin', 'import "./unreviewed";\nimport definePlugin')).cx, undefined);

@@ -61,6 +61,26 @@ export const cxAppearanceTargets = {
         css: '[class*="animatedContainer"][class*="bannerImage"], [class*="bannerImage"] { display: none !important; }',
         mobile: ["ReanimatedGuildBanner"],
     },
+    "chat-gift-button": {
+        plugin: "HideGiftButton", label: "the chat gift button",
+        css: 'button[aria-label="Send a gift"] { display: none !important; }',
+        mobile: ["PremiumAnimatedGiftButton"],
+    },
+    "add-server-button": {
+        plugin: "HideAddServerButton", label: "the add-a-server button",
+        css: '[data-list-item-id="guildsnav___create-join-button"] { display: none !important; }',
+        mobile: ["GuildsBarCreateJoinButton"],
+    },
+    "profile-badges": {
+        plugin: "HideBadges", label: "profile badge rows",
+        css: '[class*="badgeList"] { display: none !important; }',
+        mobile: ["ProfileBadgeRows"],
+    },
+    "reply-previews": {
+        plugin: "HideReplyPreviews", label: "reply previews in chat",
+        css: '[class*="repliedMessage"] { display: none !important; }',
+        mobile: ["ReplyMessageContent"],
+    },
 } as const;
 
 export type CxAppearanceTarget = keyof typeof cxAppearanceTargets;

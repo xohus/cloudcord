@@ -305,29 +305,67 @@ function scan() {
     });
 }
 
+const usage = "Usage: node cx-bulk-plugins.cjs [--json | --out-dir <new-folder> | --add-ready]";
+
+function portFiles(ports) {
+    const files = new Map();
+    for (const record of ports) {
+        const name = record.name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase() + ".cx";
+        if (!/^[a-z][a-z0-9-]*\.cx$/.test(name) || files.has(name)) throw new Error("Ambiguous output name " + name);
+        files.set(name, record.cx);
+    }
+    return files;
+}
+
+function addReady(ports) {
+    if (!ports.length) {
+        console.log("No new CX ports are ready.");
+        return;
+    }
+    const { buildCatalog, catalogPath } = require("./sync-cx-catalog.cjs");
+    const files = portFiles(ports);
+    const catalog = buildCatalog(files);
+    const created = [];
+    const nextCatalog = catalogPath + "." + process.pid + ".tmp";
+    function writeNew(file, source) {
+        const fd = fs.openSync(file, "wx");
+        created.push(file);
+        try { fs.writeFileSync(fd, source); }
+        finally { fs.closeSync(fd); }
+    }
+    try {
+        for (const [name, source] of files) writeNew(path.join(catalogFolder, name), source);
+        writeNew(nextCatalog, catalog.source);
+        fs.renameSync(nextCatalog, catalogPath);
+    } catch (error) {
+        for (const file of created) fs.unlinkSync(file);
+        throw error;
+    }
+    console.log("Added " + files.size + " CX ports. Catalog has " + catalog.plugins + "/600 plugins.");
+}
+
 function main(args) {
     if (args.length === 1 && args[0] === "--help") {
-        console.log("Usage: node cx-bulk-plugins.cjs [--json | --out-dir <new-folder>]");
-        console.log("Scan supported plugin patterns. Export validated candidates into a new folder for review.");
+        console.log(usage);
+        console.log("Scan source patterns, export candidates for review, or add ready ports to the shared catalog.");
         return;
     }
     const output = args.length === 2 && args[0] === "--out-dir" ? path.resolve(args[1]) : undefined;
-    if (!output && (args.length > 1 || args.length === 1 && args[0] !== "--json"))
-        throw new Error("Usage: node cx-bulk-plugins.cjs [--json | --out-dir <new-folder>]");
+    if (!output && (args.length > 1 || args.length === 1 && !["--json", "--add-ready"].includes(args[0])))
+        throw new Error(usage);
     const records = scan();
+    if (args[0] === "--add-ready") {
+        addReady(records.filter(record => record.status === "ready"));
+        return;
+    }
     if (output) {
         const { loadCxParser } = require("./sync-cx-catalog.cjs");
         const parseCx = loadCxParser();
         const ports = records.filter(record => record.cx && ["ready", "in-catalog"].includes(record.status));
-        const files = new Map();
-        for (const record of ports) {
-            const name = record.name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase();
-            if (!/^[a-z][a-z0-9-]+$/.test(name) || files.has(name)) throw new Error("Ambiguous output name " + name);
-            parseCx(record.cx);
-            files.set(name, record.cx);
-        }
+        const files = portFiles(ports);
+        for (const source of files.values()) parseCx(source);
         fs.mkdirSync(output);
-        for (const [name, source] of files) fs.writeFileSync(path.join(output, name + ".cx"), source, { flag: "wx" });
+        for (const [name, source] of files) fs.writeFileSync(path.join(output, name), source, { flag: "wx" });
         fs.writeFileSync(path.join(output, "sources.json"), JSON.stringify(ports.map(({ name, file, status }) => ({ name, file, status })), null, 2) + "\n");
         console.log("Exported " + files.size + " validated CX ports to " + output);
     }

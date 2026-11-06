@@ -1,0 +1,3 @@
+plugin "HideAddServerButton":
+  needs appearance.hide
+  hide add-server-button

@@ -1,0 +1,3 @@
+plugin "HideBadges":
+  needs appearance.hide
+  hide profile-badges

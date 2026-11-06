@@ -1,0 +1,3 @@
+plugin "HideReplyPreviews":
+  needs appearance.hide
+  hide reply-previews

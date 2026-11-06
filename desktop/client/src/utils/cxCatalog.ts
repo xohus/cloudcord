@@ -6,38 +6,42 @@ import plugin4 from "../../../../examples/cx/catalog/plugins/calculator.cx";
 import plugin5 from "../../../../examples/cx/catalog/plugins/clap-text.cx";
 import plugin6 from "../../../../examples/cx/catalog/plugins/clear-urls.cx";
 import plugin7 from "../../../../examples/cx/catalog/plugins/google-that.cx";
-import plugin8 from "../../../../examples/cx/catalog/plugins/hide-avatar-decorations.cx";
-import plugin9 from "../../../../examples/cx/catalog/plugins/hide-bot-tags.cx";
-import plugin10 from "../../../../examples/cx/catalog/plugins/hide-clan-tags.cx";
-import plugin11 from "../../../../examples/cx/catalog/plugins/hide-jump-to-present.cx";
-import plugin12 from "../../../../examples/cx/catalog/plugins/hide-nameplates.cx";
-import plugin13 from "../../../../examples/cx/catalog/plugins/hide-new-messages-bar.cx";
-import plugin14 from "../../../../examples/cx/catalog/plugins/hide-profile-effects.cx";
-import plugin15 from "../../../../examples/cx/catalog/plugins/hide-reactions.cx";
-import plugin16 from "../../../../examples/cx/catalog/plugins/hide-role-icons.cx";
-import plugin17 from "../../../../examples/cx/catalog/plugins/hide-server-banner.cx";
-import plugin18 from "../../../../examples/cx/catalog/plugins/hide-stream-previews.cx";
-import plugin19 from "../../../../examples/cx/catalog/plugins/hide-typing-indicator.cx";
-import plugin20 from "../../../../examples/cx/catalog/plugins/ingtoninator.cx";
-import plugin21 from "../../../../examples/cx/catalog/plugins/leet-text.cx";
-import plugin22 from "../../../../examples/cx/catalog/plugins/more-commands.cx";
-import plugin23 from "../../../../examples/cx/catalog/plugins/no-reply-mention.cx";
-import plugin24 from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
-import plugin25 from "../../../../examples/cx/catalog/plugins/polish-wording.cx";
-import plugin26 from "../../../../examples/cx/catalog/plugins/reverse-text.cx";
-import plugin27 from "../../../../examples/cx/catalog/plugins/send-timestamps.cx";
-import plugin28 from "../../../../examples/cx/catalog/plugins/ship-calc.cx";
-import plugin29 from "../../../../examples/cx/catalog/plugins/signature.cx";
-import plugin30 from "../../../../examples/cx/catalog/plugins/silent-message-toggle.cx";
-import plugin31 from "../../../../examples/cx/catalog/plugins/space-out.cx";
-import plugin32 from "../../../../examples/cx/catalog/plugins/starify.cx";
-import plugin33 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
-import plugin34 from "../../../../examples/cx/catalog/plugins/text-replace.cx";
-import plugin35 from "../../../../examples/cx/catalog/plugins/unindent.cx";
-import plugin36 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
-import plugin37 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
-import plugin38 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
-import plugin39 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
+import plugin8 from "../../../../examples/cx/catalog/plugins/hide-add-server-button.cx";
+import plugin9 from "../../../../examples/cx/catalog/plugins/hide-avatar-decorations.cx";
+import plugin10 from "../../../../examples/cx/catalog/plugins/hide-badges.cx";
+import plugin11 from "../../../../examples/cx/catalog/plugins/hide-bot-tags.cx";
+import plugin12 from "../../../../examples/cx/catalog/plugins/hide-clan-tags.cx";
+import plugin13 from "../../../../examples/cx/catalog/plugins/hide-gift-button.cx";
+import plugin14 from "../../../../examples/cx/catalog/plugins/hide-jump-to-present.cx";
+import plugin15 from "../../../../examples/cx/catalog/plugins/hide-nameplates.cx";
+import plugin16 from "../../../../examples/cx/catalog/plugins/hide-new-messages-bar.cx";
+import plugin17 from "../../../../examples/cx/catalog/plugins/hide-profile-effects.cx";
+import plugin18 from "../../../../examples/cx/catalog/plugins/hide-reactions.cx";
+import plugin19 from "../../../../examples/cx/catalog/plugins/hide-reply-previews.cx";
+import plugin20 from "../../../../examples/cx/catalog/plugins/hide-role-icons.cx";
+import plugin21 from "../../../../examples/cx/catalog/plugins/hide-server-banner.cx";
+import plugin22 from "../../../../examples/cx/catalog/plugins/hide-stream-previews.cx";
+import plugin23 from "../../../../examples/cx/catalog/plugins/hide-typing-indicator.cx";
+import plugin24 from "../../../../examples/cx/catalog/plugins/ingtoninator.cx";
+import plugin25 from "../../../../examples/cx/catalog/plugins/leet-text.cx";
+import plugin26 from "../../../../examples/cx/catalog/plugins/more-commands.cx";
+import plugin27 from "../../../../examples/cx/catalog/plugins/no-reply-mention.cx";
+import plugin28 from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
+import plugin29 from "../../../../examples/cx/catalog/plugins/polish-wording.cx";
+import plugin30 from "../../../../examples/cx/catalog/plugins/reverse-text.cx";
+import plugin31 from "../../../../examples/cx/catalog/plugins/send-timestamps.cx";
+import plugin32 from "../../../../examples/cx/catalog/plugins/ship-calc.cx";
+import plugin33 from "../../../../examples/cx/catalog/plugins/signature.cx";
+import plugin34 from "../../../../examples/cx/catalog/plugins/silent-message-toggle.cx";
+import plugin35 from "../../../../examples/cx/catalog/plugins/space-out.cx";
+import plugin36 from "../../../../examples/cx/catalog/plugins/starify.cx";
+import plugin37 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
+import plugin38 from "../../../../examples/cx/catalog/plugins/text-replace.cx";
+import plugin39 from "../../../../examples/cx/catalog/plugins/unindent.cx";
+import plugin40 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
+import plugin41 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
+import plugin42 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
+import plugin43 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
 import theme1 from "../../../../examples/cx/midnight.cx";
 import theme2 from "../../../../examples/cx/catalog/themes/basic-background-chat.cx";
 import theme3 from "../../../../examples/cx/catalog/themes/blue-hour.cx";
@@ -113,38 +117,42 @@ export const cxCatalog = {
         { name: "ClapText", source: plugin5 },
         { name: "ClearURLs", source: plugin6 },
         { name: "GoogleThat", source: plugin7 },
-        { name: "HideAvatarDecorations", source: plugin8 },
-        { name: "HideBotTags", source: plugin9 },
-        { name: "HideClanTags", source: plugin10 },
-        { name: "HideJumpToPresent", source: plugin11 },
-        { name: "HideNameplates", source: plugin12 },
-        { name: "HideNewMessagesBar", source: plugin13 },
-        { name: "HideProfileEffects", source: plugin14 },
-        { name: "HideReactions", source: plugin15 },
-        { name: "HideRoleIcons", source: plugin16 },
-        { name: "HideServerBanner", source: plugin17 },
-        { name: "HideStreamPreviews", source: plugin18 },
-        { name: "HideTypingIndicator", source: plugin19 },
-        { name: "Ingtoninator", source: plugin20 },
-        { name: "LeetText", source: plugin21 },
-        { name: "MoreCommands", source: plugin22 },
-        { name: "NoReplyMention", source: plugin23 },
-        { name: "NormalizeMessageLinks", source: plugin24 },
-        { name: "PolishWording", source: plugin25 },
-        { name: "ReverseText", source: plugin26 },
-        { name: "SendTimestamps", source: plugin27 },
-        { name: "ShipCalc", source: plugin28 },
-        { name: "Signature", source: plugin29 },
-        { name: "SilentMessageToggle", source: plugin30 },
-        { name: "SpaceOut", source: plugin31 },
-        { name: "Starify", source: plugin32 },
-        { name: "TalkInReverse", source: plugin33 },
-        { name: "TextReplace", source: plugin34 },
-        { name: "Unindent", source: plugin35 },
-        { name: "UnitConverter", source: plugin36 },
-        { name: "VibeCheck", source: plugin37 },
-        { name: "WriteUpperCase", source: plugin38 },
-        { name: "ZeroWidthSanitizer", source: plugin39 },
+        { name: "HideAddServerButton", source: plugin8 },
+        { name: "HideAvatarDecorations", source: plugin9 },
+        { name: "HideBadges", source: plugin10 },
+        { name: "HideBotTags", source: plugin11 },
+        { name: "HideClanTags", source: plugin12 },
+        { name: "HideGiftButton", source: plugin13 },
+        { name: "HideJumpToPresent", source: plugin14 },
+        { name: "HideNameplates", source: plugin15 },
+        { name: "HideNewMessagesBar", source: plugin16 },
+        { name: "HideProfileEffects", source: plugin17 },
+        { name: "HideReactions", source: plugin18 },
+        { name: "HideReplyPreviews", source: plugin19 },
+        { name: "HideRoleIcons", source: plugin20 },
+        { name: "HideServerBanner", source: plugin21 },
+        { name: "HideStreamPreviews", source: plugin22 },
+        { name: "HideTypingIndicator", source: plugin23 },
+        { name: "Ingtoninator", source: plugin24 },
+        { name: "LeetText", source: plugin25 },
+        { name: "MoreCommands", source: plugin26 },
+        { name: "NoReplyMention", source: plugin27 },
+        { name: "NormalizeMessageLinks", source: plugin28 },
+        { name: "PolishWording", source: plugin29 },
+        { name: "ReverseText", source: plugin30 },
+        { name: "SendTimestamps", source: plugin31 },
+        { name: "ShipCalc", source: plugin32 },
+        { name: "Signature", source: plugin33 },
+        { name: "SilentMessageToggle", source: plugin34 },
+        { name: "SpaceOut", source: plugin35 },
+        { name: "Starify", source: plugin36 },
+        { name: "TalkInReverse", source: plugin37 },
+        { name: "TextReplace", source: plugin38 },
+        { name: "Unindent", source: plugin39 },
+        { name: "UnitConverter", source: plugin40 },
+        { name: "VibeCheck", source: plugin41 },
+        { name: "WriteUpperCase", source: plugin42 },
+        { name: "ZeroWidthSanitizer", source: plugin43 },
     ],
     themes: [
         { name: "Midnight", source: theme1 },
