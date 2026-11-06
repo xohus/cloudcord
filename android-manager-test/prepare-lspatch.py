@@ -25,7 +25,7 @@ temporary.replace(target)
 assets = Path(__file__).parent / "app/src/main"
 with zipfile.ZipFile(io.BytesIO(engine)) as archive:
     for entry in archive.infolist():
-        if not entry.is_dir() and entry.filename.startswith("assets/lspatch/"):
+        if not entry.is_dir() and entry.filename.startswith("assets/lspatch/so/") and entry.filename.endswith(".so"):
             destination = assets / entry.filename
             if not destination.resolve().is_relative_to((assets / "assets/lspatch").resolve()):
                 raise SystemExit("Invalid LSPatch asset path")

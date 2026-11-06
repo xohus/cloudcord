@@ -22,3 +22,11 @@ use separate IDs. Not a production update. Compatibility is unverified. Record
 Android version, device, target Discord version, and export the installation log.
 Do not disable Play Protect to force installation. The injected CloudCord module
 is a separate artifact; this Manager's license does not relicense that module.
+
+November 6 startup repair: use JingMatrix LSPatch v1.2 (487), source commit
+0dc50f42503711b14f5e2bb217c2bdd6321ce5be at
+https://github.com/JingMatrix/LSPatch/tree/v1.2. Its GPL-3.0 license remains
+applicable to that engine. The pinned release is assembled with matching Java
+and native assets, verified before testing. The CloudCord module discovers
+renamed React Native script delegates and isolates optional native hook failures.
+CI now launches patched Discord instead of treating installation as startup proof.
