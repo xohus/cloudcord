@@ -64,15 +64,14 @@ function processData(data: VendettaThemeManifest) {
 }
 
 function validateTheme(themeJSON: any): boolean {
-    if (typeof themeJSON !== "object" || themeJSON === null) return false;
-
-    if (themeJSON.spec === 3 && !themeJSON.main) return false;
-
-    if (themeJSON.spec === 2) return true;
-
-    if (themeJSON.theme_color_map) return true;
-
-    return themeJSON.spec === 2 || themeJSON.spec === 3;
+    if (typeof themeJSON !== "object" || themeJSON === null || Array.isArray(themeJSON)) return false;
+    const record = (value: any) => value != null && typeof value === "object" && !Array.isArray(value);
+    if (themeJSON.spec === 3) return record(themeJSON.main);
+    if (themeJSON.spec !== undefined && themeJSON.spec !== 2) return false;
+    // Older Vendetta themes omit spec. processData normalizes these to v2,
+    // but rejecting them here previously made that compatibility unreachable.
+    return themeJSON.spec === 2 || record(themeJSON.theme_color_map) ||
+        record(themeJSON.semanticColors) || record(themeJSON.rawColors);
 }
 
 export async function fetchTheme(url: string, selected?: boolean, refresh = false) {

@@ -97,3 +97,39 @@ for (const platform of ['android', 'ios']) for (const delayed of [false, true]) 
   }
 }
 console.log('PASS Android/iOS deferred settings, both list exports, captured/frozen namespaces, memo screens, no forced factories, cleanup');
+
+// Split bundles register modules after the startup snapshot has been made.
+for (const asMap of [false, true]) {
+    const live = asMap ? new Map() : {};
+    const snapshot = {};
+    const visited = [];
+    let factoryCalls = 0;
+    const originalDefine = function(factory, id) {
+        assert.equal(this.marker, 'receiver');
+        const record = { factory, isInitialized: false, publicModule: { exports: {} } };
+        if (asMap) live.set(id, record); else live[id] = record;
+        return 'defined';
+    };
+    const realm = { module: { exports: {} }, console, Map, __d: originalDefine,
+        __c: () => live, __CLOUDCORD_MODULE_VIEW__: snapshot };
+    vm.createContext(realm);
+    vm.runInContext(observerCode, realm);
+    const stop = realm.module.exports.observeSettingsModules(value => visited.push(value));
+    const factory = function(g, r, d, a, module) {
+        factoryCalls++;
+        module.exports = { createList() {} };
+        return 'loaded';
+    };
+    assert.equal(realm.__d.call({ marker: 'receiver' }, factory, 42), 'defined');
+    assert.equal(factoryCalls, 0);
+    const record = asMap ? live.get(42) : live[42];
+    assert.equal(snapshot[42], record, 'new definitions enter the private finder view');
+    assert.equal(record.factory(null, null, null, null, record.publicModule), 'loaded');
+    assert.equal(visited.length, 1);
+    assert.equal(record.factory, factory, 'completed observer releases its wrapper');
+    realm.__d.call({ marker: 'receiver' }, factory, 43);
+    stop();
+    assert.equal(realm.__d, originalDefine);
+    assert.equal((asMap ? live.get(43) : live[43]).factory, factory);
+}
+console.log('PASS late Metro definitions: object/Map registry, no eager import, original return/receiver, cleanup');

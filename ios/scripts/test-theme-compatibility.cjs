@@ -4,6 +4,17 @@ const path = require('node:path');
 const vm = require('node:vm');
 const esbuild = require(process.env.CLOUDCORD_ESBUILD || 'esbuild');
 const base = path.join(__dirname, '../runtime/src/lib/addons/themes/colors');
+const themeSource = fs.readFileSync(path.join(base, '../index.ts'), 'utf8');
+const validation = themeSource.slice(themeSource.indexOf('function validateTheme('), themeSource.indexOf('export async function fetchTheme'));
+const validationRealm = {};
+vm.createContext(validationRealm);
+vm.runInContext(esbuild.transformSync(validation, {loader: 'ts'}).code, validationRealm);
+for (const theme of [{spec: 2}, {semanticColors: {BACKGROUND_PRIMARY: ['#000']}}, {rawColors: {RED: '#f00'}}, {theme_color_map: {}}, {spec: 3, main: {}}]) {
+  assert.equal(validationRealm.validateTheme(theme), true, 'supported theme shape must install');
+}
+for (const theme of [null, [], {}, {spec: 3}, {spec: 3, main: 'invalid'}, {spec: 99, rawColors: {}}, {semanticColors: []}]) {
+  assert.equal(validationRealm.validateTheme(theme), false, 'invalid theme must not install');
+}
 function load(file, dependencies) {
   const code = esbuild.transformSync(fs.readFileSync(path.join(base, file), 'utf8'), {loader: 'ts', format: 'cjs'}).code;
   const module = {exports: {}};
