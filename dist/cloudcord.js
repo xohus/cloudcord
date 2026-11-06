@@ -36624,6 +36624,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       text = text.replace(/\s*$/, ".");
     return text.replace(/\uE000(\d+)\uE000/g, (_2, index) => protectedText[Number(index)]);
   }
+  function formatLocalTime(hour, minute, meridiem, now) {
+    if (minute > 59 || (meridiem ? hour < 1 || hour > 12 : hour > 23))
+      return;
+    if (meridiem)
+      hour = hour % 12 + (meridiem.toUpperCase() === "PM" ? 12 : 0);
+    var target = new Date(now);
+    target.setHours(hour, minute, 0, 0);
+    if (target < now) {
+      target.setDate(target.getDate() + 1);
+      target.setHours(hour, minute, 0, 0);
+    }
+    return "<t:" + Math.floor(target.getTime() / 1e3) + ":t>";
+  }
   var tracking, contractions, expanded, missing, wordPattern, missingPattern, expandedPattern, polishOptions, messageTransforms;
   var init_cxMessageTransforms = __esm({
     "src/lib/api/cxMessageTransforms.ts"() {
@@ -36725,13 +36738,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           return cleanTrackingLink(url2) + match.slice(url2.length);
         }),
         // Signature by Vee, Rini, ImBanana and KrystalSkull.
-        signature: (text, signature = "a chronic discord user") => text.trim() ? text + "\n> " + signature : text
+        signature: (text, signature = "a chronic discord user") => text.trim() ? text + "\n> " + signature : text,
+        // SilentMessageToggle by Nuckyz, CatNoir and Z1xus.
+        silentMessage: (text) => text.trim() && !/^@silent(?:\s|$)/.test(text) ? "@silent " + text : text,
+        // AutoVaporwave and ZeroWidthSanitizer by rootpoi, kraethis, and ewlle.
+        fullwidth: (text) => text.replace(/[ -~]/g, (char) => char === " " ? "\u3000" : String.fromCharCode(char.charCodeAt(0) + 65248)),
+        stripInvisible: (text) => text.replace(/[\u200b-\u200f\u202a-\u202e\u2060-\u2064\u206a-\u206f\ufeff\u00ad]/g, ""),
+        sendTimestamps: (text) => {
+          var now = /* @__PURE__ */ new Date();
+          return text.replace(/\x60{3}[\s\S]*?\x60{3}|\x60{2}[\s\S]*?\x60{2}|\x60(\d{1,2}):(\d{2}) ?(am|pm)?\x60/gi, (match, hour, minute, meridiem) => hour === void 0 ? match : formatLocalTime(Number(hour), Number(minute), meridiem, now) ?? match);
+        }
       };
     }
   });
 
   // src/lib/api/cx.ts
-  function quoted(value, limit) {
+  function quoted(value, limit, allowEmpty = false) {
     if (!value.startsWith('"') || !value.endsWith('"'))
       throw new Error("Expected text in double quotes");
     var decoded;
@@ -36740,7 +36762,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     } catch (e) {
       throw new Error("Invalid quoted text");
     }
-    if (!decoded.trim() || decoded.length > limit || RegExp("[\\x00-\\x1f\\x7f-\\x9f\\u202a-\\u202e\\u2066-\\u2069]", "u").test(decoded))
+    if (!allowEmpty && !decoded.trim() || decoded.length > limit || RegExp("[\\x00-\\x1f\\x7f-\\x9f\\u202a-\\u202e\\u2066-\\u2069]", "u").test(decoded))
       throw new Error("Invalid text or length");
     return decoded;
   }
@@ -36749,18 +36771,38 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (!line12.trim())
         return "continue";
       var declaration2 = /^  needs ([a-z.]+)$/.exec(line12);
-      if (declaration2 && !commands3.length && !transforms.length) {
+      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing) {
         var permission2 = declaration2[1];
         if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission2) || permissions.has(permission2))
           throw new Error("Unknown or duplicate CX permission");
         permissions.add(permission2);
         return "continue";
       }
+      if (line12 === "  before send suppressReplyPing" && !suppressReplyPing) {
+        suppressReplyPing = true;
+        current = void 0;
+        return "continue";
+      }
+      var replace = /^  before (send|edit) replace ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line12);
+      if (replace) {
+        var stage2 = replace[1];
+        var find = quoted(replace[2], 240);
+        if (transforms.length >= 32 || transforms.some((rule) => rule.stage === stage2 && rule.name === "replaceLiteral" && rule.find === find))
+          throw new Error("Duplicate or too many replacement rules");
+        transforms.push({
+          stage: stage2,
+          name: "replaceLiteral",
+          find,
+          replacement: quoted(replace[3], 240, true)
+        });
+        current = void 0;
+        return "continue";
+      }
       var transform = /^  before (send|edit) ([a-zA-Z]+)( .+)?$/.exec(line12);
       if (transform) {
-        var stage2 = transform[1];
+        var stage1 = transform[1];
         var name2 = transform[2];
-        if (!Object.prototype.hasOwnProperty.call(messageTransforms, name2) || transforms.some((entry) => entry.name === name2 && entry.stage === stage2))
+        if (!Object.prototype.hasOwnProperty.call(messageTransforms, name2) || transforms.some((entry) => entry.name === name2 && entry.stage === stage1))
           throw new Error("Unknown or duplicate outgoing text transform");
         if (transform[3] && name2 !== "capitalizeSentences" && name2 !== "signature" && name2 !== "polishWording")
           throw new Error("This transform takes no options");
@@ -36768,7 +36810,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (name2 === "polishWording" && options?.split(",").some((option) => !polishOptions.has(option.trim())))
           throw new Error("Unknown PolishWording option");
         transforms.push({
-          stage: stage2,
+          stage: stage1,
           name: name2,
           options
         });
@@ -36913,14 +36955,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var permissions = /* @__PURE__ */ new Set();
     var commands3 = [];
     var transforms = [];
+    var suppressReplyPing = false;
     var current;
     for (var line1 of lines)
       _loop2(line1);
-    if (!commands3.length && !transforms.length || commands3.some((command) => !command.actions.length))
+    if (!commands3.length && !transforms.length && !suppressReplyPing || commands3.some((command) => !command.actions.length))
       throw new Error("A plugin needs a command with an action or an outgoing text transform");
     var required = /* @__PURE__ */ new Set();
     if (commands3.length)
       required.add("commands.register");
+    if (suppressReplyPing)
+      required.add("replies.suppressping");
     for (var { stage } of transforms)
       required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
     for (var { actions } of commands3) {
@@ -36946,7 +36991,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       permissions: [
         ...permissions
       ],
-      messageTransforms: transforms
+      messageTransforms: transforms,
+      suppressReplyPing
     };
   }
   function reviewCx(source) {
@@ -36991,11 +37037,21 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (!register)
           throw new Error("This client cannot transform message " + stage2 + "s");
         cleanups.push(register((text) => {
+          var _loop3 = function(rule2) {
+            result = rule2.name === "replaceLiteral" ? result.replaceAll(rule2.find, () => rule2.replacement) : messageTransforms[rule2.name](result, rule2.options);
+            if (result.length > 4e3)
+              return {
+                v: text
+              };
+          };
           if (!active || text.length > 4e3)
             return text;
           var result = text;
-          for (var { name, options } of transforms)
-            result = messageTransforms[name](result, options);
+          for (var rule of transforms) {
+            var _ret = _loop3(rule);
+            if (_type_of(_ret) === "object")
+              return _ret.v;
+          }
           return result.trim() && result.length <= 4e3 ? result : text;
         }));
       }, _loop1 = function(command2) {
@@ -37050,6 +37106,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           return outgoing;
         }, command2.text, command2.actions.some(sendsMessage), command2.actions.some((action) => action.kind === "reply or send"), command2.inputs));
       };
+      if (document.suppressReplyPing) {
+        if (!host.registerReplyPingSuppression)
+          throw new Error("This client cannot suppress reply pings");
+        cleanups.push(host.registerReplyPingSuppression());
+      }
       for (var stage of [
         "send",
         "edit"
@@ -37103,6 +37164,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+      init_type_of();
       init_cxCommandFunctions();
       init_cxNumeric();
       init_cxMessageTransforms();
@@ -37114,7 +37176,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "reply.local": "Show a command reply visible only to you",
         "messages.send": "Send the result to the current chat when you run a listed command",
         "messages.transform": "Change text before Discord sends messages you compose",
-        "messages.edit.transform": "Change text when you submit a message edit"
+        "messages.edit.transform": "Change text when you submit a message edit",
+        "replies.suppressping": "Send replies without pinging the person you reply to"
       };
       leetCharacters = {
         a: "4",
@@ -37171,6 +37234,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_character_counter2 = __esm({
     "../examples/cx/pilot/character-counter.cx"() {
       character_counter_default2 = 'plugin "CX Character Counter":\n  needs commands.register\n  needs reply.local\n  on command "ccp-count" with text:\n    reply "${length(text)} characters"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/auto-vaporwave.cx
+  var auto_vaporwave_default;
+  var init_auto_vaporwave = __esm({
+    "../examples/cx/catalog/plugins/auto-vaporwave.cx"() {
+      auto_vaporwave_default = 'plugin "AutoVaporwave":\n  needs messages.transform\n  before send fullwidth\n';
     }
   });
 
@@ -37238,6 +37309,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/no-reply-mention.cx
+  var no_reply_mention_default;
+  var init_no_reply_mention = __esm({
+    "../examples/cx/catalog/plugins/no-reply-mention.cx"() {
+      no_reply_mention_default = 'plugin "NoReplyMention":\n  needs replies.suppressping\n  before send suppressReplyPing\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/normalize-message-links.cx
   var normalize_message_links_default;
   var init_normalize_message_links = __esm({
@@ -37262,6 +37341,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/send-timestamps.cx
+  var send_timestamps_default;
+  var init_send_timestamps = __esm({
+    "../examples/cx/catalog/plugins/send-timestamps.cx"() {
+      send_timestamps_default = 'plugin "SendTimestamps":\n  needs messages.transform\n  before send sendTimestamps\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/ship-calc.cx
   var ship_calc_default;
   var init_ship_calc = __esm({
@@ -37275,6 +37362,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_signature = __esm({
     "../examples/cx/catalog/plugins/signature.cx"() {
       signature_default = 'plugin "Signature":\n  needs messages.transform\n  before send signature "a chronic discord user"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/silent-message-toggle.cx
+  var silent_message_toggle_default;
+  var init_silent_message_toggle = __esm({
+    "../examples/cx/catalog/plugins/silent-message-toggle.cx"() {
+      silent_message_toggle_default = 'plugin "SilentMessageToggle":\n  needs messages.transform\n  before send silentMessage\n';
     }
   });
 
@@ -37299,6 +37394,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_talk_in_reverse = __esm({
     "../examples/cx/catalog/plugins/talk-in-reverse.cx"() {
       talk_in_reverse_default = 'plugin "TalkInReverse":\n  needs messages.transform\n  before send reverse\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/text-replace.cx
+  var text_replace_default;
+  var init_text_replace = __esm({
+    "../examples/cx/catalog/plugins/text-replace.cx"() {
+      text_replace_default = 'plugin "TextReplace":\n  needs messages.transform\n  before send replace ":shrug:" with "\xAF\\\\_(\u30C4)_/\xAF"\n';
     }
   });
 
@@ -37331,6 +37434,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_write_upper_case = __esm({
     "../examples/cx/catalog/plugins/write-upper-case.cx"() {
       write_upper_case_default = 'plugin "WriteUpperCase":\n  needs messages.transform\n  before send capitalizeSentences "http, https, ok"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/zero-width-sanitizer.cx
+  var zero_width_sanitizer_default;
+  var init_zero_width_sanitizer = __esm({
+    "../examples/cx/catalog/plugins/zero-width-sanitizer.cx"() {
+      zero_width_sanitizer_default = 'plugin "ZeroWidthSanitizer":\n  needs messages.transform\n  needs messages.edit.transform\n  before send stripInvisible\n  before edit stripInvisible\n';
     }
   });
 
@@ -37862,6 +37973,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
       init_character_counter2();
+      init_auto_vaporwave();
       init_bold_text();
       init_calculator();
       init_clap_text();
@@ -37870,18 +37982,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_ingtoninator();
       init_leet_text();
       init_more_commands();
+      init_no_reply_mention();
       init_normalize_message_links();
       init_polish_wording();
       init_reverse_text();
+      init_send_timestamps();
       init_ship_calc();
       init_signature();
+      init_silent_message_toggle();
       init_space_out();
       init_starify();
       init_talk_in_reverse();
+      init_text_replace();
       init_unindent();
       init_unit_converter();
       init_vibe_check();
       init_write_upper_case();
+      init_zero_width_sanitizer();
       init_midnight();
       init_basic_background_chat();
       init_blue_hour();
@@ -37954,6 +38071,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: character_counter_default2
           },
           {
+            name: "AutoVaporwave",
+            source: auto_vaporwave_default
+          },
+          {
             name: "BoldText",
             source: bold_text_default
           },
@@ -37986,6 +38107,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: more_commands_default
           },
           {
+            name: "NoReplyMention",
+            source: no_reply_mention_default
+          },
+          {
             name: "NormalizeMessageLinks",
             source: normalize_message_links_default
           },
@@ -37998,12 +38123,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: reverse_text_default
           },
           {
+            name: "SendTimestamps",
+            source: send_timestamps_default
+          },
+          {
             name: "ShipCalc",
             source: ship_calc_default
           },
           {
             name: "Signature",
             source: signature_default
+          },
+          {
+            name: "SilentMessageToggle",
+            source: silent_message_toggle_default
           },
           {
             name: "SpaceOut",
@@ -38016,6 +38149,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "TalkInReverse",
             source: talk_in_reverse_default
+          },
+          {
+            name: "TextReplace",
+            source: text_replace_default
           },
           {
             name: "Unindent",
@@ -38032,6 +38169,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "WriteUpperCase",
             source: write_upper_case_default
+          },
+          {
+            name: "ZeroWidthSanitizer",
+            source: zero_width_sanitizer_default
           }
         ],
         themes: [
@@ -38361,6 +38502,21 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         if (settings.safeMode?.enabled)
           throw new Error("CX is unavailable in Safe Mode");
         session.enable(candidate.source, {
+          registerReplyPingSuppression() {
+            return onSendMessage((_message, options) => {
+              if (settings.safeMode?.enabled || !options?.messageReference)
+                return;
+              options.allowedMentions = {
+                parse: [
+                  "users",
+                  "roles",
+                  "everyone"
+                ],
+                ...options.allowedMentions,
+                replied_user: false
+              };
+            });
+          },
           registerMessageTransform(transform) {
             return onSendMessage((message) => {
               if (!settings.safeMode?.enabled && typeof message.content === "string")
@@ -43317,7 +43473,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "0621077ee718a8c788b962990f28bb2adbbd38e3";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "264b2e4e4fcdee0b5d16a7bf28c9cda0a2f4131e";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
