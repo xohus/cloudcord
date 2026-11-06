@@ -278,6 +278,9 @@ jobs:
           set -e
           bash desktop/client/installer/windows/build.sh
           cp desktop/client/installer/windows/out/CloudCordInstaller.exe desktop/client/dist/CloudCordInstaller.exe
+          # The new installer is the main Windows download.
+          cp desktop/client/dist/CloudCordInstaller.exe desktop/client/dist/CloudCordSetup.exe
+          cp desktop/client/dist/CloudCordInstaller.exe desktop/client/dist/cloudcord.exe
 
       - name: Package desktop.asar for updater
         shell: bash
