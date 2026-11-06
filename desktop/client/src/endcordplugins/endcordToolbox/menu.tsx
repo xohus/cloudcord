@@ -12,6 +12,7 @@ import { t } from "@utils/i18n";
 import { localStorage } from "@utils/localStorage";
 import { useAwaiter } from "@utils/react";
 import { wordsFromCamel, wordsToTitle } from "@utils/text";
+import { getThemeInfo } from "@utils/themes/bd";
 import { OptionType, Plugin } from "@utils/types";
 import { Menu, useMemo, useState } from "@webpack/common";
 import { showToast, Toasts } from "@utils/endcordCompat";
@@ -283,7 +284,7 @@ export function buildThemeMenuEntries() {
                         <Menu.MenuCheckboxItem
                             id={`theme-${theme.fileName}`}
                             key={theme.fileName}
-                            label={theme.name}
+                            label={getThemeInfo(theme.content, theme.fileName).name}
                             checked={enabledThemes.includes(theme.fileName)}
                             action={() => {
                                 if (enabledThemes.includes(theme.fileName)) {

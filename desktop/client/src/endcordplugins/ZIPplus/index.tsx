@@ -134,12 +134,12 @@ async function zipFile(file: File): Promise<File> {
     });
 
     const baseName = file.name.substring(0, file.name.lastIndexOf(".")) || file.name;
-    return new File([zipData], `${baseName}.zip`, { type: "application/zip" });
+    return new File([new Uint8Array(zipData)], `${baseName}.zip`, { type: "application/zip" });
 }
 
 async function zipFolder(folderName: string, fileEntries: Record<string, Uint8Array>): Promise<File> {
     const zipData = zipSync(fileEntries);
-    return new File([zipData], `${folderName}.zip`, { type: "application/zip" });
+    return new File([new Uint8Array(zipData)], `${folderName}.zip`, { type: "application/zip" });
 }
 
 async function readFileEntry(entry: FileSystemFileEntry): Promise<File> {

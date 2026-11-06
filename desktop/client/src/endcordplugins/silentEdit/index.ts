@@ -6,13 +6,13 @@
 
 import { Devs } from "@utils/constants";
 import definePlugin from "@utils/types";
-import { FluxDispatcher } from "@webpack/common";
+import { FluxDispatcher, UserStore } from "@webpack/common";
 
 const edited = new Set<string>();
 
 function onMessageUpdate({ message }: any) {
     if (!message?.id || !message?.edited_timestamp) return;
-    const me = (Endcord as any).Webpack?.findByStoreName?.("UserStore")?.getCurrentUser?.();
+    const me = UserStore?.getCurrentUser();
     if (me && message.author?.id === me.id) {
         edited.add(message.id);
         if (edited.size > 500) {
