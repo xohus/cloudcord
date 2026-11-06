@@ -51,7 +51,7 @@ async function initializeCloudCord() {
     try {
         // Rain can attach after Metro already exists, without setting window.modules.
         // Prepare a private view for both early and late injection paths.
-        const registry = window.modules ?? window.__c?.();
+        const registry = window.modules; // __c resets Metro, it is not a registry getter.
         if (!registry) throw new Error("Discord's module registry is not available yet");
         (globalThis as any).__CLOUDCORD_MODULE_VIEW__ = registry instanceof Map
             ? Object.fromEntries(registry) : { ...registry };

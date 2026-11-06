@@ -126,6 +126,7 @@ for (const asMap of [false, true]) {
     const snapshot = {};
     const visited = [];
     let factoryCalls = 0;
+    let clearCalls = 0;
     const originalDefine = function(factory, id) {
         assert.equal(this.marker, 'receiver');
         const record = { factory, isInitialized: false, publicModule: { exports: {} } };
@@ -133,7 +134,7 @@ for (const asMap of [false, true]) {
         return 'defined';
     };
     const realm = { module: { exports: {} }, console, Map, __d: originalDefine,
-        __c: () => live, __CLOUDCORD_MODULE_VIEW__: snapshot };
+        modules: live, __c: () => { clearCalls++; throw Error("Metro clear must never be called"); }, __CLOUDCORD_MODULE_VIEW__: snapshot };
     vm.createContext(realm);
     vm.runInContext(observerCode, realm);
     const stop = realm.module.exports.observeSettingsModules(value => visited.push(value));
@@ -151,6 +152,7 @@ for (const asMap of [false, true]) {
     assert.equal(record.factory, factory, 'completed observer releases its wrapper');
     realm.__d.call({ marker: 'receiver' }, factory, 43);
     stop();
+    assert.equal(clearCalls, 0, "observer never resets the live registry");
     assert.equal(realm.__d, originalDefine);
     assert.equal((asMap ? live.get(43) : live[43]).factory, factory);
 }

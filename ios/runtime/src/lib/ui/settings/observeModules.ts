@@ -42,7 +42,7 @@ export function observeSettingsModules(visit: (exports: any, path?: string) => v
     const define = function(this: any, ...args: any[]) {
         const result = originalDefine.apply(this, args);
         if (active) try {
-            const registry = root.__c?.() ?? root.modules;
+            const registry = root.modules;
             const id = args[1];
             const definition = registry instanceof Map ? registry.get(id) : registry?.[id];
             if (definition) {
@@ -54,8 +54,7 @@ export function observeSettingsModules(visit: (exports: any, path?: string) => v
         return result;
     };
     if (typeof originalDefine === "function") try { root.__d = define; } catch {}
-    let liveModules;
-    try { liveModules = root.__c?.(); } catch {}
+    const liveModules = root.modules; // __c clears Metro; never call it after definitions exist.
     for (const registry of [modules, liveModules]) {
         const entries = registry instanceof Map ? registry.values() : Object.values(registry ?? {});
         for (const definition of entries as Iterable<any>) observe(definition);

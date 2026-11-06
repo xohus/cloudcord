@@ -7,10 +7,9 @@
     // A late executor callback may encounter an already initialized Metro.
     // Keep its definition function rather than replacing it with undefined.
     let define = globalThis.__d;
-    if (descriptor && !descriptor.configurable) {
-        globalThis.modules ??= globalThis.__c?.();
-        return;
-    }
+    // Only the pre-definition bootstrap may capture via clear(). Late calls
+    // would erase every registered Discord module. Keep the existing capture.
+    if (typeof define === "function" || (descriptor && !descriptor.configurable)) return;
     Object.defineProperty(globalThis, "__d", {
         configurable: true,
         enumerable: descriptor?.enumerable ?? true,

@@ -24,7 +24,7 @@ const code = esbuild.transformSync(fs.readFileSync(path.join(root,'src/entry.ts'
         });
         vm.runInContext(`var record={isInitialized:true,publicModule:{exports:{hello:'world'}}};
             var registry=${map ? 'new Map([[7,record]])' : '{7:record}'};
-            __c=()=>registry;
+            modules=registry; __c=()=>{ throw Error("must not clear Metro"); };
             ${early ? '' : '__r=()=>{};'}
         `,realm);
         vm.runInContext(code,realm);
@@ -32,7 +32,7 @@ const code = esbuild.transformSync(fs.readFileSync(path.join(root,'src/entry.ts'
         await new Promise(resolve=>setTimeout(resolve,5));
         assert.equal(started,1,`early=${early} map=${map} ${errors}`);
         assert.equal(errors.length,0);
-        assert.equal(vm.runInContext('__c() === registry',realm),true);
+        assert.equal(vm.runInContext('modules === registry',realm),true);
         assert.equal(vm.runInContext('__CLOUDCORD_MODULE_VIEW__ !== registry',realm),true);
     }
     const module={exports:{}};

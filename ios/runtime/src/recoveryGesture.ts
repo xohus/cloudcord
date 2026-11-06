@@ -115,7 +115,7 @@ export function installRecoveryGesture() {
     function scan() {
         if (stopped) return;
         try {
-            const registry = root.modules ?? root.__c?.();
+            const registry = root.modules;
             const modules = registry instanceof Map ? registry.values() : Object.values(registry ?? {});
             for (const module of modules as Iterable<any>) {
                 if (!module?.isInitialized || module.hasError) continue;
