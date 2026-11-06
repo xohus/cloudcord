@@ -1,0 +1,3 @@
+plugin "Unindent":
+  needs messages.transform
+  before send unindentCode

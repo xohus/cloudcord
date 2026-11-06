@@ -1,3 +1,4 @@
+import { onSendMessage } from "@core/plugins/shared/sendMessage";
 import { createCxSession, MAX_CX_SOURCE, reviewCx } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
@@ -61,7 +62,12 @@ export default function CxExtensions() {
         try {
             if (settings.safeMode?.enabled) throw new Error("CX is unavailable in Safe Mode");
             session.enable(candidate.source, {
-                registerCommand(name, execute, acceptsText) {
+                registerMessageTransform(transform) {
+                    return onSendMessage(message => {
+                        if (!settings.safeMode?.enabled && typeof message.content === "string") message.content = transform(message.content);
+                    });
+                },
+                registerCommand(name, execute, acceptsText, _sendsMessage, optionalSend) {
                     let builtIns;
                     try {
                         builtIns = commands.getBuiltInCommands(ApplicationCommandType.CHAT, true, false);
@@ -73,12 +79,16 @@ export default function CxExtensions() {
                     return registerCommand({
                         name, description: "Local CX command",
                         shouldHide: () => !settings.safeMode?.enabled,
-                        options: acceptsText ? [{ name: "text", description: "Text to use", type: ApplicationCommandOptionType.STRING, required: true }] : [],
+                        options: [
+                            ...(acceptsText ? [{ name: "text", description: "Text to use", type: ApplicationCommandOptionType.STRING, required: true }] : []),
+                            ...(optionalSend ? [{ name: "send", description: "Send the result to this chat", type: ApplicationCommandOptionType.BOOLEAN }] : []),
+                        ],
                         execute(args, context) {
                             if (settings.safeMode?.enabled) return;
                             const text = acceptsText ? args.find(arg => arg?.name === "text")?.value : undefined;
                             const outgoing = execute({
                                 text: typeof text === "string" ? text : undefined,
+                                sendRequested: optionalSend && (args.find(arg => arg?.name === "send")?.value as unknown) === true,
                                 reply: message => { if (context.channel?.id) messageUtil.sendBotMessage(context.channel.id, message); },
                             });
                             if (outgoing !== undefined) return { content: outgoing };

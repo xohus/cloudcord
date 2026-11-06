@@ -1,0 +1,6 @@
+plugin "UnitConverter":
+  needs commands.register
+  needs messages.send
+  needs reply.local
+  on command "convert" with text:
+    reply or send "${convert(text)}" else "Try something like 5 km, 70 F or 2 lb."

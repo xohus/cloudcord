@@ -1,0 +1,3 @@
+plugin "WriteUpperCase":
+  needs messages.transform
+  before send capitalizeSentences "http, https, ok"

@@ -1,0 +1,3 @@
+plugin "TalkInReverse":
+  needs messages.transform
+  before send reverse

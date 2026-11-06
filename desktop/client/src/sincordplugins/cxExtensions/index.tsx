@@ -1,4 +1,5 @@
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
+import { addMessagePreSendListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
 import { createCxSession, MAX_CX_SOURCE, reviewCx } from "@utils/cx";
 import { cxCatalog } from "@utils/cxCatalog";
@@ -28,17 +29,27 @@ export function CxSettings() {
         if (!candidate) return;
         try {
             session.enable(candidate.source, {
-                registerCommand(name, execute, acceptsText, sendsMessage) {
+                registerMessageTransform(transform) {
+                    const listener = addMessagePreSendListener((_, message) => {
+                        if (typeof message.content === "string") message.content = transform(message.content);
+                    });
+                    return () => { removeMessagePreSendListener(listener); };
+                },
+                registerCommand(name, execute, acceptsText, sendsMessage, optionalSend) {
                     if (Object.prototype.hasOwnProperty.call(commands, name) || name in Object.prototype)
                         throw new Error(`Command /${name} already exists`);
                     const command: VencordCommand = {
                         name,
                         description: "Local CX command",
                         inputType: sendsMessage ? ApplicationCommandInputType.BUILT_IN_TEXT : ApplicationCommandInputType.BUILT_IN,
-                        options: acceptsText ? [{ name: "text", description: "Text to use", type: ApplicationCommandOptionType.STRING, required: true }] : [],
+                        options: [
+                            ...(acceptsText ? [{ name: "text", description: "Text to use", type: ApplicationCommandOptionType.STRING, required: true }] : []),
+                            ...(optionalSend ? [{ name: "send", description: "Send the result to this chat", type: ApplicationCommandOptionType.BOOLEAN }] : []),
+                        ],
                         execute(args, context) {
                             const outgoing = execute({
                                 text: acceptsText ? findOption(args, "text", "") : undefined,
+                                sendRequested: optionalSend && findOption(args, "send", false) === true,
                                 reply: message => { if (context.channel?.id) sendBotMessage(context.channel.id, { content: message }); },
                             });
                             if (outgoing !== undefined) return { content: outgoing };
@@ -149,7 +160,7 @@ export default definePlugin({
     description: "Review and run permission-scoped CX plugins and themes.",
     authors: [{ name: "CloudCord", id: 0n }],
     required: true,
-    dependencies: ["CommandsAPI"],
+    dependencies: ["CommandsAPI", "MessageEventsAPI"],
     stop() {
         session.clear();
     },

@@ -7,7 +7,10 @@ const { buildSync, transformSync } = require("esbuild");
 const root = path.join(__dirname, "../..");
 const read = relative => fs.readFileSync(path.join(root, relative), "utf8");
 const moduleBox = { exports: {} };
-const code = transformSync(read("desktop/client/src/utils/cx.ts"), { loader: "ts", format: "cjs" }).code;
+const code = buildSync({
+    entryPoints: [path.join(root, "desktop/client/src/utils/cx.ts")],
+    bundle: true, write: false, format: "cjs",
+}).outputFiles[0].text;
 vm.runInNewContext(code, { module: moduleBox });
 const { activateCx, createCxSession, parseCx, reviewCx } = moduleBox.exports;
 const catalogModule = { exports: {} };
@@ -109,6 +112,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
     for (const platform of ["desktop", "mobile"]) {
         const desktop = platform === "desktop";
         const states = [], registered = {}, delivered = [];
+        const transformHooks = new Set();
         const selectedTheme = { name: "Previously selected" };
         let nativeTheme = selectedTheme, stylesheet;
         let cursor = 0;
@@ -121,7 +125,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const commandApi = {
             commands: registered,
             ApplicationCommandInputType: { BUILT_IN: 0, BUILT_IN_TEXT: 1 },
-            ApplicationCommandOptionType: { STRING: 3 },
+            ApplicationCommandOptionType: { STRING: 3, BOOLEAN: 5 },
             ApplicationCommandType: { CHAT: 1 },
             findOption: (args, name) => args.find(option => option.name === name)?.value,
             registerCommand(command) {
@@ -138,6 +142,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
             "@utils/cxCatalog": { cxCatalog },
             "@api/Commands": commandApi,
+            "@api/MessageEvents": {
+                addMessagePreSendListener(listener) { transformHooks.add(listener); return listener; },
+                removeMessagePreSendListener(listener) { transformHooks.delete(listener); }
+            },
+            "@core/plugins/shared/sendMessage": {
+                onSendMessage(listener) { transformHooks.add(listener); return () => { transformHooks.delete(listener); }; }
+            },
             "@api/Notifications": {},
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
@@ -215,7 +226,65 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             click(render(), "Disable " + name);
             assert.equal(invoke(input), undefined);
         }
+        for (const [name, commandName] of [["Calculator", "calc"], ["UnitConverter", "convert"]]) {
+            if (!desktop) click(render(), "Browse catalog");
+            click(render(), name);
+            click(render(), "Allow for this session");
+            const command = registered[commandName];
+            const invoke = (value, send) => command.execute([{ name: "text", value }, { name: "send", value: send }], { channel: { id: "test-channel" } });
+            if (commandName === "calc") {
+                assert.equal(invoke("2**3**2").content, "`2**3**2` = **512**");
+                assert.equal(invoke("2 * (3 + 4) - .5").content, "`2 * (3 + 4) - .5` = **13.5**");
+                for (const invalid of ["1/0", "1/*2*/+3", "2 3", "-2**2", "1+alert(1)", "1".repeat(193)]) {
+                    assert.equal(invoke(invalid), undefined);
+                    assert.match(delivered.at(-1)[1], /Enter numbers/);
+                }
+            } else {
+                assert.equal(command.options.find(option => option.name === "send").type, 5);
+                assert.equal(invoke("5 km"), undefined);
+                assert.equal(delivered.at(-1)[1], "5 km = 3.11 mi");
+                assert.equal(invoke("70 F", true).content, "70°F = 21.11°C");
+                assert.equal(invoke("5 km", "true"), undefined);
+                assert.equal(invoke("5 constructor", true), undefined);
+                assert.match(delivered.at(-1)[1], /Try something/);
+            }
+            click(render(), "Disable " + name);
+        }
+        const transforms = [
+            ["TalkInReverse", "a🐈", "🐈a"],
+            ["WriteUpperCase", "hello. bye! ok now", "Hello. Bye! ok now"],
+            ["Unindent", "```js\n    one();\n      two();\n```", "```js\none();\n  two();\n```"],
+            ["NormalizeMessageLinks", "https://ptb.discord.com/channels/1/2/3", "https://discord.com/channels/1/2/3"],
+        ];
+        for (const [name, input, expected] of transforms) {
+            const source = cxCatalog.plugins.find(entry => entry.name === name).source;
+            assert.throws(() => activateCx(source, commandHost, []), /approval/);
+            assert.throws(() => parseCx(source + "  before send constructor\n"), /Unknown or duplicate/);
+            if (!desktop) click(render(), "Browse catalog");
+            const search = find(render(), element => element.props.placeholder === "Search CX catalog");
+            if (desktop) search.props.onChange({ currentTarget: { value: name } });
+            else search.props.onChangeText(name);
+            click(render(), name);
+            assert.equal(transformHooks.size, 0);
+            click(render(), "Allow for this session");
+            assert.equal(transformHooks.size, 1);
+            const hook = [...transformHooks][0];
+            const message = { content: input, attachments: ["image"] };
+            if (desktop) hook("channel", message);
+            else hook(message);
+            assert.equal(message.content, expected);
+            assert.deepEqual(message.attachments, ["image"]);
+            click(render(), "Disable " + name);
+            assert.equal(transformHooks.size, 0);
+            message.content = input;
+            if (desktop) hook("channel", message);
+            else hook(message);
+            assert.equal(message.content, input);
+        }
         if (!desktop) click(render(), "Browse catalog");
+        const search = find(render(), element => element.props.placeholder === "Search CX catalog");
+        if (desktop) search.props.onChange({ currentTarget: { value: "" } });
+        else search.props.onChangeText("");
         click(render(), "Blue Hour");
         click(render(), "Allow for this session");
         if (desktop) {

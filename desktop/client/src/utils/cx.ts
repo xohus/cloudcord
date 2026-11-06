@@ -1,3 +1,6 @@
+import { calculate, convertUnits } from "./cxNumeric";
+import { messageTransforms, reverseText } from "./cxMessageTransforms";
+
 export const MAX_CX_SOURCE = 512 * 1024;
 
 const permissionLabels = {
@@ -5,13 +8,16 @@ const permissionLabels = {
     "ui.toast": "Show local popups",
     "reply.local": "Show a command reply visible only to you",
     "messages.send": "Send the result to the current chat when you run a listed command",
+    "messages.transform": "Change text before Discord sends messages you compose",
 };
 
 // Text transforms adapted from Endcord (Vendicated and contributors, GPL-3.0-or-later).
 const leetCharacters: Record<string, string> = { a: "4", e: "3", i: "1", o: "0", s: "5", t: "7", b: "8", g: "9", l: "1" };
 const textFunctions = {
+    calculate,
+    convert: convertUnits,
     length: (text: string) => String(text.length),
-    reverse: (text: string) => [...text].reverse().join(""),
+    reverse: reverseText,
     spaced: (text: string) => text.split("").join(" "),
     clap: (text: string) => text.split(/\s+/).filter(Boolean).join(" 👏 "),
     leet: (text: string) => text.replace(/[aeiostbgl]/gi, char => leetCharacters[char.toLowerCase()]),
@@ -25,13 +31,16 @@ const textFunctions = {
 const textExpression = /\$\{(?:text|([a-z]+)\(text\))\}/g;
 
 export type CxPermission = keyof typeof permissionLabels;
-type Action = { kind: "toast" | "reply" | "send"; message: string };
-const actionPermissions: Record<Action["kind"], CxPermission> = {
-    toast: "ui.toast",
-    reply: "reply.local",
-    send: "messages.send",
+type Action = { kind: "toast" | "reply" | "send" | "reply or send"; message: string; fallback?: string };
+const actionPermissions: Record<Action["kind"], CxPermission[]> = {
+    toast: ["ui.toast"],
+    reply: ["reply.local"],
+    send: ["messages.send"],
+    "reply or send": ["reply.local", "messages.send"],
 };
+const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
 type Command = { name: string; text: boolean; actions: Action[] };
+type MessageTransform = { name: keyof typeof messageTransforms; options?: string };
 export type CxTheme = {
     kind: "theme";
     name: string;
@@ -49,6 +58,7 @@ type CxPlugin = {
     name: string;
     permissions: CxPermission[];
     commands: Command[];
+    messageTransforms: MessageTransform[];
 };
 type CxDocument = CxTheme | CxPlugin;
 
@@ -102,15 +112,26 @@ export function parseCx(source: string): CxDocument {
 
     const permissions = new Set<CxPermission>();
     const commands: Command[] = [];
+    const transforms: MessageTransform[] = [];
     let current: Command | undefined;
     for (const line of lines) {
         if (!line.trim()) continue;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
-        if (declaration && !current) {
+        if (declaration && !commands.length && !transforms.length) {
             const permission = declaration[1] as CxPermission;
             if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
                 throw new Error("Unknown or duplicate CX permission");
             permissions.add(permission);
+            continue;
+        }
+        const transform = /^  before send ([a-zA-Z]+)( .+)?$/.exec(line);
+        if (transform) {
+            const name = transform[1] as MessageTransform["name"];
+            if (!Object.prototype.hasOwnProperty.call(messageTransforms, name) || transforms.some(entry => entry.name === name))
+                throw new Error("Unknown or duplicate outgoing text transform");
+            if (transform[2] && name !== "capitalizeSentences") throw new Error("This transform takes no options");
+            transforms.push({ name, options: transform[2] ? quoted(transform[2].trim(), 240) : undefined });
+            current = undefined;
             continue;
         }
         const command = /^  on command "([a-z][a-z0-9_-]{0,31})"( with text)?:$/.exec(line);
@@ -120,11 +141,13 @@ export function parseCx(source: string): CxDocument {
             commands.push(current = { name, text: Boolean(command[2]), actions: [] });
             continue;
         }
-        const action = /^    (toast|reply|send) (.+)$/.exec(line);
+        const action = /^    (toast|reply or send|reply|send) ("(?:[^"\\]|\\.)*")(?: else ("(?:[^"\\]|\\.)*"))?$/.exec(line);
         if (!action || !current || current.actions.length >= 4) throw new Error("Unknown CX instruction or too many actions");
         const kind = action[1] as Action["kind"];
         const message = quoted(action[2], 240);
-        if (kind === "send" && (!current.text || current.actions.some(action => action.kind === "send"))) {
+        const fallback = action[3] === undefined ? undefined : quoted(action[3], 240);
+        if (fallback && (kind === "toast" || fallback.includes('${'))) throw new Error("A command fallback must be literal reply text");
+        if (sendsMessage({ kind, message }) && (!current.text || current.actions.some(sendsMessage))) {
             throw new Error("CX allows one outgoing message per command with text");
         }
         if (kind !== "toast") {
@@ -132,19 +155,24 @@ export function parseCx(source: string): CxDocument {
                 !fn || Object.prototype.hasOwnProperty.call(textFunctions, fn) ? "" : expression) : message;
             if (remaining.includes('${')) throw new Error("CX messages only support text and named text functions in commands with text");
         }
-        current.actions.push({ kind, message });
+        current.actions.push({ kind, message, fallback });
     }
-    if (!commands.length || commands.some(command => !command.actions.length))
-        throw new Error("A plugin needs at least one command with an action");
-    const required = new Set<CxPermission>(["commands.register"]);
+    if ((!commands.length && !transforms.length) || commands.some(command => !command.actions.length))
+        throw new Error("A plugin needs a command with an action or an outgoing text transform");
+    const required = new Set<CxPermission>();
+    if (commands.length) required.add("commands.register");
+    if (transforms.length) required.add("messages.transform");
     for (const { actions } of commands) {
-        for (const action of actions) required.add(actionPermissions[action.kind]);
+        for (const action of actions) {
+            for (const permission of actionPermissions[action.kind]) required.add(permission);
+            if (action.fallback) required.add("reply.local");
+        }
     }
     if ([...required].some(permission => !permissions.has(permission)))
         throw new Error("Declare the permissions used by your commands");
     if ([...permissions].some(permission => !required.has(permission)))
         throw new Error("Remove unused CX permissions");
-    return { kind: "plugin", name, commands, permissions: [...permissions] };
+    return { kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms };
 }
 
 export function reviewCx(source: string) {
@@ -159,11 +187,12 @@ export function reviewCx(source: string) {
     };
 }
 
-type Invocation = { text?: string; reply?: (message: string) => void };
+type Invocation = { text?: string; sendRequested?: boolean; reply?: (message: string) => void };
 type CxHost = {
-    registerCommand: (name: string, execute: (invocation?: Invocation) => string | undefined, acceptsText: boolean, sendsMessage: boolean) => () => void;
+    registerCommand: (name: string, execute: (invocation?: Invocation) => string | undefined, acceptsText: boolean, sendsMessage: boolean, optionalSend: boolean) => () => void;
     toast: (message: string) => void;
     applyTheme: (theme: CxTheme) => () => void;
+    registerMessageTransform?: (transform: (text: string) => string) => () => void;
 };
 
 /** Only trusted UI can grant access. The source never receives the host or a callback argument. */
@@ -180,6 +209,15 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
         for (const cleanup of cleanups.splice(0).reverse()) cleanup();
     }
     try {
+        if (document.messageTransforms.length) {
+            if (!host.registerMessageTransform) throw new Error("This client cannot transform outgoing messages");
+            cleanups.push(host.registerMessageTransform(text => {
+                if (!active || text.length > 4000) return text;
+                let result = text;
+                for (const { name, options } of document.messageTransforms) result = messageTransforms[name](result, options);
+                return result.trim() && result.length <= 4000 ? result : text;
+            }));
+        }
         for (const command of document.commands) {
             if (!grants.has("commands.register")) throw new Error("Command permission denied");
             cleanups.push(host.registerCommand(command.name, invocation => {
@@ -187,19 +225,27 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                 const text = command.text && typeof invocation?.text === "string" ? invocation.text : "";
                 let outgoing: string | undefined;
                 for (const action of command.actions) {
-                    if (!grants.has(actionPermissions[action.kind])) continue;
+                    if (!actionPermissions[action.kind].every(permission => grants.has(permission))) continue;
                     if (action.kind === "toast") {
                         host.toast(action.message);
                         continue;
                     }
-                    const message = action.message.replace(textExpression, (_, fn: keyof typeof textFunctions | undefined) =>
-                        fn ? textFunctions[fn](text) : text);
+                    let invalid = false;
+                    const message = action.message.replace(textExpression, (_, fn: keyof typeof textFunctions | undefined) => {
+                        const value = fn ? textFunctions[fn](text) : text;
+                        if (value === undefined) invalid = true;
+                        return value ?? "";
+                    });
+                    if (invalid) {
+                        if (action.fallback && grants.has("reply.local")) invocation?.reply?.(action.fallback);
+                        continue;
+                    }
                     if (message.length > 4000) continue;
-                    if (action.kind === "reply") invocation?.reply?.(message);
+                    if (action.kind === "reply" || (action.kind === "reply or send" && invocation?.sendRequested !== true)) invocation?.reply?.(message);
                     else if (text.trim() && message.trim()) outgoing = message;
                 }
                 return outgoing;
-            }, command.text, command.actions.some(action => action.kind === "send")));
+            }, command.text, command.actions.some(sendsMessage), command.actions.some(action => action.kind === "reply or send")));
         }
         return stop;
     } catch (error) {

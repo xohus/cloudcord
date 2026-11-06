@@ -1,0 +1,6 @@
+plugin "Calculator":
+  needs commands.register
+  needs messages.send
+  needs reply.local
+  on command "calc" with text:
+    send "${calculate(text)}" else "Enter numbers and + - * / % or parentheses."

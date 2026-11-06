@@ -1,0 +1,3 @@
+plugin "NormalizeMessageLinks":
+  needs messages.transform
+  before send normalizeDiscordLinks

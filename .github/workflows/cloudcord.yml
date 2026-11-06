@@ -15,6 +15,8 @@ concurrency:
       - "desktop/client/src/utils/localRelationshipActions.ts"
       - "desktop/client/src/utils/cx.ts"
       - "desktop/client/src/utils/cxCatalog.ts"
+      - "desktop/client/src/utils/cxNumeric.ts"
+      - "desktop/client/src/utils/cxMessageTransforms.ts"
       - "desktop/client/scripts/cx-migrate-palette.mjs"
       - "examples/cx/**"
       - "desktop/client/src/utils/ccp.ts"
@@ -138,6 +140,10 @@ jobs:
           mkdir -p src/core/ui/settings/pages/CxExtensions
           cp "../ios/runtime/src/core/ui/settings/pages/CxExtensions/index.tsx" "src/core/ui/settings/pages/CxExtensions/index.tsx"
           cp "../desktop/client/src/utils/cx.ts" "src/lib/api/cx.ts"
+          cp "../desktop/client/src/utils/cxNumeric.ts" "src/lib/api/cxNumeric.ts"
+          cp "../desktop/client/src/utils/cxMessageTransforms.ts" "src/lib/api/cxMessageTransforms.ts"
+          mkdir -p src/core/plugins/shared
+          cp "../ios/runtime/src/core/plugins/shared/sendMessage.ts" "src/core/plugins/shared/sendMessage.ts"
           cp "../desktop/client/src/utils/cxCatalog.ts" "src/lib/api/cxCatalog.ts"
           mkdir -p src/core/ui/settings/pages/PluginBrowser
           cp "../ios/runtime/src/core/ui/settings/pages/PluginBrowser/index.tsx" "src/core/ui/settings/pages/PluginBrowser/index.tsx"
