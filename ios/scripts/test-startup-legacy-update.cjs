@@ -9,11 +9,12 @@ const code = esbuild.transformSync(source, { loader: 'ts', format: 'cjs' }).code
     for (const bridgeless of [false, true]) for (const mode of ['pending', 'reject', 'throw', 'success']) {
         const module = { exports: {} };
         let settings = 0, refreshes = 0, warnings = 0;
+        const nativeLogs = [];
         const lib = { unload: [] };
         const noop = () => undefined;
         const context = {
             module, exports: module.exports, window: {}, __CLOUDCORD_BRIDGELESS__: bridgeless,
-            console: { warn() { warnings++; } },
+            console: { log(message) { nativeLogs.push(message); }, warn() { warnings++; } },
             require(name) {
                 if (name === './lib') return lib;
                 if (name === '@lib/utils/logger') return { logger: { log() {} } };
@@ -41,6 +42,7 @@ const code = esbuild.transformSync(source, { loader: 'ts', format: 'cjs' }).code
         assert.equal(refreshes, bridgeless ? 0 : 1);
         assert.equal(warnings, !bridgeless && ['throw', 'reject'].includes(mode) ? 1 : 0);
         assert.ok(context.window.bunny, 'Runtime finishes despite a pending legacy updater');
+        assert.deepEqual(nativeLogs, ['CloudCord is ready!'], 'native readiness is emitted at completed startup');
     }
     const workflow = fs.readFileSync('.github/workflows/cloudcord.yml', 'utf8');
     assert.ok(!workflow.includes('await initLegacyRuntimeRefresh();'), 'Release patching must not restore the startup wait');
