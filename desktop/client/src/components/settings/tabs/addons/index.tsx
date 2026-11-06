@@ -38,10 +38,18 @@ const PAGES: Page[] = [
     { name: "Extras", Icon: PluginIcon, Tab: ExtrasPage },
 ];
 
+// Lets other pages (like Overview) open Add-ons on a specific tab.
+let nextTab: string | null = null;
+export const setNextAddonsTab = (name: string) => { nextTab = name; };
+
 function Addons() {
     const visibility = (useSettings().plugins.Settings ?? {}) as any;
     const pages = PAGES.filter(p => p.show?.(visibility) ?? true);
-    const [current, setCurrent] = React.useState(pages[0]?.name);
+    const [current, setCurrent] = React.useState(() => {
+        const wanted = nextTab;
+        nextTab = null;
+        return pages.find(p => p.name === wanted)?.name ?? pages[0]?.name;
+    });
     const active = pages.find(p => p.name === current) ?? pages[0];
     if (!active) return null;
     const Tab = active.Tab;

@@ -30,7 +30,12 @@ import { isAnyPluginDev } from "@utils/misc";
 import { relaunch } from "@utils/native";
 import { Alerts, GuildMemberStore, React, useMemo, UserStore } from "@webpack/common";
 
+import "../addons/styles.css";
+
+import type { ComponentType } from "react";
+
 import { DonateButtonComponent } from "./DonateButton";
+import { OverviewHome } from "./OverviewHome";
 import { MacOSVibrancySettings } from "./MacVibrancySettings";
 import { NotificationSection } from "./NotificationSettings";
 import { WindowsMaterialSettings } from "./WindowsMaterialSettings";
@@ -157,7 +162,7 @@ function Switches() {
     });
 }
 
-function CloudCordSettings() {
+function CustomizeSettings() {
     const customization = cloudCordSettings.use([
         "diagnosticsMode",
         "showCloudCordSection",
@@ -172,63 +177,7 @@ function CloudCordSettings() {
 
     return (
         <SettingsTab>
-            <header className="cc-overview-hero">
-                <img className="cc-overview-logo" src={CLOUDCORD_FAVICON} alt="" width={64} height={64} />
-                <div>
-                    <Heading tag="h2" className="cc-overview-title">CloudCord</Heading>
-                    <Paragraph className="cc-overview-tagline">Your Discord, your way.</Paragraph>
-                    <Paragraph className="cc-overview-description">Your profile, add-ons and client settings, together.</Paragraph>
-                </div>
-            </header>
-            <Heading className={Margins.top16}>Quick Actions</Heading>
-            <Paragraph className={Margins.bottom16}>
-                Pick up where you left off.
-            </Paragraph>
-
-            <QuickActionCard>
-                <QuickAction
-                    Icon={LogIcon}
-                    text="Notification Log"
-                    action={openNotificationLogModal}
-                />
-                <QuickAction
-                    Icon={PaintbrushIcon}
-                    text="Edit QuickCSS"
-                    action={() => VencordNative.quickCss.openEditor()}
-                />
-                {!IS_WEB && (
-                    <QuickAction
-                        Icon={RestartIcon}
-                        text="Relaunch Discord"
-                        action={relaunch}
-                    />
-                )}
-                {!IS_WEB && (
-                    <QuickAction
-                        Icon={FolderIcon}
-                        text="Open Settings Folder"
-                        action={() => VencordNative.settings.openFolder()}
-                    />
-                )}
-                <QuickAction
-                    Icon={OpenExternalIcon}
-                    text="CloudCord Website"
-                    action={() => VencordNative.native.openExternal("https://getcloudcord.com")}
-                />
-                <QuickAction
-                    Icon={GithubIcon}
-                    text="View Source Code"
-                    action={() =>
-                        VencordNative.native.openExternal(
-                            "https://github.com/" + gitRemote,
-                        )
-                    }
-                />
-            </QuickActionCard>
-
-            <Divider className={Margins.top20} />
-
-            <Heading className={Margins.top20}>Customization</Heading>
+            <Heading>Customization</Heading>
             <Paragraph className={Margins.bottom16}>
                 Choose what appears in the CloudCord area of Discord's settings. The main CloudCord page always stays available so you can change these options again.
             </Paragraph>
@@ -254,9 +203,16 @@ function CloudCordSettings() {
             <FormSwitch title="Show Themes" value={customization.showThemesTab} onChange={(value: boolean) => cloudCordSettings.store.showThemesTab = value} hideBorder />
             <FormSwitch title="Show Backup & Restore" value={customization.showBackupTab} onChange={(value: boolean) => cloudCordSettings.store.showBackupTab = value} hideBorder />
 
-            <Divider className={Margins.top20} />
+        </SettingsTab>
+    );
+}
 
-            <Heading className={Margins.top20}>Client Settings</Heading>
+function ClientSettings() {
+    const customization = cloudCordSettings.use(["diagnosticsMode"]);
+
+    return (
+        <SettingsTab>
+            <Heading>Client Settings</Heading>
             <Paragraph className={Margins.bottom16}>
                 Configure how CloudCord behaves and integrates with Discord. These settings affect the Discord client's appearance and behavior.
             </Paragraph>
@@ -285,6 +241,35 @@ function CloudCordSettings() {
 
             <NotificationSection />
         </SettingsTab >
+    );
+}
+
+const OVERVIEW_TABS: [string, ComponentType][] = [
+    ["Home", OverviewHome],
+    ["Settings", ClientSettings],
+    ["Customize", CustomizeSettings],
+];
+
+function CloudCordSettings() {
+    const [current, setCurrent] = React.useState(OVERVIEW_TABS[0][0]);
+    const Tab = OVERVIEW_TABS.find(t => t[0] === current)![1];
+    return (
+        <>
+            <nav className="cc-addons-seg" role="tablist">
+                {OVERVIEW_TABS.map(([name]) => (
+                    <button
+                        key={name}
+                        role="tab"
+                        aria-selected={name === current}
+                        className={"cc-addons-seg-item" + (name === current ? " cc-addons-seg-active" : "")}
+                        onClick={() => setCurrent(name)}
+                    >
+                        {name}
+                    </button>
+                ))}
+            </nav>
+            <div className="cc-addons-page" key={current}><Tab /></div>
+        </>
     );
 }
 

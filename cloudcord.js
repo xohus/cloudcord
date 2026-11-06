@@ -501,10 +501,10 @@
     };
   }
   function installRecoveryGesture() {
-    var root = globalThis;
-    if (root.__CLOUDCORD_RECOVERY_GESTURE__)
+    var root2 = globalThis;
+    if (root2.__CLOUDCORD_RECOVERY_GESTURE__)
       return;
-    var status = root.__CLOUDCORD_RECOVERY_GESTURE__ = {
+    var status = root2.__CLOUDCORD_RECOVERY_GESTURE__ = {
       state: "waiting",
       stop: () => {
       }
@@ -550,8 +550,8 @@
             }
           })();
           try {
-            var core = root.__CLOUDCORD_CORE_SETTINGS_BOOTSTRAP__;
-            var revision = String(root.__CLOUDCORD_RUNTIME_REVISION__ ?? "unknown").slice(0, 12);
+            var core = root2.__CLOUDCORD_CORE_SETTINGS_BOOTSTRAP__;
+            var revision = String(root2.__CLOUDCORD_RUNTIME_REVISION__ ?? "unknown").slice(0, 12);
             var settingsState = core?.registered && core?.patched ? "registered" : core?.errors?.length ? "failed to attach" : "not ready";
             alert2.alert("CloudCord recovery", `Runtime: ${revision}
 Settings: ${settingsState}
@@ -595,7 +595,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (stopped)
         return;
       try {
-        var registry = root.modules;
+        var registry = root2.modules;
         var modules = registry instanceof Map ? registry.values() : Object.values(registry ?? {});
         for (var module of modules) {
           if (!module?.isInitialized || module.hasError)
@@ -8740,10 +8740,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (!record?.isInitialized || record.hasError)
         continue;
       try {
-        var root = record.publicModule?.exports;
+        var root2 = record.publicModule?.exports;
         for (var value of [
-          root,
-          root?.default
+          root2,
+          root2?.default
         ]) {
           if (!value || typeof value !== "object" && typeof value !== "function")
             continue;
@@ -10031,8 +10031,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
 
   // src/lib/ui/settings/observeModules.ts
   function observeSettingsModules(visit) {
-    var root = globalThis;
-    var modules = root.__CLOUDCORD_MODULE_VIEW__ ?? root.modules;
+    var root2 = globalThis;
+    var modules = root2.__CLOUDCORD_MODULE_VIEW__ ?? root2.modules;
     var pending2 = /* @__PURE__ */ new Map();
     var seen = /* @__PURE__ */ new WeakSet();
     var active = true;
@@ -10073,12 +10073,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       } catch (e) {
       }
     };
-    var originalDefine = root.__d;
+    var originalDefine = root2.__d;
     var define2 = function define3(...args) {
       var result = originalDefine.apply(this, args);
       if (active)
         try {
-          var registry2 = root.modules;
+          var registry2 = root2.modules;
           var id = args[1];
           var definition2 = registry2 instanceof Map ? registry2.get(id) : registry2?.[id];
           if (definition2) {
@@ -10095,10 +10095,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     };
     if (typeof originalDefine === "function")
       try {
-        root.__d = define2;
+        root2.__d = define2;
       } catch (e) {
       }
-    var liveModules = root.modules;
+    var liveModules = root2.modules;
     for (var registry of [
       modules,
       liveModules
@@ -10109,8 +10109,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
     return () => {
       active = false;
-      if (root.__d === define2)
-        root.__d = originalDefine;
+      if (root2.__d === define2)
+        root2.__d = originalDefine;
       for (var [definition2, { original, observed }] of pending2) {
         if (definition2.factory === observed)
           definition2.factory = original;
@@ -10405,7 +10405,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         }
       });
     };
-    var insertCloudCordSectionsInTree = (root) => {
+    var insertCloudCordSectionsInTree = (root2) => {
       var seen = /* @__PURE__ */ new WeakSet();
       var visit = (value, depth) => {
         if (depth > 10 || value == null || typeof value !== "object")
@@ -10437,7 +10437,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         ])
           visit(value[key], depth + 1);
       };
-      visit(root, 0);
+      visit(root2, 0);
     };
     var patchedRenderers = /* @__PURE__ */ new WeakSet();
     var patchedLists = /* @__PURE__ */ new WeakSet();
@@ -12046,6 +12046,28 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               /* @__PURE__ */ jsx(TableRow, {
                 label: "Update status",
                 subLabel: settings.cloudcordUpdateStatus || "Waiting for the next update check"
+              }),
+              /* @__PURE__ */ jsx(TableRow, {
+                label: "Loaded runtime",
+                subLabel: String(globalThis.__CLOUDCORD_RUNTIME_REVISION__ ?? "Unknown").slice(0, 12)
+              }),
+              /* @__PURE__ */ jsx(TableRow, {
+                label: "Fetch Runtime",
+                subLabel: "Download the latest runtime. Reopen Discord to apply it.",
+                onPress: () => _async_to_generator(function* () {
+                  settings.cloudcordUpdateStatus = "Checking for updates\u2026";
+                  try {
+                    var fetchRuntime = BundleUpdaterManager?.checkForUpdates ?? BundleUpdaterManager?.download;
+                    if (typeof fetchRuntime !== "function")
+                      throw new Error("This loader cannot fetch from settings. Use Refetch Bundle in the recovery menu.");
+                    yield fetchRuntime.call(BundleUpdaterManager);
+                    settings.cloudcordUpdateStatus = "Latest runtime saved. Reopen Discord to apply it.";
+                  } catch (error) {
+                    var message = error instanceof Error ? error.message : "Runtime download failed";
+                    settings.cloudcordUpdateStatus = message;
+                    showToast(message);
+                  }
+                })()
               }),
               /* @__PURE__ */ jsx(TableRow, {
                 label: "Copy CCP runtime report",
@@ -23372,9 +23394,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             if (!/dispatcher|listeners|actionHandlers/i.test(key))
               visit(child, depth + 1);
       };
-      for (var root of roots) {
+      for (var root2 of roots) {
         try {
-          visit(root);
+          visit(root2);
         } catch (e) {
         }
         for (var getter of [
@@ -23384,7 +23406,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           "getCollectiblesCategories"
         ]) {
           try {
-            visit(root?.[getter]?.());
+            visit(root2?.[getter]?.());
           } catch (e) {
           }
         }
@@ -31810,13 +31832,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_create_class();
       init_inherits();
       init_wrap_native_super();
-      ((root, UMD) => {
+      ((root2, UMD) => {
         if (typeof define === "function" && define.amd)
           define([], UMD);
         else if (typeof module === "object" && module.exports)
           module.exports = UMD();
         else
-          root["fuzzysort"] = UMD();
+          root2["fuzzysort"] = UMD();
       })(exports, (_2) => {
         "use strict";
         var single = (search, target) => {
@@ -36203,12 +36225,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               icon: icon2("PaintPaletteIcon", "ThemeIcon", "SettingsIcon"),
               onPress: () => open("Themes", () => (init_Themes(), __toCommonJS(Themes_exports)))
             }),
-            isFontSupported() && /* @__PURE__ */ jsx(TableRow, {
+            isFontSupported() ? /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
               label: "Fonts",
               subLabel: "Choose and manage fonts",
               icon: icon2("LettersIcon", "TextIcon", "SettingsIcon"),
               onPress: () => open("Fonts", () => (init_Fonts(), __toCommonJS(Fonts_exports)))
+            }) : /* @__PURE__ */ jsx(TableRow, {
+              label: "Fonts",
+              subLabel: "Custom fonts are unavailable on this loader",
+              icon: icon2("LettersIcon", "TextIcon", "SettingsIcon")
             }),
             /* @__PURE__ */ jsx(TableRow, {
               arrow: true,
@@ -40759,16 +40785,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "8779096132e70769a3d5d7012b9c40f6da053763";
-  var rain = globalThis.__RAIN_LOADER__;
-  if (rain && !globalThis.__CLOUDCORD_LOADER__) {
-    globalThis.__CLOUDCORD_ORIGINAL_RAIN__ = true;
-    globalThis.__CLOUDCORD_LOADER__ = {
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "aed7e3db22f551475d4bceb44942466c3cd701cb";
+  var root = globalThis;
+  var rain = root.__RAIN_LOADER__;
+  var existingLoader = root.__CLOUDCORD_LOADER__;
+  if (rain && (!existingLoader || existingLoader === rain)) {
+    root.__CLOUDCORD_ORIGINAL_RAIN__ = true;
+    root.__CLOUDCORD_LOADER__ = existingLoader ?? {
       ...rain,
       loaderName: "CloudCord",
       cloudcordAutoUpdateVersion: 3
     };
-    globalThis.__PYON_LOADER__ = globalThis.__CLOUDCORD_LOADER__;
+    root.__PYON_LOADER__ = root.__CLOUDCORD_LOADER__;
   }
   var { instead: instead3 } = require_cjs();
   globalThis.window = globalThis;
