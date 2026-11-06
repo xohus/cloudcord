@@ -1,0 +1,1060 @@
+{
+  "version": 1,
+  "generated": "2026-11-06",
+  "themes": [
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/blue.json",
+      "name": "Catppuccin Frappé - Blue",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#8caaee",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/flamingo.json",
+      "name": "Catppuccin Frappé - Flamingo",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#eebebe",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/green.json",
+      "name": "Catppuccin Frappé - Green",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#a6d189",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/lavender.json",
+      "name": "Catppuccin Frappé - Lavender",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#babbf1",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/maroon.json",
+      "name": "Catppuccin Frappé - Maroon",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#ea999c",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/mauve.json",
+      "name": "Catppuccin Frappé - Mauve",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#ca9ee6",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/peach.json",
+      "name": "Catppuccin Frappé - Peach",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#ef9f76",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/pink.json",
+      "name": "Catppuccin Frappé - Pink",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#f4b8e4",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/red.json",
+      "name": "Catppuccin Frappé - Red",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#e78284",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/rosewater.json",
+      "name": "Catppuccin Frappé - Rosewater",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#f2d5cf",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/sapphire.json",
+      "name": "Catppuccin Frappé - Sapphire",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#85c1dc",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/sky.json",
+      "name": "Catppuccin Frappé - Sky",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#99d1db",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/teal.json",
+      "name": "Catppuccin Frappé - Teal",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#81c8be",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/frappe/yellow.json",
+      "name": "Catppuccin Frappé - Yellow",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#303446",
+        "surface": "#292c3c",
+        "accent": "#e5c890",
+        "text": "#c6d0f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/blue.json",
+      "name": "Catppuccin Latte - Blue",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#1e66f5",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/flamingo.json",
+      "name": "Catppuccin Latte - Flamingo",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#dd7878",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/green.json",
+      "name": "Catppuccin Latte - Green",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#40a02b",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/lavender.json",
+      "name": "Catppuccin Latte - Lavender",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#7287fd",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/maroon.json",
+      "name": "Catppuccin Latte - Maroon",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#e64553",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/mauve.json",
+      "name": "Catppuccin Latte - Mauve",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#8839ef",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/peach.json",
+      "name": "Catppuccin Latte - Peach",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#fe640b",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/pink.json",
+      "name": "Catppuccin Latte - Pink",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#ea76cb",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/red.json",
+      "name": "Catppuccin Latte - Red",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#d20f39",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/rosewater.json",
+      "name": "Catppuccin Latte - Rosewater",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#dc8a78",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/sapphire.json",
+      "name": "Catppuccin Latte - Sapphire",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#209fb5",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/sky.json",
+      "name": "Catppuccin Latte - Sky",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#04a5e5",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/teal.json",
+      "name": "Catppuccin Latte - Teal",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#179299",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/latte/yellow.json",
+      "name": "Catppuccin Latte - Yellow",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#eff1f5",
+        "surface": "#e6e9ef",
+        "accent": "#df8e1d",
+        "text": "#4c4f69"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/blue.json",
+      "name": "Catppuccin Macchiato - Blue",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#8aadf4",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/flamingo.json",
+      "name": "Catppuccin Macchiato - Flamingo",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#f0c6c6",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/green.json",
+      "name": "Catppuccin Macchiato - Green",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#a6da95",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/lavender.json",
+      "name": "Catppuccin Macchiato - Lavender",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#b7bdf8",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/maroon.json",
+      "name": "Catppuccin Macchiato - Maroon",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#ee99a0",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/mauve.json",
+      "name": "Catppuccin Macchiato - Mauve",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#c6a0f6",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/peach.json",
+      "name": "Catppuccin Macchiato - Peach",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#f5a97f",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/pink.json",
+      "name": "Catppuccin Macchiato - Pink",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#f5bde6",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/red.json",
+      "name": "Catppuccin Macchiato - Red",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#ed8796",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/rosewater.json",
+      "name": "Catppuccin Macchiato - Rosewater",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#f4dbd6",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/sapphire.json",
+      "name": "Catppuccin Macchiato - Sapphire",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#7dc4e4",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/sky.json",
+      "name": "Catppuccin Macchiato - Sky",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#91d7e3",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/teal.json",
+      "name": "Catppuccin Macchiato - Teal",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#8bd5ca",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/macchiato/yellow.json",
+      "name": "Catppuccin Macchiato - Yellow",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#24273a",
+        "surface": "#1e2030",
+        "accent": "#eed49f",
+        "text": "#cad3f5"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/blue.json",
+      "name": "Catppuccin Mocha - Blue",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#89b4fa",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/flamingo.json",
+      "name": "Catppuccin Mocha - Flamingo",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#f2cdcd",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/green.json",
+      "name": "Catppuccin Mocha - Green",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#a6e3a1",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/lavender.json",
+      "name": "Catppuccin Mocha - Lavender",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#b4befe",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/maroon.json",
+      "name": "Catppuccin Mocha - Maroon",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#eba0ac",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/mauve.json",
+      "name": "Catppuccin Mocha - Mauve",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#cba6f7",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/peach.json",
+      "name": "Catppuccin Mocha - Peach",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#fab387",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/pink.json",
+      "name": "Catppuccin Mocha - Pink",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#f5c2e7",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/red.json",
+      "name": "Catppuccin Mocha - Red",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#f38ba8",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/rosewater.json",
+      "name": "Catppuccin Mocha - Rosewater",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#f5e0dc",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/sapphire.json",
+      "name": "Catppuccin Mocha - Sapphire",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#74c7ec",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/sky.json",
+      "name": "Catppuccin Mocha - Sky",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#89dceb",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/teal.json",
+      "name": "Catppuccin Mocha - Teal",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#94e2d5",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/catppuccin/vendetta/main/themes/mocha/yellow.json",
+      "name": "Catppuccin Mocha - Yellow",
+      "description": "Soothing pastel theme for the high-spirited!",
+      "authors": [
+        "Catppuccin"
+      ],
+      "source": "Catppuccin",
+      "repo": "https://github.com/catppuccin/vendetta",
+      "hasBackground": false,
+      "preview": {
+        "background": "#1e1e2e",
+        "surface": "#181825",
+        "accent": "#f9e2af",
+        "text": "#cdd6f4"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/sudo9000/Enmity-Themes/main/Blu_V2.json",
+      "name": "Blu",
+      "description": "A discord theme with various shades of blue.",
+      "authors": [
+        "Sudo"
+      ],
+      "source": "sudo9000",
+      "repo": "https://github.com/sudo9000/Enmity-Themes",
+      "hasBackground": true,
+      "preview": {
+        "background": "#324151",
+        "surface": "#2B3B4E",
+        "accent": "#FFFFFF",
+        "text": "#D8E1E9"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/sudo9000/Enmity-Themes/main/BozoTheClown_V2.json",
+      "name": "BozoTheClown",
+      "description": "I quit my job at McDonalds. The boss was a clown.",
+      "authors": [
+        "Sudo"
+      ],
+      "source": "sudo9000",
+      "repo": "https://github.com/sudo9000/Enmity-Themes",
+      "hasBackground": true,
+      "preview": {
+        "background": "#00B050",
+        "surface": "#7030A0",
+        "accent": "#7030A0",
+        "text": "#FFFF00"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/sudo9000/Enmity-Themes/main/CityFog_V2.json",
+      "name": "CityFogV2",
+      "description": "A cyberpunk-esque theme with a cold but lively feel.",
+      "authors": [
+        "Sudo"
+      ],
+      "source": "sudo9000",
+      "repo": "https://github.com/sudo9000/Enmity-Themes",
+      "hasBackground": true,
+      "preview": {
+        "background": "#2C3946",
+        "surface": "#232E38",
+        "accent": "#BE7AA1",
+        "text": "#D8E1E9"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/sudo9000/Enmity-Themes/main/Cydia_V2.json",
+      "name": "Cydia",
+      "description": "A discord theme inspired by Cydia.",
+      "authors": [
+        "Sudo"
+      ],
+      "source": "sudo9000",
+      "repo": "https://github.com/sudo9000/Enmity-Themes",
+      "hasBackground": false,
+      "preview": {
+        "background": "#674D42",
+        "surface": "#825F49",
+        "accent": "#FFFFFF",
+        "text": "#D8E1E9"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/sudo9000/Enmity-Themes/main/FEFE_V2.json",
+      "name": "FEFE",
+      "description": "Colorful hair, don't care (OLED)",
+      "authors": [
+        "Sudo"
+      ],
+      "source": "sudo9000",
+      "repo": "https://github.com/sudo9000/Enmity-Themes",
+      "hasBackground": false,
+      "preview": {
+        "background": "#000000",
+        "surface": "#000000",
+        "accent": "#0070C0",
+        "text": "#999999"
+      }
+    },
+    {
+      "id": "https://raw.githubusercontent.com/sudo9000/Enmity-Themes/main/Merlot_V2.json",
+      "name": "Merlot",
+      "description": "A discord theme with various shades of red.",
+      "authors": [
+        "Sudo"
+      ],
+      "source": "sudo9000",
+      "repo": "https://github.com/sudo9000/Enmity-Themes",
+      "hasBackground": false,
+      "preview": {
+        "background": "#571D1D",
+        "surface": "#470000",
+        "accent": "#FFFFFF",
+        "text": "#FFFFFF"
+      }
+    }
+  ]
+}

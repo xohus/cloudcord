@@ -148,6 +148,8 @@ jobs:
           cp "../desktop/client/src/utils/cxCatalog.ts" "src/lib/api/cxCatalog.ts"
           mkdir -p src/core/ui/settings/pages/PluginBrowser
           cp "../ios/runtime/src/core/ui/settings/pages/PluginBrowser/index.tsx" "src/core/ui/settings/pages/PluginBrowser/index.tsx"
+          mkdir -p src/core/ui/settings/pages/ThemeStore
+          cp "../ios/runtime/src/core/ui/settings/pages/ThemeStore/index.tsx" "src/core/ui/settings/pages/ThemeStore/index.tsx"
           mkdir -p src/core/ui/settings/pages/Recovery
           cp "../ios/runtime/src/core/ui/settings/pages/Recovery/index.tsx" "src/core/ui/settings/pages/Recovery/index.tsx"
           mkdir -p src/core/ui/settings/pages/Themes
