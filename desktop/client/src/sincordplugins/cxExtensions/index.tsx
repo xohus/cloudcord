@@ -1,10 +1,12 @@
 import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, findOption, registerCommand, sendBotMessage, unregisterCommand, type VencordCommand } from "@api/Commands";
+import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { createCxSession, cxAppearanceTargets, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx, runCxIncomingRules } from "@utils/cx";
+import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, isCxProfileUserId, MAX_CX_SOURCE, reviewCx, runCxIncomingRules } from "@utils/cx";
+import { copyToClipboard } from "@utils/clipboard";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
-import { ChannelStore, FluxDispatcher, MessageStore, UserStore, useState } from "@webpack/common";
+import { ChannelStore, FluxDispatcher, Menu, MessageStore, UserStore, useState } from "@webpack/common";
 
 const session = createCxSession();
 
@@ -55,6 +57,24 @@ export function CxSettings() {
                         const interceptors = FluxDispatcher._interceptors;
                         const index = interceptors?.indexOf(interceptor) ?? -1;
                         if (index !== -1) interceptors.splice(index, 1);
+                    };
+                },
+                registerProfileMenuAction(action) {
+                    const { format, label } = cxProfileMenuActions[action];
+                    let active = true;
+                    const itemId = "cx-profile-" + action;
+                    const patch: NavContextMenuPatchCallback = (children, props) => {
+                        const id = props?.user?.id ?? props?.userId;
+                        if (!active || !isCxProfileUserId(id) || children.some(child => child?.props?.id === itemId)) return;
+                        children.push(<Menu.MenuItem id={itemId} label={label} action={() => {
+                            if (active) void copyToClipboard(format(id)).catch(() => {});
+                        }} />);
+                    };
+                    const menus = ["user-context", "user-profile-actions", "user-profile-overflow-menu"];
+                    addContextMenuPatch(menus, patch);
+                    return () => {
+                        active = false;
+                        removeContextMenuPatch(menus, patch);
                     };
                 },
                 hideAppearanceTarget(target) {
@@ -248,7 +268,7 @@ export default definePlugin({
     description: "Review and run permission-scoped CX plugins and themes.",
     authors: [{ name: "CloudCord", id: 0n }],
     required: true,
-    dependencies: ["CommandsAPI", "MessageEventsAPI"],
+    dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI"],
     stop() {
         session.clear();
     },

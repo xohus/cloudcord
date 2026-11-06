@@ -159,6 +159,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
+        const menuPatches = new Set(), clipboardWrites = [];
+        const settings = {};
+        let profileUser;
         const editHooks = new Set();
         const selectedTheme = { name: "Previously selected" };
         let nativeTheme = selectedTheme, nativeMode, stylesheet;
@@ -189,6 +192,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
             "@utils/cxCatalog": { cxCatalog },
             "@api/Commands": commandApi,
+            "@api/ContextMenu": {
+                addContextMenuPatch: (menus, patch) => { assert.ok(menus.includes("user-context")); menuPatches.add(patch); },
+                removeContextMenuPatch: (_, patch) => menuPatches.delete(patch),
+            },
+            "@utils/clipboard": { copyToClipboard: value => { clipboardWrites.push(value); return Promise.resolve(); } },
             "@api/MessageEvents": {
                 addMessagePreSendListener(listener) { transformHooks.add(listener); return listener; },
                 removeMessagePreSendListener(listener) { transformHooks.delete(listener); },
@@ -202,7 +210,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@api/Notifications": { showNotification: ({ body }) => notifications.push(body) },
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
-            "@webpack/common": { useState, ...stores, FluxDispatcher: {
+            "@webpack/common": { useState, ...stores, Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
             } },
@@ -214,7 +222,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@lib/addons/themes/colors/updater": { updateBunnyColor: (value, options) => { nativeTheme = value; nativeMode = options?.mode; } },
             "@lib/api/native/modules": {},
             "@lib/api/native/loader": { isThemeSupported: () => true },
-            "@lib/api/settings": { settings: {} },
+            "@lib/api/settings": { settings },
             "@lib/api/react/jsx": {
                 onJsxCreate(name, hook, afterOthers) { assert.equal(afterOthers, true); appearanceHooks.set(name, hook); },
                 deleteJsxCreate(name, hook, afterOthers) {
@@ -229,7 +237,11 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
             "@metro": { findByStoreNameLazy: name => stores[name] },
-            "@metro/common": { React: { useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot() },
+            "@metro/common": { React: {
+                useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
+                createContext: () => ({ Provider: "ProfileUserProvider" }), useContext: () => profileUser,
+                cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
+            }, clipboard: { setString: value => clipboardWrites.push(value) },
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup" },
             "react-native": { ScrollView: "ScrollView", Text: "Text", TextInput: "TextInput" },
@@ -285,6 +297,49 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(stylesheet, undefined);
             for (const wrapped of wraps) assert.equal(wrapped.type(wrapped.props), original);
         }
+        const copyUrl = cxCatalog.plugins.find(entry => entry.name === "CopyUserURLs").source;
+        assert.throws(() => activateCx(copyUrl, host, []), /approval/);
+        assert.throws(() => parseCx(copyUrl.replace("copy user-url", "copy token")), /Unknown or duplicate profile menu/);
+        assert.throws(() => parseCx(copyUrl.replace("  needs profilemenu.copy\n", "")), /permissions/);
+        for (const name of ["CopyUserURLs", "CopyUserMention"]) {
+            selectCatalog(name);
+            click(render(), "Allow for this session");
+        }
+        const actionList = id => {
+            if (desktop) {
+                const children = [];
+                for (const patch of menuPatches) patch(children, { user: { id } });
+                return children.map(child => child.props);
+            }
+            const profile = jsx("UserProfileOverflowMenu", { user: { id } });
+            const wrapped = appearanceHooks.get("UserProfileOverflowMenu")(null, profile);
+            const originalItems = Object.freeze([Object.freeze([{ label: "Existing action" }]), Object.freeze([])]);
+            const original = jsx("ContextMenu", Object.freeze({ items: originalItems, onOpen() {}, children() {} }));
+            const menu = appearanceHooks.get("ContextMenu")(null, original);
+            profileUser = wrapped.props.value;
+            const updated = menu.type(menu.props);
+            profileUser = undefined;
+            assert.equal(menu.type(menu.props), original);
+            assert.equal(original.props.items.length, 2);
+            return updated.props.items[2] ?? [];
+        };
+        assert.deepEqual(actionList("invalid"), []);
+        const menuActions = actionList(sender);
+        assert.deepEqual(Array.from(menuActions, item => item.label), ["Copy User URL", "Copy User Mention"]);
+        assert.equal(clipboardWrites.length, 0);
+        for (const action of menuActions) action.action();
+        if (!desktop) {
+            settings.safeMode = { enabled: true };
+            menuActions[1].action();
+            settings.safeMode.enabled = false;
+        }
+        click(render(), "Disable CopyUserURLs");
+        menuActions[0].action();
+        assert.deepEqual(Array.from(actionList(sender), item => item.label), ["Copy User Mention"]);
+        click(render(), "Disable CopyUserMention");
+        menuActions[1].action();
+        assert.deepEqual(clipboardWrites, ["<https://discord.com/users/" + sender + ">", "<@" + sender + ">"]);
+        assert.equal(menuPatches.size + appearanceHooks.size, 0);
         const editor = find(render(), item => item.type === (desktop ? "textarea" : "TextInput"));
         if (desktop) editor.props.onChange({ currentTarget: { value: counter } });
         else editor.props.onChangeText(counter);

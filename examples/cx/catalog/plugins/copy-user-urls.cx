@@ -1,0 +1,3 @@
+plugin "CopyUserURLs":
+  needs profilemenu.copy
+  on profile menu copy user-url

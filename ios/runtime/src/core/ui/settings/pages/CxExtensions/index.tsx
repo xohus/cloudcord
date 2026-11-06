@@ -1,5 +1,5 @@
 import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
-import { createCxSession, cxAppearanceTargets, CX_INLINE_EDITOR_LIMIT, MAX_CX_SOURCE, reviewCx, runCxIncomingRules } from "@lib/api/cx";
+import { createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, isCxProfileUserId, MAX_CX_SOURCE, reviewCx, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
@@ -12,7 +12,7 @@ import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
 import { settings } from "@lib/api/settings";
 import { showToast } from "@lib/ui/toasts";
 import { findByProps, findByStoreNameLazy } from "@metro";
-import { commands, messageUtil, React } from "@metro/common";
+import { clipboard, commands, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import { ScrollView, Text, TextInput } from "react-native";
 
@@ -20,6 +20,60 @@ const session = createCxSession();
 const UserStore = findByStoreNameLazy("UserStore");
 const ChannelStore = findByStoreNameLazy("ChannelStore");
 const MessageStore = findByStoreNameLazy("MessageStore");
+
+const profileMenuActions = new Set<{ action: CxProfileMenuAction; }>();
+let stopProfileMenuHooks: (() => void) | undefined;
+
+function patchProfileMenus() {
+    const ProfileUser = React.createContext<string | undefined>(undefined);
+    function ProfileMenu({ element }: { element: React.ReactElement<{ items: unknown[][]; }>; }) {
+        const id = React.useContext(ProfileUser);
+        if (!id || settings.safeMode?.enabled) return element;
+        const entries = new Map([...profileMenuActions].map(entry => [entry.action, entry]));
+        if (!entries.size) return element;
+        const actions = [...entries.values()].map(entry => {
+            const { label, format } = cxProfileMenuActions[entry.action];
+            return { label, action: () => {
+                if (profileMenuActions.has(entry) && !settings.safeMode?.enabled) {
+                    clipboard.setString(format(id));
+                    showToast.showCopyToClipboard?.();
+                }
+            } };
+        });
+        return React.cloneElement(element, { items: [...element.props.items, actions] });
+    }
+    const provideUser = (_: unknown, element: JSX.Element) => {
+        const id = element.props.user?.id;
+        return isCxProfileUserId(id)
+            ? <ProfileUser.Provider value={id} key={element.key}>{element}</ProfileUser.Provider>
+            : element;
+    };
+    const addMenuItems = (_: unknown, element: JSX.Element) => {
+        const { items, onOpen, children } = element.props;
+        return typeof onOpen === "function" && typeof children === "function" && Array.isArray(items) && items.every(Array.isArray)
+            ? <ProfileMenu key={element.key} element={element} />
+            : element;
+    };
+    onJsxCreate("UserProfileOverflowMenu", provideUser, true);
+    onJsxCreate("ContextMenu", addMenuItems, true);
+    return () => {
+        deleteJsxCreate("ContextMenu", addMenuItems, true);
+        deleteJsxCreate("UserProfileOverflowMenu", provideUser, true);
+    };
+}
+
+function registerProfileMenuAction(action: CxProfileMenuAction) {
+    stopProfileMenuHooks ??= patchProfileMenus();
+    const entry = { action };
+    profileMenuActions.add(entry);
+    return () => {
+        profileMenuActions.delete(entry);
+        if (!profileMenuActions.size) {
+            stopProfileMenuHooks?.();
+            stopProfileMenuHooks = undefined;
+        }
+    };
+}
 
 export default function CxExtensions() {
     const [source, setSource] = React.useState("");
@@ -85,6 +139,7 @@ export default function CxExtensions() {
                     });
                     return () => { active = false; stop(); };
                 },
+                registerProfileMenuAction,
                 hideAppearanceTarget(target) {
                     const names = cxAppearanceTargets[target].mobile;
                     let hidden = true;
