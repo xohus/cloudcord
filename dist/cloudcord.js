@@ -8070,13 +8070,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     return polyfillVendettaLoaderIdentity();
   }
   function getLoaderName() {
-    var label = (value) => /kettu|rain(?:cord|tweak)?|vencord|sincord|vendetta|bunny|pyon/i.test(String(value || "")) ? "CloudCord" : String(value || "CloudCord");
+    var label2 = (value) => /kettu|rain(?:cord|tweak)?|vencord|sincord|vendetta|bunny|pyon/i.test(String(value || "")) ? "CloudCord" : String(value || "CloudCord");
     if (isCloudCordLoader())
-      return label(cloudCordLoaderIdentity.loaderName);
+      return label2(cloudCordLoaderIdentity.loaderName);
     if (isPyonLoader())
-      return label(pyonLoaderIdentity.loaderName);
+      return label2(pyonLoaderIdentity.loaderName);
     if (isVendettaLoader())
-      return label(vendettaLoaderIdentity.name);
+      return label2(vendettaLoaderIdentity.name);
     return "Unknown";
   }
   function getLoaderVersion() {
@@ -10052,12 +10052,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/lib/ui/components/Summary.tsx
-  function Summary({ label, icon: icon3, noPadding = false, noAnimation = false, children }) {
+  function Summary({ label: label2, icon: icon3, noPadding = false, noAnimation = false, children }) {
     var [hidden, setHidden] = React.useState(true);
     return /* @__PURE__ */ jsxs(Fragment, {
       children: [
         /* @__PURE__ */ jsx(TableRow, {
-          label,
+          label: label2,
           icon: icon3 && /* @__PURE__ */ jsx(TableRow.Icon, {
             source: findAssetId(icon3)
           }),
@@ -10480,8 +10480,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     }))).reduce((a, c2) => Object.assign(a, c2), {});
     var isDeveloperSection = (section) => {
-      var label = `${section?.label ?? ""} ${section?.title ?? ""}`.toLowerCase();
-      return label.includes("developer") || section?.settings?.some?.((key) => /developer/i.test(key));
+      var label2 = `${section?.label ?? ""} ${section?.title ?? ""}`.toLowerCase();
+      return label2.includes("developer") || section?.settings?.some?.((key) => /developer/i.test(key));
     };
     var insertNativeRows = (sections) => {
       var rows = Object.values(registeredSections).flat().filter((row2) => row2.nativeSection === "developer");
@@ -11825,9 +11825,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/core/ui/settings/pages/General/Version.tsx
-  function Version({ label, version, icon: icon3 }) {
+  function Version({ label: label2, version, icon: icon3 }) {
     return /* @__PURE__ */ jsx(TableRow, {
-      label,
+      label: label2,
       trailing: /* @__PURE__ */ jsx(TableRowTrailingText, {
         text: version
       }),
@@ -11835,7 +11835,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         source: typeof icon3 === "string" ? findAssetId(icon3) : icon3
       }),
       onPress: () => {
-        clipboard.setString(`${label} - ${version}`);
+        clipboard.setString(`${label2} - ${version}`);
         showToast.showCopyToClipboard();
       }
     });
@@ -12011,7 +12011,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ...otherStores
     ]) {
       var method = storeChecks[name];
-      var label = name + "." + method;
+      var label2 = name + "." + method;
       try {
         var store = resolveStore(name);
         stores[name] = store && typeof store === "object" ? functionNames(store, true) : null;
@@ -12019,15 +12019,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           continue;
         var getter = store && store[method];
         if (typeof getter !== "function") {
-          checks[label] = "unavailable";
+          checks[label2] = "unavailable";
           continue;
         }
         var result = getter.call(store);
-        checks[label] = result === null ? "null" : Array.isArray(result) ? "array" : typeof result;
+        checks[label2] = result === null ? "null" : Array.isArray(result) ? "array" : typeof result;
       } catch (e) {
         stores[name] ??= null;
         if (method)
-          checks[label] = "threw";
+          checks[label2] = "threw";
       }
     }
     var modules = [];
@@ -12437,8 +12437,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               value: !(state2.cloudcordSectionHidden ?? false),
               onValueChange: (value) => settings.cloudcordSectionHidden = !value
             }),
-            tabs.map(([key, label]) => /* @__PURE__ */ jsx(TableSwitchRow, {
-              label: `Show ${label}`,
+            tabs.map(([key, label2]) => /* @__PURE__ */ jsx(TableSwitchRow, {
+              label: `Show ${label2}`,
               value: !hidden.includes(key),
               onValueChange: (value) => setVisible(key, value)
             }, key)),
@@ -12934,7 +12934,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           borderRadius: size / 2
         }
       });
-    var label = displayName(user).trim().slice(0, 2).toUpperCase() || "?";
+    var label2 = displayName(user).trim().slice(0, 2).toUpperCase() || "?";
     return /* @__PURE__ */ jsx(import_react_native20.View, {
       style: {
         width: size,
@@ -12946,7 +12946,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       },
       children: /* @__PURE__ */ jsx(Text, {
         variant: "text-sm/semibold",
-        children: label
+        children: label2
       })
     });
   }
@@ -15932,13 +15932,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         errors.push(`Keep at most 30 custom ${kind2} entries.`);
       var ids = /* @__PURE__ */ new Set();
       entries2.forEach((entry, index) => {
-        var label = `Custom ${kind2} ${index + 1}`;
+        var label2 = `Custom ${kind2} ${index + 1}`;
         if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
-          errors.push(`${label}: invalid entry. Remove it and add it again.`);
+          errors.push(`${label2}: invalid entry. Remove it and add it again.`);
           return;
         }
         if (kind2 === "connection" && !("service" in entry)) {
-          errors.push(`${label}: choose an account service.`);
+          errors.push(`${label2}: choose an account service.`);
           return;
         }
         var collections = "service" in entry ? [
@@ -15948,22 +15948,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           entry.badges
         ];
         if (collections.some((value) => value != null && (!Array.isArray(value) || value.some((item) => !item || typeof item !== "object" || Array.isArray(item))))) {
-          errors.push(`${label}: invalid badges, account details or content. Remove the invalid entry and add it again.`);
+          errors.push(`${label2}: invalid badges, account details or content. Remove the invalid entry and add it again.`);
           return;
         }
         if (!entry.id || ids.has(entry.id))
-          errors.push(`${label}: entry ID is missing or duplicated.`);
+          errors.push(`${label2}: entry ID is missing or duplicated.`);
         ids.add(entry.id);
         var connection = "service" in entry;
         var nameLimit = connection ? 100 : 80;
         if ((entry.username?.length || 0) > nameLimit || (entry.displayName?.length || 0) > nameLimit)
-          errors.push(`${label}: names must be ${nameLimit} characters or fewer.`);
+          errors.push(`${label2}: names must be ${nameLimit} characters or fewer.`);
         if ((entry.bio?.length || 0) > 1e3)
-          errors.push(`${label}: bio must be 1,000 characters or fewer.`);
+          errors.push(`${label2}: bio must be 1,000 characters or fewer.`);
         if (!textField(entry.username, 100) && !textField(entry.displayName, 100) && !textField(connection ? entry.accountId : entry.userId, 100))
-          errors.push(`${label}: enter a name or ${connection ? "account" : "user"} ID, or remove this unfinished entry.`);
+          errors.push(`${label2}: enter a name or ${connection ? "account" : "user"} ID, or remove this unfinished entry.`);
         if (!connection && entry.userId && !/^\d{15,22}$/.test(entry.userId))
-          errors.push(`${label}: enter a valid Discord user ID or clear the optional ID.`);
+          errors.push(`${label2}: enter a valid Discord user ID or clear the optional ID.`);
         var links = [
           entry.avatar,
           entry.banner,
@@ -15976,19 +15976,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           ] : (entry.badges || []).map((badge) => badge.icon)
         ];
         if (links.some((link) => textField(link, 4096) && !customPreviewURL(link)))
-          errors.push(`${label}: image and account/content links must use HTTPS without embedded credentials.`);
+          errors.push(`${label2}: image and account/content links must use HTTPS without embedded credentials.`);
         if (connection && entry.items?.some((item) => !textField(item.title, 150)))
-          errors.push(`${label}: every selected item needs a title.`);
+          errors.push(`${label2}: every selected item needs a title.`);
         if (connection && entry.items?.some((item) => !item.id || (item.title?.length || 0) > 150 || (item.subtitle?.length || 0) > 200))
-          errors.push(`${label}: selected items need IDs, titles up to 150 characters and descriptions up to 200 characters.`);
+          errors.push(`${label2}: selected items need IDs, titles up to 150 characters and descriptions up to 200 characters.`);
         if (connection && entry.items && entry.items.length > 30)
-          errors.push(`${label}: choose at most 30 content items.`);
+          errors.push(`${label2}: choose at most 30 content items.`);
         if (connection && entry.details && entry.details.length > 20 || !connection && entry.badges && entry.badges.length > 20)
-          errors.push(`${label}: use at most 20 badges or account details.`);
+          errors.push(`${label2}: use at most 20 badges or account details.`);
         if (!connection && entry.badges?.some((badge) => !textField(badge.name, 80)))
-          errors.push(`${label}: every badge needs a name.`);
+          errors.push(`${label2}: every badge needs a name.`);
         if (connection && entry.details?.some((detail) => !textField(detail.label, 80)))
-          errors.push(`${label}: every account detail needs a label.`);
+          errors.push(`${label2}: every account detail needs a label.`);
       });
     };
     var errors = [];
@@ -16141,12 +16141,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     if (data?.nameplate === null)
       result.nameplate = null;
     else if (data?.nameplate && typeof data.nameplate === "object") {
-      var { skuId, asset, label, palette: palette2 } = data.nameplate;
+      var { skuId, asset, label: label2, palette: palette2 } = data.nameplate;
       if (typeof skuId === "string" && SNOWFLAKE.test(skuId) && typeof asset === "string" && /^nameplates\/[A-Za-z0-9_\/-]{1,180}\/$/.test(asset) && !asset.includes("..")) {
         result.nameplate = {
           skuId,
           asset,
-          label: text(label, 80),
+          label: text(label2, 80),
           palette: typeof palette2 === "string" && /^[a-z_]{1,30}$/.test(palette2) ? palette2 : ""
         };
       }
@@ -16401,19 +16401,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           var skuId = String(item?.sku_id || item?.skuId || product?.sku_id || product?.skuId || "");
           if (!/^\d{15,22}$/.test(skuId))
             continue;
-          var label = String(item?.label || product?.name || "").slice(0, 80);
+          var label2 = String(item?.label || product?.name || "").slice(0, 80);
           if (item.type === ITEM_DECORATION && typeof item.asset === "string") {
             decorations.set(item.asset, {
               id: item.asset,
               skuId,
-              label,
+              label: label2,
               url: `https://cdn.discordapp.com/avatar-decoration-presets/${item.asset}.png?size=160&passthrough=true`
             });
           } else if (item.type === ITEM_NAMEPLATE && typeof item.asset === "string") {
             nameplates.set(skuId, {
               skuId,
               asset: item.asset,
-              label,
+              label: label2,
               palette: String(item.palette || "")
             });
           } else if (item.type === ITEM_FRAME) {
@@ -16429,7 +16429,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var config1 = configs.get(skuId) || camel(item);
             effects.set(skuId, {
               skuId,
-              title: String(config1?.title || label),
+              title: String(config1?.title || label2),
               preview: config1?.thumbnailPreviewSrc || config1?.staticFrameSrc || "",
               config: {
                 ...config1,
@@ -18962,7 +18962,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ]
     });
   }
-  function Action({ label, onPress, primary, danger, disabled, grow }) {
+  function Action({ label: label2, onPress, primary, danger, disabled, grow }) {
     return /* @__PURE__ */ jsx(import_react_native22.Pressable, {
       accessibilityRole: "button",
       accessibilityState: {
@@ -18985,7 +18985,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         style: {
           color: primary || danger ? "#FFFFFF" : C3.text()
         },
-        children: label
+        children: label2
       })
     });
   }
@@ -19354,13 +19354,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  function Toggle({ label, subLabel, value, onPress }) {
+  function Toggle({ label: label2, subLabel, value, onPress }) {
     return /* @__PURE__ */ jsxs(import_react_native22.Pressable, {
       accessibilityRole: "switch",
       accessibilityState: {
         checked: value
       },
-      accessibilityLabel: label,
+      accessibilityLabel: label2,
       onPress,
       style: ({ pressed }) => ({
         flexDirection: "row",
@@ -19383,7 +19383,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               style: {
                 color: C3.text()
               },
-              children: label
+              children: label2
             }),
             subLabel ? /* @__PURE__ */ jsx(Text, {
               variant: "text-xs/medium",
@@ -19400,7 +19400,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ]
     });
   }
-  function PickRow({ label, subLabel, value, onPress }) {
+  function PickRow({ label: label2, subLabel, value, onPress }) {
     return /* @__PURE__ */ jsxs(import_react_native22.Pressable, {
       accessibilityRole: "button",
       onPress,
@@ -19424,7 +19424,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               style: {
                 color: C3.text()
               },
-              children: label
+              children: label2
             }),
             subLabel ? /* @__PURE__ */ jsx(Text, {
               variant: "text-xs/medium",
@@ -19488,7 +19488,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ]
     });
   }
-  function Row({ label, subLabel, icon: icon3, trailing, value, arrow, selected, onPress }) {
+  function Row({ label: label2, subLabel, icon: icon3, trailing, value, arrow, selected, onPress }) {
     return /* @__PURE__ */ jsxs(import_react_native22.Pressable, {
       accessibilityRole: "button",
       accessibilityState: {
@@ -19520,7 +19520,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               style: {
                 color: C3.text()
               },
-              children: label
+              children: label2
             }),
             subLabel ? /* @__PURE__ */ jsx(Text, {
               variant: "text-xs/medium",
@@ -19635,7 +19635,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     });
   }
-  function Field({ label, hint, error, children }) {
+  function Field({ label: label2, hint, error, children }) {
     return /* @__PURE__ */ jsxs(import_react_native22.View, {
       style: {
         gap: 6
@@ -19647,7 +19647,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             color: C3.muted(),
             letterSpacing: 0.4
           },
-          children: label.toUpperCase()
+          children: label2.toUpperCase()
         }),
         children,
         error ? /* @__PURE__ */ jsx(Text, {
@@ -19736,7 +19736,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  function CurrentRow({ label, image, wide, onRemove }) {
+  function CurrentRow({ label: label2, image, wide, onRemove }) {
     return /* @__PURE__ */ jsxs(import_react_native22.View, {
       style: {
         flexDirection: "row",
@@ -19746,11 +19746,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         borderRadius: R2.md,
         backgroundColor: C3.page(),
         borderWidth: 1,
-        borderColor: label ? C3.brand : C3.line(),
+        borderColor: label2 ? C3.brand : C3.line(),
         minHeight: 56
       },
       children: [
-        label && image ? /* @__PURE__ */ jsx(import_react_native22.Image, {
+        label2 && image ? /* @__PURE__ */ jsx(import_react_native22.Image, {
           source: {
             uri: image
           },
@@ -19778,13 +19778,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               variant: "text-sm/semibold",
               numberOfLines: 1,
               style: {
-                color: label ? C3.text() : C3.muted()
+                color: label2 ? C3.text() : C3.muted()
               },
-              children: label || "Nothing selected"
+              children: label2 || "Nothing selected"
             })
           ]
         }),
-        label ? /* @__PURE__ */ jsx(import_react_native22.Pressable, {
+        label2 ? /* @__PURE__ */ jsx(import_react_native22.Pressable, {
           accessibilityRole: "button",
           onPress: onRemove,
           style: {
@@ -19819,12 +19819,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     ]);
     var columns = wide ? 2 : 3;
     var cells = [];
-    var cell = (key, label, image, selected, onPress, none = false) => /* @__PURE__ */ jsxs(import_react_native22.Pressable, {
+    var cell = (key, label2, image, selected, onPress, none = false) => /* @__PURE__ */ jsxs(import_react_native22.Pressable, {
       accessibilityRole: "button",
       accessibilityState: {
         selected
       },
-      accessibilityLabel: label,
+      accessibilityLabel: label2,
       onPress,
       style: {
         flex: 1,
@@ -19869,7 +19869,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           style: {
             color: C3.text()
           },
-          children: label
+          children: label2
         }),
         selected ? /* @__PURE__ */ jsx(Tick, {}) : null
       ]
@@ -20315,9 +20315,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       onPress
     });
   }
-  function GlassButton({ label, onPress, disabled }) {
+  function GlassButton({ label: label2, onPress, disabled }) {
     return /* @__PURE__ */ jsx(Action, {
-      label,
+      label: label2,
       onPress,
       disabled
     });
@@ -20891,10 +20891,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         }
       }
     ]);
-    var input = (label, key, options = {}) => /* @__PURE__ */ jsx(Field, {
-      label,
+    var input = (label2, key, options = {}) => /* @__PURE__ */ jsx(Field, {
+      label: label2,
       children: /* @__PURE__ */ jsx(Input, {
-        accessibilityLabel: label,
+        accessibilityLabel: label2,
         value: draft[key] ?? "",
         placeholder: options.placeholder,
         onChangeText: (value) => set(key, value),
@@ -20904,11 +20904,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         maxLength: options.max ?? 2048
       })
     });
-    var color = (label, key) => /* @__PURE__ */ jsx(Field, {
-      label,
+    var color = (label2, key) => /* @__PURE__ */ jsx(Field, {
+      label: label2,
       hint: "Hex colour, like #5865F2. Empty keeps theirs.",
       children: /* @__PURE__ */ jsx(Input, {
-        accessibilityLabel: label,
+        accessibilityLabel: label2,
         defaultValue: numberToHex(draft[key]),
         placeholder: "#5865F2",
         autoCapitalize: "characters",
@@ -20956,7 +20956,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             }) : null,
             ids.map((userId) => {
               var data = saved[userId];
-              var label = labelOf(userId, data);
+              var label2 = labelOf(userId, data);
               var avatar = avatarOf(userId, data);
               var extras = [
                 data.nitro && Number(data.nitroLevel ?? -1) >= 0 ? "Nitro" : "",
@@ -21006,7 +21006,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                         variant: "text-md/bold",
                         color: "text-normal",
                         numberOfLines: 1,
-                        children: label.name
+                        children: label2.name
                       }),
                       /* @__PURE__ */ jsxs(Text, {
                         variant: "text-xs/medium",
@@ -21014,7 +21014,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                         numberOfLines: 1,
                         children: [
                           "@",
-                          label.username,
+                          label2.username,
                           extras ? " \xB7 " + extras : ""
                         ]
                       })
@@ -21022,7 +21022,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                   }),
                   /* @__PURE__ */ jsx(import_react_native23.Pressable, {
                     accessibilityRole: "button",
-                    accessibilityLabel: "Restore " + label.name,
+                    accessibilityLabel: "Restore " + label2.name,
                     onPress: () => restore(userId),
                     hitSlop: 8,
                     style: {
@@ -21140,11 +21140,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             /* @__PURE__ */ jsx(Section, {
               title: "Badges",
               children: /* @__PURE__ */ jsx(BadgeGrid, {
-                items: badges.map(([key, label, flag, icon3, customId]) => {
+                items: badges.map(([key, label2, flag, icon3, customId]) => {
                   var active = flag ? Boolean((draft.badgeFlags || 0) & flag) : (draft.customBadgeIds || []).includes(customId || key);
                   return {
                     key,
-                    label,
+                    label: label2,
                     icon: typeof icon3 === "string" ? icon3 : void 0,
                     active,
                     onPress: () => {
@@ -21469,7 +21469,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         })
       });
   }
-  function Input2({ label, value, onChange }) {
+  function Input2({ label: label2, value, onChange }) {
     return /* @__PURE__ */ jsxs(import_react_native25.View, {
       style: {
         gap: 4
@@ -21477,7 +21477,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       children: [
         /* @__PURE__ */ jsx(Text, {
           color: "text-muted",
-          children: label
+          children: label2
         }),
         /* @__PURE__ */ jsx(Input, {
           value,
@@ -21923,10 +21923,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                     /* @__PURE__ */ jsx(Input2, {
                       label: "Information label",
                       value: detail.label,
-                      onChange: (label) => patch({
+                      onChange: (label2) => patch({
                         details: entry.details.map((d, i) => i === index ? {
                           ...d,
-                          label
+                          label: label2
                         } : d)
                       })
                     }),
@@ -22131,10 +22131,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ...props
     });
   }
-  function GlassButton2({ label, onPress, disabled }) {
+  function GlassButton2({ label: label2, onPress, disabled }) {
     var S2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
     return /* @__PURE__ */ jsx(S2.Button, {
-      label,
+      label: label2,
       onPress,
       disabled
     });
@@ -22204,10 +22204,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ]
     });
   }
-  function TableRadioRow2({ label, icon: icon3, selected, onPress }) {
+  function TableRadioRow2({ label: label2, icon: icon3, selected, onPress }) {
     var S2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
     return /* @__PURE__ */ jsx(S2.Row, {
-      label,
+      label: label2,
       icon: icon3,
       selected,
       onPress
@@ -23546,11 +23546,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         var asset = decorationAsset(uri);
         if (!asset)
           continue;
-        var label = String(item.label || item.name || "Discord decoration");
+        var label2 = String(item.label || item.name || "Discord decoration");
         found.set(`${asset}:`, {
           asset,
           skuId: "",
-          label,
+          label: label2,
           uri
         });
       }
@@ -23566,11 +23566,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         var looksLikeDecoration = !!decoration || /decoration/i.test(String(value.type || value.productType || value.name || ""));
         if (asset2 && looksLikeDecoration) {
           var skuId = String(value.skuId || value.sku_id || value.sku?.id || decoration?.skuId || decoration?.sku_id || "");
-          var label2 = String(value.name || value.title || value.label || value.sku?.name || "Discord decoration");
+          var label3 = String(value.name || value.title || value.label || value.sku?.name || "Discord decoration");
           found.set(`${asset2}:${skuId}`, {
             asset: asset2,
             skuId,
-            label: label2,
+            label: label3,
             uri: decorationUri(asset2)
           });
         }
@@ -23739,10 +23739,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         return "continue";
       var badgeId = `fakeprofile-${id2}`;
       if (!result.some((item) => item?.id === badgeId)) {
-        var label = id2 === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description2;
+        var label2 = id2 === "oldname" && preview.oldName ? `Originally Known As: ${preview.oldName}` : description2;
         result.push({
           id: badgeId,
-          description: label,
+          description: label2,
           icon: " _",
           iconSrc: icon23,
           source: {
@@ -24294,7 +24294,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     ];
   }
-  function tieredEntry(entry, index, since, label, hidden) {
+  function tieredEntry(entry, index, since, label2, hidden) {
     var tiers = Array.isArray(entry.tiers) ? entry.tiers : [];
     var i = Math.max(0, Math.min(tiers.length - 1, index));
     var tier = tiers[i] || {};
@@ -24327,7 +24327,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       current_tier: tier.key,
       next_tier: tiers[i + 1]?.key ?? null,
       tier_obtained_at: obtained,
-      info_label: label
+      info_label: label2
     };
   }
   function fakeDirectoryEntry(entry, src, owned) {
@@ -27286,8 +27286,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           }
         }
       }
-      var label = key === "bannerMedia" ? "Banner" : "Profile picture";
-      diagnostics.last = animated ? `${label} animation preserved and fitted in preview` : normalized ? `${label} resized to ${target.width} x ${target.height}` : `${label} fitted to ${target.width} x ${target.height} in preview`;
+      var label2 = key === "bannerMedia" ? "Banner" : "Profile picture";
+      diagnostics.last = animated ? `${label2} animation preserved and fitted in preview` : normalized ? `${label2} resized to ${target.width} x ${target.height}` : `${label2} fitted to ${target.width} x ${target.height} in preview`;
       return {
         uri,
         name,
@@ -27535,9 +27535,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ]
     });
   }
-  function ActionButton({ label, onPress, muted = false }) {
+  function ActionButton({ label: label2, onPress, muted = false }) {
     return /* @__PURE__ */ jsx(GlassButton2, {
-      label,
+      label: label2,
       onPress,
       muted
     });
@@ -27552,7 +27552,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       return null;
     return (/* @__PURE__ */ new Date(iso + "T12:00:00Z")).getTime() <= Date.now() ? iso : null;
   }
-  function DateInput({ label, value, onSave }) {
+  function DateInput({ label: label2, value, onSave }) {
     var K2 = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
     var [draft, setDraft] = (0, import_react9.useState)(value || "");
     var [error, setError] = (0, import_react9.useState)("");
@@ -27574,7 +27574,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         onSave(iso);
     };
     return /* @__PURE__ */ jsx(K2.Field, {
-      label,
+      label: label2,
       hint: error || "YYYY-MM-DD or DD/MM/YYYY, empty for your real date",
       children: /* @__PURE__ */ jsx(TextInput4, {
         value: draft,
@@ -27771,7 +27771,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       showToast(pubVisibility === "public" ? "Published to templates" : "Template link created");
     })());
     var codeId = shareCodeFrom(code);
-    var pill = (label, on, onPress) => /* @__PURE__ */ jsx(import_react_native26.Pressable, {
+    var pill = (label2, on, onPress) => /* @__PURE__ */ jsx(import_react_native26.Pressable, {
       onPress,
       style: {
         paddingHorizontal: 12,
@@ -27785,9 +27785,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           color: on ? "#fff" : void 0
         },
         color: on ? void 0 : "text-muted",
-        children: label
+        children: label2
       })
-    }, label);
+    }, label2);
     return /* @__PURE__ */ jsxs(import_react_native26.View, {
       style: {
         gap: 20
@@ -28047,18 +28047,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     })();
     var saveCurrent = () => {
-      var label = (name.trim() || "Profile " + (items.length + 1)).slice(0, 40);
+      var label2 = (name.trim() || "Profile " + (items.length + 1)).slice(0, 40);
       commit([
         {
           id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-          name: label,
+          name: label2,
           savedAt: Date.now(),
           data: savedSnapshot(current)
         },
         ...items
       ]);
       setName("");
-      showToast("Saved \u201C" + label + "\u201D");
+      showToast("Saved \u201C" + label2 + "\u201D");
     };
     var [code, setCode] = (0, import_react9.useState)("");
     var [busy, setBusy] = (0, import_react9.useState)(false);
@@ -28569,19 +28569,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       return copied;
     })();
   }
-  function ToggleRow({ label, subLabel, value, onPress }) {
+  function ToggleRow({ label: label2, subLabel, value, onPress }) {
     var { Toggle: Toggle2 } = (init_ProfileStudio(), __toCommonJS(ProfileStudio_exports));
     return /* @__PURE__ */ jsx(Toggle2, {
-      label,
+      label: label2,
       subLabel,
       value,
       onPress
     });
   }
-  function ColorPickerRow({ label, value, onOpen }) {
+  function ColorPickerRow({ label: label2, value, onOpen }) {
     return /* @__PURE__ */ jsx(TableRow3, {
       arrow: true,
-      label,
+      label: label2,
       subLabel: "Choose a preset or enter an exact hex color",
       trailing: /* @__PURE__ */ jsx(TableRow3.TrailingText, {
         text: value.toUpperCase()
@@ -28831,7 +28831,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         redraw();
       }
     };
-    var MediaEditor = ({ label, field, banner = false }) => {
+    var MediaEditor = ({ label: label2, field, banner = false }) => {
       var value = preview[field];
       return /* @__PURE__ */ jsxs(import_react_native26.View, {
         style: {
@@ -28843,7 +28843,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           /* @__PURE__ */ jsx(Text, {
             variant: "heading-sm/semibold",
             color: "text-normal",
-            children: label
+            children: label2
           }),
           /* @__PURE__ */ jsx(Text, {
             variant: "text-xs/medium",
@@ -29362,8 +29362,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                           ]
                         ] : []
                       ];
-                    })().map(([source, label]) => /* @__PURE__ */ jsx(K2.Button, {
-                      label: copying ? "Copying\u2026" : label,
+                    })().map(([source, label2]) => /* @__PURE__ */ jsx(K2.Button, {
+                      label: copying ? "Copying\u2026" : label2,
                       primary: source === "discord",
                       disabled: copying || !copyId.trim(),
                       onPress: () => _async_to_generator(function* () {
@@ -30050,9 +30050,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                       onPress: () => update("hideBadgesWhenSyncOff", !preview.hideBadgesWhenSyncOff, true)
                     }),
                     /* @__PURE__ */ jsx(K2.BadgeGrid, {
-                      items: BADGES.filter(([id]) => !EXPERIMENTAL_BADGE_GROUPS.some((group) => group.tiers.some((tier) => tier.id === id))).map(([id, label, , icon3]) => ({
+                      items: BADGES.filter(([id]) => !EXPERIMENTAL_BADGE_GROUPS.some((group) => group.tiers.some((tier) => tier.id === id))).map(([id, label2, , icon3]) => ({
                         key: id,
-                        label,
+                        label: label2,
                         icon: icon3,
                         active: !!preview.selectedBadges?.[id],
                         onPress: () => update("selectedBadges", {
@@ -32931,10 +32931,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (!props.installAction)
         return () => {
         };
-      var { label, onPress, fetchFn } = props.installAction;
+      var { label: label2, onPress, fetchFn } = props.installAction;
       if (fetchFn) {
         openAlert("AddonInputAlert", /* @__PURE__ */ jsx(InputAlert2, {
-          label: label ?? "Install",
+          label: label2 ?? "Install",
           fetchFn
         }));
       } else {
@@ -36957,6 +36957,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     ];
     if (values.length > 24)
       throw new Error("Too many incoming rule values");
+    if (kind === "follow-voice" && values.length > 1)
+      throw new Error("Choose one friend ID to follow");
+    if (kind === "friend-removals" && values.length)
+      throw new Error("Friend removal notices take no options");
     if (kind === "hide-blocked") {
       if (!values.length || values.some((value) => value !== "blocked" && value !== "ignored"))
         throw new Error("Choose blocked, ignored, or both");
@@ -36993,6 +36997,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   }
   function applyIncomingRule(rule, payload, context) {
     var { type, message } = payload;
+    if (rule.kind === "friends-voice" || rule.kind === "follow-voice" || rule.kind === "friend-removals")
+      return;
     if (rule.kind === "hide-users" || rule.kind === "hide-keywords" || rule.kind === "hide-blocked") {
       if (!rule.values.length || payload.optimistic)
         return;
@@ -37131,7 +37137,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         users: "messages.watchlocal",
         "hide-users": "messages.filterlocal",
         "hide-keywords": "messages.filterlocal",
-        "hide-blocked": "messages.filterlocal"
+        "hide-blocked": "messages.filterlocal",
+        "friends-voice": "voice.notifyfriends",
+        "follow-voice": "voice.followfriend",
+        "friend-removals": "friends.notifyremoval"
       };
     }
   });
@@ -37767,6 +37776,140 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxSocialEvents.ts
+  function bindCxSocialEvents(rules, context) {
+    var watchFriends = rules.find((rule) => rule.kind === "friends-voice");
+    var follow = rules.find((rule) => rule.kind === "follow-voice")?.values[0];
+    var watchRemoval = rules.some((rule) => rule.kind === "friend-removals");
+    if (!watchFriends && !follow && !watchRemoval)
+      return;
+    var active = true;
+    var account;
+    var pending2;
+    var lastChannel = /* @__PURE__ */ new Map();
+    var recentRemovals = /* @__PURE__ */ new Map();
+    function reset() {
+      pending2 = void 0;
+      lastChannel.clear();
+      recentRemovals.clear();
+    }
+    function boundAccount() {
+      var current = context.currentUser();
+      if (account !== current) {
+        reset();
+        account = current;
+      }
+      return current;
+    }
+    function remember(map, id, value) {
+      if (map.size >= 256 && !map.has(id))
+        map.delete(map.keys().next().value);
+      map.set(id, value);
+    }
+    var stopRemoval = watchRemoval ? overrideCxMethods(context.removalActions(), {
+      removeRelationship(args, invoke) {
+        var id = args[0];
+        try {
+          if (boundAccount() && isId(id))
+            remember(recentRemovals, id, Date.now());
+        } catch (e) {
+        }
+        return invoke(args);
+      }
+    }, context.enabled) : void 0;
+    return {
+      observe(payload) {
+        var _loop2 = function(state3) {
+          var id2 = state3?.userId;
+          if (!isId(id2) || id2 === me || !context.isFriend(id2))
+            return "continue";
+          var watch = watchFriends && (!watchFriends.values.length || watchFriends.values.includes(id2));
+          if (id2 !== follow && !watch)
+            return "continue";
+          var channel = state3.channelId;
+          var previous2 = lastChannel.get(id2) ?? state3.oldChannelId;
+          if (!isId(channel)) {
+            lastChannel.delete(id2);
+            if (id2 === follow)
+              pending2 = void 0;
+            return "continue";
+          }
+          remember(lastChannel, id2, channel);
+          if (previous2 === channel)
+            return "continue";
+          if (watch)
+            context.notify(label(context.userName(id2), "A friend") + " joined " + label(context.channelName(channel), "a voice channel"));
+          if (id2 !== follow || pending2 === channel)
+            return "continue";
+          var current = context.voiceChannel();
+          if (!current || current === channel)
+            return "continue";
+          pending2 = channel;
+          void Promise.resolve().then(() => {
+            if (pending2 !== channel)
+              return;
+            pending2 = void 0;
+            if (!active || !context.enabled() || context.currentUser() !== me || !context.isFriend(id2) || lastChannel.get(id2) !== channel || context.voiceChannel() !== current)
+              return;
+            context.joinVoice(channel);
+          }).catch(() => {
+          });
+        };
+        if (!active || !context.enabled() || ![
+          "CONNECTION_OPEN",
+          "LOGOUT",
+          "RELATIONSHIP_ADD",
+          "RELATIONSHIP_REMOVE",
+          "VOICE_STATE_UPDATES"
+        ].includes(payload.type))
+          return;
+        var me = boundAccount();
+        if (!me)
+          return;
+        if (payload.type === "CONNECTION_OPEN" || payload.type === "LOGOUT") {
+          reset();
+          return;
+        }
+        if (watchRemoval && (payload.type === "RELATIONSHIP_ADD" || payload.type === "RELATIONSHIP_REMOVE")) {
+          var id = payload.relationship?.id;
+          if (!isId(id) || id === me)
+            return;
+          if (payload.type === "RELATIONSHIP_ADD") {
+            recentRemovals.delete(id);
+            return;
+          }
+          var previous = recentRemovals.get(id);
+          var now = Date.now();
+          if ((previous === void 0 || now - previous >= 3e4) && (payload.relationship?.type === 1 || context.isFriend(id))) {
+            remember(recentRemovals, id, now);
+            context.notify(label(context.userName(id), "Someone") + " removed you as a friend");
+          }
+          return;
+        }
+        if (!watchFriends && !follow || payload.type !== "VOICE_STATE_UPDATES" || !Array.isArray(payload.voiceStates))
+          return;
+        for (var state2 of payload.voiceStates)
+          _loop2(state2);
+      },
+      stop() {
+        active = false;
+        reset();
+        stopRemoval?.();
+      }
+    };
+  }
+  var isId, label;
+  var init_cxSocialEvents = __esm({
+    "src/lib/api/cxSocialEvents.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_cxNativeEffects();
+      isId = (id) => typeof id === "string" && /^\d{17,20}$/.test(id);
+      label = (name, fallback) => name?.replace(/[\r\n\t]/g, " ").slice(0, 100).trim() || fallback;
+    }
+  });
+
   // src/lib/api/cx.ts
   function quoted(value, limit, allowEmpty = false) {
     if (!value.startsWith('"') || !value.endsWith('"'))
@@ -38162,7 +38305,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         rule.find + " \u2192 " + rule.replacement
       ] : [])).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
         "Hide all stickers"
-      ] : !rule.values.length && rule.kind !== "reply-pings" ? [
+      ] : rule.kind === "follow-voice" && rule.values[0] ? [
+        "Follow friend ID " + rule.values[0]
+      ] : !rule.values.length && ![
+        "reply-pings",
+        "friends-voice",
+        "friend-removals"
+      ].includes(rule.kind) ? [
         "Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")
       ] : [])),
       commands: document.commands.map((command) => "/" + command.name)
@@ -38444,6 +38593,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxClientCommands();
       init_cxNativeEffects();
       init_cxPreviousMessage();
+      init_cxSocialEvents();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -38471,6 +38621,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.silencementions": "Mute mentions from the listed senders on this device",
         "replies.controlping": "Choose whether incoming replies ping you on this device",
         "calls.suppressring": "Silence incoming call rings from the listed users and group DMs",
+        "voice.notifyfriends": "Show local notifications when friends join or move between voice channels",
+        "voice.followfriend": "Move you to the listed friend\u2019s voice channel while you are already connected to voice",
+        "friends.notifyremoval": "Show a local notification when a friend removes you",
         "messages.watchlocal": "Match incoming messages on this device and show local notifications",
         "messages.filterlocal": "Hide matching incoming messages and history on this device",
         "typing.suppress": "Suppress your outgoing typing indicator"
@@ -38690,6 +38843,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_floating_chat_bar = __esm({
     "../examples/cx/catalog/plugins/floating-chat-bar.cx"() {
       floating_chat_bar_default = 'plugin "FloatingChatBar":\n  needs appearance.style\n  style floating-chat-bar\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/follow-voice-user.cx
+  var follow_voice_user_default;
+  var init_follow_voice_user = __esm({
+    "../examples/cx/catalog/plugins/follow-voice-user.cx"() {
+      follow_voice_user_default = 'plugin "FollowVoiceUser":\n  needs voice.followfriend\n  on incoming follow-voice ""\n';
     }
   });
 
@@ -39053,6 +39214,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/relationship-notifier.cx
+  var relationship_notifier_default;
+  var init_relationship_notifier = __esm({
+    "../examples/cx/catalog/plugins/relationship-notifier.cx"() {
+      relationship_notifier_default = 'plugin "RelationshipNotifier":\n  needs friends.notifyremoval\n  on incoming friend-removals ""\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/reply-ping-control.cx
   var reply_ping_control_default;
   var init_reply_ping_control = __esm({
@@ -39210,6 +39379,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_vibe_check = __esm({
     "../examples/cx/catalog/plugins/vibe-check.cx"() {
       vibe_check_default = 'plugin "VibeCheck":\n  needs commands.register\n  needs messages.send\n  on command "vibe":\n    send one of ["\u2726 the vibes are immaculate \u2726", "\u{1F334} endless summer, endless mall \u{1F334}", "\u{1F4FC} rewinding to a time that never was \u{1F4FC}", "\u{1F6CD}\uFE0F welcome to the mall, population: you \u{1F6CD}\uFE0F", "\u{1F305} chasing a sunset that never sets \u{1F305}", "\u{1F4BE} saving your aesthetic... done \u{1F4BE}", "\u{1FAA9} disco ball energy detected \u{1FAA9}", "\u{1F30A} floating on a sea of neon \u{1F30A}", "\u260E\uFE0F this call is being routed through 1987 \u260E\uFE0F", "\u{1F379} sipping something pink by the fountain \u{1F379}"]\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/voice-join-messages.cx
+  var voice_join_messages_default;
+  var init_voice_join_messages = __esm({
+    "../examples/cx/catalog/plugins/voice-join-messages.cx"() {
+      voice_join_messages_default = 'plugin "VoiceJoinMessages":\n  needs voice.notifyfriends\n  on incoming friends-voice ""\n';
     }
   });
 
@@ -40056,6 +40233,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_dont_round_my_timestamps();
       init_embedded_urls();
       init_floating_chat_bar();
+      init_follow_voice_user();
       init_friend_invites();
       init_google_that();
       init_hide_active_now();
@@ -40101,6 +40279,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_normalize_message_links();
       init_polish_wording();
       init_read_all_notifications();
+      init_relationship_notifier();
       init_reply_ping_control();
       init_reverse_text();
       init_round_server_icons();
@@ -40121,6 +40300,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_unindent();
       init_unit_converter();
       init_vibe_check();
+      init_voice_join_messages();
       init_write_upper_case();
       init_zero_width_sanitizer();
       init_midnight();
@@ -40306,6 +40486,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: floating_chat_bar_default
           },
           {
+            name: "FollowVoiceUser",
+            source: follow_voice_user_default
+          },
+          {
             name: "FriendInvites",
             source: friend_invites_default
           },
@@ -40486,6 +40670,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: read_all_notifications_default
           },
           {
+            name: "RelationshipNotifier",
+            source: relationship_notifier_default
+          },
+          {
             name: "ReplyPingControl",
             source: reply_ping_control_default
           },
@@ -40564,6 +40752,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "VibeCheck",
             source: vibe_check_default
+          },
+          {
+            name: "VoiceJoinMessages",
+            source: voice_join_messages_default
           },
           {
             name: "WriteUpperCase",
@@ -41065,12 +41257,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var actions = [
         ...entries.values()
       ].flatMap((entry) => {
-        var { label, scope } = cxProfileMenuActions[entry.action];
+        var { label: label2, scope } = cxProfileMenuActions[entry.action];
         if (scope === "server" && !getCxProfileMenuCopy(entry.action, id, UserProfileStore, guildId))
           return [];
         return [
           {
-            label,
+            label: label2,
             action: () => {
               if (!profileMenuActions.has(entry) || settings.safeMode?.enabled)
                 return;
@@ -41201,16 +41393,42 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                   showToast(body);
               }, 0)
             };
-            var stop = intercept((payload) => {
+            var social = bindCxSocialEvents(rules, {
+              currentUser: context.currentUser,
+              notify: context.notify,
+              isFriend: (id) => RelationshipStore?.isFriend?.(id) === true,
+              userName: (id) => {
+                var user = UserStore2?.getUser?.(id);
+                return user?.globalName || user?.username;
+              },
+              channelName: (id) => ChannelStore?.getChannel?.(id)?.name,
+              voiceChannel: () => SelectedChannelStore?.getVoiceChannelId?.(),
+              joinVoice: (id) => findByProps("selectVoiceChannel")?.selectVoiceChannel?.(id),
+              removalActions: () => findByProps("removeRelationship"),
+              enabled: () => active && !settings.safeMode?.enabled
+            });
+            var onIncoming = (payload) => {
               try {
-                if (active && !settings.safeMode?.enabled)
-                  return runCxIncomingRules(rules, payload, context);
+                if (active && !settings.safeMode?.enabled) {
+                  var patch = runCxIncomingRules(rules, payload, context);
+                  if (patch !== false)
+                    social?.observe(payload);
+                  return patch;
+                }
               } catch (e) {
               }
-            });
+            };
+            var stop;
+            try {
+              stop = intercept(onIncoming);
+            } catch (error) {
+              social?.stop();
+              throw error;
+            }
             return () => {
               active = false;
               stop();
+              social?.stop();
             };
           },
           registerProfileMenuAction,
@@ -41668,7 +41886,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, appearanceBindings, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -41706,6 +41924,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ActiveJoinedThreadsStore = findByStoreNameLazy("ActiveJoinedThreadsStore");
       ReadStateStore = findByStoreNameLazy("ReadStateStore");
       SpotifyStore = findByStoreNameLazy("SpotifyStore");
+      SelectedChannelStore = findByStoreNameLazy("SelectedChannelStore");
       appearanceBindings = /* @__PURE__ */ new Map();
       profileMenuActions = /* @__PURE__ */ new Set();
     }
@@ -46344,7 +46563,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "8f734dbc1af9bb83aa06f6e814bee0780d58df6a";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "eb7fbdd79cf4f76a8e9c91ed45a47cd3f4451891";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
