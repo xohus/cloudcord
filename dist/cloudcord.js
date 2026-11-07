@@ -7512,9 +7512,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         };
       }
       var component = Component2;
-      var target = typeof component === "function" ? component : component?.$$typeof === Symbol.for("react.memo") && typeof component.type === "function" ? component.type : null;
+      var inner = component?.$$typeof === Symbol.for("react.memo") ? component.type : component;
+      var target = typeof inner === "function" ? inner : inner?.$$typeof === Symbol.for("react.forward_ref") && typeof inner.render === "function" ? inner.render : null;
       var name = [
         component?.displayName,
+        inner?.displayName,
         target?.displayName,
         target?.name
       ].find((value) => typeof value === "string" && (callbacks.has(value) || finalCallbacks.has(value)));
@@ -7619,7 +7621,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }, [
       request
     ]);
-    var color = theme?.semantic.BACKGROUND_PRIMARY?.value;
+    var color = theme?.semantic?.BACKGROUND_PRIMARY?.value;
     var tint = typeof color === "string" && import_chroma_js2.default.valid(color) ? color : "black";
     var content = url2 && loaded === request ? tintMessageSurface(children, opacity, tint, direct) : children;
     return /* @__PURE__ */ jsxs(import_react_native4.View, {
@@ -7654,6 +7656,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   }
   function patchChatBackground() {
     var active = true;
+    var modernSeen = false;
     var unpatch;
     function wrapRenderer(_2, element) {
       return !active || unpatch ? element : /* @__PURE__ */ jsx(ThemeBackground, {
@@ -7662,15 +7665,28 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }, element.key);
     }
     onJsxCreate("MessagesRenderer", wrapRenderer);
+    function wrapMessagesDisplayName(_2, element) {
+      var component = element.type;
+      var inner = component.$$typeof === Symbol.for("react.memo") ? component.type : component;
+      if (typeof inner === "function")
+        return inner.name === "MessagesRenderer" ? wrapRenderer(null, element) : element;
+      if (!active || inner?.$$typeof !== Symbol.for("react.forward_ref") || typeof element.props.channelId !== "string" || !("style" in element.props))
+        return element;
+      modernSeen = true;
+      unpatch?.();
+      unpatch = void 0;
+      return wrapRenderer(null, element);
+    }
+    onJsxCreate("Messages", wrapMessagesDisplayName);
     function attach(exports) {
-      if (!active || unpatch)
+      if (!active || modernSeen || unpatch)
         return true;
       var component = exports?.default ?? exports;
       var renderer = component?.type ?? component;
       var target = typeof renderer?.prototype?.render === "function" ? renderer.prototype : renderer;
       if (typeof target?.render !== "function")
         return false;
-      unpatch = after("render", target, (_2, content) => active && React2.isValidElement(content) ? /* @__PURE__ */ jsx(ThemeBackground, {
+      unpatch = after("render", target, (_2, content) => active && !modernSeen && React2.isValidElement(content) ? /* @__PURE__ */ jsx(ThemeBackground, {
         children: content
       }) : content);
       return true;
@@ -7706,6 +7722,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       cancel?.();
       unpatch?.();
       deleteJsxCreate("MessagesRenderer", wrapRenderer);
+      deleteJsxCreate("Messages", wrapMessagesDisplayName);
     };
   }
   var import_chroma_js2, import_react_native4, Messages, styles;
@@ -47090,7 +47107,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "43e4d5977f3981f2ae44af9b7d9000ac4dd629d5";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "ecd2a231e7fc02415de2b301a31e438491f74126";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
