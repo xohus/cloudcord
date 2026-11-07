@@ -15,6 +15,7 @@ import { deleteJsxCreate, onJsxCreate } from "@lib/api/react/jsx";
 import { settings } from "@lib/api/settings";
 import { resolveSemanticColor, semanticColors } from "@lib/ui/color";
 import { showToast } from "@lib/ui/toasts";
+import type { CxUploadAnonymiser } from "@lib/api/cx";
 import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
@@ -117,6 +118,64 @@ function registerMemberRowAppearance(target: string | object, change: Appearance
 }
 
 let staticTypingDots: { stop: () => void; users: number; } | undefined;
+let hasUploadAnonymiser = false;
+
+function registerUploadAnonymiser(anonymiser: CxUploadAnonymiser) {
+    if (hasUploadAnonymiser) throw new Error("An upload naming rule is already enabled");
+    const preview = findByFilePath("modules/media_uploads/native/UploadPreviewActionSheet.tsx")?.default;
+    if (typeof preview !== "function") throw new Error("Discord's attachment preview is unavailable");
+    const uploader = findByFilePath("lib/uploader/native/CloudUploader.tsx")?.default?.prototype;
+    let active = true;
+    const enabled = () => active && !settings.safeMode?.enabled;
+    type Upload = Parameters<CxUploadAnonymiser["isAnonymous"]>[0];
+    function AnonymousUploadRow({ upload }: { upload: Upload; }) {
+        const [selected, setSelected] = React.useState(() => anonymiser.isAnonymous(upload));
+        return <TableRow label="Use anonymous filename" subLabel={selected ? "On" : "Off"} onPress={() => {
+            if (!enabled()) return;
+            const next = !selected;
+            anonymiser.setAnonymous(upload, next);
+            setSelected(next);
+        }} />;
+    }
+    function PreviewWithAnonymousRow({ previewProps }: { previewProps: { upload?: Upload; }; }) {
+        const output = preview(previewProps) as ReactNode;
+        const { upload } = previewProps;
+        if (!enabled() || !upload || typeof upload !== "object") return output;
+        let inserted = false;
+        function insert(tree: ReactNode, depth = 0): ReactNode {
+            if (inserted || depth >= 12) return tree;
+            if (Array.isArray(tree)) {
+                const next = tree.map(child => insert(child, depth + 1));
+                return inserted ? next : tree;
+            }
+            if (!React.isValidElement<{ children?: ReactNode; onLayout?: unknown; spacing?: number; }>(tree)) return tree;
+            const { children, onLayout, spacing } = tree.props;
+            if (tree.type === Stack && spacing === 16 && typeof onLayout === "function") {
+                inserted = true;
+                return React.cloneElement(tree, { children: [...React.Children.toArray(children),
+                    <TableRowGroup key="cx-anonymous-upload" title="CloudCord"><AnonymousUploadRow upload={upload} /></TableRowGroup>] });
+            }
+            const next = insert(children, depth + 1);
+            return next === children ? tree : React.cloneElement(tree, { children: next });
+        }
+        return insert(output);
+    }
+    const stopUploads = overrideCxMethods(uploader, {
+        uploadFiles: (args, original) => {
+            anonymiser.apply(args[0]);
+            return original(args);
+        },
+    }, enabled);
+    const stopPreview = registerJsxAppearance([preview], element =>
+        <PreviewWithAnonymousRow previewProps={element.props} />);
+    hasUploadAnonymiser = true;
+    return () => {
+        active = false;
+        stopPreview();
+        stopUploads();
+        hasUploadAnonymiser = false;
+    };
+}
 
 function registerStaticTypingDots() {
     if (!staticTypingDots) {
@@ -541,6 +600,7 @@ export default function CxExtensions() {
                     if (!isThemeSupported()) throw new Error("This loader does not support color overrides");
                     return registerColorOverlay(style);
                 },
+                registerUploadAnonymiser,
                 registerNativeEffect(effect, avatarResolution = 256) {
                     const enabled = () => !settings.safeMode?.enabled;
                     switch (effect) {

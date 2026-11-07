@@ -7,6 +7,7 @@ import { messageTransforms, parseCxHttpsOrigin, polishOptions, reverseText, rewr
 import { cxAvatarResolutions, type CxAvatarResolution, cxNativeEffects, type CxNativeEffect } from "./cxNativeEffects";
 import { parseCxPreviousRule, type CxPreviousRule } from "./cxPreviousMessage";
 import { applyCxTextRules, parseCxTextRule } from "./cxTextRules";
+import { createCxUploadAnonymiser, type CxUploadAnonymiser, type CxUploadNaming } from "./cxUploadNames";
 
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
@@ -16,6 +17,7 @@ export { animateCxAssets, cxNativeEffects, fixCxFileExtensions, floorCxRelativeT
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
 export { bindCxSocialEvents } from "./cxSocialEvents";
 export { createCxPlusReactionHandler } from "./cxPlusReactions";
+export type { CxUploadAnonymiser } from "./cxUploadNames";
 
 export const MAX_CX_SOURCE = 512 * 1024;
 export const CX_INLINE_EDITOR_LIMIT = 32 * 1024;
@@ -31,7 +33,7 @@ const permissionLabels = {
     "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
     "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
     "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
-    "uploads.rename": "Change the filename extension of listed attachments before Discord uploads them",
+    "uploads.rename": "Change attachment filenames before Discord uploads them",
     "replies.suppressping": "Send replies without pinging the person you reply to",
     "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
     "guild.members": "Read loaded members with the role you select in the current server",
@@ -85,6 +87,7 @@ export type CxPermission = keyof typeof permissionLabels;
 type BasicAction = { kind: "toast" | "reply" | "send" | "reply or send" | "mark-read"; message: string; fallback?: string; choices?: string[] };
 type Action = BasicAction | { kind: "friend-invites"; operation: CxFriendInviteAction }
     | { kind: "copy-diagnostics"; }
+    | { kind: "upload-spoilers"; input: string; }
     | { kind: "lookup"; service: CxExternalLookup; input: string; };
 const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
     toast: ["ui.toast"],
@@ -96,7 +99,8 @@ const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
 const getActionPermissions = (action: Action): CxPermission[] => action.kind === "friend-invites"
     ? ["reply.local", `friends.invites.${action.operation}`]
     : action.kind === "lookup" ? ["reply.local", cxExternalLookups[action.service].permission]
-        : action.kind === "copy-diagnostics" ? ["reply.local", "diagnostics.copy"] : actionPermissions[action.kind];
+        : action.kind === "copy-diagnostics" ? ["reply.local", "diagnostics.copy"]
+            : action.kind === "upload-spoilers" ? ["reply.local", "uploads.rename"] : actionPermissions[action.kind];
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
 type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice" | "user" | "role"; required: boolean; choices?: string[] };
 type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: Action[] };
@@ -134,6 +138,7 @@ type CxPlugin = {
     styledTargets: CxStyleTarget[];
     nativeEffects: CxNativeEffect[];
     avatarResolution?: CxAvatarResolution;
+    uploadNaming?: CxUploadNaming;
     previousRule?: CxPreviousRule;
     profileActions: CxProfileMenuAction[];
     incoming: IncomingRule[];
@@ -212,6 +217,7 @@ export function parseCx(source: string): CxDocument {
     const styledTargets = new Set<CxStyleTarget>();
     const nativeEffects = new Set<CxNativeEffect>();
     let avatarResolution: CxAvatarResolution | undefined;
+    let uploadNaming: CxUploadNaming | undefined;
     let previousRule: CxPreviousRule | undefined;
     const profileActions = new Set<CxProfileMenuAction>();
     const incoming: IncomingRule[] = [];
@@ -229,7 +235,7 @@ export function parseCx(source: string): CxDocument {
         }
         textRules = undefined;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
-        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length) {
+        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) {
             const permission = declaration[1] as CxPermission;
             if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
                 throw new Error("Unknown or duplicate CX permission");
@@ -282,6 +288,22 @@ export function parseCx(source: string): CxDocument {
         }
         if (line === "  before send suppressReplyPing" && !suppressReplyPing) {
             suppressReplyPing = true;
+            current = undefined;
+            continue;
+        }
+        const upload = /^  before upload anonymise (random (\d{1,2})|timestamp|consistent ("(?:[^"\\]|\\.)*"))( manual)?$/.exec(line);
+        if (upload) {
+            if (uploadNaming) throw new Error("Use one upload naming rule");
+            const manual = Boolean(upload[4]);
+            if (upload[2]) {
+                const length = Number(upload[2]);
+                if (length < 1 || length > 24) throw new Error("Use a random filename length from 1 to 24");
+                uploadNaming = { mode: "random", length, manual };
+            } else if (upload[3]) {
+                const basename = quoted(upload[3], 48);
+                if (!/^[\w-]+$/.test(basename) || /^spoiler_/i.test(basename)) throw new Error("Use letters, numbers, underscores or hyphens for upload names");
+                uploadNaming = { mode: "consistent", basename, manual };
+            } else uploadNaming = { mode: "timestamp", manual };
             current = undefined;
             continue;
         }
@@ -367,6 +389,13 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
+        const spoilers = /^    set upload spoilers "([a-z][a-z0-9_-]{0,31})"$/.exec(line);
+        if (spoilers && uploadNaming && current && !current.actions.length && !current.text && current.inputs.length === 1
+            && current.inputs[0].name === spoilers[1] && current.inputs[0].type === "boolean") {
+            current.actions.push({ kind: "upload-spoilers", input: spoilers[1] });
+            current = undefined;
+            continue;
+        }
         const lookup = /^    lookup ([a-z]+) "([a-z][a-z0-9_-]{0,31})"$/.exec(line);
         if (lookup && current && !current.actions.length && !current.text && current.inputs.length === 1
             && current.inputs[0].name === lookup[2] && current.inputs[0].type === "text" && current.inputs[0].required
@@ -421,7 +450,7 @@ export function parseCx(source: string): CxDocument {
         }
         current.actions.push({ kind, message, fallback });
     }
-    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length) || commands.some(command => !command.actions.length))
+    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) || commands.some(command => !command.actions.length))
         throw new Error("A plugin needs a command or a supported behavior");
     const required = new Set<CxPermission>();
     if (commands.length) required.add("commands.register");
@@ -432,6 +461,7 @@ export function parseCx(source: string): CxDocument {
     if (previousRule) required.add("messages.editprevious");
     if (profileActions.size) required.add("profilemenu.copy");
     if (readsAvatar) required.add("profile.avatar");
+    if (uploadNaming) required.add("uploads.rename");
     for (const permission of clientPermissions) required.add(permission);
     for (const { kind } of incoming) required.add(incomingPermissions[kind]);
     for (const { stage, name } of transforms) {
@@ -451,7 +481,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Remove unused CX permissions");
     return {
         kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing,
-        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], nativeEffects: [...nativeEffects], avatarResolution, previousRule, profileActions: [...profileActions], incoming,
+        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], nativeEffects: [...nativeEffects], avatarResolution, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
     };
 }
 
@@ -467,6 +497,7 @@ export function reviewCx(source: string) {
             .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label))
             .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
             .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : "")))
+            .concat(document.uploadNaming ? ["Use " + document.uploadNaming.mode + " upload names " + (document.uploadNaming.manual ? "when selected for a file" : "by default")] : [])
             .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" ? [rule.find + " → " + rule.replacement]
                 : rule.name === "rewriteText" ? [`Apply ${rule.rules.length} text rules to message ${rule.stage}s and preserve links`] : []))
             .concat(document.incoming.flatMap(rule => {
@@ -503,6 +534,7 @@ type CxHost = {
     hideAppearanceTarget?: (target: CxHideTarget) => () => void;
     styleAppearanceTarget?: (target: CxStyleTarget) => () => void;
     registerNativeEffect?: (effect: CxNativeEffect, avatarResolution?: CxAvatarResolution) => () => void;
+    registerUploadAnonymiser?: (anonymiser: CxUploadAnonymiser) => () => void;
     registerPreviousMessageRule?: (rule: CxPreviousRule) => () => void;
     registerIncomingRules?: (rules: readonly IncomingRule[]) => () => void;
 };
@@ -528,6 +560,7 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
     const cleanups: (() => void)[] = [];
     const activeLookups = new Map<CxExternalLookup, AbortController>();
     let active = true;
+    const uploadAnonymiser = document.uploadNaming && createCxUploadAnonymiser(document.uploadNaming);
     function stop() {
         active = false;
         for (const controller of activeLookups.values()) controller.abort();
@@ -535,6 +568,10 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
         for (const cleanup of cleanups.splice(0).reverse()) cleanup();
     }
     try {
+        if (uploadAnonymiser) {
+            if (!host.registerUploadAnonymiser) throw new Error("This client cannot anonymise uploads");
+            cleanups.push(host.registerUploadAnonymiser(uploadAnonymiser));
+        }
         if (document.incoming.length) {
             if (!host.registerIncomingRules) throw new Error("This client cannot run incoming rules");
             cleanups.push(host.registerIncomingRules(document.incoming));
@@ -649,6 +686,12 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                             try { invocation.reply(invocation.markServersRead()); }
                             catch { invocation.reply("Couldn’t mark servers as read."); }
                         }
+                        continue;
+                    }
+                    if (action.kind === "upload-spoilers") {
+                        const value = inputs.get(action.input);
+                        const enabled = uploadAnonymiser?.setSpoilers(value ? value === "true" : undefined);
+                        invocation?.reply?.(enabled ? "Upload spoilers enabled." : "Upload spoilers disabled.");
                         continue;
                     }
                     if (action.kind === "toast") {

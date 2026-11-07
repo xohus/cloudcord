@@ -303,6 +303,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 return { files, options };
             }
         }
+        function NativeUploadPreview() {
+            return jsx("Sheet", { children: jsx("Stack", { spacing: 16, onLayout() {}, children: jsx("Text", { children: "Filename" }) }) });
+        }
         const typingSubscribers = new Set();
         let protectedReads = 0;
         const diagnosticExports = {
@@ -318,7 +321,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         let cursor = 0;
         const useState = initial => {
             const index = cursor++;
-            if (!(index in states)) states[index] = initial;
+            if (!(index in states)) states[index] = typeof initial === "function" ? initial() : initial;
             return [states[index], value => { states[index] = value; }];
         };
         const jsx = (type, props) => ({ type, props });
@@ -415,6 +418,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             } },
             "@metro": { findByFilePath: path => path.endsWith("/ButtonEllipsis.native.tsx") ? { Ellipsis: typingEllipsis }
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
+                : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
@@ -428,6 +432,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 createContext: initial => ({ Provider: initial === false ? "MemberRowProvider" : "ProfileUserProvider" }),
                 useContext: context => context.Provider === "MemberRowProvider" ? inMemberRow : profileUser,
                 Fragment: Symbol.for("react.fragment"),
+                Children: { toArray: children => Array.isArray(children) ? children : children == null ? [] : [children] },
                 isValidElement: element => !!element?.type && !!element?.props,
                 createElement: jsx, memo: type => ({ type }), forwardRef: render => ({ render }),
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
@@ -1274,6 +1279,48 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         runUpload(files);
         assert.equal(files[0].filename, "SPOILER_Scan.TIFF");
         assert.equal(uploader.uploadFiles, nativeUpload);
+
+        const anonymous = cxCatalog.plugins.find(entry => entry.name === "AnonymiseFileNames").source;
+        assert.throws(() => activateCx(anonymous, host, ["uploads.rename"]), /approval/);
+        assert.throws(() => parseCx(anonymous.replace("random 7", 'consistent "../private"')), /upload names/);
+        assert.throws(() => parseCx(anonymous.replace("random 7", "random 25")), /filename length/);
+        selectCatalog("AnonymiseFileNames");
+        click(render(), "Allow for this session");
+        const draftFile = { filename: "personal.tar.gz", item: {} };
+        const named = { filename: "KeepOriginal.png", item: {} };
+        const preview = jsx(NativeUploadPreview, { upload: named });
+        const checkOptOut = () => {
+            if (desktop) {
+                const option = desktopPlugin.renderAnonymousUploadButton({ upload: named, canEdit: true });
+                option.type(option.props).props.onClick();
+            } else {
+                const bound = appearanceHooks.get(NativeUploadPreview)(null, preview);
+                const wrapper = bound.type(bound.props);
+                const tree = wrapper.type(wrapper.props);
+                const control = find(tree, item => item.type?.name === "AnonymousUploadRow");
+                control.type(control.props).props.onPress();
+            }
+        };
+        checkOptOut();
+        const keepName = { ...named };
+        runUpload([draftFile, keepName]);
+        assert.match(draftFile.filename, /^[0123456789bdfhjkmnpqrstvwxz]{7}\.tar\.gz$/);
+        assert.equal(keepName.filename, "KeepOriginal.png");
+        const stableName = draftFile.filename;
+        runUpload([draftFile]);
+        assert.equal(draftFile.filename, stableName);
+        registered.spoiler.execute([{ name: "value", value: true }], { channel: { id: "test" } });
+        runUpload([draftFile, keepName]);
+        assert.equal(draftFile.filename, "SPOILER_" + stableName);
+        assert.equal(keepName.filename, "SPOILER_KeepOriginal.png");
+        const protectedFile = { filename: "NeverLeak.png" };
+        assert.throws(() => runUpload([protectedFile, Object.freeze({ filename: "private.png" })]), /(?:filename|read only)/i);
+        assert.equal(protectedFile.filename, "NeverLeak.png");
+        click(render(), "Disable AnonymiseFileNames");
+        assert.equal(registered.spoiler, undefined);
+        assert.equal(appearanceHooks.has(NativeUploadPreview), false);
+        runUpload([protectedFile]);
+        assert.equal(protectedFile.filename, "NeverLeak.png");
 
         if (desktop) assert.equal(desktopPlugin.useTypingFocus(focus), focus);
         selectCatalog("NoTypingAnimation");

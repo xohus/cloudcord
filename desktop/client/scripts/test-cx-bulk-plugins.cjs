@@ -18,7 +18,7 @@ const source = [
     '});',
 ].join("\n");
 const inspect = input => inspectPlugin("fixture.ts", input, "desktop");
-const { parseCx, cxAppearanceTargets, cxNativeEffects } = loadCxRuntime();
+const { activateCx, parseCx, cxAppearanceTargets, cxNativeEffects } = loadCxRuntime();
 const candidate = inspect(source);
 assert.equal(candidate.capability, "outgoing-text");
 assert.deepEqual(candidate.hooks, ["outgoing-message"]);
@@ -66,6 +66,32 @@ assert.equal(inspectPlugin(staticTyping.file, staticTypingSource.replace("dotCyc
 const fixExtensions = matches.find(record => record.name === "FixFileExtensions");
 assert.deepEqual(Array.from(parseCx(fixExtensions.cx).permissions), ["uploads.rename"]);
 assert.deepEqual(Array.from(parseCx(fixExtensions.cx).nativeEffects), ["fix-file-extensions"]);
+const anonymous = matches.find(record => record.name === "AnonymiseFileNames");
+assert.equal(anonymous?.capability, "upload-naming");
+assert.equal(parseCx(anonymous.cx).uploadNaming.length, 7);
+assert.equal(parseCx(anonymous.cx).commands[0].name, "spoiler");
+verifyPorts(new Map([["anonymise-file-names.cx", anonymous.cx]]));
+for (const [mode, expected] of [['consistent "document" manual', /^document\.png$/], ["timestamp", /^\d{13}\.png$/]]) {
+    let naming;
+    const stop = activateCx(anonymous.cx.replace("random 7", mode), {
+        registerUploadAnonymiser(value) { naming = value; return () => { naming = undefined; }; },
+        registerCommand() { return () => {}; },
+    }, ["uploads.rename", "commands.register", "reply.local"]);
+    const upload = { filename: "my-name.png" };
+    if (mode.endsWith("manual")) {
+        naming.apply([upload]);
+        assert.equal(upload.filename, "my-name.png");
+        naming.setAnonymous(upload, true);
+    }
+    naming.apply([upload]);
+    assert.match(upload.filename, expected);
+    naming.setAnonymous(upload, false);
+    upload.filename = upload.filename.replace(/\.png$/, ".jpg");
+    naming.apply([upload]);
+    assert.equal(upload.filename, "my-name.jpg");
+    stop();
+    assert.equal(naming, undefined);
+}
 const reactionPorts = matches.filter(record => record.name === "BetterPlusReacts");
 assert.deepEqual(reactionPorts.map(record => record.platform).sort(), ["desktop", "mobile"]);
 assert.equal(reactionPorts[0].cx, reactionPorts[1].cx);

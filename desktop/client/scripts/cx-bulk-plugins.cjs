@@ -583,6 +583,10 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
 // Only translate reviewed patch bodies into named runtime adapters. The
 // emitted CX never carries Webpack source, store names, or replacement code.
 const desktopEffectRecipes = {
+    AnonymiseFileNames: {
+        sha256: "c1c808212ec54cf39a833cb7be196e02793a81d88fb9b11aab450a6233324f8d",
+        uploadNaming: true,
+    },
     FixFileExtensions: {
         effect: "fix-file-extensions",
         sha256: "bb47394a4de5d34df3b8d59b9d53e34196d451db664eaa20e0664ec1638a330e",
@@ -606,6 +610,15 @@ const desktopEffectRecipes = {
 function compileDesktopEffect(name, plugin, source, entry, nativeEffects) {
     if (!Object.hasOwn(desktopEffectRecipes, name)) return;
     const recipe = desktopEffectRecipes[name];
+    if (recipe.uploadNaming) {
+        const sha256 = createHash("sha256").update(source.text.replaceAll("\r\n", "\n"), "utf8").digest("hex");
+        if (sha256 !== recipe.sha256) return;
+        return { capability: "upload-naming", lines: [
+            "  needs uploads.rename", "  needs commands.register", "  needs reply.local",
+            "  before upload anonymise random 7", '  on command "spoiler":',
+            '    input "value" boolean optional', '    set upload spoilers "value"',
+        ] };
+    }
     const effect = nativeEffects[recipe.effect];
     if (!effect) return;
     const compiled = { capability: "native-effect", lines: ["  needs " + effect.permission, "  use " + recipe.effect] };
@@ -1014,6 +1027,7 @@ function verifyPorts(files) {
                 registerMessageEditTransform: register,
                 registerIncomingRules: register,
                 registerNativeEffect: register,
+                registerUploadAnonymiser: register,
                 registerPreviousMessageRule: register,
                 hideAppearanceTarget: register,
                 styleAppearanceTarget: register,

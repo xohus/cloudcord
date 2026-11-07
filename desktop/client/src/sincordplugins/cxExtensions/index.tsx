@@ -7,6 +7,7 @@ import { copyToClipboard } from "@utils/clipboard";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
+import type { CxUploadAnonymiser } from "@utils/cx";
 import { findByProps, findStore, wreq } from "@webpack";
 import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 
@@ -14,6 +15,7 @@ const session = createCxSession();
 const typingDotListeners = new Set<() => void>();
 let staticTypingDotUsers = 0;
 let fixFileExtensionUsers = 0;
+let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
 
 function subscribeTypingDots(listener: () => void) {
@@ -33,6 +35,16 @@ function applyAppearanceCss(target: keyof typeof cxAppearanceTargets) {
     style.textContent = cxAppearanceTargets[target].css;
     document.head.append(style);
     return () => style.remove();
+}
+
+function AnonymousUploadButton({ upload }: { upload: Parameters<CxUploadAnonymiser["isAnonymous"]>[0]; }) {
+    const [selected, setSelected] = useState(() => uploadAnonymiser?.isAnonymous(upload) ?? false);
+    if (!uploadAnonymiser) return null;
+    return <button type="button" aria-pressed={selected} title="Anonymise this attachment's filename" onClick={() => {
+        const next = !selected;
+        uploadAnonymiser?.setAnonymous(upload, next);
+        setSelected(next);
+    }}>{selected ? "Anonymous name" : "Original name"}</button>;
 }
 
 export function CxSettings() {
@@ -146,6 +158,11 @@ export function CxSettings() {
                 },
                 hideAppearanceTarget: applyAppearanceCss,
                 styleAppearanceTarget: applyAppearanceCss,
+                registerUploadAnonymiser(anonymiser) {
+                    if (uploadAnonymiser) throw new Error("An upload naming rule is already enabled");
+                    uploadAnonymiser = anonymiser;
+                    return () => { uploadAnonymiser = undefined; };
+                },
                 registerNativeEffect(effect, avatarResolution = 256) {
                     switch (effect) {
                         case "static-typing-dots":
@@ -427,9 +444,19 @@ export default definePlugin({
             match: /async uploadFiles\((\i)\)\{/,
             replace: "$&$self.fixUploadExtensions($1);",
         },
+    }, {
+        find: "#{intl::ATTACHMENT_UTILITIES_SPOILER}",
+        replacement: {
+            match: /(?<=children:\[)(?=.{10,80}tooltip:.{0,100}#{intl::ATTACHMENT_UTILITIES_SPOILER})/,
+            replace: "$self.renderAnonymousUploadButton(arguments[0]),",
+        },
     }],
     fixUploadExtensions(files: unknown) {
         if (fixFileExtensionUsers) fixCxFileExtensions(files);
+        uploadAnonymiser?.apply(files);
+    },
+    renderAnonymousUploadButton({ upload, canEdit }: { upload?: Parameters<CxUploadAnonymiser["isAnonymous"]>[0]; canEdit?: boolean; }) {
+        return uploadAnonymiser && upload && canEdit !== false ? <AnonymousUploadButton upload={upload} /> : null;
     },
     useTypingFocus(focus: { focused: boolean; }) {
         const isStatic = React.useSyncExternalStore(subscribeTypingDots, staticTypingDots);

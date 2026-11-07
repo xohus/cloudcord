@@ -1,0 +1,8 @@
+plugin "AnonymiseFileNames":
+  needs uploads.rename
+  needs commands.register
+  needs reply.local
+  before upload anonymise random 7
+  on command "spoiler":
+    input "value" boolean optional
+    set upload spoilers "value"
