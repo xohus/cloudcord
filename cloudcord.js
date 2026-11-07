@@ -7662,8 +7662,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var active = true;
     var modernSeen = false;
     var unpatch;
+    var exactRenderer;
     function wrapRenderer(_2, element) {
-      return !active || unpatch ? element : /* @__PURE__ */ jsx(ThemeBackground, {
+      if (!active || element.type === ThemeBackground)
+        return element;
+      modernSeen = true;
+      unpatch?.();
+      unpatch = void 0;
+      return /* @__PURE__ */ jsx(ThemeBackground, {
         direct: true,
         children: element
       }, element.key);
@@ -7676,9 +7682,6 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         return inner.name === "MessagesRenderer" ? wrapRenderer(null, element) : element;
       if (!active || inner?.$$typeof !== Symbol.for("react.forward_ref") || typeof element.props.channelId !== "string" || !("style" in element.props))
         return element;
-      modernSeen = true;
-      unpatch?.();
-      unpatch = void 0;
       return wrapRenderer(null, element);
     }
     onJsxCreate("Messages", wrapMessagesDisplayName);
@@ -7704,6 +7707,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         logger.warn("CloudCord could not attach the chat background", error ?? fallbackError);
       }
     }
+    var cancelRenderer;
+    try {
+      cancelRenderer = getLazyContext(MessagesRenderer)?.getExports((exports) => {
+        if (!active || exactRenderer)
+          return;
+        var renderer = exports?.default ?? exports;
+        if (typeof renderer !== "function" && renderer?.$$typeof !== Symbol.for("react.memo") && renderer?.$$typeof !== Symbol.for("react.forward_ref"))
+          return;
+        exactRenderer = renderer;
+        onJsxCreate(renderer, wrapRenderer);
+      });
+    } catch (e) {
+    }
     var cancel;
     try {
       var lazy = getLazyContext(Messages);
@@ -7723,13 +7739,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
     return () => {
       active = false;
+      cancelRenderer?.();
       cancel?.();
       unpatch?.();
       deleteJsxCreate("MessagesRenderer", wrapRenderer);
       deleteJsxCreate("Messages", wrapMessagesDisplayName);
+      if (exactRenderer)
+        deleteJsxCreate(exactRenderer, wrapRenderer);
     };
   }
-  var import_chroma_js2, import_react_native4, Messages, styles;
+  var import_chroma_js2, import_react_native4, Messages, MessagesRenderer, styles;
   var init_background = __esm({
     "src/lib/addons/themes/colors/patches/background.tsx"() {
       "use strict";
@@ -7748,6 +7767,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       import_chroma_js2 = __toESM(require_chroma());
       import_react_native4 = __toESM(require_react_native());
       Messages = findByFilePathLazy("modules/messages/native/Messages.tsx", true);
+      MessagesRenderer = findByFilePathLazy("modules/messages/native/MessagesRenderer.tsx", true);
       styles = import_react_native4.StyleSheet.create({
         container: {
           flex: 1
@@ -48971,7 +48991,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "77014725577d4d662560feadbe00c02b23b89138";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "85bba33b902cef0eb8af99f48aba1e4e40e53b2b";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
