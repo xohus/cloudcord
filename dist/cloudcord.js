@@ -38534,6 +38534,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           permission: "media.imagequality",
           label: "Load original attachment images in chat and the media viewer"
         },
+        "image-filename": {
+          permission: "media.labels",
+          label: "Show image filenames and GIF links"
+        },
+        "image-full-url": {
+          permission: "media.labels",
+          label: "Show the full URL of images and GIFs"
+        },
+        "descriptive-gif-alt": {
+          permission: "media.labels",
+          label: "Use meaningful filenames for GIFs with generic alt text"
+        },
         "scroll-to-latest": {
           permission: "channels.markonopen",
           label: "Open channels at the latest message and mark them read"
@@ -39434,6 +39446,56 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxMediaLabels.ts
+  function imageParts(input) {
+    var link = validateCxMediaLink(input);
+    if (!link)
+      return;
+    var [, host, path] = /^https?:\/\/([^:/?#]+)(?::\d+)?(\/[^?#]*)?/i.exec(link) ?? [];
+    if (!host)
+      return;
+    return {
+      link,
+      host,
+      filename: path?.slice(path.lastIndexOf("/") + 1) ?? ""
+    };
+  }
+  function getCxImageTitle(input, full = false) {
+    var image = imageParts(input);
+    if (!image)
+      return;
+    if (gifHost.test(image.host))
+      return image.link;
+    if (/\.(?:png|jpe?g|gif|webp|avif)$/i.test(image.filename))
+      return full ? image.link : image.filename;
+  }
+  function getCxGifDescription(input, alt, knownGif = false) {
+    if (alt != null && alt !== "" && alt !== "GIF")
+      return;
+    var image = imageParts(input);
+    if (!image || !image.filename || !knownGif && !gifHost.test(image.host) && !/\.gif$/i.test(image.filename))
+      return;
+    var name = image.filename;
+    try {
+      name = decodeURIComponent(name);
+    } catch (e) {
+    }
+    name = name.replace(/\.(?:gif|webp|mp4)$/i, "").replace(RegExp("[\\d\\x00-\\x1f\\x7f\\u202a-\\u202e\\u2066-\\u2069]", "gu"), "").split(/[,\-_\s]+/g).filter(Boolean).slice(0, 20).join(" ");
+    if (!RegExp("\\p{L}", "u").test(name))
+      return;
+    return "GIF - " + (name.length > 300 ? name.slice(0, 300) + "\u2026" : name);
+  }
+  var gifHost;
+  var init_cxMediaLabels = __esm({
+    "src/lib/api/cxMediaLabels.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_cxExpressionLinks();
+      gifHost = /(?:^|\.)(?:tenor|giphy|imgur)\.com$/i;
+    }
+  });
+
   // src/lib/api/cx.ts
   function quoted(value, limit, allowEmpty = false) {
     if (!value.startsWith('"') || !value.endsWith('"'))
@@ -40302,6 +40364,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxEmojiPicker();
       init_cxExpressionLinks();
       init_cxAttachmentImages();
+      init_cxMediaLabels();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -40313,6 +40376,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "emoji.clipboard": "Copy the selected emoji as Markdown when you choose its menu action",
         "media.clipboard": "Copy a selected media or web link when you choose its menu action",
         "media.imagequality": "Request higher-resolution image attachments from Discord\u2019s CDN",
+        "media.labels": "Show filenames, links, or descriptive alt text for visible media on this device",
         "stickers.links": "Copy or open the selected Discord sticker\u2019s CDN link when you choose its menu action",
         "messages.transform": "Change text before Discord sends messages you compose",
         "messages.edit.transform": "Change text when you submit a message edit",
@@ -40471,6 +40535,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_avatar_grabber = __esm({
     "../examples/cx/catalog/plugins/avatar-grabber.cx"() {
       avatar_grabber_default = 'plugin "AvatarGrabber":\n  needs commands.register\n  needs messages.send\n  needs profile.avatar\n  needs reply.local\n  on command "avatar":\n    input "user" user optional\n    send "${avatar(user)}" else "Couldn\'t find that user."\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/better-gif-alt-text.cx
+  var better_gif_alt_text_default;
+  var init_better_gif_alt_text = __esm({
+    "../examples/cx/catalog/plugins/better-gif-alt-text.cx"() {
+      better_gif_alt_text_default = 'plugin "BetterGifAltText":\n  needs media.labels\n  use descriptive-gif-alt\n';
     }
   });
 
@@ -41370,6 +41442,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_ignore_calls = __esm({
     "../examples/cx/catalog/plugins/ignore-calls.cx"() {
       ignore_calls_default = 'plugin "IgnoreCalls":\n  needs calls.suppressring\n  on incoming calls ""\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/image-filename.cx
+  var image_filename_default;
+  var init_image_filename = __esm({
+    "../examples/cx/catalog/plugins/image-filename.cx"() {
+      image_filename_default = 'plugin "ImageFilename":\n  needs media.labels\n  use image-filename\n';
     }
   });
 
@@ -42844,6 +42924,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_at_someone();
       init_auto_vaporwave();
       init_avatar_grabber();
+      init_better_gif_alt_text();
       init_better_plus_reacts();
       init_bigger_code_blocks();
       init_bigger_server_icons();
@@ -42933,6 +43014,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_highlight_mentions();
       init_hop_on();
       init_ignore_calls();
+      init_image_filename();
       init_in_role();
       init_ingtoninator();
       init_keyword_notify();
@@ -43118,6 +43200,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "AvatarGrabber",
             source: avatar_grabber_default
+          },
+          {
+            name: "BetterGifAltText",
+            source: better_gif_alt_text_default
           },
           {
             name: "BetterPlusReacts",
@@ -43474,6 +43560,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "IgnoreCalls",
             source: ignore_calls_default
+          },
+          {
+            name: "ImageFilename",
+            source: image_filename_default
           },
           {
             name: "InRole",
@@ -44370,6 +44460,47 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     };
   }
+  function patchMediaViewerAction(label2, enabled, select) {
+    var mediaActions = findByFilePath("modules/media_viewer/native/components/MediaShareActions.tsx");
+    var IconComponent = findByProps("LinkIcon")?.LinkIcon;
+    return overrideCxMethods(mediaActions, {
+      useMediaShareActions(args, invoke) {
+        var actions = invoke(args);
+        var media = args[0];
+        if (!Array.isArray(actions) || !actions.length || media?.disableDownload || media?.shareable === false || media?.source?.obscure)
+          return actions;
+        var source = media?.source;
+        var link = validateCxMediaLink(source?.shareURI) ?? validateCxMediaLink(source?.sourceURI) ?? validateCxMediaLink(source?.uri);
+        if (!link || actions.some((action2) => action2?.label === label2))
+          return actions;
+        var action = select(link);
+        return action ? [
+          ...actions,
+          {
+            label: label2,
+            IconComponent,
+            action
+          }
+        ] : actions;
+      }
+    }, enabled);
+  }
+  function registerImageFilename(full) {
+    var active = true;
+    var enabled = () => active && !settings.safeMode?.enabled;
+    var label2 = full ? "Image URL (CX)" : "Image Filename (CX)";
+    var stop = patchMediaViewerAction(label2, enabled, (link) => {
+      var name = getCxImageTitle(link, full);
+      return name ? () => {
+        if (enabled())
+          import_react_native41.Alert.alert(label2, name);
+      } : void 0;
+    });
+    return () => {
+      active = false;
+      stop();
+    };
+  }
   function registerMediaLinkCopy() {
     var active = true;
     var enabled = () => active && !settings.safeMode?.enabled;
@@ -44379,28 +44510,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       clipboard.setString(link);
       showToast.showCopyToClipboard?.();
     };
-    var mediaActions = findByFilePath("modules/media_viewer/native/components/MediaShareActions.tsx");
-    var IconComponent = findByProps("LinkIcon")?.LinkIcon;
-    var stopMedia = overrideCxMethods(mediaActions, {
-      useMediaShareActions(args, invoke) {
-        var actions = invoke(args);
-        var media = args[0];
-        if (!Array.isArray(actions) || !actions.length || media?.disableDownload || media?.shareable === false || media?.source?.obscure)
-          return actions;
-        var source = media?.source;
-        var link = validateCxMediaLink(source?.shareURI) ?? validateCxMediaLink(source?.sourceURI) ?? validateCxMediaLink(source?.uri);
-        if (!link || actions.some((action) => action?.label === "Copy Media Link (CX)"))
-          return actions;
-        return [
-          ...actions,
-          {
-            label: "Copy Media Link (CX)",
-            IconComponent,
-            action: copy(link)
-          }
-        ];
-      }
-    }, enabled);
+    var stopMedia = patchMediaViewerAction("Copy Media Link (CX)", enabled, copy);
     try {
       var stopLinks = overrideCxMethods(findByProps("showSimpleActionSheet"), {
         showSimpleActionSheet(args, invoke) {
@@ -44436,6 +44546,83 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       throw error;
     }
   }
+  function mapMediaEntries(items, transform) {
+    var next = items.map(transform);
+    return next.some((item, index) => item !== items[index]) ? next : items;
+  }
+  function registerGifAltText() {
+    var enabled = () => !settings.safeMode?.enabled;
+    var cleanups = [];
+    var stop = () => {
+      for (var cleanup of cleanups.splice(0).reverse())
+        cleanup();
+    };
+    try {
+      var attachments = findByFilePath("modules/messages/native/renderer/transformMessageAttachments.tsx");
+      cleanups.push(overrideCxMethods(attachments, {
+        default(args, invoke) {
+          var rows = invoke(args);
+          if (!Array.isArray(rows))
+            return rows;
+          return mapMediaEntries(rows, (item) => {
+            if (!item || item.obscure || item.isSuspiciousDownload || item.description)
+              return item;
+            var alt = getCxGifDescription(item.url, item.alt);
+            return alt ? {
+              ...item,
+              alt
+            } : item;
+          });
+        }
+      }, enabled));
+      var viewer = findByFilePath("modules/media_viewer/native/useMediaViewerSources.tsx");
+      cleanups.push(overrideCxMethods(viewer, {
+        setMediaViewerSources(args, invoke) {
+          var [options, ...rest] = args;
+          var state2 = options;
+          if (!Array.isArray(state2?.sources))
+            return invoke(args);
+          var sources = mapMediaEntries(state2.sources, (item) => {
+            var source = item;
+            if (!source || source.obscure || source.spoiler)
+              return item;
+            var description = getCxGifDescription(source.sourceURI ?? source.uri, source.description, source.contentType === "image/gif");
+            return description ? {
+              ...source,
+              description
+            } : item;
+          });
+          return invoke(sources === state2.sources ? args : [
+            {
+              ...state2,
+              sources
+            },
+            ...rest
+          ]);
+        }
+      }, enabled));
+      var picker = findByFilePath("modules/gif_picker/native/GIFPickerItemView.tsx");
+      cleanups.push(overrideCxMethods(picker, {
+        default(args, invoke) {
+          var element = invoke(args);
+          var item = args[0]?.item;
+          if (!React2.isValidElement(element) || element.props.accessibilityRole !== "button")
+            return element;
+          var description = getCxGifDescription(item?.src, void 0, true);
+          if (!description)
+            return element;
+          var label2 = element.props.accessibilityLabel;
+          return React2.cloneElement(element, {
+            accessibilityLabel: label2 ? label2 + ". " + description : description
+          });
+        }
+      }, enabled));
+      return stop;
+    } catch (error) {
+      stop();
+      throw error;
+    }
+  }
   function patchAttachmentImageQuality() {
     var enabled = () => !settings.safeMode?.enabled;
     var chat = findByFilePath("modules/messages/native/renderer/transformMessageAttachments.tsx");
@@ -44449,7 +44636,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         var attachments = invoke(args);
         if (!Array.isArray(attachments) || !args[0]?.shouldInlineAttachmentMedia)
           return attachments;
-        var next = attachments.map((item) => {
+        return mapMediaEntries(attachments, (item) => {
           if (!item || item.obscure || item.isSuspiciousDownload || item.videoUrl || item.inlinePlaybackDisabled)
             return item;
           var url2 = getCxAttachmentImageUrl(item.url, {
@@ -44463,7 +44650,6 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             url: url2
           } : item;
         });
-        return next.some((item, index) => item !== attachments[index]) ? next : attachments;
       }
     }, enabled);
     try {
@@ -44473,7 +44659,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           var state2 = options;
           if (!Array.isArray(state2?.sources))
             return invoke(args);
-          var sources = state2.sources.map((item) => {
+          var sources = mapMediaEntries(state2.sources, (item) => {
             var source = item;
             if (!source || source.videoURI || source.obscure || source.spoiler)
               return item;
@@ -44485,13 +44671,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               uri
             } : item;
           });
-          return invoke(sources.some((source, index) => source !== state2.sources[index]) ? [
+          return invoke(sources === state2.sources ? args : [
             {
               ...state2,
               sources
             },
             ...rest
-          ] : args);
+          ]);
         }
       }, enabled);
       return Object.assign(binding, {
@@ -45516,6 +45702,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 return registerExpressionLinks(effect);
               case "copy-media-link":
                 return registerMediaLinkCopy();
+              case "image-filename":
+              case "image-full-url":
+                return registerImageFilename(effect === "image-full-url");
+              case "descriptive-gif-alt":
+                return registerGifAltText();
               case "attachment-image-quality":
               case "original-attachment-images":
                 return registerAttachmentImageQuality(effect === "original-attachment-images");
@@ -50695,7 +50886,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "c7c08dd27f302b8b0681a7acb211a5fb6fbf3e15";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "d6f2234546ae37ccf0394cf74c89e061fe78c812";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
