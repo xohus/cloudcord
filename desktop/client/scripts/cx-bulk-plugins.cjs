@@ -35,7 +35,14 @@ function inventory(source) {
                 targets.add("event:" + node.text);
             if (/^[A-Z][a-zA-Z0-9]+Store$/.test(node.text)) targets.add("store:" + node.text);
         }
-        if (ts.isStringLiteralLike(node) && event.test(node.text)) targets.add("event:" + node.text);
+        if (ts.isStringLiteralLike(node) && event.test(node.text)) {
+            const parent = node.parent;
+            const call = ts.isCallExpression(parent) && (ts.isPropertyAccessExpression(parent.expression)
+                ? parent.expression.name.text : identifier(parent.expression));
+            const isActionType = ts.isPropertyAssignment(parent) && identifier(parent.name) === "type";
+            if (isActionType || /^(?:subscribe|unsubscribe|subscribeToDispatch|waitFor|dispatch)$/.test(call || "") || ts.isCaseClause(parent))
+                targets.add("event:" + node.text);
+        }
         if (ts.isCallExpression(node)) {
             const callee = ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : identifier(node.expression);
             const first = literal(node.arguments[0]);
@@ -51,6 +58,8 @@ function inventory(source) {
             } else if (callee === "defineTweak") {
                 const css = literal(node.arguments[2]) ?? "";
                 for (const match of css.matchAll(/(?:\{|;)\s*([a-z-]+)\s*:/g)) targets.add("css:" + match[1]);
+                if (/\{\s*display\s*:\s*none\s*!important\s*;?\s*\}\s*$/i.test(css)
+                    && css.indexOf("{") === css.lastIndexOf("{")) targets.add("recipe:hide-component");
             }
         }
         ts.forEachChild(node, visit);
@@ -1057,6 +1066,67 @@ function buildPlan(records) {
     };
 }
 
+function buildBatchPlan(records, limit = 12) {
+    const sources = new Map();
+    for (const record of records) {
+        const key = record.name.toLowerCase();
+        const variants = sources.get(key) ?? [];
+        variants.push(record);
+        sources.set(key, variants);
+    }
+    const queues = new Map();
+    const pending = new Set();
+    let ready = 0;
+    let compare = 0;
+    let review = 0;
+    for (const [key, variants] of sources) {
+        if (variants.some(record => record.status === "in-catalog")) continue;
+        if (variants.some(record => record.status === "ready")) {
+            ready++;
+            continue;
+        }
+        if (variants.some(record => record.status.startsWith("compare-"))) {
+            compare++;
+            continue;
+        }
+        if (variants.some(record => record.status === "source-review")) {
+            review++;
+            continue;
+        }
+        pending.add(key);
+        for (const { targets } of variants) for (const anchor of targets ?? []) {
+            // A store or CSS property can be referenced by unrelated features.
+            if (!/^(event|module|component|recipe):/.test(anchor)
+                || /^module:(?:Store|dispatch|subscribe|icon|iconContainer|default|render)$/.test(anchor)) continue;
+            const candidates = queues.get(anchor) ?? new Set();
+            candidates.add(key);
+            queues.set(anchor, candidates);
+        }
+    }
+    const batches = [];
+    const covered = new Set();
+    while (batches.length < limit) {
+        const best = [...queues].map(([anchor, keys]) => {
+            const next = [...keys].filter(key => !covered.has(key));
+            const mobileSources = next.filter(key => sources.get(key).some(record => record.platform === "mobile")).length;
+            return { anchor, next, mobileSources, total: keys.size };
+        }).filter(batch => batch.next.length > 1)
+            .sort((a, b) => Number(b.anchor.startsWith("recipe:")) - Number(a.anchor.startsWith("recipe:"))
+                || b.next.length - a.next.length || b.mobileSources - a.mobileSources || a.anchor.localeCompare(b.anchor))[0];
+        if (!best) break;
+        queues.delete(best.anchor);
+        for (const key of best.next) covered.add(key);
+        batches.push({
+            anchor: best.anchor,
+            distinct: best.total,
+            additional: best.next.length,
+            mobileSources: best.mobileSources,
+            plugins: best.next.map(key => sources.get(key)[0].name).sort((a, b) => a.localeCompare(b)),
+        });
+    }
+    return { sources: records.length, distinct: sources.size, ready, compare, review, pending: pending.size, covered: covered.size, batches };
+}
+
 function verifyPorts(files) {
     const { parseCx, activateCx } = require("./sync-cx-catalog.cjs").loadCxRuntime();
     for (const [file, source] of files) {
@@ -1089,7 +1159,7 @@ function verifyPorts(files) {
     }
 }
 
-const usage = "Usage: node cx-bulk-plugins.cjs [--json | --plan | --out-dir <new-folder> | --add-ready] [--source-dir <BetterDiscord sources> | --fetch-reviewed]";
+const usage = "Usage: node cx-bulk-plugins.cjs [--json | --plan | --batches | --out-dir <new-folder> | --add-ready] [--source-dir <BetterDiscord sources> | --fetch-reviewed]";
 
 function portFiles(ports) {
     const files = new Map();
@@ -1149,11 +1219,11 @@ async function main(rawArgs) {
         args.splice(args.indexOf("--fetch-reviewed"), 1);
     }
     const output = args.length === 2 && args[0] === "--out-dir" ? path.resolve(args[1]) : undefined;
-    if (!output && (args.length > 1 || args.length === 1 && !["--json", "--plan", "--add-ready"].includes(args[0])))
+    if (!output && (args.length > 1 || args.length === 1 && !["--json", "--plan", "--batches", "--add-ready"].includes(args[0])))
         throw new Error(usage);
     const reviewedSources = fetchReviewed ? await fetchReviewedBetterDiscordSources() : [];
     const records = scan(sourceDir && path.resolve(sourceDir), {
-        includeCompanions: args.includes("--plan") || args.includes("--json"),
+        includeCompanions: ["--plan", "--json", "--batches"].includes(args[0]),
         reviewedSources,
     });
     if (args[0] === "--add-ready") {
@@ -1177,6 +1247,19 @@ async function main(rawArgs) {
         process.stdout.write(JSON.stringify(buildPlan(records), null, 2) + "\n");
         return;
     }
+    if (args[0] === "--batches") {
+        const plan = buildBatchPlan(records);
+        console.log("Scanned " + plan.sources + " sources across " + plan.distinct + " distinct plugin names.");
+        console.log(plan.ready + " ready, " + plan.compare + " need source comparison, " + plan.review + " need source review, "
+            + plan.pending + " need adapters.");
+        console.log("Reusable source shapes first, then shared anchors. Counts are candidates and exclude overlap with earlier rows.");
+        for (const batch of plan.batches) {
+            console.log(batch.additional + " " + batch.anchor + " (" + batch.mobileSources + " with mobile sources)  "
+                + batch.plugins.slice(0, 5).join(", ") + (batch.plugins.length > 5 ? ", …" : ""));
+        }
+        console.log(plan.covered + " distinct candidates in these batches.");
+        return;
+    }
     const counts = ["desktop", "mobile", "betterdiscord"].map(platform =>
         records.filter(record => record.platform === platform).length + " " + platform);
     console.log("Inspected " + counts.join(", ") + " plugin sources.");
@@ -1195,4 +1278,4 @@ if (require.main === module) {
         process.exitCode = 1;
     });
 }
-module.exports = { buildPlan, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts };
+module.exports = { buildBatchPlan, buildPlan, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts };

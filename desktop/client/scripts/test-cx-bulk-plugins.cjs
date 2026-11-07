@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { buildPlan, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
+const { buildBatchPlan, buildPlan, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
 const { buildCatalog, loadCxRuntime } = require("./sync-cx-catalog.cjs");
 
 const source = [
@@ -266,6 +266,33 @@ const adapterPlan = buildPlan([
 const voiceQueue = adapterPlan.adapterQueues.find(queue => queue.target === "module:selectVoiceChannel");
 assert.equal(voiceQueue.count, 2);
 assert.deepEqual(voiceQueue.plugins[0].platforms, ["desktop", "mobile"]);
+const batchSource = (name, platform, status, ...targets) => ({ name, platform, status, targets });
+const batches = buildBatchPlan([
+    batchSource("Shared", "desktop", "needs-adapter", "event:MESSAGE_CREATE", "module:open"),
+    batchSource("shared", "mobile", "needs-adapter", "event:MESSAGE_CREATE"),
+    batchSource("Event only", "desktop", "needs-adapter", "event:MESSAGE_CREATE", "store:UserStore"),
+    batchSource("Other event", "betterdiscord", "needs-adapter", "event:MESSAGE_CREATE"),
+    batchSource("Module one", "desktop", "needs-adapter", "module:open", "store:UserStore"),
+    batchSource("Module two", "mobile", "needs-adapter", "module:open", "store:UserStore"),
+    batchSource("Already converted", "desktop", "in-catalog", "module:open"),
+    batchSource("already converted", "mobile", "needs-adapter", "module:open"),
+    batchSource("Ready", "desktop", "ready", "event:MESSAGE_CREATE"),
+    batchSource("Compare", "desktop", "compare-mobile", "event:MESSAGE_CREATE"),
+    batchSource("Review", "betterdiscord", "source-review", "event:MESSAGE_CREATE"),
+]);
+assert.equal(batches.sources, 11);
+assert.equal(batches.distinct, 9);
+assert.deepEqual([batches.ready, batches.compare, batches.review, batches.pending, batches.covered], [1, 1, 1, 5, 5]);
+assert.deepEqual(batches.batches.map(({ anchor, distinct, additional, mobileSources }) => [anchor, distinct, additional, mobileSources]),
+    [["module:open", 3, 3, 2], ["event:MESSAGE_CREATE", 3, 2, 0]]);
+assert.deepEqual(batches.batches[1].plugins, ["Event only", "Other event"]);
+const recipePriority = buildBatchPlan([
+    batchSource("One", "desktop", "needs-adapter", "recipe:hide-component", "event:MESSAGE_CREATE"),
+    batchSource("Two", "desktop", "needs-adapter", "recipe:hide-component", "event:MESSAGE_CREATE"),
+    batchSource("Three", "desktop", "needs-adapter", "event:MESSAGE_CREATE"),
+]);
+assert.equal(recipePriority.batches[0].anchor, "recipe:hide-component");
+assert.equal(recipePriority.covered, 2);
 async function testReviewedFetch() {
     const code = "reviewed source\n";
     const hash = require("node:crypto").createHash("sha256").update(code).digest("hex");
