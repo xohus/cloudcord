@@ -37437,6 +37437,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var destination = rules.get(origin.toLowerCase());
     return destination ? destination + path + query : text;
   }
+  function rewriteCxLinks(text, rules) {
+    return text.replace(/(^|[\s<("'[{])https?:\/\/([a-z0-9.-]+)/gi, (original, before3, host, offset) => {
+      var end = offset + original.length;
+      var next = text[end];
+      if (next && !/[/?#\s<>]/.test(next) && !/^["')\]},!]+(?=$|[\s<>])/.test(text.slice(end)))
+        return original;
+      var domain = host.replace(/\.+$/, "");
+      var destination = rules.get("https://" + domain.toLowerCase());
+      return destination ? before3 + destination + host.slice(domain.length) : original;
+    });
+  }
   function ingtonify(text) {
     var links2 = [
       ...text.matchAll(/https?:\/\/[^\s]+\.[^\s]+/gi)
@@ -39637,13 +39648,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
-      var replace2 = /^  before (send|edit) (replace|rewrite-origin) ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line12);
+      var replace2 = /^  before (send|edit|profile) (replace|rewrite-origin|rewrite-link) ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line12);
       if (replace2) {
         var stage1 = replace2[1];
-        var name12 = replace2[2] === "replace" ? "replaceLiteral" : "rewriteOrigin";
+        var name12 = replace2[2] === "replace" ? "replaceLiteral" : replace2[2] === "rewrite-link" ? "rewriteLink" : "rewriteOrigin";
+        if (stage1 === "profile" && name12 !== "rewriteLink")
+          throw new Error("Only link rewrites can apply to profile bios");
         var find = quoted(replace2[3], 240);
         var replacement = quoted(replace2[4], 240, true);
-        if (name12 === "rewriteOrigin") {
+        if (name12 !== "replaceLiteral") {
           find = parseCxHttpsOrigin(find);
           replacement = parseCxHttpsOrigin(replacement);
           if (find === replacement)
@@ -39919,8 +39932,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     for (var { kind: kind1 } of incoming)
       required.add(incomingPermissions[kind1]);
     for (var { stage, name: name2 } of transforms) {
+      if (stage === "profile") {
+        required.add("profile.redirectlinks");
+        continue;
+      }
       required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
-      if (name2 === "rewriteOrigin")
+      if (name2 === "rewriteOrigin" || name2 === "rewriteLink")
         required.add("messages.redirectlinks");
     }
     if (transforms.some((rule) => rule.name === "rewriteText" && !rule.rules.length))
@@ -39985,8 +40002,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       permissions: document.permissions,
       effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.nativeEffects.map((effect) => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : ""))).concat(document.uploadNaming ? [
         "Use " + document.uploadNaming.mode + " upload names " + (document.uploadNaming.manual ? "when selected for a file" : "by default")
-      ] : []).concat(document.messageTransforms.flatMap((rule) => rule.name === "rewriteOrigin" ? [
-        rule.find + " \u2192 " + rule.replacement
+      ] : []).concat(document.messageTransforms.flatMap((rule) => rule.name === "rewriteOrigin" || rule.name === "rewriteLink" ? [
+        (rule.name === "rewriteLink" ? rule.stage + " \xB7 " : "") + rule.find + " \u2192 " + rule.replacement
       ] : rule.name === "rewriteText" ? [
         `Apply ${rule.rules.length} text rules to message ${rule.stage}s and preserve links`
       ] : [])).concat(document.incoming.flatMap((rule) => {
@@ -40068,10 +40085,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         var transforms = document.messageTransforms.filter((transform) => transform.stage === stage2);
         if (!transforms.length)
           return "continue";
-        var register = stage2 === "send" ? host.registerMessageTransform : host.registerMessageEditTransform;
+        var register = stage2 === "send" ? host.registerMessageTransform : stage2 === "edit" ? host.registerMessageEditTransform : host.registerProfileBioTransform;
         if (!register)
-          throw new Error("This client cannot transform message " + stage2 + "s");
+          throw new Error("This client cannot apply the " + stage2 + " text transform");
         var origins = new Map(transforms.flatMap((rule) => rule.name === "rewriteOrigin" ? [
+          [
+            rule.find,
+            rule.replacement
+          ]
+        ] : []));
+        var links2 = new Map(transforms.flatMap((rule) => rule.name === "rewriteLink" ? [
           [
             rule.find,
             rule.replacement
@@ -40083,6 +40106,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               if (!rewrote)
                 result = rewriteCxOrigin(result, origins);
               rewrote = true;
+            } else if (rule2.name === "rewriteLink") {
+              if (!rewroteLinks)
+                result = rewriteCxLinks(result, links2);
+              rewroteLinks = true;
             } else if (rule2.name === "rewriteText")
               result = applyCxTextRules(result, rule2.rules);
             else if (rule2.name === "replaceLiteral")
@@ -40098,6 +40125,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             return text;
           var result = text;
           var rewrote = false;
+          var rewroteLinks = false;
           for (var rule of transforms) {
             var _ret = _loop3(rule);
             if (_type_of(_ret) === "object")
@@ -40275,7 +40303,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
       for (var stage of [
         "send",
-        "edit"
+        "edit",
+        "profile"
       ])
         _loop2(stage);
       for (var command of document.commands)
@@ -40385,6 +40414,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.transform": "Change text before Discord sends messages you compose",
         "messages.edit.transform": "Change text when you submit a message edit",
         "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
+        "profile.redirectlinks": "Replace the listed link origins in profile bios displayed on this device",
         "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
         "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
         "uploads.rename": "Change attachment filenames before Discord uploads them",
@@ -41494,6 +41524,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_leet_text = __esm({
     "../examples/cx/catalog/plugins/leet-text.cx"() {
       leet_text_default = 'plugin "LeetText":\n  needs commands.register\n  needs messages.send\n  on command "leet" with text:\n    send "${leet(text)}"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/link-converter.cx
+  var link_converter_default;
+  var init_link_converter = __esm({
+    "../examples/cx/catalog/plugins/link-converter.cx"() {
+      link_converter_default = 'plugin "LinkConverter":\n  needs messages.transform\n  needs messages.redirectlinks\n  needs profile.redirectlinks\n  before send rewrite-link "https://reddit.com" with "https://rxddit.com"\n  before profile rewrite-link "https://reddit.com" with "https://rxddit.com"\n  before send rewrite-link "https://www.reddit.com" with "https://rxddit.com"\n  before profile rewrite-link "https://www.reddit.com" with "https://rxddit.com"\n  before send rewrite-link "https://old.reddit.com" with "https://rxddit.com"\n  before profile rewrite-link "https://old.reddit.com" with "https://rxddit.com"\n  before send rewrite-link "https://x.com" with "https://fxtwitter.com"\n  before profile rewrite-link "https://x.com" with "https://fxtwitter.com"\n  before send rewrite-link "https://www.x.com" with "https://fxtwitter.com"\n  before profile rewrite-link "https://www.x.com" with "https://fxtwitter.com"\n  before send rewrite-link "https://instagram.com" with "https://vxinstagram.com"\n  before profile rewrite-link "https://instagram.com" with "https://vxinstagram.com"\n  before send rewrite-link "https://www.instagram.com" with "https://vxinstagram.com"\n  before profile rewrite-link "https://www.instagram.com" with "https://vxinstagram.com"\n  before send rewrite-link "https://tiktok.com" with "https://tnktok.com"\n  before profile rewrite-link "https://tiktok.com" with "https://tnktok.com"\n  before send rewrite-link "https://www.tiktok.com" with "https://tnktok.com"\n  before profile rewrite-link "https://www.tiktok.com" with "https://tnktok.com"\n  before send rewrite-link "https://vm.tiktok.com" with "https://tnktok.com"\n  before profile rewrite-link "https://vm.tiktok.com" with "https://tnktok.com"\n  before send rewrite-link "https://vt.tiktok.com" with "https://tnktok.com"\n  before profile rewrite-link "https://vt.tiktok.com" with "https://tnktok.com"\n  before send rewrite-link "https://youtube.com" with "https://yout-ube.com"\n  before profile rewrite-link "https://youtube.com" with "https://yout-ube.com"\n  before send rewrite-link "https://www.youtube.com" with "https://yout-ube.com"\n  before profile rewrite-link "https://www.youtube.com" with "https://yout-ube.com"\n  before send rewrite-link "https://m.youtube.com" with "https://yout-ube.com"\n  before profile rewrite-link "https://m.youtube.com" with "https://yout-ube.com"\n  before send rewrite-link "https://bsky.app" with "https://fxbsky.app"\n  before profile rewrite-link "https://bsky.app" with "https://fxbsky.app"\n  before send rewrite-link "https://www.bsky.app" with "https://fxbsky.app"\n  before profile rewrite-link "https://www.bsky.app" with "https://fxbsky.app"\n';
     }
   });
 
@@ -43032,6 +43070,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_ingtoninator();
       init_keyword_notify();
       init_leet_text();
+      init_link_converter();
       init_message_burst();
       init_message_notifier();
       init_more_commands();
@@ -43597,6 +43636,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "LeetText",
             source: leet_text_default
+          },
+          {
+            name: "LinkConverter",
+            source: link_converter_default
           },
           {
             name: "MessageBurst",
@@ -45906,6 +45949,25 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             return onEditMessage((message) => {
               if (!settings.safeMode?.enabled && typeof message.content === "string")
                 message.content = transform(message.content);
+            });
+          },
+          registerProfileBioTransform(transform) {
+            var target = findByFilePath("modules/user_profile/native/UserProfileAboutMeCard.tsx")?.default;
+            if (!target)
+              throw new Error("Discord's profile bio is unavailable");
+            return registerJsxAppearance([
+              target
+            ], (element) => {
+              if (element.type !== target)
+                return element;
+              var { displayProfile, pendingBio } = element.props;
+              var bio = displayProfile?.getPreviewBio?.(pendingBio);
+              if (typeof bio !== "string")
+                return element;
+              var rewritten = transform(bio);
+              return rewritten === bio ? element : React2.cloneElement(element, {
+                pendingBio: rewritten
+              });
             });
           },
           getUserAvatarUrl(id) {
@@ -50928,7 +50990,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a35730a718c86a3086a4caf903d5838e8f180a1e";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "9a6545d92f994db3543306c2ede1361a466c2c6b";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
