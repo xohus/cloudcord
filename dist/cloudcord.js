@@ -36496,6 +36496,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "PremiumAnimatedGiftButton"
           ]
         },
+        "chat-emoji-button": {
+          plugin: "HideEmojiButton",
+          label: "the composer expression picker shortcut",
+          css: 'button[aria-label="Select emoji"] { display: none !important; }',
+          mobile: {
+            hideComponentPaths: [
+              "modules/chat_input/native/accessories/ChatInputExpressionButton.tsx"
+            ]
+          }
+        },
         "chat-gif-picker": {
           plugin: "HideGifButton",
           label: "the GIF picker shortcut",
@@ -36841,6 +36851,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               MENTION_BACKGROUND: "#7c5cff40",
               MENTION_FOREGROUND: "#c9bcff"
             }
+          }
+        },
+        "highlight-mentions": {
+          plugin: "HighlightMentions",
+          label: "highlight messages that mention you in purple",
+          css: '[class*="mentioned"] { background: rgb(124 92 255 / 18%) !important; box-shadow: inset 3px 0 0 #7c5cff; }',
+          style: {
+            mentionHighlight: "#7c5cff2e"
           }
         },
         "underlined-links": {
@@ -40379,6 +40397,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-emoji-button.cx
+  var hide_emoji_button_default;
+  var init_hide_emoji_button = __esm({
+    "../examples/cx/catalog/plugins/hide-emoji-button.cx"() {
+      hide_emoji_button_default = 'plugin "HideEmojiButton":\n  needs appearance.hide\n  hide chat-emoji-button\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-empty-folders.cx
   var hide_empty_folders_default;
   var init_hide_empty_folders = __esm({
@@ -40680,6 +40706,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_highlight_links = __esm({
     "../examples/cx/catalog/plugins/highlight-links.cx"() {
       highlight_links_default = 'plugin "HighlightLinks":\n  needs appearance.style\n  style underlined-links\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/highlight-mentions.cx
+  var highlight_mentions_default;
+  var init_highlight_mentions = __esm({
+    "../examples/cx/catalog/plugins/highlight-mentions.cx"() {
+      highlight_mentions_default = 'plugin "HighlightMentions":\n  needs appearance.style\n  style highlight-mentions\n';
     }
   });
 
@@ -42171,6 +42205,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_dm_search();
       init_hide_edited_label();
       init_hide_embeds();
+      init_hide_emoji_button();
       init_hide_empty_folders();
       init_hide_gif_button();
       init_hide_gift_button();
@@ -42209,6 +42244,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_high_contrast_text();
       init_high_res_profile_images();
       init_highlight_links();
+      init_highlight_mentions();
       init_hop_on();
       init_ignore_calls();
       init_in_role();
@@ -42557,6 +42593,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_embeds_default
           },
           {
+            name: "HideEmojiButton",
+            source: hide_emoji_button_default
+          },
+          {
             name: "HideEmptyFolders",
             source: hide_empty_folders_default
           },
@@ -42707,6 +42747,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HighlightLinks",
             source: highlight_links_default
+          },
+          {
+            name: "HighlightMentions",
+            source: highlight_mentions_default
           },
           {
             name: "HopOn",
@@ -44251,6 +44295,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           },
           styleAppearanceTarget(target) {
             var style = cxAppearanceTargets[target].style;
+            if ("mentionHighlight" in style) {
+              var renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
+              var highlightColor = (0, import_react_native41.processColor)(style.mentionHighlight);
+              if (typeof highlightColor !== "number")
+                throw new Error("Discord's message highlight color is unavailable");
+              return overrideCxMethods(renderer, {
+                default(args, invoke) {
+                  var message = invoke(args);
+                  if (!message || typeof message !== "object" || !("mentioned" in message) || message.mentioned !== true || !("highlightColor" in message) || typeof message.highlightColor !== "number" || message.highlightColor === 0)
+                    return message;
+                  return {
+                    ...message,
+                    highlightColor
+                  };
+                }
+              }, () => !settings.safeMode?.enabled);
+            }
             if ("drawerWidthDelta" in style)
               return registerChannelDrawerWidth(style.drawerWidthDelta);
             if ("renderedComponents" in style)
@@ -49501,7 +49562,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "77de4b2941f4e0cb104614549d4c2d5fc53982e9";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "556823a40d44676bb2cc618125299cf5e4ae77d9";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
