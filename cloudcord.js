@@ -38355,6 +38355,90 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // src/lib/api/cxUploadNames.ts
+  function createCxUploadAnonymiser(rule) {
+    var choices = /* @__PURE__ */ new WeakMap();
+    var names = /* @__PURE__ */ new WeakMap();
+    var spoilers = false;
+    function isAnonymous(upload) {
+      return choices.get(upload) ?? choices.get(identity(upload)) ?? !rule.manual;
+    }
+    function apply(files) {
+      if (!Array.isArray(files))
+        return;
+      var changed = [];
+      try {
+        for (var upload of files) {
+          if (!isObject(upload))
+            continue;
+          var rename = isAnonymous(upload);
+          var before3 = upload.filename;
+          if (typeof before3 !== "string") {
+            if (rename)
+              throw new Error("Could not anonymise an attachment filename");
+            continue;
+          }
+          var cached = names.get(upload);
+          var unprefixed = before3.replace(/^SPOILER_/, "");
+          var suffix = /(?:\.tar\.[a-z0-9]+|\.[a-z0-9]+)$/i.exec(unprefixed);
+          var extension = suffix?.index ? suffix[0] : "";
+          var original = cached?.original ?? unprefixed.slice(0, unprefixed.length - extension.length);
+          var wasSpoiler = cached?.wasSpoiler ?? before3.startsWith("SPOILER_");
+          var basename = cached?.basename ?? (rule.mode === "consistent" ? rule.basename : rule.mode === "timestamp" ? String(Date.now()) : Array.from({
+            length: rule.length
+          }, () => characters[Math.floor(Math.random() * characters.length)]).join(""));
+          var prefix2 = spoilers || upload.spoiler || wasSpoiler ? "SPOILER_" : "";
+          var sent = prefix2 + (rename ? basename : original) + extension;
+          if (sent !== before3) {
+            changed.push({
+              upload,
+              previous: before3
+            });
+            upload.filename = sent;
+            if (upload.filename !== sent)
+              throw new Error("Could not anonymise an attachment filename");
+          }
+          names.set(upload, {
+            original,
+            basename,
+            wasSpoiler
+          });
+        }
+      } catch (error) {
+        for (var { upload: upload1, previous } of changed.reverse()) {
+          try {
+            upload1.filename = previous;
+          } catch (e) {
+          }
+        }
+        throw error;
+      }
+    }
+    return {
+      apply,
+      isAnonymous,
+      setAnonymous(upload, value) {
+        choices.set(upload, value);
+        choices.set(identity(upload), value);
+      },
+      setSpoilers(value) {
+        spoilers = value ?? !spoilers;
+        return spoilers;
+      }
+    };
+  }
+  var characters, isObject, identity;
+  var init_cxUploadNames = __esm({
+    "src/lib/api/cxUploadNames.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      characters = "0123456789bdfhjkmnpqrstvwxz";
+      isObject = (value) => typeof value === "object" && value !== null;
+      identity = (upload) => isObject(upload.item) ? upload.item : upload;
+    }
+  });
+
   // src/lib/api/cxProfileMenu.ts
   function isCxProfileUserId(id) {
     return typeof id === "string" && /^\d{17,20}$/.test(id);
@@ -38633,7 +38717,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
       textRules = void 0;
       var declaration2 = /^  needs ([a-z.]+)$/.exec(line12);
-      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length) {
+      if (declaration2 && !commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) {
         var permission2 = declaration2[1];
         if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission2) || permissions.has(permission2))
           throw new Error("Unknown or duplicate CX permission");
@@ -38689,6 +38773,37 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
       if (line12 === "  before send suppressReplyPing" && !suppressReplyPing) {
         suppressReplyPing = true;
+        current = void 0;
+        return "continue";
+      }
+      var upload = /^  before upload anonymise (random (\d{1,2})|timestamp|consistent ("(?:[^"\\]|\\.)*"))( manual)?$/.exec(line12);
+      if (upload) {
+        if (uploadNaming)
+          throw new Error("Use one upload naming rule");
+        var manual = Boolean(upload[4]);
+        if (upload[2]) {
+          var length = Number(upload[2]);
+          if (length < 1 || length > 24)
+            throw new Error("Use a random filename length from 1 to 24");
+          uploadNaming = {
+            mode: "random",
+            length,
+            manual
+          };
+        } else if (upload[3]) {
+          var basename = quoted(upload[3], 48);
+          if (!/^[\w-]+$/.test(basename) || /^spoiler_/i.test(basename))
+            throw new Error("Use letters, numbers, underscores or hyphens for upload names");
+          uploadNaming = {
+            mode: "consistent",
+            basename,
+            manual
+          };
+        } else
+          uploadNaming = {
+            mode: "timestamp",
+            manual
+          };
         current = void 0;
         return "continue";
       }
@@ -38804,6 +38919,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (line12 === "    copy client diagnostics" && current && !current.actions.length && !current.text && !current.inputs.length) {
         current.actions.push({
           kind: "copy-diagnostics"
+        });
+        current = void 0;
+        return "continue";
+      }
+      var spoilers = /^    set upload spoilers "([a-z][a-z0-9_-]{0,31})"$/.exec(line12);
+      if (spoilers && uploadNaming && current && !current.actions.length && !current.text && current.inputs.length === 1 && current.inputs[0].name === spoilers[1] && current.inputs[0].type === "boolean") {
+        current.actions.push({
+          kind: "upload-spoilers",
+          input: spoilers[1]
         });
         current = void 0;
         return "continue";
@@ -38950,6 +39074,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var styledTargets = /* @__PURE__ */ new Set();
     var nativeEffects = /* @__PURE__ */ new Set();
     var avatarResolution;
+    var uploadNaming;
     var previousRule;
     var profileActions = /* @__PURE__ */ new Set();
     var incoming = [];
@@ -38960,7 +39085,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var textRules;
     for (var line1 of lines)
       _loop2(line1);
-    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length || commands3.some((command) => !command.actions.length))
+    if (!commands3.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length && !uploadNaming || commands3.some((command) => !command.actions.length))
       throw new Error("A plugin needs a command or a supported behavior");
     var required = /* @__PURE__ */ new Set();
     if (commands3.length)
@@ -38979,6 +39104,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       required.add("profilemenu.copy");
     if (readsAvatar)
       required.add("profile.avatar");
+    if (uploadNaming)
+      required.add("uploads.rename");
     for (var permission of clientPermissions)
       required.add(permission);
     for (var { kind: kind1 } of incoming)
@@ -39025,6 +39152,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         ...nativeEffects
       ],
       avatarResolution,
+      uploadNaming,
       previousRule,
       profileActions: [
         ...profileActions
@@ -39047,7 +39175,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       kind: document.kind,
       name: document.name,
       permissions: document.permissions,
-      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.nativeEffects.map((effect) => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : ""))).concat(document.messageTransforms.flatMap((rule) => rule.name === "rewriteOrigin" ? [
+      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.nativeEffects.map((effect) => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : ""))).concat(document.uploadNaming ? [
+        "Use " + document.uploadNaming.mode + " upload names " + (document.uploadNaming.manual ? "when selected for a file" : "by default")
+      ] : []).concat(document.messageTransforms.flatMap((rule) => rule.name === "rewriteOrigin" ? [
         rule.find + " \u2192 " + rule.replacement
       ] : rule.name === "rewriteText" ? [
         `Apply ${rule.rules.length} text rules to message ${rule.stage}s and preserve links`
@@ -39104,6 +39234,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var cleanups = [];
     var activeLookups = /* @__PURE__ */ new Map();
     var active = true;
+    var uploadAnonymiser = document.uploadNaming && createCxUploadAnonymiser(document.uploadNaming);
     function stop() {
       active = false;
       for (var controller of activeLookups.values())
@@ -39216,6 +39347,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               }
               return "continue";
             }
+            if (action3.kind === "upload-spoilers") {
+              var value2 = inputs.get(action3.input);
+              var enabled = uploadAnonymiser?.setSpoilers(value2 ? value2 === "true" : void 0);
+              invocation?.reply?.(enabled ? "Upload spoilers enabled." : "Upload spoilers disabled.");
+              return "continue";
+            }
             if (action3.kind === "toast") {
               host.toast(action3.message);
               return "continue";
@@ -39223,24 +39360,24 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var invalid = false;
             var message = action3.choices ? chooseOne(action3.choices) : action3.message.replace(textExpression, (_2, name, args) => {
               var values = args === void 0 ? [] : argumentNames(args).map((input2) => inputs.get(input2));
-              var value2;
+              var value3;
               if (args === void 0)
-                value2 = inputs.get(name);
+                value3 = inputs.get(name);
               else if (name === "avatar")
-                value2 = getAvatarUrl(host, grants, values[0]);
+                value3 = getAvatarUrl(host, grants, values[0]);
               else if (Object.prototype.hasOwnProperty.call(cxClientFunctions, name)) {
                 var service = name;
                 if (grants.has(cxClientFunctions[service].permission)) {
                   try {
-                    value2 = invocation?.lookup?.(service, values[0]);
+                    value3 = invocation?.lookup?.(service, values[0]);
                   } catch (e) {
                   }
                 }
               } else
-                value2 = textFunctions[name](...values);
-              if (value2 === void 0)
+                value3 = textFunctions[name](...values);
+              if (value3 === void 0)
                 invalid = true;
-              return value2 ?? "";
+              return value3 ?? "";
             });
             if (invalid) {
               if (action3.fallback && grants.has("reply.local"))
@@ -39276,6 +39413,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           return outgoing;
         }, command2.text, command2.actions.some(sendsMessage), command2.actions.some((action2) => action2.kind === "reply or send"), command2.inputs));
       };
+      if (uploadAnonymiser) {
+        if (!host.registerUploadAnonymiser)
+          throw new Error("This client cannot anonymise uploads");
+        cleanups.push(host.registerUploadAnonymiser(uploadAnonymiser));
+      }
       if (document.incoming.length) {
         if (!host.registerIncomingRules)
           throw new Error("This client cannot run incoming rules");
@@ -39391,6 +39533,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxNativeEffects();
       init_cxPreviousMessage();
       init_cxTextRules();
+      init_cxUploadNames();
       init_cxProfileMenu();
       init_cxProfileMenu();
       init_cxClientCommands();
@@ -39410,7 +39553,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
         "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
         "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
-        "uploads.rename": "Change the filename extension of listed attachments before Discord uploads them",
+        "uploads.rename": "Change attachment filenames before Discord uploads them",
         "replies.suppressping": "Send replies without pinging the person you reply to",
         "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
         "guild.members": "Read loaded members with the role you select in the current server",
@@ -39497,6 +39640,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ] : action.kind === "copy-diagnostics" ? [
         "reply.local",
         "diagnostics.copy"
+      ] : action.kind === "upload-spoilers" ? [
+        "reply.local",
+        "uploads.rename"
       ] : actionPermissions[action.kind];
       sendsMessage = (action) => action.kind === "send" || action.kind === "reply or send";
     }
@@ -39523,6 +39669,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_amoled_mode = __esm({
     "../examples/cx/catalog/plugins/amoled-mode.cx"() {
       amoled_mode_default = 'plugin "AmoledMode":\n  needs appearance.style\n  style amoled-background\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/anonymise-file-names.cx
+  var anonymise_file_names_default;
+  var init_anonymise_file_names = __esm({
+    "../examples/cx/catalog/plugins/anonymise-file-names.cx"() {
+      anonymise_file_names_default = 'plugin "AnonymiseFileNames":\n  needs uploads.rename\n  needs commands.register\n  needs reply.local\n  before upload anonymise random 7\n  on command "spoiler":\n    input "value" boolean optional\n    set upload spoilers "value"\n';
     }
   });
 
@@ -41724,6 +41878,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_character_counter2();
       init_always_animate();
       init_amoled_mode();
+      init_anonymise_file_names();
       init_at_someone();
       init_auto_vaporwave();
       init_avatar_grabber();
@@ -41961,6 +42116,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "AmoledMode",
             source: amoled_mode_default
+          },
+          {
+            name: "AnonymiseFileNames",
+            source: anonymise_file_names_default
           },
           {
             name: "AtSomeone",
@@ -42972,6 +43131,85 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     };
   }
+  function registerUploadAnonymiser(anonymiser) {
+    if (hasUploadAnonymiser)
+      throw new Error("An upload naming rule is already enabled");
+    var preview2 = findByFilePath("modules/media_uploads/native/UploadPreviewActionSheet.tsx")?.default;
+    if (typeof preview2 !== "function")
+      throw new Error("Discord's attachment preview is unavailable");
+    var uploader = findByFilePath("lib/uploader/native/CloudUploader.tsx")?.default?.prototype;
+    var active = true;
+    var enabled = () => active && !settings.safeMode?.enabled;
+    function AnonymousUploadRow({ upload }) {
+      var [selected, setSelected] = React2.useState(() => anonymiser.isAnonymous(upload));
+      return /* @__PURE__ */ jsx(TableRow, {
+        label: "Use anonymous filename",
+        subLabel: selected ? "On" : "Off",
+        onPress: () => {
+          if (!enabled())
+            return;
+          var next = !selected;
+          anonymiser.setAnonymous(upload, next);
+          setSelected(next);
+        }
+      });
+    }
+    function PreviewWithAnonymousRow({ previewProps }) {
+      var output = preview2(previewProps);
+      var { upload } = previewProps;
+      if (!enabled() || !upload || typeof upload !== "object")
+        return output;
+      var inserted = false;
+      function insert(tree, depth = 0) {
+        if (inserted || depth >= 12)
+          return tree;
+        if (Array.isArray(tree)) {
+          var next = tree.map((child) => insert(child, depth + 1));
+          return inserted ? next : tree;
+        }
+        if (!React2.isValidElement(tree))
+          return tree;
+        var { children, onLayout, spacing } = tree.props;
+        if (tree.type === Stack && spacing === 16 && typeof onLayout === "function") {
+          inserted = true;
+          return React2.cloneElement(tree, {
+            children: [
+              ...React2.Children.toArray(children),
+              /* @__PURE__ */ jsx(TableRowGroup, {
+                title: "CloudCord",
+                children: /* @__PURE__ */ jsx(AnonymousUploadRow, {
+                  upload
+                })
+              }, "cx-anonymous-upload")
+            ]
+          });
+        }
+        var next1 = insert(children, depth + 1);
+        return next1 === children ? tree : React2.cloneElement(tree, {
+          children: next1
+        });
+      }
+      return insert(output);
+    }
+    var stopUploads = overrideCxMethods(uploader, {
+      uploadFiles: (args, original) => {
+        anonymiser.apply(args[0]);
+        return original(args);
+      }
+    }, enabled);
+    var stopPreview = registerJsxAppearance([
+      preview2
+    ], (element) => /* @__PURE__ */ jsx(PreviewWithAnonymousRow, {
+      previewProps: element.props
+    }));
+    hasUploadAnonymiser = true;
+    return () => {
+      active = false;
+      stopPreview();
+      stopUploads();
+      hasUploadAnonymiser = false;
+    };
+  }
   function registerStaticTypingDots() {
     if (!staticTypingDots) {
       var TypingDots2 = function({ element }) {
@@ -43588,6 +43826,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               throw new Error("This loader does not support color overrides");
             return registerColorOverlay(style);
           },
+          registerUploadAnonymiser,
           registerNativeEffect(effect, avatarResolution = 256) {
             var enabled = () => !settings.safeMode?.enabled;
             switch (effect) {
@@ -44050,7 +44289,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, hasUploadAnonymiser, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -44094,6 +44333,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       SpotifyStore = findByStoreNameLazy("SpotifyStore");
       SelectedChannelStore = findByStoreNameLazy("SelectedChannelStore");
       appearanceBindings = /* @__PURE__ */ new Map();
+      hasUploadAnonymiser = false;
       profileMenuActions = /* @__PURE__ */ new Set();
     }
   });
@@ -44585,7 +44825,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         function isArray(input) {
           return input instanceof Array || Object.prototype.toString.call(input) === "[object Array]";
         }
-        function isObject(input) {
+        function isObject2(input) {
           return input != null && Object.prototype.toString.call(input) === "[object Object]";
         }
         function isObjectEmpty(obj) {
@@ -44851,7 +45091,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           var res = extend({}, parentConfig), prop;
           for (prop in childConfig) {
             if (hasOwnProp(childConfig, prop)) {
-              if (isObject(parentConfig[prop]) && isObject(childConfig[prop])) {
+              if (isObject2(parentConfig[prop]) && isObject2(childConfig[prop])) {
                 res[prop] = {};
                 extend(res[prop], parentConfig[prop]);
                 extend(res[prop], childConfig[prop]);
@@ -44863,7 +45103,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             }
           }
           for (prop in parentConfig) {
-            if (hasOwnProp(parentConfig, prop) && !hasOwnProp(childConfig, prop) && isObject(parentConfig[prop])) {
+            if (hasOwnProp(parentConfig, prop) && !hasOwnProp(childConfig, prop) && isObject2(parentConfig[prop])) {
               res[prop] = extend({}, res[prop]);
             }
           }
@@ -46690,7 +46930,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               return parseInt(obj, 10);
             });
             configFromArray(config);
-          } else if (isObject(input)) {
+          } else if (isObject2(input)) {
             configFromObject(config);
           } else if (isNumber(input)) {
             config._d = new Date(input);
@@ -46704,7 +46944,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             strict = locale2;
             locale2 = void 0;
           }
-          if (isObject(input) && isObjectEmpty(input) || isArray(input) && input.length === 0) {
+          if (isObject2(input) && isObjectEmpty(input) || isArray(input) && input.length === 0) {
             input = void 0;
           }
           c2._isAMomentObject = true;
@@ -48731,7 +48971,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "31db23c8f07ba2763abda646d89ab9e62bf8f463";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "77014725577d4d662560feadbe00c02b23b89138";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
