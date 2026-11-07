@@ -763,6 +763,10 @@ const desktopEffectRecipes = {
         match: String.raw`/\i\.has\(\i\.type\)&&\(0,\i\.\i\)\(\i\)/`,
         replace: "false",
     },
+    DoubleClickEdit: {
+        effect: "double-click-edit",
+        sha256: "5c2c99fa13c34244982d650fce1bfc9c6a2dba5bc683ef0bcadde814374fe926",
+    },
     StopAutoUnread: {
         effect: "stop-auto-unread",
         find: "}maybeAutoUpgradeChannel(",

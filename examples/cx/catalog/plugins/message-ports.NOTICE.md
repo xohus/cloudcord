@@ -8,6 +8,7 @@ These GPL-3.0-or-later examples adapt features from CloudCord and BetterDiscord 
 - Signature by Vee, Rini, ImBanana, and KrystalSkull.
 - AutoVaporwave and ZeroWidthSanitizer by rootpoi, kraethis, and ewlle.
 - NoReplyMention by DustyAngel47, rae, pylix, and outfoxxed.
+- DoubleClickToReply uses a CloudCord implementation of the shortcut described by Atamol. The CX version uses an unmodified double-click on desktop and a double-tap on mobile. [Original shortcut description](https://github.com/Atamol/BetterDiscordPlugins/tree/efad6c53bfacaca5ae92d5133245e0b172351ae0/DoubleClickToReply)
 - SendTimestamps by Vee, GGTyler, and Grzesiek11.
 - SilentMessageToggle by Nuckyz, CatNoir, and Z1xus.
 - TextReplace by AutumnVN, TheKodeToad, Etorix, and Ape.

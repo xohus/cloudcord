@@ -21,6 +21,8 @@ export const cxNativeEffects = {
     "image-full-url": { permission: "media.labels", label: "Show the full URL of images and GIFs" },
     "descriptive-gif-alt": { permission: "media.labels", label: "Use meaningful filenames for GIFs with generic alt text" },
     "preserve-image-links": { permission: "media.labels", label: "Show image links alongside their chat previews" },
+    "double-click-edit": { permission: "messages.openeditor", label: "Open the editor for your own message on double-click or double-tap" },
+    "double-click-reply": { permission: "messages.openreply", label: "Open a reply to another user's message on double-click or double-tap" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
     "sticker-links": { permission: "stickers.links", label: "Add Copy Sticker Link and Open Sticker Link actions" },
 } as const;
@@ -28,6 +30,16 @@ export const cxNativeEffects = {
 export type CxNativeEffect = keyof typeof cxNativeEffects;
 export const cxAvatarResolutions = [256, 512, 1024, 2048, 4096] as const;
 export type CxAvatarResolution = typeof cxAvatarResolutions[number];
+
+export function getCxMessageGesture(message: {
+    author?: { id?: string; }; content?: string; type?: number; flags?: number; deleted?: boolean; state?: string;
+} | undefined, currentUser: string | undefined, gestures: { edit: number; reply: number; }) {
+    const author = message?.author?.id;
+    if (!message || !author || !currentUser || message.deleted || ((message.flags ?? 0) & 64) !== 0
+        || message.state && message.state !== "SENT" || message.type !== 0 && message.type !== 19) return;
+    if (author === currentUser) return gestures.edit && typeof message.content === "string" && message.content ? "edit" : undefined;
+    if (gestures.reply) return "reply";
+}
 
 // FixFileExtensions by thororen (GPL-3.0-or-later).
 const extensionGroups = {

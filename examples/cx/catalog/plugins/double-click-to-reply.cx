@@ -1,0 +1,3 @@
+plugin "DoubleClickToReply":
+  needs messages.openreply
+  use double-click-reply

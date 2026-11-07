@@ -1,0 +1,3 @@
+plugin "DoubleClickEdit":
+  needs messages.openeditor
+  use double-click-edit

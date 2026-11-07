@@ -18,6 +18,7 @@ import { settings } from "@lib/api/settings";
 import { resolveSemanticColor, semanticColors } from "@lib/ui/color";
 import { showToast } from "@lib/ui/toasts";
 import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
+import { getCxMessageGesture } from "@lib/api/cx";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
@@ -643,6 +644,11 @@ function registerTreeAppearance(rule: {
                 || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons)
             );
     };
+    return registerRenderedTree(target, tree =>
+        keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide));
+}
+
+function registerRenderedTree(target: string | object, change: (tree: ReactNode) => ReactNode) {
     const wrappers = new WeakMap<object, { type: ComponentType<object>; forwardsRef: boolean; }>();
     return registerJsxAppearance([target], element => {
         if (typeof target !== "string" && element.type !== target) return element;
@@ -661,7 +667,7 @@ function registerTreeAppearance(rule: {
             const render = nativeRender;
             function FilteredTree(props: object, ref?: unknown) {
                 const tree = render(props, ref) as ReactNode;
-                return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
+                return settings.safeMode?.enabled ? tree : change(tree);
             }
             const filtered = forwardsRef ? React.forwardRef(FilteredTree) : FilteredTree;
             wrapper = { type: memoized ? React.memo(filtered, component.compare) : filtered, forwardsRef };
@@ -671,6 +677,56 @@ function registerTreeAppearance(rule: {
         if (wrapper.forwardsRef) props.ref ??= Object.getOwnPropertyDescriptor(element, "ref")?.value;
         return React.createElement(wrapper.type, props);
     });
+}
+
+let messageGestures: { edit: number; reply: number; stop: () => void; } | undefined;
+
+function registerMessageGesture(mode: "edit" | "reply") {
+    if (!messageGestures) {
+        const renderer = findByFilePath("modules/messages/native/MessagesRenderer.tsx")?.default;
+        const { getNativeSyntheticEventData } = findByProps("getNativeSyntheticEventData") ?? {};
+        if (!renderer || typeof getNativeSyntheticEventData !== "function") throw new Error("Discord's message gestures are unavailable");
+        const gestures = { edit: 0, reply: 0 };
+        type GestureProps = {
+            channelId?: string; children?: ReactNode;
+            onDoubleTapMessage?: (event: unknown) => unknown;
+            onInitiateEdit?: (event: unknown) => unknown;
+            onInitiateReply?: (event: unknown) => unknown;
+        };
+        function bind(tree: ReactNode, depth = 0): ReactNode {
+            if (depth >= 16) return tree;
+            if (Array.isArray(tree)) return mapMediaEntries(tree, child => bind(child, depth + 1));
+            if (!React.isValidElement<GestureProps>(tree)) return tree;
+            const { children, channelId, onDoubleTapMessage, onInitiateEdit, onInitiateReply } = tree.props;
+            if (typeof channelId === "string" && typeof onDoubleTapMessage === "function"
+                && typeof onInitiateEdit === "function" && typeof onInitiateReply === "function") {
+                return React.cloneElement(tree, {
+                    onDoubleTapMessage(event: unknown) {
+                        if (!settings.safeMode?.enabled && (gestures.edit || gestures.reply)
+                            && channelId === SelectedChannelStore?.getChannelId?.()) {
+                            const id = getNativeSyntheticEventData(event)?.messageId;
+                            const message = isCxProfileUserId(id) ? MessageStore?.getMessage?.(channelId, id) : undefined;
+                            const action = getCxMessageGesture(message, UserStore?.getCurrentUser?.()?.id, gestures);
+                            if (action === "edit") return onInitiateEdit(event);
+                            if (action === "reply") return onInitiateReply(event);
+                        }
+                        return onDoubleTapMessage(event);
+                    },
+                });
+            }
+            const next = bind(children, depth + 1);
+            return next === children ? tree : React.cloneElement(tree, { children: next });
+        }
+        messageGestures = Object.assign(gestures, { stop: registerRenderedTree(renderer, bind) });
+    }
+    const binding = messageGestures;
+    binding[mode]++;
+    return () => {
+        binding[mode]--;
+        if (binding.edit || binding.reply) return;
+        messageGestures = undefined;
+        binding.stop();
+    };
 }
 
 type PickerTab = "gif" | "sticker";
@@ -1271,6 +1327,9 @@ export default function CxExtensions() {
                                 },
                             }, enabled);
                         }
+                        case "double-click-edit":
+                        case "double-click-reply":
+                            return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "attachment-image-quality":
                         case "original-attachment-images":
                             return registerAttachmentImageQuality(effect === "original-attachment-images");

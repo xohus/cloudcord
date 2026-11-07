@@ -5,12 +5,12 @@ import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
-import { formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink } from "@utils/cx";
+import { formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
 import { findByProps, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispatch, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PermissionsBits, PermissionStore, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 
 const session = createCxSession();
@@ -28,6 +28,43 @@ let imageLinkUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
+const messageGestures = { edit: 0, reply: 0 };
+
+// DoubleClickEdit by rootpoi, kraethis and ewlle (GPL-3.0-or-later).
+function onMessageDoubleClick(event: MouseEvent) {
+    const { target } = event;
+    if (!(target instanceof Element) || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey
+        || target.closest("a, button, input, textarea, [contenteditable], [role='button'], img, video, [class*='spoiler']")) return;
+    const row = target.closest<HTMLElement>("[data-message-id], [data-list-item-id^='chat-messages'], [id^='chat-messages-']");
+    const channelId = SelectedChannelStore.getChannelId();
+    const listId = /^chat-messages(?:[_-]+chat-messages)?[_-]+(?:(\d{17,20})[_-])?(\d{17,20})$/.exec(row?.dataset.listItemId ?? row?.id ?? "");
+    if (!channelId || listId?.[1] && listId[1] !== channelId) return;
+    const messageId = row?.dataset.messageId ?? listId?.[2];
+    if (!isCxProfileUserId(messageId)) return;
+    const message = MessageStore.getMessage(channelId, messageId);
+    const action = getCxMessageGesture(message, UserStore.getCurrentUser()?.id, messageGestures);
+    if (!message || !action) return;
+    if (action === "edit") {
+        const editor = findByProps("startEditMessage", "editMessage");
+        if (typeof editor?.startEditMessage !== "function") return;
+        editor.startEditMessage(channelId, messageId, message.content);
+    } else {
+        const channel = ChannelStore.getChannel(channelId);
+        if (!channel || channel.guild_id && !PermissionStore.can(channel.isThread() ? PermissionsBits.SEND_MESSAGES_IN_THREADS : PermissionsBits.SEND_MESSAGES, channel)) return;
+        void FluxDispatcher.dispatch({ type: "CREATE_PENDING_REPLY", channel, message, shouldMention: true, showMentionToggle: Boolean(channel.guild_id) });
+        ComponentDispatch?.dispatchToLastSubscribed?.("TEXTAREA_FOCUS");
+    }
+    event.preventDefault();
+}
+
+function registerMessageGesture(mode: "edit" | "reply") {
+    if (!messageGestures.edit && !messageGestures.reply) document.addEventListener("dblclick", onMessageDoubleClick);
+    messageGestures[mode]++;
+    return () => {
+        messageGestures[mode]--;
+        if (!messageGestures.edit && !messageGestures.reply) document.removeEventListener("dblclick", onMessageDoubleClick);
+    };
+}
 
 function hideDisabledEmojiInPicker() {
     const match = (value: any) => typeof value?.type?.render === "function" && String(value.type.render).includes("EMOJI_PICKER_POPOUT");
@@ -304,6 +341,9 @@ export function CxSettings() {
                         case "preserve-image-links":
                             imageLinkUsers++;
                             return () => { imageLinkUsers--; };
+                        case "double-click-edit":
+                        case "double-click-reply":
+                            return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
                         case "scroll-to-latest":
                             return bindCxChannelOpenRead({ dispatcher: FluxDispatcher, read: ReadStateStore,
                                 selected: () => SelectedChannelStore?.getChannelId(), user: () => UserStore?.getCurrentUser()?.id,

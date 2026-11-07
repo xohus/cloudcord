@@ -209,8 +209,25 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         const previousEdits = [];
         const jumps = [];
+        const composerActions = [];
         const messageEditor = { editMessage: (channel, id, message) => previousEdits.push([channel, id, message.content]),
-            jumpToMessage: target => jumps.push(target) };
+            jumpToMessage: target => jumps.push(target),
+            startEditMessage: (channel, id, content) => composerActions.push(["edit", id, content]) };
+        const gestureChannel = "129876543219876543";
+        const gestureMessages = new Map([
+            [me, { id: me, author: { id: me }, content: "my message", type: 0, channel_id: gestureChannel, state: "SENT" }],
+            [sender, { id: sender, author: { id: sender }, content: "their message", type: 19, channel_id: gestureChannel }],
+            [other, { id: other, author: { id: sender }, type: 0, flags: 64, channel_id: gestureChannel }],
+        ]);
+        const documentListeners = new Map();
+        function MessagesRenderer(props) { return props.output; }
+        class GestureElement {
+            constructor(id, interactive = false) { this.id = id; this.interactive = interactive; }
+            closest(selector) {
+                return selector.startsWith("[data-message-id]") ? { dataset: { listItemId: "chat-messages___chat-messages-" + gestureChannel + "-" + this.id } }
+                    : this.interactive ? this : null;
+            }
+        }
         const reactionChannel = "123456789123456789";
         const reactionCache = { _array: [{ id: sender, channel_id: reactionChannel }, { id: other, channel_id: reactionChannel }] };
         const reactionCalls = [];
@@ -277,7 +294,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             }) },
             MessageStore: {
                 getMessages: id => id === reactionChannel ? reactionCache : undefined,
-                getMessage: (_channel, id) => ({ author: { id: id === "partial" ? sender : me } }),
+                getMessage: (channel, id) => channel === gestureChannel ? gestureMessages.get(id) : { author: { id: id === "partial" ? sender : me } },
                 getLastMessage: () => latestMessage, getLastEditableMessage: () => latestMessage,
             },
             EmojiStore: {
@@ -477,6 +494,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 waitForSubscriptions: emojiPickerWaiters, findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
                 : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime
                     : key === "removeRelationship" ? relationshipActions : key === "sendMessage" ? commandApi
+                        : key === "startEditMessage" ? messageEditor
                         : key === "convertNameToSurrogate" ? emojiConverters : undefined },
             "@webpack/common": { React: { isValidElement: element => !!element?.type && !!element?.props,
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
@@ -539,6 +557,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/useMediaViewerSources.tsx") ? viewerSources
                 : path.endsWith("/GIFPickerItemView.tsx") ? gifPicker
                 : path.endsWith("/MarkupParsers.tsx") ? markupParser
+                : path.endsWith("/MessagesRenderer.tsx") ? { default: MessagesRenderer }
                 : path.endsWith("/UserProfileAboutMeCard.tsx") ? { default: AboutMeCard }
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
@@ -556,6 +575,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
                         : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions
                             : name === "intl" ? headerMessages : name === "AttachmentType" ? attachmentTypes : name === "addReaction" ? reactionActions
+                                : name === "getNativeSyntheticEventData" ? { getNativeSyntheticEventData: event => event.nativeEvent }
                                 : name === "convertNameToSurrogate" ? emojiConverters : name in expressionSheets ? expressionSheets
                                     : name === "showSimpleActionSheet" ? linkSheet : name in headerIcons ? headerIcons : undefined },
             "@metro/common": { React: {
@@ -582,11 +602,17 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         vm.runInNewContext(transformSync(read(adapter), { loader: "tsx", format: "cjs", jsx: "automatic" }).code, {
             module,
             IS_WEB: false,
+            Element: GestureElement,
             VencordNative: { native: { openExternal } },
             setTimeout: callback => pendingNotifications.push(callback),
             document: {
                 createElement: () => ({ remove() { stylesheet = undefined; } }),
-                head: { append: value => { stylesheet = value; } }
+                head: { append: value => { stylesheet = value; } },
+                addEventListener: (name, handler) => documentListeners.set(name, handler),
+                removeEventListener: (name, handler) => {
+                    assert.equal(documentListeners.get(name), handler);
+                    documentListeners.delete(name);
+                },
             },
             require(name) {
                 assert.ok(name in mocks, "Unmocked adapter dependency: " + name);
@@ -2373,6 +2399,61 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             assert.equal(wrapped.type(wrapped.props), card);
         }
 
+        selectCatalog("DoubleClickEdit");
+        click(render(), "Allow for this session");
+        selectCatalog("DoubleClickToReply");
+        click(render(), "Allow for this session");
+        const savedGestureChannel = selectedChannel;
+        selectedChannel = gestureChannel;
+        if (desktop) {
+            const listener = documentListeners.get("dblclick");
+            const clickMessage = (id, interactive = false) => {
+                const event = { target: new GestureElement(id, interactive), preventDefault() { this.defaultPrevented = true; } };
+                listener(event);
+                return event.defaultPrevented;
+            };
+            assert.equal(clickMessage(me, true), undefined);
+            assert.equal(clickMessage(other), undefined);
+            assert.equal(clickMessage(me), true);
+            assert.deepEqual(composerActions.pop(), ["edit", me, "my message"]);
+            assert.equal(clickMessage(sender), true);
+            assert.equal(acknowledged.pop().message.id, sender);
+            click(render(), "Disable DoubleClickEdit");
+            assert.equal(clickMessage(me), undefined);
+            click(render(), "Disable DoubleClickToReply");
+            assert.equal(documentListeners.size, 0);
+        } else {
+            const native = jsx("NativeChatView", {
+                channelId: gestureChannel,
+                onDoubleTapMessage: () => composerActions.push("reaction"),
+                onInitiateEdit: event => composerActions.push(["edit", event.nativeEvent.messageId]),
+                onInitiateReply: event => composerActions.push(["reply", event.nativeEvent.messageId]),
+                onMessageAccessibilityAction: () => composerActions.push("accessibility reaction"),
+            });
+            const tree = jsx("Container", { children: native });
+            const wrapped = appearanceHooks.get(MessagesRenderer)(null, jsx(MessagesRenderer, { output: tree }));
+            const renderer = wrapped.type(wrapped.props);
+            const props = renderer.type(renderer.props).props.children.props;
+            const tap = id => props.onDoubleTapMessage({ nativeEvent: { messageId: id } });
+            tap(me);
+            tap(sender);
+            tap(other);
+            props.onMessageAccessibilityAction();
+            settings.safeMode = { enabled: true };
+            tap(me);
+            settings.safeMode = undefined;
+            click(render(), "Disable DoubleClickEdit");
+            tap(me);
+            tap(sender);
+            click(render(), "Disable DoubleClickToReply");
+            tap(sender);
+            assert.deepEqual(composerActions.splice(0), [
+                ["edit", me], ["reply", sender], "reaction", "accessibility reaction", "reaction", "reaction", ["reply", sender], "reaction",
+            ]);
+            assert.equal(appearanceHooks.has(MessagesRenderer), false);
+        }
+        selectedChannel = savedGestureChannel;
+
         for (const [name, content, expected] of [
             ["SedEnhanced", "s/a.b/done/g", "Fix done twice: done"],
             ["MessageBurst", "one more line", "Fix a.b twice: a.b\none more line"],
@@ -2724,6 +2805,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             appearance: appearanceHooks.size,
             colors: colorOverlays.size,
             pendingEmojiPicker: emojiPickerWaiters.size,
+            document: documentListeners.size,
             stylesheet,
         });
         const baseline = installedHooks();

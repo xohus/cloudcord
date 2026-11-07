@@ -16,7 +16,7 @@ import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } fro
 export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 export { isCxNotificationMuted, type CxMessageAlert } from "./cxIncoming";
 export { bindCxChannelOpenRead, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, runCxFriendInvites } from "./cxClientCommands";
-export { animateCxAssets, cxNativeEffects, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, overrideCxMethods, raiseCxAvatarResolution } from "./cxNativeEffects";
+export { animateCxAssets, cxNativeEffects, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, getCxMessageGesture, overrideCxMethods, raiseCxAvatarResolution } from "./cxNativeEffects";
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
 export { bindCxSocialEvents } from "./cxSocialEvents";
 export { createCxPlusReactionHandler } from "./cxPlusReactions";
@@ -47,6 +47,8 @@ const permissionLabels = {
     "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
     "profile.redirectlinks": "Replace the listed link origins in profile bios displayed on this device",
     "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
+    "messages.openeditor": "Open Discord’s editor for your own message when you double-click or double-tap it",
+    "messages.openreply": "Open a Discord reply draft when you double-click or double-tap another user’s message",
     "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
     "uploads.rename": "Change attachment filenames before Discord uploads them",
     "replies.suppressping": "Send replies without pinging the person you reply to",
