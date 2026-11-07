@@ -37060,6 +37060,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       throw new Error("Choose one friend ID to follow");
     if (kind === "friend-removals" && values.length)
       throw new Error("Friend removal notices take no options");
+    if (kind === "hide-profile-themes" && values.length)
+      throw new Error("Profile theme hiding takes no options");
+    if (kind === "hide-system") {
+      if (!values.length || values.some((value) => !Object.prototype.hasOwnProperty.call(systemMessageTypes, value)))
+        throw new Error("Choose pins, joins, or boosts");
+      return {
+        kind,
+        values,
+        messageTypes: new Set(values.flatMap((value) => systemMessageTypes[value]))
+      };
+    }
     if (kind === "hide-blocked") {
       if (!values.length || values.some((value) => value !== "blocked" && value !== "ignored"))
         throw new Error("Choose blocked, ignored, or both");
@@ -37094,29 +37105,77 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       stickers: kept
     };
   }
+  function stripProfileTheme(profile) {
+    if (!profile || typeof profile !== "object" || !(Array.isArray(profile.theme_colors) || Array.isArray(profile.themeColors)))
+      return profile;
+    var next = {
+      ...profile
+    };
+    delete next.theme_colors;
+    delete next.themeColors;
+    return next;
+  }
   function applyIncomingRule(rule, payload, context) {
     var { type, message } = payload;
     if (rule.kind === "friends-voice" || rule.kind === "follow-voice" || rule.kind === "friend-removals")
       return;
-    if (rule.kind === "hide-users" || rule.kind === "hide-keywords" || rule.kind === "hide-blocked") {
+    if (rule.kind === "hide-profile-themes") {
+      if (type !== "USER_PROFILE_FETCH_SUCCESS")
+        return;
+      var envelope = payload.userProfile ?? payload;
+      var id = envelope.user?.id ?? payload.userId;
+      var me = context.currentUser();
+      if (!me || typeof id !== "string" || id === me)
+        return;
+      var userProfile = envelope.user_profile;
+      var guildProfile = envelope.guild_member_profile;
+      var user = stripProfileTheme(userProfile);
+      var guild = stripProfileTheme(guildProfile);
+      var profile = !userProfile ? stripProfileTheme(envelope) : envelope;
+      if (user === userProfile && guild === guildProfile && profile === envelope)
+        return;
+      var patch = {
+        ...user !== userProfile ? {
+          user_profile: user
+        } : {},
+        ...guild !== guildProfile ? {
+          guild_member_profile: guild
+        } : {}
+      };
+      if (envelope !== payload)
+        return {
+          userProfile: {
+            ...profile,
+            ...patch
+          }
+        };
+      return profile === envelope ? patch : {
+        ...patch,
+        theme_colors: void 0,
+        themeColors: void 0
+      };
+    }
+    if (rule.kind === "hide-users" || rule.kind === "hide-keywords" || rule.kind === "hide-blocked" || rule.kind === "hide-system") {
       if (!rule.values.length || payload.optimistic)
         return;
       if (type !== "MESSAGE_CREATE" && type !== "MESSAGE_UPDATE" && type !== "LOAD_MESSAGES_SUCCESS")
         return;
-      var me = context.currentUser();
-      if (!me)
+      var me1 = rule.kind === "hide-system" ? void 0 : context.currentUser();
+      if (!me1 && rule.kind !== "hide-system")
         return;
       var hide = (item) => {
         if (!item)
           return false;
+        if (rule.kind === "hide-system")
+          return rule.messageTypes?.has(item.type) === true;
         var channel2 = item.channel_id ?? item.channelId ?? payload.channelId ?? payload.channel_id;
-        var user = item.author?.id ?? (type === "MESSAGE_UPDATE" && typeof channel2 === "string" && typeof item.id === "string" ? context.replyAuthor(channel2, item.id)?.id : void 0);
-        if (typeof user !== "string" || user === me)
+        var user2 = item.author?.id ?? (type === "MESSAGE_UPDATE" && typeof channel2 === "string" && typeof item.id === "string" ? context.replyAuthor(channel2, item.id)?.id : void 0);
+        if (typeof user2 !== "string" || user2 === me1)
           return false;
         if (rule.kind === "hide-users")
-          return rule.values.includes(user);
+          return rule.values.includes(user2);
         if (rule.kind === "hide-blocked")
-          return rule.values.includes("blocked") && context.blocked?.(user) === true || rule.values.includes("ignored") && context.ignored?.(user) === true;
+          return rule.values.includes("blocked") && context.blocked?.(user2) === true || rule.values.includes("ignored") && context.ignored?.(user2) === true;
         var fields = [
           item.content
         ];
@@ -37158,28 +37217,28 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     if (rule.kind === "calls") {
       if (type !== "CALL_CREATE" && type !== "CALL_UPDATE" || !Array.isArray(payload.ringing) || !rule.values.length)
         return;
-      var me1 = context.currentUser();
-      if (!me1 || !payload.ringing.includes(me1))
+      var me2 = context.currentUser();
+      if (!me2 || !payload.ringing.includes(me2))
         return;
-      var id = payload.channelId ?? payload.channel_id;
-      if (typeof id !== "string")
+      var id1 = payload.channelId ?? payload.channel_id;
+      if (typeof id1 !== "string")
         return;
-      var recipients = context.channel(id)?.recipients;
+      var recipients = context.channel(id1)?.recipients;
       var peer = recipients?.length === 1 ? recipients[0] : void 0;
-      if (rule.values.includes(id) || rule.values.includes(typeof peer === "string" ? peer : peer?.id ?? ""))
+      if (rule.values.includes(id1) || rule.values.includes(typeof peer === "string" ? peer : peer?.id ?? ""))
         return {
-          ringing: payload.ringing.filter((user) => user !== me1)
+          ringing: payload.ringing.filter((user2) => user2 !== me2)
         };
       return;
     }
     if (type !== "MESSAGE_CREATE" || payload.optimistic || typeof message?.author?.id !== "string")
       return;
-    var me2 = context.currentUser();
+    var me3 = context.currentUser();
     var author = message.author.id;
-    if (!me2 || author === me2)
+    if (!me3 || author === me3)
       return;
     var mentions = Array.isArray(message.mentions) ? message.mentions : [];
-    var isMe = (mention) => (typeof mention === "string" ? mention : mention?.id) === me2;
+    var isMe = (mention) => (typeof mention === "string" ? mention : mention?.id) === me3;
     if (rule.kind === "silence-users") {
       if (rule.values.includes(author)) {
         return {
@@ -37198,7 +37257,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var channelId = ref?.channel_id ?? ref?.channelId ?? message.channel_id;
       var messageId = ref?.message_id ?? ref?.messageId;
       var replyAuthor = (message.referenced_message ?? message.referencedMessage)?.author ?? (typeof channelId === "string" && typeof messageId === "string" ? context.replyAuthor(channelId, messageId) : void 0);
-      if (replyAuthor?.id !== me2)
+      if (replyAuthor?.id !== me3)
         return;
       var shouldPing = rule.always !== rule.values.includes(author);
       if (shouldPing === mentions.some(isMe))
@@ -37221,7 +37280,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       context.notify(String(name).slice(0, 64) + (channel ? " in #" + channel.slice(0, 64) : "") + ": " + (content || "sent an attachment").slice(0, 80));
     }
   }
-  var incomingPermissions;
+  var incomingPermissions, systemMessageTypes;
   var init_cxIncoming = __esm({
     "src/lib/api/cxIncoming.ts"() {
       "use strict";
@@ -37237,9 +37296,25 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "hide-users": "messages.filterlocal",
         "hide-keywords": "messages.filterlocal",
         "hide-blocked": "messages.filterlocal",
+        "hide-system": "messages.filterlocal",
+        "hide-profile-themes": "appearance.style",
         "friends-voice": "voice.notifyfriends",
         "follow-voice": "voice.followfriend",
         "friend-removals": "friends.notifyremoval"
+      };
+      systemMessageTypes = {
+        pins: [
+          6
+        ],
+        joins: [
+          7
+        ],
+        boosts: [
+          8,
+          9,
+          10,
+          11
+        ]
       };
     }
   });
@@ -38456,17 +38531,33 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       permissions: document.permissions,
       effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.nativeEffects.map((effect) => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : ""))).concat(document.messageTransforms.flatMap((rule) => rule.name === "rewriteOrigin" ? [
         rule.find + " \u2192 " + rule.replacement
-      ] : [])).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
-        "Hide all stickers"
-      ] : rule.kind === "follow-voice" && rule.values[0] ? [
-        "Follow friend ID " + rule.values[0]
-      ] : !rule.values.length && ![
-        "reply-pings",
-        "friends-voice",
-        "friend-removals"
-      ].includes(rule.kind) ? [
-        "Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")
-      ] : [])),
+      ] : [])).concat(document.incoming.flatMap((rule) => {
+        if (rule.kind === "hide-profile-themes")
+          return [
+            "Hide other users\u2019 theme colors when their profiles load"
+          ];
+        if (rule.kind === "hide-system")
+          return [
+            "Hide system messages for " + rule.values.join(", ")
+          ];
+        if (rule.kind === "stickers" && rule.values[0] === "*")
+          return [
+            "Hide all stickers"
+          ];
+        if (rule.kind === "follow-voice" && rule.values[0])
+          return [
+            "Follow friend ID " + rule.values[0]
+          ];
+        if (rule.values.length || [
+          "reply-pings",
+          "friends-voice",
+          "friend-removals"
+        ].includes(rule.kind))
+          return [];
+        return [
+          "Edit the source to enter " + (rule.kind === "keywords" || rule.kind === "hide-keywords" ? "keywords" : "Discord IDs")
+        ];
+      })),
       commands: document.commands.map((command) => "/" + command.name)
     };
   }
@@ -39256,6 +39347,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-system-messages.cx
+  var hide_system_messages_default;
+  var init_hide_system_messages = __esm({
+    "../examples/cx/catalog/plugins/hide-system-messages.cx"() {
+      hide_system_messages_default = 'plugin "HideSystemMessages":\n  needs messages.filterlocal\n  on incoming hide-system "pins,joins,boosts"\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-typing-indicator.cx
   var hide_typing_indicator_default;
   var init_hide_typing_indicator = __esm({
@@ -39381,6 +39480,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_no_pending_count = __esm({
     "../examples/cx/catalog/plugins/no-pending-count.cx"() {
       no_pending_count_default = 'plugin "NoPendingCount":\n  needs appearance.hide\n  use pending-friend-count\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/no-profile-themes.cx
+  var no_profile_themes_default;
+  var init_no_profile_themes = __esm({
+    "../examples/cx/catalog/plugins/no-profile-themes.cx"() {
+      no_profile_themes_default = 'plugin "NoProfileThemes":\n  needs appearance.style\n  on incoming hide-profile-themes ""\n';
     }
   });
 
@@ -40467,6 +40574,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_shop_tab();
       init_hide_stickers();
       init_hide_stream_previews();
+      init_hide_system_messages();
       init_hide_typing_indicator();
       init_hide_unread_pills();
       init_hide_voice_user_avatars();
@@ -40483,6 +40591,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_more_commands();
       init_no_blocked_messages();
       init_no_pending_count();
+      init_no_profile_themes();
       init_no_reply_mention();
       init_normalize_message_links();
       init_polish_wording();
@@ -40822,6 +40931,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_stream_previews_default
           },
           {
+            name: "HideSystemMessages",
+            source: hide_system_messages_default
+          },
+          {
             name: "HideTypingIndicator",
             source: hide_typing_indicator_default
           },
@@ -40884,6 +40997,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "NoPendingCount",
             source: no_pending_count_default
+          },
+          {
+            name: "NoProfileThemes",
+            source: no_profile_themes_default
           },
           {
             name: "NoReplyMention",
@@ -46887,7 +47004,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "f665bfeb1ef8e5041b78059ee2adcd675b214c54";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "3d74d50a6e9d161acdd99abf5efb0d20ebb2a68d";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
