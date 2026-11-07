@@ -105,7 +105,11 @@ const unsubscribe = updater.subscribeThemeColors(() => renderUpdates++);
 const wallpaper = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPZ0AAAAASUVORK5CYII=';
 const render = element => element.type(element.props).props.children;
 
-for (const component of [{render: () => root}, function MessagesConnected() {}]) {
+for (const route of ['legacy', 'default-export', 'display-name', 'missing-file', 'jsx']) {
+  const component = {render: () => root};
+  const exported = route === 'legacy' ? component : route === 'default-export' ? {default: component} : {};
+  let memo, memoDeps, refState, state, layoutDeps, cleanupLayout;
+  const sameDeps = (next, previous) => previous && next.every((value, index) => Object.is(value, previous[index]));
   const patch = load('patches/background.tsx', {
     'react/jsx-runtime': {jsx, jsxs: jsx},
     '@lib/addons/themes/colors/preferences': {colorsPref: preferences},
@@ -121,39 +125,68 @@ for (const component of [{render: () => root}, function MessagesConnected() {}])
     },
     '@lib/api/storage': {useObservable() {}},
     '@lib/utils/logger': {logger: {warn: error => assert.fail(error)}},
-    '@metro': {findByFilePathLazy: () => component},
+    '@metro': {findByFilePathLazy: () => exported, findByDisplayName: () => ['display-name', 'missing-file'].includes(route) ? component : undefined},
     '@metro/common': {React: {
       isValidElement: value => Boolean(value?.type),
       cloneElement: (element, props) => jsx(element.type, {...element.props, ...props}),
       Fragment: 'Fragment',
-      useSyncExternalStore: (_, snapshot) => snapshot()
+      useSyncExternalStore: (_, snapshot) => snapshot(),
+      useMemo(factory, deps) {
+        if (!sameDeps(deps, memoDeps)) { memo = factory(); memoDeps = deps; }
+        return memo;
+      },
+      useRef: initial => refState ??= {current: initial},
+      useState: initial => [state === undefined ? initial : state, next => { state = next; }],
+      useLayoutEffect(effect, deps) {
+        if (!sameDeps(deps, layoutDeps)) {
+          cleanupLayout?.();
+          cleanupLayout = effect();
+          layoutDeps = deps;
+        }
+      }
     }},
-    '@metro/lazy': {getLazyContext: value => ({getExports: callback => { callback(value); }})},
+    '@metro/lazy': {getLazyContext: value => route === 'missing-file' ? undefined : ({getExports: callback => { callback(value); }})},
     'react-native': {View: 'View', Image: 'Image', StyleSheet: {absoluteFillObject: {}, create: value => value, flatten: value => value}},
     'chroma-js': Object.assign(() => ({alpha: opacity => ({hex: () => String(opacity)})}), {valid: () => true})
   }).default;
   const undo = patch();
-  const wrapped = component.render ? component.render() : androidRenderer(null, surface);
+  const wrapped = route === 'jsx' ? androidRenderer(null, surface) : component.render();
   assert.equal(render(wrapped)[0], undefined);
   updater.updateBunnyColor({...ref.current, background: {url: wallpaper, opacity: 0.75, blur: 0.6}}, {update: false});
-  const [image, content] = render(wrapped);
+  const [image, loading] = render(wrapped);
+  const original = route === 'jsx' ? surface : root;
+  assert.equal(loading.props.children, original);
   assert.equal(image.props.pointerEvents, 'none');
   assert.equal(image.props.children.props.source.uri, wallpaper);
   assert.equal(image.props.children.props.blurRadius, 0.6);
-  const tinted = component.render ? content.props.children.props.children[1] : content.props.children;
+  assert.equal(image.props.children.props.style.width, '100%');
+  assert.equal(image.props.children.props.style.height, '100%');
+  image.props.children.props.onLoad();
+  const [, content] = render(wrapped);
+  const tinted = route === 'jsx' ? content.props.children : content.props.children.props.children[1];
   assert.equal(tinted.props.style[1].backgroundColor, '0.25');
   assert.equal(surface.props.style.backgroundColor, '#202020');
+  image.props.children.props.onError();
+  assert.equal(render(wrapped)[1].props.children, original);
+  updater.updateBunnyColor({...ref.current, background: {url: wallpaper + 'other', opacity: 0.75}}, {update: false});
+  const [replacement] = render(wrapped);
+  image.props.children.props.onLoad();
+  assert.equal(render(wrapped)[1].props.children, original);
+  replacement.props.children.props.onLoad();
+  image.props.children.props.onError();
+  assert.notEqual(render(wrapped)[1].props.children, original);
   preferences.customBackground = 'hidden';
   assert.equal(render(wrapped)[0], undefined);
   preferences.customBackground = null;
   updater.updateBunnyColor(null, {update: false});
   assert.equal(render(wrapped)[0], undefined);
   undo();
+  cleanupLayout?.();
   assert.equal(androidRenderer, undefined);
-  if (component.render) assert.equal(component.render(), root);
+  assert.equal(component.render(), root);
 }
 unsubscribe();
-assert.equal(renderUpdates, 4);
+assert.equal(renderUpdates, 15);
 assert.match(fs.readFileSync(path.join(__dirname, '../../.github/workflows/cloudcord.yml'), 'utf8'),
   /cp "\.\.\/ios\/runtime\/src\/lib\/addons\/themes\/colors\/patches\/background\.tsx"/);
 console.log('mobile wallpaper renders on both Discord message surfaces and restores frozen native styles');

@@ -988,6 +988,16 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         click(render(), "Disable Blue Hour");
         assert.equal(stylesheet, undefined);
         assert.equal(nativeTheme, selectedTheme);
+        selectCatalog("Blue Hour");
+        const wallpaperSource = find(render(), item => item.props[desktop ? "aria-label" : "accessibilityLabel"] === "CX source");
+        const noOpacity = wallpaperSource.props.value.replace(/^  wallpaper-opacity: .+\n?/m, "");
+        if (desktop) wallpaperSource.props.onChange({ currentTarget: { value: noOpacity } });
+        else wallpaperSource.props.onChangeText(noOpacity);
+        click(render(), "Review CX");
+        click(render(), "Allow for this session");
+        if (desktop) assert.match(stylesheet.textContent, /linear-gradient\(#12192d00, #12192d00\)/);
+        else assert.equal(nativeTheme.background.alpha, 1);
+        click(render(), "Disable Blue Hour");
 
         for (const [name, background, text, mode] of [
             ["Latte", "#eff1f5", "#4c4f69", "light"],

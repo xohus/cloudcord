@@ -402,7 +402,7 @@ export default function CxExtensions() {
                             ...Object.fromEntries(Object.entries(theme.semanticColors ?? {}).map(([token, color]) => [token, palette(color)])),
                         },
                         ...(theme.rawColors ? { rawColors: { ...theme.rawColors } } : {}),
-                        ...(theme.wallpaper ? { background: { url: theme.wallpaper, alpha: theme.wallpaperOpacity ?? 0.85, blur: theme.wallpaperBlur } } : {}),
+                        ...(theme.wallpaper ? { background: { url: theme.wallpaper, alpha: theme.wallpaperOpacity ?? 1, blur: theme.wallpaperBlur } } : {}),
                     }, { mode: theme.mode });
                     return () => updateBunnyColor(getCurrentTheme()?.data ?? null);
                 },

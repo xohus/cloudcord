@@ -1,6 +1,6 @@
 # Theme sources
 
-The CX adaptations preserve the source palettes and include the chat wallpapers for Dreamy and Glorious Sunset. The Glorious Sunset JPEG was re-encoded to fit the CX image limit. Dracula is a palette port of the BetterDiscord theme.
+The CX adaptations preserve the source palettes and include the chat wallpapers for Dreamy and Glorious Sunset. Both JPEGs were resized to a 1920-pixel longest edge and re-encoded to fit the CX image limit. Dracula is a palette port of the BetterDiscord theme.
 
 - [Moss](https://github.com/OMetaVR/Distra/blob/a521173d4957f2b9f15194b11c649f698d8b741d/builtin-themes/distra/moss.json)
 - [Lotus](https://github.com/OMetaVR/Distra/blob/a521173d4957f2b9f15194b11c649f698d8b741d/builtin-themes/enmity/lotus.json)
