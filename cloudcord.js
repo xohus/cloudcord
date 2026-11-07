@@ -37360,460 +37360,6 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
-  // src/lib/api/cxIncoming.ts
-  function parseIncomingRule(name, input) {
-    if (!Object.prototype.hasOwnProperty.call(incomingPermissions, name))
-      throw new Error("Unknown incoming rule");
-    var kind = name;
-    var always = false;
-    if (kind === "reply-pings") {
-      var match = /^(always|never)(?::(.*))?$/.exec(input);
-      if (!match)
-        throw new Error("Reply pings require always or never, followed by optional exception IDs");
-      always = match[1] === "always";
-      input = match[2] ?? "";
-    }
-    var textual = kind === "keywords" || kind === "hide-keywords";
-    var values = [
-      ...new Set(input.split(textual ? /,/ : /[\s,]+/).map((value) => value.trim()).filter(Boolean))
-    ];
-    if (values.length > 24)
-      throw new Error("Too many incoming rule values");
-    if (kind === "follow-voice" && values.length > 1)
-      throw new Error("Choose one friend ID to follow");
-    if (kind === "reply-ping-default" && input.trim())
-      throw new Error("Reply ping defaults take no options");
-    if (kind === "friend-removals" && values.length)
-      throw new Error("Friend removal notices take no options");
-    if (kind === "hide-profile-themes" && values.length)
-      throw new Error("Profile theme hiding takes no options");
-    if (kind === "hide-system") {
-      if (!values.length || values.some((value) => !Object.prototype.hasOwnProperty.call(systemMessageTypes, value)))
-        throw new Error("Choose pins, joins, or boosts");
-      return {
-        kind,
-        values,
-        messageTypes: new Set(values.flatMap((value) => systemMessageTypes[value]))
-      };
-    }
-    if (kind === "hide-blocked") {
-      if (!values.length || values.some((value) => value !== "blocked" && value !== "ignored"))
-        throw new Error("Choose blocked, ignored, or both");
-    } else if (!textual && !(kind === "stickers" && input === "*") && values.some((value) => !/^\d{17,20}$/.test(value))) {
-      throw new Error("Incoming rules need Discord IDs");
-    }
-    if (kind === "hide-keywords" && values.length) {
-      var phrases = values.map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
-      return {
-        kind,
-        values,
-        matcher: new RegExp("\\b(?:" + phrases.join("|") + ")\\b", "i")
-      };
-    }
-    return {
-      kind,
-      values,
-      always
-    };
-  }
-  function stripStickers(message, rule) {
-    var stickers = message?.sticker_items ?? message?.stickerItems ?? message?.stickers;
-    if (!Array.isArray(stickers) || !stickers.length)
-      return message;
-    var kept = rule.values[0] === "*" ? [] : stickers.filter((sticker) => !rule.values.includes(String(sticker?.id)));
-    if (kept.length === stickers.length)
-      return message;
-    return {
-      ...message,
-      sticker_items: kept,
-      stickerItems: kept,
-      stickers: kept
-    };
-  }
-  function stripProfileTheme(profile) {
-    if (!profile || typeof profile !== "object" || !(Array.isArray(profile.theme_colors) || Array.isArray(profile.themeColors)))
-      return profile;
-    var next = {
-      ...profile
-    };
-    delete next.theme_colors;
-    delete next.themeColors;
-    return next;
-  }
-  function applyIncomingRule(rule, payload, context) {
-    var { type, message } = payload;
-    if (rule.kind === "reply-ping-default") {
-      if (type === "CREATE_PENDING_REPLY" && payload.shouldMention === true)
-        return {
-          shouldMention: false
-        };
-      return;
-    }
-    if (rule.kind === "friends-voice" || rule.kind === "follow-voice" || rule.kind === "friend-removals")
-      return;
-    if (rule.kind === "hide-profile-themes") {
-      if (type !== "USER_PROFILE_FETCH_SUCCESS")
-        return;
-      var envelope = payload.userProfile ?? payload;
-      var id = envelope.user?.id ?? payload.userId;
-      var me = context.currentUser();
-      if (!me || typeof id !== "string" || id === me)
-        return;
-      var userProfile = envelope.user_profile;
-      var guildProfile = envelope.guild_member_profile;
-      var user = stripProfileTheme(userProfile);
-      var guild = stripProfileTheme(guildProfile);
-      var profile = !userProfile ? stripProfileTheme(envelope) : envelope;
-      if (user === userProfile && guild === guildProfile && profile === envelope)
-        return;
-      var patch = {
-        ...user !== userProfile ? {
-          user_profile: user
-        } : {},
-        ...guild !== guildProfile ? {
-          guild_member_profile: guild
-        } : {}
-      };
-      if (envelope !== payload)
-        return {
-          userProfile: {
-            ...profile,
-            ...patch
-          }
-        };
-      return profile === envelope ? patch : {
-        ...patch,
-        theme_colors: void 0,
-        themeColors: void 0
-      };
-    }
-    if (rule.kind === "hide-users" || rule.kind === "hide-keywords" || rule.kind === "hide-blocked" || rule.kind === "hide-system") {
-      if (!rule.values.length || payload.optimistic)
-        return;
-      if (type !== "MESSAGE_CREATE" && type !== "MESSAGE_UPDATE" && type !== "LOAD_MESSAGES_SUCCESS")
-        return;
-      var me1 = rule.kind === "hide-system" ? void 0 : context.currentUser();
-      if (!me1 && rule.kind !== "hide-system")
-        return;
-      var hide = (item) => {
-        if (!item)
-          return false;
-        if (rule.kind === "hide-system")
-          return rule.messageTypes?.has(item.type) === true;
-        var channel2 = item.channel_id ?? item.channelId ?? payload.channelId ?? payload.channel_id;
-        var user2 = item.author?.id ?? (type === "MESSAGE_UPDATE" && typeof channel2 === "string" && typeof item.id === "string" ? context.replyAuthor(channel2, item.id)?.id : void 0);
-        if (typeof user2 !== "string" || user2 === me1)
-          return false;
-        if (rule.kind === "hide-users")
-          return rule.values.includes(user2);
-        if (rule.kind === "hide-blocked")
-          return rule.values.includes("blocked") && context.blocked?.(user2) === true || rule.values.includes("ignored") && context.ignored?.(user2) === true;
-        var fields = [
-          item.content
-        ];
-        if (Array.isArray(item.embeds))
-          for (var embed of item.embeds.slice(0, 10)) {
-            fields.push(embed?.title ?? embed?.rawTitle, embed?.description ?? embed?.rawDescription);
-          }
-        return fields.some((field) => typeof field === "string" && rule.matcher?.test(field.slice(0, 4e3)));
-      };
-      if (type === "LOAD_MESSAGES_SUCCESS") {
-        if (!Array.isArray(payload.messages))
-          return;
-        var messages = payload.messages.filter((item) => !hide(item));
-        if (messages.length !== payload.messages.length)
-          return {
-            messages
-          };
-      } else if (hide(message)) {
-        return false;
-      }
-      return;
-    }
-    if (rule.kind === "stickers") {
-      if (type === "MESSAGE_CREATE" || type === "MESSAGE_UPDATE") {
-        var next = stripStickers(message, rule);
-        return next !== message ? {
-          message: next
-        } : void 0;
-      }
-      if (type === "LOAD_MESSAGES_SUCCESS" && Array.isArray(payload.messages)) {
-        var messages1 = payload.messages.map((item) => stripStickers(item, rule));
-        if (messages1.some((item, index) => item !== payload.messages[index]))
-          return {
-            messages: messages1
-          };
-      }
-      return;
-    }
-    if (rule.kind === "calls") {
-      if (type !== "CALL_CREATE" && type !== "CALL_UPDATE" || !Array.isArray(payload.ringing) || !rule.values.length)
-        return;
-      var me2 = context.currentUser();
-      if (!me2 || !payload.ringing.includes(me2))
-        return;
-      var id1 = payload.channelId ?? payload.channel_id;
-      if (typeof id1 !== "string")
-        return;
-      var recipients = context.channel(id1)?.recipients;
-      var peer = recipients?.length === 1 ? recipients[0] : void 0;
-      if (rule.values.includes(id1) || rule.values.includes(typeof peer === "string" ? peer : peer?.id ?? ""))
-        return {
-          ringing: payload.ringing.filter((user2) => user2 !== me2)
-        };
-      return;
-    }
-    if (type !== "MESSAGE_CREATE" || payload.optimistic || typeof message?.author?.id !== "string")
-      return;
-    var me3 = context.currentUser();
-    var author = message.author.id;
-    if (!me3 || author === me3)
-      return;
-    var mentions = Array.isArray(message.mentions) ? message.mentions : [];
-    var isMe = (mention) => (typeof mention === "string" ? mention : mention?.id) === me3;
-    if (rule.kind === "silence-users") {
-      if (rule.values.includes(author)) {
-        return {
-          message: {
-            ...message,
-            mention_everyone: false,
-            mention_roles: [],
-            mentions: mentions.filter((mention) => !isMe(mention))
-          }
-        };
-      }
-      return;
-    }
-    if (rule.kind === "reply-pings") {
-      var ref = message.message_reference ?? message.messageReference;
-      var channelId = ref?.channel_id ?? ref?.channelId ?? message.channel_id;
-      var messageId = ref?.message_id ?? ref?.messageId;
-      var replyAuthor = (message.referenced_message ?? message.referencedMessage)?.author ?? (typeof channelId === "string" && typeof messageId === "string" ? context.replyAuthor(channelId, messageId) : void 0);
-      if (replyAuthor?.id !== me3)
-        return;
-      var shouldPing = rule.always !== rule.values.includes(author);
-      if (shouldPing === mentions.some(isMe))
-        return;
-      return {
-        message: {
-          ...message,
-          mentions: shouldPing ? [
-            ...mentions,
-            replyAuthor
-          ] : mentions.filter((mention) => !isMe(mention))
-        }
-      };
-    }
-    var content = typeof message.content === "string" ? message.content.slice(0, 4e3) : "";
-    var matches = rule.kind === "users" ? rule.values.includes(author) : !message.author.bot && rule.values.some((value) => content.toLowerCase().includes(value.toLowerCase()));
-    if (matches) {
-      var channel = typeof message.channel_id === "string" ? context.channel(message.channel_id)?.name : void 0;
-      var name = message.author.global_name ?? message.author.globalName ?? message.author.username ?? "Someone";
-      context.notify(String(name).slice(0, 64) + (channel ? " in #" + channel.slice(0, 64) : "") + ": " + (content || "sent an attachment").slice(0, 80));
-    }
-  }
-  var incomingPermissions, systemMessageTypes;
-  var init_cxIncoming = __esm({
-    "src/lib/api/cxIncoming.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      incomingPermissions = {
-        stickers: "messages.filterstickers",
-        "silence-users": "messages.silencementions",
-        "reply-pings": "replies.controlping",
-        "reply-ping-default": "replies.suppressping",
-        calls: "calls.suppressring",
-        keywords: "messages.watchlocal",
-        users: "messages.watchlocal",
-        "hide-users": "messages.filterlocal",
-        "hide-keywords": "messages.filterlocal",
-        "hide-blocked": "messages.filterlocal",
-        "hide-system": "messages.filterlocal",
-        "hide-profile-themes": "appearance.style",
-        "friends-voice": "voice.notifyfriends",
-        "follow-voice": "voice.followfriend",
-        "friend-removals": "friends.notifyremoval"
-      };
-      systemMessageTypes = {
-        pins: [
-          6
-        ],
-        joins: [
-          7
-        ],
-        boosts: [
-          8,
-          9,
-          10,
-          11
-        ]
-      };
-    }
-  });
-
-  // src/lib/api/cxNumeric.ts
-  function convertUnits(input) {
-    if (input.length > 192)
-      return;
-    var match = /^(-?\d+(?:[.,]\d+)?)\s*(°?[cf]|km\/h|[a-z]+)$/.exec(input.trim().toLowerCase());
-    if (!match)
-      return;
-    var value = Number(match[1].replace(",", "."));
-    var unit = match[2].replace("\xB0", "");
-    if (unit === "c")
-      return `${value}\xB0C = ${+(value * 9 / 5 + 32).toFixed(2)}\xB0F`;
-    if (unit === "f")
-      return `${value}\xB0F = ${+((value - 32) * 5 / 9).toFixed(2)}\xB0C`;
-    if (!Object.prototype.hasOwnProperty.call(units, unit))
-      return;
-    var [target, multiplier] = units[unit];
-    return `${value} ${unit} = ${+(value * multiplier).toFixed(2)} ${target}`;
-  }
-  function calculate(input) {
-    if (input.length > 192 || !/^[\d\s+*/().%\-]+$/.test(input))
-      return;
-    var tokens2 = input.match(/\d+(?:\.\d*)?|\.\d+|\*\*|\+\+|--|[^\s]/g) ?? [];
-    var cursor = 0;
-    function operand() {
-      var token = tokens2[cursor++];
-      if (token === "(") {
-        var value2 = expression(1);
-        if (tokens2[cursor++] !== ")")
-          throw new Error("Unclosed expression");
-        return value2;
-      }
-      if (token === "+" || token === "-") {
-        var value1 = operand();
-        if (tokens2[cursor] === "**")
-          throw new Error("Use parentheses around a signed base");
-        return token === "-" ? -value1 : value1;
-      }
-      if (!token || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(token))
-        throw new Error("Expected a number");
-      return Number(token);
-    }
-    function expression(minimum) {
-      var value2 = operand();
-      while (cursor < tokens2.length) {
-        var symbol = tokens2[cursor];
-        var operator = operators[symbol];
-        if (!operator || operator.precedence < minimum)
-          break;
-        cursor++;
-        var right = expression(operator.precedence + (symbol === "**" ? 0 : 1));
-        value2 = operator.apply(value2, right);
-      }
-      return value2;
-    }
-    try {
-      var value = expression(1);
-      if (cursor === tokens2.length && Number.isFinite(value))
-        return `\`${input.trim()}\` = **${value}**`;
-    } catch (e) {
-    }
-  }
-  var units, operators;
-  var init_cxNumeric = __esm({
-    "src/lib/api/cxNumeric.ts"() {
-      "use strict";
-      init_asyncIteratorSymbol();
-      init_promiseAllSettled();
-      units = {
-        km: [
-          "mi",
-          0.621371
-        ],
-        mi: [
-          "km",
-          1.609344
-        ],
-        m: [
-          "ft",
-          3.28084
-        ],
-        ft: [
-          "m",
-          0.3048
-        ],
-        cm: [
-          "in",
-          0.393701
-        ],
-        in: [
-          "cm",
-          2.54
-        ],
-        kg: [
-          "lb",
-          2.20462
-        ],
-        lb: [
-          "kg",
-          0.453592
-        ],
-        g: [
-          "oz",
-          0.035274
-        ],
-        oz: [
-          "g",
-          28.3495
-        ],
-        l: [
-          "gal",
-          0.264172
-        ],
-        gal: [
-          "l",
-          3.78541
-        ],
-        ml: [
-          "floz",
-          0.033814
-        ],
-        floz: [
-          "ml",
-          29.5735
-        ],
-        "km/h": [
-          "mph",
-          0.621371
-        ],
-        mph: [
-          "km/h",
-          1.609344
-        ]
-      };
-      operators = {
-        "+": {
-          precedence: 1,
-          apply: (left, right) => left + right
-        },
-        "-": {
-          precedence: 1,
-          apply: (left, right) => left - right
-        },
-        "*": {
-          precedence: 2,
-          apply: (left, right) => left * right
-        },
-        "/": {
-          precedence: 2,
-          apply: (left, right) => left / right
-        },
-        "%": {
-          precedence: 2,
-          apply: (left, right) => left % right
-        },
-        "**": {
-          precedence: 3,
-          apply: (left, right) => left ** right
-        }
-      };
-    }
-  });
-
   // src/lib/api/cxMessageTransforms.ts
   function reverseText(text) {
     return [
@@ -38017,6 +37563,502 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         sendTimestamps: (text) => {
           var now = /* @__PURE__ */ new Date();
           return text.replace(/\x60{3}[\s\S]*?\x60{3}|\x60{2}[\s\S]*?\x60{2}|\x60(\d{1,2}):(\d{2}) ?(am|pm)?\x60/gi, (match, hour, minute, meridiem) => hour === void 0 ? match : formatLocalTime(Number(hour), Number(minute), meridiem, now) ?? match);
+        }
+      };
+    }
+  });
+
+  // src/lib/api/cxIncoming.ts
+  function parseIncomingRule(name, input) {
+    if (!Object.prototype.hasOwnProperty.call(incomingPermissions, name))
+      throw new Error("Unknown incoming rule");
+    var kind = name;
+    if (kind === "open-link") {
+      var [phrase, link, extra] = input.split("|").map((part) => part.trim());
+      if (!phrase || phrase.length > 80 || link === void 0 || extra !== void 0)
+        throw new Error("Use a short phrase followed by | and an HTTPS destination");
+      if (!link)
+        return {
+          kind,
+          values: [
+            phrase
+          ]
+        };
+      var match = /^(https:\/\/[^/?#]+)(?:[/?#][a-z0-9._~%!$&()*+,;=:@/?#-]*)?$/i.exec(link);
+      if (!match)
+        throw new Error("Use an HTTPS destination without credentials or a custom scheme");
+      try {
+        parseCxHttpsOrigin(match[1]);
+      } catch (e) {
+        throw new Error("Use an HTTPS destination without credentials or a custom scheme");
+      }
+      return {
+        kind,
+        values: [
+          phrase
+        ],
+        link
+      };
+    }
+    var always = false;
+    if (kind === "reply-pings") {
+      var match1 = /^(always|never)(?::(.*))?$/.exec(input);
+      if (!match1)
+        throw new Error("Reply pings require always or never, followed by optional exception IDs");
+      always = match1[1] === "always";
+      input = match1[2] ?? "";
+    }
+    var textual = kind === "keywords" || kind === "hide-keywords";
+    var values = [
+      ...new Set(input.split(textual ? /,/ : /[\s,]+/).map((value) => value.trim()).filter(Boolean))
+    ];
+    if (values.length > 24)
+      throw new Error("Too many incoming rule values");
+    if (kind === "follow-voice" && values.length > 1)
+      throw new Error("Choose one friend ID to follow");
+    if (kind === "reply-ping-default" && input.trim())
+      throw new Error("Reply ping defaults take no options");
+    if (kind === "friend-removals" && values.length)
+      throw new Error("Friend removal notices take no options");
+    if (kind === "hide-profile-themes" && values.length)
+      throw new Error("Profile theme hiding takes no options");
+    if (kind === "hide-system") {
+      if (!values.length || values.some((value) => !Object.prototype.hasOwnProperty.call(systemMessageTypes, value)))
+        throw new Error("Choose pins, joins, or boosts");
+      return {
+        kind,
+        values,
+        messageTypes: new Set(values.flatMap((value) => systemMessageTypes[value]))
+      };
+    }
+    if (kind === "hide-blocked") {
+      if (!values.length || values.some((value) => value !== "blocked" && value !== "ignored"))
+        throw new Error("Choose blocked, ignored, or both");
+    } else if (!textual && !(kind === "stickers" && input === "*") && values.some((value) => !/^\d{17,20}$/.test(value))) {
+      throw new Error("Incoming rules need Discord IDs");
+    }
+    if (kind === "hide-keywords" && values.length) {
+      var phrases = values.map((value) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+      return {
+        kind,
+        values,
+        matcher: new RegExp("\\b(?:" + phrases.join("|") + ")\\b", "i")
+      };
+    }
+    return {
+      kind,
+      values,
+      always
+    };
+  }
+  function stripStickers(message, rule) {
+    var stickers = message?.sticker_items ?? message?.stickerItems ?? message?.stickers;
+    if (!Array.isArray(stickers) || !stickers.length)
+      return message;
+    var kept = rule.values[0] === "*" ? [] : stickers.filter((sticker) => !rule.values.includes(String(sticker?.id)));
+    if (kept.length === stickers.length)
+      return message;
+    return {
+      ...message,
+      sticker_items: kept,
+      stickerItems: kept,
+      stickers: kept
+    };
+  }
+  function stripProfileTheme(profile) {
+    if (!profile || typeof profile !== "object" || !(Array.isArray(profile.theme_colors) || Array.isArray(profile.themeColors)))
+      return profile;
+    var next = {
+      ...profile
+    };
+    delete next.theme_colors;
+    delete next.themeColors;
+    return next;
+  }
+  function applyIncomingRule(rule, payload, context) {
+    var { type, message } = payload;
+    if (rule.kind === "reply-ping-default") {
+      if (type === "CREATE_PENDING_REPLY" && payload.shouldMention === true)
+        return {
+          shouldMention: false
+        };
+      return;
+    }
+    if (rule.kind === "friends-voice" || rule.kind === "follow-voice" || rule.kind === "friend-removals")
+      return;
+    if (rule.kind === "hide-profile-themes") {
+      if (type !== "USER_PROFILE_FETCH_SUCCESS")
+        return;
+      var envelope = payload.userProfile ?? payload;
+      var id = envelope.user?.id ?? payload.userId;
+      var me = context.currentUser();
+      if (!me || typeof id !== "string" || id === me)
+        return;
+      var userProfile = envelope.user_profile;
+      var guildProfile = envelope.guild_member_profile;
+      var user = stripProfileTheme(userProfile);
+      var guild = stripProfileTheme(guildProfile);
+      var profile = !userProfile ? stripProfileTheme(envelope) : envelope;
+      if (user === userProfile && guild === guildProfile && profile === envelope)
+        return;
+      var patch = {
+        ...user !== userProfile ? {
+          user_profile: user
+        } : {},
+        ...guild !== guildProfile ? {
+          guild_member_profile: guild
+        } : {}
+      };
+      if (envelope !== payload)
+        return {
+          userProfile: {
+            ...profile,
+            ...patch
+          }
+        };
+      return profile === envelope ? patch : {
+        ...patch,
+        theme_colors: void 0,
+        themeColors: void 0
+      };
+    }
+    if (rule.kind === "hide-users" || rule.kind === "hide-keywords" || rule.kind === "hide-blocked" || rule.kind === "hide-system") {
+      if (!rule.values.length || payload.optimistic)
+        return;
+      if (type !== "MESSAGE_CREATE" && type !== "MESSAGE_UPDATE" && type !== "LOAD_MESSAGES_SUCCESS")
+        return;
+      var me1 = rule.kind === "hide-system" ? void 0 : context.currentUser();
+      if (!me1 && rule.kind !== "hide-system")
+        return;
+      var hide = (item) => {
+        if (!item)
+          return false;
+        if (rule.kind === "hide-system")
+          return rule.messageTypes?.has(item.type) === true;
+        var channel2 = item.channel_id ?? item.channelId ?? payload.channelId ?? payload.channel_id;
+        var user2 = item.author?.id ?? (type === "MESSAGE_UPDATE" && typeof channel2 === "string" && typeof item.id === "string" ? context.replyAuthor(channel2, item.id)?.id : void 0);
+        if (typeof user2 !== "string" || user2 === me1)
+          return false;
+        if (rule.kind === "hide-users")
+          return rule.values.includes(user2);
+        if (rule.kind === "hide-blocked")
+          return rule.values.includes("blocked") && context.blocked?.(user2) === true || rule.values.includes("ignored") && context.ignored?.(user2) === true;
+        var fields = [
+          item.content
+        ];
+        if (Array.isArray(item.embeds))
+          for (var embed of item.embeds.slice(0, 10)) {
+            fields.push(embed?.title ?? embed?.rawTitle, embed?.description ?? embed?.rawDescription);
+          }
+        return fields.some((field) => typeof field === "string" && rule.matcher?.test(field.slice(0, 4e3)));
+      };
+      if (type === "LOAD_MESSAGES_SUCCESS") {
+        if (!Array.isArray(payload.messages))
+          return;
+        var messages = payload.messages.filter((item) => !hide(item));
+        if (messages.length !== payload.messages.length)
+          return {
+            messages
+          };
+      } else if (hide(message)) {
+        return false;
+      }
+      return;
+    }
+    if (rule.kind === "stickers") {
+      if (type === "MESSAGE_CREATE" || type === "MESSAGE_UPDATE") {
+        var next = stripStickers(message, rule);
+        return next !== message ? {
+          message: next
+        } : void 0;
+      }
+      if (type === "LOAD_MESSAGES_SUCCESS" && Array.isArray(payload.messages)) {
+        var messages1 = payload.messages.map((item) => stripStickers(item, rule));
+        if (messages1.some((item, index) => item !== payload.messages[index]))
+          return {
+            messages: messages1
+          };
+      }
+      return;
+    }
+    if (rule.kind === "calls") {
+      if (type !== "CALL_CREATE" && type !== "CALL_UPDATE" || !Array.isArray(payload.ringing) || !rule.values.length)
+        return;
+      var me2 = context.currentUser();
+      if (!me2 || !payload.ringing.includes(me2))
+        return;
+      var id1 = payload.channelId ?? payload.channel_id;
+      if (typeof id1 !== "string")
+        return;
+      var recipients = context.channel(id1)?.recipients;
+      var peer = recipients?.length === 1 ? recipients[0] : void 0;
+      if (rule.values.includes(id1) || rule.values.includes(typeof peer === "string" ? peer : peer?.id ?? ""))
+        return {
+          ringing: payload.ringing.filter((user2) => user2 !== me2)
+        };
+      return;
+    }
+    if (type !== "MESSAGE_CREATE" || payload.optimistic || typeof message?.author?.id !== "string")
+      return;
+    var me3 = context.currentUser();
+    var author = message.author.id;
+    if (rule.kind === "open-link") {
+      var channel = message.channel_id ?? message.channelId ?? payload.channelId;
+      if (!rule.link || !me3 || !context.openLink || typeof channel !== "string" || context.selectedChannel?.() !== channel || message.state === "SENDING" || context.blocked?.(author) || typeof message.content !== "string" || !message.content.slice(0, 4e3).toLowerCase().includes(rule.values[0].toLowerCase()))
+        return;
+      var now = Date.now();
+      var last = lastLinkOpen.get(context);
+      if (last !== void 0 && now - last < 1e4)
+        return;
+      lastLinkOpen.set(context, now);
+      context.openLink(rule.link, channel, me3);
+      return;
+    }
+    if (!me3 || author === me3)
+      return;
+    var mentions = Array.isArray(message.mentions) ? message.mentions : [];
+    var isMe = (mention) => (typeof mention === "string" ? mention : mention?.id) === me3;
+    if (rule.kind === "silence-users") {
+      if (rule.values.includes(author)) {
+        return {
+          message: {
+            ...message,
+            mention_everyone: false,
+            mention_roles: [],
+            mentions: mentions.filter((mention) => !isMe(mention))
+          }
+        };
+      }
+      return;
+    }
+    if (rule.kind === "reply-pings") {
+      var ref = message.message_reference ?? message.messageReference;
+      var channelId = ref?.channel_id ?? ref?.channelId ?? message.channel_id;
+      var messageId = ref?.message_id ?? ref?.messageId;
+      var replyAuthor = (message.referenced_message ?? message.referencedMessage)?.author ?? (typeof channelId === "string" && typeof messageId === "string" ? context.replyAuthor(channelId, messageId) : void 0);
+      if (replyAuthor?.id !== me3)
+        return;
+      var shouldPing = rule.always !== rule.values.includes(author);
+      if (shouldPing === mentions.some(isMe))
+        return;
+      return {
+        message: {
+          ...message,
+          mentions: shouldPing ? [
+            ...mentions,
+            replyAuthor
+          ] : mentions.filter((mention) => !isMe(mention))
+        }
+      };
+    }
+    var content = typeof message.content === "string" ? message.content.slice(0, 4e3) : "";
+    var matches = rule.kind === "users" ? rule.values.includes(author) : !message.author.bot && rule.values.some((value) => content.toLowerCase().includes(value.toLowerCase()));
+    if (matches) {
+      var channel1 = typeof message.channel_id === "string" ? context.channel(message.channel_id)?.name : void 0;
+      var name = message.author.global_name ?? message.author.globalName ?? message.author.username ?? "Someone";
+      context.notify(String(name).slice(0, 64) + (channel1 ? " in #" + channel1.slice(0, 64) : "") + ": " + (content || "sent an attachment").slice(0, 80));
+    }
+  }
+  var incomingPermissions, systemMessageTypes, lastLinkOpen;
+  var init_cxIncoming = __esm({
+    "src/lib/api/cxIncoming.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      init_cxMessageTransforms();
+      incomingPermissions = {
+        stickers: "messages.filterstickers",
+        "silence-users": "messages.silencementions",
+        "reply-pings": "replies.controlping",
+        "reply-ping-default": "replies.suppressping",
+        calls: "calls.suppressring",
+        keywords: "messages.watchlocal",
+        users: "messages.watchlocal",
+        "hide-users": "messages.filterlocal",
+        "hide-keywords": "messages.filterlocal",
+        "hide-blocked": "messages.filterlocal",
+        "hide-system": "messages.filterlocal",
+        "hide-profile-themes": "appearance.style",
+        "friends-voice": "voice.notifyfriends",
+        "follow-voice": "voice.followfriend",
+        "friend-removals": "friends.notifyremoval",
+        "open-link": "links.openonmessage"
+      };
+      systemMessageTypes = {
+        pins: [
+          6
+        ],
+        joins: [
+          7
+        ],
+        boosts: [
+          8,
+          9,
+          10,
+          11
+        ]
+      };
+      lastLinkOpen = /* @__PURE__ */ new WeakMap();
+    }
+  });
+
+  // src/lib/api/cxNumeric.ts
+  function convertUnits(input) {
+    if (input.length > 192)
+      return;
+    var match = /^(-?\d+(?:[.,]\d+)?)\s*(°?[cf]|km\/h|[a-z]+)$/.exec(input.trim().toLowerCase());
+    if (!match)
+      return;
+    var value = Number(match[1].replace(",", "."));
+    var unit = match[2].replace("\xB0", "");
+    if (unit === "c")
+      return `${value}\xB0C = ${+(value * 9 / 5 + 32).toFixed(2)}\xB0F`;
+    if (unit === "f")
+      return `${value}\xB0F = ${+((value - 32) * 5 / 9).toFixed(2)}\xB0C`;
+    if (!Object.prototype.hasOwnProperty.call(units, unit))
+      return;
+    var [target, multiplier] = units[unit];
+    return `${value} ${unit} = ${+(value * multiplier).toFixed(2)} ${target}`;
+  }
+  function calculate(input) {
+    if (input.length > 192 || !/^[\d\s+*/().%\-]+$/.test(input))
+      return;
+    var tokens2 = input.match(/\d+(?:\.\d*)?|\.\d+|\*\*|\+\+|--|[^\s]/g) ?? [];
+    var cursor = 0;
+    function operand() {
+      var token = tokens2[cursor++];
+      if (token === "(") {
+        var value2 = expression(1);
+        if (tokens2[cursor++] !== ")")
+          throw new Error("Unclosed expression");
+        return value2;
+      }
+      if (token === "+" || token === "-") {
+        var value1 = operand();
+        if (tokens2[cursor] === "**")
+          throw new Error("Use parentheses around a signed base");
+        return token === "-" ? -value1 : value1;
+      }
+      if (!token || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(token))
+        throw new Error("Expected a number");
+      return Number(token);
+    }
+    function expression(minimum) {
+      var value2 = operand();
+      while (cursor < tokens2.length) {
+        var symbol = tokens2[cursor];
+        var operator = operators[symbol];
+        if (!operator || operator.precedence < minimum)
+          break;
+        cursor++;
+        var right = expression(operator.precedence + (symbol === "**" ? 0 : 1));
+        value2 = operator.apply(value2, right);
+      }
+      return value2;
+    }
+    try {
+      var value = expression(1);
+      if (cursor === tokens2.length && Number.isFinite(value))
+        return `\`${input.trim()}\` = **${value}**`;
+    } catch (e) {
+    }
+  }
+  var units, operators;
+  var init_cxNumeric = __esm({
+    "src/lib/api/cxNumeric.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      units = {
+        km: [
+          "mi",
+          0.621371
+        ],
+        mi: [
+          "km",
+          1.609344
+        ],
+        m: [
+          "ft",
+          3.28084
+        ],
+        ft: [
+          "m",
+          0.3048
+        ],
+        cm: [
+          "in",
+          0.393701
+        ],
+        in: [
+          "cm",
+          2.54
+        ],
+        kg: [
+          "lb",
+          2.20462
+        ],
+        lb: [
+          "kg",
+          0.453592
+        ],
+        g: [
+          "oz",
+          0.035274
+        ],
+        oz: [
+          "g",
+          28.3495
+        ],
+        l: [
+          "gal",
+          0.264172
+        ],
+        gal: [
+          "l",
+          3.78541
+        ],
+        ml: [
+          "floz",
+          0.033814
+        ],
+        floz: [
+          "ml",
+          29.5735
+        ],
+        "km/h": [
+          "mph",
+          0.621371
+        ],
+        mph: [
+          "km/h",
+          1.609344
+        ]
+      };
+      operators = {
+        "+": {
+          precedence: 1,
+          apply: (left, right) => left + right
+        },
+        "-": {
+          precedence: 1,
+          apply: (left, right) => left - right
+        },
+        "*": {
+          precedence: 2,
+          apply: (left, right) => left * right
+        },
+        "/": {
+          precedence: 2,
+          apply: (left, right) => left / right
+        },
+        "%": {
+          precedence: 2,
+          apply: (left, right) => left % right
+        },
+        "**": {
+          precedence: 3,
+          apply: (left, right) => left ** right
         }
       };
     }
@@ -39303,6 +39345,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           return [
             "Hide system messages for " + rule.values.join(", ")
           ];
+        if (rule.kind === "open-link")
+          return [
+            rule.link ? "Open " + rule.link + " when a message contains \u201C" + rule.values[0] + "\u201D" : "Edit the source to set the HTTPS destination"
+          ];
         if (rule.kind === "stickers" && rule.values[0] === "*")
           return [
             "Hide all stickers"
@@ -39688,6 +39734,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "voice.followfriend": "Move you to the listed friend\u2019s voice channel while you are already connected to voice",
         "friends.notifyremoval": "Show a local notification when a friend removes you",
         "messages.watchlocal": "Match incoming messages on this device and show local notifications",
+        "links.openonmessage": "Open the configured HTTPS page when a matching message arrives in the channel you are viewing",
         "messages.filterlocal": "Hide matching incoming messages and history on this device",
         "typing.suppress": "Suppress your outgoing typing indicator",
         "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications",
@@ -40633,6 +40680,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_highlight_links = __esm({
     "../examples/cx/catalog/plugins/highlight-links.cx"() {
       highlight_links_default = 'plugin "HighlightLinks":\n  needs appearance.style\n  style underlined-links\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hop-on.cx
+  var hop_on_default;
+  var init_hop_on = __esm({
+    "../examples/cx/catalog/plugins/hop-on.cx"() {
+      hop_on_default = 'plugin "HopOn":\n  needs links.openonmessage\n  on incoming open-link "hop on |"\n';
     }
   });
 
@@ -42154,6 +42209,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_high_contrast_text();
       init_high_res_profile_images();
       init_highlight_links();
+      init_hop_on();
       init_ignore_calls();
       init_in_role();
       init_ingtoninator();
@@ -42651,6 +42707,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HighlightLinks",
             source: highlight_links_default
+          },
+          {
+            name: "HopOn",
+            source: hop_on_default
           },
           {
             name: "IgnoreCalls",
@@ -43994,6 +44054,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               replyAuthor: (channel, id) => MessageStore?.getMessage?.(channel, id)?.author,
               blocked: (id) => RelationshipStore?.isBlocked?.(id) === true,
               ignored: (id) => RelationshipStore?.isIgnored?.(id) === true,
+              selectedChannel: () => SelectedChannelStore?.getChannelId?.(),
+              openLink: (link, channel, user) => setTimeout(() => {
+                if (active && !settings.safeMode?.enabled && context.currentUser() === user && context.selectedChannel() === channel)
+                  void import_react_native41.Linking.openURL(link).catch(() => {
+                  });
+              }, 0),
               notify: (body) => setTimeout(() => {
                 if (active && !settings.safeMode?.enabled)
                   showToast(body);
@@ -49435,7 +49501,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "4277c2d9e226a50f11c472ebdbc3cf9ece52463b";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "77de4b2941f4e0cb104614549d4c2d5fc53982e9";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
