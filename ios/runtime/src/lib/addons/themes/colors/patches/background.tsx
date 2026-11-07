@@ -54,7 +54,7 @@ function ThemeBackground({ children, direct }: { children: React.ReactNode; dire
         current.current = request;
         return () => { current.current = null; };
     }, [request]);
-    const color = theme?.semantic.BACKGROUND_PRIMARY?.value;
+    const color = theme?.semantic?.BACKGROUND_PRIMARY?.value;
     const tint = typeof color === "string" && chroma.valid(color) ? color : "black";
     const content = url && loaded === request ? tintMessageSurface(children, opacity, tint, direct) : children;
 
@@ -77,23 +77,36 @@ function ThemeBackground({ children, direct }: { children: React.ReactNode; dire
 
 export default function patchChatBackground() {
     let active = true;
+    let modernSeen = false;
     let unpatch: (() => void) | undefined;
 
     // Recent Android builds use a function component for the native message
-    // renderer. Earlier builds expose MessagesConnected as a forward ref.
+    // renderer. iOS exposes a memoized forward ref with displayName "Messages".
     function wrapRenderer(_: unknown, element: React.ReactElement) {
         return !active || unpatch ? element : <ThemeBackground key={element.key} direct>{element}</ThemeBackground>;
     }
     onJsxCreate("MessagesRenderer", wrapRenderer);
+    function wrapMessagesDisplayName(_: unknown, element: React.ReactElement<{ channelId?: string; style?: StyleProp<ViewStyle>; }>) {
+        const component = element.type as { $$typeof?: symbol; type?: { $$typeof?: symbol; name?: string; }; name?: string; };
+        const inner = component.$$typeof === Symbol.for("react.memo") ? component.type : component;
+        if (typeof inner === "function") return inner.name === "MessagesRenderer" ? wrapRenderer(null, element) : element;
+        if (!active || inner?.$$typeof !== Symbol.for("react.forward_ref")
+            || typeof element.props.channelId !== "string" || !("style" in element.props)) return element;
+        modernSeen = true;
+        unpatch?.();
+        unpatch = undefined;
+        return wrapRenderer(null, element);
+    }
+    onJsxCreate("Messages", wrapMessagesDisplayName);
 
     function attach(exports: any) {
-        if (!active || unpatch) return true;
+        if (!active || modernSeen || unpatch) return true;
         const component = exports?.default ?? exports;
         const renderer = component?.type ?? component;
         const target = typeof renderer?.prototype?.render === "function" ? renderer.prototype : renderer;
         if (typeof target?.render !== "function") return false;
         unpatch = after("render", target, (_, content) => (
-            active && React.isValidElement(content) ? <ThemeBackground>{content}</ThemeBackground> : content
+            active && !modernSeen && React.isValidElement(content) ? <ThemeBackground>{content}</ThemeBackground> : content
         ));
         return true;
     }
@@ -127,5 +140,6 @@ export default function patchChatBackground() {
         cancel?.();
         unpatch?.();
         deleteJsxCreate("MessagesRenderer", wrapRenderer);
+        deleteJsxCreate("Messages", wrapMessagesDisplayName);
     };
 }

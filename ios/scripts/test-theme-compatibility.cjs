@@ -99,15 +99,23 @@ const preferences = {customBackground: null};
 const nativeProps = Object.freeze({HACK_fixModalInteraction: false, onTapReaction() {}, style: Object.freeze({backgroundColor: '#202020'})});
 const surface = Object.freeze(jsx('NativeMessages', nativeProps));
 const root = Object.freeze(jsx('Fragment', Object.freeze({children: Object.freeze([null, surface])})));
-let androidRenderer;
 let renderUpdates = 0;
 const unsubscribe = updater.subscribeThemeColors(() => renderUpdates++);
 const wallpaper = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aPZ0AAAAASUVORK5CYII=';
 const render = element => element.type(element.props).props.children;
 
-for (const route of ['legacy', 'default-export', 'display-name', 'missing-file', 'jsx']) {
-  const component = {render: () => root};
-  const exported = route === 'legacy' ? component : route === 'default-export' ? {default: component} : {};
+for (const route of ['legacy', 'default-export', 'display-name', 'missing-file', 'jsx', 'android-display-name', 'ios-renderer', 'ios-late-renderer']) {
+  let renderNative = () => root;
+  const component = {render: () => renderNative()};
+  const iosRoute = route.startsWith('ios-');
+  const jsxRoute = route === 'jsx' || route === 'android-display-name' || iosRoute;
+  const forwarded = {$$typeof: Symbol.for('react.forward_ref'), displayName: 'Messages', render() {}};
+  const renderer = {$$typeof: Symbol.for('react.memo'), type: forwarded};
+  function MessagesRenderer() {}
+  MessagesRenderer.displayName = 'Messages';
+  const androidMemo = {$$typeof: Symbol.for('react.memo'), type: MessagesRenderer};
+  const exported = route === 'legacy' || route === 'ios-late-renderer' ? component : route === 'default-export' ? {default: component} : {};
+  const hooks = new Map();
   let memo, memoDeps, refState, state, layoutDeps, cleanupLayout;
   const sameDeps = (next, previous) => previous && next.every((value, index) => Object.is(value, previous[index]));
   const patch = load('patches/background.tsx', {
@@ -120,8 +128,8 @@ for (const route of ['legacy', 'default-export', 'display-name', 'missing-file',
       return () => { object[name] = original; };
     }},
     '@lib/api/react/jsx': {
-      onJsxCreate(name, callback) { assert.equal(name, 'MessagesRenderer'); androidRenderer = callback; },
-      deleteJsxCreate(name, callback) { assert.equal(callback, androidRenderer); androidRenderer = undefined; }
+      onJsxCreate(name, callback) { hooks.set(name, callback); },
+      deleteJsxCreate(name, callback) { assert.equal(callback, hooks.get(name)); hooks.delete(name); }
     },
     '@lib/api/storage': {useObservable() {}},
     '@lib/utils/logger': {logger: {warn: error => assert.fail(error)}},
@@ -150,11 +158,23 @@ for (const route of ['legacy', 'default-export', 'display-name', 'missing-file',
     'chroma-js': Object.assign(() => ({alpha: opacity => ({hex: () => String(opacity)})}), {valid: () => true})
   }).default;
   const undo = patch();
-  const wrapped = route === 'jsx' ? androidRenderer(null, surface) : component.render();
+  const ref = {};
+  const forwardedElement = jsx(renderer, {style: surface.props.style, channelId: '123', ref});
+  const androidElement = jsx(androidMemo, surface.props);
+  const original = iosRoute ? forwardedElement : route === 'android-display-name' ? androidElement : route === 'jsx' ? surface : root;
+  if (route === 'ios-late-renderer') assert.notEqual(component.render(), root);
+  const unrelated = jsx(renderer, {style: surface.props.style});
+  assert.equal(hooks.get('Messages')(null, unrelated), unrelated);
+  const wrap = () => hooks.get(route === 'jsx' ? 'MessagesRenderer' : 'Messages')(null, original);
+  if (route === 'ios-late-renderer') renderNative = wrap;
+  const wrapped = jsxRoute && route !== 'ios-late-renderer' ? wrap() : component.render();
+  renderNative = () => root;
+  if (iosRoute) {
+    assert.equal(component.render(), root, 'the actual renderer takes priority over the fallback');
+  }
   assert.equal(render(wrapped)[0], undefined);
   updater.updateBunnyColor({...ref.current, background: {url: wallpaper, opacity: 0.75, blur: 0.6}}, {update: false});
   const [image, loading] = render(wrapped);
-  const original = route === 'jsx' ? surface : root;
   assert.equal(loading.props.children, original);
   assert.equal(image.props.pointerEvents, 'none');
   assert.equal(image.props.children.props.source.uri, wallpaper);
@@ -163,8 +183,9 @@ for (const route of ['legacy', 'default-export', 'display-name', 'missing-file',
   assert.equal(image.props.children.props.style.height, '100%');
   image.props.children.props.onLoad();
   const [, content] = render(wrapped);
-  const tinted = route === 'jsx' ? content.props.children : content.props.children.props.children[1];
+  const tinted = jsxRoute ? content.props.children : content.props.children.props.children[1];
   assert.equal(tinted.props.style[1].backgroundColor, '0.25');
+  if (iosRoute) assert.equal(tinted.props.ref, ref);
   assert.equal(surface.props.style.backgroundColor, '#202020');
   image.props.children.props.onError();
   assert.equal(render(wrapped)[1].props.children, original);
@@ -182,11 +203,11 @@ for (const route of ['legacy', 'default-export', 'display-name', 'missing-file',
   assert.equal(render(wrapped)[0], undefined);
   undo();
   cleanupLayout?.();
-  assert.equal(androidRenderer, undefined);
+  assert.equal(hooks.size, 0);
   assert.equal(component.render(), root);
 }
 unsubscribe();
-assert.equal(renderUpdates, 15);
+assert.equal(renderUpdates, 24);
 assert.match(fs.readFileSync(path.join(__dirname, '../../.github/workflows/cloudcord.yml'), 'utf8'),
   /cp "\.\.\/ios\/runtime\/src\/lib\/addons\/themes\/colors\/patches\/background\.tsx"/);
 console.log('mobile wallpaper renders on both Discord message surfaces and restores frozen native styles');

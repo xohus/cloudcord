@@ -16,11 +16,13 @@ api.patchJsx();
 function ProfileHeader() {}
 function shortened() {}
 shortened.displayName = 'ProfileHeader';
-for (const component of [ProfileHeader, shortened, { $$typeof: Symbol.for('react.memo'), type: shortened }]) {
+const forwarded = { $$typeof: Symbol.for('react.forward_ref'), render: () => {}, displayName: 'ProfileHeader' };
+for (const component of [ProfileHeader, shortened, { $$typeof: Symbol.for('react.memo'), type: shortened }, forwarded,
+    { $$typeof: Symbol.for('react.memo'), type: forwarded }]) {
     const result = patches.jsx([component], { type: component, props: {} });
     assert.equal(typeof result.matched, 'function');
 }
-assert.equal(seen, 3);
+assert.equal(seen, 5);
 assert.equal(patches.jsx(['RCTText'], { type: 'RCTText', props: {} }), undefined);
 assert.equal(patches.jsx([{}], { type: {}, props: {} }), undefined);
 function FrozenHeader() {}
