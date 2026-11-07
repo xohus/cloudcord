@@ -37914,6 +37914,24 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/lib/api/cxNativeEffects.ts
+  function fixCxFileExtensions(files) {
+    if (!Array.isArray(files))
+      return;
+    for (var file of files) {
+      try {
+        var filename = file?.filename;
+        if (typeof filename !== "string")
+          continue;
+        var parts = /^(.*[^/\\.])\.([a-z0-9]+)$/i.exec(filename);
+        if (!parts || /\.tar$/i.test(parts[1]))
+          continue;
+        var replacement = replacementExtensions.get(parts[2].toLowerCase());
+        if (replacement)
+          file.filename = parts[1] + "." + replacement;
+      } catch (e) {
+      }
+    }
+  }
   function floorCxRelativeTime(target, enabled = () => true) {
     if (typeof target?.relativeTimeRounding !== "function")
       throw new Error("Discord relative timestamps are unavailable");
@@ -38056,7 +38074,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     }, enabled);
   }
-  var cxNativeEffects, cxAvatarResolutions, roundingUsers, overrideLayers;
+  var cxNativeEffects, cxAvatarResolutions, extensionGroups, replacementExtensions, roundingUsers, overrideLayers;
   var init_cxNativeEffects = __esm({
     "src/lib/api/cxNativeEffects.ts"() {
       "use strict";
@@ -38074,6 +38092,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "plus-reactions": {
           permission: "messages.reactshortcut",
           label: "React to the matching previous message when you send a plus shortcut"
+        },
+        "fix-file-extensions": {
+          permission: "uploads.rename",
+          label: "Use supported filename extensions for listed attachment formats"
         },
         "pending-friend-count": {
           permission: "appearance.hide",
@@ -38103,6 +38125,61 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         2048,
         4096
       ];
+      extensionGroups = {
+        ogg: [
+          "ogv",
+          "oga",
+          "ogx",
+          "ogm",
+          "spx",
+          "aac",
+          "wma"
+        ],
+        jpg: [
+          "jpe",
+          "jif",
+          "jfi",
+          "pjpeg",
+          "pjp",
+          "bmp",
+          "tiff",
+          "tif"
+        ],
+        svg: [
+          "svgz",
+          "ai",
+          "eps"
+        ],
+        mp4: [
+          "m4v",
+          "m4r",
+          "m4p",
+          "avi",
+          "mkv",
+          "wmv",
+          "flv",
+          "3gp"
+        ],
+        m4a: [
+          "m4b",
+          "aiff"
+        ],
+        mov: [
+          "movie",
+          "qt",
+          "asf",
+          "rm",
+          "rmvb"
+        ],
+        png: [
+          "ico",
+          "cur"
+        ]
+      };
+      replacementExtensions = new Map(Object.entries(extensionGroups).flatMap(([extension, aliases]) => aliases.map((alias) => [
+        alias,
+        extension
+      ])));
       roundingUsers = /* @__PURE__ */ new WeakMap();
       overrideLayers = /* @__PURE__ */ new WeakMap();
     }
@@ -39333,6 +39410,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
         "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
         "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
+        "uploads.rename": "Change the filename extension of listed attachments before Discord uploads them",
         "replies.suppressping": "Send replies without pinging the person you reply to",
         "profile.avatar": "Read the avatar URL of the selected Discord user or your own avatar when the command runs",
         "guild.members": "Read loaded members with the role you select in the current server",
@@ -39804,6 +39882,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     replace ["fucking","fuckin"] with "glubbin" ignore-case
     shorten-run "E" with "-"
 `;
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/fix-file-extensions.cx
+  var fix_file_extensions_default;
+  var init_fix_file_extensions = __esm({
+    "../examples/cx/catalog/plugins/fix-file-extensions.cx"() {
+      fix_file_extensions_default = 'plugin "FixFileExtensions":\n  needs uploads.rename\n  use fix-file-extensions\n';
     }
   });
 
@@ -41660,6 +41746,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_equius_s_typing_quirk();
       init_eridan_typing_quirk();
       init_feferi_typing_quirk();
+      init_fix_file_extensions();
       init_floating_chat_bar();
       init_follow_voice_user();
       init_friend_invites();
@@ -41962,6 +42049,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "FeferiTypingQuirk",
             source: feferi_typing_quirk_default
+          },
+          {
+            name: "FixFileExtensions",
+            source: fix_file_extensions_default
           },
           {
             name: "FloatingChatBar",
@@ -43502,6 +43593,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             switch (effect) {
               case "static-typing-dots":
                 return registerStaticTypingDots();
+              case "fix-file-extensions": {
+                var uploader = findByFilePath("lib/uploader/native/CloudUploader.tsx")?.default?.prototype;
+                return overrideCxMethods(uploader, {
+                  uploadFiles: (args, original) => {
+                    fixCxFileExtensions(args[0]);
+                    return original(args);
+                  }
+                }, enabled);
+              }
               case "plus-reactions": {
                 var reactions = findByProps("addReaction", "removeReaction") ?? findByProps("addReaction");
                 if (typeof reactions?.addReaction !== "function")
@@ -48631,7 +48731,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "5c170260b1ec660c0b6aadfb837a0fb04abc3923";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "31db23c8f07ba2763abda646d89ab9e62bf8f463";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
