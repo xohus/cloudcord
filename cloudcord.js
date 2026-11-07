@@ -10520,6 +10520,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var getCustomRoutes = () => ({
       VendettaCustomPage: {
         type: "route",
+        unsearchable: true,
         title: () => "CloudCord",
         useTitle: () => "CloudCord",
         screen: {
@@ -10529,6 +10530,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       },
       PUPU_CUSTOM_PAGE: {
         type: "route",
+        unsearchable: true,
         title: () => "CloudCord",
         useTitle: () => "CloudCord",
         screen: {
@@ -10538,6 +10540,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       },
       BUNNY_CUSTOM_PAGE: {
         type: "route",
+        unsearchable: true,
         title: () => "CloudCord",
         useTitle: () => "CloudCord",
         screen: {
@@ -10582,35 +10585,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     };
     if (!usesModernSettings()) {
       globalThis.__CLOUDCORD_331_ROOT_SETTINGS__ = true;
-      var customRoutes = {
-        VendettaCustomPage: {
-          type: "route",
-          title: () => "CloudCord",
-          useTitle: () => "CloudCord",
-          screen: {
-            route: "VendettaCustomPage",
-            getComponent: () => CustomPageRenderer
-          }
-        },
-        PUPU_CUSTOM_PAGE: {
-          type: "route",
-          title: () => "CloudCord",
-          useTitle: () => "CloudCord",
-          screen: {
-            route: "PUPU_CUSTOM_PAGE",
-            getComponent: () => CustomPageRenderer
-          }
-        },
-        BUNNY_CUSTOM_PAGE: {
-          type: "route",
-          title: () => "CloudCord",
-          useTitle: () => "CloudCord",
-          screen: {
-            route: "BUNNY_CUSTOM_PAGE",
-            getComponent: () => CustomPageRenderer
-          }
-        }
-      };
+      var customRoutes = getCustomRoutes();
       var originalConfig = settingConstants.SETTING_RENDERER_CONFIG;
       var liveConfig = originalConfig;
       Object.defineProperty(settingConstants, "SETTING_RENDERER_CONFIG", {
@@ -50484,7 +50459,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "468f2d291af11142642fea49a0c453ae75d76f77";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "8ea84bc4739bddf1ad9d485c1b0ca5a860f09066";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
