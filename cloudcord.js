@@ -36579,6 +36579,30 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "MediaModalOverlayAltTextButton"
           ]
         },
+        "spoiler-media-label": {
+          plugin: "HideSpoilerWarnings",
+          label: "the spoiler label on images",
+          css: '[class*="spoilerWarning"] { display: none !important; }',
+          mobile: {
+            renderTree: "modules/media_viewer/native/components/MediaModalSpoilerOverlay.tsx",
+            hideText: [
+              "F+x38C"
+            ]
+          }
+        },
+        "spoiler-outline": {
+          plugin: "ReadableSpoilers",
+          label: "outline concealed spoilers",
+          css: '[class*="spoilerContent"]:not([class*="spoilerContentHidden"]), span[class*="spoilerText"]:not([class*="hidden"]) {}[class*="spoilerContent"], [class*="spoilerWarning"] { outline: 1px dashed rgb(1 205 254 / 70%); outline-offset: 1px; border-radius: 4px; box-shadow: 0 0 6px rgb(255 113 206 / 35%); }',
+          style: {
+            spoilerOutline: {
+              borderWidth: 1,
+              borderColor: "rgba(1, 205, 254, 0.7)",
+              borderStyle: "dashed",
+              borderRadius: 4
+            }
+          }
+        },
         "contrast-text": {
           plugin: "HighContrastText",
           label: "increase text contrast",
@@ -39331,6 +39355,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-spoiler-warnings.cx
+  var hide_spoiler_warnings_default;
+  var init_hide_spoiler_warnings = __esm({
+    "../examples/cx/catalog/plugins/hide-spoiler-warnings.cx"() {
+      hide_spoiler_warnings_default = 'plugin "HideSpoilerWarnings":\n  needs appearance.hide\n  hide spoiler-media-label\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-stickers.cx
   var hide_stickers_default;
   var init_hide_stickers = __esm({
@@ -39520,6 +39552,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_read_all_notifications = __esm({
     "../examples/cx/catalog/plugins/read-all-notifications.cx"() {
       read_all_notifications_default = 'plugin "ReadAllNotifications":\n  needs commands.register\n  needs servers.markread\n  needs reply.local\n  on command "readall":\n    mark servers read\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/readable-spoilers.cx
+  var readable_spoilers_default;
+  var init_readable_spoilers = __esm({
+    "../examples/cx/catalog/plugins/readable-spoilers.cx"() {
+      readable_spoilers_default = 'plugin "ReadableSpoilers":\n  needs appearance.style\n  style spoiler-outline\n';
     }
   });
 
@@ -40572,6 +40612,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_send_button();
       init_hide_server_banner();
       init_hide_shop_tab();
+      init_hide_spoiler_warnings();
       init_hide_stickers();
       init_hide_stream_previews();
       init_hide_system_messages();
@@ -40596,6 +40637,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_normalize_message_links();
       init_polish_wording();
       init_read_all_notifications();
+      init_readable_spoilers();
       init_relationship_notifier();
       init_reply_ping_control();
       init_reverse_text();
@@ -40923,6 +40965,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_shop_tab_default
           },
           {
+            name: "HideSpoilerWarnings",
+            source: hide_spoiler_warnings_default
+          },
+          {
             name: "HideStickers",
             source: hide_stickers_default
           },
@@ -41017,6 +41063,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "ReadAllNotifications",
             source: read_all_notifications_default
+          },
+          {
+            name: "ReadableSpoilers",
+            source: readable_spoilers_default
           },
           {
             name: "RelationshipNotifier",
@@ -41620,15 +41670,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var getTypes = (names) => new Set(names.map((name) => findByProps(name)?.[name]).filter(Boolean));
     var components = getTypes(rule.hideComponents ?? []);
     var icons = getTypes(rule.hideIcons ?? []);
-    var translations = rule.hideLabels && findByProps("intl", "t");
-    var labels = new Set(rule.hideLabels?.flatMap((key) => {
+    var translations = (rule.hideLabels || rule.hideText) && findByProps("intl", "t");
+    var translate = (keys = []) => keys.flatMap((key) => {
       var message = translations?.t?.[key];
       var label2 = message && translations?.intl?.string?.(message);
       return typeof label2 === "string" && label2 ? [
         label2
       ] : [];
-    }));
-    if (!components.size && !icons.size && !labels.size)
+    });
+    var labels = new Set(translate(rule.hideLabels));
+    var text = new Set(translate(rule.hideText).map((label2) => label2.toUpperCase()));
+    if (!components.size && !icons.size && !labels.size && !text.size)
       throw new Error("Discord's appearance targets are unavailable");
     var keep = getTypes(rule.keepWhilePresent ?? []);
     if (rule.keepWhilePresent && keep.size !== rule.keepWhilePresent.length) {
@@ -41636,7 +41688,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
     var shouldHide = ({ type, props }) => {
       var { children, accessibilityRole, accessibilityLabel, onPress } = props;
-      return components.has(type) || typeof onPress === "function" && (Boolean(accessibilityLabel && labels.has(accessibilityLabel)) || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons));
+      return components.has(type) || accessibilityRole === "text" && typeof children === "string" && text.has(children) || typeof onPress === "function" && (Boolean(accessibilityLabel && labels.has(accessibilityLabel)) || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons));
     };
     var render = target.type;
     var component = target.displayName || render.displayName || render.name;
@@ -41876,6 +41928,40 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           },
           styleAppearanceTarget(target) {
             var style = cxAppearanceTargets[target].style;
+            if ("spoilerOutline" in style) {
+              var spoiler = findByFilePath("modules/markup/native/Spoiler.tsx")?.default?.prototype;
+              if (typeof spoiler?.render !== "function")
+                throw new Error("Discord's text spoiler is unavailable");
+              var outline = style.spoilerOutline;
+              var stopText = instead("render", spoiler, function(args, original) {
+                var rendered = original.apply(this, args);
+                if (settings.safeMode?.enabled || this.state?.revealed !== false || !React2.isValidElement(rendered))
+                  return rendered;
+                return React2.cloneElement(rendered, {
+                  style: [
+                    rendered.props.style,
+                    outline
+                  ]
+                });
+              });
+              try {
+                var stopMedia = registerJsxAppearance([
+                  "MediaModalSpoilerOverlay"
+                ], (element) => element.props.source?.obscure ? element : React2.cloneElement(element, {
+                  style: [
+                    element.props.style,
+                    outline
+                  ]
+                }));
+                return () => {
+                  stopMedia();
+                  stopText();
+                };
+              } catch (error) {
+                stopText();
+                throw error;
+              }
+            }
             if ("component" in style) {
               return registerJsxAppearance([
                 style.component
@@ -47004,7 +47090,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "3d74d50a6e9d161acdd99abf5efb0d20ebb2a68d";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "43e4d5977f3981f2ae44af9b7d9000ac4dd629d5";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
