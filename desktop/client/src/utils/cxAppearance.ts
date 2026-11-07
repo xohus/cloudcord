@@ -128,6 +128,14 @@ export const cxAppearanceTargets = {
             hideLongPressMenu: true,
         },
     },
+    "channel-threads-button": {
+        plugin: "HideThreadsButton", label: "the threads shortcut in the channel header",
+        css: '[aria-label="Threads"] { display: none !important; }',
+        mobile: {
+            renderComponent: "ChannelActionButtons",
+            hideControlIcons: ["ThreadIcon"],
+        },
+    },
     "chat-character-counter": {
         plugin: "HideCharacterCount", label: "the chat character counter",
         css: '[class*="characterCount"] { display: none !important; }',

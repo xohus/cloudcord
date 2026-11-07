@@ -1,0 +1,3 @@
+plugin "HideThreadsButton":
+  needs appearance.hide
+  hide channel-threads-button

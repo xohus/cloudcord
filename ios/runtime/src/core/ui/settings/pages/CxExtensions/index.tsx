@@ -233,24 +233,19 @@ function hideAppearanceElements(tree: ReactNode, shouldHide: (element: ReactElem
 }
 
 function registerTreeAppearance(rule: {
-    renderTree: string; hideComponents?: readonly string[]; hideIcons?: readonly string[];
+    hideComponents?: readonly string[]; hideIcons?: readonly string[];
     keepWhilePresent?: readonly string[]; hideLabels?: readonly string[]; hideText?: readonly string[];
     hideControlIcons?: readonly string[]; hideLongPressMenu?: boolean;
-}) {
-    const target = findByFilePath(rule.renderTree)?.default;
-    const inner = target?.$$typeof === Symbol.for("react.memo") ? target.type : undefined;
-    const forwardsRef = inner?.$$typeof === Symbol.for("react.forward_ref");
-    const render = forwardsRef ? inner.render : inner;
-    if (typeof render !== "function") {
-        throw new Error("Discord's appearance component is unavailable");
-    }
+} & ({ renderTree: string; } | { renderComponent: string; })) {
+    const target = "renderTree" in rule ? findByFilePath(rule.renderTree)?.default : rule.renderComponent;
+    if (!target) throw new Error("Discord's appearance component is unavailable");
     const getTypes = (names: readonly string[]) => new Set(names.map(name => findByProps(name)?.[name]).filter(Boolean));
     const components = getTypes(rule.hideComponents ?? []);
     const icons = getTypes(rule.hideIcons ?? []);
     const controlIcons = getTypes(rule.hideControlIcons ?? []);
     const longPressMenu = rule.hideLongPressMenu && findByProps("ContextMenu")?.ContextMenu;
     if (rule.hideControlIcons && controlIcons.size !== rule.hideControlIcons.length || rule.hideLongPressMenu && !longPressMenu) {
-        throw new Error("Discord's attachment controls are unavailable");
+        throw new Error("Discord's appearance controls are unavailable");
     }
     const translations = (rule.hideLabels || rule.hideText) && findByProps("intl", "t");
     const translate = (keys: readonly string[] = []) => keys.flatMap(key => {
@@ -278,16 +273,32 @@ function registerTreeAppearance(rule: {
                 || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons)
             );
     };
-    function FilteredTree(props: object, ref?: unknown) {
-        const tree = render(props, ref) as ReactNode;
-        return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
-    }
-    const filtered = React.memo(forwardsRef ? React.forwardRef(FilteredTree) : FilteredTree, target.compare);
+    const wrappers = new WeakMap<object, { type: ComponentType<object>; forwardsRef: boolean; }>();
     return registerJsxAppearance([target], element => {
-        if (element.type !== target) return element;
+        if (typeof target !== "string" && element.type !== target) return element;
+        const component = element.type as {
+            $$typeof?: symbol;
+            type?: unknown;
+            compare?: (previous: object, next: object) => boolean;
+        };
+        let wrapper = wrappers.get(component);
+        if (!wrapper) {
+            const memoized = component?.$$typeof === Symbol.for("react.memo");
+            const inner = (memoized ? component.type : component) as { $$typeof?: symbol; render?: unknown; };
+            const forwardsRef = inner?.$$typeof === Symbol.for("react.forward_ref");
+            const render = forwardsRef ? inner.render : inner;
+            if (typeof render !== "function" || render.prototype?.isReactComponent) return element;
+            function FilteredTree(props: object, ref?: unknown) {
+                const tree = render(props, ref) as ReactNode;
+                return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
+            }
+            const filtered = forwardsRef ? React.forwardRef(FilteredTree) : FilteredTree;
+            wrapper = { type: memoized ? React.memo(filtered, component.compare) : filtered, forwardsRef };
+            wrappers.set(component, wrapper);
+        }
         const props = { ...element.props, key: element.key };
-        if (forwardsRef) props.ref ??= Object.getOwnPropertyDescriptor(element, "ref")?.value;
-        return React.createElement(filtered, props);
+        if (wrapper.forwardsRef) props.ref ??= Object.getOwnPropertyDescriptor(element, "ref")?.value;
+        return React.createElement(wrapper.type, props);
     });
 }
 
@@ -462,7 +473,7 @@ export default function CxExtensions() {
                 registerProfileMenuAction,
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
-                    if ("renderTree" in mobile) return registerTreeAppearance(mobile);
+                    if ("renderTree" in mobile || "renderComponent" in mobile) return registerTreeAppearance(mobile);
                     if ("hideComponentPaths" in mobile) {
                         const components = mobile.hideComponentPaths.map(path => findByFilePath(path)?.default);
                         if (components.some(component => !component)) throw new Error("Discord's appearance components are unavailable");

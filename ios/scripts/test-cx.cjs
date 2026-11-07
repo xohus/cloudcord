@@ -270,7 +270,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const createMessageContent = () => messagePresentation;
         const messageRenderer = { default: createMessageContent };
         const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon", "Avatar",
-            "MediaKeyboardButtonIcon", "ImageIcon", "ContextMenu"]
+            "MediaKeyboardButtonIcon", "ImageIcon", "ContextMenu", "ThreadIcon"]
             .map(name => [name, () => name]));
         const renderHeader = tree => tree;
         const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem", "MediaModalSpoilerOverlay",
@@ -573,6 +573,30 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 settings.safeMode = undefined;
                 wraps.push(wrapped);
             } else if (rule.style) assert.ok(colorOverlays.has(rule.style));
+            else if (rule.mobile.renderComponent) {
+                function ChannelActionButtons(props) { return props.output; }
+                assert.equal(rule.mobile.renderComponent, ChannelActionButtons.name);
+                const hook = appearanceHooks.get(ChannelActionButtons.name);
+                const onPress = () => {};
+                const threads = jsx("ChannelActionButton", Object.freeze({ IconComponent: headerIcons.ThreadIcon, onPress }));
+                const search = jsx("ChannelActionButton", { IconComponent: headerIcons.Avatar, onPress });
+                const decorativeThread = jsx("Icon", { IconComponent: headerIcons.ThreadIcon });
+                const output = jsx("View", Object.freeze({ children: Object.freeze([threads, search, decorativeThread]) }));
+                const original = jsx(ChannelActionButtons, { output });
+                const wrapped = hook(null, original);
+                const patched = wrapped.type(wrapped.props);
+                assert.equal(wrapped.type(wrapped.props).type, patched.type);
+                const filtered = patched.type(patched.props);
+                assert.deepEqual(Array.from(filtered.props.children), [null, search, decorativeThread]);
+                assert.equal(output.props.children[0], threads);
+                settings.safeMode = { enabled: true };
+                assert.equal(patched.type(patched.props), output);
+                settings.safeMode = undefined;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(wrapped.type(wrapped.props), original);
+                assert.equal(appearanceHooks.size, 0);
+                continue;
+            }
             else if (rule.mobile.hideControlIcons) {
                 const hook = appearanceHooks.get(chatInputActions);
                 const onPress = () => {};
