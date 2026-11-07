@@ -1,4 +1,11 @@
 {
+    "4e5682987afbf8ad831bd5f3080b66680d11d1c5a8cf8f5fb4266c563fe6c698": {
+        "name": "HideDisabledEmojis",
+        "author": "Zerebos",
+        "license": "MIT",
+        "source": "https://github.com/zerebos/BetterDiscordAddons/blob/c2fdb36b97e4aee083130381a20ace050dd16621/Plugins/HideDisabledEmojis/HideDisabledEmojis.plugin.js",
+        "recipe": "hide-disabled-emojis"
+    },
     "7f4189573fd5bad08e47e3c087bba279b05022e37ab28d7e343918dfecd1ebda": {
         "name": "High-Res Profile Images",
         "author": "Z'ark Ashveil",

@@ -2,6 +2,7 @@ import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
+import { filterCxEmojiCategories } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
 import { copyCcpReport } from "@lib/api/ccpReport";
@@ -36,6 +37,44 @@ const ReadStateStore = findByStoreNameLazy("ReadStateStore");
 const SpotifyStore = findByStoreNameLazy("SpotifyStore");
 const SelectedChannelStore = findByStoreNameLazy("SelectedChannelStore");
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
+
+function hideDisabledEmojiInPicker(enabled: () => boolean) {
+    const picker = findByFilePath("modules/emoji_picker/native/components/useComputeEmojiPickerFunctions.tsx");
+    type CategoryOptions = { categories?: Parameters<typeof filterCxEmojiCategories>[0]; };
+    type SearchOptions = { emojis?: { locked?: readonly unknown[]; unlocked?: readonly unknown[]; }; };
+    type PickerFunctions = {
+        computeCategories: (options: CategoryOptions, ...rest: unknown[]) => unknown;
+        computeSearchResults: (options: SearchOptions, ...rest: unknown[]) => unknown;
+    };
+    let active = true;
+    const wrappers = new WeakMap<PickerFunctions, PickerFunctions>();
+    const stop = overrideCxMethods(picker, {
+        default(args, invoke) {
+            const native = invoke(args) as PickerFunctions | undefined;
+            if (typeof native?.computeCategories !== "function" || typeof native.computeSearchResults !== "function") return native;
+            let wrapped = wrappers.get(native);
+            if (!wrapped) {
+                wrapped = {
+                    ...native,
+                    computeCategories(options, ...rest) {
+                        const original = options?.categories;
+                        const visible = active && enabled() && Array.isArray(original) ? filterCxEmojiCategories(original) : original;
+                        return native.computeCategories(visible === original ? options : { ...options, categories: visible }, ...rest);
+                    },
+                    computeSearchResults(options, ...rest) {
+                        const emojis = options?.emojis;
+                        if (!active || !enabled() || !Array.isArray(emojis?.locked) || !emojis.locked.length)
+                            return native.computeSearchResults(options, ...rest);
+                        return native.computeSearchResults({ ...options, emojis: { ...emojis, locked: [] } }, ...rest);
+                    },
+                };
+                wrappers.set(native, wrapped);
+            }
+            return wrapped;
+        },
+    }, enabled);
+    return () => { active = false; stop(); };
+}
 
 function registerSplitSender() {
     if (splitSender) throw new Error("A CX message splitter is already active");
@@ -857,6 +896,8 @@ export default function CxExtensions() {
                     switch (effect) {
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "hide-disabled-emojis":
+                            return hideDisabledEmojiInPicker(enabled);
                         case "unicode-emoji-autocomplete":
                         case "local-emoji-autocomplete":
                             return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode",

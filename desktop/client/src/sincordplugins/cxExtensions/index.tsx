@@ -4,11 +4,13 @@ import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreE
 import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
+import { filterCxEmojiGrid } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
-import { findByProps, findStore, wreq } from "@webpack";
+import { findByProps, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
 import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
+import type { ReactNode } from "react";
 
 const session = createCxSession();
 const typingDotListeners = new Set<() => void>();
@@ -18,6 +20,29 @@ let flatAttachmentUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
+
+function hideDisabledEmojiInPicker() {
+    const match = (value: any) => typeof value?.type?.render === "function" && String(value.type.render).includes("EMOJI_PICKER_POPOUT");
+    function filterTree(tree: ReactNode, depth = 0): ReactNode {
+        if (depth === 12) return tree;
+        if (Array.isArray(tree)) {
+            const next = tree.map(child => filterTree(child, depth + 1));
+            return next.every((child, index) => child === tree[index]) ? tree : next;
+        }
+        if (!React.isValidElement<Parameters<typeof filterCxEmojiGrid>[0] & { children?: ReactNode; }>(tree)) return tree;
+        const patch = filterCxEmojiGrid(tree.props);
+        if (patch) return React.cloneElement(tree, patch);
+        const children = filterTree(tree.props.children, depth + 1);
+        return children === tree.props.children ? tree : React.cloneElement(tree, { children });
+    }
+    let stop: (() => void) | undefined;
+    waitFor(match, picker => {
+        stop = overrideCxMethods(picker.type, {
+            render: (args, invoke) => filterTree(invoke(args) as ReactNode),
+        });
+    });
+    return () => { waitForSubscriptions.delete(match); stop?.(); };
+}
 
 function subscribeTypingDots(listener: () => void) {
     typingDotListeners.add(listener);
@@ -174,6 +199,8 @@ export function CxSettings() {
                     switch (effect) {
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "hide-disabled-emojis":
+                            return hideDisabledEmojiInPicker();
                         case "unicode-emoji-autocomplete":
                         case "local-emoji-autocomplete":
                             return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode",

@@ -1,0 +1,3 @@
+plugin "HideDisabledEmojis":
+  needs appearance.hide
+  use hide-disabled-emojis

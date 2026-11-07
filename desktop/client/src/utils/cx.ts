@@ -20,6 +20,7 @@ export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMes
 export { bindCxSocialEvents } from "./cxSocialEvents";
 export { createCxPlusReactionHandler } from "./cxPlusReactions";
 export { createCxSplitSender, planCxMessageParts } from "./cxSplitMessages";
+export { filterCxEmojiCategories, filterCxEmojiGrid } from "./cxEmojiPicker";
 export type { CxUploadAnonymiser } from "./cxUploadNames";
 
 export const MAX_CX_SOURCE = 512 * 1024;

@@ -312,6 +312,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const expressionPicker = { $$typeof: Symbol.for("react.memo"),
             type: props => (props.useDesignBarrel ? design : segmentedControl).useSegmentedControlState(props.options),
         };
+        const desktopEmojiPicker = { type: { render: function EMOJI_PICKER_POPOUT(tree) { return tree; } } };
+        const emojiPickerWaiters = new Map();
+        const nativeEmojiFunctions = { computeCategories: options => options, computeSearchResults: options => options };
+        const mobileEmojiPicker = { default: () => nativeEmojiFunctions };
         const pickerChanges = [];
         const pickerOptions = Object.freeze({
             items: Object.freeze(["Emoji", "GIFs", "Stickers"]),
@@ -427,11 +431,15 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@api/Notifications": { showNotification: ({ body }) => notifications.push(body) },
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
-            "@webpack": { wreq: { c: diagnosticCache }, findStore: name => stores[name], findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
+            "@webpack": { wreq: { c: diagnosticCache }, findStore: name => stores[name],
+                waitFor: (filter, callback) => emojiPickerWaiters.set(filter, callback),
+                waitForSubscriptions: emojiPickerWaiters, findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
                 : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime
                     : key === "removeRelationship" ? relationshipActions : key === "sendMessage" ? commandApi
                         : key === "convertNameToSurrogate" ? emojiConverters : undefined },
-            "@webpack/common": { React: { useSyncExternalStore: (subscribe, read) => {
+            "@webpack/common": { React: { isValidElement: element => !!element?.type && !!element?.props,
+                cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
+                useSyncExternalStore: (subscribe, read) => {
                 subscribe(() => typingSubscribers.add(read()));
                 return read();
             } }, useState, useRef: initial => useState({ current: initial })[0], ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
@@ -481,6 +489,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@metro": { findByFilePath: path => path.endsWith("/ButtonEllipsis.native.tsx") ? { Ellipsis: typingEllipsis }
                 : path.endsWith("/useMessageMaxLength.tsx") ? splitLimit
                 : path.endsWith("/ChatInputSendUtils.tsx") ? splitComposer
+                : path.endsWith("/useComputeEmojiPickerFunctions.tsx") ? mobileEmojiPicker
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
@@ -1798,6 +1807,52 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.deepEqual(searchNames({ ...searchOptions, channel: {} }), ["cat"]);
         assert.equal(stores.EmojiStore.searchWithoutFetchingLatest(searchOptions).locked.length, 0);
         stopLocalEmoji();
+        selectCatalog("HideDisabledEmojis");
+        click(render(), "Allow for this session");
+        if (desktop) {
+            const [[matchesPicker, onPickerLoaded]] = emojiPickerWaiters;
+            assert.equal(matchesPicker(desktopEmojiPicker), true);
+            emojiPickerWaiters.delete(matchesPicker);
+            onPickerLoaded(desktopEmojiPicker);
+            const input = jsx("Grid", {
+                emojiGrid: Object.freeze([Object.freeze([{ id: "a" }, { id: "b", isDisabled: true }]),
+                    Object.freeze([{ id: "c", isDisabled: true }]), Object.freeze([{ id: "d" }])]),
+                rowCountBySection: Object.freeze([1, 1, 1]),
+                sectionDescriptors: Object.freeze([{ count: 2 }, { count: 1 }, { count: 1 }]),
+            });
+            const pickerTree = jsx("Picker", { children: input });
+            const rendered = desktopEmojiPicker.type.render(pickerTree).props.children.props;
+            assert.deepEqual(Array.from(rendered.rowCountBySection), [1, 1]);
+            assert.deepEqual(Array.from(rendered.sectionDescriptors, section => section.count), [1, 1]);
+            assert.deepEqual(Array.from(rendered.emojiGrid, row => row[0].id), ["a", "d"]);
+            assert.equal(input.props.emojiGrid[0].length, 2);
+            click(render(), "Disable HideDisabledEmojis");
+            assert.equal(desktopEmojiPicker.type.render(pickerTree), pickerTree);
+            selectCatalog("HideDisabledEmojis");
+            click(render(), "Allow for this session");
+            assert.equal(emojiPickerWaiters.size, 1);
+            click(render(), "Disable HideDisabledEmojis");
+            assert.equal(emojiPickerWaiters.size, 0);
+        } else {
+            const pickerFunctions = mobileEmojiPicker.default();
+            assert.equal(mobileEmojiPicker.default(), pickerFunctions);
+            const unavailable = { id: "locked" }, available = { id: "available" };
+            const categories = Object.freeze([Object.freeze({ emojis: [unavailable, available], emojisDisabled: new Set(["locked"]) }),
+                Object.freeze({ isNitroLocked: true }), Object.freeze({ name: "Unicode" })]);
+            const filteredCategories = pickerFunctions.computeCategories({ categories }).categories;
+            assert.equal(filteredCategories.length, 2);
+            assert.deepEqual(Array.from(filteredCategories[0].emojis), [available]);
+            assert.equal(categories[0].emojis.length, 2);
+            const input = { emojis: { locked: [unavailable], unlocked: [available] } };
+            assert.equal(pickerFunctions.computeSearchResults(input).emojis.locked.length, 0);
+            assert.equal(pickerFunctions.computeSearchResults(input).emojis.unlocked, input.emojis.unlocked);
+            settings.safeMode = { enabled: true };
+            assert.equal(pickerFunctions.computeSearchResults(input), input);
+            settings.safeMode = undefined;
+            click(render(), "Disable HideDisabledEmojis");
+            assert.equal(pickerFunctions.computeSearchResults(input), input);
+            assert.equal(mobileEmojiPicker.default(), nativeEmojiFunctions);
+        }
         const stopAutoUnread = cxCatalog.plugins.find(entry => entry.name === "StopAutoUnread").source;
         assert.throws(() => activateCx(stopAutoUnread, host, ["appearance.hide"]), /approval/);
         for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate", "DontRoundMyTimestamps", "StopAutoUnread"]) {

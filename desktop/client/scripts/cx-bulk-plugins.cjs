@@ -209,6 +209,12 @@ function inspectBetterDiscord(file, code, appearance) {
                 '  on incoming reply-ping-default ""', ""].join("\n"),
         };
     }
+    if (review?.name === name && review.recipe === "hide-disabled-emojis" && !source.parseDiagnostics.length) {
+        return {
+            ...record, review: { ...review, sha256 }, capability: "native-effect",
+            cx: ["plugin " + JSON.stringify(name) + ":", "  needs appearance.hide", "  use hide-disabled-emojis", ""].join("\n"),
+        };
+    }
     if (review?.name === name && review.recipe === "avatar-resolution" && !source.parseDiagnostics.length) {
         const sizes = source.statements.filter(ts.isVariableStatement).flatMap(statement => [...statement.declarationList.declarations])
             .find(declaration => identifier(declaration.name) === "VALID_SIZES")?.initializer;

@@ -12,6 +12,7 @@ export const cxNativeEffects = {
     "split-long-messages": { permission: "messages.split", label: "Split long drafts into at most eight messages when slowmode is off" },
     "unicode-emoji-autocomplete": { permission: "appearance.hide", label: "Show only standard Unicode emoji in chat autocomplete" },
     "local-emoji-autocomplete": { permission: "appearance.hide", label: "Show Unicode emoji and emoji from the current server in chat autocomplete" },
+    "hide-disabled-emojis": { permission: "appearance.hide", label: "Hide unavailable emoji in Discord’s emoji picker" },
 } as const;
 
 export type CxNativeEffect = keyof typeof cxNativeEffects;
