@@ -43393,9 +43393,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         var memoized = component?.$$typeof === Symbol.for("react.memo");
         var inner = memoized ? component.type : component;
         var forwardsRef = inner?.$$typeof === Symbol.for("react.forward_ref");
-        var render = forwardsRef ? inner.render : inner;
-        if (typeof render !== "function" || render.prototype?.isReactComponent)
+        var nativeRender = forwardsRef ? inner.render : inner;
+        if (typeof nativeRender !== "function" || nativeRender.prototype?.isReactComponent)
           return element;
+        var render = nativeRender;
         var filtered = forwardsRef ? React2.forwardRef(FilteredTree2) : FilteredTree2;
         wrapper = {
           type: memoized ? React2.memo(filtered, component.compare) : filtered,
@@ -49028,7 +49029,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "cf6ccbdae8ac23328f55f7bf5a9131a577761a51";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "fcabf887ccd22dd9b5a5074e9a63c17d85a870ba";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
