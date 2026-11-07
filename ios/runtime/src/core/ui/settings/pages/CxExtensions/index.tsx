@@ -286,8 +286,9 @@ function registerTreeAppearance(rule: {
             const memoized = component?.$$typeof === Symbol.for("react.memo");
             const inner = (memoized ? component.type : component) as { $$typeof?: symbol; render?: unknown; };
             const forwardsRef = inner?.$$typeof === Symbol.for("react.forward_ref");
-            const render = forwardsRef ? inner.render : inner;
-            if (typeof render !== "function" || render.prototype?.isReactComponent) return element;
+            const nativeRender = forwardsRef ? inner.render : inner;
+            if (typeof nativeRender !== "function" || nativeRender.prototype?.isReactComponent) return element;
+            const render = nativeRender;
             function FilteredTree(props: object, ref?: unknown) {
                 const tree = render(props, ref) as ReactNode;
                 return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
