@@ -38298,6 +38298,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   });
 
   // src/lib/api/cxNativeEffects.ts
+  function getCxMessageGesture(message, currentUser, gestures) {
+    var author = message?.author?.id;
+    if (!message || !author || !currentUser || message.deleted || ((message.flags ?? 0) & 64) !== 0 || message.state && message.state !== "SENT" || message.type !== 0 && message.type !== 19)
+      return;
+    if (author === currentUser)
+      return gestures.edit && typeof message.content === "string" && message.content ? "edit" : void 0;
+    if (gestures.reply)
+      return "reply";
+  }
   function fixCxFileExtensions(files) {
     if (!Array.isArray(files))
       return;
@@ -38584,6 +38593,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "preserve-image-links": {
           permission: "media.labels",
           label: "Show image links alongside their chat previews"
+        },
+        "double-click-edit": {
+          permission: "messages.openeditor",
+          label: "Open the editor for your own message on double-click or double-tap"
+        },
+        "double-click-reply": {
+          permission: "messages.openreply",
+          label: "Open a reply to another user's message on double-click or double-tap"
         },
         "scroll-to-latest": {
           permission: "channels.markonopen",
@@ -40440,6 +40457,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
         "profile.redirectlinks": "Replace the listed link origins in profile bios displayed on this device",
         "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
+        "messages.openeditor": "Open Discord\u2019s editor for your own message when you double-click or double-tap it",
+        "messages.openreply": "Open a Discord reply draft when you double-click or double-tap another user\u2019s message",
         "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
         "uploads.rename": "Change attachment filenames before Discord uploads them",
         "replies.suppressping": "Send replies without pinging the person you reply to",
@@ -40769,6 +40788,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_dont_round_my_timestamps = __esm({
     "../examples/cx/catalog/plugins/dont-round-my-timestamps.cx"() {
       dont_round_my_timestamps_default = 'plugin "DontRoundMyTimestamps":\n  needs appearance.style\n  use floor-relative-time\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/double-click-edit.cx
+  var double_click_edit_default;
+  var init_double_click_edit = __esm({
+    "../examples/cx/catalog/plugins/double-click-edit.cx"() {
+      double_click_edit_default = 'plugin "DoubleClickEdit":\n  needs messages.openeditor\n  use double-click-edit\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/double-click-to-reply.cx
+  var double_click_to_reply_default;
+  var init_double_click_to_reply = __esm({
+    "../examples/cx/catalog/plugins/double-click-to-reply.cx"() {
+      double_click_to_reply_default = 'plugin "DoubleClickToReply":\n  needs messages.openreply\n  use double-click-reply\n';
     }
   });
 
@@ -43044,6 +43079,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_copy_user_urls();
       init_dim_inactive_channels();
       init_dont_round_my_timestamps();
+      init_double_click_edit();
+      init_double_click_to_reply();
       init_embedded_urls();
       init_equius_s_typing_quirk();
       init_eridan_typing_quirk();
@@ -43391,6 +43428,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "DontRoundMyTimestamps",
             source: dont_round_my_timestamps_default
+          },
+          {
+            name: "DoubleClickEdit",
+            source: double_click_edit_default
+          },
+          {
+            name: "DoubleClickToReply",
+            source: double_click_to_reply_default
           },
           {
             name: "EmbeddedURLs",
@@ -45129,6 +45174,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var { children, accessibilityRole, accessibilityLabel, onPress, IconComponent, triggerOnLongPress } = props;
       return components.has(type) || Boolean(longPressMenu && type === longPressMenu && triggerOnLongPress === true) || accessibilityRole === "text" && typeof children === "string" && text.has(children) || typeof onPress === "function" && (controlIcons.has(IconComponent) || Boolean(accessibilityLabel && labels.has(accessibilityLabel)) || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons));
     };
+    return registerRenderedTree(target, (tree) => keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide));
+  }
+  function registerRenderedTree(target, change) {
     var wrappers = /* @__PURE__ */ new WeakMap();
     return registerJsxAppearance([
       target
@@ -45140,7 +45188,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       if (!wrapper) {
         var FilteredTree2 = function(props2, ref) {
           var tree = render(props2, ref);
-          return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
+          return settings.safeMode?.enabled ? tree : change(tree);
         };
         var FilteredTree = FilteredTree2;
         var memoized = component?.$$typeof === Symbol.for("react.memo");
@@ -45165,6 +45213,60 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         props.ref ??= Object.getOwnPropertyDescriptor(element, "ref")?.value;
       return React2.createElement(wrapper.type, props);
     });
+  }
+  function registerMessageGesture(mode) {
+    if (!messageGestures) {
+      var bind2 = function(tree, depth = 0) {
+        if (depth >= 16)
+          return tree;
+        if (Array.isArray(tree))
+          return mapMediaEntries(tree, (child) => bind2(child, depth + 1));
+        if (!React2.isValidElement(tree))
+          return tree;
+        var { children, channelId, onDoubleTapMessage, onInitiateEdit, onInitiateReply } = tree.props;
+        if (typeof channelId === "string" && typeof onDoubleTapMessage === "function" && typeof onInitiateEdit === "function" && typeof onInitiateReply === "function") {
+          return React2.cloneElement(tree, {
+            onDoubleTapMessage(event) {
+              if (!settings.safeMode?.enabled && (gestures.edit || gestures.reply) && channelId === SelectedChannelStore?.getChannelId?.()) {
+                var id = getNativeSyntheticEventData(event)?.messageId;
+                var message = isCxProfileUserId(id) ? MessageStore?.getMessage?.(channelId, id) : void 0;
+                var action = getCxMessageGesture(message, UserStore2?.getCurrentUser?.()?.id, gestures);
+                if (action === "edit")
+                  return onInitiateEdit(event);
+                if (action === "reply")
+                  return onInitiateReply(event);
+              }
+              return onDoubleTapMessage(event);
+            }
+          });
+        }
+        var next = bind2(children, depth + 1);
+        return next === children ? tree : React2.cloneElement(tree, {
+          children: next
+        });
+      };
+      var bind = bind2;
+      var renderer = findByFilePath("modules/messages/native/MessagesRenderer.tsx")?.default;
+      var { getNativeSyntheticEventData } = findByProps("getNativeSyntheticEventData") ?? {};
+      if (!renderer || typeof getNativeSyntheticEventData !== "function")
+        throw new Error("Discord's message gestures are unavailable");
+      var gestures = {
+        edit: 0,
+        reply: 0
+      };
+      messageGestures = Object.assign(gestures, {
+        stop: registerRenderedTree(renderer, bind2)
+      });
+    }
+    var binding = messageGestures;
+    binding[mode]++;
+    return () => {
+      binding[mode]--;
+      if (binding.edit || binding.reply)
+        return;
+      messageGestures = void 0;
+      binding.stop();
+    };
   }
   function bindExpressionPickerTabs() {
     var picker = findByFilePath("modules/expression_picker/native/ExpressionPicker.tsx")?.default;
@@ -45976,6 +46078,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                   }
                 }, enabled);
               }
+              case "double-click-edit":
+              case "double-click-reply":
+                return registerMessageGesture(effect === "double-click-edit" ? "edit" : "reply");
               case "attachment-image-quality":
               case "original-attachment-images":
                 return registerAttachmentImageQuality(effect === "original-attachment-images");
@@ -46487,7 +46592,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, appearanceBindings, expressionSheetBinding, blurredMedia, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, PresenceStore, UserGuildSettingsStore, splitSender, appearanceBindings, expressionSheetBinding, blurredMedia, attachmentQualityBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, messageGestures, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, reducedMotionAppearance, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -46515,6 +46620,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_color();
       init_toasts();
       init_metro();
+      init_cx();
       init_common();
       init_components();
       import_react_native41 = __toESM(require_react_native());
@@ -51174,7 +51280,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "00e0c2351243cc686955b82c41093a48fa6fcfd0";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "56ebbdc5ef2d8250a6392ac489388e4d4ccd57ab";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
