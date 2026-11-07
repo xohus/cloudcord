@@ -37349,6 +37349,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       throw new Error("Too many incoming rule values");
     if (kind === "follow-voice" && values.length > 1)
       throw new Error("Choose one friend ID to follow");
+    if (kind === "reply-ping-default" && input.trim())
+      throw new Error("Reply ping defaults take no options");
     if (kind === "friend-removals" && values.length)
       throw new Error("Friend removal notices take no options");
     if (kind === "hide-profile-themes" && values.length)
@@ -37408,6 +37410,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   }
   function applyIncomingRule(rule, payload, context) {
     var { type, message } = payload;
+    if (rule.kind === "reply-ping-default") {
+      if (type === "CREATE_PENDING_REPLY" && payload.shouldMention === true)
+        return {
+          shouldMention: false
+        };
+      return;
+    }
     if (rule.kind === "friends-voice" || rule.kind === "follow-voice" || rule.kind === "friend-removals")
       return;
     if (rule.kind === "hide-profile-themes") {
@@ -37581,6 +37590,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         stickers: "messages.filterstickers",
         "silence-users": "messages.silencementions",
         "reply-pings": "replies.controlping",
+        "reply-ping-default": "replies.suppressping",
         calls: "calls.suppressring",
         keywords: "messages.watchlocal",
         users: "messages.watchlocal",
@@ -39249,6 +39259,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ] : rule.name === "rewriteText" ? [
         `Apply ${rule.rules.length} text rules to message ${rule.stage}s and preserve links`
       ] : [])).concat(document.incoming.flatMap((rule) => {
+        if (rule.kind === "reply-ping-default")
+          return [
+            "Turn reply pings off initially and keep the composer toggle available"
+          ];
         if (rule.kind === "hide-profile-themes")
           return [
             "Hide other users\u2019 theme colors when their profiles load"
@@ -40854,6 +40868,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/no-reply-ping.cx
+  var no_reply_ping_default;
+  var init_no_reply_ping = __esm({
+    "../examples/cx/catalog/plugins/no-reply-ping.cx"() {
+      no_reply_ping_default = 'plugin "NoReplyPing":\n  needs replies.suppressping\n  on incoming reply-ping-default ""\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/no-typing-animation.cx
   var no_typing_animation_default;
   var init_no_typing_animation = __esm({
@@ -42080,6 +42102,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_no_pending_count();
       init_no_profile_themes();
       init_no_reply_mention();
+      init_no_reply_ping();
       init_no_typing_animation();
       init_normalize_message_links();
       init_polish_wording();
@@ -42608,6 +42631,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "NoReplyMention",
             source: no_reply_mention_default
+          },
+          {
+            name: "NoReplyPing",
+            source: no_reply_ping_default
           },
           {
             name: "NoTypingAnimation",
@@ -49230,7 +49257,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "f1cfc87e6f3608e1ff11a1c17fcd537b874e4a0b";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "1b5e5b7f11eadc9b4ce64f380ede433787562e53";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
