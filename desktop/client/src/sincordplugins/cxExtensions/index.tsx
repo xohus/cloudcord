@@ -2,7 +2,7 @@ import { ApplicationCommandInputType, ApplicationCommandOptionType, commands, fi
 import { addContextMenuPatch, removeContextMenuPatch, type NavContextMenuPatchCallback } from "@api/ContextMenu";
 import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreEditListener, removeMessagePreSendListener } from "@api/MessageEvents";
 import { showNotification } from "@api/Notifications";
-import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
+import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
@@ -13,6 +13,7 @@ import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, Constants, Emoj
 const session = createCxSession();
 const typingDotListeners = new Set<() => void>();
 let staticTypingDotUsers = 0;
+let fixFileExtensionUsers = 0;
 const staticTypingDots = () => staticTypingDotUsers > 0;
 
 function subscribeTypingDots(listener: () => void) {
@@ -149,6 +150,9 @@ export function CxSettings() {
                     switch (effect) {
                         case "static-typing-dots":
                             return registerStaticTypingDots();
+                        case "fix-file-extensions":
+                            fixFileExtensionUsers++;
+                            return () => { fixFileExtensionUsers--; };
                         case "plus-reactions": {
                             const actions = findByProps("sendMessage", "getSendMessageOptions");
                             const handle = createCxPlusReactionHandler({
@@ -417,7 +421,16 @@ export default definePlugin({
             match: /(\{focused:\i\}=)(\(0,\i\.\i\)\(\))/g,
             replace: "$1$self.useTypingFocus($2)",
         },
+    }, {
+        find: "async uploadFiles(",
+        replacement: {
+            match: /async uploadFiles\((\i)\)\{/,
+            replace: "$&$self.fixUploadExtensions($1);",
+        },
     }],
+    fixUploadExtensions(files: unknown) {
+        if (fixFileExtensionUsers) fixCxFileExtensions(files);
+    },
     useTypingFocus(focus: { focused: boolean; }) {
         const isStatic = React.useSyncExternalStore(subscribeTypingDots, staticTypingDots);
         return isStatic ? { focused: false } : focus;

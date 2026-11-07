@@ -583,6 +583,10 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
 // Only translate reviewed patch bodies into named runtime adapters. The
 // emitted CX never carries Webpack source, store names, or replacement code.
 const desktopEffectRecipes = {
+    FixFileExtensions: {
+        effect: "fix-file-extensions",
+        sha256: "bb47394a4de5d34df3b8d59b9d53e34196d451db664eaa20e0664ec1638a330e",
+    },
     BetterPlusReacts: {
         effect: "plus-reactions",
         sha256: "00d8cac138cbb241679d85eba94441e58031ce12ed2ba456c908793ba4ab6fe5",
@@ -888,6 +892,33 @@ function betterDiscordFiles(folder) {
     });
 }
 
+function classifyPorts(records, existing, hasLegacyCounter) {
+    const variants = new Map();
+    for (const record of records) {
+        const key = record.name.toLowerCase();
+        const group = variants.get(key) ?? [];
+        group.push(record);
+        variants.set(key, group);
+    }
+    return records.map(entry => {
+        const { cx, ...record } = entry;
+        const key = record.name.toLowerCase();
+        const group = variants.get(key);
+        const already = existing.has(key) || hasLegacyCounter && record.file === "desktop/client/src/sincordplugins/ccpCharacterCounter/index.ts";
+        const equivalent = cx && group.length > 1 && group.every(variant =>
+            variant.cx === cx && (variant.platform !== "betterdiscord" || variant.review));
+        const status = already ? "in-catalog"
+            : !cx ? "needs-adapter"
+                : record.platform === "betterdiscord" && !record.review ? "source-review"
+                : equivalent ? group[0] === entry ? "ready" : "equivalent-source"
+                    : record.platform === "mobile" && ["incoming-filter", "client-command", "native-effect", "previous-edit", "social-event"].includes(record.capability) ? "ready"
+                        : group.some(variant => variant.platform === "mobile") ? "compare-mobile"
+                            : group.length > 1 ? "compare-sources"
+                                : "ready";
+        return { ...record, status, ...(cx ? { cx } : {}) };
+    });
+}
+
 function scan(sourceDir, { includeCompanions = false } = {}) {
     const { parseCx, cxAppearanceTargets, cxNativeEffects } = require("./sync-cx-catalog.cjs").loadCxRuntime();
     const existing = new Set(["character counter"]);
@@ -927,25 +958,7 @@ function scan(sourceDir, { includeCompanions = false } = {}) {
         const record = inspectPlugin(path.relative(sourceDir, file).replaceAll("\\", "/"), fs.readFileSync(file, "utf8"), "betterdiscord", cxAppearanceTargets);
         if (record) records.push(record);
     }
-    const variants = new Map();
-    for (const record of records) {
-        const key = record.name.toLowerCase();
-        const group = variants.get(key) ?? [];
-        group.push(record);
-        variants.set(key, group);
-    }
-    return records.map(({ cx, ...record }) => {
-        const key = record.name.toLowerCase();
-        const already = existing.has(key) || hasLegacyCounter && record.file === "desktop/client/src/sincordplugins/ccpCharacterCounter/index.ts";
-        const status = already ? "in-catalog"
-            : !cx ? "needs-adapter"
-                : record.platform === "betterdiscord" && !record.review ? "source-review"
-                : record.platform === "mobile" && ["incoming-filter", "client-command", "native-effect", "previous-edit", "social-event"].includes(record.capability) ? "ready"
-                    : variants.get(key).some(variant => variant.platform === "mobile") ? "compare-mobile"
-                    : variants.get(key).length > 1 ? "compare-sources"
-                        : "ready";
-        return { ...record, status, ...(cx ? { cx } : {}) };
-    });
+    return classifyPorts(records, existing, hasLegacyCounter);
 }
 
 function buildPlan(records) {
@@ -1021,7 +1034,11 @@ function portFiles(ports) {
     const files = new Map();
     for (const record of ports) {
         const name = record.name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") + ".cx";
-        if (!/^[a-z][a-z0-9-]*\.cx$/.test(name) || files.has(name)) throw new Error("Ambiguous output name " + name);
+        if (!/^[a-z][a-z0-9-]*\.cx$/.test(name)) throw new Error("Invalid output name " + name);
+        if (files.has(name)) {
+            if (files.get(name) !== record.cx) throw new Error("Ambiguous output name " + name);
+            continue;
+        }
         files.set(name, record.cx);
     }
     return files;
@@ -1074,7 +1091,7 @@ function main(rawArgs) {
         return;
     }
     if (output) {
-        const ports = records.filter(record => record.cx && ["ready", "in-catalog", "source-review"].includes(record.status));
+        const ports = records.filter(record => record.cx && ["ready", "equivalent-source", "in-catalog", "source-review"].includes(record.status));
         const files = portFiles(ports);
         verifyPorts(files);
         fs.mkdirSync(output);
@@ -1093,7 +1110,7 @@ function main(rawArgs) {
     const counts = ["desktop", "mobile", "betterdiscord"].map(platform =>
         records.filter(record => record.platform === platform).length + " " + platform);
     console.log("Inspected " + counts.join(", ") + " plugin sources.");
-    for (const status of ["ready", "source-review", "compare-mobile", "compare-sources", "in-catalog", "needs-adapter"]) {
+    for (const status of ["ready", "equivalent-source", "source-review", "compare-mobile", "compare-sources", "in-catalog", "needs-adapter"]) {
         const matches = records.filter(record => record.status === status);
         console.log(status + ": " + matches.length + (matches.length && matches.length <= 20 ? " (" + matches.map(record => record.name).join(", ") + ")" : ""));
     }
@@ -1106,4 +1123,4 @@ if (require.main === module) {
     try { main(process.argv.slice(2)); }
     catch (error) { console.error(error.message); process.exitCode = 1; }
 }
-module.exports = { buildPlan, inspectPlugin, scan, verifyPorts };
+module.exports = { buildPlan, classifyPorts, inspectPlugin, portFiles, scan, verifyPorts };

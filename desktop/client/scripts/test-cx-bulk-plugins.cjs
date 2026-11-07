@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { buildPlan, inspectPlugin, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
+const { buildPlan, classifyPorts, inspectPlugin, portFiles, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
 const { buildCatalog, loadCxRuntime } = require("./sync-cx-catalog.cjs");
 
 const source = [
@@ -63,9 +63,18 @@ assert.equal(staticTyping?.capability, "native-effect");
 assert.deepEqual(Array.from(parseCx(staticTyping.cx).nativeEffects), ["static-typing-dots"]);
 const staticTypingSource = fs.readFileSync(path.join(__dirname, "../../..", staticTyping.file), "utf8");
 assert.equal(inspectPlugin(staticTyping.file, staticTypingSource.replace("dotCycle", "otherCycle"), "desktop", {}, cxNativeEffects).cx, undefined);
+const fixExtensions = matches.find(record => record.name === "FixFileExtensions");
+assert.deepEqual(Array.from(parseCx(fixExtensions.cx).permissions), ["uploads.rename"]);
+assert.deepEqual(Array.from(parseCx(fixExtensions.cx).nativeEffects), ["fix-file-extensions"]);
 const reactionPorts = matches.filter(record => record.name === "BetterPlusReacts");
 assert.deepEqual(reactionPorts.map(record => record.platform).sort(), ["desktop", "mobile"]);
 assert.equal(reactionPorts[0].cx, reactionPorts[1].cx);
+assert.deepEqual([...portFiles(reactionPorts).keys()], ["better-plus-reacts.cx"]);
+assert.throws(() => portFiles([reactionPorts[0], { ...reactionPorts[1], cx: reactionPorts[1].cx + "\n" }]), /Ambiguous output name/);
+const statuses = records => classifyPorts(records, new Set(), false).map(record => record.status);
+assert.deepEqual(statuses(reactionPorts), ["ready", "equivalent-source"]);
+assert.deepEqual(statuses([reactionPorts[0], { ...reactionPorts[1], platform: "betterdiscord" }]), ["compare-sources", "source-review"]);
+assert.deepEqual(statuses([reactionPorts[0], { ...reactionPorts[1], cx: undefined }]), ["compare-mobile", "needs-adapter"]);
 assert.deepEqual(Array.from(parseCx(reactionPorts[0].cx).permissions), ["messages.reactshortcut"]);
 for (const [name, platform, rule] of [["HideSystemMessages", "desktop", "hide-system"], ["NoProfileThemes", "mobile", "hide-profile-themes"]]) {
     const port = matches.find(record => record.name === name && record.platform === platform);

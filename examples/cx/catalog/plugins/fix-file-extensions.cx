@@ -1,0 +1,3 @@
+plugin "FixFileExtensions":
+  needs uploads.rename
+  use fix-file-extensions

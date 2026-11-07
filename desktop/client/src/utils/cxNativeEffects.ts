@@ -2,6 +2,7 @@ export const cxNativeEffects = {
     "silent-typing": { permission: "typing.suppress", label: "Stop sending your typing indicator" },
     "static-typing-dots": { permission: "appearance.style", label: "Keep Discord's typing dots still" },
     "plus-reactions": { permission: "messages.reactshortcut", label: "React to the matching previous message when you send a plus shortcut" },
+    "fix-file-extensions": { permission: "uploads.rename", label: "Use supported filename extensions for listed attachment formats" },
     "pending-friend-count": { permission: "appearance.hide", label: "Hide the pending friend request count" },
     "animated-assets": { permission: "appearance.style", label: "Animate avatars, banners, and server icons" },
     "floor-relative-time": { permission: "appearance.style", label: "Round relative timestamps down" },
@@ -12,6 +13,33 @@ export const cxNativeEffects = {
 export type CxNativeEffect = keyof typeof cxNativeEffects;
 export const cxAvatarResolutions = [256, 512, 1024, 2048, 4096] as const;
 export type CxAvatarResolution = typeof cxAvatarResolutions[number];
+
+// FixFileExtensions by thororen (GPL-3.0-or-later).
+const extensionGroups = {
+    ogg: ["ogv", "oga", "ogx", "ogm", "spx", "aac", "wma"],
+    jpg: ["jpe", "jif", "jfi", "pjpeg", "pjp", "bmp", "tiff", "tif"],
+    svg: ["svgz", "ai", "eps"],
+    mp4: ["m4v", "m4r", "m4p", "avi", "mkv", "wmv", "flv", "3gp"],
+    m4a: ["m4b", "aiff"],
+    mov: ["movie", "qt", "asf", "rm", "rmvb"],
+    png: ["ico", "cur"],
+};
+const replacementExtensions = new Map(Object.entries(extensionGroups)
+    .flatMap(([extension, aliases]) => aliases.map(alias => [alias, extension] as const)));
+
+export function fixCxFileExtensions(files: unknown) {
+    if (!Array.isArray(files)) return;
+    for (const file of files) {
+        try {
+            const filename = file?.filename;
+            if (typeof filename !== "string") continue;
+            const parts = /^(.*[^/\\.])\.([a-z0-9]+)$/i.exec(filename);
+            if (!parts || /\.tar$/i.test(parts[1])) continue;
+            const replacement = replacementExtensions.get(parts[2].toLowerCase());
+            if (replacement) file.filename = parts[1] + "." + replacement;
+        } catch { /* A read-only or unrecognized entry should still upload. */ }
+    }
+}
 
 type Rounding = (value: number) => number;
 type MomentRounding = {

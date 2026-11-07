@@ -297,6 +297,12 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const menuPatches = new Set(), clipboardWrites = [];
         let inMemberRow = false;
         const typingEllipsis = function Ellipsis() {};
+        class NativeCloudUploader {
+            uploadFiles(files, options) {
+                assert.ok(this instanceof NativeCloudUploader);
+                return { files, options };
+            }
+        }
         const typingSubscribers = new Set();
         let protectedReads = 0;
         const diagnosticExports = {
@@ -408,6 +414,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
             "@metro": { findByFilePath: path => path.endsWith("/ButtonEllipsis.native.tsx") ? { Ellipsis: typingEllipsis }
+                : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
@@ -1225,6 +1232,49 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
 
         const focus = { focused: true };
         const desktopPlugin = module.exports.default;
+        const fixExtensions = cxCatalog.plugins.find(entry => entry.name === "FixFileExtensions").source;
+        assert.throws(() => activateCx(fixExtensions, host, ["appearance.style"]), /approval/);
+        const uploader = new NativeCloudUploader();
+        const nativeUpload = uploader.uploadFiles;
+        const uploadOptions = { mode: "attachment" };
+        const runUpload = files => {
+            if (desktop) desktopPlugin.fixUploadExtensions(files);
+            else {
+                const result = uploader.uploadFiles(files, uploadOptions);
+                assert.equal(result.files, files);
+                assert.equal(result.options, uploadOptions);
+            }
+        };
+        const data = { type: "image/tiff" };
+        const uploadFiles = () => [
+            { filename: "SPOILER_Scan.TIFF", item: data },
+            { filename: "archive.tar.avi" },
+            { filename: "LICENSE" },
+            Object.freeze({ filename: "read-only.avi" }),
+            { filename: "clip.mkv" },
+        ];
+        let files = uploadFiles();
+        runUpload(files);
+        assert.equal(files[0].filename, "SPOILER_Scan.TIFF");
+        selectCatalog("FixFileExtensions");
+        click(render(), "Allow for this session");
+        runUpload(files);
+        assert.deepEqual(files.map(file => file.filename), ["SPOILER_Scan.jpg", "archive.tar.avi", "LICENSE", "read-only.avi", "clip.mp4"]);
+        assert.equal(files[0].item, data);
+        assert.deepEqual(data, { type: "image/tiff" });
+        if (!desktop) {
+            settings.safeMode = { enabled: true };
+            files = uploadFiles();
+            runUpload(files);
+            assert.equal(files[0].filename, "SPOILER_Scan.TIFF");
+            settings.safeMode = undefined;
+        }
+        click(render(), "Disable FixFileExtensions");
+        files = uploadFiles();
+        runUpload(files);
+        assert.equal(files[0].filename, "SPOILER_Scan.TIFF");
+        assert.equal(uploader.uploadFiles, nativeUpload);
+
         if (desktop) assert.equal(desktopPlugin.useTypingFocus(focus), focus);
         selectCatalog("NoTypingAnimation");
         click(render(), "Allow for this session");
