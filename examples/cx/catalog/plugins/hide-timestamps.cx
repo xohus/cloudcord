@@ -1,0 +1,3 @@
+plugin "HideTimestamps":
+  needs appearance.hide
+  hide message-timestamps

@@ -229,7 +229,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
-        const messagePresentation = Object.freeze({ edited: true, stickers: Object.freeze([{ id: "sticker" }]), content: "hello" });
+        const messagePresentation = Object.freeze({
+            edited: true, stickers: Object.freeze([{ id: "sticker" }]), content: "hello <t:12345>",
+            timestamp: "8:24 PM", timestampTooltip: "November 7 at 8:24 PM", timestampAccessibilityLabel: "8:24 PM",
+        });
         const createMessageContent = () => messagePresentation;
         const messageRenderer = { default: createMessageContent };
         const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon", "Avatar",
@@ -581,6 +584,31 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(wrapped.type(wrapped.props), empty);
                 assert.equal(appearanceHooks.size, 0);
                 continue;
+            } else if (rule.mobile.customStatusEmojis) {
+                const emoji = Object.freeze({ name: "cloud" });
+                const status = Object.freeze({ emoji, state: "Working", type: 4 });
+                const bubbles = [];
+                for (const name of rule.mobile.customStatusEmojis) {
+                    const hook = appearanceHooks.get(name);
+                    const bubble = jsx("StatusBubble", { customStatusActivity: status, onPress() {} });
+                    const wrapped = hook(null, bubble);
+                    const changed = wrapped.type(wrapped.props);
+                    assert.equal(changed.props.customStatusActivity.emoji, undefined);
+                    assert.equal(changed.props.customStatusActivity.state, "Working");
+                    assert.equal(changed.props.onPress, bubble.props.onPress);
+                    assert.equal(status.emoji, emoji);
+                    const editor = jsx("StatusBubble", { previewEmoji: emoji });
+                    const editorWrapper = hook(null, editor);
+                    assert.equal(editorWrapper.type(editorWrapper.props), editor);
+                    settings.safeMode = { enabled: true };
+                    assert.equal(wrapped.type(wrapped.props), bubble);
+                    settings.safeMode = undefined;
+                    bubbles.push([wrapped, bubble]);
+                }
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(appearanceHooks.size, 0);
+                for (const [wrapped, bubble] of bubbles) assert.equal(wrapped.type(wrapped.props), bubble);
+                continue;
             } else if (rule.mobile.mentionBadges) {
                 const badge = appearanceHooks.get("Badge");
                 const marked = jsx("NativeBadge", { value: 3, isMentionLowImportance: false });
@@ -601,6 +629,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(rendered.content, messagePresentation.content);
                 assert.equal(rendered.edited, rule.mobile.messagePresentation !== "edited");
                 assert.equal(rendered.stickers.length, rule.mobile.messagePresentation === "stickers" ? 0 : 1);
+                for (const field of ["timestamp", "timestampTooltip", "timestampAccessibilityLabel"]) {
+                    assert.equal(rendered[field], rule.mobile.messagePresentation === "timestamps" ? undefined : messagePresentation[field]);
+                }
                 settings.safeMode = { enabled: true };
                 assert.equal(messageRenderer.default(), messagePresentation);
                 settings.safeMode = undefined;
@@ -618,19 +649,22 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             for (const wrapped of wraps) assert.equal(wrapped.type(wrapped.props), original);
         }
         if (!desktop) {
-            for (const name of ["HideEditedLabel", "HideStickers"]) {
+            for (const name of ["HideEditedLabel", "HideStickers", "HideTimestamps"]) {
                 selectCatalog(name);
                 click(render(), "Allow for this session");
             }
             let rendered = messageRenderer.default();
             assert.equal(rendered.edited, false);
             assert.equal(rendered.stickers.length, 0);
-            assert.equal(rendered.content, "hello");
+            assert.equal(rendered.content, messagePresentation.content);
+            assert.equal(rendered.timestamp, undefined);
             click(render(), "Disable HideEditedLabel");
             rendered = messageRenderer.default();
             assert.equal(rendered.edited, true);
             assert.equal(rendered.stickers.length, 0);
+            assert.equal(rendered.timestamp, undefined);
             click(render(), "Disable HideStickers");
+            click(render(), "Disable HideTimestamps");
             assert.equal(messageRenderer.default, createMessageContent);
             for (const name of ["FloatingChatBar", "RoundedChatBar"]) {
                 selectCatalog(name);

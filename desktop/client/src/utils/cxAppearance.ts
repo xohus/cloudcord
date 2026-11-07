@@ -84,6 +84,11 @@ export const cxAppearanceTargets = {
         css: '[class*="badgeList"] { display: none !important; }',
         mobile: ["ProfileBadgeRows"],
     },
+    "custom-status-emojis": {
+        plugin: "HideStatusEmojis", label: "emojis in custom status bubbles",
+        css: '[class*="customStatus"] img[class*="emoji"] { display: none !important; }',
+        mobile: { customStatusEmojis: ["CustomStatusBubble", "UserProfileCustomStatusBubble"] },
+    },
     "reply-previews": {
         plugin: "HideReplyPreviews", label: "reply previews in chat",
         css: '[class*="repliedMessage"] { display: none !important; }',
@@ -139,6 +144,11 @@ export const cxAppearanceTargets = {
         plugin: "HideEditedLabel", label: "the edited label in chat",
         css: '[class*="edited_"] { display: none !important; }',
         mobile: { messagePresentation: "edited" },
+    },
+    "message-timestamps": {
+        plugin: "HideTimestamps", label: "timestamps next to chat messages",
+        css: '[class*="messageListItem"] time, [class*="timestamp_"] { display: none !important; }',
+        mobile: { messagePresentation: "timestamps" },
     },
     "message-stickers": {
         plugin: "HideStickers", label: "stickers in chat",

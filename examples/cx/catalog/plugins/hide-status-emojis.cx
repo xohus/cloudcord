@@ -1,0 +1,3 @@
+plugin "HideStatusEmojis":
+  needs appearance.hide
+  hide custom-status-emojis

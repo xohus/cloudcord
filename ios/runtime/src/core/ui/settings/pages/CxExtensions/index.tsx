@@ -344,6 +344,13 @@ export default function CxExtensions() {
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile) return registerTreeAppearance(mobile);
+                    if ("customStatusEmojis" in mobile) {
+                        return registerJsxAppearance(mobile.customStatusEmojis, element => {
+                            const { customStatusActivity } = element.props;
+                            if (!customStatusActivity?.emoji) return element;
+                            return React.cloneElement(element, { customStatusActivity: { ...customStatusActivity, emoji: undefined } });
+                        });
+                    }
                     if ("emptyServerFolders" in mobile) {
                         return registerJsxAppearance(["GuildsBarGuildFolder"], element => {
                             const { expanded, childNodes, isDragPreview, hideExpandedChildren } = element.props;
@@ -366,6 +373,10 @@ export default function CxExtensions() {
                             if (!presentation || typeof presentation !== "object") return presentation;
                             if (mobile.messagePresentation === "edited") {
                                 if ("edited" in presentation && presentation.edited === true) return { ...presentation, edited: false };
+                            } else if (mobile.messagePresentation === "timestamps") {
+                                if ("timestamp" in presentation && typeof presentation.timestamp === "string") {
+                                    return { ...presentation, timestamp: undefined, timestampTooltip: undefined, timestampAccessibilityLabel: undefined };
+                                }
                             } else if ("stickers" in presentation && Array.isArray(presentation.stickers) && presentation.stickers.length) {
                                 return { ...presentation, stickers: [] };
                             }
