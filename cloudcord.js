@@ -38418,6 +38418,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           permission: "emoji.clipboard",
           label: "Add a Copy Emoji Markdown action to the emoji menu"
         },
+        "copy-media-link": {
+          permission: "media.clipboard",
+          label: "Add a clipboard action to media and link menus"
+        },
         "sticker-links": {
           permission: "stickers.links",
           label: "Add Copy Sticker Link and Open Sticker Link actions"
@@ -39262,6 +39266,12 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   }
   function validateCxStickerLink(link) {
     if (typeof link === "string" && /^https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/stickers\/\d{17,20}\.(?:png|json|gif|webp)(?:\?[a-z0-9_=&-]{1,128})?$/i.test(link))
+      return link;
+  }
+  function validateCxMediaLink(link) {
+    if (typeof link !== "string" || link.length > 8192 || RegExp('[\\s\\x00-\\x1f\\x7f\\\\<>"\\u202a-\\u202e\\u2066-\\u2069]', "u").test(link))
+      return;
+    if (/^https?:\/\/(?:[a-z\d.-]+|\[[a-f\d:]+\])(?::\d{1,5})?(?:[/?#]|$)/i.test(link))
       return link;
   }
   var snowflake2;
@@ -40149,6 +40159,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.send": "Send the result to the current chat when you run a listed command",
         "messages.split": "Send your long drafts as separate messages in the same channel",
         "emoji.clipboard": "Copy the selected emoji as Markdown when you choose its menu action",
+        "media.clipboard": "Copy a selected media or web link when you choose its menu action",
         "stickers.links": "Copy or open the selected Discord sticker\u2019s CDN link when you choose its menu action",
         "messages.transform": "Change text before Discord sends messages you compose",
         "messages.edit.transform": "Change text when you submit a message edit",
@@ -40401,6 +40412,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_copy_emoji_markdown = __esm({
     "../examples/cx/catalog/plugins/copy-emoji-markdown.cx"() {
       copy_emoji_markdown_default = 'plugin "CopyEmojiMarkdown":\n  needs emoji.clipboard\n  use copy-emoji-markdown\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/copy-media-link.cx
+  var copy_media_link_default;
+  var init_copy_media_link = __esm({
+    "../examples/cx/catalog/plugins/copy-media-link.cx"() {
+      copy_media_link_default = 'plugin "CopyMediaLink":\n  needs media.clipboard\n  use copy-media-link\n';
     }
   });
 
@@ -42658,6 +42677,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cloud_cord_accent();
       init_colorful_mentions();
       init_copy_emoji_markdown();
+      init_copy_media_link();
       init_copy_profile_colors();
       init_copy_sticker_links();
       init_copy_user_mention();
@@ -42964,6 +42984,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "CopyEmojiMarkdown",
             source: copy_emoji_markdown_default
+          },
+          {
+            name: "CopyMediaLink",
+            source: copy_media_link_default
           },
           {
             name: "CopyProfileColors",
@@ -44152,6 +44176,72 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     };
   }
+  function registerMediaLinkCopy() {
+    var active = true;
+    var enabled = () => active && !settings.safeMode?.enabled;
+    var copy = (link) => () => {
+      if (!enabled())
+        return;
+      clipboard.setString(link);
+      showToast.showCopyToClipboard?.();
+    };
+    var mediaActions = findByFilePath("modules/media_viewer/native/components/MediaShareActions.tsx");
+    var IconComponent = findByProps("LinkIcon")?.LinkIcon;
+    var stopMedia = overrideCxMethods(mediaActions, {
+      useMediaShareActions(args, invoke) {
+        var actions = invoke(args);
+        var media = args[0];
+        if (!Array.isArray(actions) || !actions.length || media?.disableDownload || media?.shareable === false || media?.source?.obscure)
+          return actions;
+        var source = media?.source;
+        var link = validateCxMediaLink(source?.shareURI) ?? validateCxMediaLink(source?.sourceURI) ?? validateCxMediaLink(source?.uri);
+        if (!link || actions.some((action) => action?.label === "Copy Media Link (CX)"))
+          return actions;
+        return [
+          ...actions,
+          {
+            label: "Copy Media Link (CX)",
+            IconComponent,
+            action: copy(link)
+          }
+        ];
+      }
+    }, enabled);
+    try {
+      var stopLinks = overrideCxMethods(findByProps("showSimpleActionSheet"), {
+        showSimpleActionSheet(args, invoke) {
+          var [options, ...rest] = args;
+          var sheet = options;
+          var link = sheet?.key === "LongPressUrl" && validateCxMediaLink(sheet.header?.subtitle);
+          if (!link || !Array.isArray(sheet?.options))
+            return invoke(args);
+          var actions = [
+            ...sheet.options,
+            {
+              label: "Copy Link (CX)",
+              onPress: copy(link)
+            }
+          ];
+          return invoke([
+            {
+              ...sheet,
+              options: actions
+            },
+            ...rest
+          ]);
+        }
+      }, enabled);
+      return () => {
+        active = false;
+        stopLinks();
+        stopMedia();
+      };
+    } catch (error) {
+      active = false;
+      stopMedia();
+      throw error;
+    }
+  }
   function registerMemberRowAppearance(target, change) {
     if (!memberRowScope) {
       var context = React2.createContext(false);
@@ -45135,6 +45225,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               case "copy-emoji-markdown":
               case "sticker-links":
                 return registerExpressionLinks(effect);
+              case "copy-media-link":
+                return registerMediaLinkCopy();
               case "unicode-emoji-autocomplete":
               case "local-emoji-autocomplete":
                 return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode", findByProps("EmojiIntention")?.EmojiIntention, enabled);
@@ -50296,7 +50388,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "1bb176c3105fbb2b76e3d206dfd6276d174dc722";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a38cba191957bc0afd4d136682ff9c9b5605da21";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
