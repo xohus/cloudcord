@@ -36496,6 +36496,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "PremiumAnimatedGiftButton"
           ]
         },
+        "chat-gif-picker": {
+          plugin: "HideGifButton",
+          label: "the GIF picker shortcut",
+          css: 'button[aria-label="Open GIF picker"] { display: none !important; }',
+          mobile: {
+            expressionPickerTab: "gif"
+          }
+        },
+        "chat-sticker-picker": {
+          plugin: "HideStickerButton",
+          label: "the sticker picker shortcut",
+          css: 'button[aria-label="Open sticker picker"] { display: none !important; }',
+          mobile: {
+            expressionPickerTab: "sticker"
+          }
+        },
         "add-server-button": {
           plugin: "HideAddServerButton",
           label: "the add-a-server button",
@@ -40278,6 +40294,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-gif-button.cx
+  var hide_gif_button_default;
+  var init_hide_gif_button = __esm({
+    "../examples/cx/catalog/plugins/hide-gif-button.cx"() {
+      hide_gif_button_default = 'plugin "HideGifButton":\n  needs appearance.hide\n  hide chat-gif-picker\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-gift-button.cx
   var hide_gift_button_default;
   var init_hide_gift_button = __esm({
@@ -40443,6 +40467,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_status_emojis = __esm({
     "../examples/cx/catalog/plugins/hide-status-emojis.cx"() {
       hide_status_emojis_default = 'plugin "HideStatusEmojis":\n  needs appearance.hide\n  hide custom-status-emojis\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-sticker-button.cx
+  var hide_sticker_button_default;
+  var init_hide_sticker_button = __esm({
+    "../examples/cx/catalog/plugins/hide-sticker-button.cx"() {
+      hide_sticker_button_default = 'plugin "HideStickerButton":\n  needs appearance.hide\n  hide chat-sticker-picker\n';
     }
   });
 
@@ -41999,6 +42031,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_edited_label();
       init_hide_embeds();
       init_hide_empty_folders();
+      init_hide_gif_button();
       init_hide_gift_button();
       init_hide_guild_boost_tag();
       init_hide_image_alt_text();
@@ -42020,6 +42053,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_shop_tab();
       init_hide_spoiler_warnings();
       init_hide_status_emojis();
+      init_hide_sticker_button();
       init_hide_stickers();
       init_hide_stream_previews();
       init_hide_system_messages();
@@ -42380,6 +42414,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_empty_folders_default
           },
           {
+            name: "HideGifButton",
+            source: hide_gif_button_default
+          },
+          {
             name: "HideGiftButton",
             source: hide_gift_button_default
           },
@@ -42462,6 +42500,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideStatusEmojis",
             source: hide_status_emojis_default
+          },
+          {
+            name: "HideStickerButton",
+            source: hide_sticker_button_default
           },
           {
             name: "HideStickers",
@@ -43459,6 +43501,108 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       return React2.createElement(wrapper.type, props);
     });
   }
+  function bindExpressionPickerTabs() {
+    var picker = findByFilePath("modules/expression_picker/native/ExpressionPicker.tsx")?.default;
+    var nativeRender = picker?.$$typeof === Symbol.for("react.memo") && picker.type;
+    var order = findByFilePath("modules/expression_picker/ExpressionPickerConstants.tsx")?.ExpressionPickerOrder;
+    if (typeof nativeRender !== "function" || !Array.isArray(order) || order.length !== 3 || ![
+      "emoji",
+      "gif",
+      "sticker"
+    ].every((tab) => order.includes(tab))) {
+      throw new Error("Discord's expression picker is unavailable");
+    }
+    var render = nativeRender;
+    var tabs2 = order;
+    var rules = /* @__PURE__ */ new Set();
+    var filterCurrentRender = false;
+    var overrides = {
+      useSegmentedControlState(args, invoke) {
+        if (!filterCurrentRender)
+          return invoke(args);
+        var options = args[0];
+        var selected = options?.defaultIndex;
+        if (!Array.isArray(options?.items) || options.items.length !== tabs2.length || selected == null || !Number.isInteger(selected) || selected < 0 || selected >= tabs2.length || typeof options.onSetActiveIndex !== "function")
+          return invoke(args);
+        var visible = tabs2.flatMap((tab, index) => index === selected || ![
+          ...rules
+        ].some((rule) => rule.tab === tab) ? [
+          index
+        ] : []);
+        if (visible.length === tabs2.length)
+          return invoke(args);
+        var { items, onSetActiveIndex } = options;
+        return invoke([
+          {
+            ...options,
+            items: visible.map((index) => items[index]),
+            defaultIndex: visible.indexOf(selected),
+            onSetActiveIndex(index) {
+              var nativeIndex = visible[index];
+              if (nativeIndex != null)
+                return onSetActiveIndex(nativeIndex);
+            }
+          },
+          ...args.slice(1)
+        ]);
+      }
+    };
+    var modules = new Set([
+      findByFilePath("design/components/SegmentedControl/native/SegmentedControlState.native.tsx"),
+      findByFilePath("design/native.tsx")
+    ].filter((module2) => typeof module2?.useSegmentedControlState === "function"));
+    if (!modules.size)
+      throw new Error("Discord's segmented control is unavailable");
+    var cleanups = [];
+    var stop = () => {
+      for (var cleanup of cleanups.splice(0).reverse())
+        cleanup();
+    };
+    try {
+      for (var module of modules)
+        cleanups.push(overrideCxMethods(module, overrides));
+    } catch (error) {
+      stop();
+      throw error;
+    }
+    function FilteredPicker({ originalProps }) {
+      var previous = filterCurrentRender;
+      var { visibleTabs } = originalProps;
+      filterCurrentRender = !settings.safeMode?.enabled && rules.size > 0 && (visibleTabs === void 0 || Array.isArray(visibleTabs) && visibleTabs.length === tabs2.length && visibleTabs.every((tab, index) => tab === tabs2[index]));
+      try {
+        return render(originalProps);
+      } finally {
+        filterCurrentRender = previous;
+      }
+    }
+    var wrap = (element) => element.type === picker ? /* @__PURE__ */ jsx(FilteredPicker, {
+      originalProps: element.props
+    }, element.key) : element;
+    return {
+      picker,
+      rules,
+      wrap,
+      stop
+    };
+  }
+  function registerExpressionPickerTab(tab) {
+    var binding = expressionPickerBinding ??= bindExpressionPickerTabs();
+    var rule = {
+      tab
+    };
+    binding.rules.add(rule);
+    var stop = registerJsxAppearance([
+      binding.picker
+    ], (element) => binding.wrap(element));
+    return () => {
+      binding.rules.delete(rule);
+      stop();
+      if (!binding.rules.size) {
+        binding.stop();
+        expressionPickerBinding = void 0;
+      }
+    };
+  }
   function registerRenderedChannelStyle(rule) {
     var wrappers = /* @__PURE__ */ new WeakMap();
     return registerJsxAppearance(rule.renderedComponents, (element) => {
@@ -43689,6 +43833,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var mobile = cxAppearanceTargets[target].mobile;
             if ("renderTree" in mobile || "renderComponent" in mobile)
               return registerTreeAppearance(mobile);
+            if ("expressionPickerTab" in mobile)
+              return registerExpressionPickerTab(mobile.expressionPickerTab);
             if ("settingsRoute" in mobile) {
               var route = findByFilePath(mobile.settingsRoute)?.default;
               return overrideCxMethods(route, {
@@ -44402,7 +44548,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, hasUploadAnonymiser, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -49084,7 +49230,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a9274082700da9993b695723fbed83eaf65cbc4b";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "f1cfc87e6f3608e1ff11a1c17fcd537b874e4a0b";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
