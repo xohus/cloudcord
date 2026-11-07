@@ -36932,6 +36932,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             mentionBadges: true
           }
         },
+        "wider-channel-list": {
+          plugin: "WiderChannelList",
+          label: "make the channel list wider",
+          css: '[class*="sidebar_"] { width: 280px !important; }',
+          style: {
+            drawerWidthDelta: 40
+          }
+        },
+        "narrower-channel-list": {
+          plugin: "NarrowChannelList",
+          label: "make the channel list narrower",
+          css: '[class*="sidebar_"] { width: 200px !important; }',
+          style: {
+            drawerWidthDelta: -40
+          }
+        },
         "muted-channel-opacity": {
           plugin: "MutedChannelsFaded",
           label: "fade muted channels",
@@ -40660,6 +40676,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/narrow-channel-list.cx
+  var narrow_channel_list_default;
+  var init_narrow_channel_list = __esm({
+    "../examples/cx/catalog/plugins/narrow-channel-list.cx"() {
+      narrow_channel_list_default = 'plugin "NarrowChannelList":\n  needs appearance.style\n  style narrower-channel-list\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/nepeta-s-typing-quirk.cx
   var nepeta_s_typing_quirk_default;
   var init_nepeta_s_typing_quirk = __esm({
@@ -41170,6 +41194,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     replace ["trait"] with "tr8" ignore-case
     replace ["b","B"] with "8"
 `;
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/wider-channel-list.cx
+  var wider_channel_list_default;
+  var init_wider_channel_list = __esm({
+    "../examples/cx/catalog/plugins/wider-channel-list.cx"() {
+      wider_channel_list_default = 'plugin "WiderChannelList":\n  needs appearance.style\n  style wider-channel-list\n';
     }
   });
 
@@ -42097,6 +42129,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_message_notifier();
       init_more_commands();
       init_muted_channels_faded();
+      init_narrow_channel_list();
       init_nepeta_s_typing_quirk();
       init_no_blocked_messages();
       init_no_pending_count();
@@ -42135,6 +42168,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_vibe_check();
       init_voice_join_messages();
       init_vriska_s_typing_quirk();
+      init_wider_channel_list();
       init_wiki_lookup();
       init_write_upper_case();
       init_zero_width_sanitizer();
@@ -42613,6 +42647,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: muted_channels_faded_default
           },
           {
+            name: "NarrowChannelList",
+            source: narrow_channel_list_default
+          },
+          {
             name: "Nepeta'sTypingQuirk",
             source: nepeta_s_typing_quirk_default
           },
@@ -42763,6 +42801,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "Vriska'sTypingQuirk",
             source: vriska_s_typing_quirk_default
+          },
+          {
+            name: "WiderChannelList",
+            source: wider_channel_list_default
           },
           {
             name: "WikiLookup",
@@ -43630,6 +43672,55 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     };
   }
+  function bindChannelDrawerWidths() {
+    var drawer = findByFilePath("modules/screen/native/drawer/useDrawerWidth.tsx");
+    var layout = findByProps("getChatLayout");
+    var container = findByProps("getBaseAppContainerDimensions");
+    if (typeof drawer?.getDrawerWidth !== "function" || typeof drawer.useDrawerWidth !== "function" || typeof layout?.getChatLayout !== "function" || typeof container?.getBaseAppContainerDimensions !== "function") {
+      throw new Error("Discord's channel drawer sizing is unavailable");
+    }
+    var widths = /* @__PURE__ */ new Set();
+    var resize = (args, invoke) => {
+      var width = invoke(args);
+      var preference = [
+        ...widths
+      ].at(-1);
+      if (!preference || typeof width !== "number" || !Number.isFinite(width))
+        return width;
+      var { isChatBesideChannelList, isChatLockedOpen } = layout.getChatLayout() ?? {};
+      if (!isChatBesideChannelList)
+        return width;
+      var viewport = container.getBaseAppContainerDimensions()?.width;
+      if (!Number.isFinite(viewport) || width <= 0 || width >= viewport)
+        return width;
+      var minimum = Math.min(width, 200);
+      var chatSpace = isChatLockedOpen ? 320 : 32;
+      var maximum = Math.max(width, viewport - chatSpace);
+      return Math.max(minimum, Math.min(maximum, width + preference.delta));
+    };
+    var stop = overrideCxMethods(drawer, {
+      getDrawerWidth: resize,
+      useDrawerWidth: resize
+    }, () => !settings.safeMode?.enabled);
+    return {
+      widths,
+      stop
+    };
+  }
+  function registerChannelDrawerWidth(delta) {
+    var binding = channelDrawerWidths ??= bindChannelDrawerWidths();
+    var preference = {
+      delta
+    };
+    binding.widths.add(preference);
+    return () => {
+      binding.widths.delete(preference);
+      if (!binding.widths.size) {
+        binding.stop();
+        channelDrawerWidths = void 0;
+      }
+    };
+  }
   function registerRenderedChannelStyle(rule) {
     var wrappers = /* @__PURE__ */ new WeakMap();
     return registerJsxAppearance(rule.renderedComponents, (element) => {
@@ -44010,6 +44101,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           },
           styleAppearanceTarget(target) {
             var style = cxAppearanceTargets[target].style;
+            if ("drawerWidthDelta" in style)
+              return registerChannelDrawerWidth(style.drawerWidthDelta);
             if ("renderedComponents" in style)
               return registerRenderedChannelStyle(style);
             if ("serverIconScale" in style) {
@@ -44575,7 +44668,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, channelDrawerWidths, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -49257,7 +49350,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "1b5e5b7f11eadc9b4ce64f380ede433787562e53";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a73ca6c6528e70ea3d86da2a339c055cb514a596";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
