@@ -36678,6 +36678,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "CollectiblesShopEntryButton"
           ]
         },
+        "quests-entry": {
+          plugin: "HideQuestsTab",
+          label: "the Quests entry",
+          css: 'a[href="/quest-home"], [data-list-item-id$="___quests"] { display: none !important; }',
+          mobile: {
+            settingsRoute: "modules/user_settings/defs/native/QuestHomeSetting.tsx"
+          }
+        },
         "inbox-button": {
           plugin: "HideInboxButton",
           label: "the notifications entry",
@@ -36734,6 +36742,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             semantic: {
               TEXT_DEFAULT: "#ffffff",
               TEXT_NORMAL: "#ffffff",
+              TEXT_STRONG: "#ffffff",
               TEXT_MUTED: "#c7c9d1",
               TEXT_SUBTLE: "#c7c9d1"
             }
@@ -36788,6 +36797,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             values: {
               fontSize: 15,
               lineHeight: 22.5
+            }
+          }
+        },
+        "colorful-mentions": {
+          plugin: "ColorfulMentions",
+          label: "tint inline mentions purple",
+          css: '[class*="mention"][class*="interactive"] { background: rgb(124 92 255 / 25%) !important; color: #c9bcff !important; border-radius: 6px; }',
+          style: {
+            semantic: {
+              MENTION_BACKGROUND: "#7c5cff40",
+              MENTION_FOREGROUND: "#c9bcff"
             }
           }
         },
@@ -39815,6 +39835,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/colorful-mentions.cx
+  var colorful_mentions_default;
+  var init_colorful_mentions = __esm({
+    "../examples/cx/catalog/plugins/colorful-mentions.cx"() {
+      colorful_mentions_default = 'plugin "ColorfulMentions":\n  needs appearance.style\n  style colorful-mentions\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/copy-profile-colors.cx
   var copy_profile_colors_default;
   var init_copy_profile_colors = __esm({
@@ -40335,6 +40363,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_profile_effects = __esm({
     "../examples/cx/catalog/plugins/hide-profile-effects.cx"() {
       hide_profile_effects_default = 'plugin "HideProfileEffects":\n  needs appearance.hide\n  hide profile-effects\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-quests-tab.cx
+  var hide_quests_tab_default;
+  var init_hide_quests_tab = __esm({
+    "../examples/cx/catalog/plugins/hide-quests-tab.cx"() {
+      hide_quests_tab_default = 'plugin "HideQuestsTab":\n  needs appearance.hide\n  hide quests-entry\n';
     }
   });
 
@@ -41931,6 +41967,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_clear_urls();
       init_client_side_block();
       init_cloud_cord_accent();
+      init_colorful_mentions();
       init_copy_profile_colors();
       init_copy_user_mention();
       init_copy_user_urls();
@@ -41973,6 +42010,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_new_messages_bar();
       init_hide_notification_bell();
       init_hide_profile_effects();
+      init_hide_quests_tab();
       init_hide_reactions();
       init_hide_reply_previews();
       init_hide_role_icons();
@@ -42214,6 +42252,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: cloud_cord_accent_default
           },
           {
+            name: "ColorfulMentions",
+            source: colorful_mentions_default
+          },
+          {
             name: "CopyProfileColors",
             source: copy_profile_colors_default
           },
@@ -42380,6 +42422,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideProfileEffects",
             source: hide_profile_effects_default
+          },
+          {
+            name: "HideQuestsTab",
+            source: hide_quests_tab_default
           },
           {
             name: "HideReactions",
@@ -43643,6 +43689,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var mobile = cxAppearanceTargets[target].mobile;
             if ("renderTree" in mobile || "renderComponent" in mobile)
               return registerTreeAppearance(mobile);
+            if ("settingsRoute" in mobile) {
+              var route = findByFilePath(mobile.settingsRoute)?.default;
+              return overrideCxMethods(route, {
+                usePredicate(args, invoke) {
+                  invoke(args);
+                  return false;
+                }
+              }, () => !settings.safeMode?.enabled);
+            }
             if ("hideComponentPaths" in mobile) {
               var components = mobile.hideComponentPaths.map((path) => findByFilePath(path)?.default);
               if (components.some((component) => !component))
@@ -49029,7 +49084,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "fcabf887ccd22dd9b5a5074e9a63c17d85a870ba";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "a9274082700da9993b695723fbed83eaf65cbc4b";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
