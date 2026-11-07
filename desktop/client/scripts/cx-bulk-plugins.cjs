@@ -204,6 +204,73 @@ function appearanceLines(targets) {
     return [...permissions, ...instructions.map(instruction => "  " + instruction)];
 }
 
+function configurableHides(options, mapping, appearance) {
+    const lines = ["  needs appearance.hide"];
+    for (const [setting, targets] of Object.entries(mapping)) {
+        const enabled = options.get(setting);
+        if (typeof enabled !== "boolean") return;
+        for (const target of Array.isArray(targets) ? targets : [targets]) {
+            if (!appearance[target] || !("mobile" in appearance[target])) return;
+            lines.push("  option hide " + target + (enabled ? " default-on" : ""));
+        }
+    }
+    return { capability: "configurable-appearance", lines };
+}
+
+function topLevelVariable(source, name) {
+    return source.statements.filter(ts.isVariableStatement).flatMap(statement => [...statement.declarationList.declarations])
+        .find(declaration => identifier(declaration.name) === name)?.initializer;
+}
+
+function readBetterDiscordSwitches(source) {
+    const categories = value(topLevelVariable(source, "config"), "defaultConfig");
+    const options = new Map();
+    if (!categories || !ts.isArrayLiteralExpression(categories)) return options;
+    for (const category of categories.elements) {
+        const settings = value(category, "settings");
+        if (!settings || !ts.isArrayLiteralExpression(settings)) continue;
+        for (const setting of settings.elements) {
+            const id = literal(value(setting, "id"));
+            if (!id || literal(value(setting, "type")) !== "switch") continue;
+            const defaultValue = value(setting, "defaultValue");
+            if (options.has(id) || defaultValue && ![ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword].includes(defaultValue.kind)) {
+                options.set(id, undefined);
+            } else options.set(id, defaultValue?.kind === ts.SyntaxKind.TrueKeyword);
+        }
+    }
+    return options;
+}
+
+const chatButtonOptions = {
+    attachButton: "chat-upload-button", giftButton: "chat-gift-button", gifButton: "chat-gif-picker",
+    stickerButton: "chat-sticker-picker", emojiButton: "chat-emoji-button", appLauncherButton: "chat-apps-button",
+    discordShopTab: "shop-entry", threadsButton: "channel-threads-button", avatarDecoration: "avatar-decorations",
+    hideBadges: "profile-badges", profileEffects: "profile-effects",
+};
+
+function compileDeclutter(source, appearance) {
+    const digest = createHash("sha256").update(source.text.replaceAll("\r\n", "\n"), "utf8").digest("hex");
+    if (digest !== "3d99e7aacc38ce6f337be03b58b7c692058a12298a0ec670e1b90110259c7469") return;
+    const declaration = topLevelVariable(source, "settings");
+    const table = declaration && ts.isCallExpression(declaration) && declaration.arguments[0];
+    if (!table || !ts.isObjectLiteralExpression(table)) return;
+    const options = new Map();
+    for (const setting of table.properties) {
+        if (!ts.isPropertyAssignment(setting)) continue;
+        const type = value(setting.initializer, "type");
+        const enabled = value(setting.initializer, "default");
+        if (type && printed(type, source) === "OptionType.BOOLEAN" && enabled
+            && [ts.SyntaxKind.TrueKeyword, ts.SyntaxKind.FalseKeyword].includes(enabled.kind)) {
+            options.set(identifier(setting.name), enabled.kind === ts.SyntaxKind.TrueKeyword);
+        }
+    }
+    return configurableHides(options, {
+        removeAvatarDecoration: "avatar-decorations", removeNameplate: "nameplates", removeProfileEffect: "profile-effects",
+        removeClanTag: "server-tags", removeShopAboveDms: ["shop-entry", "nitro-entry"], removeQuestsAboveDms: "quests-entry",
+        removeServerBoostInfo: "server-boost-progress", removeGiftButton: "chat-gift-button",
+    }, appearance);
+}
+
 function normalizeAppearanceStyles(stylesheet) {
     const result = transformSync(stylesheet, { loader: "css", minifyWhitespace: true, legalComments: "none", logLevel: "silent" });
     if (!result.warnings.length) return result.code.trim();
@@ -298,6 +365,11 @@ function inspectBetterDiscord(file, code, appearance) {
     const sha256 = reviewedBetterDiscordSources[rawSha256] ? rawSha256
         : createHash("sha256").update(code.replaceAll("\r\n", "\n"), "utf8").digest("hex");
     const review = reviewedBetterDiscordSources[sha256];
+    if (review?.name === name && review.recipe === "configurable-appearance" && !source.parseDiagnostics.length) {
+        const compiled = configurableHides(readBetterDiscordSwitches(source), chatButtonOptions, appearance);
+        if (compiled) return { ...record, review: { ...review, sha256 }, capability: compiled.capability,
+            cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") };
+    }
     if (review?.name === name && review.recipe === "link-rewrites" && !source.parseDiagnostics.length) {
         const domains = {
             reddit: ["reddit.com", "www.reddit.com", "old.reddit.com"],
@@ -1137,11 +1209,12 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
         && compileDesktopEffect(name, plugin, source, entry, nativeEffects);
     const externalLookup = platform === "desktop" && compileExternalLookup(name, code);
     const timestamps = platform === "desktop" && compileTimestampFormats(name, source, readStylesheet);
+    const declutter = platform === "desktop" && name === "Declutter" && compileDeclutter(source, appearance);
     const compiled = compileSharedSource(file, code) || (platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
             || compileMobileNativeEffect(file, plugin, source, nativeEffects) || compileMobilePreviousEdit(file, plugin, source)
             || compileMobileSocialEvents(file, plugin, source)
-        : externalLookup || storeEffect || timestamps || managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin)));
+        : externalLookup || storeEffect || timestamps || declutter || managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin)));
     return {
         name, file, platform, flags, ...inventory(source),
         ...(compiled ? { capability: compiled.capability, cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") } : {}),
@@ -1498,7 +1571,7 @@ function verifyPorts(files) {
                 styleAppearanceTarget: register,
                 registerTimestampFormats: register,
             };
-            const stop = activateCx(source, host, plugin.permissions);
+            const stop = activateCx(source, host, plugin.permissions, [...plugin.optionalHides.keys()]);
             if (!registrations) throw new Error("No supported behavior registered");
             stop();
             if (registrations) throw new Error("Plugin did not remove its hooks");

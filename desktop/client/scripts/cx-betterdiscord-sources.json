@@ -1,4 +1,11 @@
 {
+    "d3f3d4e40cf5f2fc62fd23ef4e5250ce2e603d9c4e5c9bf9d43cc7190e474e64": {
+        "name": "ChatButtonsBegone",
+        "author": "TheLastBucket and Zacam",
+        "license": "Unlicense",
+        "source": "https://github.com/LancersBucket/ChatButtonsBegone/blob/1a998a8a4092039ccf5c640815b6026a3a4dc1ba/ChatButtonsBegone.plugin.js",
+        "recipe": "configurable-appearance"
+    },
     "38d659978c480ed8f5e45addd441b25d6f498e8b4eb64c1affe309983179b535": {
         "name": "LinkConverter",
         "author": "Kaan",

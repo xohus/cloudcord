@@ -47,6 +47,25 @@ const compose = records.find(record => record.name === "CompactCompose");
 assert.equal(compose.status, "needs-adapter");
 assert.ok(compose.targets.includes("css:min-height"));
 const matches = records.filter(record => record.cx);
+const declutter = matches.find(record => record.name === "Declutter");
+assert.equal(declutter?.capability, "configurable-appearance");
+assert.equal(parseCx(declutter.cx).optionalHides.get("nameplates"), true);
+assert.equal(parseCx(declutter.cx).optionalHides.get("avatar-decorations"), false);
+const configured = 'plugin "Appearance fixture":\n  needs appearance.hide\n  option hide nameplates default-on\n  option hide chat-gift-button\n';
+const hidden = new Set();
+const appearanceHost = { hideAppearanceTarget(target) { hidden.add(target); return () => hidden.delete(target); } };
+assert.throws(() => activateCx(configured, appearanceHost, [], ["chat-gift-button"]), /approval/);
+assert.throws(() => activateCx(configured, appearanceHost, ["appearance.hide"], ["bot-tags"]), /Unknown selected/);
+assert.throws(() => parseCx(configured + "  hide nameplates"), /duplicate appearance target/);
+assert.equal(hidden.size, 0);
+const restoreDefaults = activateCx(configured, appearanceHost, ["appearance.hide"]);
+assert.deepEqual([...hidden], ["nameplates"]);
+restoreDefaults();
+const restoreSelected = activateCx(configured, appearanceHost, ["appearance.hide"], ["chat-gift-button"]);
+assert.deepEqual([...hidden], ["chat-gift-button"]);
+restoreSelected();
+assert.equal(hidden.size, 0);
+verifyPorts(portFiles([declutter]));
 for (const [name, effect, permission] of [
     ["JumpToTop", "jump-to-first-message", "channels.jump"],
     ["ReadAllNotificationsButton", "read-all-servers-button", "servers.markread"],

@@ -5,6 +5,7 @@ import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
 import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
 import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@lib/api/cx";
+import { selectCxAppearanceOption } from "@lib/api/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink, validateCxStickerLink, type CxChannelLabel } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
@@ -22,7 +23,7 @@ import { showToast } from "@lib/ui/toasts";
 import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } from "@metro";
 import { getCxMessageGesture } from "@lib/api/cx";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
-import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
+import { Stack, TableRow, TableRowGroup, TableSwitchRow } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
 import { Alert, Animated, FlatList, Linking, Pressable, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
@@ -1165,13 +1166,14 @@ export default function CxExtensions() {
     const [search, setSearch] = React.useState("");
     const [pages, setPages] = React.useState({ Plugins: 0, Themes: 0 });
     const [status, setStatus] = React.useState("");
-    const [candidate, setCandidate] = React.useState<{ source: string; review: ReturnType<typeof reviewCx>; }>();
+    const [candidate, setCandidate] = React.useState<{ source: string; review: ReturnType<typeof reviewCx>; selected: string[]; }>();
     const searchText = search.trim().toLowerCase();
 
     function review(next: string) {
         setCandidate(undefined);
         try {
-            setCandidate({ source: next, review: reviewCx(next) });
+            const preview = reviewCx(next);
+            setCandidate({ source: next, review: preview, selected: preview.appearanceOptions.filter(option => option.defaultOn).map(option => option.target) });
             setStatus("");
         } catch (error) {
             setStatus(String(error instanceof Error ? error.message : error));
@@ -1692,7 +1694,7 @@ export default function CxExtensions() {
                     }, { mode: theme.mode });
                     return () => updateBunnyColor(getCurrentTheme()?.data ?? null);
                 },
-            }, candidate.review.permissions);
+            }, candidate.review.permissions, candidate.selected);
             setStatus(`${candidate.review.name} is active for this session.`);
             setCandidate(undefined);
         } catch (error) {
@@ -1746,6 +1748,10 @@ export default function CxExtensions() {
                     label={candidate.review.name}
                     subLabel={[...candidate.review.effects, ...(candidate.review.commands ?? [])].join("\n")}
                 />}
+                {candidate?.review.appearanceOptions.map(({ target, label }) => <TableSwitchRow key={target}
+                    label={label} value={candidate.selected.includes(target)} onValueChange={(checked: boolean) => {
+                        setCandidate({ ...candidate, selected: selectCxAppearanceOption(candidate.selected, target, checked) });
+                    }} />)}
                 {candidate && <TableRow label="Allow for this session" onPress={enable} />}
                 {candidate && !source && <TableRow label="Edit CX source" onPress={() => setSource(candidate.source)} />}
                 {session.list().map(({ id, name }) => <TableRow key={id} label={`Disable ${name}`} onPress={() => {

@@ -612,7 +612,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
             }, clipboard: { setString: value => clipboardWrites.push(value) }, FluxDispatcher: channelDispatcher,
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
-            "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup" },
+            "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup", TableSwitchRow: "TableSwitchRow" },
             "react-native": {
                 Alert: { alert: (title, body) => mediaAlerts.push([title, body]) },
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
@@ -1749,6 +1749,26 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
 
         const focus = { focused: true };
         const desktopPlugin = module.exports.default;
+        {
+            const getGiftOption = () => find(render(), item => (desktop ? item.props["aria-label"] : item.props.label) === "Hide the chat gift button");
+            const checked = () => getGiftOption().props[desktop ? "checked" : "value"];
+            const toggleGift = value => desktop ? getGiftOption().props.onChange({ currentTarget: { checked: value } })
+                : getGiftOption().props.onValueChange(value);
+            selectCatalog("Declutter");
+            assert.equal(checked(), true);
+            selectCatalog("ChatButtonsBegone");
+            assert.equal(checked(), false);
+            toggleGift(true);
+            assert.equal(checked(), true);
+            assert.equal(appearanceHooks.size, 0);
+            assert.equal(stylesheet, undefined);
+            click(render(), "Allow for this session");
+            if (desktop) assert.match(stylesheet.textContent, /Send a gift/);
+            else assert.deepEqual([...appearanceHooks.keys()], ["PremiumAnimatedGiftButton"]);
+            click(render(), "Disable ChatButtonsBegone");
+            assert.equal(appearanceHooks.size, 0);
+            assert.equal(stylesheet, undefined);
+        }
         {
             const originalSelection = selectedChannel;
             const channel = { id: other, type: 0 };

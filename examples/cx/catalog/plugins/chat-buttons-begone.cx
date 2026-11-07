@@ -1,0 +1,13 @@
+plugin "ChatButtonsBegone":
+  needs appearance.hide
+  option hide chat-upload-button
+  option hide chat-gift-button
+  option hide chat-gif-picker
+  option hide chat-sticker-picker
+  option hide chat-emoji-button
+  option hide chat-apps-button
+  option hide shop-entry
+  option hide channel-threads-button
+  option hide avatar-decorations
+  option hide profile-badges
+  option hide profile-effects

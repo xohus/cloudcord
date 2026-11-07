@@ -1,0 +1,11 @@
+plugin "Declutter":
+  needs appearance.hide
+  option hide avatar-decorations
+  option hide nameplates default-on
+  option hide profile-effects default-on
+  option hide server-tags default-on
+  option hide shop-entry
+  option hide nitro-entry
+  option hide quests-entry
+  option hide server-boost-progress default-on
+  option hide chat-gift-button default-on

@@ -11,6 +11,7 @@ import { copyToClipboard } from "@utils/clipboard";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
 import { createCxTimestampRegistry, type CxTimestampSurface } from "@utils/cx";
 import { createCxNavigationControls, getCxFirstMessageTarget, markCxServersReadAndWait, type CxNavigationChannel } from "@utils/cx";
+import { selectCxAppearanceOption } from "@utils/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink, type CxChannelLabel } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
@@ -240,7 +241,7 @@ export function CxSettings() {
     const [source, setSource] = useState("");
     const [search, setSearch] = useState("");
     const [pages, setPages] = useState({ Plugins: 0, Themes: 0 });
-    const [candidate, setCandidate] = useState<{ source: string; review: ReturnType<typeof reviewCx>; }>();
+    const [candidate, setCandidate] = useState<{ source: string; review: ReturnType<typeof reviewCx>; selected: string[]; }>();
     const [status, setStatus] = useState("");
     const selection = useRef(0);
     const searchText = search.trim().toLowerCase();
@@ -249,7 +250,8 @@ export function CxSettings() {
         selection.current++;
         setCandidate(undefined);
         try {
-            setCandidate({ source: next, review: reviewCx(next) });
+            const preview = reviewCx(next);
+            setCandidate({ source: next, review: preview, selected: preview.appearanceOptions.filter(option => option.defaultOn).map(option => option.target) });
             setStatus("");
         } catch (error) {
             setStatus(String(error instanceof Error ? error.message : error));
@@ -629,7 +631,7 @@ export function CxSettings() {
                     document.head.append(style);
                     return () => style.remove();
                 },
-            }, candidate.review.permissions);
+            }, candidate.review.permissions, candidate.selected);
             setStatus(`${candidate.review.name} is active for this session.`);
             setCandidate(undefined);
         } catch (error) {
@@ -692,6 +694,11 @@ export function CxSettings() {
             <strong>{candidate.review.name}</strong>
             <ul>{candidate.review.effects.map(effect => <li key={effect}>{effect}</li>)}</ul>
             {candidate.review.commands && <p>{candidate.review.commands.join(", ")}</p>}
+            {candidate.review.appearanceOptions.map(({ target, label }) => <div key={target}>
+                <label><input type="checkbox" aria-label={label} checked={candidate.selected.includes(target)} onChange={event => {
+                    setCandidate({ ...candidate, selected: selectCxAppearanceOption(candidate.selected, target, event.currentTarget.checked) });
+                }} /> {label}</label>
+            </div>)}
             <button onClick={enable}>Allow for this session</button>
             {!source && <button onClick={() => setSource(candidate.source)}>Edit CX source</button>}
         </div>}

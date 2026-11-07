@@ -162,6 +162,7 @@ type CxPlugin = {
     messageTransforms: MessageTransform[];
     suppressReplyPing: boolean;
     hiddenTargets: CxHideTarget[];
+    optionalHides: Map<CxHideTarget, boolean>;
     styledTargets: CxStyleTarget[];
     timestamps: CxTimestampFormats;
     nativeEffects: CxNativeEffect[];
@@ -172,6 +173,11 @@ type CxPlugin = {
     incoming: IncomingRule[];
 };
 type CxDocument = CxTheme | CxPlugin;
+type CxAppearanceOption = { target: CxHideTarget; label: string; defaultOn: boolean; };
+
+export function selectCxAppearanceOption(selected: readonly string[], target: string, checked: boolean) {
+    return checked ? [...new Set([...selected, target])] : selected.filter(current => current !== target);
+}
 
 function quoted(value: string, limit: number, allowEmpty = false) {
     if (!value.startsWith('"') || !value.endsWith('"')) throw new Error("Expected text in double quotes");
@@ -240,6 +246,7 @@ export function parseCx(source: string): CxDocument {
     const commands: Command[] = [];
     const transforms: MessageTransform[] = [];
     const hiddenTargets = new Set<CxHideTarget>();
+    const optionalHides = new Map<CxHideTarget, boolean>();
     const styledTargets = new Set<CxStyleTarget>();
     const nativeEffects = new Set<CxNativeEffect>();
     const timestamps: CxTimestampFormats = {};
@@ -263,7 +270,7 @@ export function parseCx(source: string): CxDocument {
         }
         textRules = undefined;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
-        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !Object.keys(timestamps).length && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) {
+        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !optionalHides.size && !styledTargets.size && !nativeEffects.size && !Object.keys(timestamps).length && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) {
             const permission = declaration[1] as CxPermission;
             if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
                 throw new Error("Unknown or duplicate CX permission");
@@ -287,13 +294,23 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
+        const hideOption = /^  option hide ([a-z-]+)( default-on)?$/.exec(line);
+        if (hideOption) {
+            const target = hideOption[1] as CxHideTarget;
+            const rule = Object.prototype.hasOwnProperty.call(cxAppearanceTargets, target) && cxAppearanceTargets[target];
+            if (!rule || !("mobile" in rule) || hiddenTargets.has(target) || optionalHides.has(target))
+                throw new Error("Unknown or duplicate appearance option");
+            optionalHides.set(target, Boolean(hideOption[2]));
+            current = undefined;
+            continue;
+        }
         const appearance = /^  (hide|style) ([a-z-]+)$/.exec(line);
         if (appearance) {
             const target = appearance[2] as CxAppearanceTarget;
             const rule = Object.prototype.hasOwnProperty.call(cxAppearanceTargets, target) && cxAppearanceTargets[target];
             if (rule && appearance[1] === "style" && "style" in rule && !styledTargets.has(target as CxStyleTarget))
                 styledTargets.add(target as CxStyleTarget);
-            else if (rule && appearance[1] === "hide" && "mobile" in rule && !hiddenTargets.has(target as CxHideTarget))
+            else if (rule && appearance[1] === "hide" && "mobile" in rule && !hiddenTargets.has(target as CxHideTarget) && !optionalHides.has(target as CxHideTarget))
                 hiddenTargets.add(target as CxHideTarget);
             else
                 throw new Error("Unknown or duplicate appearance target");
@@ -491,12 +508,12 @@ export function parseCx(source: string): CxDocument {
         current.actions.push({ kind, message, fallback });
     }
     if (Object.keys(timestamps).length && !hasTimestampSurface) throw new Error("Choose a timestamp surface to format");
-    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !hasTimestampSurface && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) || commands.some(command => !command.actions.length))
+    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !optionalHides.size && !styledTargets.size && !nativeEffects.size && !hasTimestampSurface && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) || commands.some(command => !command.actions.length))
         throw new Error("A plugin needs a command or a supported behavior");
     const required = new Set<CxPermission>();
     if (commands.length) required.add("commands.register");
     if (suppressReplyPing) required.add("replies.suppressping");
-    if (hiddenTargets.size) required.add("appearance.hide");
+    if (hiddenTargets.size || optionalHides.size) required.add("appearance.hide");
     if (styledTargets.size || hasTimestampSurface) required.add("appearance.style");
     for (const effect of nativeEffects) required.add(cxNativeEffects[effect].permission);
     if (previousRule) required.add("messages.editprevious");
@@ -526,17 +543,18 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Remove unused CX permissions");
     return {
         kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing,
-        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], timestamps, nativeEffects: [...nativeEffects], avatarResolution, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
+        hiddenTargets: [...hiddenTargets], optionalHides, styledTargets: [...styledTargets], timestamps, nativeEffects: [...nativeEffects], avatarResolution, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
     };
 }
 
 export function reviewCx(source: string) {
     const document = parseCx(source);
-    if (document.kind === "theme") return { kind: document.kind, name: document.name, permissions: [] as CxPermission[], effects: ["Change the app colors and background"] };
+    if (document.kind === "theme") return { kind: document.kind, name: document.name, permissions: [] as CxPermission[], effects: ["Change the app colors and background"], appearanceOptions: [] as CxAppearanceOption[] };
     return {
         kind: document.kind,
         name: document.name,
         permissions: document.permissions,
+        appearanceOptions: [...document.optionalHides].map(([target, defaultOn]) => ({ target, defaultOn, label: "Hide " + cxAppearanceTargets[target].label })),
         effects: document.permissions.map(permission => permissionLabels[permission])
             .concat(document.profileActions.map(action => cxProfileMenuActions[action].label))
             .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label))
@@ -607,11 +625,15 @@ function getAvatarUrl(host: CxHost, grants: ReadonlySet<CxPermission>, id: strin
 }
 
 /** Only trusted UI can grant access. The source never receives the host or a callback argument. */
-export function activateCx(source: string, host: CxHost, approved: readonly CxPermission[]) {
+export function activateCx(source: string, host: CxHost, approved: readonly CxPermission[], selected?: readonly string[]) {
     const document = parseCx(source);
     if (document.kind === "theme") return host.applyTheme(document);
     const grants = new Set(approved);
     if (!document.permissions.every(permission => grants.has(permission))) throw new Error("CX permission approval is required");
+    const choices = new Set(selected ?? [...document.optionalHides].filter(([, defaultOn]) => defaultOn).map(([target]) => target));
+    for (const choice of choices) {
+        if (!document.optionalHides.has(choice as CxHideTarget)) throw new Error("Unknown selected CX appearance option");
+    }
 
     const cleanups: (() => void)[] = [];
     const activeLookups = new Map<CxExternalLookup, AbortController>();
@@ -636,7 +658,7 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
             if (!host.registerProfileMenuAction) throw new Error("This client cannot add profile copy actions");
             cleanups.push(host.registerProfileMenuAction(action));
         }
-        for (const target of document.hiddenTargets) {
+        for (const target of [...document.hiddenTargets, ...[...document.optionalHides.keys()].filter(option => choices.has(option))]) {
             if (!host.hideAppearanceTarget) throw new Error("This client cannot hide " + cxAppearanceTargets[target].label);
             cleanups.push(host.hideAppearanceTarget(target));
         }
@@ -811,12 +833,12 @@ export function createCxSession() {
     const active = new Map<string, { name: string; stop: () => void }>();
     return {
         list: () => [...active].map(([id, { name }]) => ({ id, name })),
-        enable(source: string, host: CxHost, approved: readonly CxPermission[]) {
+        enable(source: string, host: CxHost, approved: readonly CxPermission[], selected?: readonly string[]) {
             const review = reviewCx(source);
             const id = review.kind === "theme" ? "theme" : "plugin:" + review.name;
             if (active.has(id)) throw new Error(review.kind === "theme" ? "Disable the active CX theme first" : "This CX plugin is already active");
             if (active.size >= 16) throw new Error("Disable an extension before adding another");
-            active.set(id, { name: review.name, stop: activateCx(source, host, approved) });
+            active.set(id, { name: review.name, stop: activateCx(source, host, approved, selected) });
         },
         disable(id: string) {
             const entry = active.get(id);
