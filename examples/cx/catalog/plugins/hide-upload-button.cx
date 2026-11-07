@@ -1,0 +1,3 @@
+plugin "HideUploadButton":
+  needs appearance.hide
+  hide chat-upload-button

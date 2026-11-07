@@ -229,12 +229,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const messagePresentation = Object.freeze({ edited: true, stickers: Object.freeze([{ id: "sticker" }]), content: "hello" });
         const createMessageContent = () => messagePresentation;
         const messageRenderer = { default: createMessageContent };
-        const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon", "Avatar"]
+        const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon", "Avatar",
+            "MediaKeyboardButtonIcon", "ImageIcon", "ContextMenu"]
             .map(name => [name, () => name]));
         const renderHeader = tree => tree;
         const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem", "MediaModalSpoilerOverlay"].map(name => [
             name, { $$typeof: Symbol.for("react.memo"), displayName: name, type: renderHeader },
         ]));
+        const forwardedRefs = [];
+        const chatInputActions = {
+            $$typeof: Symbol.for("react.memo"), type: {
+                $$typeof: Symbol.for("react.forward_ref"), displayName: "ChatInputActions",
+                render(tree, ref) { forwardedRefs.push(ref); return tree; },
+            },
+        };
+        nativeHeaders.set("ChatInputActions", chatInputActions);
         const headerMessages = { t: { "5h0QOP": "Rechercher", "F+x38C": "Divulgâcheur" }, intl: { string: value => value } };
         class Spoiler {
             constructor(element, revealed) { this.element = element; this.state = { revealed }; }
@@ -343,7 +352,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: () => ({ Provider: "ProfileUserProvider" }), useContext: () => profileUser,
                 isValidElement: element => !!element?.type && !!element?.props,
-                createElement: jsx, memo: type => ({ type }),
+                createElement: jsx, memo: type => ({ type }), forwardRef: render => ({ render }),
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
             }, clipboard: { setString: value => clipboardWrites.push(value) }, FluxDispatcher: { dispatch },
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
@@ -479,6 +488,33 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 settings.safeMode = undefined;
                 wraps.push(wrapped);
             } else if (rule.style) assert.ok(colorOverlays.has(rule.style));
+            else if (rule.mobile.hideControlIcons) {
+                const hook = appearanceHooks.get("ChatInputActions");
+                const onPress = () => {};
+                const attachment = jsx("ActionButton", { IconComponent: headerIcons.MediaKeyboardButtonIcon, onPress });
+                const gallery = jsx("ActionButton", { IconComponent: headerIcons.ImageIcon, onPress });
+                const menu = jsx(headerIcons.ContextMenu, { triggerOnLongPress: true, children: () => attachment });
+                const apps = jsx("ActionButton", { IconComponent: headerIcons.Avatar, onPress });
+                const regularMenu = jsx(headerIcons.ContextMenu, { children: () => apps });
+                const tree = jsx("View", { children: [attachment, gallery, menu, apps, regularMenu] });
+                const ref = { current: null };
+                const original = jsx(chatInputActions, { ...tree, ref });
+                const wrapped = hook(null, original);
+                const patched = wrapped.type(wrapped.props);
+                const renderActions = patched.type.type.render;
+                assert.equal(patched.props.ref, ref);
+                const result = renderActions(patched.props, patched.props.ref);
+                assert.equal(forwardedRefs.at(-1), ref);
+                assert.deepEqual(Array.from(result.props.children), [null, null, null, apps, regularMenu]);
+                assert.deepEqual(tree.props.children, [attachment, gallery, menu, apps, regularMenu]);
+                settings.safeMode = { enabled: true };
+                assert.equal(renderActions(patched.props, patched.props.ref), patched.props);
+                settings.safeMode = undefined;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(wrapped.type(wrapped.props), original);
+                assert.equal(appearanceHooks.size, 0);
+                continue;
+            }
             else if (rule.mobile.renderTree) {
                 const name = rule.mobile.renderTree.split("/").at(-1).replace(".tsx", "");
                 const header = nativeHeaders.get(name);

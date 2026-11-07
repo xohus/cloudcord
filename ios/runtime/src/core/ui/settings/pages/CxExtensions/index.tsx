@@ -86,7 +86,10 @@ function registerJsxAppearance(names: readonly string[], change: AppearanceChang
     return () => { for (const cleanup of cleanups) cleanup(); };
 }
 
-type AppearanceProps = { children?: ReactNode; accessibilityRole?: string; accessibilityLabel?: string; onPress?: unknown; };
+type AppearanceProps = {
+    children?: ReactNode; accessibilityRole?: string; accessibilityLabel?: string; onPress?: unknown;
+    IconComponent?: unknown; triggerOnLongPress?: boolean;
+};
 
 function containsAppearanceType(tree: ReactNode, types: ReadonlySet<unknown>, depth = 0): boolean {
     if (depth >= 16) return false;
@@ -111,14 +114,23 @@ function hideAppearanceElements(tree: ReactNode, shouldHide: (element: ReactElem
 function registerTreeAppearance(rule: {
     renderTree: string; hideComponents?: readonly string[]; hideIcons?: readonly string[];
     keepWhilePresent?: readonly string[]; hideLabels?: readonly string[]; hideText?: readonly string[];
+    hideControlIcons?: readonly string[]; hideLongPressMenu?: boolean;
 }) {
     const target = findByFilePath(rule.renderTree)?.default;
-    if (target?.$$typeof !== Symbol.for("react.memo") || typeof target.type !== "function") {
+    const inner = target?.$$typeof === Symbol.for("react.memo") ? target.type : undefined;
+    const forwardsRef = inner?.$$typeof === Symbol.for("react.forward_ref");
+    const render = forwardsRef ? inner.render : inner;
+    if (typeof render !== "function") {
         throw new Error("Discord's appearance component is unavailable");
     }
     const getTypes = (names: readonly string[]) => new Set(names.map(name => findByProps(name)?.[name]).filter(Boolean));
     const components = getTypes(rule.hideComponents ?? []);
     const icons = getTypes(rule.hideIcons ?? []);
+    const controlIcons = getTypes(rule.hideControlIcons ?? []);
+    const longPressMenu = rule.hideLongPressMenu && findByProps("ContextMenu")?.ContextMenu;
+    if (rule.hideControlIcons && controlIcons.size !== rule.hideControlIcons.length || rule.hideLongPressMenu && !longPressMenu) {
+        throw new Error("Discord's attachment controls are unavailable");
+    }
     const translations = (rule.hideLabels || rule.hideText) && findByProps("intl", "t");
     const translate = (keys: readonly string[] = []) => keys.flatMap(key => {
         const message = translations?.t?.[key];
@@ -127,29 +139,37 @@ function registerTreeAppearance(rule: {
     });
     const labels = new Set(translate(rule.hideLabels));
     const text = new Set(translate(rule.hideText).map(label => label.toUpperCase()));
-    if (!components.size && !icons.size && !labels.size && !text.size) throw new Error("Discord's appearance targets are unavailable");
+    if (!components.size && !icons.size && !labels.size && !text.size && !controlIcons.size && !longPressMenu) {
+        throw new Error("Discord's appearance targets are unavailable");
+    }
     const keep = getTypes(rule.keepWhilePresent ?? []);
     if (rule.keepWhilePresent && keep.size !== rule.keepWhilePresent.length) {
         throw new Error("Discord's active call controls are unavailable");
     }
     const shouldHide = ({ type, props }: ReactElement<AppearanceProps>) => {
-        const { children, accessibilityRole, accessibilityLabel, onPress } = props;
+        const { children, accessibilityRole, accessibilityLabel, onPress, IconComponent, triggerOnLongPress } = props;
         return components.has(type)
+            || Boolean(longPressMenu && type === longPressMenu && triggerOnLongPress === true)
             || accessibilityRole === "text" && typeof children === "string" && text.has(children)
             || typeof onPress === "function" && (
-                Boolean(accessibilityLabel && labels.has(accessibilityLabel))
+                controlIcons.has(IconComponent)
+                || Boolean(accessibilityLabel && labels.has(accessibilityLabel))
                 || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons)
             );
     };
-    const render = target.type;
-    const component = target.displayName || render.displayName || render.name;
+    const component = target.displayName || inner.displayName || render.displayName || render.name;
     if (!component) throw new Error("Discord's appearance component has no name");
-    const FilteredTree = React.memo(function FilteredTree(props: object) {
-        const tree = render(props) as ReactNode;
+    function FilteredTree(props: object, ref?: unknown) {
+        const tree = render(props, ref) as ReactNode;
         return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
-    }, target.compare);
-    return registerJsxAppearance([component], element => element.type === target
-        ? React.createElement(FilteredTree, { ...element.props, key: element.key }) : element);
+    }
+    const filtered = React.memo(forwardsRef ? React.forwardRef(FilteredTree) : FilteredTree, target.compare);
+    return registerJsxAppearance([component], element => {
+        if (element.type !== target) return element;
+        const props = { ...element.props, key: element.key };
+        if (forwardsRef) props.ref ??= Object.getOwnPropertyDescriptor(element, "ref")?.value;
+        return React.createElement(filtered, props);
+    });
 }
 
 function registerRenderedChannelStyle(rule: {

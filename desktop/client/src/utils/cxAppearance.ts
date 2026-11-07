@@ -94,6 +94,15 @@ export const cxAppearanceTargets = {
         css: 'button[aria-label="Apps"] { display: none !important; }',
         mobile: ["ChatInputActionButtonApps"],
     },
+    "chat-upload-button": {
+        plugin: "HideUploadButton", label: "the chat attachment button",
+        css: '[class*="attachWrapper"] { display: none !important; }',
+        mobile: {
+            renderTree: "modules/chat_input/native/action_buttons/ChatInputActions.tsx",
+            hideControlIcons: ["MediaKeyboardButtonIcon", "ImageIcon"],
+            hideLongPressMenu: true,
+        },
+    },
     "chat-character-counter": {
         plugin: "HideCharacterCount", label: "the chat character counter",
         css: '[class*="characterCount"] { display: none !important; }',
