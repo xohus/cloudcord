@@ -21,6 +21,7 @@ export { bindCxSocialEvents } from "./cxSocialEvents";
 export { createCxPlusReactionHandler } from "./cxPlusReactions";
 export { createCxSplitSender, planCxMessageParts } from "./cxSplitMessages";
 export { filterCxEmojiCategories, filterCxEmojiGrid } from "./cxEmojiPicker";
+export { formatCxEmojiMarkdown, formatCxStickerLink, validateCxStickerLink } from "./cxExpressionLinks";
 export type { CxUploadAnonymiser } from "./cxUploadNames";
 
 export const MAX_CX_SOURCE = 512 * 1024;
@@ -33,6 +34,8 @@ const permissionLabels = {
     "reply.local": "Show a command reply visible only to you",
     "messages.send": "Send the result to the current chat when you run a listed command",
     "messages.split": "Send your long drafts as separate messages in the same channel",
+    "emoji.clipboard": "Copy the selected emoji as Markdown when you choose its menu action",
+    "stickers.links": "Copy or open the selected Discord sticker’s CDN link when you choose its menu action",
     "messages.transform": "Change text before Discord sends messages you compose",
     "messages.edit.transform": "Change text when you submit a message edit",
     "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",

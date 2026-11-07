@@ -1,0 +1,3 @@
+plugin "CopyStickerLinks":
+  needs stickers.links
+  use sticker-links

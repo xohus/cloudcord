@@ -632,6 +632,14 @@ const desktopEffectRecipes = {
         effect: "unicode-emoji-autocomplete",
         sha256: "1e653c4d075137386316ad1f31ebbf68d0f624166394004d0bea2e20f9f294e1",
     },
+    CopyEmojiMarkdown: {
+        effect: "copy-emoji-markdown",
+        sha256: "552b642b5d3cdc4efeb54e199ec972bf14f4d2431dc52bf25f2c9f420b64ee29",
+    },
+    CopyStickerLinks: {
+        effect: "sticker-links",
+        sha256: "65ebb054311ec45e644b5aaf74e6b6865b9da9dd980fecc48bebaa5367eda1e9",
+    },
     StopAutoUnread: {
         effect: "stop-auto-unread",
         find: "}maybeAutoUpgradeChannel(",

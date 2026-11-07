@@ -3,6 +3,7 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { filterCxEmojiCategories } from "@lib/api/cx";
+import { formatCxEmojiMarkdown, formatCxStickerLink, validateCxStickerLink } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
 import { copyCcpReport } from "@lib/api/ccpReport";
@@ -172,6 +173,65 @@ function registerJsxAppearance(names: readonly (string | object)[], change: Appe
         return bind(change, beforeWrapping);
     });
     return () => { for (const cleanup of cleanups) cleanup(); };
+}
+
+function bindExpressionSheets() {
+    const bottomSheet = findByProps("BottomSheet")?.BottomSheet;
+    const actionSheet = findByProps("ActionSheet")?.ActionSheet;
+    if (!bottomSheet) throw new Error("Discord's expression sheet is unavailable");
+    const Selection = React.createContext<{ value: string; emoji: boolean; enabled: () => boolean; } | null>(null);
+    function Actions({ element }: { element: JSX.Element; }) {
+        const selection = React.useContext(Selection);
+        if (!selection?.enabled()) return element;
+        const { value, emoji, enabled } = selection;
+        const copy = () => {
+            if (!enabled()) return;
+            clipboard?.setString?.(value);
+            showToast(emoji ? "Emoji copied." : "Sticker link copied.");
+        };
+        return React.cloneElement(element, { children: <>
+            {element.props.children}
+            <TableRowGroup>
+                <TableRow label={emoji ? "Copy Emoji Markdown" : "Copy Sticker Link"} onPress={copy} />
+                {!emoji && <TableRow label="Open Sticker Link" onPress={() => {
+                    if (enabled()) void Linking.openURL(value).catch(() => showToast("Couldn't open the sticker link."));
+                }} />}
+            </TableRowGroup>
+        </> });
+    }
+    const stop = registerJsxAppearance([...new Set(actionSheet ? [bottomSheet, actionSheet] : [bottomSheet])],
+        element => <Actions element={element} />);
+    return { Selection, stop, users: 0 };
+}
+
+let expressionSheetBinding: ReturnType<typeof bindExpressionSheets> | undefined;
+
+function registerExpressionLinks(effect: "copy-emoji-markdown" | "sticker-links") {
+    const emoji = effect === "copy-emoji-markdown";
+    const paths = emoji ? ["modules/messages/native/emoji/MessageEmojiActionSheet.tsx"]
+        : ["modules/stickers/native/StickerDetailActionSheet.tsx", "modules/stickers/native/StickerOptionsActionSheet.tsx"];
+    const sheets = paths.map(path => findByFilePath(path)?.default).filter(Boolean);
+    if (!sheets.length) throw new Error("Discord's expression sheet is unavailable");
+    const binding = expressionSheetBinding ??= bindExpressionSheets();
+    let active = true;
+    const enabled = () => active && !settings.safeMode?.enabled;
+    const stopSelection = registerJsxAppearance(sheets, element => {
+        const { emojiNode, renderableSticker, stickerUrl } = element.props;
+        const id = renderableSticker?.id;
+        const value = emoji ? formatCxEmojiMarkdown(emojiNode)
+            : validateCxStickerLink(stickerUrl) ?? formatCxStickerLink(renderableSticker)
+                ?? (isCxProfileUserId(id) ? formatCxStickerLink(findByStoreName("StickersStore")?.getStickerById?.(id)) : undefined);
+        return value ? <binding.Selection.Provider value={{ value, emoji, enabled }}>{element}</binding.Selection.Provider> : element;
+    });
+    binding.users++;
+    return () => {
+        active = false;
+        stopSelection();
+        if (--binding.users === 0) {
+            binding.stop();
+            expressionSheetBinding = undefined;
+        }
+    };
 }
 
 let memberRowScope: { context: Context<boolean>; stop: () => void; users: number; } | undefined;
@@ -898,6 +958,9 @@ export default function CxExtensions() {
                             return registerStaticTypingDots();
                         case "hide-disabled-emojis":
                             return hideDisabledEmojiInPicker(enabled);
+                        case "copy-emoji-markdown":
+                        case "sticker-links":
+                            return registerExpressionLinks(effect);
                         case "unicode-emoji-autocomplete":
                         case "local-emoji-autocomplete":
                             return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode",

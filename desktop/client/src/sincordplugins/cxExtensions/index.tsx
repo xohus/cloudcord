@@ -5,6 +5,7 @@ import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { filterCxEmojiGrid } from "@utils/cx";
+import { formatCxEmojiMarkdown, formatCxStickerLink } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
@@ -42,6 +43,42 @@ function hideDisabledEmojiInPicker() {
         });
     });
     return () => { waitForSubscriptions.delete(match); stop?.(); };
+}
+
+function registerExpressionLinks(effect: "copy-emoji-markdown" | "sticker-links") {
+    const menus = effect === "copy-emoji-markdown" ? ["expression-picker"] : ["expression-picker", "message"];
+    let active = true;
+    const patch: NavContextMenuPatchCallback = (children, props) => {
+        if (!active) return;
+        const target = props?.target;
+        const data = target?.dataset;
+        if (effect === "copy-emoji-markdown") {
+            if (data?.type !== "emoji" || children.some(child => child?.props?.id === "cx-copy-emoji")) return;
+            const surrogate = !data.id && typeof data.name === "string"
+                ? findByProps("convertNameToSurrogate")?.convertNameToSurrogate?.(data.name) : undefined;
+            const text = formatCxEmojiMarkdown({ id: data.id, name: data.name, src: target?.firstChild?.src, surrogate });
+            if (text) children.push(<Menu.MenuItem id="cx-copy-emoji" label="Copy Emoji Markdown" action={() => {
+                if (active) void copyToClipboard(text).catch(() => showToast("Couldn't copy the emoji."));
+            }} />);
+            return;
+        }
+        if (children.some(child => child?.props?.id === "cx-copy-sticker")) return;
+        const id = props?.favoriteableType === "sticker" ? props.favoriteableId : data?.id;
+        if (!isCxProfileUserId(id)) return;
+        const sticker = props?.favoriteableType === "sticker" ? props.message?.stickerItems?.find?.((item: { id?: string; }) => item?.id === id)
+            : findStore("StickersStore")?.getStickerById?.(id);
+        const link = formatCxStickerLink(sticker);
+        if (!link) return;
+        children.push(<Menu.MenuItem id="cx-copy-sticker" label="Copy Sticker Link" action={() => {
+            if (active) void copyToClipboard(link).catch(() => showToast("Couldn't copy the sticker link."));
+        }} />, <Menu.MenuItem id="cx-open-sticker" label="Open Sticker Link" action={() => {
+            if (!active) return;
+            if (IS_WEB) window.open(link, "_blank", "noopener,noreferrer");
+            else void VencordNative.native.openExternal(link).catch(() => showToast("Couldn't open the sticker link."));
+        }} />);
+    };
+    addContextMenuPatch(menus, patch);
+    return () => { active = false; removeContextMenuPatch(menus, patch); };
 }
 
 function subscribeTypingDots(listener: () => void) {
@@ -201,6 +238,9 @@ export function CxSettings() {
                             return registerStaticTypingDots();
                         case "hide-disabled-emojis":
                             return hideDisabledEmojiInPicker();
+                        case "copy-emoji-markdown":
+                        case "sticker-links":
+                            return registerExpressionLinks(effect);
                         case "unicode-emoji-autocomplete":
                         case "local-emoji-autocomplete":
                             return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode",

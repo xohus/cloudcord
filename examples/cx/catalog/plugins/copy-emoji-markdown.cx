@@ -1,0 +1,3 @@
+plugin "CopyEmojiMarkdown":
+  needs emoji.clipboard
+  use copy-emoji-markdown

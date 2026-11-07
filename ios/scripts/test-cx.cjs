@@ -381,6 +381,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const diagnosticCache = { 42: { exports: diagnosticExports } };
         const settings = {};
         let profileUser;
+        let expressionSelection;
+        const expressionSheets = { MessageEmojiActionSheet: () => null, StickerDetailActionSheet: () => null,
+            StickerOptionsActionSheet: () => null, BottomSheet: () => null, ActionSheet: () => null };
         const editHooks = new Set();
         const selectedTheme = { name: "Previously selected" };
         let nativeTheme = selectedTheme, nativeMode, stylesheet;
@@ -413,7 +416,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@utils/cxCatalog": { cxCatalog: { ...cxCatalog, themes: [...cxCatalog.themes, lazyEntry] } },
             "@api/Commands": commandApi,
             "@api/ContextMenu": {
-                addContextMenuPatch: (menus, patch) => { assert.ok(menus.includes("user-context")); menuPatches.add(patch); },
+                addContextMenuPatch: (menus, patch) => { assert.ok(menus.includes("user-context") || menus.includes("expression-picker")); menuPatches.add(patch); },
                 removeContextMenuPatch: (_, patch) => menuPatches.delete(patch),
             },
             "@utils/clipboard": { copyToClipboard: value => { clipboardWrites.push(value); return Promise.resolve(); } },
@@ -490,6 +493,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/useMessageMaxLength.tsx") ? splitLimit
                 : path.endsWith("/ChatInputSendUtils.tsx") ? splitComposer
                 : path.endsWith("/useComputeEmojiPickerFunctions.tsx") ? mobileEmojiPicker
+                : path.endsWith("/MessageEmojiActionSheet.tsx") ? { default: expressionSheets.MessageEmojiActionSheet }
+                : path.endsWith("/StickerDetailActionSheet.tsx") ? { default: expressionSheets.StickerDetailActionSheet }
+                : path.endsWith("/StickerOptionsActionSheet.tsx") ? { default: expressionSheets.StickerOptionsActionSheet }
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
@@ -506,11 +512,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
                         : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions
                             : name === "intl" ? headerMessages : name === "addReaction" ? reactionActions
-                                : name === "convertNameToSurrogate" ? emojiConverters : name in headerIcons ? headerIcons : undefined },
+                                : name === "convertNameToSurrogate" ? emojiConverters : name in expressionSheets ? expressionSheets
+                                    : name in headerIcons ? headerIcons : undefined },
             "@metro/common": { React: {
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
-                createContext: initial => ({ Provider: initial === false ? "MemberRowProvider" : "ProfileUserProvider" }),
-                useContext: context => context.Provider === "MemberRowProvider" ? inMemberRow : profileUser,
+                createContext: initial => ({ Provider: initial === false ? "MemberRowProvider" : initial === null ? "ExpressionProvider" : "ProfileUserProvider" }),
+                useContext: context => context.Provider === "MemberRowProvider" ? inMemberRow
+                    : context.Provider === "ExpressionProvider" ? expressionSelection : profileUser,
                 Fragment: Symbol.for("react.fragment"),
                 Children: { toArray: children => Array.isArray(children) ? children : children == null ? [] : [children] },
                 isValidElement: element => !!element?.type && !!element?.props,
@@ -1852,6 +1860,61 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             click(render(), "Disable HideDisabledEmojis");
             assert.equal(pickerFunctions.computeSearchResults(input), input);
             assert.equal(mobileEmojiPicker.default(), nativeEmojiFunctions);
+        }
+        for (const [name, target] of [["CopyEmojiMarkdown", "MessageEmojiActionSheet"], ["CopyStickerLinks", "StickerDetailActionSheet"]]) {
+            const isEmoji = name === "CopyEmojiMarkdown";
+            const url = "https://media.discordapp.net/stickers/" + sender + ".gif?size=512&lossless=true";
+            const expected = isEmoji ? "<a:wave:" + sender + ">" : url;
+            selectCatalog(name);
+            click(render(), "Allow for this session");
+            const copies = clipboardWrites.length, opens = openedLinks.length;
+            let actions;
+            if (desktop) {
+                actions = [];
+                const props = isEmoji
+                    ? { target: { dataset: { type: "emoji", name: "wave~2", id: sender }, firstChild: { src: "https://cdn.discordapp.com/emojis/1.gif" } } }
+                    : { favoriteableType: "sticker", favoriteableId: sender, message: { stickerItems: [{ id: sender, format_type: 4 }] } };
+                for (const patch of menuPatches) patch(actions, props);
+            } else {
+                const sheet = expressionSheets[target];
+                const initial = jsx(sheet, isEmoji ? { emojiNode: { alt: ":wave:", id: sender, src: "https://cdn.discordapp.com/emojis/1.gif" } }
+                    : { renderableSticker: { id: sender, formatType: 4 } });
+                const scope = appearanceHooks.get(sheet)(null, initial);
+                const provider = scope.type(scope.props);
+                assert.equal(provider.props.value.value, expected);
+                expressionSelection = provider.props.value;
+                const wrapper = appearanceHooks.get(expressionSheets.BottomSheet)(null, jsx(expressionSheets.BottomSheet, { children: "original content" }));
+                const component = wrapper.type(wrapper.props);
+                actions = component.type(component.props);
+                expressionSelection = undefined;
+            }
+            assert.equal(clipboardWrites.length, copies);
+            assert.equal(openedLinks.length, opens);
+            const copyItem = find(actions, element => element.props.label === (isEmoji ? "Copy Emoji Markdown" : "Copy Sticker Link"));
+            (copyItem.props.action ?? copyItem.props.onPress)();
+            assert.equal(clipboardWrites.at(-1), expected);
+            if (!isEmoji) {
+                const openItem = find(actions, element => element.props.label === "Open Sticker Link");
+                (openItem.props.action ?? openItem.props.onPress)();
+                assert.equal(openedLinks.at(-1), url);
+            }
+            click(render(), "Disable " + name);
+            (copyItem.props.action ?? copyItem.props.onPress)();
+            assert.equal(clipboardWrites.length, copies + 1);
+        }
+        if (!desktop) {
+            for (const name of ["CopyEmojiMarkdown", "CopyStickerLinks"]) {
+                selectCatalog(name);
+                click(render(), "Allow for this session");
+            }
+            const sheetHook = appearanceHooks.get(expressionSheets.BottomSheet);
+            assert.equal(typeof sheetHook, "function");
+            click(render(), "Disable CopyEmojiMarkdown");
+            assert.equal(appearanceHooks.get(expressionSheets.BottomSheet), sheetHook);
+            assert.equal(appearanceHooks.has(expressionSheets.MessageEmojiActionSheet), false);
+            assert.equal(appearanceHooks.has(expressionSheets.StickerDetailActionSheet), true);
+            click(render(), "Disable CopyStickerLinks");
+            assert.equal(appearanceHooks.has(expressionSheets.BottomSheet), false);
         }
         const stopAutoUnread = cxCatalog.plugins.find(entry => entry.name === "StopAutoUnread").source;
         assert.throws(() => activateCx(stopAutoUnread, host, ["appearance.hide"]), /approval/);
