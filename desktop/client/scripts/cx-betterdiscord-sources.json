@@ -1,4 +1,11 @@
 {
+    "1eefd9ee8f3e3c6f138d3db74eb952bef846e77650ea2df3b6927e58256d1bb0": {
+        "name": "ScrollToLatest",
+        "author": "Snues",
+        "license": "MIT",
+        "source": "https://github.com/Snusene/BetterDiscordPlugins/blob/8a8eb40fc5760d44757f3ae9e82b8631c056c384/ScrollToLatest/ScrollToLatest.plugin.js",
+        "recipe": "scroll-to-latest"
+    },
     "4e5682987afbf8ad831bd5f3080b66680d11d1c5a8cf8f5fb4266c563fe6c698": {
         "name": "HideDisabledEmojis",
         "author": "Zerebos",

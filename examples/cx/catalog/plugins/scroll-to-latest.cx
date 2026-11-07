@@ -1,0 +1,3 @@
+plugin "ScrollToLatest":
+  needs channels.markonopen
+  use scroll-to-latest

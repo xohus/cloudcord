@@ -208,7 +208,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             },
         };
         const previousEdits = [];
-        const messageEditor = { editMessage: (channel, id, message) => previousEdits.push([channel, id, message.content]) };
+        const jumps = [];
+        const messageEditor = { editMessage: (channel, id, message) => previousEdits.push([channel, id, message.content]),
+            jumpToMessage: target => jumps.push(target) };
         const reactionChannel = "123456789123456789";
         const reactionCache = { _array: [{ id: sender, channel_id: reactionChannel }, { id: other, channel_id: reactionChannel }] };
         const reactionCalls = [];
@@ -222,6 +224,12 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const customEmoji = { id: me, name: "custom", animated: true, type: 1, guildId };
         let latestMessage = { id: "previous", author: { id: me }, content: "Fix a.b twice: a.b", timestamp: Date.now(), channel_id: "test-channel" };
         const dispatch = event => acknowledged.push(event);
+        const channelSelections = new Set();
+        const channelDispatcher = {
+            dispatch,
+            subscribe: (name, listener) => { assert.equal(name, "CHANNEL_SELECT"); channelSelections.add(listener); },
+            unsubscribe: (name, listener) => { assert.equal(name, "CHANNEL_SELECT"); channelSelections.delete(listener); },
+        };
         let typingStarts = 0, typingStops = 0;
         const typing = { startTyping() { typingStarts++; }, stopTyping() { typingStops++; } };
         const startTyping = typing.startTyping;
@@ -452,7 +460,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             } }, useState, useRef: initial => useState({ current: initial })[0], ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
-                dispatch,
+                ...channelDispatcher,
             }, Constants: { Endpoints: { REACTION: (channel, message, emoji) => [channel, message, emoji] } },
                 RestAPI: { put: ({ url: [channel, message, emoji] }) => addReaction(channel, message, { name: emoji }) },
             },
@@ -513,7 +521,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "getChatLayout" ? layout : name === "getBaseAppContainerDimensions" ? appContainer
-                    : name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
+                    : name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : ["editMessage", "jumpToMessage"].includes(name) ? messageEditor
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
                         : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions
                             : name === "intl" ? headerMessages : name === "addReaction" ? reactionActions
@@ -529,7 +537,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 isValidElement: element => !!element?.type && !!element?.props,
                 createElement: jsx, memo: type => ({ type }), forwardRef: render => ({ render }),
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
-            }, clipboard: { setString: value => clipboardWrites.push(value) }, FluxDispatcher: { dispatch },
+            }, clipboard: { setString: value => clipboardWrites.push(value) }, FluxDispatcher: channelDispatcher,
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup" },
             "react-native": {
@@ -1965,6 +1973,38 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         copyMedia();
         copyLink();
         assert.equal(clipboardWrites.length, beforeMediaCopy + 2);
+        const priorChannel = selectedChannel;
+        const priorLastMessage = stores.ReadStateStore.lastMessageId;
+        const beforeScroll = acknowledged.length;
+        stores.ReadStateStore.lastMessageId = () => guildId;
+        selectCatalog("ScrollToLatest");
+        click(render(), "Allow for this session");
+        const select = (channelId, messageId) => {
+            selectedChannel = channelId;
+            for (const listener of channelSelections) listener({ channelId, messageId });
+        };
+        const afterSelection = () => new Promise(resolve => setTimeout(resolve, 5));
+        select(sender);
+        select(other);
+        select(other);
+        await afterSelection();
+        assert.deepEqual(JSON.parse(JSON.stringify(acknowledged.slice(beforeScroll))), [
+            { type: "BULK_ACK", context: "APP", channels: [{ channelId: other, messageId: guildId, readStateType: 0 }] },
+            { type: "CHANNEL_LOCAL_ACK", channelId: other },
+        ]);
+        assert.deepEqual(JSON.parse(JSON.stringify(jumps)), [{ channelId: other, messageId: guildId, flash: false }]);
+        select(sender, guildId);
+        await afterSelection();
+        assert.equal(acknowledged.length, beforeScroll + 2);
+        select(sender);
+        click(render(), "Disable ScrollToLatest");
+        await afterSelection();
+        assert.equal(jumps.length, 1);
+        assert.equal(acknowledged.length, beforeScroll + 2);
+        assert.equal(channelSelections.size, 0);
+        acknowledged.splice(beforeScroll);
+        stores.ReadStateStore.lastMessageId = priorLastMessage;
+        selectedChannel = priorChannel;
         const stopAutoUnread = cxCatalog.plugins.find(entry => entry.name === "StopAutoUnread").source;
         assert.throws(() => activateCx(stopAutoUnread, host, ["appearance.hide"]), /approval/);
         for (const name of ["SilentTyping", "NoPendingCount", "AlwaysAnimate", "DontRoundMyTimestamps", "StopAutoUnread"]) {

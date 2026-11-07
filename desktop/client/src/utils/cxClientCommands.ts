@@ -110,6 +110,7 @@ export function formatCxRoleMembers(role: string, guild: string | undefined, mem
 }
 
 type ChannelRow = { channel?: { id?: string; }; };
+type ReadChannel = { channelId: string; messageId: string; readStateType: 0; };
 type UnreadStores = {
     guilds: { getGuilds: () => Record<string, { id: string; }>; };
     channels: { getChannels: (guildId: string) => { SELECTABLE?: ChannelRow[]; VOCAL?: ChannelRow[]; }; };
@@ -117,8 +118,8 @@ type UnreadStores = {
     read: { hasUnread: (channelId: string) => boolean; lastMessageId: (channelId: string) => string | null | undefined; };
 };
 
-export function markCxServersRead(stores: UnreadStores, acknowledge: (channels: { channelId: string; messageId: string; readStateType: 0; }[]) => void) {
-    const channels = new Map<string, { channelId: string; messageId: string; readStateType: 0; }>();
+export function markCxServersRead(stores: UnreadStores, acknowledge: (channels: ReadChannel[]) => void) {
+    const channels = new Map<string, ReadChannel>();
     for (const { id } of Object.values(stores.guilds.getGuilds())) {
         const listed = stores.channels.getChannels(id);
         const threads = Object.values(stores.threads?.getActiveJoinedThreadsForGuild(id) ?? {}).flatMap(group => Object.values(group));
@@ -132,4 +133,56 @@ export function markCxServersRead(stores: UnreadStores, acknowledge: (channels: 
     if (!channels.size) return "Everything is already read.";
     acknowledge([...channels.values()]);
     return "Marked " + channels.size + " channel" + (channels.size === 1 ? "" : "s") + " as read.";
+}
+
+type ChannelSelection = { channelId?: unknown; messageId?: unknown; jumpToMessageId?: unknown; };
+type ChannelOpenRead = {
+    dispatcher: {
+        subscribe: (event: "CHANNEL_SELECT", listener: (event: ChannelSelection) => void) => void;
+        unsubscribe: (event: "CHANNEL_SELECT", listener: (event: ChannelSelection) => void) => void;
+        dispatch: (event: { type: "BULK_ACK"; context: "APP"; channels: ReadChannel[]; } | { type: "CHANNEL_LOCAL_ACK"; channelId: string; }) => unknown;
+    };
+    selected: () => string | null | undefined;
+    user: () => string | undefined;
+    read: UnreadStores["read"];
+    jump: (target: { channelId: string; messageId: string; flash: false; }) => unknown;
+    enabled?: () => boolean;
+};
+
+export function bindCxChannelOpenRead({ dispatcher, selected, user, read, jump, enabled = () => true }: ChannelOpenRead) {
+    if (typeof dispatcher?.subscribe !== "function" || typeof read?.lastMessageId !== "function") throw new Error("Discord channel read state is unavailable");
+    let pending: ReturnType<typeof setTimeout> | undefined;
+    let generation = 0;
+    let previous: string | undefined;
+    let previousUser: string | undefined;
+    function onSelect({ channelId, messageId: targetId, jumpToMessageId }: ChannelSelection) {
+        const account = user();
+        if (targetId || jumpToMessageId) {
+            clearTimeout(pending);
+            generation++;
+            previous = undefined;
+            return;
+        }
+        if (enabled() && channelId === previous && account === previousUser) return;
+        clearTimeout(pending);
+        const request = ++generation;
+        previous = undefined;
+        if (!enabled() || !account || typeof channelId !== "string" || !/^\d{17,20}$/.test(channelId)) return;
+        previous = channelId;
+        previousUser = account;
+        pending = setTimeout(async () => {
+            try {
+                if (!enabled() || user() !== account || selected() !== channelId || !read.hasUnread(channelId)) return;
+                const messageId = read.lastMessageId(channelId);
+                if (!messageId || !/^\d{17,20}$/.test(messageId)) return;
+                await dispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels: [{ channelId, messageId, readStateType: 0 }] });
+                if (user() !== account) return;
+                await dispatcher.dispatch({ type: "CHANNEL_LOCAL_ACK", channelId });
+                if (request === generation && enabled() && user() === account && selected() === channelId)
+                    await jump({ channelId, messageId, flash: false });
+            } catch { /* Let Discord continue to handle the channel normally. */ }
+        }, 0);
+    }
+    dispatcher.subscribe("CHANNEL_SELECT", onSelect);
+    return () => { generation++; clearTimeout(pending); dispatcher.unsubscribe("CHANNEL_SELECT", onSelect); };
 }

@@ -4,7 +4,7 @@ import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreE
 import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
-import { filterCxEmojiGrid } from "@utils/cx";
+import { bindCxChannelOpenRead, filterCxEmojiGrid } from "@utils/cx";
 import { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
@@ -261,6 +261,10 @@ export function CxSettings() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "scroll-to-latest":
+                            return bindCxChannelOpenRead({ dispatcher: FluxDispatcher, read: ReadStateStore,
+                                selected: () => SelectedChannelStore?.getChannelId(), user: () => UserStore?.getCurrentUser()?.id,
+                                jump: target => MessageActions.jumpToMessage(target) });
                         case "unicode-emoji-autocomplete":
                         case "local-emoji-autocomplete":
                             return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode",

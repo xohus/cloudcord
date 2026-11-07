@@ -14,7 +14,7 @@ import { validateCxWallpaper } from "./cxWallpaper";
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
 export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
-export { formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, runCxFriendInvites } from "./cxClientCommands";
+export { bindCxChannelOpenRead, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, runCxFriendInvites } from "./cxClientCommands";
 export { animateCxAssets, cxNativeEffects, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, overrideCxMethods, raiseCxAvatarResolution } from "./cxNativeEffects";
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
 export { bindCxSocialEvents } from "./cxSocialEvents";
@@ -52,6 +52,7 @@ const permissionLabels = {
     "friends.invites.revoke": "Revoke all your friend invites when you run the listed command",
     "spotify.activity": "Read your current Spotify track, album, or artist when the command runs",
     "servers.markread": "Mark unread server channels as read when you run the listed command",
+    "channels.markonopen": "Mark the channel you open as read through its newest known message",
     "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
     "appearance.hide": "Hide the listed interface elements on this device",
     "appearance.style": "Apply the listed visual changes on this device",

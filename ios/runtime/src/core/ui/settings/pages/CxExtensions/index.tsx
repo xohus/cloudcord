@@ -2,7 +2,7 @@ import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
-import { filterCxEmojiCategories } from "@lib/api/cx";
+import { bindCxChannelOpenRead, filterCxEmojiCategories } from "@lib/api/cx";
 import { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink, validateCxStickerLink } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
@@ -1006,6 +1006,13 @@ export default function CxExtensions() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "scroll-to-latest": {
+                            const actions = findByProps("jumpToMessage", "fetchMessages");
+                            if (typeof actions?.jumpToMessage !== "function") throw new Error("Discord message navigation is unavailable");
+                            return bindCxChannelOpenRead({ dispatcher: FluxDispatcher, read: ReadStateStore, enabled,
+                                selected: () => SelectedChannelStore?.getChannelId?.(), user: () => UserStore?.getCurrentUser?.()?.id,
+                                jump: target => actions.jumpToMessage(target) });
+                        }
                         case "unicode-emoji-autocomplete":
                         case "local-emoji-autocomplete":
                             return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode",
