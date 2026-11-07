@@ -36465,6 +36465,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "ProfileBadgeRows"
           ]
         },
+        "custom-status-emojis": {
+          plugin: "HideStatusEmojis",
+          label: "emojis in custom status bubbles",
+          css: '[class*="customStatus"] img[class*="emoji"] { display: none !important; }',
+          mobile: {
+            customStatusEmojis: [
+              "CustomStatusBubble",
+              "UserProfileCustomStatusBubble"
+            ]
+          }
+        },
         "reply-previews": {
           plugin: "HideReplyPreviews",
           label: "reply previews in chat",
@@ -36551,6 +36562,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           css: '[class*="edited_"] { display: none !important; }',
           mobile: {
             messagePresentation: "edited"
+          }
+        },
+        "message-timestamps": {
+          plugin: "HideTimestamps",
+          label: "timestamps next to chat messages",
+          css: '[class*="messageListItem"] time, [class*="timestamp_"] { display: none !important; }',
+          mobile: {
+            messagePresentation: "timestamps"
           }
         },
         "message-stickers": {
@@ -39483,6 +39502,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-status-emojis.cx
+  var hide_status_emojis_default;
+  var init_hide_status_emojis = __esm({
+    "../examples/cx/catalog/plugins/hide-status-emojis.cx"() {
+      hide_status_emojis_default = 'plugin "HideStatusEmojis":\n  needs appearance.hide\n  hide custom-status-emojis\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-stickers.cx
   var hide_stickers_default;
   var init_hide_stickers = __esm({
@@ -39504,6 +39531,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_system_messages = __esm({
     "../examples/cx/catalog/plugins/hide-system-messages.cx"() {
       hide_system_messages_default = 'plugin "HideSystemMessages":\n  needs messages.filterlocal\n  on incoming hide-system "pins,joins,boosts"\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-timestamps.cx
+  var hide_timestamps_default;
+  var init_hide_timestamps = __esm({
+    "../examples/cx/catalog/plugins/hide-timestamps.cx"() {
+      hide_timestamps_default = 'plugin "HideTimestamps":\n  needs appearance.hide\n  hide message-timestamps\n';
     }
   });
 
@@ -40761,9 +40796,11 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_server_banner();
       init_hide_shop_tab();
       init_hide_spoiler_warnings();
+      init_hide_status_emojis();
       init_hide_stickers();
       init_hide_stream_previews();
       init_hide_system_messages();
+      init_hide_timestamps();
       init_hide_typing_indicator();
       init_hide_unread_pills();
       init_hide_upload_button();
@@ -41136,6 +41173,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: hide_spoiler_warnings_default
           },
           {
+            name: "HideStatusEmojis",
+            source: hide_status_emojis_default
+          },
+          {
             name: "HideStickers",
             source: hide_stickers_default
           },
@@ -41146,6 +41187,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideSystemMessages",
             source: hide_system_messages_default
+          },
+          {
+            name: "HideTimestamps",
+            source: hide_timestamps_default
           },
           {
             name: "HideTypingIndicator",
@@ -42130,6 +42175,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var mobile = cxAppearanceTargets[target].mobile;
             if ("renderTree" in mobile)
               return registerTreeAppearance(mobile);
+            if ("customStatusEmojis" in mobile) {
+              return registerJsxAppearance(mobile.customStatusEmojis, (element) => {
+                var { customStatusActivity } = element.props;
+                if (!customStatusActivity?.emoji)
+                  return element;
+                return React2.cloneElement(element, {
+                  customStatusActivity: {
+                    ...customStatusActivity,
+                    emoji: void 0
+                  }
+                });
+              });
+            }
             if ("emptyServerFolders" in mobile) {
               return registerJsxAppearance([
                 "GuildsBarGuildFolder"
@@ -42164,6 +42222,15 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                       ...presentation,
                       edited: false
                     };
+                } else if (mobile.messagePresentation === "timestamps") {
+                  if ("timestamp" in presentation && typeof presentation.timestamp === "string") {
+                    return {
+                      ...presentation,
+                      timestamp: void 0,
+                      timestampTooltip: void 0,
+                      timestampAccessibilityLabel: void 0
+                    };
+                  }
                 } else if ("stickers" in presentation && Array.isArray(presentation.stickers) && presentation.stickers.length) {
                   return {
                     ...presentation,
@@ -47380,7 +47447,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "9b18154c8a38474012c349628aa10bdc6389d1e9";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "0d826fcdba492d3a5968aef7b50e35d89e0cdcab";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
