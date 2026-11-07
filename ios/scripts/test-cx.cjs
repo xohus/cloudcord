@@ -257,7 +257,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             .map(name => [name, () => name]));
         const renderHeader = tree => tree;
         const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem", "MediaModalSpoilerOverlay",
-            "GuildBoostingMarketingProgressBar", "GuildPowerupsBoostGem"].map(name => [
+            "GuildBoostingMarketingProgressBar", "GuildPowerupsBoostGem", "PresenceActivityStatus"].map(name => [
             name, { $$typeof: Symbol.for("react.memo"), displayName: name, type: renderHeader },
         ]));
         const forwardedRefs = [];
@@ -276,6 +276,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const renderSpoiler = Spoiler.prototype.render;
         const colorOverlays = new Set();
         const menuPatches = new Set(), clipboardWrites = [];
+        let inMemberRow = false;
         let protectedReads = 0;
         const diagnosticExports = {
             getAccount() { throw new Error("Reports must not call arbitrary methods"); },
@@ -387,7 +388,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                             : name === "intl" ? headerMessages : name in headerIcons ? headerIcons : undefined },
             "@metro/common": { React: {
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
-                createContext: () => ({ Provider: "ProfileUserProvider" }), useContext: () => profileUser,
+                createContext: initial => ({ Provider: initial === false ? "MemberRowProvider" : "ProfileUserProvider" }),
+                useContext: context => context.Provider === "MemberRowProvider" ? inMemberRow : profileUser,
                 isValidElement: element => !!element?.type && !!element?.props,
                 createElement: jsx, memo: type => ({ type }), forwardRef: render => ({ render }),
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
@@ -672,9 +674,46 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     settings.safeMode = undefined;
                     bubbles.push([wrapped, bubble]);
                 }
+                const activity = jsx("ActivityStatus", { hideEmoji: false, userId: sender });
+                const activityWrapper = appearanceHooks.get("ActivityStatus")(null, activity);
+                assert.equal(activityWrapper.type(activityWrapper.props).props.hideEmoji, true);
                 click(render(), "Disable " + rule.plugin);
                 assert.equal(appearanceHooks.size, 0);
+                assert.equal(activityWrapper.type(activityWrapper.props), activity);
                 for (const [wrapped, bubble] of bubbles) assert.equal(wrapped.type(wrapped.props), bubble);
+                continue;
+            } else if (rule.mobile.memberActivityText) {
+                const rowHook = appearanceHooks.get("UserRowSubLabel");
+                const row = jsx("UserRowSubLabel", { guildId, user: { id: sender } });
+                const rowWrap = rowHook(null, row);
+                const scoped = rowWrap.type(rowWrap.props);
+                assert.equal(scoped.type, "MemberRowProvider");
+                assert.equal(scoped.props.value, true);
+                assert.equal(scoped.props.children, row);
+                const friendRow = jsx("UserRowSubLabel", { user: { id: sender } });
+                const friendWrap = rowHook(null, friendRow);
+                assert.equal(friendWrap.type(friendWrap.props), friendRow);
+                const presence = nativeHeaders.get("PresenceActivityStatus");
+                const presenceHook = appearanceHooks.get(presence);
+                const tests = [];
+                for (const type of [0, 2, 4]) {
+                    const status = jsx(presence, { activity: { type }, hideText: false, hideIcon: false });
+                    const wrapped = presenceHook(null, status);
+                    const result = wrapped.type(wrapped.props);
+                    if (type === 4) assert.equal(result, status);
+                    else {
+                        assert.equal(result.type(result.props), status);
+                        inMemberRow = true;
+                        const hidden = result.type(result.props);
+                        assert.equal(hidden.props.hideText, true);
+                        assert.equal(hidden.props.hideIcon, false);
+                        inMemberRow = false;
+                    }
+                    tests.push([wrapped, status]);
+                }
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(appearanceHooks.size, 0);
+                for (const [wrapped, status] of tests) assert.equal(wrapped.type(wrapped.props), status);
                 continue;
             } else if (rule.mobile.mentionBadges) {
                 const badge = appearanceHooks.get("Badge");

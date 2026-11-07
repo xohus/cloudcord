@@ -99,6 +99,11 @@ export const cxAppearanceTargets = {
         css: '[class*="customStatus"] img[class*="emoji"] { display: none !important; }',
         mobile: { customStatusEmojis: ["CustomStatusBubble", "UserProfileCustomStatusBubble"] },
     },
+    "member-activities": {
+        plugin: "HideMemberActivities", label: "game and music activity text in the member list",
+        css: '[class*="member_"] [class*="activityText"] { display: none !important; }',
+        mobile: { memberActivityText: true },
+    },
     "reply-previews": {
         plugin: "HideReplyPreviews", label: "reply previews in chat",
         css: '[class*="repliedMessage"] { display: none !important; }',

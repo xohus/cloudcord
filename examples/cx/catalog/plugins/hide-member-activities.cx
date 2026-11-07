@@ -1,0 +1,3 @@
+plugin "HideMemberActivities":
+  needs appearance.hide
+  hide member-activities

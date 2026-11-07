@@ -358,11 +358,31 @@ export default function CxExtensions() {
                         }));
                     }
                     if ("customStatusEmojis" in mobile) {
-                        return registerJsxAppearance(mobile.customStatusEmojis, element => {
+                        const hideBubbleEmoji = registerJsxAppearance(mobile.customStatusEmojis, element => {
                             const { customStatusActivity } = element.props;
                             if (!customStatusActivity?.emoji) return element;
                             return React.cloneElement(element, { customStatusActivity: { ...customStatusActivity, emoji: undefined } });
                         });
+                        const hideActivityEmoji = registerJsxAppearance(["ActivityStatus"], element => React.cloneElement(element, { hideEmoji: true }));
+                        return () => { hideActivityEmoji(); hideBubbleEmoji(); };
+                    }
+                    if ("memberActivityText" in mobile) {
+                        const status = findByFilePath("modules/activity_status/native/PresenceActivityStatus.tsx")?.default;
+                        if (!status) throw new Error("Discord's member activity renderer is unavailable");
+                        const MemberRow = React.createContext(false);
+                        function MemberActivity({ element }: { element: JSX.Element; }) {
+                            const inMemberRow = React.useContext(MemberRow);
+                            return inMemberRow && !settings.safeMode?.enabled
+                                ? React.cloneElement(element, { hideText: true }) : element;
+                        }
+                        const stopRow = registerJsxAppearance(["UserRowSubLabel"], element => element.props.guildId
+                            ? <MemberRow.Provider value={true}>{element}</MemberRow.Provider> : element);
+                        const stopActivity = registerJsxAppearance([status], element => {
+                            const type = element.props.activity?.type;
+                            // Discord activity types 0 and 2 are Playing and Listening.
+                            return type === 0 || type === 2 ? <MemberActivity element={element} /> : element;
+                        });
+                        return () => { stopActivity(); stopRow(); };
                     }
                     if ("emptyServerFolders" in mobile) {
                         return registerJsxAppearance(["GuildsBarGuildFolder"], element => {
