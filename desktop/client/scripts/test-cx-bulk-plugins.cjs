@@ -174,6 +174,15 @@ assert.equal(inspectPlugin("tweak.ts", tweak, "desktop", cxAppearanceTargets).cx
 const styles = [cxAppearanceTargets["bot-tags"].css, cxAppearanceTargets["profile-effects"].css].join("\n");
 const combinedTweak = tweak.replace('"HideBotTags"', '"CompactProfiles"').replace('"body { display: none; }"', JSON.stringify(styles));
 const inspectTweak = code => inspectPlugin("tweak.ts", code, "desktop", cxAppearanceTargets);
+const avatarTweak = (name, size) => inspectTweak(tweak.replace('"HideBotTags"', JSON.stringify(name))
+    .replace('"body { display: none; }"', JSON.stringify(`[class*="avatar"] { width: ${size}px; height: ${size}px; }`)));
+const avatarBatch = buildBatchPlan([avatarTweak("Larger avatar", 48), avatarTweak("Smaller avatar", 32)]
+    .map(record => ({ ...record, status: "needs-adapter" })));
+assert.equal(avatarBatch.batches[0].anchor, 'style:[class*="avatar"] → height, width');
+assert.equal(avatarBatch.batches[0].sources.length, 2);
+assert.deepEqual(avatarBatch.unbatched, []);
+assert.equal(inspectTweak(tweak.replace('"body { display: none; }"', '"@media print { body { display: none; } }"'))
+    .targets.some(target => target.startsWith("selector:")), false);
 assert.deepEqual([...parseCx(inspectTweak(combinedTweak).cx).hiddenTargets], ["bot-tags", "profile-effects"]);
 const reformattedStyles = styles.replaceAll(" { ", "{\n  ").replaceAll(": ", ":").replaceAll("; }", "\n}\n");
 assert.deepEqual([...parseCx(inspectTweak(combinedTweak.replace(JSON.stringify(styles), JSON.stringify(reformattedStyles))).cx).hiddenTargets], ["bot-tags", "profile-effects"]);
@@ -277,6 +286,11 @@ const voiceSource = source.replace('name: "LiteralReplace",', 'name: "Voice Exam
     .replace('import definePlugin', 'import { findByProps } from "@webpack";\nimport definePlugin');
 const target = inspect(voiceSource);
 assert.ok(target.targets.includes("module:selectVoiceChannel"));
+const patchAndMenu = inspect(source.replace('name: "LiteralReplace",', `name: "Patch Example",
+    patches: [{ find: "ChannelCallHeader", replacement: { match: /old/, replace: "new" } }],
+    contextMenus: { "image-context": () => {}, [dynamicMenu]: () => {} },`));
+assert.ok(patchAndMenu.targets.includes("patch:ChannelCallHeader"));
+assert.deepEqual(patchAndMenu.targets.filter(target => target.startsWith("menu:")), ["menu:image-context"]);
 const adapterPlan = buildPlan([
     { ...target, status: "needs-adapter" },
     { ...target, platform: "mobile", status: "needs-adapter" },
@@ -305,6 +319,9 @@ assert.deepEqual([batches.ready, batches.compare, batches.review, batches.pendin
 assert.deepEqual(batches.batches.map(({ anchor, distinct, additional, mobileSources }) => [anchor, distinct, additional, mobileSources]),
     [["module:open", 3, 3, 2], ["event:MESSAGE_CREATE", 3, 2, 0]]);
 assert.deepEqual(batches.batches[1].plugins, ["Event only", "Other event"]);
+assert.deepEqual(buildBatchPlan([
+    batchSource("Unique", "desktop", "needs-adapter", "patch:unique"),
+]).unbatched, [{ name: "Unique", sources: [{ file: undefined, platform: "desktop", hooks: undefined, targets: ["patch:unique"] }] }]);
 const recipePriority = buildBatchPlan([
     batchSource("One", "desktop", "needs-adapter", "recipe:hide-component", "event:MESSAGE_CREATE"),
     batchSource("Two", "desktop", "needs-adapter", "recipe:hide-component", "event:MESSAGE_CREATE"),

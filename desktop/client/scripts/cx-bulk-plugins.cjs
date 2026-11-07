@@ -24,6 +24,22 @@ const hookGroups = {
     "native-access": /^(VencordNative|DiscordNative|NativeModules|FileSystem|clipboard|Clipboard)$/,
 };
 
+function inventoryStyles(stylesheet, targets, standalone = false) {
+    for (const [, property] of stylesheet.matchAll(/(?:\{|;)\s*([a-z-]+)\s*:/gi)) targets.add("css:" + property.toLowerCase());
+    if (!standalone) return;
+    // Keep grouping conservative. At-rules and nested selectors need their own recipe.
+    const rules = [...stylesheet.matchAll(/([^{}]+)\{([^{}]*)\}/g)];
+    if (rules.map(rule => rule[0]).join("").trim() !== stylesheet.trim()) return;
+    for (const [, selector, declarations] of rules) {
+        const scope = selector.trim().replace(/\s*,\s*/g, ",").replace(/\s+/g, " ");
+        if (!scope || scope.length > 160 || /[@/*]/.test(scope.replace(/\*=/g, ""))) continue;
+        const properties = [...new Set([...declarations.matchAll(/(?:^|;)\s*([a-z-]+)\s*:/gi)]
+            .map(([, property]) => property.toLowerCase()))].sort();
+        targets.add("selector:" + scope);
+        if (properties.length) targets.add("style:" + scope + " → " + properties.join(", "));
+    }
+}
+
 function inventory(source) {
     const hooks = new Set();
     const targets = new Set();
@@ -46,6 +62,19 @@ function inventory(source) {
             if (isActionType || comparesType || /^(?:subscribe|unsubscribe|subscribeToDispatch|waitFor|dispatch)$/.test(call || "") || ts.isCaseClause(parent))
                 targets.add("event:" + node.text);
         }
+        if (ts.isObjectLiteralExpression(node)) {
+            if (property(node, "replacement")) {
+                const find = literal(value(node, "find"));
+                if (safeText(find) && find.length >= 5 && find.length <= 96) targets.add("patch:" + find);
+            }
+            const menus = value(node, "contextMenus");
+            if (menus && ts.isObjectLiteralExpression(menus)) {
+                for (const { name } of menus.properties) {
+                    const key = identifier(name) ?? literal(name);
+                    if (/^[a-z][a-z0-9-]{2,63}$/.test(key ?? "")) targets.add("menu:" + key);
+                }
+            }
+        }
         if (ts.isCallExpression(node)) {
             const callee = ts.isPropertyAccessExpression(node.expression) ? node.expression.name.text : identifier(node.expression);
             const first = literal(node.arguments[0]);
@@ -58,9 +87,11 @@ function inventory(source) {
                 targets.add("store:" + first);
             } else if (callee === "onJsxCreate" && first && /^[A-Z][\w$]{2,79}$/.test(first)) {
                 targets.add("component:" + first);
+            } else if (/^(?:addContextMenuPatch|patchContextMenu)$/.test(callee ?? "") && /^[a-z][a-z0-9-]{2,63}$/.test(first ?? "")) {
+                targets.add("menu:" + first);
             } else if (callee === "defineTweak") {
                 const css = literal(node.arguments[2]) ?? "";
-                for (const match of css.matchAll(/(?:\{|;)\s*([a-z-]+)\s*:/g)) targets.add("css:" + match[1]);
+                inventoryStyles(css, targets, true);
                 if (/\{\s*display\s*:\s*none\s*!important\s*;?\s*\}\s*$/i.test(css)
                     && css.indexOf("{") === css.lastIndexOf("{")) targets.add("recipe:hide-component");
             }
@@ -943,7 +974,7 @@ function inspectCompanions(entry, code) {
     for (const [file, text] of pending) {
         if (file.endsWith(".css")) {
             hooks.add("appearance");
-            for (const [, property] of text.matchAll(/(?:\{|;)\s*([a-z-]+)\s*:/gi)) targets.add("css:" + property.toLowerCase());
+            inventoryStyles(text, targets);
             continue;
         }
         const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
@@ -1130,7 +1161,7 @@ function buildPlan(records) {
     };
 }
 
-function buildBatchPlan(records, limit = 12) {
+function buildBatchPlan(records, limit = Infinity) {
     const sources = new Map();
     for (const record of records) {
         const key = record.name.toLowerCase();
@@ -1160,7 +1191,7 @@ function buildBatchPlan(records, limit = 12) {
         pending.add(key);
         for (const { targets } of variants) for (const anchor of targets ?? []) {
             // A store or CSS property can be referenced by unrelated features.
-            if (!/^(event|module|component|recipe):/.test(anchor)
+            if (!/^(event|module|component|recipe|selector|style|menu|patch):/.test(anchor)
                 || /^module:(?:Store|dispatch|subscribe|icon|iconContainer|default|render)$/.test(anchor)) continue;
             const candidates = queues.get(anchor) ?? new Set();
             candidates.add(key);
@@ -1169,13 +1200,14 @@ function buildBatchPlan(records, limit = 12) {
     }
     const batches = [];
     const covered = new Set();
+    const specificity = anchor => ({ style: 3, selector: 2, recipe: 1 }[anchor.split(":", 1)[0]] ?? 0);
     while (batches.length < limit) {
         const best = [...queues].map(([anchor, keys]) => {
             const next = [...keys].filter(key => !covered.has(key));
             const mobileSources = next.filter(key => sources.get(key).some(record => record.platform === "mobile")).length;
             return { anchor, next, mobileSources, total: keys.size };
         }).filter(batch => batch.next.length > 1)
-            .sort((a, b) => Number(b.anchor.startsWith("recipe:")) - Number(a.anchor.startsWith("recipe:"))
+            .sort((a, b) => specificity(b.anchor) - specificity(a.anchor)
                 || b.next.length - a.next.length || b.mobileSources - a.mobileSources || a.anchor.localeCompare(b.anchor))[0];
         if (!best) break;
         queues.delete(best.anchor);
@@ -1186,9 +1218,21 @@ function buildBatchPlan(records, limit = 12) {
             additional: best.next.length,
             mobileSources: best.mobileSources,
             plugins: best.next.map(key => sources.get(key)[0].name).sort((a, b) => a.localeCompare(b)),
+            sources: best.next.flatMap(key => sources.get(key).map(({ name, file, platform, companions }) => ({
+                name, file, platform, ...(companions ? { companions } : {}),
+            }))),
         });
     }
-    return { sources: records.length, distinct: sources.size, ready, compare, review, pending: pending.size, covered: covered.size, batches };
+    const unbatched = [...pending].filter(key => !covered.has(key)).map(key => {
+        const variants = sources.get(key);
+        return {
+            name: variants[0].name,
+            sources: variants.map(({ file, platform, hooks, targets, companions }) => ({
+                file, platform, hooks, targets, ...(companions ? { companions } : {}),
+            })),
+        };
+    });
+    return { sources: records.length, distinct: sources.size, ready, compare, review, pending: pending.size, covered: covered.size, batches, unbatched };
 }
 
 function checkAppearancePaths(appearance, indexes) {
@@ -1239,7 +1283,7 @@ function verifyPorts(files) {
     }
 }
 
-const usage = "Usage: node cx-bulk-plugins.cjs [--json | --plan | --batches | --out-dir <new-folder> | --add-ready] [--source-dir <BetterDiscord sources> | --fetch-reviewed]";
+const usage = "Usage: node cx-bulk-plugins.cjs [--json | --plan | --batches | --batch-json | --out-dir <new-folder> | --add-ready] [--source-dir <BetterDiscord sources> | --fetch-reviewed]";
 
 function portFiles(ports) {
     const files = new Map();
@@ -1311,11 +1355,11 @@ async function main(rawArgs) {
         args.splice(args.indexOf("--fetch-reviewed"), 1);
     }
     const output = args.length === 2 && args[0] === "--out-dir" ? path.resolve(args[1]) : undefined;
-    if (!output && (args.length > 1 || args.length === 1 && !["--json", "--plan", "--batches", "--add-ready"].includes(args[0])))
+    if (!output && (args.length > 1 || args.length === 1 && !["--json", "--plan", "--batches", "--batch-json", "--add-ready"].includes(args[0])))
         throw new Error(usage);
     const reviewedSources = fetchReviewed ? await fetchReviewedBetterDiscordSources() : [];
     const records = scan(sourceDir && path.resolve(sourceDir), {
-        includeCompanions: ["--plan", "--json", "--batches"].includes(args[0]),
+        includeCompanions: ["--plan", "--json", "--batches", "--batch-json"].includes(args[0]),
         reviewedSources,
     });
     if (args[0] === "--add-ready") {
@@ -1339,8 +1383,12 @@ async function main(rawArgs) {
         process.stdout.write(JSON.stringify(buildPlan(records), null, 2) + "\n");
         return;
     }
+    if (args[0] === "--batch-json") {
+        process.stdout.write(JSON.stringify(buildBatchPlan(records), null, 2) + "\n");
+        return;
+    }
     if (args[0] === "--batches") {
-        const plan = buildBatchPlan(records);
+        const plan = buildBatchPlan(records, 12);
         console.log("Scanned " + plan.sources + " sources across " + plan.distinct + " distinct plugin names.");
         console.log(plan.ready + " ready, " + plan.compare + " need source comparison, " + plan.review + " need source review, "
             + plan.pending + " need adapters.");
@@ -1350,6 +1398,7 @@ async function main(rawArgs) {
                 + batch.plugins.slice(0, 5).join(", ") + (batch.plugins.length > 5 ? ", …" : ""));
         }
         console.log(plan.covered + " distinct candidates in these batches.");
+        console.log("Use --batch-json for the full worklist and source paths.");
         return;
     }
     const counts = ["desktop", "mobile", "betterdiscord"].map(platform =>
