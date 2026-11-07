@@ -340,6 +340,16 @@ export const cxAppearanceTargets = {
         css: '[class*="numberBadge"] { display: none !important; }',
         mobile: { mentionBadges: true },
     },
+    "wider-channel-list": {
+        plugin: "WiderChannelList", label: "make the channel list wider",
+        css: '[class*="sidebar_"] { width: 280px !important; }',
+        style: { drawerWidthDelta: 40 },
+    },
+    "narrower-channel-list": {
+        plugin: "NarrowChannelList", label: "make the channel list narrower",
+        css: '[class*="sidebar_"] { width: 200px !important; }',
+        style: { drawerWidthDelta: -40 },
+    },
     "muted-channel-opacity": {
         plugin: "MutedChannelsFaded", label: "fade muted channels",
         css: '[class*="modeMuted"] { opacity: .45 !important; }',

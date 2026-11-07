@@ -295,6 +295,15 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             const resolved = wrapped.type(wrapped.props);
             return resolved === original ? expressionPicker.type(resolved.props) : resolved.type(resolved.props);
         };
+        let drawerWidth = 260;
+        let viewportWidth = 900;
+        let dockedDrawer = true;
+        let lockedChat = true;
+        const getDrawerWidth = () => drawerWidth;
+        const useDrawerWidth = () => drawerWidth;
+        const drawerSizing = { getDrawerWidth, useDrawerWidth };
+        const layout = { getChatLayout: () => ({ isChatBesideChannelList: dockedDrawer, isChatLockedOpen: lockedChat }) };
+        const appContainer = { getBaseAppContainerDimensions: () => ({ width: viewportWidth }) };
         const renderHeader = tree => tree;
         const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem", "MediaModalSpoilerOverlay",
             "GuildBoostingMarketingProgressBar", "GuildPowerupsBoostGem", "PresenceActivityStatus"].map(name => [
@@ -443,6 +452,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+                : path.endsWith("/useDrawerWidth.tsx") ? drawerSizing
                 : path === "design/native.tsx" ? design
                 : path.endsWith("/SegmentedControlState.native.tsx") ? segmentedControl
                 : path.endsWith("/ExpressionPickerConstants.tsx") ? { ExpressionPickerOrder: pickerOrder }
@@ -450,7 +460,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.includes("/defs/native/") ? { default: settingsRoutes.get(path.split("/").at(-1).replace(".tsx", "")) }
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
-                name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
+                name === "getChatLayout" ? layout : name === "getBaseAppContainerDimensions" ? appContainer
+                    : name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
                         : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions
                             : name === "intl" ? headerMessages : name === "addReaction" ? reactionActions
@@ -530,6 +541,33 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                     assert.equal(styles[1], rule.style.values);
                 }
                 wraps.push(wrapped);
+            } else if (rule.style?.drawerWidthDelta) {
+                const wider = rule.style.drawerWidthDelta > 0;
+                const expectWidth = width => {
+                    assert.equal(drawerSizing.getDrawerWidth(), width);
+                    assert.equal(drawerSizing.useDrawerWidth(), width);
+                };
+                expectWidth(260 + rule.style.drawerWidthDelta);
+                viewportWidth = 600;
+                expectWidth(wider ? 280 : 220);
+                lockedChat = false;
+                viewportWidth = 290;
+                expectWidth(wider ? 260 : 220);
+                dockedDrawer = false;
+                expectWidth(260);
+                dockedDrawer = true;
+                viewportWidth = 900;
+                drawerWidth = 180;
+                expectWidth(wider ? 220 : 180);
+                drawerWidth = 260;
+                lockedChat = true;
+                settings.safeMode = { enabled: true };
+                expectWidth(260);
+                settings.safeMode = undefined;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(drawerSizing.getDrawerWidth, getDrawerWidth);
+                assert.equal(drawerSizing.useDrawerWidth, useDrawerWidth);
+                continue;
             } else if (rule.style?.renderedComponents) {
                 const enabled = [];
                 function Channel(props) { return jsx("Text", { children: props.title, style: baseStyle }); }
@@ -923,6 +961,15 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             for (const wrapped of wraps) assert.equal(wrapped.type(wrapped.props), original);
         }
         if (!desktop) {
+            for (const name of ["WiderChannelList", "NarrowChannelList"]) {
+                selectCatalog(name);
+                click(render(), "Allow for this session");
+            }
+            assert.equal(drawerSizing.useDrawerWidth(), 220);
+            click(render(), "Disable NarrowChannelList");
+            assert.equal(drawerSizing.useDrawerWidth(), 300);
+            click(render(), "Disable WiderChannelList");
+            assert.equal(drawerSizing.useDrawerWidth, useDrawerWidth);
             for (const name of ["HideGifButton", "HideStickerButton"]) {
                 selectCatalog(name);
                 click(render(), "Allow for this session");

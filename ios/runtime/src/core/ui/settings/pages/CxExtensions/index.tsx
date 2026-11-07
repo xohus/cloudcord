@@ -395,6 +395,48 @@ function registerExpressionPickerTab(tab: PickerTab) {
     };
 }
 
+function bindChannelDrawerWidths() {
+    const drawer = findByFilePath("modules/screen/native/drawer/useDrawerWidth.tsx");
+    const layout = findByProps("getChatLayout");
+    const container = findByProps("getBaseAppContainerDimensions");
+    if (typeof drawer?.getDrawerWidth !== "function" || typeof drawer.useDrawerWidth !== "function"
+        || typeof layout?.getChatLayout !== "function" || typeof container?.getBaseAppContainerDimensions !== "function") {
+        throw new Error("Discord's channel drawer sizing is unavailable");
+    }
+    const widths = new Set<{ delta: number; }>();
+    const resize: Parameters<typeof overrideCxMethods>[1][string] = (args, invoke) => {
+        const width = invoke(args);
+        const preference = [...widths].at(-1);
+        if (!preference || typeof width !== "number" || !Number.isFinite(width)) return width;
+        const { isChatBesideChannelList, isChatLockedOpen } = layout.getChatLayout() ?? {};
+        if (!isChatBesideChannelList) return width;
+        const viewport = container.getBaseAppContainerDimensions()?.width;
+        if (!Number.isFinite(viewport) || width <= 0 || width >= viewport) return width;
+        const minimum = Math.min(width, 200);
+        const chatSpace = isChatLockedOpen ? 320 : 32;
+        const maximum = Math.max(width, viewport - chatSpace);
+        return Math.max(minimum, Math.min(maximum, width + preference.delta));
+    };
+    // Use the same width for the gesture boundary and the rendered drawer.
+    const stop = overrideCxMethods(drawer, { getDrawerWidth: resize, useDrawerWidth: resize }, () => !settings.safeMode?.enabled);
+    return { widths, stop };
+}
+
+let channelDrawerWidths: ReturnType<typeof bindChannelDrawerWidths> | undefined;
+
+function registerChannelDrawerWidth(delta: number) {
+    const binding = channelDrawerWidths ??= bindChannelDrawerWidths();
+    const preference = { delta };
+    binding.widths.add(preference);
+    return () => {
+        binding.widths.delete(preference);
+        if (!binding.widths.size) {
+            binding.stop();
+            channelDrawerWidths = undefined;
+        }
+    };
+}
+
 function registerRenderedChannelStyle(rule: {
     renderedComponents: readonly string[]; condition: "muted" | "inactive"; values: { opacity: number; };
 }) {
@@ -664,6 +706,7 @@ export default function CxExtensions() {
                 },
                 styleAppearanceTarget(target) {
                     const style = cxAppearanceTargets[target].style;
+                    if ("drawerWidthDelta" in style) return registerChannelDrawerWidth(style.drawerWidthDelta);
                     if ("renderedComponents" in style) return registerRenderedChannelStyle(style);
                     if ("serverIconScale" in style) {
                         const iconStyle = { transform: [{ scale: style.serverIconScale }] };

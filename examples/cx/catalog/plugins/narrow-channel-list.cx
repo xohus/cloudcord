@@ -1,0 +1,3 @@
+plugin "NarrowChannelList":
+  needs appearance.style
+  style narrower-channel-list
