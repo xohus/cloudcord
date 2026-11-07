@@ -12132,6 +12132,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       modules
     };
   }
+  function describeCcpReport(report) {
+    return `Copied the diagnostic report. Found ${report.modules.length} loaded modules and checked ${Object.keys(report.checks).length} read-only calls.`;
+  }
   var storeChecks, otherStores;
   var init_ccpInspect = __esm({
     "src/lib/api/ccpInspect.ts"() {
@@ -38512,6 +38515,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
+      if (line12 === "    copy client diagnostics" && current && !current.actions.length && !current.text && !current.inputs.length) {
+        current.actions.push({
+          kind: "copy-diagnostics"
+        });
+        current = void 0;
+        return "continue";
+      }
       var lookup = /^    lookup ([a-z]+) "([a-z][a-z0-9_-]{0,31})"$/.exec(line12);
       if (lookup && current && !current.actions.length && !current.text && current.inputs.length === 1 && current.inputs[0].name === lookup[2] && current.inputs[0].type === "text" && current.inputs[0].required && Object.prototype.hasOwnProperty.call(cxExternalLookups, lookup[1])) {
         current.actions.push({
@@ -38890,6 +38900,19 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               }
               return "continue";
             }
+            if (action3.kind === "copy-diagnostics") {
+              var reply2 = invocation?.reply;
+              if (reply2 && invocation.copyDiagnostics) {
+                void invocation.copyDiagnostics().then((result) => {
+                  if (active)
+                    reply2(result);
+                }, () => {
+                  if (active)
+                    reply2("Couldn\u2019t copy the diagnostic report.");
+                });
+              }
+              return "continue";
+            }
             if (action3.kind === "mark-read") {
               if (invocation?.reply && invocation.markServersRead) {
                 try {
@@ -39115,7 +39138,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "messages.filterlocal": "Hide matching incoming messages and history on this device",
         "typing.suppress": "Suppress your outgoing typing indicator",
         "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications",
-        "lookup.wikipedia": "Send the title you enter to English Wikipedia when you run the lookup command"
+        "lookup.wikipedia": "Send the title you enter to English Wikipedia when you run the lookup command",
+        "diagnostics.copy": "Copy a local report of Discord module names and return types when you run the diagnostic command"
       };
       leetCharacters = {
         a: "4",
@@ -39173,6 +39197,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       ] : action.kind === "lookup" ? [
         "reply.local",
         cxExternalLookups[action.service].permission
+      ] : action.kind === "copy-diagnostics" ? [
+        "reply.local",
+        "diagnostics.copy"
       ] : actionPermissions[action.kind];
       sendsMessage = (action) => action.kind === "send" || action.kind === "reply or send";
     }
@@ -39182,7 +39209,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var character_counter_default2;
   var init_character_counter2 = __esm({
     "../examples/cx/pilot/character-counter.cx"() {
-      character_counter_default2 = 'plugin "CX Character Counter":\n  needs commands.register\n  needs reply.local\n  on command "ccp-count" with text:\n    reply "${length(text)} characters"\n';
+      character_counter_default2 = 'plugin "CX Character Counter":\n  needs commands.register\n  needs reply.local\n  needs diagnostics.copy\n  on command "ccp-count" with text:\n    reply "${length(text)} characters"\n  on command "ccp-inspect":\n    copy client diagnostics\n';
     }
   });
 
@@ -42742,7 +42769,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                       channels: channels2
                     });
                   }),
-                  friendInvites: (operation) => runCxFriendInvites(operation, findByProps("createFriendInvite"))
+                  friendInvites: (operation) => runCxFriendInvites(operation, findByProps("createFriendInvite")),
+                  copyDiagnostics: () => _async_to_generator(function* () {
+                    return describeCcpReport(yield copyCcpReport());
+                  })()
                 });
                 if (outgoing !== void 0)
                   return {
@@ -42984,6 +43014,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cx();
       init_cxCatalog();
       init_commands();
+      init_ccpInspect();
+      init_ccpReport();
       init_types();
       init_flux();
       init_themes();
@@ -47648,7 +47680,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "f5f499f663f2e860195581d54c7852dd052e7f4c";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "c01002a99ea57f0b8caac58746bcbc9068745e6b";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
