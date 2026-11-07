@@ -96,6 +96,23 @@ export const cxAppearanceTargets = {
         css: 'button[aria-label="Send Message"] { display: none !important; }',
         mobile: ["ChatInputSendButton"],
     },
+    "dm-call-buttons": {
+        plugin: "HideCallButtons", label: "the buttons to start calls in DMs",
+        css: '[aria-label="Start Voice Call"], [aria-label="Start Video Call"] { display: none !important; }',
+        mobile: {
+            header: "modules/main_tabs_v2/native/channel/header/PrivateChannelButtons.tsx",
+            hideIcons: ["PhoneCallIcon", "VideoIcon"],
+            keepWhilePresent: ["PhoneHangUpIcon", "VoiceNormalIcon"],
+        },
+    },
+    "dm-list-search": {
+        plugin: "HideDmSearch", label: "the search button in the DM list",
+        css: '[class*="privateChannels"] [class*="searchBar"] { display: none !important; }',
+        mobile: {
+            header: "modules/main_tabs_v2/native/tabs/messages/MessagesHeader.tsx",
+            hideLabels: ["5h0QOP"],
+        },
+    },
     "message-embeds": {
         plugin: "HideEmbeds", label: "link embeds in chat",
         css: 'article[class*="embed"] { display: none !important; }',

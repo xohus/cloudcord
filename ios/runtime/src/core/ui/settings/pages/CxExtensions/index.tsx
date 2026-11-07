@@ -15,6 +15,7 @@ import { showToast } from "@lib/ui/toasts";
 import { findByFilePath, findByProps, findByStoreNameLazy } from "@metro";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
+import type { ReactNode } from "react";
 import { ScrollView, Text, TextInput } from "react-native";
 
 const session = createCxSession();
@@ -83,6 +84,60 @@ function registerJsxAppearance(names: readonly string[], change: AppearanceChang
         return bind(change);
     });
     return () => { for (const cleanup of cleanups) cleanup(); };
+}
+
+type HeaderProps = { children?: ReactNode; accessibilityRole?: string; accessibilityLabel?: string; onPress?: unknown; };
+
+function containsHeaderIcon(tree: ReactNode, icons: ReadonlySet<unknown>): boolean {
+    if (Array.isArray(tree)) return tree.some(child => containsHeaderIcon(child, icons));
+    return React.isValidElement<HeaderProps>(tree)
+        && (icons.has(tree.type) || containsHeaderIcon(tree.props.children, icons));
+}
+
+function hideHeaderButtons(tree: ReactNode, shouldHide: (props: HeaderProps) => boolean): ReactNode {
+    if (Array.isArray(tree)) {
+        const next = tree.map(child => hideHeaderButtons(child, shouldHide));
+        return next.every((child, index) => child === tree[index]) ? tree : next;
+    }
+    if (!React.isValidElement<HeaderProps>(tree)) return tree;
+    if (typeof tree.props.onPress === "function" && shouldHide(tree.props)) return null;
+    const { children } = tree.props;
+    const next = hideHeaderButtons(children, shouldHide);
+    return next === children ? tree : React.cloneElement(tree, { children: next });
+}
+
+function registerHeaderAppearance(rule: {
+    header: string; hideIcons?: readonly string[]; keepWhilePresent?: readonly string[]; hideLabels?: readonly string[];
+}) {
+    const header = findByFilePath(rule.header)?.default;
+    if (header?.$$typeof !== Symbol.for("react.memo") || typeof header.type !== "function") {
+        throw new Error("Discord's header is unavailable");
+    }
+    const getIcons = (names: readonly string[]) => new Set(names.map(name => findByProps(name)?.[name]).filter(Boolean));
+    const hide = getIcons(rule.hideIcons ?? []);
+    const translations = rule.hideLabels && findByProps("intl", "t");
+    const labels = new Set(rule.hideLabels?.flatMap(key => {
+        const message = translations?.t?.[key];
+        const label = message && translations?.intl?.string?.(message);
+        return typeof label === "string" && label ? [label] : [];
+    }));
+    if (!hide.size && !labels.size) throw new Error("Discord's header controls are unavailable");
+    const keep = getIcons(rule.keepWhilePresent ?? []);
+    if (rule.keepWhilePresent && keep.size !== rule.keepWhilePresent.length) {
+        throw new Error("Discord's active call controls are unavailable");
+    }
+    const shouldHide = ({ children, accessibilityRole, accessibilityLabel }: HeaderProps) =>
+        Boolean(accessibilityLabel && labels.has(accessibilityLabel))
+        || accessibilityRole === "button" && hide.size > 0 && containsHeaderIcon(children, hide);
+    const render = header.type;
+    const component = header.displayName || render.displayName || render.name;
+    if (!component) throw new Error("Discord's header has no component name");
+    const FilteredHeader = React.memo(function FilteredHeader(props: object) {
+        const tree = render(props) as ReactNode;
+        return settings.safeMode?.enabled || keep.size && containsHeaderIcon(tree, keep) ? tree : hideHeaderButtons(tree, shouldHide);
+    }, header.compare);
+    return registerJsxAppearance([component], element => element.type === header
+        ? React.createElement(FilteredHeader, { ...element.props, key: element.key }) : element);
 }
 
 const profileMenuActions = new Set<{ action: CxProfileMenuAction; }>();
@@ -230,6 +285,7 @@ export default function CxExtensions() {
                 registerProfileMenuAction,
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
+                    if ("header" in mobile) return registerHeaderAppearance(mobile);
                     if (!("messagePresentation" in mobile)) return registerJsxAppearance(mobile, () => null);
                     const renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
                     return overrideCxMethods(renderer, {

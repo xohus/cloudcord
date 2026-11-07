@@ -229,6 +229,13 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const messagePresentation = Object.freeze({ edited: true, stickers: Object.freeze([{ id: "sticker" }]), content: "hello" });
         const createMessageContent = () => messagePresentation;
         const messageRenderer = { default: createMessageContent };
+        const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon"]
+            .map(name => [name, () => name]));
+        const renderHeader = tree => tree;
+        const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader"].map(name => [
+            name, { $$typeof: Symbol.for("react.memo"), displayName: name, type: renderHeader },
+        ]));
+        const headerMessages = { t: { "5h0QOP": "search" }, intl: { string: () => "Rechercher" } };
         const colorOverlays = new Set();
         const menuPatches = new Set(), clipboardWrites = [];
         const settings = {};
@@ -320,14 +327,18 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 incomingHooks.push(callback);
                 return () => { incomingHooks.splice(incomingHooks.indexOf(callback), 1); };
             } },
-            "@metro": { findByFilePath: path => path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer : undefined,
+            "@metro": { findByFilePath: path => path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+                : { default: nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreNameLazy: name => stores[name], findByProps: name =>
                 name === "getUserAvatarURL" ? icons : name === "startTyping" ? typing : name === "editMessage" ? messageEditor
                     : name === "createFriendInvite" ? inviteApi : name === "relativeTimeRounding" ? relativeTime
-                        : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions : undefined },
+                        : name === "removeRelationship" ? relationshipActions : name === "selectVoiceChannel" ? voiceActions
+                            : name === "intl" ? headerMessages : name in headerIcons ? headerIcons : undefined },
             "@metro/common": { React: {
                 useState, useSyncExternalStore: (subscribe, readSnapshot) => readSnapshot(),
                 createContext: () => ({ Provider: "ProfileUserProvider" }), useContext: () => profileUser,
+                isValidElement: element => !!element?.type && !!element?.props,
+                createElement: jsx, memo: type => ({ type }),
                 cloneElement: (element, props) => jsx(element.type, { ...element.props, ...props }),
             }, clipboard: { setString: value => clipboardWrites.push(value) }, FluxDispatcher: { dispatch },
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
@@ -393,7 +404,42 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 }
                 wraps.push(wrapped);
             } else if (rule.style) assert.ok(colorOverlays.has(rule.style));
-            else if (rule.mobile.messagePresentation) {
+            else if (rule.mobile.header) {
+                const name = rule.mobile.header.split("/").at(-1).replace(".tsx", "");
+                const header = nativeHeaders.get(name);
+                const button = (icon, label, accessibilityRole = "button") =>
+                    jsx("Pressable", Object.freeze({ accessibilityRole, accessibilityLabel: label, onPress() {}, children: jsx(icon, {}) }));
+                const voice = button(headerIcons.PhoneCallIcon, "Voice");
+                const video = button(headerIcons.VideoIcon, "Video");
+                const hangup = button(headerIcons.PhoneHangUpIcon, "Hang up");
+                const search = button("SearchIcon", "Rechercher", "link");
+                const addFriend = button("FriendIcon", "Ajouter un ami");
+                const text = jsx("Text", { children: "Messages" });
+                const row = children => jsx("View", Object.freeze({ children: Object.freeze(children) }));
+                const input = row([text, row([voice, video, search, addFriend])]);
+                const originalHeader = jsx(header, input);
+                const wrapped = appearanceHooks.get(name)(null, originalHeader);
+                const patched = wrapped.type(wrapped.props);
+                const rendered = patched.type.type(input);
+                const actual = rendered.props.children[1].props.children;
+                const expected = rule.mobile.hideIcons ? [null, null, search, addFriend] : [voice, video, null, addFriend];
+                assert.equal(rendered.props.children[0], text);
+                expected.forEach((item, index) => assert.equal(actual[index], item));
+                assert.equal(input.props.children[1].props.children[0], voice);
+                if (rule.mobile.hideIcons) {
+                    const active = row([text, row([hangup, video, search, addFriend])]);
+                    assert.equal(patched.type.type(active), active);
+                }
+                settings.safeMode = { enabled: true };
+                assert.equal(wrapped.type(wrapped.props), originalHeader);
+                assert.equal(patched.type.type(input), input);
+                settings.safeMode = undefined;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(appearanceHooks.size, 0);
+                assert.equal(wrapped.type(wrapped.props), originalHeader);
+                assert.equal(header.type, renderHeader);
+                continue;
+            } else if (rule.mobile.messagePresentation) {
                 const rendered = messageRenderer.default();
                 assert.equal(rendered.content, messagePresentation.content);
                 assert.equal(rendered.edited, rule.mobile.messagePresentation !== "edited");

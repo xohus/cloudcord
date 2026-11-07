@@ -1,0 +1,3 @@
+plugin "HideDmSearch":
+  needs appearance.hide
+  hide dm-list-search

@@ -1,0 +1,3 @@
+plugin "HideCallButtons":
+  needs appearance.hide
+  hide dm-call-buttons
