@@ -36739,6 +36739,22 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             skipWhenTrue: "preventClipping"
           }
         },
+        "bigger-server-icons": {
+          plugin: "BiggerServerIcons",
+          label: "make server icons larger",
+          css: 'nav[aria-label="Servers sidebar"] [class*="listItem"] svg[class*="svg"] { transform: scale(1.1); }',
+          style: {
+            serverIconScale: 1.1
+          }
+        },
+        "empty-server-folders": {
+          plugin: "HideEmptyFolders",
+          label: "empty expanded server folders",
+          css: '[class*="folder"][class*="expanded"]:empty { display: none !important; }',
+          mobile: {
+            emptyServerFolders: true
+          }
+        },
         "server-unread-pills": {
           plugin: "HideUnreadPills",
           label: "the server sidebar unread pills",
@@ -39065,6 +39081,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/bigger-server-icons.cx
+  var bigger_server_icons_default;
+  var init_bigger_server_icons = __esm({
+    "../examples/cx/catalog/plugins/bigger-server-icons.cx"() {
+      bigger_server_icons_default = 'plugin "BiggerServerIcons":\n  needs appearance.style\n  style bigger-server-icons\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/block-keywords.cx
   var block_keywords_default;
   var init_block_keywords = __esm({
@@ -39302,6 +39326,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_embeds = __esm({
     "../examples/cx/catalog/plugins/hide-embeds.cx"() {
       hide_embeds_default = 'plugin "HideEmbeds":\n  needs appearance.hide\n  hide message-embeds\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-empty-folders.cx
+  var hide_empty_folders_default;
+  var init_hide_empty_folders = __esm({
+    "../examples/cx/catalog/plugins/hide-empty-folders.cx"() {
+      hide_empty_folders_default = 'plugin "HideEmptyFolders":\n  needs appearance.hide\n  hide empty-server-folders\n';
     }
   });
 
@@ -40647,6 +40679,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_auto_vaporwave();
       init_avatar_grabber();
       init_bigger_code_blocks();
+      init_bigger_server_icons();
       init_block_keywords();
       init_bold_text();
       init_calculator();
@@ -40677,6 +40710,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_dm_search();
       init_hide_edited_label();
       init_hide_embeds();
+      init_hide_empty_folders();
       init_hide_gift_button();
       init_hide_image_alt_text();
       init_hide_inbox_button();
@@ -40874,6 +40908,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: bigger_code_blocks_default
           },
           {
+            name: "BiggerServerIcons",
+            source: bigger_server_icons_default
+          },
+          {
             name: "BlockKeywords",
             source: block_keywords_default
           },
@@ -40992,6 +41030,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideEmbeds",
             source: hide_embeds_default
+          },
+          {
+            name: "HideEmptyFolders",
+            source: hide_empty_folders_default
           },
           {
             name: "HideGiftButton",
@@ -42028,6 +42070,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var mobile = cxAppearanceTargets[target].mobile;
             if ("renderTree" in mobile)
               return registerTreeAppearance(mobile);
+            if ("emptyServerFolders" in mobile) {
+              return registerJsxAppearance([
+                "GuildsBarGuildFolder"
+              ], (element) => {
+                var { expanded: expanded2, childNodes, isDragPreview, hideExpandedChildren } = element.props;
+                return expanded2 === true && !isDragPreview && !hideExpandedChildren && Array.isArray(childNodes) && childNodes.length === 0 ? null : element;
+              });
+            }
             if ("mentionBadges" in mobile) {
               var stopLegacy = registerJsxAppearance([
                 "MentionsBadge"
@@ -42068,6 +42118,42 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var style = cxAppearanceTargets[target].style;
             if ("renderedComponents" in style)
               return registerRenderedChannelStyle(style);
+            if ("serverIconScale" in style) {
+              var iconStyle = {
+                transform: [
+                  {
+                    scale: style.serverIconScale
+                  }
+                ]
+              };
+              return registerJsxAppearance([
+                "GuildsBarAnimatedItemWrapper"
+              ], (element) => {
+                var { children, preventClipping, isDragPreview } = element.props;
+                if (preventClipping || isDragPreview || !React2.isValidElement(children))
+                  return element;
+                var icon3 = children.props;
+                if ("source" in icon3 && "style" in icon3) {
+                  return React2.cloneElement(element, {
+                    children: React2.cloneElement(children, {
+                      style: [
+                        icon3.style,
+                        iconStyle
+                      ]
+                    })
+                  });
+                }
+                if (typeof icon3.value === "string" && "size" in icon3 && typeof icon3.animate === "boolean") {
+                  return React2.cloneElement(element, {
+                    children: /* @__PURE__ */ jsx(import_react_native41.View, {
+                      style: iconStyle,
+                      children
+                    })
+                  });
+                }
+                return element;
+              });
+            }
             if ("spoilerOutline" in style) {
               var spoiler = findByFilePath("modules/markup/native/Spoiler.tsx")?.default?.prototype;
               if (typeof spoiler?.render !== "function")
@@ -47230,7 +47316,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "4fc170c7772ca5afb39295cd1f70a5486210ba61";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "f8cb3a5586161939c1ba56c9d0d63838c8aa85f6";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
