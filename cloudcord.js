@@ -26197,14 +26197,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       import_react_native26.Alert.alert("Fake boost", "Open a server text channel first, then come back.");
       return;
     }
-    var snowflake2 = findByProps("fromTimestamp", "extractTimestamp");
+    var snowflake3 = findByProps("fromTimestamp", "extractTimestamp");
     FluxDispatcher.dispatch({
       type: "MESSAGE_CREATE",
       channelId,
       optimistic: false,
       isPushNotification: false,
       message: {
-        id: snowflake2?.fromTimestamp?.(Date.now()) ?? String((Date.now() - 14200704e5) * 4194304),
+        id: snowflake3?.fromTimestamp?.(Date.now()) ?? String((Date.now() - 14200704e5) * 4194304),
         type: reachedLevel > 0 ? 8 + reachedLevel : 8,
         content: times > 1 ? String(times) : "",
         channel_id: channelId,
@@ -38413,6 +38413,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "hide-disabled-emojis": {
           permission: "appearance.hide",
           label: "Hide unavailable emoji in Discord\u2019s emoji picker"
+        },
+        "copy-emoji-markdown": {
+          permission: "emoji.clipboard",
+          label: "Add a Copy Emoji Markdown action to the emoji menu"
+        },
+        "sticker-links": {
+          permission: "stickers.links",
+          label: "Add Copy Sticker Link and Open Sticker Link actions"
         }
       };
       cxAvatarResolutions = [
@@ -39223,6 +39231,46 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       "use strict";
       init_asyncIteratorSymbol();
       init_promiseAllSettled();
+    }
+  });
+
+  // src/lib/api/cxExpressionLinks.ts
+  function formatCxEmojiMarkdown(emoji) {
+    if (!emoji)
+      return;
+    if (typeof emoji.surrogate === "string" && RegExp("^[^\\x00-\\x7f<>]{1,32}$", "u").test(emoji.surrogate) && !emoji.id)
+      return emoji.surrogate;
+    var label2 = emoji.name ?? emoji.alt;
+    if (typeof label2 !== "string" || typeof emoji.id !== "string" || !snowflake2.test(emoji.id))
+      return;
+    var name = label2.replace(/^:|:$/g, "").replace(/~\d+$/, "");
+    if (!/^[a-z0-9_]{1,32}$/i.test(name))
+      return;
+    var animated = emoji.animated === true || typeof emoji.src === "string" && (/\.gif(?:\?|$)/i.test(emoji.src) || /[?&]animated=true(?:&|$)/i.test(emoji.src));
+    return `<${animated ? "a" : ""}:${name}:${emoji.id}>`;
+  }
+  function formatCxStickerLink(sticker) {
+    var id = sticker?.id;
+    if (typeof id !== "string" || !snowflake2.test(id))
+      return;
+    var format = sticker?.format_type ?? sticker?.formatType;
+    if (format === 4)
+      return `https://media.discordapp.net/stickers/${id}.gif?size=512&lossless=true`;
+    if (format !== 1 && format !== 2 && format !== 3)
+      return;
+    return `https://cdn.discordapp.com/stickers/${id}.${format === 3 ? "json" : "png"}?size=512&lossless=true`;
+  }
+  function validateCxStickerLink(link) {
+    if (typeof link === "string" && /^https:\/\/(?:cdn\.discordapp\.com|media\.discordapp\.net)\/stickers\/\d{17,20}\.(?:png|json|gif|webp)(?:\?[a-z0-9_=&-]{1,128})?$/i.test(link))
+      return link;
+  }
+  var snowflake2;
+  var init_cxExpressionLinks = __esm({
+    "src/lib/api/cxExpressionLinks.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
+      snowflake2 = /^\d{17,20}$/;
     }
   });
 
@@ -40091,6 +40139,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxPlusReactions();
       init_cxSplitMessages();
       init_cxEmojiPicker();
+      init_cxExpressionLinks();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -40099,6 +40148,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "reply.local": "Show a command reply visible only to you",
         "messages.send": "Send the result to the current chat when you run a listed command",
         "messages.split": "Send your long drafts as separate messages in the same channel",
+        "emoji.clipboard": "Copy the selected emoji as Markdown when you choose its menu action",
+        "stickers.links": "Copy or open the selected Discord sticker\u2019s CDN link when you choose its menu action",
         "messages.transform": "Change text before Discord sends messages you compose",
         "messages.edit.transform": "Change text when you submit a message edit",
         "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
@@ -40345,11 +40396,27 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/copy-emoji-markdown.cx
+  var copy_emoji_markdown_default;
+  var init_copy_emoji_markdown = __esm({
+    "../examples/cx/catalog/plugins/copy-emoji-markdown.cx"() {
+      copy_emoji_markdown_default = 'plugin "CopyEmojiMarkdown":\n  needs emoji.clipboard\n  use copy-emoji-markdown\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/copy-profile-colors.cx
   var copy_profile_colors_default;
   var init_copy_profile_colors = __esm({
     "../examples/cx/catalog/plugins/copy-profile-colors.cx"() {
       copy_profile_colors_default = 'plugin "CopyProfileColors":\n  needs profilemenu.copy\n  on profile menu copy profile-colors\n  on profile menu copy server-profile-colors\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/copy-sticker-links.cx
+  var copy_sticker_links_default;
+  var init_copy_sticker_links = __esm({
+    "../examples/cx/catalog/plugins/copy-sticker-links.cx"() {
+      copy_sticker_links_default = 'plugin "CopyStickerLinks":\n  needs stickers.links\n  use sticker-links\n';
     }
   });
 
@@ -42590,7 +42657,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_client_side_block();
       init_cloud_cord_accent();
       init_colorful_mentions();
+      init_copy_emoji_markdown();
       init_copy_profile_colors();
+      init_copy_sticker_links();
       init_copy_user_mention();
       init_copy_user_urls();
       init_dim_inactive_channels();
@@ -42893,8 +42962,16 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             source: colorful_mentions_default
           },
           {
+            name: "CopyEmojiMarkdown",
+            source: copy_emoji_markdown_default
+          },
+          {
             name: "CopyProfileColors",
             source: copy_profile_colors_default
+          },
+          {
+            name: "CopyStickerLinks",
+            source: copy_sticker_links_default
           },
           {
             name: "CopyUserMention",
@@ -43982,6 +44059,99 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         cleanup();
     };
   }
+  function bindExpressionSheets() {
+    var bottomSheet = findByProps("BottomSheet")?.BottomSheet;
+    var actionSheet3 = findByProps("ActionSheet")?.ActionSheet;
+    if (!bottomSheet)
+      throw new Error("Discord's expression sheet is unavailable");
+    var Selection = React2.createContext(null);
+    function Actions2({ element }) {
+      var selection = React2.useContext(Selection);
+      if (!selection?.enabled())
+        return element;
+      var { value, emoji, enabled } = selection;
+      var copy = () => {
+        if (!enabled())
+          return;
+        clipboard?.setString?.(value);
+        showToast(emoji ? "Emoji copied." : "Sticker link copied.");
+      };
+      return React2.cloneElement(element, {
+        children: /* @__PURE__ */ jsxs(Fragment, {
+          children: [
+            element.props.children,
+            /* @__PURE__ */ jsxs(TableRowGroup, {
+              children: [
+                /* @__PURE__ */ jsx(TableRow, {
+                  label: emoji ? "Copy Emoji Markdown" : "Copy Sticker Link",
+                  onPress: copy
+                }),
+                !emoji && /* @__PURE__ */ jsx(TableRow, {
+                  label: "Open Sticker Link",
+                  onPress: () => {
+                    if (enabled())
+                      void import_react_native41.Linking.openURL(value).catch(() => showToast("Couldn't open the sticker link."));
+                  }
+                })
+              ]
+            })
+          ]
+        })
+      });
+    }
+    var stop = registerJsxAppearance([
+      ...new Set(actionSheet3 ? [
+        bottomSheet,
+        actionSheet3
+      ] : [
+        bottomSheet
+      ])
+    ], (element) => /* @__PURE__ */ jsx(Actions2, {
+      element
+    }));
+    return {
+      Selection,
+      stop,
+      users: 0
+    };
+  }
+  function registerExpressionLinks(effect) {
+    var emoji = effect === "copy-emoji-markdown";
+    var paths = emoji ? [
+      "modules/messages/native/emoji/MessageEmojiActionSheet.tsx"
+    ] : [
+      "modules/stickers/native/StickerDetailActionSheet.tsx",
+      "modules/stickers/native/StickerOptionsActionSheet.tsx"
+    ];
+    var sheets = paths.map((path) => findByFilePath(path)?.default).filter(Boolean);
+    if (!sheets.length)
+      throw new Error("Discord's expression sheet is unavailable");
+    var binding = expressionSheetBinding ??= bindExpressionSheets();
+    var active = true;
+    var enabled = () => active && !settings.safeMode?.enabled;
+    var stopSelection = registerJsxAppearance(sheets, (element) => {
+      var { emojiNode, renderableSticker, stickerUrl } = element.props;
+      var id = renderableSticker?.id;
+      var value = emoji ? formatCxEmojiMarkdown(emojiNode) : validateCxStickerLink(stickerUrl) ?? formatCxStickerLink(renderableSticker) ?? (isCxProfileUserId(id) ? formatCxStickerLink(findByStoreName("StickersStore")?.getStickerById?.(id)) : void 0);
+      return value ? /* @__PURE__ */ jsx(binding.Selection.Provider, {
+        value: {
+          value,
+          emoji,
+          enabled
+        },
+        children: element
+      }) : element;
+    });
+    binding.users++;
+    return () => {
+      active = false;
+      stopSelection();
+      if (--binding.users === 0) {
+        binding.stop();
+        expressionSheetBinding = void 0;
+      }
+    };
+  }
   function registerMemberRowAppearance(target, change) {
     if (!memberRowScope) {
       var context = React2.createContext(false);
@@ -44962,6 +45132,9 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 return registerStaticTypingDots();
               case "hide-disabled-emojis":
                 return hideDisabledEmojiInPicker(enabled);
+              case "copy-emoji-markdown":
+              case "sticker-links":
+                return registerExpressionLinks(effect);
               case "unicode-emoji-autocomplete":
               case "local-emoji-autocomplete":
                 return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode", findByProps("EmojiIntention")?.EmojiIntention, enabled);
@@ -45438,7 +45611,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, splitSender, appearanceBindings, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, EmojiStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, splitSender, appearanceBindings, expressionSheetBinding, memberRowScope, staticTypingDots, hasUploadAnonymiser, expressionPickerBinding, settingsEntryVisibility, channelDrawerWidths, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -45450,6 +45623,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_patcher();
       init_cx();
       init_cxCatalog();
+      init_cx();
       init_cx();
       init_commands();
       init_ccpInspect();
@@ -50122,7 +50296,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "f71d0250976c726816503c7bb567615b7292d87e";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "1bb176c3105fbb2b76e3d206dfd6276d174dc722";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
