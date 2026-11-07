@@ -236,6 +236,16 @@ export const cxAppearanceTargets = {
         css: 'nav[aria-label="Servers sidebar"] [class*="wrapper"] foreignObject { mask: none !important; border-radius: 50%; }',
         style: { component: "GuildsBarAnimatedItemWrapper", props: { circle: true }, skipWhenTrue: "preventClipping" },
     },
+    "bigger-server-icons": {
+        plugin: "BiggerServerIcons", label: "make server icons larger",
+        css: 'nav[aria-label="Servers sidebar"] [class*="listItem"] svg[class*="svg"] { transform: scale(1.1); }',
+        style: { serverIconScale: 1.1 },
+    },
+    "empty-server-folders": {
+        plugin: "HideEmptyFolders", label: "empty expanded server folders",
+        css: '[class*="folder"][class*="expanded"]:empty { display: none !important; }',
+        mobile: { emptyServerFolders: true },
+    },
     "server-unread-pills": {
         plugin: "HideUnreadPills", label: "the server sidebar unread pills",
         css: '[class*="unreadMentionsIndicator"] { display: none !important; }',

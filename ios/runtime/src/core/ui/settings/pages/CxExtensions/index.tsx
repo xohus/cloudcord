@@ -16,7 +16,7 @@ import { findByFilePath, findByProps, findByStoreNameLazy } from "@metro";
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import type { ComponentType, ReactElement, ReactNode } from "react";
-import { ScrollView, Text, TextInput } from "react-native";
+import { ScrollView, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
 const UserStore = findByStoreNameLazy("UserStore");
@@ -324,6 +324,13 @@ export default function CxExtensions() {
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile) return registerTreeAppearance(mobile);
+                    if ("emptyServerFolders" in mobile) {
+                        return registerJsxAppearance(["GuildsBarGuildFolder"], element => {
+                            const { expanded, childNodes, isDragPreview, hideExpandedChildren } = element.props;
+                            return expanded === true && !isDragPreview && !hideExpandedChildren
+                                && Array.isArray(childNodes) && childNodes.length === 0 ? null : element;
+                        });
+                    }
                     if ("mentionBadges" in mobile) {
                         const stopLegacy = registerJsxAppearance(["MentionsBadge"], () => null);
                         const stopCount = registerJsxAppearance(["Badge"], element =>
@@ -349,6 +356,25 @@ export default function CxExtensions() {
                 styleAppearanceTarget(target) {
                     const style = cxAppearanceTargets[target].style;
                     if ("renderedComponents" in style) return registerRenderedChannelStyle(style);
+                    if ("serverIconScale" in style) {
+                        const iconStyle = { transform: [{ scale: style.serverIconScale }] };
+                        return registerJsxAppearance(["GuildsBarAnimatedItemWrapper"], element => {
+                            const { children, preventClipping, isDragPreview } = element.props;
+                            if (preventClipping || isDragPreview || !React.isValidElement<{
+                                source?: unknown; style?: unknown; value?: string; size?: unknown; animate?: boolean;
+                            }>(children)) return element;
+
+                            const icon = children.props;
+                            // Discord renders either a server image or a label with the server initials here.
+                            if ("source" in icon && "style" in icon) {
+                                return React.cloneElement(element, { children: React.cloneElement(children, { style: [icon.style, iconStyle] }) });
+                            }
+                            if (typeof icon.value === "string" && "size" in icon && typeof icon.animate === "boolean") {
+                                return React.cloneElement(element, { children: <View style={iconStyle}>{children}</View> });
+                            }
+                            return element;
+                        });
+                    }
                     if ("spoilerOutline" in style) {
                         const spoiler = findByFilePath("modules/markup/native/Spoiler.tsx")?.default?.prototype;
                         if (typeof spoiler?.render !== "function") throw new Error("Discord's text spoiler is unavailable");

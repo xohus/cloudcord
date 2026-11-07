@@ -1,0 +1,3 @@
+plugin "BiggerServerIcons":
+  needs appearance.style
+  style bigger-server-icons

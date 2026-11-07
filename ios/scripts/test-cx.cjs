@@ -436,6 +436,31 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 for (const [wrapped, original] of enabled) assert.equal(wrapped.type(wrapped.props), original);
                 assert.equal(appearanceHooks.size, 0);
                 continue;
+            } else if (rule.style?.serverIconScale) {
+                const hook = appearanceHooks.get("GuildsBarAnimatedItemWrapper");
+                const icon = jsx("GuildImage", { source: { uri: "guild" }, style: baseStyle });
+                const initials = jsx("GuildLabel", { value: "Test Server", size: "large", animate: false });
+                const badge = jsx("Badge", { value: 4 });
+                const item = jsx("GuildWrapper", { children: icon, externalChildren: badge });
+                const wrapped = hook(null, item);
+                const styled = wrapped.type(wrapped.props);
+                assert.equal(styled.props.externalChildren, badge);
+                assert.equal(styled.props.children.props.source, icon.props.source);
+                assert.equal(styled.props.children.props.style[0], baseStyle);
+                assert.equal(styled.props.children.props.style[1].transform[0].scale, 1.1);
+                const initialsWrapper = hook(null, jsx("GuildWrapper", { children: initials }));
+                const styledInitials = initialsWrapper.type(initialsWrapper.props).props.children;
+                assert.equal(styledInitials.props.children, initials);
+                assert.equal(styledInitials.props.style.transform[0].scale, 1.1);
+                for (const excluded of [{ preventClipping: true }, { isDragPreview: true }, { children: badge }]) {
+                    const item = jsx("GuildWrapper", { children: icon, ...excluded });
+                    const wrapped = hook(null, item);
+                    assert.equal(wrapped.type(wrapped.props), item);
+                }
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(wrapped.type(wrapped.props), item);
+                assert.equal(appearanceHooks.size, 0);
+                continue;
             } else if (rule.style?.spoilerOutline) {
                 const hiddenText = new Spoiler(original, false);
                 const revealedText = new Spoiler(original, true);
@@ -498,6 +523,24 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(appearanceHooks.size, 0);
                 assert.equal(wrapped.type(wrapped.props), originalHeader);
                 assert.equal(header.type, renderHeader);
+                continue;
+            } else if (rule.mobile.emptyServerFolders) {
+                const hook = appearanceHooks.get("GuildsBarGuildFolder");
+                const empty = jsx("Folder", { expanded: true, childNodes: [] });
+                const wrapped = hook(null, empty);
+                assert.equal(wrapped.type(wrapped.props), null);
+                for (const excluded of [{ expanded: false }, { childNodes: ["guild"] }, { childNodes: undefined },
+                    { isDragPreview: true }, { hideExpandedChildren: true }]) {
+                    const folder = jsx("Folder", { ...empty.props, ...excluded });
+                    const wrapped = hook(null, folder);
+                    assert.equal(wrapped.type(wrapped.props), folder);
+                }
+                settings.safeMode = { enabled: true };
+                assert.equal(wrapped.type(wrapped.props), empty);
+                settings.safeMode = undefined;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(wrapped.type(wrapped.props), empty);
+                assert.equal(appearanceHooks.size, 0);
                 continue;
             } else if (rule.mobile.mentionBadges) {
                 const badge = appearanceHooks.get("Badge");

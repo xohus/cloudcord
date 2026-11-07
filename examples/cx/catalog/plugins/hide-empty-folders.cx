@@ -1,0 +1,3 @@
+plugin "HideEmptyFolders":
+  needs appearance.hide
+  hide empty-server-folders
