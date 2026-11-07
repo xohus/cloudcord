@@ -38285,6 +38285,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "stop-auto-unread": {
           permission: "notifications.preventautoupgrade",
           label: "Keep your chosen channel notification settings"
+        },
+        "flat-attachments": {
+          permission: "appearance.style",
+          label: "Show chat attachments individually without the media grid"
         }
       };
       cxAvatarResolutions = [
@@ -41055,6 +41059,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/no-mosaic.cx
+  var no_mosaic_default;
+  var init_no_mosaic = __esm({
+    "../examples/cx/catalog/plugins/no-mosaic.cx"() {
+      no_mosaic_default = 'plugin "NoMosaic":\n  needs appearance.style\n  use flat-attachments\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/no-pending-count.cx
   var no_pending_count_default;
   var init_no_pending_count = __esm({
@@ -42324,6 +42336,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_narrow_channel_list();
       init_nepeta_s_typing_quirk();
       init_no_blocked_messages();
+      init_no_mosaic();
       init_no_pending_count();
       init_no_profile_themes();
       init_no_reply_mention();
@@ -42869,6 +42882,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "NoBlockedMessages",
             source: no_blocked_messages_default
+          },
+          {
+            name: "NoMosaic",
+            source: no_mosaic_default
           },
           {
             name: "NoPendingCount",
@@ -44488,6 +44505,20 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             switch (effect) {
               case "static-typing-dots":
                 return registerStaticTypingDots();
+              case "flat-attachments": {
+                var renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
+                return overrideCxMethods(renderer, {
+                  default(args, invoke) {
+                    var presentation = invoke(args);
+                    if (!presentation || typeof presentation !== "object" || !("useAttachmentGridLayout" in presentation) || presentation.useAttachmentGridLayout !== true)
+                      return presentation;
+                    return {
+                      ...presentation,
+                      useAttachmentGridLayout: false
+                    };
+                  }
+                }, enabled);
+              }
               case "fix-file-extensions": {
                 var uploader = findByFilePath("lib/uploader/native/CloudUploader.tsx")?.default?.prototype;
                 return overrideCxMethods(uploader, {
@@ -49628,7 +49659,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "3b2018e15d1b9029d35f073879728fe17d96e63c";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "2cef9812bb8cd4538f87a48f5634e886b25db7a0";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
