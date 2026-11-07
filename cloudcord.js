@@ -7520,10 +7520,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         target?.displayName,
         target?.name
       ].find((value) => typeof value === "string" && (callbacks.has(value) || finalCallbacks.has(value)));
-      if (target && name) {
+      var direct = target && callbacks.get(component);
+      var directFinal = target && finalCallbacks.get(component);
+      if (target && (name || direct || directFinal)) {
         for (var cb of [
           ...callbacks.get(name) ?? [],
-          ...finalCallbacks.get(name) ?? []
+          ...direct ?? [],
+          ...finalCallbacks.get(name) ?? [],
+          ...directFinal ?? []
         ]) {
           try {
             var editable = {
@@ -7540,7 +7544,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           } catch (error) {
             if (!warnedCallbacks.has(cb)) {
               warnedCallbacks.add(cb);
-              console.warn(`[CloudCord] Skipped failed JSX hook for ${name}`, error);
+              console.warn(`[CloudCord] Skipped failed JSX hook for ${name ?? target.name ?? "component"}`, error);
             }
           }
         }
@@ -36787,6 +36791,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             emptyServerFolders: true
           }
         },
+        "scrollbars": {
+          plugin: "HideScrollbars",
+          label: "scroll indicators",
+          css: "::-webkit-scrollbar { width: 0 !important; height: 0 !important; }",
+          mobile: {
+            scrollIndicators: true
+          }
+        },
         "server-unread-pills": {
           plugin: "HideUnreadPills",
           label: "the server sidebar unread pills",
@@ -39470,6 +39482,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-scrollbars.cx
+  var hide_scrollbars_default;
+  var init_hide_scrollbars = __esm({
+    "../examples/cx/catalog/plugins/hide-scrollbars.cx"() {
+      hide_scrollbars_default = 'plugin "HideScrollbars":\n  needs appearance.hide\n  hide scrollbars\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/hide-send-button.cx
   var hide_send_button_default;
   var init_hide_send_button = __esm({
@@ -40792,6 +40812,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_reactions();
       init_hide_reply_previews();
       init_hide_role_icons();
+      init_hide_scrollbars();
       init_hide_send_button();
       init_hide_server_banner();
       init_hide_shop_tab();
@@ -41155,6 +41176,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideRoleIcons",
             source: hide_role_icons_default
+          },
+          {
+            name: "HideScrollbars",
+            source: hide_scrollbars_default
           },
           {
             name: "HideSendButton",
@@ -41923,16 +41948,13 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       var { children, accessibilityRole, accessibilityLabel, onPress, IconComponent, triggerOnLongPress } = props;
       return components.has(type) || Boolean(longPressMenu && type === longPressMenu && triggerOnLongPress === true) || accessibilityRole === "text" && typeof children === "string" && text.has(children) || typeof onPress === "function" && (controlIcons.has(IconComponent) || Boolean(accessibilityLabel && labels.has(accessibilityLabel)) || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons));
     };
-    var component = target.displayName || inner.displayName || render.displayName || render.name;
-    if (!component)
-      throw new Error("Discord's appearance component has no name");
     function FilteredTree(props, ref) {
       var tree = render(props, ref);
       return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
     }
     var filtered = React2.memo(forwardsRef ? React2.forwardRef(FilteredTree) : FilteredTree, target.compare);
     return registerJsxAppearance([
-      component
+      target
     ], (element) => {
       if (element.type !== target)
         return element;
@@ -42175,6 +42197,23 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             var mobile = cxAppearanceTargets[target].mobile;
             if ("renderTree" in mobile)
               return registerTreeAppearance(mobile);
+            if ("scrollIndicators" in mobile) {
+              var scrollViews = /* @__PURE__ */ new Set([
+                import_react_native41.ScrollView,
+                import_react_native41.FlatList,
+                import_react_native41.SectionList,
+                import_react_native41.Animated?.ScrollView,
+                import_react_native41.Animated?.FlatList,
+                import_react_native41.Animated?.SectionList
+              ]);
+              var components = [
+                ...scrollViews
+              ].filter((component) => component != null);
+              return registerJsxAppearance(components, (element) => React2.cloneElement(element, {
+                showsHorizontalScrollIndicator: false,
+                showsVerticalScrollIndicator: false
+              }));
+            }
             if ("customStatusEmojis" in mobile) {
               return registerJsxAppearance(mobile.customStatusEmojis, (element) => {
                 var { customStatusActivity } = element.props;
@@ -47447,7 +47486,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "0d826fcdba492d3a5968aef7b50e35d89e0cdcab";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "afbc9fe5ff151fb5a156fb6c7cbc818afda0667f";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
