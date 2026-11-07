@@ -38409,6 +38409,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "local-emoji-autocomplete": {
           permission: "appearance.hide",
           label: "Show Unicode emoji and emoji from the current server in chat autocomplete"
+        },
+        "hide-disabled-emojis": {
+          permission: "appearance.hide",
+          label: "Hide unavailable emoji in Discord\u2019s emoji picker"
         }
       };
       cxAvatarResolutions = [
@@ -39181,6 +39185,44 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_promiseAllSettled();
       init_async_to_generator();
       maxParts = 8;
+    }
+  });
+
+  // src/lib/api/cxEmojiPicker.ts
+  function filterCxEmojiCategories(categories) {
+    var _loop2 = function(category2) {
+      if (category2?.isNitroLocked === true) {
+        changed = true;
+        return "continue";
+      }
+      var { emojis, emojisDisabled } = category2 ?? {};
+      if (!Array.isArray(emojis) || typeof emojisDisabled?.has !== "function") {
+        visible.push(category2);
+        return "continue";
+      }
+      var kept = emojis.filter((emoji) => !emoji?.id || !emojisDisabled.has(emoji.id));
+      if (kept.length === emojis.length)
+        visible.push(category2);
+      else {
+        changed = true;
+        if (kept.length)
+          visible.push({
+            ...category2,
+            emojis: kept
+          });
+      }
+    };
+    var changed = false;
+    var visible = [];
+    for (var category of categories)
+      _loop2(category);
+    return changed ? visible : categories;
+  }
+  var init_cxEmojiPicker = __esm({
+    "src/lib/api/cxEmojiPicker.ts"() {
+      "use strict";
+      init_asyncIteratorSymbol();
+      init_promiseAllSettled();
     }
   });
 
@@ -40048,6 +40090,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_cxSocialEvents();
       init_cxPlusReactions();
       init_cxSplitMessages();
+      init_cxEmojiPicker();
       MAX_CX_SOURCE = 512 * 1024;
       CX_INLINE_EDITOR_LIMIT = 32 * 1024;
       permissionLabels = {
@@ -40710,6 +40753,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_hide_custom_statuses = __esm({
     "../examples/cx/catalog/plugins/hide-custom-statuses.cx"() {
       hide_custom_statuses_default = 'plugin "HideCustomStatuses":\n  needs appearance.hide\n  hide member-custom-status\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/hide-disabled-emojis.cx
+  var hide_disabled_emojis_default;
+  var init_hide_disabled_emojis = __esm({
+    "../examples/cx/catalog/plugins/hide-disabled-emojis.cx"() {
+      hide_disabled_emojis_default = 'plugin "HideDisabledEmojis":\n  needs appearance.hide\n  use hide-disabled-emojis\n';
     }
   });
 
@@ -42567,6 +42618,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_character_count();
       init_hide_clan_tags();
       init_hide_custom_statuses();
+      init_hide_disabled_emojis();
       init_hide_dm_search();
       init_hide_edited_label();
       init_hide_embeds();
@@ -42951,6 +43003,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideCustomStatuses",
             source: hide_custom_statuses_default
+          },
+          {
+            name: "HideDisabledEmojis",
+            source: hide_disabled_emojis_default
           },
           {
             name: "HideDmSearch",
@@ -43760,6 +43816,50 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   __export(CxExtensions_exports, {
     default: () => CxExtensions
   });
+  function hideDisabledEmojiInPicker(enabled) {
+    var picker = findByFilePath("modules/emoji_picker/native/components/useComputeEmojiPickerFunctions.tsx");
+    var active = true;
+    var wrappers = /* @__PURE__ */ new WeakMap();
+    var stop = overrideCxMethods(picker, {
+      default(args, invoke) {
+        var native = invoke(args);
+        if (typeof native?.computeCategories !== "function" || typeof native.computeSearchResults !== "function")
+          return native;
+        var wrapped = wrappers.get(native);
+        if (!wrapped) {
+          wrapped = {
+            ...native,
+            computeCategories(options, ...rest) {
+              var original = options?.categories;
+              var visible = active && enabled() && Array.isArray(original) ? filterCxEmojiCategories(original) : original;
+              return native.computeCategories(visible === original ? options : {
+                ...options,
+                categories: visible
+              }, ...rest);
+            },
+            computeSearchResults(options, ...rest) {
+              var emojis = options?.emojis;
+              if (!active || !enabled() || !Array.isArray(emojis?.locked) || !emojis.locked.length)
+                return native.computeSearchResults(options, ...rest);
+              return native.computeSearchResults({
+                ...options,
+                emojis: {
+                  ...emojis,
+                  locked: []
+                }
+              }, ...rest);
+            }
+          };
+          wrappers.set(native, wrapped);
+        }
+        return wrapped;
+      }
+    }, enabled);
+    return () => {
+      active = false;
+      stop();
+    };
+  }
   function registerSplitSender() {
     if (splitSender)
       throw new Error("A CX message splitter is already active");
@@ -44860,6 +44960,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             switch (effect) {
               case "static-typing-dots":
                 return registerStaticTypingDots();
+              case "hide-disabled-emojis":
+                return hideDisabledEmojiInPicker(enabled);
               case "unicode-emoji-autocomplete":
               case "local-emoji-autocomplete":
                 return filterCxEmojiAutocomplete(EmojiStore, effect === "local-emoji-autocomplete" ? "local" : "unicode", findByProps("EmojiIntention")?.EmojiIntention, enabled);
@@ -45348,6 +45450,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_patcher();
       init_cx();
       init_cxCatalog();
+      init_cx();
       init_commands();
       init_ccpInspect();
       init_ccpReport();
@@ -50019,7 +50122,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "e547516801f89eef3c049b85b7b785f7ad3ecdc6";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "f71d0250976c726816503c7bb567615b7292d87e";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
