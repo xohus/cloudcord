@@ -275,6 +275,26 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         let routeVisibilityChecks = 0;
         const useRoutePredicate = () => { routeVisibilityChecks++; return true; };
         const settingsRoutes = new Map(["QuestHomeSetting"].map(name => [name, { usePredicate: useRoutePredicate }]));
+        const pickerOrder = Object.freeze(["emoji", "gif", "sticker"]);
+        const useSegmentedControlState = options => options;
+        const design = { useSegmentedControlState };
+        const segmentedControl = { useSegmentedControlState };
+        const expressionPicker = { $$typeof: Symbol.for("react.memo"),
+            type: props => (props.useDesignBarrel ? design : segmentedControl).useSegmentedControlState(props.options),
+        };
+        const pickerChanges = [];
+        const pickerOptions = Object.freeze({
+            items: Object.freeze(["Emoji", "GIFs", "Stickers"]),
+            defaultIndex: 0,
+            onSetActiveIndex: index => pickerChanges.push(pickerOrder[index]),
+        });
+        const renderPicker = props => {
+            const original = jsx(expressionPicker, { options: pickerOptions, ...props });
+            const hook = appearanceHooks.get(expressionPicker);
+            const wrapped = hook(null, original);
+            const resolved = wrapped.type(wrapped.props);
+            return resolved === original ? expressionPicker.type(resolved.props) : resolved.type(resolved.props);
+        };
         const renderHeader = tree => tree;
         const nativeHeaders = new Map(["PrivateChannelButtons", "MessagesHeader", "VoiceUserItem", "MediaModalSpoilerOverlay",
             "GuildBoostingMarketingProgressBar", "GuildPowerupsBoostGem", "PresenceActivityStatus"].map(name => [
@@ -423,6 +443,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+                : path === "design/native.tsx" ? design
+                : path.endsWith("/SegmentedControlState.native.tsx") ? segmentedControl
+                : path.endsWith("/ExpressionPickerConstants.tsx") ? { ExpressionPickerOrder: pickerOrder }
+                : path.endsWith("/ExpressionPicker.tsx") ? { default: expressionPicker }
                 : path.includes("/defs/native/") ? { default: settingsRoutes.get(path.split("/").at(-1).replace(".tsx", "")) }
                 : { default: path.endsWith("/Spoiler.tsx") ? Spoiler : nativeHeaders.get(path.split("/").at(-1).replace(".tsx", "")) },
                 findByStoreName: name => stores[name], findByStoreNameLazy: name => stores[name], findByProps: name =>
@@ -673,6 +697,29 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 assert.equal(wrapped.type(wrapped.props), originalHeader);
                 assert.equal(header.type, renderHeader);
                 continue;
+            } else if (rule.mobile.expressionPickerTab) {
+                const gif = rule.mobile.expressionPickerTab === "gif";
+                const picker = renderPicker({ useDesignBarrel: gif });
+                assert.deepEqual(Array.from(picker.items), ["Emoji", gif ? "Stickers" : "GIFs"]);
+                assert.equal(picker.defaultIndex, 0);
+                picker.onSetActiveIndex(1);
+                picker.onSetActiveIndex(2);
+                assert.equal(pickerChanges.pop(), gif ? "sticker" : "gif");
+                assert.equal(pickerChanges.length, 0);
+                assert.equal(design.useSegmentedControlState(pickerOptions), pickerOptions);
+                assert.equal(renderPicker({ visibleTabs: ["emoji"] }), pickerOptions);
+                const explicitTab = { ...pickerOptions, defaultIndex: gif ? 1 : 2 };
+                assert.equal(renderPicker({ options: explicitTab }), explicitTab);
+                const otherTab = renderPicker({ options: { ...pickerOptions, defaultIndex: gif ? 2 : 1 } });
+                assert.equal(otherTab.defaultIndex, 1);
+                settings.safeMode = { enabled: true };
+                assert.equal(renderPicker(), pickerOptions);
+                settings.safeMode = undefined;
+                click(render(), "Disable " + rule.plugin);
+                assert.equal(design.useSegmentedControlState, useSegmentedControlState);
+                assert.equal(segmentedControl.useSegmentedControlState, useSegmentedControlState);
+                assert.equal(appearanceHooks.size, 0);
+                continue;
             } else if (rule.mobile.settingsRoute) {
                 const route = settingsRoutes.get(rule.mobile.settingsRoute.split("/").at(-1).replace(".tsx", ""));
                 const checks = routeVisibilityChecks;
@@ -876,6 +923,16 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             for (const wrapped of wraps) assert.equal(wrapped.type(wrapped.props), original);
         }
         if (!desktop) {
+            for (const name of ["HideGifButton", "HideStickerButton"]) {
+                selectCatalog(name);
+                click(render(), "Allow for this session");
+            }
+            assert.deepEqual(Array.from(renderPicker().items), ["Emoji"]);
+            click(render(), "Disable HideGifButton");
+            assert.deepEqual(Array.from(renderPicker().items), ["Emoji", "GIFs"]);
+            click(render(), "Disable HideStickerButton");
+            assert.equal(design.useSegmentedControlState, useSegmentedControlState);
+            assert.equal(appearanceHooks.size, 0);
             for (const name of ["HideEditedLabel", "HideStickers", "HideTimestamps"]) {
                 selectCatalog(name);
                 click(render(), "Allow for this session");

@@ -303,6 +303,98 @@ function registerTreeAppearance(rule: {
     });
 }
 
+type PickerTab = "gif" | "sticker";
+type PickerTabRule = { tab: PickerTab; };
+
+function bindExpressionPickerTabs() {
+    const picker = findByFilePath("modules/expression_picker/native/ExpressionPicker.tsx")?.default;
+    const nativeRender = picker?.$$typeof === Symbol.for("react.memo") && picker.type;
+    const order: readonly string[] | undefined = findByFilePath("modules/expression_picker/ExpressionPickerConstants.tsx")?.ExpressionPickerOrder;
+    if (typeof nativeRender !== "function" || !Array.isArray(order) || order.length !== 3
+        || !["emoji", "gif", "sticker"].every(tab => order.includes(tab))) {
+        throw new Error("Discord's expression picker is unavailable");
+    }
+    const render = nativeRender;
+    const tabs = order;
+    const rules = new Set<PickerTabRule>();
+    let filterCurrentRender = false;
+    const overrides: Parameters<typeof overrideCxMethods>[1] = {
+        useSegmentedControlState(args, invoke) {
+            if (!filterCurrentRender) return invoke(args);
+            const options = args[0] as {
+                items?: readonly unknown[];
+                defaultIndex?: number;
+                onSetActiveIndex?: (index: number) => unknown;
+            } | undefined;
+            const selected = options?.defaultIndex;
+            if (!Array.isArray(options?.items) || options.items.length !== tabs.length
+                || selected == null || !Number.isInteger(selected) || selected < 0 || selected >= tabs.length
+                || typeof options.onSetActiveIndex !== "function") return invoke(args);
+            const visible = tabs.flatMap((tab, index) => index === selected || ![...rules].some(rule => rule.tab === tab) ? [index] : []);
+            if (visible.length === tabs.length) return invoke(args);
+            const { items, onSetActiveIndex } = options;
+            return invoke([{
+                ...options,
+                items: visible.map(index => items[index]),
+                defaultIndex: visible.indexOf(selected),
+                onSetActiveIndex(index: number) {
+                    const nativeIndex = visible[index];
+                    if (nativeIndex != null) return onSetActiveIndex(nativeIndex);
+                },
+            }, ...args.slice(1)]);
+        },
+    };
+    // Discord can import the hook directly or through the design barrel.
+    const modules = new Set([
+        findByFilePath("design/components/SegmentedControl/native/SegmentedControlState.native.tsx"),
+        findByFilePath("design/native.tsx"),
+    ].filter(module => typeof module?.useSegmentedControlState === "function"));
+    if (!modules.size) throw new Error("Discord's segmented control is unavailable");
+    const cleanups: (() => void)[] = [];
+    const stop = () => { for (const cleanup of cleanups.splice(0).reverse()) cleanup(); };
+    try {
+        for (const module of modules) cleanups.push(overrideCxMethods(module, overrides));
+    } catch (error) {
+        stop();
+        throw error;
+    }
+    function FilteredPicker({ originalProps }: { originalProps: { visibleTabs?: readonly string[]; }; }) {
+        const previous = filterCurrentRender;
+        const { visibleTabs } = originalProps;
+        // A single-purpose picker may be opened by another Discord feature.
+        filterCurrentRender = !settings.safeMode?.enabled && rules.size > 0
+            && (visibleTabs === undefined || Array.isArray(visibleTabs)
+                && visibleTabs.length === tabs.length && visibleTabs.every((tab, index) => tab === tabs[index]));
+        try {
+            return render(originalProps) as ReactNode;
+        } finally {
+            filterCurrentRender = previous;
+        }
+    }
+    const wrap: AppearanceChange = element => element.type === picker
+        ? <FilteredPicker key={element.key} originalProps={element.props} />
+        : element;
+    return { picker, rules, wrap, stop };
+}
+
+let expressionPickerBinding: ReturnType<typeof bindExpressionPickerTabs> | undefined;
+
+function registerExpressionPickerTab(tab: PickerTab) {
+    const binding = expressionPickerBinding ??= bindExpressionPickerTabs();
+    const rule = { tab };
+    binding.rules.add(rule);
+    // A new callback also refreshes already mounted pickers when the set changes.
+    const stop = registerJsxAppearance([binding.picker], element => binding.wrap(element));
+    return () => {
+        binding.rules.delete(rule);
+        stop();
+        if (!binding.rules.size) {
+            binding.stop();
+            expressionPickerBinding = undefined;
+        }
+    };
+}
+
 function registerRenderedChannelStyle(rule: {
     renderedComponents: readonly string[]; condition: "muted" | "inactive"; values: { opacity: number; };
 }) {
@@ -475,6 +567,7 @@ export default function CxExtensions() {
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile || "renderComponent" in mobile) return registerTreeAppearance(mobile);
+                    if ("expressionPickerTab" in mobile) return registerExpressionPickerTab(mobile.expressionPickerTab);
                     if ("settingsRoute" in mobile) {
                         const route = findByFilePath(mobile.settingsRoute)?.default;
                         return overrideCxMethods(route, {

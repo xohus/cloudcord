@@ -84,6 +84,16 @@ export const cxAppearanceTargets = {
         css: 'button[aria-label="Send a gift"] { display: none !important; }',
         mobile: ["PremiumAnimatedGiftButton"],
     },
+    "chat-gif-picker": {
+        plugin: "HideGifButton", label: "the GIF picker shortcut",
+        css: 'button[aria-label="Open GIF picker"] { display: none !important; }',
+        mobile: { expressionPickerTab: "gif" },
+    },
+    "chat-sticker-picker": {
+        plugin: "HideStickerButton", label: "the sticker picker shortcut",
+        css: 'button[aria-label="Open sticker picker"] { display: none !important; }',
+        mobile: { expressionPickerTab: "sticker" },
+    },
     "add-server-button": {
         plugin: "HideAddServerButton", label: "the add-a-server button",
         css: '[data-list-item-id="guildsnav___create-join-button"] { display: none !important; }',
