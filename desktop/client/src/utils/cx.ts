@@ -8,6 +8,7 @@ import { cxAvatarResolutions, type CxAvatarResolution, cxNativeEffects, type CxN
 import { parseCxPreviousRule, type CxPreviousRule } from "./cxPreviousMessage";
 import { formatCxProfileColors } from "./cxProfileColors";
 import { applyCxTextRules, parseCxTextRule } from "./cxTextRules";
+import { cxCalendarPeriods, cxTimestampSurfaces, type CxTimestampFormats, type CxTimestampTarget } from "./cxTimestamps";
 import { createCxUploadAnonymiser, type CxUploadAnonymiser, type CxUploadNaming } from "./cxUploadNames";
 import { validateCxWallpaper } from "./cxWallpaper";
 
@@ -26,6 +27,7 @@ export { filterCxEmojiCategories, filterCxEmojiGrid } from "./cxEmojiPicker";
 export { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink, validateCxStickerLink } from "./cxExpressionLinks";
 export { getCxAttachmentImageUrl } from "./cxAttachmentImages";
 export { getCxGifDescription, getCxImageTitle } from "./cxMediaLabels";
+export { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "./cxTimestamps";
 export type { CxUploadAnonymiser } from "./cxUploadNames";
 
 export const MAX_CX_SOURCE = 512 * 1024;
@@ -159,6 +161,7 @@ type CxPlugin = {
     suppressReplyPing: boolean;
     hiddenTargets: CxHideTarget[];
     styledTargets: CxStyleTarget[];
+    timestamps: CxTimestampFormats;
     nativeEffects: CxNativeEffect[];
     avatarResolution?: CxAvatarResolution;
     uploadNaming?: CxUploadNaming;
@@ -237,6 +240,8 @@ export function parseCx(source: string): CxDocument {
     const hiddenTargets = new Set<CxHideTarget>();
     const styledTargets = new Set<CxStyleTarget>();
     const nativeEffects = new Set<CxNativeEffect>();
+    const timestamps: CxTimestampFormats = {};
+    let hasTimestampSurface = false;
     let avatarResolution: CxAvatarResolution | undefined;
     let uploadNaming: CxUploadNaming | undefined;
     let previousRule: CxPreviousRule | undefined;
@@ -256,7 +261,7 @@ export function parseCx(source: string): CxDocument {
         }
         textRules = undefined;
         const declaration = /^  needs ([a-z.]+)$/.exec(line);
-        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) {
+        if (declaration && !commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !Object.keys(timestamps).length && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) {
             const permission = declaration[1] as CxPermission;
             if (!Object.prototype.hasOwnProperty.call(permissionLabels, permission) || permissions.has(permission))
                 throw new Error("Unknown or duplicate CX permission");
@@ -290,6 +295,17 @@ export function parseCx(source: string): CxDocument {
                 hiddenTargets.add(target as CxHideTarget);
             else
                 throw new Error("Unknown or duplicate appearance target");
+            current = undefined;
+            continue;
+        }
+        const timestamp = /^  format timestamp ([a-z]+) ("(?:[^"\\]|\\.)*")$/.exec(line);
+        if (timestamp) {
+            const target = timestamp[1] as CxTimestampTarget;
+            const surface = (cxTimestampSurfaces as readonly string[]).includes(target);
+            if ((!surface && !(cxCalendarPeriods as readonly string[]).includes(target)) || timestamps[target] !== undefined)
+                throw new Error("Unknown or duplicate timestamp target");
+            timestamps[target] = quoted(timestamp[2], 120);
+            hasTimestampSurface ||= surface;
             current = undefined;
             continue;
         }
@@ -472,13 +488,14 @@ export function parseCx(source: string): CxDocument {
         }
         current.actions.push({ kind, message, fallback });
     }
-    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) || commands.some(command => !command.actions.length))
+    if (Object.keys(timestamps).length && !hasTimestampSurface) throw new Error("Choose a timestamp surface to format");
+    if ((!commands.length && !transforms.length && !suppressReplyPing && !hiddenTargets.size && !styledTargets.size && !nativeEffects.size && !hasTimestampSurface && !previousRule && !profileActions.size && !incoming.length && !uploadNaming) || commands.some(command => !command.actions.length))
         throw new Error("A plugin needs a command or a supported behavior");
     const required = new Set<CxPermission>();
     if (commands.length) required.add("commands.register");
     if (suppressReplyPing) required.add("replies.suppressping");
     if (hiddenTargets.size) required.add("appearance.hide");
-    if (styledTargets.size) required.add("appearance.style");
+    if (styledTargets.size || hasTimestampSurface) required.add("appearance.style");
     for (const effect of nativeEffects) required.add(cxNativeEffects[effect].permission);
     if (previousRule) required.add("messages.editprevious");
     if (profileActions.size) required.add("profilemenu.copy");
@@ -507,7 +524,7 @@ export function parseCx(source: string): CxDocument {
         throw new Error("Remove unused CX permissions");
     return {
         kind: "plugin", name, commands, permissions: [...permissions], messageTransforms: transforms, suppressReplyPing,
-        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], nativeEffects: [...nativeEffects], avatarResolution, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
+        hiddenTargets: [...hiddenTargets], styledTargets: [...styledTargets], timestamps, nativeEffects: [...nativeEffects], avatarResolution, uploadNaming, previousRule, profileActions: [...profileActions], incoming,
     };
 }
 
@@ -522,6 +539,7 @@ export function reviewCx(source: string) {
             .concat(document.profileActions.map(action => cxProfileMenuActions[action].label))
             .concat(document.hiddenTargets.map(target => "Hide " + cxAppearanceTargets[target].label))
             .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
+            .concat(Object.entries(document.timestamps).map(([target, format]) => `Format ${target} timestamps as ${format}`))
             .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : "")))
             .concat(document.uploadNaming ? ["Use " + document.uploadNaming.mode + " upload names " + (document.uploadNaming.manual ? "when selected for a file" : "by default")] : [])
             .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" || rule.name === "rewriteLink"
@@ -568,6 +586,7 @@ type CxHost = {
     registerProfileMenuAction?: (action: CxProfileMenuAction) => () => void;
     hideAppearanceTarget?: (target: CxHideTarget) => () => void;
     styleAppearanceTarget?: (target: CxStyleTarget) => () => void;
+    registerTimestampFormats?: (formats: CxTimestampFormats) => () => void;
     registerNativeEffect?: (effect: CxNativeEffect, avatarResolution?: CxAvatarResolution) => () => void;
     registerUploadAnonymiser?: (anonymiser: CxUploadAnonymiser) => () => void;
     registerPreviousMessageRule?: (rule: CxPreviousRule) => () => void;
@@ -622,6 +641,10 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
         for (const target of document.styledTargets) {
             if (!host.styleAppearanceTarget) throw new Error("This client cannot " + cxAppearanceTargets[target].label);
             cleanups.push(host.styleAppearanceTarget(target));
+        }
+        if (Object.keys(document.timestamps).length) {
+            if (!host.registerTimestampFormats) throw new Error("This client cannot format timestamps");
+            cleanups.push(host.registerTimestampFormats(document.timestamps));
         }
         for (const effect of document.nativeEffects) {
             if (!host.registerNativeEffect) throw new Error("This client cannot apply " + cxNativeEffects[effect].label.toLowerCase());

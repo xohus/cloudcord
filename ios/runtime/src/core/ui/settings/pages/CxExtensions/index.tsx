@@ -3,6 +3,7 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
+import { createCxTimestampRegistry, type CxTimestampFormats, type CxTimestampSurface } from "@lib/api/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink, validateCxStickerLink, type CxChannelLabel } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
@@ -25,6 +26,59 @@ import type { ComponentType, Context, ReactElement, ReactNode } from "react";
 import { Alert, Animated, FlatList, Linking, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
+const timestamps = createCxTimestampRegistry();
+const timestampFields = [
+    ["timestamp", "cozy"], ["timestampTooltip", "tooltip"], ["timestampAccessibilityLabel", "accessibility"],
+] as const satisfies readonly [string, CxTimestampSurface][];
+let timestampUsers = 0;
+let stopTimestamps: (() => void) | undefined;
+
+function registerTimestampFormats(formats: CxTimestampFormats) {
+    if (!stopTimestamps) {
+        const enabled = () => !settings.safeMode?.enabled;
+        const renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
+        const stopRows = overrideCxMethods(renderer, {
+            default(args, invoke) {
+                const presentation = invoke(args);
+                const input = args[0] as { message?: { timestamp?: unknown; }; isInlineReplyPreview?: boolean; } | undefined;
+                if (!presentation || typeof presentation !== "object" || input?.isInlineReplyPreview || input?.message?.timestamp == null) return presentation;
+                const changed: Record<string, string> = {};
+                for (const [key, surface] of timestampFields) {
+                    const original = (presentation as Record<string, unknown>)[key];
+                    if (typeof original !== "string" || !original) continue;
+                    const formatted = timestamps.format(input.message.timestamp, surface);
+                    if (formatted && formatted !== original) changed[key] = formatted;
+                }
+                return Object.keys(changed).length ? { ...presentation, ...changed } : presentation;
+            },
+        }, enabled);
+        try {
+            const stopMarkup = overrideCxMethods(findByFilePath("modules/markup/TimestampUtils.tsx"), {
+                parseTimestamp(args, invoke) {
+                    const node = invoke(args);
+                    if (!node || typeof node !== "object" || !("full" in node) || typeof node.full !== "string") return node;
+                    const parsed = (node as { parsed?: unknown; }).parsed;
+                    const full = timestamps.format(parsed, "markdown");
+                    return full && full !== node.full ? { ...node, full } : node;
+                },
+            }, enabled);
+            stopTimestamps = () => { stopMarkup(); stopRows(); };
+        } catch (error) { stopRows(); throw error; }
+    }
+    const stopFormats = timestamps.register(formats);
+    timestampUsers++;
+    let active = true;
+    return () => {
+        if (!active) return;
+        active = false;
+        stopFormats();
+        if (!--timestampUsers) {
+            stopTimestamps?.();
+            stopTimestamps = undefined;
+        }
+    };
+}
+
 const channelNames = { clean: 0, titles: 0 };
 let stopChannelNames: (() => void) | undefined;
 
@@ -1169,6 +1223,7 @@ export default function CxExtensions() {
                     return () => { active = false; stop(); social?.stop(); };
                 },
                 registerProfileMenuAction,
+                registerTimestampFormats,
                 hideAppearanceTarget(target) {
                     const mobile = cxAppearanceTargets[target].mobile;
                     if ("renderTree" in mobile || "renderComponent" in mobile) return registerTreeAppearance(mobile);

@@ -28,140 +28,142 @@ import plugin26 from "../../../../examples/cx/catalog/plugins/copy-profile-color
 import plugin27 from "../../../../examples/cx/catalog/plugins/copy-sticker-links.cx";
 import plugin28 from "../../../../examples/cx/catalog/plugins/copy-user-mention.cx";
 import plugin29 from "../../../../examples/cx/catalog/plugins/copy-user-urls.cx";
-import plugin30 from "../../../../examples/cx/catalog/plugins/dim-inactive-channels.cx";
-import plugin31 from "../../../../examples/cx/catalog/plugins/dont-round-my-timestamps.cx";
-import plugin32 from "../../../../examples/cx/catalog/plugins/double-click-edit.cx";
-import plugin33 from "../../../../examples/cx/catalog/plugins/double-click-to-reply.cx";
-import plugin34 from "../../../../examples/cx/catalog/plugins/embedded-urls.cx";
-import plugin35 from "../../../../examples/cx/catalog/plugins/equius-s-typing-quirk.cx";
-import plugin36 from "../../../../examples/cx/catalog/plugins/eridan-typing-quirk.cx";
-import plugin37 from "../../../../examples/cx/catalog/plugins/fake-profile-themes.cx";
-import plugin38 from "../../../../examples/cx/catalog/plugins/feferi-typing-quirk.cx";
-import plugin39 from "../../../../examples/cx/catalog/plugins/fix-file-extensions.cx";
-import plugin40 from "../../../../examples/cx/catalog/plugins/fix-images-quality.cx";
-import plugin41 from "../../../../examples/cx/catalog/plugins/floating-chat-bar.cx";
-import plugin42 from "../../../../examples/cx/catalog/plugins/follow-voice-user.cx";
-import plugin43 from "../../../../examples/cx/catalog/plugins/friend-invites.cx";
-import plugin44 from "../../../../examples/cx/catalog/plugins/gamzee-s-typing-quirk.cx";
-import plugin45 from "../../../../examples/cx/catalog/plugins/google-that.cx";
-import plugin46 from "../../../../examples/cx/catalog/plugins/hide-active-now.cx";
-import plugin47 from "../../../../examples/cx/catalog/plugins/hide-add-server-button.cx";
-import plugin48 from "../../../../examples/cx/catalog/plugins/hide-apps-button.cx";
-import plugin49 from "../../../../examples/cx/catalog/plugins/hide-avatar-decorations.cx";
-import plugin50 from "../../../../examples/cx/catalog/plugins/hide-badges.cx";
-import plugin51 from "../../../../examples/cx/catalog/plugins/hide-boost-goal.cx";
-import plugin52 from "../../../../examples/cx/catalog/plugins/hide-bot-tags.cx";
-import plugin53 from "../../../../examples/cx/catalog/plugins/hide-call-buttons.cx";
-import plugin54 from "../../../../examples/cx/catalog/plugins/hide-channel-topic.cx";
-import plugin55 from "../../../../examples/cx/catalog/plugins/hide-character-count.cx";
-import plugin56 from "../../../../examples/cx/catalog/plugins/hide-clan-tags.cx";
-import plugin57 from "../../../../examples/cx/catalog/plugins/hide-custom-statuses.cx";
-import plugin58 from "../../../../examples/cx/catalog/plugins/hide-disabled-emojis.cx";
-import plugin59 from "../../../../examples/cx/catalog/plugins/hide-dm-search.cx";
-import plugin60 from "../../../../examples/cx/catalog/plugins/hide-edited-label.cx";
-import plugin61 from "../../../../examples/cx/catalog/plugins/hide-embeds.cx";
-import plugin62 from "../../../../examples/cx/catalog/plugins/hide-emoji-button.cx";
-import plugin63 from "../../../../examples/cx/catalog/plugins/hide-empty-folders.cx";
-import plugin64 from "../../../../examples/cx/catalog/plugins/hide-gif-button.cx";
-import plugin65 from "../../../../examples/cx/catalog/plugins/hide-gift-button.cx";
-import plugin66 from "../../../../examples/cx/catalog/plugins/hide-guild-boost-tag.cx";
-import plugin67 from "../../../../examples/cx/catalog/plugins/hide-help-button.cx";
-import plugin68 from "../../../../examples/cx/catalog/plugins/hide-image-alt-text.cx";
-import plugin69 from "../../../../examples/cx/catalog/plugins/hide-inbox-button.cx";
-import plugin70 from "../../../../examples/cx/catalog/plugins/hide-jump-to-present.cx";
-import plugin71 from "../../../../examples/cx/catalog/plugins/hide-member-activities.cx";
-import plugin72 from "../../../../examples/cx/catalog/plugins/hide-mention-badges.cx";
-import plugin73 from "../../../../examples/cx/catalog/plugins/hide-nameplates.cx";
-import plugin74 from "../../../../examples/cx/catalog/plugins/hide-new-messages-bar.cx";
-import plugin75 from "../../../../examples/cx/catalog/plugins/hide-nitro-tab.cx";
-import plugin76 from "../../../../examples/cx/catalog/plugins/hide-notification-bell.cx";
-import plugin77 from "../../../../examples/cx/catalog/plugins/hide-profile-effects.cx";
-import plugin78 from "../../../../examples/cx/catalog/plugins/hide-quests-tab.cx";
-import plugin79 from "../../../../examples/cx/catalog/plugins/hide-reactions.cx";
-import plugin80 from "../../../../examples/cx/catalog/plugins/hide-reply-previews.cx";
-import plugin81 from "../../../../examples/cx/catalog/plugins/hide-role-icons.cx";
-import plugin82 from "../../../../examples/cx/catalog/plugins/hide-scrollbars.cx";
-import plugin83 from "../../../../examples/cx/catalog/plugins/hide-send-button.cx";
-import plugin84 from "../../../../examples/cx/catalog/plugins/hide-server-banner.cx";
-import plugin85 from "../../../../examples/cx/catalog/plugins/hide-shop-tab.cx";
-import plugin86 from "../../../../examples/cx/catalog/plugins/hide-spoiler-warnings.cx";
-import plugin87 from "../../../../examples/cx/catalog/plugins/hide-status-emojis.cx";
-import plugin88 from "../../../../examples/cx/catalog/plugins/hide-sticker-button.cx";
-import plugin89 from "../../../../examples/cx/catalog/plugins/hide-stickers.cx";
-import plugin90 from "../../../../examples/cx/catalog/plugins/hide-stream-previews.cx";
-import plugin91 from "../../../../examples/cx/catalog/plugins/hide-system-messages.cx";
-import plugin92 from "../../../../examples/cx/catalog/plugins/hide-threads-button.cx";
-import plugin93 from "../../../../examples/cx/catalog/plugins/hide-timestamps.cx";
-import plugin94 from "../../../../examples/cx/catalog/plugins/hide-typing-indicator.cx";
-import plugin95 from "../../../../examples/cx/catalog/plugins/hide-unread-pills.cx";
-import plugin96 from "../../../../examples/cx/catalog/plugins/hide-upload-button.cx";
-import plugin97 from "../../../../examples/cx/catalog/plugins/hide-voice-user-avatars.cx";
-import plugin98 from "../../../../examples/cx/catalog/plugins/high-contrast-text.cx";
-import plugin99 from "../../../../examples/cx/catalog/plugins/high-res-profile-images.cx";
-import plugin100 from "../../../../examples/cx/catalog/plugins/highlight-links.cx";
-import plugin101 from "../../../../examples/cx/catalog/plugins/highlight-mentions.cx";
-import plugin102 from "../../../../examples/cx/catalog/plugins/hop-on.cx";
-import plugin103 from "../../../../examples/cx/catalog/plugins/ignore-calls.cx";
-import plugin104 from "../../../../examples/cx/catalog/plugins/image-filename.cx";
-import plugin105 from "../../../../examples/cx/catalog/plugins/image-link.cx";
-import plugin106 from "../../../../examples/cx/catalog/plugins/in-role.cx";
-import plugin107 from "../../../../examples/cx/catalog/plugins/ingtoninator.cx";
-import plugin108 from "../../../../examples/cx/catalog/plugins/keyword-notify.cx";
-import plugin109 from "../../../../examples/cx/catalog/plugins/leet-text.cx";
-import plugin110 from "../../../../examples/cx/catalog/plugins/link-converter.cx";
-import plugin111 from "../../../../examples/cx/catalog/plugins/message-burst.cx";
-import plugin112 from "../../../../examples/cx/catalog/plugins/message-notifier.cx";
-import plugin113 from "../../../../examples/cx/catalog/plugins/more-commands.cx";
-import plugin114 from "../../../../examples/cx/catalog/plugins/muted-channels-faded.cx";
-import plugin115 from "../../../../examples/cx/catalog/plugins/narrow-channel-list.cx";
-import plugin116 from "../../../../examples/cx/catalog/plugins/nepeta-s-typing-quirk.cx";
-import plugin117 from "../../../../examples/cx/catalog/plugins/no-animations.cx";
-import plugin118 from "../../../../examples/cx/catalog/plugins/no-blocked-messages.cx";
-import plugin119 from "../../../../examples/cx/catalog/plugins/no-mosaic.cx";
-import plugin120 from "../../../../examples/cx/catalog/plugins/no-pending-count.cx";
-import plugin121 from "../../../../examples/cx/catalog/plugins/no-profile-themes.cx";
-import plugin122 from "../../../../examples/cx/catalog/plugins/no-reply-mention.cx";
-import plugin123 from "../../../../examples/cx/catalog/plugins/no-reply-ping.cx";
-import plugin124 from "../../../../examples/cx/catalog/plugins/no-server-emojis.cx";
-import plugin125 from "../../../../examples/cx/catalog/plugins/no-typing-animation.cx";
-import plugin126 from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
-import plugin127 from "../../../../examples/cx/catalog/plugins/ping-notifications.cx";
-import plugin128 from "../../../../examples/cx/catalog/plugins/polish-wording.cx";
-import plugin129 from "../../../../examples/cx/catalog/plugins/read-all-notifications.cx";
-import plugin130 from "../../../../examples/cx/catalog/plugins/readable-spoilers.cx";
-import plugin131 from "../../../../examples/cx/catalog/plugins/relationship-notifier.cx";
-import plugin132 from "../../../../examples/cx/catalog/plugins/reply-ping-control.cx";
-import plugin133 from "../../../../examples/cx/catalog/plugins/reverse-text.cx";
-import plugin134 from "../../../../examples/cx/catalog/plugins/round-server-icons.cx";
-import plugin135 from "../../../../examples/cx/catalog/plugins/rounded-chat-bar.cx";
-import plugin136 from "../../../../examples/cx/catalog/plugins/scroll-to-latest.cx";
-import plugin137 from "../../../../examples/cx/catalog/plugins/sed-enhanced.cx";
-import plugin138 from "../../../../examples/cx/catalog/plugins/send-timestamps.cx";
-import plugin139 from "../../../../examples/cx/catalog/plugins/ship-calc.cx";
-import plugin140 from "../../../../examples/cx/catalog/plugins/signature.cx";
-import plugin141 from "../../../../examples/cx/catalog/plugins/silence-users.cx";
-import plugin142 from "../../../../examples/cx/catalog/plugins/silent-message-toggle.cx";
-import plugin143 from "../../../../examples/cx/catalog/plugins/silent-typing.cx";
-import plugin144 from "../../../../examples/cx/catalog/plugins/sollux-typing-quirk.cx";
-import plugin145 from "../../../../examples/cx/catalog/plugins/space-out.cx";
-import plugin146 from "../../../../examples/cx/catalog/plugins/split-large-messages.cx";
-import plugin147 from "../../../../examples/cx/catalog/plugins/spotify-share-commands.cx";
-import plugin148 from "../../../../examples/cx/catalog/plugins/starify.cx";
-import plugin149 from "../../../../examples/cx/catalog/plugins/sticker-blocker.cx";
-import plugin150 from "../../../../examples/cx/catalog/plugins/stop-auto-unread.cx";
-import plugin151 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
-import plugin152 from "../../../../examples/cx/catalog/plugins/terezi-typing-quirk.cx";
-import plugin153 from "../../../../examples/cx/catalog/plugins/text-replace.cx";
-import plugin154 from "../../../../examples/cx/catalog/plugins/transparent-chat-bar.cx";
-import plugin155 from "../../../../examples/cx/catalog/plugins/unindent.cx";
-import plugin156 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
-import plugin157 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
-import plugin158 from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
-import plugin159 from "../../../../examples/cx/catalog/plugins/vriska-s-typing-quirk.cx";
-import plugin160 from "../../../../examples/cx/catalog/plugins/wider-channel-list.cx";
-import plugin161 from "../../../../examples/cx/catalog/plugins/wiki-lookup.cx";
-import plugin162 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
-import plugin163 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
+import plugin30 from "../../../../examples/cx/catalog/plugins/custom-timestamps.cx";
+import plugin31 from "../../../../examples/cx/catalog/plugins/dim-inactive-channels.cx";
+import plugin32 from "../../../../examples/cx/catalog/plugins/dont-round-my-timestamps.cx";
+import plugin33 from "../../../../examples/cx/catalog/plugins/double-click-edit.cx";
+import plugin34 from "../../../../examples/cx/catalog/plugins/double-click-to-reply.cx";
+import plugin35 from "../../../../examples/cx/catalog/plugins/embedded-urls.cx";
+import plugin36 from "../../../../examples/cx/catalog/plugins/equius-s-typing-quirk.cx";
+import plugin37 from "../../../../examples/cx/catalog/plugins/eridan-typing-quirk.cx";
+import plugin38 from "../../../../examples/cx/catalog/plugins/fake-profile-themes.cx";
+import plugin39 from "../../../../examples/cx/catalog/plugins/feferi-typing-quirk.cx";
+import plugin40 from "../../../../examples/cx/catalog/plugins/fix-file-extensions.cx";
+import plugin41 from "../../../../examples/cx/catalog/plugins/fix-images-quality.cx";
+import plugin42 from "../../../../examples/cx/catalog/plugins/floating-chat-bar.cx";
+import plugin43 from "../../../../examples/cx/catalog/plugins/follow-voice-user.cx";
+import plugin44 from "../../../../examples/cx/catalog/plugins/friend-invites.cx";
+import plugin45 from "../../../../examples/cx/catalog/plugins/gamzee-s-typing-quirk.cx";
+import plugin46 from "../../../../examples/cx/catalog/plugins/google-that.cx";
+import plugin47 from "../../../../examples/cx/catalog/plugins/hide-active-now.cx";
+import plugin48 from "../../../../examples/cx/catalog/plugins/hide-add-server-button.cx";
+import plugin49 from "../../../../examples/cx/catalog/plugins/hide-apps-button.cx";
+import plugin50 from "../../../../examples/cx/catalog/plugins/hide-avatar-decorations.cx";
+import plugin51 from "../../../../examples/cx/catalog/plugins/hide-badges.cx";
+import plugin52 from "../../../../examples/cx/catalog/plugins/hide-boost-goal.cx";
+import plugin53 from "../../../../examples/cx/catalog/plugins/hide-bot-tags.cx";
+import plugin54 from "../../../../examples/cx/catalog/plugins/hide-call-buttons.cx";
+import plugin55 from "../../../../examples/cx/catalog/plugins/hide-channel-topic.cx";
+import plugin56 from "../../../../examples/cx/catalog/plugins/hide-character-count.cx";
+import plugin57 from "../../../../examples/cx/catalog/plugins/hide-clan-tags.cx";
+import plugin58 from "../../../../examples/cx/catalog/plugins/hide-custom-statuses.cx";
+import plugin59 from "../../../../examples/cx/catalog/plugins/hide-disabled-emojis.cx";
+import plugin60 from "../../../../examples/cx/catalog/plugins/hide-dm-search.cx";
+import plugin61 from "../../../../examples/cx/catalog/plugins/hide-edited-label.cx";
+import plugin62 from "../../../../examples/cx/catalog/plugins/hide-embeds.cx";
+import plugin63 from "../../../../examples/cx/catalog/plugins/hide-emoji-button.cx";
+import plugin64 from "../../../../examples/cx/catalog/plugins/hide-empty-folders.cx";
+import plugin65 from "../../../../examples/cx/catalog/plugins/hide-gif-button.cx";
+import plugin66 from "../../../../examples/cx/catalog/plugins/hide-gift-button.cx";
+import plugin67 from "../../../../examples/cx/catalog/plugins/hide-guild-boost-tag.cx";
+import plugin68 from "../../../../examples/cx/catalog/plugins/hide-help-button.cx";
+import plugin69 from "../../../../examples/cx/catalog/plugins/hide-image-alt-text.cx";
+import plugin70 from "../../../../examples/cx/catalog/plugins/hide-inbox-button.cx";
+import plugin71 from "../../../../examples/cx/catalog/plugins/hide-jump-to-present.cx";
+import plugin72 from "../../../../examples/cx/catalog/plugins/hide-member-activities.cx";
+import plugin73 from "../../../../examples/cx/catalog/plugins/hide-mention-badges.cx";
+import plugin74 from "../../../../examples/cx/catalog/plugins/hide-nameplates.cx";
+import plugin75 from "../../../../examples/cx/catalog/plugins/hide-new-messages-bar.cx";
+import plugin76 from "../../../../examples/cx/catalog/plugins/hide-nitro-tab.cx";
+import plugin77 from "../../../../examples/cx/catalog/plugins/hide-notification-bell.cx";
+import plugin78 from "../../../../examples/cx/catalog/plugins/hide-profile-effects.cx";
+import plugin79 from "../../../../examples/cx/catalog/plugins/hide-quests-tab.cx";
+import plugin80 from "../../../../examples/cx/catalog/plugins/hide-reactions.cx";
+import plugin81 from "../../../../examples/cx/catalog/plugins/hide-reply-previews.cx";
+import plugin82 from "../../../../examples/cx/catalog/plugins/hide-role-icons.cx";
+import plugin83 from "../../../../examples/cx/catalog/plugins/hide-scrollbars.cx";
+import plugin84 from "../../../../examples/cx/catalog/plugins/hide-send-button.cx";
+import plugin85 from "../../../../examples/cx/catalog/plugins/hide-server-banner.cx";
+import plugin86 from "../../../../examples/cx/catalog/plugins/hide-shop-tab.cx";
+import plugin87 from "../../../../examples/cx/catalog/plugins/hide-spoiler-warnings.cx";
+import plugin88 from "../../../../examples/cx/catalog/plugins/hide-status-emojis.cx";
+import plugin89 from "../../../../examples/cx/catalog/plugins/hide-sticker-button.cx";
+import plugin90 from "../../../../examples/cx/catalog/plugins/hide-stickers.cx";
+import plugin91 from "../../../../examples/cx/catalog/plugins/hide-stream-previews.cx";
+import plugin92 from "../../../../examples/cx/catalog/plugins/hide-system-messages.cx";
+import plugin93 from "../../../../examples/cx/catalog/plugins/hide-threads-button.cx";
+import plugin94 from "../../../../examples/cx/catalog/plugins/hide-timestamps.cx";
+import plugin95 from "../../../../examples/cx/catalog/plugins/hide-typing-indicator.cx";
+import plugin96 from "../../../../examples/cx/catalog/plugins/hide-unread-pills.cx";
+import plugin97 from "../../../../examples/cx/catalog/plugins/hide-upload-button.cx";
+import plugin98 from "../../../../examples/cx/catalog/plugins/hide-voice-user-avatars.cx";
+import plugin99 from "../../../../examples/cx/catalog/plugins/high-contrast-text.cx";
+import plugin100 from "../../../../examples/cx/catalog/plugins/high-res-profile-images.cx";
+import plugin101 from "../../../../examples/cx/catalog/plugins/highlight-links.cx";
+import plugin102 from "../../../../examples/cx/catalog/plugins/highlight-mentions.cx";
+import plugin103 from "../../../../examples/cx/catalog/plugins/hop-on.cx";
+import plugin104 from "../../../../examples/cx/catalog/plugins/ignore-calls.cx";
+import plugin105 from "../../../../examples/cx/catalog/plugins/image-filename.cx";
+import plugin106 from "../../../../examples/cx/catalog/plugins/image-link.cx";
+import plugin107 from "../../../../examples/cx/catalog/plugins/in-role.cx";
+import plugin108 from "../../../../examples/cx/catalog/plugins/ingtoninator.cx";
+import plugin109 from "../../../../examples/cx/catalog/plugins/keyword-notify.cx";
+import plugin110 from "../../../../examples/cx/catalog/plugins/leet-text.cx";
+import plugin111 from "../../../../examples/cx/catalog/plugins/link-converter.cx";
+import plugin112 from "../../../../examples/cx/catalog/plugins/message-burst.cx";
+import plugin113 from "../../../../examples/cx/catalog/plugins/message-notifier.cx";
+import plugin114 from "../../../../examples/cx/catalog/plugins/more-commands.cx";
+import plugin115 from "../../../../examples/cx/catalog/plugins/muted-channels-faded.cx";
+import plugin116 from "../../../../examples/cx/catalog/plugins/narrow-channel-list.cx";
+import plugin117 from "../../../../examples/cx/catalog/plugins/nepeta-s-typing-quirk.cx";
+import plugin118 from "../../../../examples/cx/catalog/plugins/no-animations.cx";
+import plugin119 from "../../../../examples/cx/catalog/plugins/no-blocked-messages.cx";
+import plugin120 from "../../../../examples/cx/catalog/plugins/no-mosaic.cx";
+import plugin121 from "../../../../examples/cx/catalog/plugins/no-pending-count.cx";
+import plugin122 from "../../../../examples/cx/catalog/plugins/no-profile-themes.cx";
+import plugin123 from "../../../../examples/cx/catalog/plugins/no-reply-mention.cx";
+import plugin124 from "../../../../examples/cx/catalog/plugins/no-reply-ping.cx";
+import plugin125 from "../../../../examples/cx/catalog/plugins/no-server-emojis.cx";
+import plugin126 from "../../../../examples/cx/catalog/plugins/no-typing-animation.cx";
+import plugin127 from "../../../../examples/cx/catalog/plugins/normalize-message-links.cx";
+import plugin128 from "../../../../examples/cx/catalog/plugins/ping-notifications.cx";
+import plugin129 from "../../../../examples/cx/catalog/plugins/polish-wording.cx";
+import plugin130 from "../../../../examples/cx/catalog/plugins/read-all-notifications.cx";
+import plugin131 from "../../../../examples/cx/catalog/plugins/readable-spoilers.cx";
+import plugin132 from "../../../../examples/cx/catalog/plugins/realtime-timestamps.cx";
+import plugin133 from "../../../../examples/cx/catalog/plugins/relationship-notifier.cx";
+import plugin134 from "../../../../examples/cx/catalog/plugins/reply-ping-control.cx";
+import plugin135 from "../../../../examples/cx/catalog/plugins/reverse-text.cx";
+import plugin136 from "../../../../examples/cx/catalog/plugins/round-server-icons.cx";
+import plugin137 from "../../../../examples/cx/catalog/plugins/rounded-chat-bar.cx";
+import plugin138 from "../../../../examples/cx/catalog/plugins/scroll-to-latest.cx";
+import plugin139 from "../../../../examples/cx/catalog/plugins/sed-enhanced.cx";
+import plugin140 from "../../../../examples/cx/catalog/plugins/send-timestamps.cx";
+import plugin141 from "../../../../examples/cx/catalog/plugins/ship-calc.cx";
+import plugin142 from "../../../../examples/cx/catalog/plugins/signature.cx";
+import plugin143 from "../../../../examples/cx/catalog/plugins/silence-users.cx";
+import plugin144 from "../../../../examples/cx/catalog/plugins/silent-message-toggle.cx";
+import plugin145 from "../../../../examples/cx/catalog/plugins/silent-typing.cx";
+import plugin146 from "../../../../examples/cx/catalog/plugins/sollux-typing-quirk.cx";
+import plugin147 from "../../../../examples/cx/catalog/plugins/space-out.cx";
+import plugin148 from "../../../../examples/cx/catalog/plugins/split-large-messages.cx";
+import plugin149 from "../../../../examples/cx/catalog/plugins/spotify-share-commands.cx";
+import plugin150 from "../../../../examples/cx/catalog/plugins/starify.cx";
+import plugin151 from "../../../../examples/cx/catalog/plugins/sticker-blocker.cx";
+import plugin152 from "../../../../examples/cx/catalog/plugins/stop-auto-unread.cx";
+import plugin153 from "../../../../examples/cx/catalog/plugins/talk-in-reverse.cx";
+import plugin154 from "../../../../examples/cx/catalog/plugins/terezi-typing-quirk.cx";
+import plugin155 from "../../../../examples/cx/catalog/plugins/text-replace.cx";
+import plugin156 from "../../../../examples/cx/catalog/plugins/transparent-chat-bar.cx";
+import plugin157 from "../../../../examples/cx/catalog/plugins/unindent.cx";
+import plugin158 from "../../../../examples/cx/catalog/plugins/unit-converter.cx";
+import plugin159 from "../../../../examples/cx/catalog/plugins/vibe-check.cx";
+import plugin160 from "../../../../examples/cx/catalog/plugins/voice-join-messages.cx";
+import plugin161 from "../../../../examples/cx/catalog/plugins/vriska-s-typing-quirk.cx";
+import plugin162 from "../../../../examples/cx/catalog/plugins/wider-channel-list.cx";
+import plugin163 from "../../../../examples/cx/catalog/plugins/wiki-lookup.cx";
+import plugin164 from "../../../../examples/cx/catalog/plugins/write-upper-case.cx";
+import plugin165 from "../../../../examples/cx/catalog/plugins/zero-width-sanitizer.cx";
 import theme1 from "../../../../examples/cx/midnight.cx";
 import theme2 from "../../../../examples/cx/catalog/themes/basic-background-chat.cx";
 import theme3 from "../../../../examples/cx/catalog/themes/blue-hour.cx";
@@ -294,140 +296,142 @@ export const cxCatalog = {
         { name: "CopyStickerLinks", source: plugin27 },
         { name: "CopyUserMention", source: plugin28 },
         { name: "CopyUserURLs", source: plugin29 },
-        { name: "DimInactiveChannels", source: plugin30 },
-        { name: "DontRoundMyTimestamps", source: plugin31 },
-        { name: "DoubleClickEdit", source: plugin32 },
-        { name: "DoubleClickToReply", source: plugin33 },
-        { name: "EmbeddedURLs", source: plugin34 },
-        { name: "Equius'sTypingQuirk", source: plugin35 },
-        { name: "EridanTypingQuirk", source: plugin36 },
-        { name: "FakeProfileThemes", source: plugin37 },
-        { name: "FeferiTypingQuirk", source: plugin38 },
-        { name: "FixFileExtensions", source: plugin39 },
-        { name: "FixImagesQuality", source: plugin40 },
-        { name: "FloatingChatBar", source: plugin41 },
-        { name: "FollowVoiceUser", source: plugin42 },
-        { name: "FriendInvites", source: plugin43 },
-        { name: "Gamzee'sTypingQuirk", source: plugin44 },
-        { name: "GoogleThat", source: plugin45 },
-        { name: "HideActiveNow", source: plugin46 },
-        { name: "HideAddServerButton", source: plugin47 },
-        { name: "HideAppsButton", source: plugin48 },
-        { name: "HideAvatarDecorations", source: plugin49 },
-        { name: "HideBadges", source: plugin50 },
-        { name: "HideBoostGoal", source: plugin51 },
-        { name: "HideBotTags", source: plugin52 },
-        { name: "HideCallButtons", source: plugin53 },
-        { name: "HideChannelTopic", source: plugin54 },
-        { name: "HideCharacterCount", source: plugin55 },
-        { name: "HideClanTags", source: plugin56 },
-        { name: "HideCustomStatuses", source: plugin57 },
-        { name: "HideDisabledEmojis", source: plugin58 },
-        { name: "HideDmSearch", source: plugin59 },
-        { name: "HideEditedLabel", source: plugin60 },
-        { name: "HideEmbeds", source: plugin61 },
-        { name: "HideEmojiButton", source: plugin62 },
-        { name: "HideEmptyFolders", source: plugin63 },
-        { name: "HideGifButton", source: plugin64 },
-        { name: "HideGiftButton", source: plugin65 },
-        { name: "HideGuildBoostTag", source: plugin66 },
-        { name: "HideHelpButton", source: plugin67 },
-        { name: "HideImageAltText", source: plugin68 },
-        { name: "HideInboxButton", source: plugin69 },
-        { name: "HideJumpToPresent", source: plugin70 },
-        { name: "HideMemberActivities", source: plugin71 },
-        { name: "HideMentionBadges", source: plugin72 },
-        { name: "HideNameplates", source: plugin73 },
-        { name: "HideNewMessagesBar", source: plugin74 },
-        { name: "HideNitroTab", source: plugin75 },
-        { name: "HideNotificationBell", source: plugin76 },
-        { name: "HideProfileEffects", source: plugin77 },
-        { name: "HideQuestsTab", source: plugin78 },
-        { name: "HideReactions", source: plugin79 },
-        { name: "HideReplyPreviews", source: plugin80 },
-        { name: "HideRoleIcons", source: plugin81 },
-        { name: "HideScrollbars", source: plugin82 },
-        { name: "HideSendButton", source: plugin83 },
-        { name: "HideServerBanner", source: plugin84 },
-        { name: "HideShopTab", source: plugin85 },
-        { name: "HideSpoilerWarnings", source: plugin86 },
-        { name: "HideStatusEmojis", source: plugin87 },
-        { name: "HideStickerButton", source: plugin88 },
-        { name: "HideStickers", source: plugin89 },
-        { name: "HideStreamPreviews", source: plugin90 },
-        { name: "HideSystemMessages", source: plugin91 },
-        { name: "HideThreadsButton", source: plugin92 },
-        { name: "HideTimestamps", source: plugin93 },
-        { name: "HideTypingIndicator", source: plugin94 },
-        { name: "HideUnreadPills", source: plugin95 },
-        { name: "HideUploadButton", source: plugin96 },
-        { name: "HideVoiceUserAvatars", source: plugin97 },
-        { name: "HighContrastText", source: plugin98 },
-        { name: "High-Res Profile Images", source: plugin99 },
-        { name: "HighlightLinks", source: plugin100 },
-        { name: "HighlightMentions", source: plugin101 },
-        { name: "HopOn", source: plugin102 },
-        { name: "IgnoreCalls", source: plugin103 },
-        { name: "ImageFilename", source: plugin104 },
-        { name: "ImageLink", source: plugin105 },
-        { name: "InRole", source: plugin106 },
-        { name: "Ingtoninator", source: plugin107 },
-        { name: "KeywordNotify", source: plugin108 },
-        { name: "LeetText", source: plugin109 },
-        { name: "LinkConverter", source: plugin110 },
-        { name: "MessageBurst", source: plugin111 },
-        { name: "MessageNotifier", source: plugin112 },
-        { name: "MoreCommands", source: plugin113 },
-        { name: "MutedChannelsFaded", source: plugin114 },
-        { name: "NarrowChannelList", source: plugin115 },
-        { name: "Nepeta'sTypingQuirk", source: plugin116 },
-        { name: "NoAnimations", source: plugin117 },
-        { name: "NoBlockedMessages", source: plugin118 },
-        { name: "NoMosaic", source: plugin119 },
-        { name: "NoPendingCount", source: plugin120 },
-        { name: "NoProfileThemes", source: plugin121 },
-        { name: "NoReplyMention", source: plugin122 },
-        { name: "NoReplyPing", source: plugin123 },
-        { name: "NoServerEmojis", source: plugin124 },
-        { name: "NoTypingAnimation", source: plugin125 },
-        { name: "NormalizeMessageLinks", source: plugin126 },
-        { name: "PingNotifications", source: plugin127 },
-        { name: "PolishWording", source: plugin128 },
-        { name: "ReadAllNotifications", source: plugin129 },
-        { name: "ReadableSpoilers", source: plugin130 },
-        { name: "RelationshipNotifier", source: plugin131 },
-        { name: "ReplyPingControl", source: plugin132 },
-        { name: "ReverseText", source: plugin133 },
-        { name: "RoundServerIcons", source: plugin134 },
-        { name: "RoundedChatBar", source: plugin135 },
-        { name: "ScrollToLatest", source: plugin136 },
-        { name: "SedEnhanced", source: plugin137 },
-        { name: "SendTimestamps", source: plugin138 },
-        { name: "ShipCalc", source: plugin139 },
-        { name: "Signature", source: plugin140 },
-        { name: "SilenceUsers", source: plugin141 },
-        { name: "SilentMessageToggle", source: plugin142 },
-        { name: "SilentTyping", source: plugin143 },
-        { name: "SolluxTypingQuirk", source: plugin144 },
-        { name: "SpaceOut", source: plugin145 },
-        { name: "SplitLargeMessages", source: plugin146 },
-        { name: "SpotifyShareCommands", source: plugin147 },
-        { name: "Starify", source: plugin148 },
-        { name: "StickerBlocker", source: plugin149 },
-        { name: "StopAutoUnread", source: plugin150 },
-        { name: "TalkInReverse", source: plugin151 },
-        { name: "TereziTypingQuirk", source: plugin152 },
-        { name: "TextReplace", source: plugin153 },
-        { name: "TransparentChatBar", source: plugin154 },
-        { name: "Unindent", source: plugin155 },
-        { name: "UnitConverter", source: plugin156 },
-        { name: "VibeCheck", source: plugin157 },
-        { name: "VoiceJoinMessages", source: plugin158 },
-        { name: "Vriska'sTypingQuirk", source: plugin159 },
-        { name: "WiderChannelList", source: plugin160 },
-        { name: "WikiLookup", source: plugin161 },
-        { name: "WriteUpperCase", source: plugin162 },
-        { name: "ZeroWidthSanitizer", source: plugin163 },
+        { name: "CustomTimestamps", source: plugin30 },
+        { name: "DimInactiveChannels", source: plugin31 },
+        { name: "DontRoundMyTimestamps", source: plugin32 },
+        { name: "DoubleClickEdit", source: plugin33 },
+        { name: "DoubleClickToReply", source: plugin34 },
+        { name: "EmbeddedURLs", source: plugin35 },
+        { name: "Equius'sTypingQuirk", source: plugin36 },
+        { name: "EridanTypingQuirk", source: plugin37 },
+        { name: "FakeProfileThemes", source: plugin38 },
+        { name: "FeferiTypingQuirk", source: plugin39 },
+        { name: "FixFileExtensions", source: plugin40 },
+        { name: "FixImagesQuality", source: plugin41 },
+        { name: "FloatingChatBar", source: plugin42 },
+        { name: "FollowVoiceUser", source: plugin43 },
+        { name: "FriendInvites", source: plugin44 },
+        { name: "Gamzee'sTypingQuirk", source: plugin45 },
+        { name: "GoogleThat", source: plugin46 },
+        { name: "HideActiveNow", source: plugin47 },
+        { name: "HideAddServerButton", source: plugin48 },
+        { name: "HideAppsButton", source: plugin49 },
+        { name: "HideAvatarDecorations", source: plugin50 },
+        { name: "HideBadges", source: plugin51 },
+        { name: "HideBoostGoal", source: plugin52 },
+        { name: "HideBotTags", source: plugin53 },
+        { name: "HideCallButtons", source: plugin54 },
+        { name: "HideChannelTopic", source: plugin55 },
+        { name: "HideCharacterCount", source: plugin56 },
+        { name: "HideClanTags", source: plugin57 },
+        { name: "HideCustomStatuses", source: plugin58 },
+        { name: "HideDisabledEmojis", source: plugin59 },
+        { name: "HideDmSearch", source: plugin60 },
+        { name: "HideEditedLabel", source: plugin61 },
+        { name: "HideEmbeds", source: plugin62 },
+        { name: "HideEmojiButton", source: plugin63 },
+        { name: "HideEmptyFolders", source: plugin64 },
+        { name: "HideGifButton", source: plugin65 },
+        { name: "HideGiftButton", source: plugin66 },
+        { name: "HideGuildBoostTag", source: plugin67 },
+        { name: "HideHelpButton", source: plugin68 },
+        { name: "HideImageAltText", source: plugin69 },
+        { name: "HideInboxButton", source: plugin70 },
+        { name: "HideJumpToPresent", source: plugin71 },
+        { name: "HideMemberActivities", source: plugin72 },
+        { name: "HideMentionBadges", source: plugin73 },
+        { name: "HideNameplates", source: plugin74 },
+        { name: "HideNewMessagesBar", source: plugin75 },
+        { name: "HideNitroTab", source: plugin76 },
+        { name: "HideNotificationBell", source: plugin77 },
+        { name: "HideProfileEffects", source: plugin78 },
+        { name: "HideQuestsTab", source: plugin79 },
+        { name: "HideReactions", source: plugin80 },
+        { name: "HideReplyPreviews", source: plugin81 },
+        { name: "HideRoleIcons", source: plugin82 },
+        { name: "HideScrollbars", source: plugin83 },
+        { name: "HideSendButton", source: plugin84 },
+        { name: "HideServerBanner", source: plugin85 },
+        { name: "HideShopTab", source: plugin86 },
+        { name: "HideSpoilerWarnings", source: plugin87 },
+        { name: "HideStatusEmojis", source: plugin88 },
+        { name: "HideStickerButton", source: plugin89 },
+        { name: "HideStickers", source: plugin90 },
+        { name: "HideStreamPreviews", source: plugin91 },
+        { name: "HideSystemMessages", source: plugin92 },
+        { name: "HideThreadsButton", source: plugin93 },
+        { name: "HideTimestamps", source: plugin94 },
+        { name: "HideTypingIndicator", source: plugin95 },
+        { name: "HideUnreadPills", source: plugin96 },
+        { name: "HideUploadButton", source: plugin97 },
+        { name: "HideVoiceUserAvatars", source: plugin98 },
+        { name: "HighContrastText", source: plugin99 },
+        { name: "High-Res Profile Images", source: plugin100 },
+        { name: "HighlightLinks", source: plugin101 },
+        { name: "HighlightMentions", source: plugin102 },
+        { name: "HopOn", source: plugin103 },
+        { name: "IgnoreCalls", source: plugin104 },
+        { name: "ImageFilename", source: plugin105 },
+        { name: "ImageLink", source: plugin106 },
+        { name: "InRole", source: plugin107 },
+        { name: "Ingtoninator", source: plugin108 },
+        { name: "KeywordNotify", source: plugin109 },
+        { name: "LeetText", source: plugin110 },
+        { name: "LinkConverter", source: plugin111 },
+        { name: "MessageBurst", source: plugin112 },
+        { name: "MessageNotifier", source: plugin113 },
+        { name: "MoreCommands", source: plugin114 },
+        { name: "MutedChannelsFaded", source: plugin115 },
+        { name: "NarrowChannelList", source: plugin116 },
+        { name: "Nepeta'sTypingQuirk", source: plugin117 },
+        { name: "NoAnimations", source: plugin118 },
+        { name: "NoBlockedMessages", source: plugin119 },
+        { name: "NoMosaic", source: plugin120 },
+        { name: "NoPendingCount", source: plugin121 },
+        { name: "NoProfileThemes", source: plugin122 },
+        { name: "NoReplyMention", source: plugin123 },
+        { name: "NoReplyPing", source: plugin124 },
+        { name: "NoServerEmojis", source: plugin125 },
+        { name: "NoTypingAnimation", source: plugin126 },
+        { name: "NormalizeMessageLinks", source: plugin127 },
+        { name: "PingNotifications", source: plugin128 },
+        { name: "PolishWording", source: plugin129 },
+        { name: "ReadAllNotifications", source: plugin130 },
+        { name: "ReadableSpoilers", source: plugin131 },
+        { name: "RealtimeTimestamps", source: plugin132 },
+        { name: "RelationshipNotifier", source: plugin133 },
+        { name: "ReplyPingControl", source: plugin134 },
+        { name: "ReverseText", source: plugin135 },
+        { name: "RoundServerIcons", source: plugin136 },
+        { name: "RoundedChatBar", source: plugin137 },
+        { name: "ScrollToLatest", source: plugin138 },
+        { name: "SedEnhanced", source: plugin139 },
+        { name: "SendTimestamps", source: plugin140 },
+        { name: "ShipCalc", source: plugin141 },
+        { name: "Signature", source: plugin142 },
+        { name: "SilenceUsers", source: plugin143 },
+        { name: "SilentMessageToggle", source: plugin144 },
+        { name: "SilentTyping", source: plugin145 },
+        { name: "SolluxTypingQuirk", source: plugin146 },
+        { name: "SpaceOut", source: plugin147 },
+        { name: "SplitLargeMessages", source: plugin148 },
+        { name: "SpotifyShareCommands", source: plugin149 },
+        { name: "Starify", source: plugin150 },
+        { name: "StickerBlocker", source: plugin151 },
+        { name: "StopAutoUnread", source: plugin152 },
+        { name: "TalkInReverse", source: plugin153 },
+        { name: "TereziTypingQuirk", source: plugin154 },
+        { name: "TextReplace", source: plugin155 },
+        { name: "TransparentChatBar", source: plugin156 },
+        { name: "Unindent", source: plugin157 },
+        { name: "UnitConverter", source: plugin158 },
+        { name: "VibeCheck", source: plugin159 },
+        { name: "VoiceJoinMessages", source: plugin160 },
+        { name: "Vriska'sTypingQuirk", source: plugin161 },
+        { name: "WiderChannelList", source: plugin162 },
+        { name: "WikiLookup", source: plugin163 },
+        { name: "WriteUpperCase", source: plugin164 },
+        { name: "ZeroWidthSanitizer", source: plugin165 },
     ],
     themes: [
         { name: "Midnight", source: theme1 },

@@ -1015,6 +1015,44 @@ function compileManagedStyle(plugin, source, entry, appearance, readStylesheet) 
     if (targets) return { capability: "appearance", lines: appearanceLines(targets) };
 }
 
+// Timestamp sources are translated into editable formats after checking the
+// behavior and defaults in the exact versions scanned.
+const timestampRecipes = {
+    RealtimeTimestamps: {
+        sha256: "98cbf6a976685766f79536b06ec162b397052ba9bc465f9d5ac99bab52a93835",
+        formats: { cozy: "HH:mm:ss", compact: "HH:mm:ss", tooltip: "dddd, MMMM D, YYYY [at] HH:mm:ss", markdown: "dddd, MMMM D, YYYY [at] HH:mm:ss" },
+    },
+    CustomTimestamps: {
+        sha256: "3a183e5b4564955cf087ec0e86a06cb0dac2db358fb2704cfb5edc74836f36d8",
+        defaultsSha256: "70802dcef4ad2206d2d99eb057198629949a89a7ee1963f77e88f97f5ca2bdc9",
+    },
+};
+
+function compileTimestampFormats(name, source, readCompanion) {
+    if (!Object.hasOwn(timestampRecipes, name)) return;
+    const recipe = timestampRecipes[name];
+    const hash = text => createHash("sha256").update(text.replaceAll("\r\n", "\n"), "utf8").digest("hex");
+    if (hash(source.text) !== recipe.sha256) return;
+    let formats = recipe.formats;
+    if (recipe.defaultsSha256) {
+        const text = readCompanion?.("utils.tsx");
+        if (!text || hash(text) !== recipe.defaultsSha256) return;
+        const defaults = ts.createSourceFile("utils.tsx", text, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+        const table = defaults.statements.filter(ts.isVariableStatement).flatMap(statement => [...statement.declarationList.declarations])
+            .find(declaration => identifier(declaration.name) === "timeFormats")?.initializer;
+        formats = {};
+        for (const [target, key] of Object.entries({ cozy: "cozy", compact: "compact", tooltip: "tooltip", accessibility: "ariaLabel",
+            today: "sameDay", yesterday: "lastDay", week: "lastWeek", older: "sameElse" })) {
+            const format = literal(value(value(table, key + "Format"), "default"));
+            if (!safeText(format)) return;
+            formats[target] = format;
+        }
+        formats.markdown = formats.tooltip;
+    }
+    return { capability: "timestamp-format", lines: ["  needs appearance.style", ...Object.entries(formats)
+        .map(([target, format]) => "  format timestamp " + target + " " + JSON.stringify(format))] };
+}
+
 function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}, readStylesheet) {
     if (platform === "betterdiscord") return inspectBetterDiscord(file, code, appearance);
     const source = ts.createSourceFile(file, code, ts.ScriptTarget.Latest, true);
@@ -1090,11 +1128,12 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
         && imported(source, "definePlugin", "@utils/types") && !source.parseDiagnostics.length && hasLicense
         && compileDesktopEffect(name, plugin, source, entry, nativeEffects);
     const externalLookup = platform === "desktop" && compileExternalLookup(name, code);
+    const timestamps = platform === "desktop" && compileTimestampFormats(name, source, readStylesheet);
     const compiled = compileSharedSource(file, code) || (platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
             || compileMobileNativeEffect(file, plugin, source, nativeEffects) || compileMobilePreviousEdit(file, plugin, source)
             || compileMobileSocialEvents(file, plugin, source)
-        : externalLookup || storeEffect || managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin)));
+        : externalLookup || storeEffect || timestamps || managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin)));
     return {
         name, file, platform, flags, ...inventory(source),
         ...(compiled ? { capability: compiled.capability, cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") } : {}),
@@ -1449,6 +1488,7 @@ function verifyPorts(files) {
                 registerPreviousMessageRule: register,
                 hideAppearanceTarget: register,
                 styleAppearanceTarget: register,
+                registerTimestampFormats: register,
             };
             const stop = activateCx(source, host, plugin.permissions);
             if (!registrations) throw new Error("No supported behavior registered");

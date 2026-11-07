@@ -5,6 +5,7 @@ import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
+import { createCxTimestampRegistry, type CxTimestampSurface } from "@utils/cx";
 import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink, type CxChannelLabel } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
@@ -14,6 +15,7 @@ import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, ComponentDispat
 import type { ReactNode } from "react";
 
 const session = createCxSession();
+const timestamps = createCxTimestampRegistry();
 const profileBioTransforms = new Set<(bio: string) => string>();
 const typingDotListeners = new Set<() => void>();
 let staticTypingDotUsers = 0;
@@ -351,6 +353,7 @@ export function CxSettings() {
                 },
                 hideAppearanceTarget: applyAppearanceCss,
                 styleAppearanceTarget: applyAppearanceCss,
+                registerTimestampFormats: timestamps.register,
                 registerUploadAnonymiser(anonymiser) {
                     if (uploadAnonymiser) throw new Error("An upload naming rule is already enabled");
                     uploadAnonymiser = anonymiser;
@@ -694,6 +697,28 @@ export default definePlugin({
         },
     },
     patches: [{
+        find: "#{intl::MESSAGE_EDITED_TIMESTAMP_A11Y_LABEL}",
+        replacement: [
+            {
+                match: /\i\.useMemo\(.{0,10}\i\.\i\)\(.{0,10}\]\)/,
+                replace: "$self.formatTimestamp(arguments[0]?.timestamp,'accessibility',$&)",
+            },
+            {
+                match: /\i\.useMemo\(.{0,50}"LT".{0,30}\]\)/,
+                replace: "$self.formatTimestamp(arguments[0]?.timestamp,arguments[0]?.compact?'compact':'cozy',$&)",
+            },
+            {
+                match: /(?<=__unsupportedReactNodeAsText:).{0,25}"LLLL"\)/,
+                replace: "$self.formatTimestamp(arguments[0]?.timestamp,'tooltip',$&)",
+            },
+        ],
+    }, {
+        find: /.full,.{0,15}children:/,
+        replacement: {
+            match: /(?<=__unsupportedReactNodeAsText:)\i.full/,
+            replace: "$self.formatTimestamp(Number(arguments[0]?.node?.timestamp)*1000,'markdown',$&)",
+        },
+    }, {
         find: "dotCycle:",
         replacement: {
             match: /(\{focused:\i\}=)(\(0,\i\.\i\)\(\))/g,
@@ -786,6 +811,9 @@ export default definePlugin({
             replace: "if(!$self.canSplitDraft($1)&&$1.length>$2)",
         },
     }],
+    formatTimestamp(input: unknown, surface: CxTimestampSurface, original: unknown) {
+        return typeof original === "string" && original ? timestamps.format(input, surface) ?? original : original;
+    },
     canSplitDraft(text: unknown) {
         return splitSender?.canSplit(SelectedChannelStore?.getChannelId(), text) === true;
     },

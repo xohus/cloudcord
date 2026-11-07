@@ -1,0 +1,11 @@
+plugin "CustomTimestamps":
+  needs appearance.style
+  format timestamp cozy "[calendar]"
+  format timestamp compact "LT"
+  format timestamp tooltip "LLLL • [relative]"
+  format timestamp accessibility "[calendar]"
+  format timestamp today "[Today at] HH:mm:ss"
+  format timestamp yesterday "[Yesterday at] HH:mm:ss"
+  format timestamp week "ddd DD.MM.YYYY HH:mm:ss"
+  format timestamp older "ddd DD.MM.YYYY HH:mm:ss"
+  format timestamp markdown "LLLL • [relative]"

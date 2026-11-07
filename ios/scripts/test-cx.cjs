@@ -328,8 +328,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             edited: true, stickers: Object.freeze([{ id: "sticker" }]), content: "hello <t:12345>",
             timestamp: "8:24 PM", timestampTooltip: "November 7 at 8:24 PM", timestampAccessibilityLabel: "8:24 PM",
         });
-        const createMessageContent = (presentation = messagePresentation) => presentation;
+        const createMessageContent = (presentation = messagePresentation) => presentation?.cxTestPresentation ?? presentation;
         const messageRenderer = { default: createMessageContent };
+        const parseTimestamp = node => node;
+        const timestampUtils = { parseTimestamp };
         const nativeChannelName = channel => channel?.name;
         const nativeChannelRow = props => props;
         const channelNameModule = { default: nativeChannelName, computeChannelName: nativeChannelName };
@@ -566,6 +568,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+                : path === "modules/markup/TimestampUtils.tsx" ? timestampUtils
                 : path === "modules/channel/useChannelName.tsx" ? channelNameModule
                 : path.endsWith("/guild_channels/ChannelContent.tsx") ? channelRowModule
                 : path.endsWith("/useDrawerWidth.tsx") ? drawerSizing
@@ -1733,6 +1736,42 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
 
         const focus = { focused: true };
         const desktopPlugin = module.exports.default;
+        const stamp = new Date(2022, 6, 10, 14, 42, 19);
+        const nativeTimestamp = Object.freeze({ timestamp: "2:42 PM", timestampTooltip: "Original tooltip", timestampAccessibilityLabel: "Original label" });
+        const nativeTimestampInput = Object.freeze({ message: Object.freeze({ timestamp: stamp }), cxTestPresentation: nativeTimestamp });
+        const nativeTimestampMarkup = Object.freeze({ full: "Original full time", parsed: stamp, formatted: "Original inline text" });
+        const formatTimestamp = () => desktop ? desktopPlugin.formatTimestamp(stamp, "cozy", nativeTimestamp.timestamp)
+            : messageRenderer.default(nativeTimestampInput).timestamp;
+        const formatMarkup = () => desktop ? desktopPlugin.formatTimestamp(stamp, "markdown", nativeTimestampMarkup.full)
+            : timestampUtils.parseTimestamp(nativeTimestampMarkup).full;
+        assert.equal(formatTimestamp(), nativeTimestamp.timestamp);
+        selectCatalog("RealtimeTimestamps");
+        click(render(), "Allow for this session");
+        assert.equal(formatTimestamp(), "14:42:19");
+        assert.match(formatMarkup(), /14:42:19/);
+        if (desktop) {
+            assert.equal(desktopPlugin.formatTimestamp(stamp, "compact", nativeTimestamp.timestamp), "14:42:19");
+            assert.equal(desktopPlugin.formatTimestamp(undefined, "cozy", nativeTimestamp.timestamp), nativeTimestamp.timestamp);
+        } else {
+            assert.match(messageRenderer.default(nativeTimestampInput).timestampTooltip, /14:42:19/);
+            assert.equal(timestampUtils.parseTimestamp(nativeTimestampMarkup).formatted, nativeTimestampMarkup.formatted);
+            assert.equal(messageRenderer.default({ ...nativeTimestampInput, isInlineReplyPreview: true }), nativeTimestamp);
+            settings.safeMode = { enabled: true };
+            assert.equal(messageRenderer.default(nativeTimestampInput), nativeTimestamp);
+            assert.equal(timestampUtils.parseTimestamp(nativeTimestampMarkup), nativeTimestampMarkup);
+            settings.safeMode = undefined;
+        }
+        selectCatalog("CustomTimestamps");
+        click(render(), "Allow for this session");
+        assert.equal(formatTimestamp(), "Sun 10.07.2022 14:42:19");
+        assert.match(formatMarkup(), /• .+ ago$/);
+        click(render(), "Disable CustomTimestamps");
+        assert.equal(formatTimestamp(), "14:42:19");
+        click(render(), "Disable RealtimeTimestamps");
+        assert.equal(formatTimestamp(), nativeTimestamp.timestamp);
+        assert.equal(formatMarkup(), nativeTimestampMarkup.full);
+        assert.equal(timestampUtils.parseTimestamp, parseTimestamp);
+        assert.equal(messageRenderer.default, createMessageContent);
         const channelStore = stores.ChannelStore;
         const originalGetChannel = channelStore.getChannel;
         const rawChannel = Object.freeze({ id: "channel", name: "🎈-ʜᴇʟʟᴏ-world", guild_id: guildId, type: 0 });
@@ -1928,7 +1967,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const flatLayout = desktop ? module.exports.default.useFlatAttachmentLayout
             : () => messageRenderer.default().useAttachmentGridLayout === false;
         const desktopLayout = desktop ? (() => {
-            const patches = module.exports.default.patches.filter(patch => patch.replacement.replace.includes("useFlatAttachmentLayout"));
+            const patches = module.exports.default.patches.flatMap(patch => patch.replacement)
+                .filter(({ replace }) => typeof replace === "string" && replace.includes("useFlatAttachmentLayout"));
             const examples = [
                 'function isVisual(kind) { return "IMAGE"===kind||"VIDEO"===kind||"CLIP"===kind; }',
                 'function layout(item) { return{visualMediaItems:[],props:item,key:item.item.uniqueId}; }',
@@ -1936,7 +1976,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             ];
             assert.equal(patches.length, examples.length);
             return examples.map((fixture, index) => {
-                const { match, replace } = patches[index].replacement;
+                const { match, replace } = patches[index];
                 const regex = new RegExp(match.source.replaceAll("\\i", "[a-zA-Z_$][\\w$]*"), match.flags);
                 const patched = fixture.replace(regex, replace.replaceAll("$self", "extension"));
                 assert.notEqual(patched, fixture);

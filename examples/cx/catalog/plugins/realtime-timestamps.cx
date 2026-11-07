@@ -1,0 +1,6 @@
+plugin "RealtimeTimestamps":
+  needs appearance.style
+  format timestamp cozy "HH:mm:ss"
+  format timestamp compact "HH:mm:ss"
+  format timestamp tooltip "dddd, MMMM D, YYYY [at] HH:mm:ss"
+  format timestamp markdown "dddd, MMMM D, YYYY [at] HH:mm:ss"

@@ -47,6 +47,20 @@ const compose = records.find(record => record.name === "CompactCompose");
 assert.equal(compose.status, "needs-adapter");
 assert.ok(compose.targets.includes("css:min-height"));
 const matches = records.filter(record => record.cx);
+for (const name of ["RealtimeTimestamps", "CustomTimestamps"]) {
+    const port = matches.find(record => record.name === name);
+    assert.equal(port?.capability, "timestamp-format");
+    const [file, source] = [...portFiles([port])][0];
+    const original = path.resolve(__dirname, "../../..", port.file);
+    assert.equal(fs.readFileSync(path.resolve(__dirname, "../../../examples/cx/catalog/plugins", file), "utf8").replaceAll("\r\n", "\n"), source);
+    const code = fs.readFileSync(original, "utf8");
+    assert.equal(inspectPlugin(port.file, code + "\n// Source changed", "desktop").cx, undefined);
+    if (name === "CustomTimestamps") {
+        const defaults = fs.readFileSync(path.join(path.dirname(original), "utils.tsx"), "utf8");
+        assert.equal(inspectPlugin(port.file, code, "desktop", {}, {}, () => defaults + "\n// Changed defaults").cx, undefined);
+    }
+    assert.throws(() => parseCx(source + '  format timestamp cozy "LT"'), /duplicate timestamp target/);
+}
 const wikiLookup = matches.find(record => record.name === "WikiLookup");
 assert.equal(wikiLookup?.capability, "external-lookup");
 assert.equal(parseCx(wikiLookup.cx).commands[0].actions[0].service, "wikipedia");
