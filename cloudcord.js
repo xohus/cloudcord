@@ -38067,6 +38067,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           permission: "typing.suppress",
           label: "Stop sending your typing indicator"
         },
+        "static-typing-dots": {
+          permission: "appearance.style",
+          label: "Keep Discord's typing dots still"
+        },
         "pending-friend-count": {
           permission: "appearance.hide",
           label: "Hide the pending friend request count"
@@ -39901,6 +39905,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/no-typing-animation.cx
+  var no_typing_animation_default;
+  var init_no_typing_animation = __esm({
+    "../examples/cx/catalog/plugins/no-typing-animation.cx"() {
+      no_typing_animation_default = 'plugin "NoTypingAnimation":\n  needs appearance.style\n  use static-typing-dots\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/normalize-message-links.cx
   var normalize_message_links_default;
   var init_normalize_message_links = __esm({
@@ -41041,6 +41053,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_no_pending_count();
       init_no_profile_themes();
       init_no_reply_mention();
+      init_no_typing_animation();
       init_normalize_message_links();
       init_polish_wording();
       init_read_all_notifications();
@@ -41513,6 +41526,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "NoReplyMention",
             source: no_reply_mention_default
+          },
+          {
+            name: "NoTypingAnimation",
+            source: no_typing_animation_default
           },
           {
             name: "NormalizeMessageLinks",
@@ -42152,6 +42169,71 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       }
     };
   }
+  function registerStaticTypingDots() {
+    if (!staticTypingDots) {
+      var TypingDots2 = function({ element }) {
+        var inside = React2.useContext(InTypingIndicator);
+        if (!inside || settings.safeMode?.enabled)
+          return element;
+        var backgroundColor = resolveSemanticColor(semanticColors.INTERACTIVE_TEXT_DEFAULT ?? semanticColors.INTERACTIVE_ICON_DEFAULT) ?? "#949ba4";
+        var dot = {
+          width: 5,
+          height: 5,
+          borderRadius: 3,
+          backgroundColor
+        };
+        return /* @__PURE__ */ jsxs(import_react_native41.View, {
+          style: {
+            flexDirection: "row",
+            gap: 4
+          },
+          accessible: false,
+          children: [
+            /* @__PURE__ */ jsx(import_react_native41.View, {
+              style: dot
+            }),
+            /* @__PURE__ */ jsx(import_react_native41.View, {
+              style: dot
+            }),
+            /* @__PURE__ */ jsx(import_react_native41.View, {
+              style: dot
+            })
+          ]
+        });
+      };
+      var TypingDots = TypingDots2;
+      var ellipsis = findByFilePath("design/components/Button/native/ButtonEllipsis.native.tsx")?.Ellipsis;
+      if (!ellipsis)
+        throw new Error("Discord's typing dots are unavailable");
+      var InTypingIndicator = React2.createContext(false);
+      var stopScope = registerJsxAppearance([
+        "TypingIndicatorInner"
+      ], (element) => /* @__PURE__ */ jsx(InTypingIndicator.Provider, {
+        value: true,
+        children: element
+      }));
+      var stopDots = registerJsxAppearance([
+        ellipsis
+      ], (element) => /* @__PURE__ */ jsx(TypingDots2, {
+        element
+      }));
+      staticTypingDots = {
+        stop: () => {
+          stopDots();
+          stopScope();
+        },
+        users: 0
+      };
+    }
+    var binding = staticTypingDots;
+    binding.users++;
+    return () => {
+      if (--binding.users === 0) {
+        binding.stop();
+        staticTypingDots = void 0;
+      }
+    };
+  }
   function containsAppearanceType(tree, types, depth = 0) {
     if (depth >= 16)
       return false;
@@ -42706,6 +42788,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           registerNativeEffect(effect, avatarResolution = 256) {
             var enabled = () => !settings.safeMode?.enabled;
             switch (effect) {
+              case "static-typing-dots":
+                return registerStaticTypingDots();
               case "silent-typing":
                 return overrideCxMethods(findByProps("startTyping", "stopTyping"), {
                   startTyping: () => void 0
@@ -43131,7 +43215,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       })
     });
   }
-  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, profileMenuActions, stopProfileMenuHooks;
+  var import_react_native41, session, UserStore2, ChannelStore, MessageStore, RelationshipStore, UserProfileStore, GuildMemberStore, GuildStore, GuildChannelStore, ActiveJoinedThreadsStore, ReadStateStore, SpotifyStore, SelectedChannelStore, appearanceBindings, memberRowScope, staticTypingDots, profileMenuActions, stopProfileMenuHooks;
   var init_CxExtensions = __esm({
     "src/core/ui/settings/pages/CxExtensions/index.tsx"() {
       "use strict";
@@ -43154,6 +43238,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_loader();
       init_jsx();
       init_settings();
+      init_color();
       init_toasts();
       init_metro();
       init_common();
@@ -47810,7 +47895,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "49b94d2efa0a8fc0d2b3b68a08fe96e39e48cd1f";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "191c76b3255d1f509c57605738612415e9313459";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
