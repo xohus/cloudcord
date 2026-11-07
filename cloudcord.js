@@ -36389,6 +36389,17 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             "VoicePanelStreamPreview"
           ]
         },
+        "voice-user-avatars": {
+          plugin: "HideVoiceUserAvatars",
+          label: "avatars next to users in voice channels",
+          css: '[class*="voiceUser"] [class*="avatar"] { display: none !important; }',
+          mobile: {
+            renderTree: "modules/guild_sidebar/native/VoiceUserItem.tsx",
+            hideComponents: [
+              "Avatar"
+            ]
+          }
+        },
         "nameplates": {
           plugin: "HideNameplates",
           label: "nameplates",
@@ -36474,7 +36485,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           label: "the buttons to start calls in DMs",
           css: '[aria-label="Start Voice Call"], [aria-label="Start Video Call"] { display: none !important; }',
           mobile: {
-            header: "modules/main_tabs_v2/native/channel/header/PrivateChannelButtons.tsx",
+            renderTree: "modules/main_tabs_v2/native/channel/header/PrivateChannelButtons.tsx",
             hideIcons: [
               "PhoneCallIcon",
               "VideoIcon"
@@ -36490,7 +36501,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           label: "the search button in the DM list",
           css: '[class*="privateChannels"] [class*="searchBar"] { display: none !important; }',
           mobile: {
-            header: "modules/main_tabs_v2/native/tabs/messages/MessagesHeader.tsx",
+            renderTree: "modules/main_tabs_v2/native/tabs/messages/MessagesHeader.tsx",
             hideLabels: [
               "5h0QOP"
             ]
@@ -39261,6 +39272,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     }
   });
 
+  // ../examples/cx/catalog/plugins/hide-voice-user-avatars.cx
+  var hide_voice_user_avatars_default;
+  var init_hide_voice_user_avatars = __esm({
+    "../examples/cx/catalog/plugins/hide-voice-user-avatars.cx"() {
+      hide_voice_user_avatars_default = 'plugin "HideVoiceUserAvatars":\n  needs appearance.hide\n  hide voice-user-avatars\n';
+    }
+  });
+
   // ../examples/cx/catalog/plugins/high-contrast-text.cx
   var high_contrast_text_default;
   var init_high_contrast_text = __esm({
@@ -40450,6 +40469,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_stream_previews();
       init_hide_typing_indicator();
       init_hide_unread_pills();
+      init_hide_voice_user_avatars();
       init_high_contrast_text();
       init_high_res_profile_images();
       init_highlight_links();
@@ -40808,6 +40828,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HideUnreadPills",
             source: hide_unread_pills_default
+          },
+          {
+            name: "HideVoiceUserAvatars",
+            source: hide_voice_user_avatars_default
           },
           {
             name: "HighContrastText",
@@ -41447,33 +41471,38 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         cleanup();
     };
   }
-  function containsHeaderIcon(tree, icons) {
+  function containsAppearanceType(tree, types, depth = 0) {
+    if (depth >= 16)
+      return false;
     if (Array.isArray(tree))
-      return tree.some((child) => containsHeaderIcon(child, icons));
-    return React2.isValidElement(tree) && (icons.has(tree.type) || containsHeaderIcon(tree.props.children, icons));
+      return tree.some((child) => containsAppearanceType(child, types, depth + 1));
+    return React2.isValidElement(tree) && (types.has(tree.type) || containsAppearanceType(tree.props.children, types, depth + 1));
   }
-  function hideHeaderButtons(tree, shouldHide) {
+  function hideAppearanceElements(tree, shouldHide, depth = 0) {
+    if (depth >= 16)
+      return tree;
     if (Array.isArray(tree)) {
-      var next = tree.map((child) => hideHeaderButtons(child, shouldHide));
+      var next = tree.map((child) => hideAppearanceElements(child, shouldHide, depth + 1));
       return next.every((child, index) => child === tree[index]) ? tree : next;
     }
     if (!React2.isValidElement(tree))
       return tree;
-    if (typeof tree.props.onPress === "function" && shouldHide(tree.props))
+    if (shouldHide(tree))
       return null;
     var { children } = tree.props;
-    var next1 = hideHeaderButtons(children, shouldHide);
+    var next1 = hideAppearanceElements(children, shouldHide, depth + 1);
     return next1 === children ? tree : React2.cloneElement(tree, {
       children: next1
     });
   }
-  function registerHeaderAppearance(rule) {
-    var header = findByFilePath(rule.header)?.default;
-    if (header?.$$typeof !== Symbol.for("react.memo") || typeof header.type !== "function") {
-      throw new Error("Discord's header is unavailable");
+  function registerTreeAppearance(rule) {
+    var target = findByFilePath(rule.renderTree)?.default;
+    if (target?.$$typeof !== Symbol.for("react.memo") || typeof target.type !== "function") {
+      throw new Error("Discord's appearance component is unavailable");
     }
-    var getIcons = (names) => new Set(names.map((name) => findByProps(name)?.[name]).filter(Boolean));
-    var hide = getIcons(rule.hideIcons ?? []);
+    var getTypes = (names) => new Set(names.map((name) => findByProps(name)?.[name]).filter(Boolean));
+    var components = getTypes(rule.hideComponents ?? []);
+    var icons = getTypes(rule.hideIcons ?? []);
     var translations = rule.hideLabels && findByProps("intl", "t");
     var labels = new Set(rule.hideLabels?.flatMap((key) => {
       var message = translations?.t?.[key];
@@ -41482,24 +41511,27 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         label2
       ] : [];
     }));
-    if (!hide.size && !labels.size)
-      throw new Error("Discord's header controls are unavailable");
-    var keep = getIcons(rule.keepWhilePresent ?? []);
+    if (!components.size && !icons.size && !labels.size)
+      throw new Error("Discord's appearance targets are unavailable");
+    var keep = getTypes(rule.keepWhilePresent ?? []);
     if (rule.keepWhilePresent && keep.size !== rule.keepWhilePresent.length) {
       throw new Error("Discord's active call controls are unavailable");
     }
-    var shouldHide = ({ children, accessibilityRole, accessibilityLabel }) => Boolean(accessibilityLabel && labels.has(accessibilityLabel)) || accessibilityRole === "button" && hide.size > 0 && containsHeaderIcon(children, hide);
-    var render = header.type;
-    var component = header.displayName || render.displayName || render.name;
+    var shouldHide = ({ type, props }) => {
+      var { children, accessibilityRole, accessibilityLabel, onPress } = props;
+      return components.has(type) || typeof onPress === "function" && (Boolean(accessibilityLabel && labels.has(accessibilityLabel)) || accessibilityRole === "button" && icons.size > 0 && containsAppearanceType(children, icons));
+    };
+    var render = target.type;
+    var component = target.displayName || render.displayName || render.name;
     if (!component)
-      throw new Error("Discord's header has no component name");
-    var FilteredHeader = React2.memo(function FilteredHeader2(props) {
+      throw new Error("Discord's appearance component has no name");
+    var FilteredTree = React2.memo(function FilteredTree2(props) {
       var tree = render(props);
-      return settings.safeMode?.enabled || keep.size && containsHeaderIcon(tree, keep) ? tree : hideHeaderButtons(tree, shouldHide);
-    }, header.compare);
+      return settings.safeMode?.enabled || keep.size && containsAppearanceType(tree, keep) ? tree : hideAppearanceElements(tree, shouldHide);
+    }, target.compare);
     return registerJsxAppearance([
       component
-    ], (element) => element.type === header ? React2.createElement(FilteredHeader, {
+    ], (element) => element.type === target ? React2.createElement(FilteredTree, {
       ...element.props,
       key: element.key
     }) : element);
@@ -41699,8 +41731,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           registerProfileMenuAction,
           hideAppearanceTarget(target) {
             var mobile = cxAppearanceTargets[target].mobile;
-            if ("header" in mobile)
-              return registerHeaderAppearance(mobile);
+            if ("renderTree" in mobile)
+              return registerTreeAppearance(mobile);
             if (!("messagePresentation" in mobile))
               return registerJsxAppearance(mobile, () => null);
             var renderer = findByFilePath("modules/messages/native/renderer/createMessageContent.tsx");
@@ -46855,7 +46887,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "aedb350f186e035c4d745f0279e36a2923c65e13";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "f665bfeb1ef8e5041b78059ee2adcd675b214c54";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
