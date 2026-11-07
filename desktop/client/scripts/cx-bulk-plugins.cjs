@@ -685,6 +685,14 @@ const desktopEffectRecipes = {
         effect: "attachment-image-quality",
         sha256: "a2bdea261f380d0827c389381ca2aad637aacb5aad6fc25e4c80503df0102751",
     },
+    ImageFilename: {
+        effect: "image-filename",
+        sha256: "d9e7ae119be67c42c07e46f0c7cec9266eb1097f9e5c9b2c5a0b6c8638a53e7e",
+    },
+    BetterGifAltText: {
+        effect: "descriptive-gif-alt",
+        sha256: "ce344d1adaf7b09e3dd44e96eed5d087c7ef0805cd6b3fd20b6adadb371dd60b",
+    },
     StopAutoUnread: {
         effect: "stop-auto-unread",
         find: "}maybeAutoUpgradeChannel(",

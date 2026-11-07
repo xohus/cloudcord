@@ -3,7 +3,7 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
-import { formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, validateCxMediaLink, validateCxStickerLink } from "@lib/api/cx";
+import { formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink, validateCxStickerLink } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
 import { copyCcpReport } from "@lib/api/ccpReport";
@@ -21,7 +21,7 @@ import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } fro
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
-import { Animated, FlatList, Linking, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
+import { Alert, Animated, FlatList, Linking, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
 const UserStore = findByStoreNameLazy("UserStore");
@@ -236,17 +236,10 @@ function registerExpressionLinks(effect: "copy-emoji-markdown" | "sticker-links"
     };
 }
 
-function registerMediaLinkCopy() {
-    let active = true;
-    const enabled = () => active && !settings.safeMode?.enabled;
-    const copy = (link: string) => () => {
-        if (!enabled()) return;
-        clipboard.setString(link);
-        showToast.showCopyToClipboard?.();
-    };
+function patchMediaViewerAction(label: string, enabled: () => boolean, select: (link: string) => (() => void) | undefined) {
     const mediaActions = findByFilePath("modules/media_viewer/native/components/MediaShareActions.tsx");
     const IconComponent = findByProps("LinkIcon")?.LinkIcon;
-    const stopMedia = overrideCxMethods(mediaActions, {
+    return overrideCxMethods(mediaActions, {
         useMediaShareActions(args, invoke) {
             const actions = invoke(args);
             const media = args[0] as {
@@ -256,10 +249,33 @@ function registerMediaLinkCopy() {
             if (!Array.isArray(actions) || !actions.length || media?.disableDownload || media?.shareable === false || media?.source?.obscure) return actions;
             const source = media?.source;
             const link = validateCxMediaLink(source?.shareURI) ?? validateCxMediaLink(source?.sourceURI) ?? validateCxMediaLink(source?.uri);
-            if (!link || actions.some(action => action?.label === "Copy Media Link (CX)")) return actions;
-            return [...actions, { label: "Copy Media Link (CX)", IconComponent, action: copy(link) }];
+            if (!link || actions.some(action => action?.label === label)) return actions;
+            const action = select(link);
+            return action ? [...actions, { label, IconComponent, action }] : actions;
         },
     }, enabled);
+}
+
+function registerImageFilename(full: boolean) {
+    let active = true;
+    const enabled = () => active && !settings.safeMode?.enabled;
+    const label = full ? "Image URL (CX)" : "Image Filename (CX)";
+    const stop = patchMediaViewerAction(label, enabled, link => {
+        const name = getCxImageTitle(link, full);
+        return name ? () => { if (enabled()) Alert.alert(label, name); } : undefined;
+    });
+    return () => { active = false; stop(); };
+}
+
+function registerMediaLinkCopy() {
+    let active = true;
+    const enabled = () => active && !settings.safeMode?.enabled;
+    const copy = (link: string) => () => {
+        if (!enabled()) return;
+        clipboard.setString(link);
+        showToast.showCopyToClipboard?.();
+    };
+    const stopMedia = patchMediaViewerAction("Copy Media Link (CX)", enabled, copy);
     try {
         const stopLinks = overrideCxMethods(findByProps("showSimpleActionSheet"), {
             showSimpleActionSheet(args, invoke) {
@@ -279,6 +295,64 @@ function registerMediaLinkCopy() {
     }
 }
 
+function mapMediaEntries<T>(items: readonly T[], transform: (item: T) => T) {
+    const next = items.map(transform);
+    return next.some((item, index) => item !== items[index]) ? next : items;
+}
+
+function registerGifAltText() {
+    const enabled = () => !settings.safeMode?.enabled;
+    const cleanups: (() => void)[] = [];
+    const stop = () => { for (const cleanup of cleanups.splice(0).reverse()) cleanup(); };
+    try {
+        const attachments = findByFilePath("modules/messages/native/renderer/transformMessageAttachments.tsx");
+        cleanups.push(overrideCxMethods(attachments, {
+            default(args, invoke) {
+                const rows = invoke(args);
+                if (!Array.isArray(rows)) return rows;
+                return mapMediaEntries(rows, item => {
+                    if (!item || item.obscure || item.isSuspiciousDownload || item.description) return item;
+                    const alt = getCxGifDescription(item.url, item.alt);
+                    return alt ? { ...item, alt } : item;
+                });
+            },
+        }, enabled));
+        const viewer = findByFilePath("modules/media_viewer/native/useMediaViewerSources.tsx");
+        cleanups.push(overrideCxMethods(viewer, {
+            setMediaViewerSources(args, invoke) {
+                const [options, ...rest] = args;
+                const state = options as { sources?: unknown[]; } | undefined;
+                if (!Array.isArray(state?.sources)) return invoke(args);
+                const sources = mapMediaEntries(state.sources, item => {
+                    const source = item as { uri?: unknown; sourceURI?: unknown; description?: unknown; obscure?: unknown;
+                        spoiler?: unknown; contentType?: unknown; } | undefined;
+                    if (!source || source.obscure || source.spoiler) return item;
+                    const description = getCxGifDescription(source.sourceURI ?? source.uri, source.description, source.contentType === "image/gif");
+                    return description ? { ...source, description } : item;
+                });
+                return invoke(sources === state.sources ? args : [{ ...state, sources }, ...rest]);
+            },
+        }, enabled));
+        const picker = findByFilePath("modules/gif_picker/native/GIFPickerItemView.tsx");
+        cleanups.push(overrideCxMethods(picker, {
+            default(args, invoke) {
+                const element = invoke(args);
+                const item = (args[0] as { item?: { src?: unknown; }; } | undefined)?.item;
+                if (!React.isValidElement<{ accessibilityLabel?: string; accessibilityRole?: string; }>(element)
+                    || element.props.accessibilityRole !== "button") return element;
+                const description = getCxGifDescription(item?.src, undefined, true);
+                if (!description) return element;
+                const label = element.props.accessibilityLabel;
+                return React.cloneElement(element, { accessibilityLabel: label ? label + ". " + description : description });
+            },
+        }, enabled));
+        return stop;
+    } catch (error) {
+        stop();
+        throw error;
+    }
+}
+
 let attachmentQualityBinding: { stop: () => void; users: number; originals: number; } | undefined;
 
 function patchAttachmentImageQuality() {
@@ -291,13 +365,12 @@ function patchAttachmentImageQuality() {
             const attachments = invoke(args);
             if (!Array.isArray(attachments) || !(args[0] as { shouldInlineAttachmentMedia?: boolean; } | undefined)?.shouldInlineAttachmentMedia)
                 return attachments;
-            const next = attachments.map(item => {
+            return mapMediaEntries(attachments, item => {
                 if (!item || item.obscure || item.isSuspiciousDownload || item.videoUrl || item.inlinePlaybackDisabled) return item;
                 const url = getCxAttachmentImageUrl(item.url, { width: item.width, height: item.height, original: binding.originals > 0,
                     frozen: item.srcIsAnimated === true && item.isAnimated === false ? true : undefined });
                 return url && url !== item.url ? { ...item, url } : item;
             });
-            return next.some((item, index) => item !== attachments[index]) ? next : attachments;
         },
     }, enabled);
     try {
@@ -306,13 +379,13 @@ function patchAttachmentImageQuality() {
                 const [options, ...rest] = args;
                 const state = options as { sources?: unknown[]; } | undefined;
                 if (!Array.isArray(state?.sources)) return invoke(args);
-                const sources = state.sources.map(item => {
+                const sources = mapMediaEntries(state.sources, item => {
                     const source = item as { uri?: unknown; videoURI?: unknown; obscure?: unknown; spoiler?: unknown; } | undefined;
                     if (!source || source.videoURI || source.obscure || source.spoiler) return item;
                     const uri = getCxAttachmentImageUrl(source.uri, { original: true });
                     return uri && uri !== source.uri ? { ...source, uri } : item;
                 });
-                return invoke(sources.some((source, index) => source !== state.sources![index]) ? [{ ...state, sources }, ...rest] : args);
+                return invoke(sources === state.sources ? args : [{ ...state, sources }, ...rest]);
             },
         }, enabled);
         return Object.assign(binding, { stop: () => { stopViewer(); stopChat(); } });
@@ -1077,6 +1150,11 @@ export default function CxExtensions() {
                             return registerExpressionLinks(effect);
                         case "copy-media-link":
                             return registerMediaLinkCopy();
+                        case "image-filename":
+                        case "image-full-url":
+                            return registerImageFilename(effect === "image-full-url");
+                        case "descriptive-gif-alt":
+                            return registerGifAltText();
                         case "attachment-image-quality":
                         case "original-attachment-images":
                             return registerAttachmentImageQuality(effect === "original-attachment-images");

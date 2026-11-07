@@ -377,6 +377,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const linkSheet = { showSimpleActionSheet: sheet => sheet };
         const attachmentRows = { default: ({ attachments }) => attachments };
         const viewerSources = { setMediaViewerSources: state => state };
+        const gifPicker = { default: () => jsx("Pressable", { accessibilityLabel: "GIF 3", accessibilityRole: "button" }) };
+        const mediaAlerts = [];
         let inMemberRow = false;
         const typingEllipsis = function Ellipsis() {};
         class NativeCloudUploader {
@@ -516,6 +518,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/MediaShareActions.tsx") ? mediaShare
                 : path.endsWith("/transformMessageAttachments.tsx") ? attachmentRows
                 : path.endsWith("/useMediaViewerSources.tsx") ? viewerSources
+                : path.endsWith("/GIFPickerItemView.tsx") ? gifPicker
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
@@ -548,6 +551,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 commands: { getBuiltInCommands: () => [] }, messageUtil: commandApi },
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup" },
             "react-native": {
+                Alert: { alert: (title, body) => mediaAlerts.push([title, body]) },
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
                 Linking: { openURL: openExternal },
                 processColor: value => value === "#7c5cff2e" ? 0x2e7c5cff : undefined,
@@ -1863,6 +1867,51 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         click(render(), "Allow for this session");
         assert.equal(readImage(), originalImage);
         click(render(), "Disable FixImagesQuality");
+        const descriptiveGif = "https://media.discordapp.net/attachments/1/2/cat%20dance-23.gif?ex=12&hm=abc";
+        const gifLabel = "GIF - cat dance";
+        selectCatalog("ImageFilename");
+        click(render(), "Allow for this session");
+        selectCatalog("BetterGifAltText");
+        click(render(), "Allow for this session");
+        if (desktop) {
+            assert.equal(desktopPlugin.getMediaTitle(attachment).title, "image.png");
+            const tenor = "https://media.tenor.com/hash/cat.gif?width=32";
+            assert.equal(desktopPlugin.getMediaTitle(tenor).title, tenor);
+            assert.equal(desktopPlugin.getMediaTitle("https://tenor.com.example/video"), undefined);
+            assert.equal(desktopPlugin.getMediaGifAlt({ src: descriptiveGif, alt: "GIF" }, () => "GIF"), gifLabel);
+            assert.equal(desktopPlugin.getMediaGifAlt({ src: descriptiveGif, alt: "User description" }, () => "GIF"), "User description");
+            const mutableGif = { src: descriptiveGif };
+            desktopPlugin.updateGifAlt(mutableGif);
+            assert.equal(mutableGif.alt, gifLabel);
+        } else {
+            const mediaOptions = { source: { uri: attachment }, shareable: true };
+            const filenameAction = mediaShare.useMediaShareActions(mediaOptions).find(item => item.label === "Image Filename (CX)");
+            assert.equal(mediaAlerts.length, 0);
+            filenameAction.action();
+            assert.deepEqual(mediaAlerts, [["Image Filename (CX)", "image.png"]]);
+            const authored = Object.freeze({ url: descriptiveGif, alt: "Hand-written alt text" });
+            const gifRows = Object.freeze([Object.freeze({ url: descriptiveGif, alt: "GIF" }), authored]);
+            const gifInline = { ...inline, attachments: gifRows };
+            assert.equal(attachmentRows.default(gifInline)[0].alt, gifLabel);
+            assert.equal(attachmentRows.default(gifInline)[1], authored);
+            const gifViewer = { ...viewer, sources: [{ uri: descriptiveGif }, { uri: descriptiveGif, spoiler: true }] };
+            assert.equal(viewerSources.setMediaViewerSources(gifViewer).sources[0].description, gifLabel);
+            assert.equal(viewerSources.setMediaViewerSources(gifViewer).sources[1], gifViewer.sources[1]);
+            const pickerProps = { item: { src: descriptiveGif } };
+            assert.equal(gifPicker.default(pickerProps).props.accessibilityLabel, "GIF 3. " + gifLabel);
+            click(render(), "Disable ImageFilename");
+            filenameAction.action();
+            assert.equal(mediaAlerts.length, 1);
+            assert.equal(mediaShare.useMediaShareActions(mediaOptions), nativeMediaActions);
+        }
+        if (desktop) click(render(), "Disable ImageFilename");
+        click(render(), "Disable BetterGifAltText");
+        if (desktop) {
+            assert.equal(desktopPlugin.getMediaTitle(attachment), undefined);
+            assert.equal(desktopPlugin.getMediaGifAlt({ src: descriptiveGif, alt: "" }, () => "GIF"), "");
+        } else {
+            assert.equal(gifPicker.default({ item: { src: descriptiveGif } }).props.accessibilityLabel, "GIF 3");
+        }
         const splitDraft = "a".repeat(1999) + "🙂" + "b".repeat(20);
         const plannedParts = moduleBox.exports.planCxMessageParts(splitDraft);
         assert.equal(plannedParts[0].length, 1999);

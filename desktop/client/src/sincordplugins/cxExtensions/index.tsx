@@ -5,7 +5,7 @@ import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
-import { formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, validateCxMediaLink } from "@utils/cx";
+import { formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
@@ -20,6 +20,9 @@ let fixFileExtensionUsers = 0;
 let flatAttachmentUsers = 0;
 let attachmentQualityUsers = 0;
 let originalAttachmentUsers = 0;
+let imageFilenameUsers = 0;
+let imageFullUrlUsers = 0;
+let descriptiveGifAltUsers = 0;
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
@@ -287,6 +290,15 @@ export function CxSettings() {
                         case "original-attachment-images":
                             originalAttachmentUsers++;
                             return () => { originalAttachmentUsers--; };
+                        case "image-filename":
+                            imageFilenameUsers++;
+                            return () => { imageFilenameUsers--; };
+                        case "image-full-url":
+                            imageFullUrlUsers++;
+                            return () => { imageFullUrlUsers--; };
+                        case "descriptive-gif-alt":
+                            descriptiveGifAltUsers++;
+                            return () => { descriptiveGifAltUsers--; };
                         case "scroll-to-latest":
                             return bindCxChannelOpenRead({ dispatcher: FluxDispatcher, read: ReadStateStore,
                                 selected: () => SelectedChannelStore?.getChannelId(), user: () => UserStore?.getCurrentUser()?.id,
@@ -594,6 +606,24 @@ export default definePlugin({
             replace: "$&var cxSrc=$self.getAttachmentImageSrc(this?.props,arguments[1]);if(cxSrc)return cxSrc;",
         },
     }, {
+        find: ".RESPONSIVE?",
+        replacement: {
+            match: /(?="data-role":"img","data-safe-src":)(?<=href:(\i).+?)/,
+            replace: "...$self.getMediaTitle($1),",
+        },
+    }, {
+        find: ".modalContext})};",
+        replacement: {
+            match: /(return.{0,10}\.jsx.{0,50}isWindowFocused)/,
+            replace: "$self.updateGifAlt(e);$1",
+        },
+    }, {
+        find: "#{intl::GIF}",
+        replacement: {
+            match: /alt:(\i)=(\i\.\i\.string\(\i\.\i#{intl::GIF}\))(?=,[^}]*\}=(\i))/,
+            replace: "alt_$$:$1=$self.getMediaGifAlt($3,()=>$2)",
+        },
+    }, {
         find: "#{intl::ATTACHMENT_UTILITIES_SPOILER}",
         replacement: {
             match: /(?<=children:\[)(?=.{10,80}tooltip:.{0,100}#{intl::ATTACHMENT_UTILITIES_SPOILER})/,
@@ -641,6 +671,21 @@ export default definePlugin({
             || (props.contentType && (typeof props.contentType !== "string" || !props.contentType.startsWith("image/")))) return;
         return getCxAttachmentImageUrl(props.src, { width: props.width, height: props.height,
             original: Boolean(props.trigger || originalAttachmentUsers), frozen: frozen === true });
+    },
+    getMediaTitle(source: unknown) {
+        if (!imageFilenameUsers && !imageFullUrlUsers) return;
+        const title = getCxImageTitle(source, imageFullUrlUsers > 0);
+        if (title) return { title };
+    },
+    getMediaGifAlt(props: { original?: unknown; src?: unknown; alt?: string; } | undefined, fallback: () => string) {
+        const alt = props?.alt === undefined ? fallback() : props.alt;
+        if (!descriptiveGifAltUsers) return alt;
+        return getCxGifDescription(props?.original ?? props?.src, props?.alt, true) ?? alt;
+    },
+    updateGifAlt(props: { original?: unknown; src?: unknown; alt?: string; } | undefined) {
+        if (!descriptiveGifAltUsers || !props) return;
+        const alt = getCxGifDescription(props.original ?? props.src, props.alt, true);
+        if (alt) try { props.alt = alt; } catch { /* The source element may be frozen. */ }
     },
     fixUploadExtensions(files: unknown) {
         if (fixFileExtensionUsers) fixCxFileExtensions(files);

@@ -1,0 +1,3 @@
+plugin "BetterGifAltText":
+  needs media.labels
+  use descriptive-gif-alt

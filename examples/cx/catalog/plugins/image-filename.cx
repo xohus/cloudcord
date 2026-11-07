@@ -1,0 +1,3 @@
+plugin "ImageFilename":
+  needs media.labels
+  use image-filename

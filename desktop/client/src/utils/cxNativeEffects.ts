@@ -17,6 +17,9 @@ export const cxNativeEffects = {
     "copy-media-link": { permission: "media.clipboard", label: "Add a clipboard action to media and link menus" },
     "attachment-image-quality": { permission: "media.imagequality", label: "Improve attachment previews and load originals in the media viewer" },
     "original-attachment-images": { permission: "media.imagequality", label: "Load original attachment images in chat and the media viewer" },
+    "image-filename": { permission: "media.labels", label: "Show image filenames and GIF links" },
+    "image-full-url": { permission: "media.labels", label: "Show the full URL of images and GIFs" },
+    "descriptive-gif-alt": { permission: "media.labels", label: "Use meaningful filenames for GIFs with generic alt text" },
     "scroll-to-latest": { permission: "channels.markonopen", label: "Open channels at the latest message and mark them read" },
     "sticker-links": { permission: "stickers.links", label: "Add Copy Sticker Link and Open Sticker Link actions" },
 } as const;
