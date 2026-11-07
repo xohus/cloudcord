@@ -3,7 +3,7 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
-import { formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink, validateCxStickerLink } from "@lib/api/cx";
+import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, validateCxMediaLink, validateCxStickerLink, type CxChannelLabel } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
 import { copyCcpReport } from "@lib/api/ccpReport";
@@ -25,6 +25,43 @@ import type { ComponentType, Context, ReactElement, ReactNode } from "react";
 import { Alert, Animated, FlatList, Linking, processColor, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
+const channelNames = { clean: 0, titles: 0 };
+let stopChannelNames: (() => void) | undefined;
+
+function registerChannelNames(mode: keyof typeof channelNames, enabled: () => boolean) {
+    if (!stopChannelNames) {
+        const nameModule = findByFilePath("modules/channel/useChannelName.tsx");
+        const channelRows = findByFilePath("modules/main_tabs_v2/native/shared_components/guild_channels/ChannelContent.tsx");
+        const format = (label: unknown, channel?: CxChannelLabel) =>
+            typeof label === "string" && channel ? formatCxChannelName(label, channel, channelNames) : label;
+        const stopNames = overrideCxMethods(nameModule, {
+            default: (args, invoke) => format(invoke(args), args[0] as CxChannelLabel | undefined),
+            computeChannelName: (args, invoke) => format(invoke(args), args[0] as CxChannelLabel | undefined),
+        }, enabled);
+        try {
+            const stopRows = overrideCxMethods(channelRows, {
+                renderChannelContent(args, invoke) {
+                    const props = args[0] as { name?: string; channel?: CxChannelLabel; } | undefined;
+                    const name = format(props?.name, props?.channel);
+                    return name === props?.name ? invoke(args) : invoke([{ ...props, name }, ...args.slice(1)]);
+                },
+            }, enabled);
+            stopChannelNames = () => { stopRows(); stopNames(); };
+        } catch (error) { stopNames(); throw error; }
+    }
+    channelNames[mode]++;
+    let active = true;
+    return () => {
+        if (!active) return;
+        active = false;
+        channelNames[mode]--;
+        if (!channelNames.clean && !channelNames.titles) {
+            stopChannelNames?.();
+            stopChannelNames = undefined;
+        }
+    };
+}
+
 const UserStore = findByStoreNameLazy("UserStore");
 const ChannelStore = findByStoreNameLazy("ChannelStore");
 const MessageStore = findByStoreNameLazy("MessageStore");
@@ -1294,6 +1331,9 @@ export default function CxExtensions() {
                 registerNativeEffect(effect, avatarResolution = 256) {
                     const enabled = () => !settings.safeMode?.enabled;
                     switch (effect) {
+                        case "clean-channel-names":
+                        case "title-channel-names":
+                            return registerChannelNames(effect === "clean-channel-names" ? "clean" : "titles", enabled);
                         case "static-typing-dots":
                             return registerStaticTypingDots();
                         case "hide-disabled-emojis":

@@ -1,0 +1,3 @@
+plugin "BetterChatNames":
+  needs appearance.style
+  use title-channel-names

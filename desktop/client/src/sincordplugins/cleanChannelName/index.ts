@@ -5,30 +5,14 @@
  */
 
 import { Devs } from "@utils/constants";
+import { cleanChannelName as computeClean } from "@utils/cxChannelNames";
 import definePlugin from "@utils/types";
 import { Channel } from "@vencord/discord-types";
 import { ChannelStore } from "@webpack/common";
 
-const SMALL_CAPS: Record<string, string> = {
-    "ᴀ": "a", "ʙ": "b", "ᴄ": "c", "ᴅ": "d", "ᴇ": "e", "ꜰ": "f", "ɢ": "g", "ʜ": "h", "ɪ": "i", "ᴊ": "j",
-    "ᴋ": "k", "ʟ": "l", "ᴍ": "m", "ɴ": "n", "ᴏ": "o", "ᴘ": "p", "ǫ": "q", "ʀ": "r", "ꜱ": "s", "ᴛ": "t",
-    "ᴜ": "u", "ᴠ": "v", "ᴡ": "w", "x": "x", "ʏ": "y", "ᴢ": "z",
-};
-
 const ORIGINAL_NAME = Symbol("cleanChannelName.original");
 
 let editingChannelId: string | null = null;
-
-function computeClean(name: string, type: number): string {
-    const cleaned = name
-        .normalize("NFKC")
-        .replace(/[ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘǫʀꜱᴛᴜᴠᴡxʏᴢ]/g, m => SMALL_CAPS[m])
-        .replace(/[^ -~]?\p{Extended_Pictographic}[^ -~]?/ug, "")
-        .replace(/-?[^\p{Letter} -~]-?/ug, [2, 4].includes(type) ? " " : "-")
-        .replace(/(^-|-$)/g, "")
-        .replace(/-+/g, "-");
-    return cleaned || name;
-}
 
 export default definePlugin({
     name: "CleanChannelName",

@@ -330,6 +330,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         });
         const createMessageContent = (presentation = messagePresentation) => presentation;
         const messageRenderer = { default: createMessageContent };
+        const nativeChannelName = channel => channel?.name;
+        const nativeChannelRow = props => props;
+        const channelNameModule = { default: nativeChannelName, computeChannelName: nativeChannelName };
+        const channelRowModule = { renderChannelContent: nativeChannelRow };
         const attachmentTypes = { AttachmentType: { IMAGE: "image", VIDEO: "video", AUDIO: "audio", OTHER: "other" } };
         const headerIcons = Object.fromEntries(["PhoneCallIcon", "VideoIcon", "PhoneHangUpIcon", "VoiceNormalIcon", "Avatar",
             "MediaKeyboardButtonIcon", "ImageIcon", "ContextMenu", "ThreadIcon"]
@@ -562,6 +566,8 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
+                : path === "modules/channel/useChannelName.tsx" ? channelNameModule
+                : path.endsWith("/guild_channels/ChannelContent.tsx") ? channelRowModule
                 : path.endsWith("/useDrawerWidth.tsx") ? drawerSizing
                 : path === "design/native.tsx" ? design
                 : path.endsWith("/SegmentedControlState.native.tsx") ? segmentedControl
@@ -1727,6 +1733,45 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
 
         const focus = { focused: true };
         const desktopPlugin = module.exports.default;
+        const channelStore = stores.ChannelStore;
+        const originalGetChannel = channelStore.getChannel;
+        const rawChannel = Object.freeze({ id: "channel", name: "🎈-ʜᴇʟʟᴏ-world", guild_id: guildId, type: 0 });
+        const rawProps = Object.freeze({ name: rawChannel.name, channel: rawChannel, anotherProp: true });
+        channelStore.getChannel = () => rawChannel;
+        const readChannelName = () => desktop ? channelStore.getChannel(rawChannel.id).name : channelNameModule.default(rawChannel);
+        const baseGetChannel = channelStore.getChannel;
+        selectCatalog("CleanChannelName");
+        click(render(), "Allow for this session");
+        assert.equal(readChannelName(), "hello-world");
+        selectCatalog("BetterChatNames");
+        click(render(), "Allow for this session");
+        assert.equal(readChannelName(), "Hello World");
+        assert.equal(rawChannel.name, "🎈-ʜᴇʟʟᴏ-world");
+        if (desktop) {
+            assert.equal(channelStore.getChannel(rawChannel.id), channelStore.getChannel(rawChannel.id));
+            desktopPlugin.flux.CHANNEL_SETTINGS_INIT({ channelId: rawChannel.id });
+            assert.equal(channelStore.getChannel(rawChannel.id), rawChannel);
+            desktopPlugin.flux.CHANNEL_SETTINGS_CLOSE();
+            assert.equal(readChannelName(), "Hello World");
+        } else {
+            assert.equal(channelNameModule.computeChannelName(rawChannel), "Hello World");
+            const row = channelRowModule.renderChannelContent(rawProps);
+            assert.equal(row.name, "Hello World");
+            assert.equal(row.channel, rawChannel);
+            assert.equal(row.anotherProp, true);
+            settings.safeMode = { enabled: true };
+            assert.equal(readChannelName(), rawChannel.name);
+            assert.equal(channelRowModule.renderChannelContent(rawProps), rawProps);
+            settings.safeMode = undefined;
+        }
+        click(render(), "Disable CleanChannelName");
+        assert.equal(readChannelName(), "🎈 ʜᴇʟʟᴏ World");
+        click(render(), "Disable BetterChatNames");
+        assert.equal(readChannelName(), rawChannel.name);
+        assert.equal(channelStore.getChannel, baseGetChannel);
+        assert.equal(channelNameModule.default, nativeChannelName);
+        assert.equal(channelRowModule.renderChannelContent, nativeChannelRow);
+        channelStore.getChannel = originalGetChannel;
         const fixExtensions = cxCatalog.plugins.find(entry => entry.name === "FixFileExtensions").source;
         assert.throws(() => activateCx(fixExtensions, host, ["appearance.style"]), /approval/);
         const uploader = new NativeCloudUploader();

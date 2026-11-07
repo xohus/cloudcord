@@ -5,7 +5,7 @@ import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
 import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
-import { formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink } from "@utils/cx";
+import { formatCxChannelName, formatCxEmojiMarkdown, formatCxStickerLink, getCxAttachmentImageUrl, getCxGifDescription, getCxImageTitle, getCxMessageGesture, validateCxMediaLink, type CxChannelLabel } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
@@ -29,6 +29,50 @@ let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 let uploadAnonymiser: CxUploadAnonymiser | undefined;
 const staticTypingDots = () => staticTypingDotUsers > 0;
 const messageGestures = { edit: 0, reply: 0 };
+const channelNames = { clean: 0, titles: 0 };
+let editingChannelId: string | undefined;
+let stopChannelNames: (() => void) | undefined;
+
+function refreshChannelNames() {
+    (ChannelStore as { emitChange?: () => void; }).emitChange?.();
+}
+
+function registerChannelNames(mode: keyof typeof channelNames) {
+    if (!stopChannelNames) {
+        const cache = new WeakMap<CxChannelLabel, { name: string; value: CxChannelLabel; }>();
+        stopChannelNames = overrideCxMethods(findStore("ChannelStore") ?? ChannelStore, {
+            getChannel(args, invoke) {
+                const channel = invoke(args) as CxChannelLabel | undefined;
+                if (!channel || typeof channel.name !== "string" || editingChannelId && channel.id === editingChannelId) return channel;
+                const name = formatCxChannelName(channel.name, channel, channelNames);
+                if (name === channel.name) return channel;
+                const cached = cache.get(channel);
+                if (cached?.name === name) return cached.value;
+                const descriptors = Object.getOwnPropertyDescriptors(channel);
+                const value = Object.create(Object.getPrototypeOf(channel), {
+                    ...descriptors,
+                    name: { value: name, enumerable: descriptors.name?.enumerable ?? true, configurable: true, writable: true },
+                });
+                cache.set(channel, { name, value });
+                return value;
+            },
+        });
+    }
+    channelNames[mode]++;
+    let active = true;
+    const release = () => {
+        if (!active) return;
+        active = false;
+        channelNames[mode]--;
+        if (!channelNames.clean && !channelNames.titles) {
+            stopChannelNames?.();
+            stopChannelNames = undefined;
+        }
+    };
+    try { refreshChannelNames(); }
+    catch (error) { release(); throw error; }
+    return () => { release(); refreshChannelNames(); };
+}
 
 // DoubleClickEdit by rootpoi, kraethis and ewlle (GPL-3.0-or-later).
 function onMessageDoubleClick(event: MouseEvent) {
@@ -314,6 +358,9 @@ export function CxSettings() {
                 },
                 registerNativeEffect(effect, avatarResolution = 256) {
                     switch (effect) {
+                        case "clean-channel-names":
+                        case "title-channel-names":
+                            return registerChannelNames(effect === "clean-channel-names" ? "clean" : "titles");
                         case "static-typing-dots":
                             return registerStaticTypingDots();
                         case "hide-disabled-emojis":
@@ -636,6 +683,16 @@ export default definePlugin({
     authors: [{ name: "CloudCord", id: 0n }],
     required: true,
     dependencies: ["CommandsAPI", "MessageEventsAPI", "ContextMenuAPI"],
+    flux: {
+        CHANNEL_SETTINGS_INIT({ channelId }: { channelId: string; }) {
+            editingChannelId = channelId;
+            if (stopChannelNames) refreshChannelNames();
+        },
+        CHANNEL_SETTINGS_CLOSE() {
+            editingChannelId = undefined;
+            if (stopChannelNames) refreshChannelNames();
+        },
+    },
     patches: [{
         find: "dotCycle:",
         replacement: {

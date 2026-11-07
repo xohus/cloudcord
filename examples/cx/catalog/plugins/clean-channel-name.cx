@@ -1,0 +1,3 @@
+plugin "CleanChannelName":
+  needs appearance.style
+  use clean-channel-names

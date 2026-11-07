@@ -746,6 +746,10 @@ function compileMobileNativeEffect(file, plugin, source, nativeEffects) {
 // Only translate reviewed patch bodies into named runtime adapters. The
 // emitted CX never carries Webpack source, store names, or replacement code.
 const desktopEffectRecipes = {
+    CleanChannelName: {
+        effect: "clean-channel-names",
+        sha256: "aa0230019c4dd15b9ebe92af4f0e841ff627b00761855ff424e527df9e5ed236",
+    },
     AnonymiseFileNames: {
         sha256: "c1c808212ec54cf39a833cb7be196e02793a81d88fb9b11aab450a6233324f8d",
         uploadNaming: true,
