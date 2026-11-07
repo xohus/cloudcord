@@ -912,6 +912,41 @@ function betterDiscordFiles(folder) {
     });
 }
 
+async function fetchReviewedBetterDiscordSources(reviews = reviewedBetterDiscordSources, request = fetch) {
+    const entries = Object.entries(reviews);
+    const sources = [];
+    for (let offset = 0; offset < entries.length; offset += 8) {
+        const batch = await Promise.all(entries.slice(offset, offset + 8).map(async ([sha256, review]) => {
+            const pin = /^https:\/\/github\.com\/([\w.-]+)\/([\w.-]+)\/blob\/([a-f0-9]{40})\/((?:[\w.-]+\/)*[\w.-]+\.plugin\.js)$/.exec(review.source);
+            if (!pin || pin.slice(1).some(value => value.split("/").some(part => part === "." || part === ".."))
+                || !/^[a-f0-9]{64}$/.test(sha256)) throw new Error("Invalid reviewed source pin for " + review.name);
+            const [, owner, repo, commit, file] = pin;
+            const url = "https://raw.githubusercontent.com/" + [owner, repo, commit, file].join("/");
+            try {
+                const response = await request(url, { redirect: "error", signal: AbortSignal.timeout(15000) });
+                if (!response.ok || !response.body) throw new Error("HTTP " + response.status);
+                const chunks = [];
+                let size = 0;
+                for await (const chunk of response.body) {
+                    size += chunk.byteLength;
+                    if (size > 512 * 1024) throw new Error("source exceeds 512 KiB");
+                    chunks.push(chunk);
+                }
+                const code = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(Buffer.concat(chunks));
+                const hash = text => createHash("sha256").update(text, "utf8").digest("hex");
+                if (hash(code) !== sha256 && hash(code.replaceAll("\r\n", "\n")) !== sha256) {
+                    throw new Error("source hash differs from review");
+                }
+                return { file: owner + "/" + repo + "/" + file, code, sha256 };
+            } catch (error) {
+                throw new Error("Could not verify " + review.name + ": " + error.message, { cause: error });
+            }
+        }));
+        sources.push(...batch);
+    }
+    return sources;
+}
+
 function classifyPorts(records, existing, hasLegacyCounter) {
     const variants = new Map();
     for (const record of records) {
@@ -939,7 +974,7 @@ function classifyPorts(records, existing, hasLegacyCounter) {
     });
 }
 
-function scan(sourceDir, { includeCompanions = false } = {}) {
+function scan(sourceDir, { includeCompanions = false, reviewedSources = [] } = {}) {
     const { parseCx, cxAppearanceTargets, cxNativeEffects } = require("./sync-cx-catalog.cjs").loadCxRuntime();
     const existing = new Set(["character counter"]);
     const counter = parseCx(fs.readFileSync(path.join(root, "examples/cx/pilot/character-counter.cx"), "utf8"));
@@ -977,6 +1012,11 @@ function scan(sourceDir, { includeCompanions = false } = {}) {
     if (sourceDir) for (const file of betterDiscordFiles(sourceDir)) {
         const record = inspectPlugin(path.relative(sourceDir, file).replaceAll("\\", "/"), fs.readFileSync(file, "utf8"), "betterdiscord", cxAppearanceTargets);
         if (record) records.push(record);
+    }
+    for (const { file, code, sha256 } of reviewedSources) {
+        const record = inspectBetterDiscord(file, code, cxAppearanceTargets);
+        if (!record?.cx || record.review?.sha256 !== sha256) throw new Error("No CX recipe matched reviewed source " + file);
+        records.push(record);
     }
     return classifyPorts(records, existing, hasLegacyCounter);
 }
@@ -1049,7 +1089,7 @@ function verifyPorts(files) {
     }
 }
 
-const usage = "Usage: node cx-bulk-plugins.cjs [--json | --plan | --out-dir <new-folder> | --add-ready] [--source-dir <BetterDiscord sources>]";
+const usage = "Usage: node cx-bulk-plugins.cjs [--json | --plan | --out-dir <new-folder> | --add-ready] [--source-dir <BetterDiscord sources> | --fetch-reviewed]";
 
 function portFiles(ports) {
     const files = new Map();
@@ -1093,7 +1133,7 @@ function addReady(ports) {
     console.log("Added " + files.size + " CX ports. Catalog has " + catalog.plugins + "/600 plugins.");
 }
 
-function main(rawArgs) {
+async function main(rawArgs) {
     const args = [...rawArgs];
     if (args.length === 1 && args[0] === "--help") {
         console.log(usage);
@@ -1103,10 +1143,19 @@ function main(rawArgs) {
     const sourceIndex = args.indexOf("--source-dir");
     const sourceDir = sourceIndex === -1 ? undefined : args.splice(sourceIndex, 2)[1];
     if (sourceIndex !== -1 && (!sourceDir || sourceDir.startsWith("--"))) throw new Error(usage);
+    const fetchReviewed = args.includes("--fetch-reviewed");
+    if (fetchReviewed) {
+        if (sourceDir) throw new Error(usage);
+        args.splice(args.indexOf("--fetch-reviewed"), 1);
+    }
     const output = args.length === 2 && args[0] === "--out-dir" ? path.resolve(args[1]) : undefined;
     if (!output && (args.length > 1 || args.length === 1 && !["--json", "--plan", "--add-ready"].includes(args[0])))
         throw new Error(usage);
-    const records = scan(sourceDir && path.resolve(sourceDir), { includeCompanions: args.includes("--plan") || args.includes("--json") });
+    const reviewedSources = fetchReviewed ? await fetchReviewedBetterDiscordSources() : [];
+    const records = scan(sourceDir && path.resolve(sourceDir), {
+        includeCompanions: args.includes("--plan") || args.includes("--json"),
+        reviewedSources,
+    });
     if (args[0] === "--add-ready") {
         addReady(records.filter(record => record.status === "ready"));
         return;
@@ -1141,7 +1190,9 @@ function main(rawArgs) {
 }
 
 if (require.main === module) {
-    try { main(process.argv.slice(2)); }
-    catch (error) { console.error(error.message); process.exitCode = 1; }
+    main(process.argv.slice(2)).catch(error => {
+        console.error(error.message);
+        process.exitCode = 1;
+    });
 }
-module.exports = { buildPlan, classifyPorts, inspectPlugin, portFiles, scan, verifyPorts };
+module.exports = { buildPlan, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts };

@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { buildPlan, classifyPorts, inspectPlugin, portFiles, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
+const { buildPlan, classifyPorts, fetchReviewedBetterDiscordSources, inspectPlugin, portFiles, scan, verifyPorts } = require("./cx-bulk-plugins.cjs");
 const { buildCatalog, loadCxRuntime } = require("./sync-cx-catalog.cjs");
 
 const source = [
@@ -266,4 +266,30 @@ const adapterPlan = buildPlan([
 const voiceQueue = adapterPlan.adapterQueues.find(queue => queue.target === "module:selectVoiceChannel");
 assert.equal(voiceQueue.count, 2);
 assert.deepEqual(voiceQueue.plugins[0].platforms, ["desktop", "mobile"]);
-console.log("PASS CX bulk conversion, original command sources and unsupported hook rejection");
+async function testReviewedFetch() {
+    const code = "reviewed source\n";
+    const hash = require("node:crypto").createHash("sha256").update(code).digest("hex");
+    const rev = "a".repeat(40);
+    const source = "https://github.com/Owner/Repo/blob/" + rev + "/folder/Example.plugin.js";
+    const sources = { [hash]: { name: "Example", source } };
+    const fetched = await fetchReviewedBetterDiscordSources(sources, (url, options) => {
+        assert.equal(url, "https://raw.githubusercontent.com/Owner/Repo/" + rev + "/folder/Example.plugin.js");
+        assert.equal(options.redirect, "error");
+        assert.ok(options.signal);
+        return new Response(code.replaceAll("\n", "\r\n"));
+    });
+    assert.deepEqual(fetched, [{ file: "Owner/Repo/folder/Example.plugin.js", code: "reviewed source\r\n", sha256: hash }]);
+    await assert.rejects(fetchReviewedBetterDiscordSources(sources, () => new Response("changed")), /hash differs/);
+    await assert.rejects(fetchReviewedBetterDiscordSources(sources, () => new Response("", { status: 404 })), /HTTP 404/);
+    await assert.rejects(fetchReviewedBetterDiscordSources(sources, () => new Response("x".repeat(512 * 1024 + 1))), /exceeds 512 KiB/);
+    await assert.rejects(fetchReviewedBetterDiscordSources({ [hash]: { name: "Example", source: source.replace(rev, "main") } }, () => {
+        assert.fail("An unpinned source must never be fetched");
+    }), /Invalid reviewed source pin/);
+}
+
+testReviewedFetch().then(() => {
+    console.log("PASS CX bulk conversion, reviewed source download, original command sources and unsupported hook rejection");
+}).catch(error => {
+    console.error(error);
+    process.exitCode = 1;
+});
