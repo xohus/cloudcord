@@ -11,6 +11,30 @@ const catalogFolder = path.join(root, "examples/cx/catalog/plugins");
 const quotedPattern = /[\x00-\x1f\x7f-\x9f\u202a-\u202e\u2066-\u2069]/u;
 const printer = ts.createPrinter({ removeComments: true });
 
+// Shared hook names identify where a plugin runs. Group by the operation it
+// performs as well so a new host capability can serve several plugins.
+const operationGroups = {
+    clipboard: /^(?:copyToClipboard|setClipboardString)$/,
+    "open-link": /^(?:openExternal|openURL|openLink)$/,
+    "message-send": /^(?:sendMessage|_sendMessage)$/,
+    "message-edit": /^(?:editMessage|startEditMessage)$/,
+    "message-delete": /^(?:deleteMessage|deleteMessages|bulkDeleteMessages)$/,
+    "message-reaction": /^(?:addReaction|removeReaction)$/,
+    "channel-navigation": /^(?:selectChannel|selectPrivateChannel|transitionToChannel)$/,
+    "voice-navigation": /^(?:selectVoiceChannel|disconnectFromVoiceChannel)$/,
+    notification: /^(?:showToast|showNotification|createToast)$/,
+    modal: /^(?:openModal|openModalLazy|showConfirmationModal|showAlert)$/,
+    persistence: /^(?:loadData|saveData|deleteData)$/,
+};
+const operationNames = Object.entries(operationGroups);
+
+function operationForCall(callee, receiver) {
+    if (!callee) return;
+    if (/^(?:copy|writeText|setString)$/.test(callee) && /^(?:Clipboard|clipboard|NativeClipboard)$/.test(receiver)) return "clipboard";
+    if (/^(?:load|save|delete)$/.test(callee) && /^(?:Data|DataUtils|DataStore)$/.test(receiver)) return "persistence";
+    return operationNames.find(([, pattern]) => pattern.test(callee))?.[0];
+}
+
 const hookGroups = {
     commands: /^(commands|registerCommand|unregisterCommand)$/,
     "outgoing-message": /^(onBeforeMessage(Send|Edit)|addMessagePre(Send|Edit)Listener|on(Send|Edit)Message)$/,
@@ -43,6 +67,17 @@ function inventoryStyles(stylesheet, targets, standalone = false) {
 function inventory(source) {
     const hooks = new Set();
     const targets = new Set();
+    const operations = new Set();
+    const importedNames = new Map();
+    for (const statement of source.statements) {
+        if (!ts.isImportDeclaration(statement)) continue;
+        const bindings = statement.importClause?.namedBindings;
+        if (bindings && ts.isNamedImports(bindings)) {
+            for (const binding of bindings.elements) {
+                if (binding.propertyName) importedNames.set(binding.name.text, binding.propertyName.text);
+            }
+        }
+    }
     const event = /^(?:MESSAGE|VOICE|CHANNEL|GUILD|RELATIONSHIP|PRESENCE|TYPING|USER_PROFILE)_[A-Z][A-Z0-9_]*$/;
     const menuId = /^[a-z][a-z0-9-]{2,63}$/;
     const namedTarget = /^[A-Z][\w$]{2,79}$/;
@@ -96,6 +131,8 @@ function inventory(source) {
             const callee = access?.name.text ?? identifier(node.expression);
             const receiver = access && (ts.isPropertyAccessExpression(access.expression) ? access.expression.name.text : identifier(access.expression));
             const first = literal(node.arguments[0]);
+            const operation = operationForCall(importedNames.get(callee) ?? callee, importedNames.get(receiver) ?? receiver);
+            if (operation) operations.add(operation);
             if (/^(?:findByProps(?:Lazy)?|getByKeys)$/.test(callee ?? "") || callee === "byKeys" && receiver === "Filters") {
                 for (const argument of node.arguments) {
                     const key = literal(argument);
@@ -132,7 +169,7 @@ function inventory(source) {
         ts.forEachChild(node, visit);
     };
     visit(source);
-    return { hooks: [...hooks].sort(), targets: [...targets].sort() };
+    return { hooks: [...hooks].sort(), targets: [...targets].sort(), ...(operations.size && { operations: [...operations].sort() }) };
 }
 
 function property(object, key) {
@@ -253,7 +290,7 @@ function inspectBetterDiscord(file, code, appearance) {
     if (/\b(?:Patcher|BDFDB\.PatchUtils)\b/.test(code)) hooks.add("component-render");
     if (/\b(?:buildSettingsPanel|getSettingsPanel|BDFDB\.DataUtils)\b/.test(code)) hooks.add("settings");
     if (/\b(?:addStyle|removeStyle|BDFDB\.DOMUtils)\b/.test(code)) hooks.add("appearance");
-    const record = { name, file, platform: "betterdiscord", hooks: [...hooks].sort(), targets: inventoryResult.targets, flags: {
+    const record = { name, file, platform: "betterdiscord", ...inventoryResult, hooks: [...hooks].sort(), flags: {
         commands: hooks.has("commands"), outgoing: hooks.has("outgoing-message"), settings: hooks.has("settings"),
         ui: hooks.has("component-render"), styles: hooks.has("appearance"),
     } };
@@ -1076,6 +1113,7 @@ function inspectCompanions(entry, code) {
     const seen = new Set([pending[0][0]]);
     const hooks = new Set();
     const targets = new Set();
+    const operations = new Set();
     const companions = [];
     function withinPlugin(file) {
         const local = path.relative(directory, file);
@@ -1092,6 +1130,7 @@ function inspectCompanions(entry, code) {
             const found = inventory(source);
             for (const hook of found.hooks) hooks.add(hook);
             for (const target of found.targets) targets.add(target);
+            for (const operation of found.operations ?? []) operations.add(operation);
         }
         function visit(node) {
             ts.forEachChild(node, visit);
@@ -1114,7 +1153,7 @@ function inspectCompanions(entry, code) {
         }
         visit(source);
     }
-    return { companions, hooks, targets };
+    return { companions, hooks, targets, operations };
 }
 
 function betterDiscordFiles(folder) {
@@ -1214,11 +1253,12 @@ function scan(sourceDir, { includeCompanions = false, reviewedSources = [] } = {
             if (!record) continue;
             if (includeCompanions && !record.cx && !existing.has(record.name.toLowerCase())
                 && path.dirname(file) !== path.join(root, folder)) {
-                const { companions, hooks, targets } = inspectCompanions(file, code);
+                const { companions, hooks, targets, operations } = inspectCompanions(file, code);
                 if (companions.length) {
                     record.companions = companions.map(source => path.relative(root, source).replaceAll("\\", "/")).sort();
                     record.hooks = [...new Set([...record.hooks, ...hooks])].sort();
                     record.targets = [...new Set([...record.targets, ...targets])].sort();
+                    if (operations.size) record.operations = [...new Set([...(record.operations ?? []), ...operations])].sort();
                 }
             }
             records.push(record);
@@ -1288,6 +1328,7 @@ function buildBatchPlan(records, limit = Infinity) {
         sources.set(key, variants);
     }
     const queues = new Map();
+    const operationQueues = new Map();
     const pending = new Set();
     let ready = 0;
     let compare = 0;
@@ -1307,6 +1348,13 @@ function buildBatchPlan(records, limit = Infinity) {
             continue;
         }
         pending.add(key);
+        for (const { operations, name, platform, file, hooks } of variants) for (const operation of operations ?? []) {
+            const candidates = operationQueues.get(operation) ?? new Map();
+            const candidate = candidates.get(key) ?? { name, sources: [] };
+            candidate.sources.push({ platform, file, hooks });
+            candidates.set(key, candidate);
+            operationQueues.set(operation, candidates);
+        }
         for (const { targets } of variants) for (const anchor of targets ?? []) {
             // A store or CSS property can be referenced by unrelated features.
             if (!/^(event|module|component|recipe|selector|style|menu|patch|native|method):/.test(anchor)
@@ -1350,7 +1398,13 @@ function buildBatchPlan(records, limit = Infinity) {
             })),
         };
     });
-    return { sources: records.length, distinct: sources.size, ready, compare, review, pending: pending.size, covered: covered.size, batches, unbatched };
+    const operationBatches = [...operationQueues].filter(([, candidates]) => candidates.size > 1)
+        .map(([operation, candidates]) => {
+            const plugins = [...candidates.values()].sort((a, b) => a.name.localeCompare(b.name));
+            const mobileSources = plugins.filter(plugin => plugin.sources.some(source => source.platform === "mobile")).length;
+            return { operation, count: plugins.length, mobileSources, plugins };
+        }).sort((a, b) => b.count - a.count || b.mobileSources - a.mobileSources || a.operation.localeCompare(b.operation));
+    return { sources: records.length, distinct: sources.size, ready, compare, review, pending: pending.size, covered: covered.size, batches, operationBatches, unbatched };
 }
 
 function checkAppearancePaths(appearance, indexes) {
@@ -1519,6 +1573,12 @@ async function main(rawArgs) {
                 + batch.plugins.slice(0, 5).join(", ") + (batch.plugins.length > 5 ? ", …" : ""));
         }
         console.log(plan.covered + " distinct candidates in these batches.");
+        if (plan.operationBatches.length) {
+            console.log("Shared host operations (groups overlap; candidates still require behavior and permission checks):");
+            for (const batch of plan.operationBatches) {
+                console.log(batch.count + " " + batch.operation + " (" + batch.mobileSources + " with mobile sources)");
+            }
+        }
         console.log("Use --batch-json for the full worklist and source paths.");
         return;
     }

@@ -356,6 +356,26 @@ const recipePriority = buildBatchPlan([
 ]);
 assert.equal(recipePriority.batches[0].anchor, "recipe:hide-component");
 assert.equal(recipePriority.covered, 2);
+const clipboardPort = inspectPlugin("clipboard.ts", `
+    import { copyToClipboard as copy } from "@utils/clipboard";
+    export default definePlugin({ name: "Copy Message", contextMenus: { message() { copy("example"); } } });
+`, "desktop");
+const mobileClipboardPort = inspectPlugin("clipboard.ts", `
+    export default defineCorePlugin({ name: "Copy Profile", start() { Clipboard.setString("example"); } });
+`, "mobile");
+const betterDiscordClipboardPort = inspectPlugin("clipboard.plugin.js", `/**
+ * @name Copy Message
+ */
+module.exports = class { start() { DiscordNative.clipboard.copy("example"); } };
+`, "betterdiscord");
+const modalPort = inspectPlugin("modal.ts", `
+    export default definePlugin({ name: "Message Details", contextMenus: { message() { openModal(() => null); } } });
+`, "desktop");
+const operationPlan = buildBatchPlan(classifyPorts([clipboardPort, mobileClipboardPort, betterDiscordClipboardPort, modalPort], new Set()));
+assert.deepEqual(operationPlan.operationBatches.map(({ operation, count, mobileSources }) => [operation, count, mobileSources]), [["clipboard", 2, 1]]);
+assert.deepEqual(operationPlan.operationBatches[0].plugins.map(plugin => plugin.name), ["Copy Message", "Copy Profile"]);
+assert.equal(operationPlan.operationBatches[0].plugins[0].sources.length, 2);
+assert.equal(operationPlan.ready, 0);
 assert.deepEqual(checkAppearancePaths({
     route: { plugin: "Route", mobile: { settingsEntry: "native/Route.tsx" } },
     component: { plugin: "Component", mobile: { hideComponentPaths: ["native/First.tsx", "native/Second.tsx"] } },
