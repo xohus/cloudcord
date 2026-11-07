@@ -1,0 +1,3 @@
+plugin "HopOn":
+  needs links.openonmessage
+  on incoming open-link "hop on |"

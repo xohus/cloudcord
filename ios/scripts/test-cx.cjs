@@ -166,6 +166,9 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const lazyEntry = { name: "Lazy Wallpaper", source: () => new Promise(resolve => { resolveCatalogEntry = resolve; }) };
         const states = [], registered = {}, delivered = [];
         const incomingHooks = [], notifications = [], pendingNotifications = [];
+        const openedLinks = [];
+        const openExternal = async link => { openedLinks.push(link); };
+        let selectedChannel = "test-channel";
         const me = "100000000000000001", sender = "100000000000000002", other = "100000000000000003";
         const guildId = "100000000000000004";
         const roleId = "100000000000000005";
@@ -255,7 +258,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 isFriend: id => id === sender,
                 getPendingCount: () => 3, getPendingIncomingCount: () => 2,
             },
-            SelectedChannelStore: { getVoiceChannelId: () => currentVoice },
+            SelectedChannelStore: { getVoiceChannelId: () => currentVoice, getChannelId: () => selectedChannel },
         };
         const transformHooks = new Set();
         const appearanceHooks = new Map();
@@ -484,11 +487,14 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@metro/common/components": { Stack: "Stack", TableRow: "TableRow", TableRowGroup: "TableRowGroup" },
             "react-native": {
                 ScrollView: nativeScrollView, FlatList: nativeFlatList, SectionList: nativeSectionList,
+                Linking: { openURL: openExternal },
                 Animated: { ScrollView: animatedScrollView }, Text: "Text", TextInput: "TextInput", View: "View",
             },
         };
         vm.runInNewContext(transformSync(read(adapter), { loader: "tsx", format: "cjs", jsx: "automatic" }).code, {
             module,
+            IS_WEB: false,
+            VencordNative: { native: { openExternal } },
             setTimeout: callback => pendingNotifications.push(callback),
             document: {
                 createElement: () => ({ remove() { stylesheet = undefined; } }),
@@ -1142,6 +1148,46 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             click(render(), "Disable " + name);
             assert.equal(incomingHooks.length, 0);
         }
+        const hopOn = read("examples/cx/catalog/plugins/hop-on.cx");
+        const hopEvent = (author = other, channel = "test-channel", content = "HOP ON tonight") => ({
+            type: "MESSAGE_CREATE", message: { author: { id: author }, channel_id: channel, content },
+        });
+        const destination = "https://example.org/game?party=1";
+        for (const invalid of ["http://example.org", "javascript:alert(1)", "https://user@example.org", "https://example.org:44", "https://example.org\\other"])
+            assert.throws(() => parseCx(hopOn.replace('"hop on |"', JSON.stringify("hop on | " + invalid))), /HTTPS destination/);
+        selectCatalog("HopOn");
+        click(render(), "Allow for this session");
+        incomingHooks[0](hopEvent());
+        assert.equal(pendingNotifications.length, 0);
+        click(render(), "Disable HopOn");
+        selectCatalog("HopOn");
+        const hopSource = hopOn.replace('"hop on |"', JSON.stringify("hop on | " + destination));
+        const hopInput = find(render(), item => item.props[desktop ? "aria-label" : "accessibilityLabel"] === "CX source");
+        if (desktop) hopInput.props.onChange({ currentTarget: { value: hopSource } });
+        else hopInput.props.onChangeText(hopSource);
+        click(render(), "Review CX");
+        assert.ok(moduleBox.exports.reviewCx(hopSource).effects.some(effect => effect.includes(destination)));
+        click(render(), "Allow for this session");
+        const [openOnMessage] = incomingHooks;
+        for (const event of [hopEvent(sender), hopEvent(other, "elsewhere"), hopEvent(other, "test-channel", "irrelevant"),
+            { ...hopEvent(), optimistic: true }, { ...hopEvent(), type: "MESSAGE_UPDATE" }]) openOnMessage(event);
+        assert.equal(pendingNotifications.length, 0);
+        assert.equal(openOnMessage(hopEvent()), undefined);
+        openOnMessage(hopEvent());
+        assert.equal(pendingNotifications.length, 1);
+        pendingNotifications.shift()();
+        assert.deepEqual(openedLinks, [destination]);
+        click(render(), "Disable HopOn");
+        click(render(), "Review CX");
+        click(render(), "Allow for this session");
+        incomingHooks[0](hopEvent());
+        assert.equal(pendingNotifications.length, 1);
+        selectedChannel = "elsewhere";
+        pendingNotifications.shift()();
+        assert.deepEqual(openedLinks, [destination]);
+        selectedChannel = "test-channel";
+        click(render(), "Disable HopOn");
+        assert.equal(incomingHooks.length, 0);
         const voice = (channelId, userId = sender) => ({ type: "VOICE_STATE_UPDATES", voiceStates: [{ userId, channelId }] });
         selectCatalog("VoiceJoinMessages");
         click(render(), "Allow for this session");

@@ -99,6 +99,15 @@ assert.deepEqual([...portFiles(reactionPorts).keys()], ["better-plus-reacts.cx"]
 assert.throws(() => portFiles([reactionPorts[0], { ...reactionPorts[1], cx: reactionPorts[1].cx + "\n" }]), /Ambiguous output name/);
 const statuses = records => classifyPorts(records, new Set(), false).map(record => record.status);
 assert.deepEqual(statuses(reactionPorts), ["ready", "equivalent-source"]);
+const linkPorts = matches.filter(record => record.name === "HopOn");
+assert.deepEqual(statuses(linkPorts), ["ready", "equivalent-source"]);
+for (const port of linkPorts) {
+    assert.equal(port.capability, "link-trigger");
+    assert.ok(port.targets.includes("event:MESSAGE_CREATE"));
+    assert.equal(parseCx(port.cx).incoming[0].kind, "open-link");
+    const original = fs.readFileSync(path.resolve(__dirname, "../../..", port.file), "utf8");
+    assert.equal(inspectPlugin(port.file, original + "\n// Source changed", port.platform).cx, undefined);
+}
 assert.deepEqual(statuses([reactionPorts[0], { ...reactionPorts[1], platform: "betterdiscord" }]), ["compare-sources", "source-review"]);
 assert.deepEqual(statuses([reactionPorts[0], { ...reactionPorts[1], cx: undefined }]), ["compare-mobile", "needs-adapter"]);
 assert.deepEqual(Array.from(parseCx(reactionPorts[0].cx).permissions), ["messages.reactshortcut"]);

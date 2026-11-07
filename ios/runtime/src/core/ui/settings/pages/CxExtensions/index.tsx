@@ -20,7 +20,7 @@ import { findByFilePath, findByProps, findByStoreName, findByStoreNameLazy } fro
 import { clipboard, commands, FluxDispatcher, messageUtil, React } from "@metro/common";
 import { Stack, TableRow, TableRowGroup } from "@metro/common/components";
 import type { ComponentType, Context, ReactElement, ReactNode } from "react";
-import { Animated, FlatList, ScrollView, SectionList, Text, TextInput, View } from "react-native";
+import { Animated, FlatList, Linking, ScrollView, SectionList, Text, TextInput, View } from "react-native";
 
 const session = createCxSession();
 const UserStore = findByStoreNameLazy("UserStore");
@@ -618,6 +618,11 @@ export default function CxExtensions() {
                         replyAuthor: (channel: string, id: string) => MessageStore?.getMessage?.(channel, id)?.author,
                         blocked: (id: string) => RelationshipStore?.isBlocked?.(id) === true,
                         ignored: (id: string) => RelationshipStore?.isIgnored?.(id) === true,
+                        selectedChannel: () => SelectedChannelStore?.getChannelId?.(),
+                        openLink: (link: string, channel: string, user: string) => setTimeout(() => {
+                            if (active && !settings.safeMode?.enabled && context.currentUser() === user && context.selectedChannel() === channel)
+                                void Linking.openURL(link).catch(() => {});
+                        }, 0),
                         notify: (body: string) => setTimeout(() => {
                             if (active && !settings.safeMode?.enabled) showToast(body);
                         }, 0),

@@ -98,6 +98,12 @@ export function CxSettings() {
                         replyAuthor: (channel: string, id: string) => MessageStore.getMessage(channel, id)?.author,
                         blocked: (id: string) => RelationshipStore?.isBlocked(id) === true,
                         ignored: (id: string) => RelationshipStore?.isIgnored?.(id) === true,
+                        selectedChannel: () => SelectedChannelStore?.getChannelId?.(),
+                        openLink: (link: string, channel: string, user: string) => setTimeout(() => {
+                            if (!active || context.currentUser() !== user || context.selectedChannel() !== channel) return;
+                            if (IS_WEB) window.open(link, "_blank", "noopener,noreferrer");
+                            else void VencordNative.native.openExternal(link).catch(() => {});
+                        }, 0),
                         notify: (body: string) => setTimeout(() => {
                             if (active) void showNotification({ title: candidate.review.name, body });
                         }, 0),

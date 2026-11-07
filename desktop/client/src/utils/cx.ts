@@ -55,6 +55,7 @@ const permissionLabels = {
     "voice.followfriend": "Move you to the listed friend’s voice channel while you are already connected to voice",
     "friends.notifyremoval": "Show a local notification when a friend removes you",
     "messages.watchlocal": "Match incoming messages on this device and show local notifications",
+    "links.openonmessage": "Open the configured HTTPS page when a matching message arrives in the channel you are viewing",
     "messages.filterlocal": "Hide matching incoming messages and history on this device",
     "typing.suppress": "Suppress your outgoing typing indicator",
     "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications",
@@ -504,6 +505,9 @@ export function reviewCx(source: string) {
                 if (rule.kind === "reply-ping-default") return ["Turn reply pings off initially and keep the composer toggle available"];
                 if (rule.kind === "hide-profile-themes") return ["Hide other users’ theme colors when their profiles load"];
                 if (rule.kind === "hide-system") return ["Hide system messages for " + rule.values.join(", ")];
+                if (rule.kind === "open-link") return [rule.link
+                    ? "Open " + rule.link + " when a message contains “" + rule.values[0] + "”"
+                    : "Edit the source to set the HTTPS destination"];
                 if (rule.kind === "stickers" && rule.values[0] === "*") return ["Hide all stickers"];
                 if (rule.kind === "follow-voice" && rule.values[0]) return ["Follow friend ID " + rule.values[0]];
                 if (rule.values.length || ["reply-pings", "friends-voice", "friend-removals"].includes(rule.kind)) return [];

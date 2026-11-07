@@ -1,3 +1,5 @@
+import { parseCxHttpsOrigin } from "./cxMessageTransforms";
+
 // Shared behavior for the original GPL-3.0-or-later CloudCord notification ports.
 export const incomingPermissions = {
     stickers: "messages.filterstickers",
@@ -15,16 +17,28 @@ export const incomingPermissions = {
     "friends-voice": "voice.notifyfriends",
     "follow-voice": "voice.followfriend",
     "friend-removals": "friends.notifyremoval",
+    "open-link": "links.openonmessage",
 } as const;
 
 type IncomingKind = keyof typeof incomingPermissions;
-export type IncomingRule = { kind: IncomingKind; values: string[]; always?: boolean; matcher?: RegExp; messageTypes?: ReadonlySet<number> };
+export type IncomingRule = { kind: IncomingKind; values: string[]; always?: boolean; matcher?: RegExp; messageTypes?: ReadonlySet<number>; link?: string };
 
 const systemMessageTypes = { pins: [6], joins: [7], boosts: [8, 9, 10, 11] } as const;
 
 export function parseIncomingRule(name: string, input: string): IncomingRule {
     if (!Object.prototype.hasOwnProperty.call(incomingPermissions, name)) throw new Error("Unknown incoming rule");
     const kind = name as IncomingKind;
+    if (kind === "open-link") {
+        const [phrase, link, extra] = input.split("|").map(part => part.trim());
+        if (!phrase || phrase.length > 80 || link === undefined || extra !== undefined)
+            throw new Error("Use a short phrase followed by | and an HTTPS destination");
+        if (!link) return { kind, values: [phrase] };
+        const match = /^(https:\/\/[^/?#]+)(?:[/?#][a-z0-9._~%!$&()*+,;=:@/?#-]*)?$/i.exec(link);
+        if (!match) throw new Error("Use an HTTPS destination without credentials or a custom scheme");
+        try { parseCxHttpsOrigin(match[1]); }
+        catch { throw new Error("Use an HTTPS destination without credentials or a custom scheme"); }
+        return { kind, values: [phrase], link };
+    }
     let always = false;
     if (kind === "reply-pings") {
         const match = /^(always|never)(?::(.*))?$/.exec(input);
@@ -65,7 +79,11 @@ type IncomingContext = {
     notify: (body: string) => void;
     blocked?: (user: string) => boolean;
     ignored?: (user: string) => boolean;
+    selectedChannel?: () => string | undefined;
+    openLink?: (link: string, channel: string, user: string) => void;
 };
+
+const lastLinkOpen = new WeakMap<IncomingContext, number>();
 
 function stripStickers(message: IncomingPayload["message"], rule: IncomingRule) {
     const stickers = message?.sticker_items ?? message?.stickerItems ?? message?.stickers;
@@ -166,6 +184,18 @@ export function applyIncomingRule(rule: IncomingRule, payload: IncomingPayload, 
     if (type !== "MESSAGE_CREATE" || payload.optimistic || typeof message?.author?.id !== "string") return;
     const me = context.currentUser();
     const author = message.author.id;
+    if (rule.kind === "open-link") {
+        const channel = message.channel_id ?? message.channelId ?? payload.channelId;
+        if (!rule.link || !me || !context.openLink || typeof channel !== "string" || context.selectedChannel?.() !== channel
+            || message.state === "SENDING" || context.blocked?.(author)
+            || typeof message.content !== "string" || !message.content.slice(0, 4000).toLowerCase().includes(rule.values[0].toLowerCase())) return;
+        const now = Date.now();
+        const last = lastLinkOpen.get(context);
+        if (last !== undefined && now - last < 10_000) return;
+        lastLinkOpen.set(context, now);
+        context.openLink(rule.link, channel, me);
+        return;
+    }
     if (!me || author === me) return;
     const mentions = Array.isArray(message.mentions) ? message.mentions : [];
     const isMe = (mention: string | { id?: string }) => (typeof mention === "string" ? mention : mention?.id) === me;

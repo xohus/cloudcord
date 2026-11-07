@@ -40,7 +40,10 @@ function inventory(source) {
             const call = ts.isCallExpression(parent) && (ts.isPropertyAccessExpression(parent.expression)
                 ? parent.expression.name.text : identifier(parent.expression));
             const isActionType = ts.isPropertyAssignment(parent) && identifier(parent.name) === "type";
-            if (isActionType || /^(?:subscribe|unsubscribe|subscribeToDispatch|waitFor|dispatch)$/.test(call || "") || ts.isCaseClause(parent))
+            const compared = ts.isBinaryExpression(parent) && [ts.SyntaxKind.EqualsEqualsEqualsToken, ts.SyntaxKind.ExclamationEqualsEqualsToken].includes(parent.operatorToken.kind)
+                && (parent.left === node ? parent.right : parent.right === node ? parent.left : undefined);
+            const comparesType = compared && ts.isPropertyAccessExpression(compared) && compared.name.text === "type";
+            if (isActionType || comparesType || /^(?:subscribe|unsubscribe|subscribeToDispatch|waitFor|dispatch)$/.test(call || "") || ts.isCaseClause(parent))
                 targets.add("event:" + node.text);
         }
         if (ts.isCallExpression(node)) {
@@ -702,6 +705,18 @@ function compileMobileSocialEvents(file, plugin, source) {
     return { capability: "social-event", lines: ["  needs " + recipe.permission, '  on incoming ' + recipe.rule + ' ""'] };
 }
 
+const sharedLinkTriggerSources = {
+    "desktop/client/src/sincordplugins/hopOn/index.tsx": "3ef7972c029f46c30087c04f1d2f84f2b923586d37e4c887f78b634a642e66a4",
+    "ios/runtime/src/core/plugins/hopon/index.ts": "b80f9939dd3697b31430d4e644784ae6a67515ab0f6041dd3b51bd38b8db73ab",
+};
+
+function compileLinkTrigger(file, code) {
+    if (!Object.hasOwn(sharedLinkTriggerSources, file)) return;
+    const sha256 = createHash("sha256").update(code.replaceAll("\r\n", "\n")).digest("hex");
+    if (sha256 !== sharedLinkTriggerSources[file]) return;
+    return { capability: "link-trigger", lines: ["  needs links.openonmessage", '  on incoming open-link "hop on |"'] };
+}
+
 function compileMobilePreviousEdit(file, plugin, source) {
     if (!/^ios\/runtime\/src\/core\/plugins\/(?:sedenhanced|messageburst)\/index\.ts$/.test(file)
         || !fieldsAre(plugin, ["manifest", "start", "stop", "SettingsComponent"])
@@ -844,11 +859,11 @@ function inspectPlugin(file, code, platform, appearance = {}, nativeEffects = {}
         && imported(source, "definePlugin", "@utils/types") && !source.parseDiagnostics.length && hasLicense
         && compileDesktopEffect(name, plugin, source, entry, nativeEffects);
     const externalLookup = platform === "desktop" && compileExternalLookup(name, code);
-    const compiled = platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
+    const compiled = compileLinkTrigger(file, code) || (platform === "mobile" && factory === "defineCorePlugin" && !source.parseDiagnostics.length
         ? compileMobileFilter(name, file, plugin, source) || compileMobileClientCommands(file, plugin, source)
             || compileMobileNativeEffect(file, plugin, source, nativeEffects) || compileMobilePreviousEdit(file, plugin, source)
             || compileMobileSocialEvents(file, plugin, source)
-        : externalLookup || storeEffect || managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin));
+        : externalLookup || storeEffect || managedStyle || supported && (originRewrite || compileCommands(plugin, source) || compileOutgoing(plugin)));
     return {
         name, file, platform, flags, ...inventory(source),
         ...(compiled ? { capability: compiled.capability, cx: ["plugin " + JSON.stringify(name) + ":", ...compiled.lines, ""].join("\n") } : {}),
