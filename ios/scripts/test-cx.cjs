@@ -21,6 +21,9 @@ vm.runInNewContext(code, {
     }),
 });
 const { activateCx, createCxSession, parseCx, reviewCx } = moduleBox.exports;
+const reportModule = { exports: {} };
+vm.runInNewContext(transformSync(read("desktop/client/src/utils/ccpInspect.ts"), { loader: "ts", format: "cjs" }).code,
+    { module: reportModule });
 const generated = require("../../desktop/client/scripts/sync-cx-catalog.cjs").buildCatalog();
 assert.equal(read("desktop/client/src/utils/cxCatalog.ts").replaceAll("\r\n", "\n"), generated.source, "Shared CX catalog needs regeneration");
 const catalogModule = { exports: {} };
@@ -133,18 +136,21 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
 (async () => {
     const counter = read("examples/cx/pilot/character-counter.cx");
     const localReplies = [];
-    let run;
+    const pilotCommands = new Map();
     const commandHost = {
         ...host,
         registerCommand(name, callback, acceptsText) {
-            assert.equal(name, "ccp-count");
-            assert.equal(acceptsText, true);
-            run = callback;
+            assert.ok(["ccp-count", "ccp-inspect"].includes(name));
+            assert.equal(acceptsText, name === "ccp-count");
+            pilotCommands.set(name, callback);
             return () => {};
         },
     };
     assert.throws(() => activateCx(counter, commandHost, ["commands.register"]), /approval/);
-    const stop = activateCx(counter, commandHost, ["commands.register", "reply.local"]);
+    assert.throws(() => activateCx(counter, commandHost, ["commands.register", "reply.local"]), /approval/);
+    assert.throws(() => parseCx(counter.replace("copy client diagnostics", "copy client token")), /Unknown CX instruction/);
+    const stop = activateCx(counter, commandHost, ["commands.register", "reply.local", "diagnostics.copy"]);
+    const run = pilotCommands.get("ccp-count");
     run({ text: "a🐈", reply: value => localReplies.push(value) });
     stop();
     run({ text: "test", reply: value => localReplies.push(value) });
@@ -270,6 +276,12 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const renderSpoiler = Spoiler.prototype.render;
         const colorOverlays = new Set();
         const menuPatches = new Set(), clipboardWrites = [];
+        let protectedReads = 0;
+        const diagnosticExports = {
+            getAccount() { throw new Error("Reports must not call arbitrary methods"); },
+            get privateValue() { protectedReads++; return "private diagnostic value"; },
+        };
+        const diagnosticCache = { 42: { exports: diagnosticExports } };
         const settings = {};
         let profileUser;
         const editHooks = new Set();
@@ -308,6 +320,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 removeContextMenuPatch: (_, patch) => menuPatches.delete(patch),
             },
             "@utils/clipboard": { copyToClipboard: value => { clipboardWrites.push(value); return Promise.resolve(); } },
+            "@utils/ccpInspect": reportModule.exports,
             "@api/MessageEvents": {
                 addMessagePreSendListener(listener) { transformHooks.add(listener); return listener; },
                 removeMessagePreSendListener(listener) { transformHooks.delete(listener); },
@@ -321,7 +334,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             "@api/Notifications": { showNotification: ({ body }) => notifications.push(body) },
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
-            "@webpack": { findStore: name => stores[name], findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
+            "@webpack": { wreq: { c: diagnosticCache }, findStore: name => stores[name], findByProps: key => key === "startTyping" ? typing : key === "getUserAvatarURL" ? icons
                 : key === "createFriendInvite" ? inviteApi : key === "relativeTimeRounding" ? relativeTime
                     : key === "removeRelationship" ? relationshipActions : undefined },
             "@webpack/common": { useState, useRef: initial => useState({ current: initial })[0], ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
@@ -330,6 +343,12 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 dispatch,
             } },
             "@lib/api/cx": moduleBox.exports,
+            "@lib/api/ccpInspect": reportModule.exports,
+            "@lib/api/ccpReport": { copyCcpReport: async () => {
+                const report = reportModule.exports.inspectCcpRuntime("mobile", name => stores[name], diagnosticCache);
+                clipboardWrites.push(JSON.stringify(report));
+                return report;
+            } },
             "@lib/api/cxCatalog": { cxCatalog },
             "@lib/api/commands": commandApi,
             "@lib/api/commands/types": commandApi,
@@ -792,8 +811,24 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(Object.keys(registered).length, 0, platform + " waits for approval");
         click(render(), "Allow for this session");
         const command = registered["ccp-count"];
+        const inspect = registered["ccp-inspect"];
+        const clipboardBeforeInspect = clipboardWrites.length;
+        const diagnosticContext = { channel: { id: "test-channel" } };
+        assert.equal(inspect.execute([], diagnosticContext), undefined);
+        await new Promise(setImmediate);
+        assert.match(delivered.pop()[1], /^Copied the diagnostic report\. Found 1 loaded modules/);
+        assert.equal(clipboardWrites.length, clipboardBeforeInspect + 1);
+        const copiedReport = clipboardWrites.at(-1);
+        assert.equal(protectedReads, 0);
+        assert.ok(!copiedReport.includes("private diagnostic value") && !copiedReport.includes(sender));
+        const report = JSON.parse(copiedReport);
+        assert.equal(report.platform, platform);
+        assert.deepEqual(report.modules[0].methods, ["getAccount"]);
+        assert.deepEqual(report.modules[0].accessorNames, ["privateValue"]);
         command.execute([{ name: "text", value: "abc" }], { channel: { id: "test-channel" } });
         click(render(), "Disable CX Character Counter");
+        inspect.execute([], diagnosticContext);
+        assert.equal(clipboardWrites.length, clipboardBeforeInspect + 1);
         command.execute([{ name: "text", value: "abc" }], { channel: { id: "test-channel" } });
         assert.deepEqual(delivered, [["test-channel", "3 characters"]]);
         assert.equal(Object.keys(registered).length, 0, platform + " unregisters on disable");

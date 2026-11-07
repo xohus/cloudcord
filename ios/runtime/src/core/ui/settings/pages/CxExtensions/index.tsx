@@ -3,6 +3,8 @@ import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
 import { registerCommand } from "@lib/api/commands";
+import { describeCcpReport } from "@lib/api/ccpInspect";
+import { copyCcpReport } from "@lib/api/ccpReport";
 import { ApplicationCommandOptionType, ApplicationCommandType } from "@lib/api/commands/types";
 import { intercept } from "@lib/api/flux";
 import { getCurrentTheme } from "@lib/addons/themes";
@@ -579,6 +581,7 @@ export default function CxExtensions() {
                                     guilds: GuildStore, channels: GuildChannelStore, threads: ActiveJoinedThreadsStore, read: ReadStateStore,
                                 }, channels => { FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels }); }),
                                 friendInvites: operation => runCxFriendInvites(operation, findByProps("createFriendInvite")),
+                                copyDiagnostics: async () => describeCcpReport(await copyCcpReport()),
                             });
                             if (outgoing !== undefined) return { content: outgoing };
                         },

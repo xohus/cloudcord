@@ -74,3 +74,7 @@ export function inspectCcpRuntime(platform: "desktop" | "mobile", resolveStore: 
     }
     return { format: 1, platform, stores, checks, modules };
 }
+
+export function describeCcpReport(report: ReturnType<typeof inspectCcpRuntime>) {
+    return `Copied the diagnostic report. Found ${report.modules.length} loaded modules and checked ${Object.keys(report.checks).length} read-only calls.`;
+}

@@ -37,6 +37,7 @@ assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralRe
 assert.equal(inspect(source.replace('name: "LiteralReplace",', 'name: "LiteralReplace", name: "Other",')).cx, undefined);
 
 const records = scan(undefined, { includeCompanions: true });
+assert.equal(records.find(record => record.name === "CCPCharacterCounter")?.status, "in-catalog");
 const folders = records.find(record => record.name === "BetterFolders");
 assert.equal(folders.status, "needs-adapter");
 assert.ok(folders.companions.some(file => file.endsWith("/FolderSideBar.tsx")));

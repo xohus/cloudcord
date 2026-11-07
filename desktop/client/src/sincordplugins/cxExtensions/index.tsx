@@ -4,9 +4,10 @@ import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreE
 import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPreviousSendHandler, createCxSession, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
+import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
-import { findByProps, findStore } from "@webpack";
+import { findByProps, findStore, wreq } from "@webpack";
 import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, ReadStateStore, RelationshipStore, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 
 const session = createCxSession();
@@ -224,6 +225,11 @@ export function CxSettings() {
                                         : formatCxRoleMembers(input, guild, members, id => UserStore?.getUser(id));
                                 },
                                 friendInvites: operation => runCxFriendInvites(operation, findByProps("createFriendInvite")),
+                                async copyDiagnostics() {
+                                    const report = inspectCcpRuntime("desktop", findStore, wreq?.c);
+                                    await copyToClipboard(JSON.stringify(report));
+                                    return describeCcpReport(report);
+                                },
                                 markServersRead: () => markCxServersRead({
                                     guilds: GuildStore, channels: GuildChannelStore, threads: ActiveJoinedThreadsStore, read: ReadStateStore,
                                 }, channels => { FluxDispatcher.dispatch({ type: "BULK_ACK", context: "APP", channels }); }),

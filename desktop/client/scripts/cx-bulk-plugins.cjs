@@ -815,8 +815,11 @@ function betterDiscordFiles(folder) {
 }
 
 function scan(sourceDir, { includeCompanions = false } = {}) {
-    const { cxAppearanceTargets, cxNativeEffects } = require("./sync-cx-catalog.cjs").loadCxRuntime();
+    const { parseCx, cxAppearanceTargets, cxNativeEffects } = require("./sync-cx-catalog.cjs").loadCxRuntime();
     const existing = new Set(["character counter"]);
+    const counter = parseCx(fs.readFileSync(path.join(root, "examples/cx/pilot/character-counter.cx"), "utf8"));
+    const hasLegacyCounter = counter.commands.some(command => command.name === "ccp-count")
+        && counter.commands.some(command => command.name === "ccp-inspect" && command.actions.some(action => action.kind === "copy-diagnostics"));
     for (const name of fs.readdirSync(catalogFolder).filter(name => name.endsWith(".cx"))) {
         const source = fs.readFileSync(path.join(catalogFolder, name), "utf8");
         const header = /^plugin ("(?:[^"\\]|\\.)*"):/m.exec(source);
@@ -859,7 +862,7 @@ function scan(sourceDir, { includeCompanions = false } = {}) {
     }
     return records.map(({ cx, ...record }) => {
         const key = record.name.toLowerCase();
-        const already = existing.has(key);
+        const already = existing.has(key) || hasLegacyCounter && record.file === "desktop/client/src/sincordplugins/ccpCharacterCounter/index.ts";
         const status = already ? "in-catalog"
             : !cx ? "needs-adapter"
                 : record.platform === "betterdiscord" && !record.review ? "source-review"

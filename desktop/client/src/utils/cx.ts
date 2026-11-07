@@ -53,6 +53,7 @@ const permissionLabels = {
     "typing.suppress": "Suppress your outgoing typing indicator",
     "notifications.preventautoupgrade": "Prevent Discord from automatically changing a channel to All Messages notifications",
     "lookup.wikipedia": "Send the title you enter to English Wikipedia when you run the lookup command",
+    "diagnostics.copy": "Copy a local report of Discord module names and return types when you run the diagnostic command",
 };
 
 // Text transforms adapted from Endcord (Vendicated and contributors, GPL-3.0-or-later).
@@ -79,6 +80,7 @@ const argumentNames = (args: string) => args ? args.split(",").map(name => name.
 export type CxPermission = keyof typeof permissionLabels;
 type BasicAction = { kind: "toast" | "reply" | "send" | "reply or send" | "mark-read"; message: string; fallback?: string; choices?: string[] };
 type Action = BasicAction | { kind: "friend-invites"; operation: CxFriendInviteAction }
+    | { kind: "copy-diagnostics"; }
     | { kind: "lookup"; service: CxExternalLookup; input: string; };
 const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
     toast: ["ui.toast"],
@@ -89,7 +91,8 @@ const actionPermissions: Record<BasicAction["kind"], CxPermission[]> = {
 };
 const getActionPermissions = (action: Action): CxPermission[] => action.kind === "friend-invites"
     ? ["reply.local", `friends.invites.${action.operation}`]
-    : action.kind === "lookup" ? ["reply.local", cxExternalLookups[action.service].permission] : actionPermissions[action.kind];
+    : action.kind === "lookup" ? ["reply.local", cxExternalLookups[action.service].permission]
+        : action.kind === "copy-diagnostics" ? ["reply.local", "diagnostics.copy"] : actionPermissions[action.kind];
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
 type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice" | "user" | "role"; required: boolean; choices?: string[] };
 type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: Action[] };
@@ -338,6 +341,11 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
+        if (line === "    copy client diagnostics" && current && !current.actions.length && !current.text && !current.inputs.length) {
+            current.actions.push({ kind: "copy-diagnostics" });
+            current = undefined;
+            continue;
+        }
         const lookup = /^    lookup ([a-z]+) "([a-z][a-z0-9_-]{0,31})"$/.exec(line);
         if (lookup && current && !current.actions.length && !current.text && current.inputs.length === 1
             && current.inputs[0].name === lookup[2] && current.inputs[0].type === "text" && current.inputs[0].required
@@ -458,6 +466,7 @@ type Invocation = {
     lookup?: (name: CxClientFunction, input: string) => string | undefined;
     markServersRead?: () => string;
     friendInvites?: (operation: CxFriendInviteAction) => Promise<string>;
+    copyDiagnostics?: () => Promise<string>;
 };
 type CxHost = {
     registerCommand: (name: string, execute: (invocation?: Invocation) => string | undefined, acceptsText: boolean, sendsMessage: boolean, optionalSend: boolean, inputs: readonly CommandInput[]) => () => void;
@@ -597,6 +606,16 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
                             void invocation.friendInvites(action.operation).then(
                                 result => { if (active) reply(result); },
                                 () => { if (active) reply("Friend invites failed. Try again."); },
+                            );
+                        }
+                        continue;
+                    }
+                    if (action.kind === "copy-diagnostics") {
+                        const reply = invocation?.reply;
+                        if (reply && invocation.copyDiagnostics) {
+                            void invocation.copyDiagnostics().then(
+                                result => { if (active) reply(result); },
+                                () => { if (active) reply("Couldn’t copy the diagnostic report."); },
                             );
                         }
                         continue;

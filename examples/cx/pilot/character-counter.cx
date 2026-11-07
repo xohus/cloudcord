@@ -1,5 +1,8 @@
 plugin "CX Character Counter":
   needs commands.register
   needs reply.local
+  needs diagnostics.copy
   on command "ccp-count" with text:
     reply "${length(text)} characters"
+  on command "ccp-inspect":
+    copy client diagnostics
