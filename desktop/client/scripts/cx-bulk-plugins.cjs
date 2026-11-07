@@ -770,6 +770,13 @@ function compileMobileSocialEvents(file, plugin, source) {
 
 const sharedSourceRecipes = [
     {
+        capability: "incoming-notifications",
+        sources: {
+            "desktop/client/src/sincordplugins/pingNotifications/index.tsx": "fa7f9d4cd15ab7e3d019b596724fb1b02f8e1d3a35dbea99709eb1f3584ba58f",
+        },
+        lines: ["  needs messages.pingalerts", '  on incoming ping-alerts "mentions,dms"'],
+    },
+    {
         capability: "split-long-messages",
         sources: {
             "desktop/client/src/sincordplugins/splitLargeMessages/index.ts": "5f37baa1f571985f2f990ed3cc5168f3f7da0321beaadba74b91c96c10bf8ba8",

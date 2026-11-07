@@ -176,7 +176,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         let resolveCatalogEntry;
         const lazyEntry = { name: "Lazy Wallpaper", source: () => new Promise(resolve => { resolveCatalogEntry = resolve; }) };
         const states = [], registered = {}, delivered = [];
-        const incomingHooks = [], notifications = [], pendingNotifications = [];
+        const incomingHooks = [], notifications = [], pendingNotifications = [], desktopAlerts = [], alertRoutes = [];
         const openedLinks = [];
         const openExternal = async link => { openedLinks.push(link); };
         let selectedChannel = "test-channel";
@@ -245,7 +245,10 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const splitLimit = { getMaxMessageLength: () => 2000 };
         const splitComposer = { chatInputValidateContentLength: ({ text }) => text.length <= splitLimit.getMaxMessageLength() ? { content: text } : undefined };
         const upgradeChannel = function (channelId) { assert.equal(this, stores.UnreadSettingNoticeStore2); autoUpgrades++; return channelId; };
+        let pingDnd = false, pingMuted = false;
         const stores = {
+            PresenceStore: { getStatus: () => pingDnd ? "dnd" : "online" },
+            UserGuildSettingsStore: { isMuted: () => pingMuted },
             UnreadSettingNoticeStore2: { maybeAutoUpgradeChannel: upgradeChannel },
             UserStore: { getCurrentUser: () => ({ id: me }), getUser: id => [me, sender, other].includes(id) ? { id } : undefined },
             UserProfileStore: {
@@ -443,7 +446,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 onSendMessage(listener) { transformHooks.add(listener); return () => { transformHooks.delete(listener); }; },
                 onEditMessage(listener) { editHooks.add(listener); return () => { editHooks.delete(listener); }; }
             },
-            "@api/Notifications": { showNotification: ({ body }) => notifications.push(body) },
+            "@api/Notifications": { showNotification: alert => { notifications.push(alert.body); desktopAlerts.push(alert); } },
             "@utils/cx": moduleBox.exports,
             "@utils/types": { __esModule: true, default: value => value },
             "@webpack": { wreq: { c: diagnosticCache }, findStore: name => stores[name],
@@ -457,7 +460,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 useSyncExternalStore: (subscribe, read) => {
                 subscribe(() => typingSubscribers.add(read()));
                 return read();
-            } }, useState, useRef: initial => useState({ current: initial })[0], ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, FluxDispatcher: {
+            } }, useState, useRef: initial => useState({ current: initial })[0], ...stores, ChannelActions: voiceActions, MessageActions: messageEditor, IconUtils: icons, showToast: message => notifications.push(message), Menu: { MenuItem: "MenuItem" }, NavigationRouter: { transitionTo: path => alertRoutes.push(path) }, FluxDispatcher: {
                 _interceptors: incomingHooks,
                 addInterceptor: callback => incomingHooks.push(callback),
                 ...channelDispatcher,
@@ -1220,6 +1223,55 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
             click(render(), "Disable " + name);
             assert.equal(incomingHooks.length, 0);
         }
+        const pingSource = read("examples/cx/catalog/plugins/ping-notifications.cx");
+        assert.throws(() => parseCx(pingSource.replace('"mentions,dms"', '"active,include-muted"')), /Choose mentions/);
+        assert.throws(() => activateCx(pingSource, host, ["messages.watchlocal"]), /approval/);
+        const originalChannel = stores.ChannelStore.getChannel;
+        const originalBlock = stores.RelationshipStore.isBlocked;
+        const originalSelection = selectedChannel;
+        let channelType = 0, blocked = false;
+        stores.ChannelStore.getChannel = id => id === other
+            ? { type: channelType, name: "Test channel", guild_id: channelType === 0 ? guildId : undefined, recipients: [sender] }
+            : originalChannel(id);
+        stores.RelationshipStore.isBlocked = () => blocked;
+        selectCatalog("PingNotifications");
+        click(render(), "Allow for this session");
+        const emitPing = (mentions = [], extra = {}) => incomingHooks[0]({ type: "MESSAGE_CREATE",
+            message: { id: roleId, channel_id: other, author: { id: sender, username: "Tester" }, content: `hi <@${me}>`, mentions, ...extra } });
+        const mention = [{ id: me, username: "$&tester" }];
+        emitPing();
+        emitPing(mention, { state: "SENDING" });
+        selectedChannel = other;
+        emitPing(mention);
+        selectedChannel = originalSelection;
+        pingDnd = true;
+        emitPing(mention);
+        pingDnd = false;
+        pingMuted = true;
+        emitPing(mention);
+        pingMuted = false;
+        blocked = true;
+        emitPing(mention);
+        blocked = false;
+        assert.equal(pendingNotifications.length, 0);
+        emitPing(mention);
+        assert.equal(pendingNotifications.length, 1);
+        pendingNotifications.shift()();
+        assert.equal(notifications.at(-1), desktop ? "hi @$&tester" : "Tester in Test channel: hi @$&tester");
+        if (desktop) {
+            assert.equal(desktopAlerts.at(-1).noPersist, true);
+            desktopAlerts.at(-1).onClick();
+            assert.deepEqual(alertRoutes, [`/channels/${guildId}/${other}/${roleId}`]);
+        }
+        channelType = 1;
+        emitPing();
+        assert.equal(pendingNotifications.length, 1);
+        click(render(), "Disable PingNotifications");
+        const beforeDisabledPing = notifications.length;
+        pendingNotifications.shift()();
+        assert.equal(notifications.length, beforeDisabledPing);
+        stores.ChannelStore.getChannel = originalChannel;
+        stores.RelationshipStore.isBlocked = originalBlock;
         const hopOn = read("examples/cx/catalog/plugins/hop-on.cx");
         const hopEvent = (author = other, channel = "test-channel", content = "HOP ON tonight") => ({
             type: "MESSAGE_CREATE", message: { author: { id: author }, channel_id: channel, content },

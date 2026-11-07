@@ -4,13 +4,13 @@ import { addMessagePreEditListener, addMessagePreSendListener, removeMessagePreE
 import { showNotification } from "@api/Notifications";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxUploadAnonymiser } from "@utils/cx";
 import { copyToClipboard } from "@utils/clipboard";
-import { bindCxChannelOpenRead, filterCxEmojiGrid } from "@utils/cx";
+import { bindCxChannelOpenRead, filterCxEmojiGrid, isCxNotificationMuted, type CxMessageAlert } from "@utils/cx";
 import { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink } from "@utils/cx";
 import { describeCcpReport, inspectCcpRuntime } from "@utils/ccpInspect";
 import { cxCatalog } from "@utils/cxCatalog";
 import definePlugin from "@utils/types";
 import { findByProps, findStore, waitFor, waitForSubscriptions, wreq } from "@webpack";
-import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
+import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, Constants, EmojiStore, FluxDispatcher, GuildChannelStore, GuildMemberStore, GuildStore, IconUtils, Menu, MessageActions, MessageStore, NavigationRouter, PresenceStore, React, ReadStateStore, RelationshipStore, RestAPI, SelectedChannelStore, SelectedGuildStore, showToast, SpotifyStore, UserProfileStore, UserStore, useRef, useState } from "@webpack/common";
 import type { ReactNode } from "react";
 
 const session = createCxSession();
@@ -173,6 +173,7 @@ export function CxSettings() {
                 registerIncomingRules(rules) {
                     if (typeof FluxDispatcher?.addInterceptor !== "function") throw new Error("Discord events are unavailable");
                     let active = true;
+                    const muteStore = rules.some(rule => rule.kind === "ping-alerts") ? findStore("UserGuildSettingsStore") : undefined;
                     const context = {
                         currentUser: () => UserStore.getCurrentUser()?.id,
                         channel: (id: string) => ChannelStore.getChannel(id),
@@ -180,6 +181,23 @@ export function CxSettings() {
                         blocked: (id: string) => RelationshipStore?.isBlocked(id) === true,
                         ignored: (id: string) => RelationshipStore?.isIgnored?.(id) === true,
                         selectedChannel: () => SelectedChannelStore?.getChannelId?.(),
+                        pingAlerts: {
+                            status: (id: string) => PresenceStore?.getStatus(id),
+                            isFriend: (id: string) => RelationshipStore?.isFriend?.(id) === true,
+                            muted: (id: string, channel: Parameters<typeof isCxNotificationMuted>[1]) => isCxNotificationMuted(id, channel, muteStore),
+                            notify: (alert: CxMessageAlert) => {
+                                const account = UserStore.getCurrentUser()?.id;
+                                setTimeout(() => {
+                                    if (!active || account !== UserStore.getCurrentUser()?.id) return;
+                                    const { author, channel, message, guild, title, body } = alert;
+                                    void showNotification({ title, body, icon: UserStore.getUser(author)?.getAvatarURL?.(undefined, 128),
+                                        noPersist: true, onClick: () => {
+                                            if (active && account === UserStore.getCurrentUser()?.id)
+                                                NavigationRouter.transitionTo(`/channels/${isCxProfileUserId(guild) ? guild : "@me"}/${channel}/${message}`);
+                                        } });
+                                }, 0);
+                            },
+                        },
                         openLink: (link: string, channel: string, user: string) => setTimeout(() => {
                             if (!active || context.currentUser() !== user || context.selectedChannel() !== channel) return;
                             if (IS_WEB) window.open(link, "_blank", "noopener,noreferrer");

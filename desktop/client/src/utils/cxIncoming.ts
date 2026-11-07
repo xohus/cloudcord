@@ -10,6 +10,7 @@ export const incomingPermissions = {
     calls: "calls.suppressring",
     keywords: "messages.watchlocal",
     users: "messages.watchlocal",
+    "ping-alerts": "messages.pingalerts",
     "hide-users": "messages.filterlocal",
     "hide-keywords": "messages.filterlocal",
     "hide-blocked": "messages.filterlocal",
@@ -30,6 +31,14 @@ const systemMessageTypes = { pins: [6], joins: [7], boosts: [8, 9, 10, 11] } as 
 export function parseIncomingRule(name: string, input: string): IncomingRule {
     if (!Object.prototype.hasOwnProperty.call(incomingPermissions, name)) throw new Error("Unknown incoming rule");
     const kind = name as IncomingKind;
+    if (kind === "ping-alerts") {
+        const values = [...new Set(input.split(",").map(value => value.trim()))];
+        if (values.some(value => !["mentions", "friends", "dms", "active", "include-muted"].includes(value))
+            || !values.some(value => ["mentions", "friends", "dms"].includes(value))) {
+            throw new Error("Choose mentions, friends, or dms, with optional active and include-muted");
+        }
+        return { kind, values };
+    }
     if (kind === "open-link") {
         const [phrase, link, extra] = input.split("|").map(part => part.trim());
         if (!phrase || phrase.length > 80 || link === undefined || extra !== undefined)
@@ -78,14 +87,40 @@ export function parseIncomingRule(name: string, input: string): IncomingRule {
 }
 
 export type IncomingPayload = Record<string, any> & { type: string };
+type NotificationChannel = { name?: string; type?: number; guild_id?: string; parent_id?: string;
+    recipients?: readonly (string | { id: string })[]; isMuted?: () => boolean; };
+type NotificationMuteStore = {
+    isMuted?: (guild: string) => boolean;
+    isChannelMuted?: (guild: string | null, channel: string) => boolean;
+    isCategoryMuted?: (guild: string, channel: string) => boolean;
+    isGuildOrCategoryOrChannelMuted?: (guild: string, channel: string) => boolean;
+    getMutedChannels?: () => readonly string[];
+};
+export type CxMessageAlert = { title: string; body: string; author: string; channel: string; message: string; guild?: string; };
+
+export function isCxNotificationMuted(id: string, channel: NotificationChannel, store?: NotificationMuteStore) {
+    const guild = channel.guild_id;
+    if (channel.isMuted?.() || store?.isChannelMuted?.(guild ?? null, id)) return true;
+    if (!guild) return store?.getMutedChannels?.()?.includes?.(id) === true;
+    return store?.isGuildOrCategoryOrChannelMuted?.(guild, id) === true
+        || store?.isMuted?.(guild) === true || store?.isCategoryMuted?.(guild, id) === true
+        || Boolean(channel.parent_id && store?.isChannelMuted?.(guild, channel.parent_id));
+}
+
 type IncomingContext = {
     currentUser: () => string | undefined;
-    channel: (id: string) => { name?: string; recipients?: readonly (string | { id: string })[] } | undefined;
+    channel: (id: string) => NotificationChannel | undefined;
     replyAuthor: (channel: string, message: string) => { id: string } | undefined;
     notify: (body: string) => void;
     blocked?: (user: string) => boolean;
     ignored?: (user: string) => boolean;
     selectedChannel?: () => string | undefined;
+    pingAlerts?: {
+        status: (id: string) => string | undefined;
+        isFriend: (id: string) => boolean;
+        muted: (id: string, channel: NotificationChannel) => boolean;
+        notify: (alert: CxMessageAlert) => void;
+    };
     openLink?: (link: string, channel: string, user: string) => void;
 };
 
@@ -217,6 +252,33 @@ export function applyIncomingRule(rule: IncomingRule, payload: IncomingPayload, 
     if (!me || author === me) return;
     const mentions = Array.isArray(message.mentions) ? message.mentions : [];
     const isMe = (mention: string | { id?: string }) => (typeof mention === "string" ? mention : mention?.id) === me;
+    if (rule.kind === "ping-alerts") {
+        const channelId = message.channel_id ?? message.channelId;
+        const alerts = context.pingAlerts;
+        if (!alerts || typeof channelId !== "string" || !/^\d{17,20}$/.test(channelId)
+            || typeof message.id !== "string" || !/^\d{17,20}$/.test(message.id)
+            || message.state === "SENDING" || alerts.status(me) === "dnd"
+            || !rule.values.includes("active") && context.selectedChannel?.() === channelId) return;
+        const channel = context.channel(channelId);
+        if (!channel) return;
+        const dm = channel.type === 1 || channel.type === 3;
+        if (!(rule.values.includes("mentions") && mentions.some(isMe)
+            || rule.values.includes("friends") && !dm && alerts.isFriend(author)
+            || rule.values.includes("dms") && dm)) return;
+        if (!rule.values.includes("include-muted") && (alerts.muted(channelId, channel) || context.blocked?.(author)
+            || dm && channel.recipients?.some(recipient => context.blocked?.(typeof recipient === "string" ? recipient : recipient.id)))) return;
+
+        const names = new Map(mentions.flatMap(mention => typeof mention?.username === "string" && typeof mention?.id === "string"
+            ? [[mention.id, mention.username] as const] : []));
+        const content = typeof message.content === "string" ? message.content.slice(0, 4000) : "";
+        const body = content.replace(/<@!?(\d{17,20})>/g, (token, id: string) => names.has(id) ? "@" + names.get(id) : token);
+        const authorName = typeof message.author.username === "string" ? message.author.username : "Someone";
+        const channelName = channel.name || (channel.type === 3 ? "Group DM" : dm ? "DM" : "Server");
+        alerts.notify({ title: authorName.slice(0, 64) + " in " + channelName.slice(0, 64),
+            body: body.slice(0, 200) + (body.length > 200 ? "…" : ""),
+            author, channel: channelId, message: message.id, guild: channel.guild_id });
+        return;
+    }
     if (rule.kind === "silence-users") {
         if (rule.values.includes(author)) {
             return { message: { ...message, mention_everyone: false, mention_roles: [], mentions: mentions.filter(mention => !isMe(mention)) } };

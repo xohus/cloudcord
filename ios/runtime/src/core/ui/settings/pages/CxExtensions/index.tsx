@@ -2,7 +2,7 @@ import { onEditMessage, onSendMessage } from "@core/plugins/shared/sendMessage";
 import { instead } from "@lib/api/patcher";
 import { animateCxAssets, bindCxSocialEvents, createCxPlusReactionHandler, createCxPreviousSendHandler, createCxSession, createCxSplitSender, cxAppearanceTargets, cxProfileMenuActions, CX_INLINE_EDITOR_LIMIT, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, getCxProfileMenuCopy, isCxProfileUserId, markCxServersRead, MAX_CX_SOURCE, overrideCxMethods, raiseCxAvatarResolution, reviewCx, runCxFriendInvites, runCxIncomingRules, type CxProfileMenuAction, type CxUploadAnonymiser } from "@lib/api/cx";
 import { cxCatalog } from "@lib/api/cxCatalog";
-import { bindCxChannelOpenRead, filterCxEmojiCategories } from "@lib/api/cx";
+import { bindCxChannelOpenRead, filterCxEmojiCategories, isCxNotificationMuted, type CxMessageAlert } from "@lib/api/cx";
 import { formatCxEmojiMarkdown, formatCxStickerLink, validateCxMediaLink, validateCxStickerLink } from "@lib/api/cx";
 import { registerCommand } from "@lib/api/commands";
 import { describeCcpReport } from "@lib/api/ccpInspect";
@@ -37,6 +37,8 @@ const ActiveJoinedThreadsStore = findByStoreNameLazy("ActiveJoinedThreadsStore")
 const ReadStateStore = findByStoreNameLazy("ReadStateStore");
 const SpotifyStore = findByStoreNameLazy("SpotifyStore");
 const SelectedChannelStore = findByStoreNameLazy("SelectedChannelStore");
+const PresenceStore = findByStoreNameLazy("PresenceStore");
+const UserGuildSettingsStore = findByStoreNameLazy("UserGuildSettingsStore");
 let splitSender: ReturnType<typeof createCxSplitSender> | undefined;
 
 function hideDisabledEmojiInPicker(enabled: () => boolean) {
@@ -804,6 +806,19 @@ export default function CxExtensions() {
                         blocked: (id: string) => RelationshipStore?.isBlocked?.(id) === true,
                         ignored: (id: string) => RelationshipStore?.isIgnored?.(id) === true,
                         selectedChannel: () => SelectedChannelStore?.getChannelId?.(),
+                        pingAlerts: {
+                            status: (id: string) => PresenceStore?.getStatus?.(id),
+                            isFriend: (id: string) => RelationshipStore?.isFriend?.(id) === true,
+                            muted: (id: string, channel: Parameters<typeof isCxNotificationMuted>[1]) =>
+                                isCxNotificationMuted(id, channel, UserGuildSettingsStore),
+                            notify: ({ title, body }: CxMessageAlert) => {
+                                const account = UserStore?.getCurrentUser?.()?.id;
+                                setTimeout(() => {
+                                    if (active && !settings.safeMode?.enabled && account === UserStore?.getCurrentUser?.()?.id)
+                                        showToast(body ? title + ": " + body : title);
+                                }, 0);
+                            },
+                        },
                         openLink: (link: string, channel: string, user: string) => setTimeout(() => {
                             if (active && !settings.safeMode?.enabled && context.currentUser() === user && context.selectedChannel() === channel)
                                 void Linking.openURL(link).catch(() => {});

@@ -14,6 +14,7 @@ import { validateCxWallpaper } from "./cxWallpaper";
 import { cxProfileMenuActions, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
 
 export { cxProfileMenuActions, getCxProfileMenuCopy, isCxProfileUserId, type CxProfileMenuAction } from "./cxProfileMenu";
+export { isCxNotificationMuted, type CxMessageAlert } from "./cxIncoming";
 export { bindCxChannelOpenRead, formatCxRandomMember, formatCxRoleMembers, formatCxSpotify, markCxServersRead, runCxFriendInvites } from "./cxClientCommands";
 export { animateCxAssets, cxNativeEffects, filterCxEmojiAutocomplete, fixCxFileExtensions, floorCxRelativeTime, overrideCxMethods, raiseCxAvatarResolution } from "./cxNativeEffects";
 export { createCxPreviousSendHandler, planCxPreviousEdit } from "./cxPreviousMessage";
@@ -65,6 +66,7 @@ const permissionLabels = {
     "voice.followfriend": "Move you to the listed friend’s voice channel while you are already connected to voice",
     "friends.notifyremoval": "Show a local notification when a friend removes you",
     "messages.watchlocal": "Match incoming messages on this device and show local notifications",
+    "messages.pingalerts": "Show message previews for the selected mentions, friends, and direct messages",
     "links.openonmessage": "Open the configured HTTPS page when a matching message arrives in the channel you are viewing",
     "messages.filterlocal": "Hide matching incoming messages and history on this device",
     "typing.suppress": "Suppress your outgoing typing indicator",

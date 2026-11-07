@@ -1,0 +1,3 @@
+plugin "PingNotifications":
+  needs messages.pingalerts
+  on incoming ping-alerts "mentions,dms"
