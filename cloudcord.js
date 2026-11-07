@@ -37580,12 +37580,25 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
             enumerable: previous?.enumerable ?? false
           });
         }
+        overrideLayers.set(wrapped, {
+          target,
+          key: key2,
+          previous,
+          active: () => active
+        });
         cleanups.push(() => {
           var current = Object.getOwnPropertyDescriptor(target, key2);
           if (current?.value !== wrapped)
             return;
-          if (previous)
-            Object.defineProperty(target, key2, previous);
+          var restore = previous;
+          while (typeof restore?.value === "function") {
+            var layer = overrideLayers.get(restore.value);
+            if (!layer || layer.target !== target || layer.key !== key2 || layer.active())
+              break;
+            restore = layer.previous;
+          }
+          if (restore)
+            Object.defineProperty(target, key2, restore);
           else
             Reflect.deleteProperty(target, key2);
         });
@@ -37625,7 +37638,27 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       getGuildIconURL: animateOptions
     }, enabled);
   }
-  var cxNativeEffects, roundingUsers;
+  function raiseCxAvatarResolution(target, size, enabled) {
+    var avatarUrl2 = /^(https:\/\/|\/\/)(?:cdn\.discordapp\.com|media\.discordapp\.net)\/(?:guilds\/\d+\/users\/\d+\/)?avatars\/\d+\/[\w-]+\.(?:png|webp|gif|jpe?g|avif)(\?[^#\s]*)?$/i;
+    return overrideCxMethods(target, {
+      getUserAvatarURL(args, invoke) {
+        var url2 = invoke(args);
+        if (typeof url2 !== "string")
+          return url2;
+        var match = avatarUrl2.exec(url2);
+        if (!match)
+          return url2;
+        var existingSize = /([?&])size=([^&]*)/i;
+        var existing = Number(existingSize.exec(url2)?.[2] ?? 0);
+        if (existing >= size)
+          return url2;
+        if (existingSize.test(url2))
+          return url2.replace(existingSize, "$1size=" + size);
+        return url2 + (/[?&]$/.test(url2) ? "" : match[2] ? "&" : "?") + "size=" + size;
+      }
+    }, enabled);
+  }
+  var cxNativeEffects, cxAvatarResolutions, roundingUsers, overrideLayers;
   var init_cxNativeEffects = __esm({
     "src/lib/api/cxNativeEffects.ts"() {
       "use strict";
@@ -37647,9 +37680,21 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "floor-relative-time": {
           permission: "appearance.style",
           label: "Round relative timestamps down"
+        },
+        "avatar-resolution": {
+          permission: "appearance.avatarresolution",
+          label: "Request higher-resolution Discord avatars"
         }
       };
+      cxAvatarResolutions = [
+        256,
+        512,
+        1024,
+        2048,
+        4096
+      ];
       roundingUsers = /* @__PURE__ */ new WeakMap();
+      overrideLayers = /* @__PURE__ */ new WeakMap();
     }
   });
 
@@ -37967,11 +38012,18 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         current = void 0;
         return "continue";
       }
-      var effect2 = /^  use ([a-z-]+)$/.exec(line12);
+      var effect2 = /^  use ([a-z-]+)(?: (\d+))?$/.exec(line12);
       if (effect2) {
         var name3 = effect2[1];
         if (!Object.prototype.hasOwnProperty.call(cxNativeEffects, name3) || nativeEffects.has(name3))
           throw new Error("Unknown or duplicate client effect");
+        if (name3 === "avatar-resolution") {
+          var size = Number(effect2[2]);
+          if (!cxAvatarResolutions.includes(size))
+            throw new Error("Choose an avatar size of 256, 512, 1024, 2048, or 4096");
+          avatarResolution = size;
+        } else if (effect2[2])
+          throw new Error("This client effect takes no options");
         nativeEffects.add(name3);
         current = void 0;
         return "continue";
@@ -38208,6 +38260,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
     var hiddenTargets = /* @__PURE__ */ new Set();
     var styledTargets = /* @__PURE__ */ new Set();
     var nativeEffects = /* @__PURE__ */ new Set();
+    var avatarResolution;
     var previousRule;
     var profileActions = /* @__PURE__ */ new Set();
     var incoming = [];
@@ -38279,6 +38332,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       nativeEffects: [
         ...nativeEffects
       ],
+      avatarResolution,
       previousRule,
       profileActions: [
         ...profileActions
@@ -38301,7 +38355,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       kind: document.kind,
       name: document.name,
       permissions: document.permissions,
-      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.nativeEffects.map((effect) => cxNativeEffects[effect].label)).concat(document.messageTransforms.flatMap((rule) => rule.name === "rewriteOrigin" ? [
+      effects: document.permissions.map((permission) => permissionLabels[permission]).concat(document.profileActions.map((action) => cxProfileMenuActions[action].label)).concat(document.hiddenTargets.map((target) => "Hide " + cxAppearanceTargets[target].label)).concat(document.styledTargets.map((target) => cxAppearanceTargets[target].label)).concat(document.nativeEffects.map((effect) => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : ""))).concat(document.messageTransforms.flatMap((rule) => rule.name === "rewriteOrigin" ? [
         rule.find + " \u2192 " + rule.replacement
       ] : [])).concat(document.incoming.flatMap((rule) => rule.kind === "stickers" && rule.values[0] === "*" ? [
         "Hide all stickers"
@@ -38497,7 +38551,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       for (var effect of document.nativeEffects) {
         if (!host.registerNativeEffect)
           throw new Error("This client cannot apply " + cxNativeEffects[effect].label.toLowerCase());
-        cleanups.push(host.registerNativeEffect(effect));
+        cleanups.push(host.registerNativeEffect(effect, effect === "avatar-resolution" ? document.avatarResolution : void 0));
       }
       if (document.suppressReplyPing) {
         if (!host.registerReplyPingSuppression)
@@ -38617,6 +38671,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
         "profilemenu.copy": "Add the listed copy actions to user menus, including profile colors when specified. Writes to the clipboard only when selected.",
         "appearance.hide": "Hide the listed interface elements on this device",
         "appearance.style": "Apply the listed visual changes on this device",
+        "appearance.avatarresolution": "Change image size requests for avatars hosted on Discord\u2019s CDN",
         "messages.filterstickers": "Filter stickers from incoming messages on this device",
         "messages.silencementions": "Mute mentions from the listed senders on this device",
         "replies.controlping": "Choose whether incoming replies ping you on this device",
@@ -39091,6 +39146,14 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   var init_high_contrast_text = __esm({
     "../examples/cx/catalog/plugins/high-contrast-text.cx"() {
       high_contrast_text_default = 'plugin "HighContrastText":\n  needs appearance.style\n  style contrast-text\n';
+    }
+  });
+
+  // ../examples/cx/catalog/plugins/high-res-profile-images.cx
+  var high_res_profile_images_default;
+  var init_high_res_profile_images = __esm({
+    "../examples/cx/catalog/plugins/high-res-profile-images.cx"() {
+      high_res_profile_images_default = 'plugin "High-Res Profile Images":\n  needs appearance.avatarresolution\n  use avatar-resolution 256\n';
     }
   });
 
@@ -40264,6 +40327,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
       init_hide_typing_indicator();
       init_hide_unread_pills();
       init_high_contrast_text();
+      init_high_res_profile_images();
       init_highlight_links();
       init_ignore_calls();
       init_in_role();
@@ -40608,6 +40672,10 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
           {
             name: "HighContrastText",
             source: high_contrast_text_default
+          },
+          {
+            name: "High-Res Profile Images",
+            source: high_res_profile_images_default
           },
           {
             name: "HighlightLinks",
@@ -41467,7 +41535,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
               throw new Error("This loader does not support color overrides");
             return registerColorOverlay(style);
           },
-          registerNativeEffect(effect) {
+          registerNativeEffect(effect, avatarResolution = 256) {
             var enabled = () => !settings.safeMode?.enabled;
             switch (effect) {
               case "silent-typing":
@@ -41483,6 +41551,8 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
                 return animateCxAssets(findByProps("getUserAvatarURL", "getGuildIconURL"), false, enabled);
               case "floor-relative-time":
                 return floorCxRelativeTime(findByProps("relativeTimeRounding", "locale"), enabled);
+              case "avatar-resolution":
+                return raiseCxAvatarResolution(findByProps("getUserAvatarURL", "getGuildIconURL"), avatarResolution, enabled);
             }
           },
           registerReplyPingSuppression() {
@@ -46563,7 +46633,7 @@ Download the latest CloudCord bundle without reinstalling the app. Your account 
   init_asyncIteratorSymbol();
   init_promiseAllSettled();
   init_async_to_generator();
-  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "eb7fbdd79cf4f76a8e9c91ed45a47cd3f4451891";
+  globalThis.__CLOUDCORD_RUNTIME_REVISION__ = "87e65aabe4713a736f07a9595b55a4765b4bba9f";
   var root = globalThis;
   var rain = root.__RAIN_LOADER__;
   var existingLoader = root.__CLOUDCORD_LOADER__;
