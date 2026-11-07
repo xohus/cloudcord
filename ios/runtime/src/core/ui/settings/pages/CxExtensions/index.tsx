@@ -1296,6 +1296,18 @@ export default function CxExtensions() {
                         if (!settings.safeMode?.enabled && typeof message.content === "string") message.content = transform(message.content);
                     });
                 },
+                registerProfileBioTransform(transform) {
+                    const target = findByFilePath("modules/user_profile/native/UserProfileAboutMeCard.tsx")?.default;
+                    if (!target) throw new Error("Discord's profile bio is unavailable");
+                    return registerJsxAppearance([target], element => {
+                        if (element.type !== target) return element;
+                        const { displayProfile, pendingBio } = element.props;
+                        const bio = displayProfile?.getPreviewBio?.(pendingBio);
+                        if (typeof bio !== "string") return element;
+                        const rewritten = transform(bio);
+                        return rewritten === bio ? element : React.cloneElement(element, { pendingBio: rewritten });
+                    });
+                },
                 getUserAvatarUrl(id) {
                     const user = id ? UserStore?.getUser?.(id) : UserStore?.getCurrentUser?.();
                     if (user) return findByProps("getUserAvatarURL", "getGuildIconURL")?.getUserAvatarURL(user, true, 1024);

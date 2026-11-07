@@ -403,6 +403,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         const expressionSheets = { MessageEmojiActionSheet: () => null, StickerDetailActionSheet: () => null,
             StickerOptionsActionSheet: () => null, BottomSheet: () => null, ActionSheet: () => null };
         const editHooks = new Set();
+        const AboutMeCard = () => null;
         const markupCache = new WeakMap();
         const markupParser = {
             parseMessageMarkup(message, contentMessage, hideSimpleEmbedContent, inline = false) {
@@ -530,6 +531,7 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
                 : path.endsWith("/useMediaViewerSources.tsx") ? viewerSources
                 : path.endsWith("/GIFPickerItemView.tsx") ? gifPicker
                 : path.endsWith("/MarkupParsers.tsx") ? markupParser
+                : path.endsWith("/UserProfileAboutMeCard.tsx") ? { default: AboutMeCard }
                 : path === "lib/uploader/native/CloudUploader.tsx" ? { default: NativeCloudUploader }
                 : path === "modules/media_uploads/native/UploadPreviewActionSheet.tsx" ? { default: NativeUploadPreview }
                 : path === "modules/messages/native/renderer/createMessageContent.tsx" ? messageRenderer
@@ -2271,6 +2273,44 @@ console.log("PASS CX permission review, denial, revocation, rollback, plugin and
         assert.equal(redirectDraft("https://x.com.evil.example/user"), "https://x.com.evil.example/user");
         assert.equal(redirectDraft("look https://x.com/user"), "look https://x.com/user");
         click(render(), "Disable EmbeddedURLs");
+
+        const converter = cxCatalog.plugins.find(entry => entry.name === "LinkConverter").source;
+        assert.throws(() => parseCx(converter.replace(/^  needs profile\.redirectlinks\r?\n/m, "")), /permissions/);
+        assert.throws(() => parseCx(converter.replace("before profile rewrite-link", "before profile replace")), /profile bios/);
+        selectCatalog("LinkConverter");
+        click(render(), "Allow for this session");
+        const convertLinks = [...transformHooks][0];
+        const originalLinks = "See (https://x.com/test?x=1#note) and <http://old.reddit.com/r/example>.";
+        const convertedLinks = "See (https://fxtwitter.com/test?x=1#note) and <https://rxddit.com/r/example>.";
+        const linkDraft = { content: originalLinks };
+        if (desktop) convertLinks("test-channel", linkDraft);
+        else convertLinks(linkDraft);
+        assert.equal(linkDraft.content, convertedLinks);
+        const unsafeLinks = { content: "https://x.com.evil.example https://x.com.@evil.example https://x.com!@evil.example https://x.com:8443/ https://x.com%2fevil.example" };
+        const unchanged = unsafeLinks.content;
+        if (desktop) convertLinks("test-channel", unsafeLinks);
+        else convertLinks(unsafeLinks);
+        assert.equal(unsafeLinks.content, unchanged);
+        if (desktop) {
+            const patch = desktopPlugin.patches.find(patch => patch.find === "disableInteractions:");
+            const fixture = "let{userBio:a,disableInteractions:b}=props;return a;";
+            const match = new RegExp(patch.replacement.match.source.replaceAll("\\i", "[a-zA-Z_$][\\w$]*"));
+            const code = fixture.replace(match, patch.replacement.replace.replace("$self", "plugin"));
+            const readBio = new Function("plugin", "props", code);
+            const props = Object.freeze({ userBio: originalLinks, disableInteractions: false });
+            assert.equal(readBio(desktopPlugin, props), convertedLinks);
+            assert.equal(props.userBio, originalLinks);
+            click(render(), "Disable LinkConverter");
+            assert.equal(readBio(desktopPlugin, props), originalLinks);
+        } else {
+            const props = Object.freeze({ displayProfile: { getPreviewBio: pending => pending ?? originalLinks } });
+            const card = jsx(AboutMeCard, props);
+            const wrapped = appearanceHooks.get(AboutMeCard)(null, card);
+            assert.equal(wrapped.type(wrapped.props).props.pendingBio, convertedLinks);
+            assert.equal(card.props.pendingBio, undefined);
+            click(render(), "Disable LinkConverter");
+            assert.equal(wrapped.type(wrapped.props), card);
+        }
 
         for (const [name, content, expected] of [
             ["SedEnhanced", "s/a.b/done/g", "Fix done twice: done"],

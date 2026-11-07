@@ -17,6 +17,18 @@ export function rewriteCxOrigin(text: string, rules: ReadonlyMap<string, string>
     return destination ? destination + path + query : text;
 }
 
+export function rewriteCxLinks(text: string, rules: ReadonlyMap<string, string>) {
+    return text.replace(/(^|[\s<("'[{])https?:\/\/([a-z0-9.-]+)/gi,
+        (original, before: string, host: string, offset: number) => {
+            const end = offset + original.length;
+            const next = text[end];
+            if (next && !/[/?#\s<>]/.test(next) && !/^["')\]},!]+(?=$|[\s<>])/.test(text.slice(end))) return original;
+            const domain = host.replace(/\.+$/, "");
+            const destination = rules.get("https://" + domain.toLowerCase());
+            return destination ? before + destination + host.slice(domain.length) : original;
+        });
+}
+
 // Ingtoninator by zyqunix and BioTomateDE.
 function ingtonify(text: string) {
     const links = [...text.matchAll(/https?:\/\/[^\s]+\.[^\s]+/gi)];

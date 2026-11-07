@@ -3,7 +3,7 @@ import { cxClientFunctions, cxExternalLookups, type CxClientFunction, type CxExt
 import { chooseOne, cxCommandFunctions } from "./cxCommandFunctions";
 import { applyIncomingRule, incomingPermissions, type IncomingPayload, type IncomingRule, parseIncomingRule } from "./cxIncoming";
 import { calculate, convertUnits } from "./cxNumeric";
-import { messageTransforms, parseCxHttpsOrigin, polishOptions, reverseText, rewriteCxOrigin } from "./cxMessageTransforms";
+import { messageTransforms, parseCxHttpsOrigin, polishOptions, reverseText, rewriteCxLinks, rewriteCxOrigin } from "./cxMessageTransforms";
 import { cxAvatarResolutions, type CxAvatarResolution, cxNativeEffects, type CxNativeEffect } from "./cxNativeEffects";
 import { parseCxPreviousRule, type CxPreviousRule } from "./cxPreviousMessage";
 import { formatCxProfileColors } from "./cxProfileColors";
@@ -45,6 +45,7 @@ const permissionLabels = {
     "messages.transform": "Change text before Discord sends messages you compose",
     "messages.edit.transform": "Change text when you submit a message edit",
     "messages.redirectlinks": "Replace the listed HTTPS origins in messages you compose",
+    "profile.redirectlinks": "Replace the listed link origins in profile bios displayed on this device",
     "messages.editprevious": "Edit your own previous text message when you send a correction or quick follow-up",
     "messages.reactshortcut": "Add an emoji reaction in the current chat when you send a plus shortcut",
     "uploads.rename": "Change attachment filenames before Discord uploads them",
@@ -122,11 +123,12 @@ const getActionPermissions = (action: Action): CxPermission[] => action.kind ===
 const sendsMessage = (action: Action) => action.kind === "send" || action.kind === "reply or send";
 type CommandInput = { name: string; type: "text" | "integer" | "boolean" | "choice" | "user" | "role"; required: boolean; choices?: string[] };
 type Command = { name: string; text: boolean; inputs: CommandInput[]; actions: Action[] };
-type TransformStage = "send" | "edit";
+type TransformStage = "send" | "edit" | "profile";
 type MessageTransform = { stage: TransformStage } & (
     { name: keyof typeof messageTransforms; options?: string } |
     { name: "replaceLiteral"; find: string; replacement: string } |
     { name: "rewriteOrigin"; find: string; replacement: string } |
+    { name: "rewriteLink"; find: string; replacement: string } |
     { name: "rewriteText"; rules: ReturnType<typeof parseCxTextRule>[]; }
 );
 export type CxTheme = {
@@ -339,13 +341,14 @@ export function parseCx(source: string): CxDocument {
             current = undefined;
             continue;
         }
-        const replace = /^  before (send|edit) (replace|rewrite-origin) ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line);
+        const replace = /^  before (send|edit|profile) (replace|rewrite-origin|rewrite-link) ("(?:[^"\\]|\\.)*") with ("(?:[^"\\]|\\.)*")$/.exec(line);
         if (replace) {
             const stage = replace[1] as TransformStage;
-            const name = replace[2] === "replace" ? "replaceLiteral" : "rewriteOrigin";
+            const name = replace[2] === "replace" ? "replaceLiteral" : replace[2] === "rewrite-link" ? "rewriteLink" : "rewriteOrigin";
+            if (stage === "profile" && name !== "rewriteLink") throw new Error("Only link rewrites can apply to profile bios");
             let find = quoted(replace[3], 240);
             let replacement = quoted(replace[4], 240, true);
-            if (name === "rewriteOrigin") {
+            if (name !== "replaceLiteral") {
                 find = parseCxHttpsOrigin(find);
                 replacement = parseCxHttpsOrigin(replacement);
                 if (find === replacement) throw new Error("Use a different destination for link rewrites");
@@ -481,8 +484,12 @@ export function parseCx(source: string): CxDocument {
     for (const permission of clientPermissions) required.add(permission);
     for (const { kind } of incoming) required.add(incomingPermissions[kind]);
     for (const { stage, name } of transforms) {
+        if (stage === "profile") {
+            required.add("profile.redirectlinks");
+            continue;
+        }
         required.add(stage === "send" ? "messages.transform" : "messages.edit.transform");
-        if (name === "rewriteOrigin") required.add("messages.redirectlinks");
+        if (name === "rewriteOrigin" || name === "rewriteLink") required.add("messages.redirectlinks");
     }
     if (transforms.some(rule => rule.name === "rewriteText" && !rule.rules.length)) throw new Error("A text rewrite block needs rules");
     for (const { actions } of commands) {
@@ -514,7 +521,8 @@ export function reviewCx(source: string) {
             .concat(document.styledTargets.map(target => cxAppearanceTargets[target].label))
             .concat(document.nativeEffects.map(effect => cxNativeEffects[effect].label + (effect === "avatar-resolution" ? " (" + document.avatarResolution + " px)" : "")))
             .concat(document.uploadNaming ? ["Use " + document.uploadNaming.mode + " upload names " + (document.uploadNaming.manual ? "when selected for a file" : "by default")] : [])
-            .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" ? [rule.find + " → " + rule.replacement]
+            .concat(document.messageTransforms.flatMap(rule => rule.name === "rewriteOrigin" || rule.name === "rewriteLink"
+                ? [(rule.name === "rewriteLink" ? rule.stage + " · " : "") + rule.find + " → " + rule.replacement]
                 : rule.name === "rewriteText" ? [`Apply ${rule.rules.length} text rules to message ${rule.stage}s and preserve links`] : []))
             .concat(document.incoming.flatMap(rule => {
                 if (rule.kind === "reply-ping-default") return ["Turn reply pings off initially and keep the composer toggle available"];
@@ -552,6 +560,7 @@ type CxHost = {
     applyTheme: (theme: CxTheme) => () => void;
     registerMessageTransform?: (transform: (text: string) => string) => () => void;
     registerMessageEditTransform?: (transform: (text: string) => string) => () => void;
+    registerProfileBioTransform?: (transform: (text: string) => string) => () => void;
     registerReplyPingSuppression?: () => () => void;
     registerProfileMenuAction?: (action: CxProfileMenuAction) => () => void;
     hideAppearanceTarget?: (target: CxHideTarget) => () => void;
@@ -623,20 +632,25 @@ export function activateCx(source: string, host: CxHost, approved: readonly CxPe
             if (!host.registerPreviousMessageRule) throw new Error("This client cannot edit previous messages");
             cleanups.push(host.registerPreviousMessageRule(document.previousRule));
         }
-        for (const stage of ["send", "edit"] as const) {
+        for (const stage of ["send", "edit", "profile"] as const) {
             const transforms = document.messageTransforms.filter(transform => transform.stage === stage);
             if (!transforms.length) continue;
-            const register = stage === "send" ? host.registerMessageTransform : host.registerMessageEditTransform;
-            if (!register) throw new Error("This client cannot transform message " + stage + "s");
+            const register = stage === "send" ? host.registerMessageTransform : stage === "edit" ? host.registerMessageEditTransform : host.registerProfileBioTransform;
+            if (!register) throw new Error("This client cannot apply the " + stage + " text transform");
             const origins = new Map(transforms.flatMap(rule => rule.name === "rewriteOrigin" ? [[rule.find, rule.replacement] as const] : []));
+            const links = new Map(transforms.flatMap(rule => rule.name === "rewriteLink" ? [[rule.find, rule.replacement] as const] : []));
             cleanups.push(register(text => {
                 if (!active || text.length > 4000) return text;
                 let result = text;
                 let rewrote = false;
+                let rewroteLinks = false;
                 for (const rule of transforms) {
                     if (rule.name === "rewriteOrigin") {
                         if (!rewrote) result = rewriteCxOrigin(result, origins);
                         rewrote = true;
+                    } else if (rule.name === "rewriteLink") {
+                        if (!rewroteLinks) result = rewriteCxLinks(result, links);
+                        rewroteLinks = true;
                     } else if (rule.name === "rewriteText") result = applyCxTextRules(result, rule.rules);
                     else if (rule.name === "replaceLiteral") result = result.replaceAll(rule.find, () => rule.replacement);
                     else result = messageTransforms[rule.name](result, rule.options);

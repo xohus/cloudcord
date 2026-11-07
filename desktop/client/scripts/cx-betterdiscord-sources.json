@@ -1,4 +1,11 @@
 {
+    "38d659978c480ed8f5e45addd441b25d6f498e8b4eb64c1affe309983179b535": {
+        "name": "LinkConverter",
+        "author": "Kaan",
+        "license": "GPL-3.0",
+        "source": "https://github.com/zrodevkaan/BDPlugins/blob/8419ffe6f4e180fe9a755cd3bf82c5649c173b99/Plugins/LinkConverter/LinkConverter.plugin.js",
+        "recipe": "link-rewrites"
+    },
     "1eefd9ee8f3e3c6f138d3db74eb952bef846e77650ea2df3b6927e58256d1bb0": {
         "name": "ScrollToLatest",
         "author": "Snues",

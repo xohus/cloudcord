@@ -261,6 +261,37 @@ function inspectBetterDiscord(file, code, appearance) {
     const sha256 = reviewedBetterDiscordSources[rawSha256] ? rawSha256
         : createHash("sha256").update(code.replaceAll("\r\n", "\n"), "utf8").digest("hex");
     const review = reviewedBetterDiscordSources[sha256];
+    if (review?.name === name && review.recipe === "link-rewrites" && !source.parseDiagnostics.length) {
+        const domains = {
+            reddit: ["reddit.com", "www.reddit.com", "old.reddit.com"],
+            x: ["x.com", "www.x.com"],
+            instagram: ["instagram.com", "www.instagram.com"],
+            tiktok: ["tiktok.com", "www.tiktok.com", "vm.tiktok.com", "vt.tiktok.com"],
+            youtube: ["youtube.com", "www.youtube.com", "m.youtube.com"],
+            bluesky: ["bsky.app", "www.bsky.app"],
+        };
+        const defaults = source.statements.filter(ts.isVariableStatement).flatMap(statement => [...statement.declarationList.declarations])
+            .find(declaration => identifier(declaration.name) === "defaultLinks")?.initializer;
+        if (defaults && ts.isArrayLiteralExpression(defaults) && defaults.elements.length === Object.keys(domains).length) {
+            const lines = ["  needs messages.transform", "  needs messages.redirectlinks", "  needs profile.redirectlinks"];
+            const seen = new Set();
+            for (const link of defaults.elements) {
+                const site = literal(value(link, "type"));
+                const choices = value(link, "replacements");
+                const selected = value(link, "selected");
+                if (!site || !Object.hasOwn(domains, site) || seen.has(site) || value(link, "enabled")?.kind !== ts.SyntaxKind.TrueKeyword
+                    || !selected || !ts.isNumericLiteral(selected) || !choices || !ts.isArrayLiteralExpression(choices)) return record;
+                const destination = literal(choices.elements[Number(selected.text)]);
+                if (!destination) return record;
+                seen.add(site);
+                for (const host of domains[site]) for (const stage of ["send", "profile"]) {
+                    lines.push("  before " + stage + " rewrite-link " + JSON.stringify("https://" + host) + " with " + JSON.stringify(destination));
+                }
+            }
+            return { ...record, review: { ...review, sha256 }, capability: "link-rewrites",
+                cx: ["plugin " + JSON.stringify(name) + ":", ...lines, ""].join("\n") };
+        }
+    }
     if (review?.name === name && review.recipe === "typing-rules" && !source.parseDiagnostics.length) {
         const lines = compileBetterDiscordTypingRules(source);
         if (lines) return { ...record, review: { ...review, sha256 }, capability: "outgoing-text",
@@ -1342,6 +1373,7 @@ function verifyPorts(files) {
                 registerCommand: register,
                 registerMessageTransform: register,
                 registerMessageEditTransform: register,
+                registerProfileBioTransform: register,
                 registerIncomingRules: register,
                 registerNativeEffect: register,
                 registerUploadAnonymiser: register,

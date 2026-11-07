@@ -14,6 +14,7 @@ import { ActiveJoinedThreadsStore, ChannelActions, ChannelStore, Constants, Emoj
 import type { ReactNode } from "react";
 
 const session = createCxSession();
+const profileBioTransforms = new Set<(bio: string) => string>();
 const typingDotListeners = new Set<() => void>();
 let staticTypingDotUsers = 0;
 let fixFileExtensionUsers = 0;
@@ -402,6 +403,10 @@ export function CxSettings() {
                     });
                     return () => { removeMessagePreEditListener(listener); };
                 },
+                registerProfileBioTransform(transform) {
+                    profileBioTransforms.add(transform);
+                    return () => { profileBioTransforms.delete(transform); };
+                },
                 getUserAvatarUrl(id) {
                     const user = id ? UserStore?.getUser(id) : UserStore?.getCurrentUser?.();
                     if (user) return IconUtils.getUserAvatarURL(user, true, 1024);
@@ -635,6 +640,12 @@ export default definePlugin({
             replace: "(!$self.keepImageLinks()&&($&))",
         },
     }, {
+        find: "disableInteractions:",
+        replacement: {
+            match: /(\{(?=[^{}]{0,350}\bdisableInteractions:\i)(?=[^{}]{0,350}\buserBio:\i)[^{}]{1,350}\}=)(\i)(?=[,;])/,
+            replace: "$1$self.rewriteProfileBioProps($2)",
+        },
+    }, {
         find: "#{intl::ATTACHMENT_UTILITIES_SPOILER}",
         replacement: {
             match: /(?<=children:\[)(?=.{10,80}tooltip:.{0,100}#{intl::ATTACHMENT_UTILITIES_SPOILER})/,
@@ -690,6 +701,12 @@ export default definePlugin({
     },
     keepImageLinks() {
         return imageLinkUsers > 0;
+    },
+    rewriteProfileBioProps<T extends { userBio?: unknown; }>(props: T) {
+        if (!profileBioTransforms.size || typeof props?.userBio !== "string") return props;
+        let bio = props.userBio;
+        for (const transform of profileBioTransforms) bio = transform(bio);
+        return bio === props.userBio ? props : { ...props, userBio: bio };
     },
     getMediaGifAlt(props: { original?: unknown; src?: unknown; alt?: string; } | undefined, fallback: () => string) {
         const alt = props?.alt === undefined ? fallback() : props.alt;
